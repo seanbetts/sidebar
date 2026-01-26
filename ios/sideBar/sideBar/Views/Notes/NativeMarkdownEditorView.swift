@@ -32,3 +32,22 @@ public struct NativeMarkdownEditorView: View {
             .background(DesignTokens.Colors.background)
     }
 }
+
+@available(iOS 26.0, macOS 26.0, *)
+struct NativeMarkdownReadOnlyView: View {
+    let attributedContent: AttributedString
+    let maxContentWidth: CGFloat
+
+    var body: some View {
+        ScrollView {
+            Text(attributedContent)
+                .textSelection(.enabled)
+                .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+                .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
+                .frame(maxWidth: maxContentWidth, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DesignTokens.Colors.background)
+    }
+}

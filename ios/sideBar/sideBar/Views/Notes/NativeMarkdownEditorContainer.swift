@@ -11,15 +11,27 @@ struct NativeMarkdownEditorContainer: View {
     @FocusState private var isTextEditorFocused: Bool
 
     var body: some View {
-        NativeMarkdownEditorView(
-            viewModel: nativeViewModel,
-            maxContentWidth: maxContentWidth
-        ) { _ in }
-        .focused($isTextEditorFocused)
-        .onKeyPress(.escape) {
-            guard isEditing else { return .ignored }
-            isEditing = false
-            return .handled
+        Group {
+            if isEditing {
+                NativeMarkdownEditorView(
+                    viewModel: nativeViewModel,
+                    maxContentWidth: maxContentWidth
+                ) { _ in }
+                .focused($isTextEditorFocused)
+                .onKeyPress(.escape) {
+                    guard isEditing else { return .ignored }
+                    isEditing = false
+                    return .handled
+                }
+            } else {
+                NativeMarkdownReadOnlyView(
+                    attributedContent: nativeViewModel.attributedContent,
+                    maxContentWidth: maxContentWidth
+                )
+                .onTapGesture {
+                    isEditing = true
+                }
+            }
         }
         .onAppear {
             editorViewModel.attachNativeEditor(nativeViewModel)
@@ -46,6 +58,13 @@ struct NativeMarkdownEditorContainer: View {
             isTextEditorFocused = editing
             nativeViewModel.isReadOnly = !editing
             editorViewModel.setReadOnly(!editing)
+        }
+        .onChange(of: editorViewModel.isReadOnly) { _, readOnly in
+            let editing = !readOnly
+            guard isEditing != editing else { return }
+            isEditing = editing
+            isTextEditorFocused = editing
+            nativeViewModel.isReadOnly = readOnly
         }
         .onChange(of: isTextEditorFocused) { _, focused in
             // When user taps into the editor, enter edit mode

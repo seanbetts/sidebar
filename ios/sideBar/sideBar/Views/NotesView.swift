@@ -65,6 +65,7 @@ private struct NotesDetailView: View {
     @State private var moveSelection: String = ""
     @State private var isDeleteAlertPresented = false
     @State private var isArchiveAlertPresented = false
+    @State private var isActionsDialogPresented = false
     @State private var isCloseConfirmPresented = false
     @State private var isExporting = false
     @State private var exportDocument: MarkdownFileDocument?
@@ -159,7 +160,7 @@ private struct NotesDetailView: View {
             Button("Delete", role: .destructive) {
                 guard let noteId = viewModel.activeNote?.path else { return }
                 Task {
-                    await viewModel.deleteNote(id: noteId)
+                    await deleteNoteAfterDismissal(id: noteId)
                 }
             }
             .keyboardShortcut(.defaultAction)
@@ -178,6 +179,35 @@ private struct NotesDetailView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text(archiveAlertMessage)
+        }
+        .confirmationDialog("Note actions", isPresented: $isActionsDialogPresented, titleVisibility: .visible) {
+            Button(pinActionTitle) {
+                guard let noteId = viewModel.activeNote?.path else { return }
+                Task {
+                    await viewModel.setPinned(id: noteId, pinned: !isPinned)
+                }
+            }
+            Button("Rename") {
+                renameValue = displayTitle
+                isRenameDialogPresented = true
+            }
+            Button("Move") {
+                moveSelection = currentFolderPath
+                isMoveSheetPresented = true
+            }
+            Button("Copy") {
+                copyMarkdown()
+            }
+            Button("Download") {
+                exportMarkdown()
+            }
+            Button(archiveMenuTitle) {
+                isArchiveAlertPresented = true
+            }
+            Button("Delete", role: .destructive) {
+                isDeleteAlertPresented = true
+            }
+            Button("Cancel", role: .cancel) { }
         }
         .confirmationDialog("Save changes?", isPresented: $isCloseConfirmPresented, titleVisibility: .visible) {
             Button("Save changes") {
@@ -222,6 +252,49 @@ private struct NotesDetailView: View {
                 #endif
             }
         }
+    }
+
+    private func prepareForDestructiveAction() {
+        editorViewModel.setReadOnly(true)
+        #if os(iOS)
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        #endif
+    }
+
+    private func deleteNoteAfterDismissal(id: String) async {
+        prepareForDestructiveAction()
+        await waitForKeyboardDismissal()
+        await viewModel.deleteNote(id: id)
+    }
+
+    private func openActionsDialog() async {
+        prepareForDestructiveAction()
+        await waitForKeyboardDismissal()
+        isActionsDialogPresented = true
+    }
+
+    @MainActor
+    private func waitForKeyboardDismissal(timeout: UInt64 = 500_000_000) async {
+        #if os(iOS)
+        let notifications = NotificationCenter.default.notifications(named: UIResponder.keyboardDidHideNotification)
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                for await _ in notifications {
+                    break
+                }
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: timeout)
+            }
+            await group.next()
+            group.cancelAll()
+        }
+        #endif
     }
 }
 
@@ -460,38 +533,12 @@ extension NotesDetailView {
         .accessibilityLabel("Note options")
         .disabled(viewModel.activeNote == nil)
         #else
-        UIKitMenuButton(
-            systemImage: "ellipsis.circle",
-            accessibilityLabel: "Note options",
-            items: [
-                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                    guard let noteId = viewModel.activeNote?.path else { return }
-                    Task {
-                        await viewModel.setPinned(id: noteId, pinned: !isPinned)
-                    }
-                },
-                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
-                    renameValue = displayTitle
-                    isRenameDialogPresented = true
-                },
-                MenuActionItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
-                    moveSelection = currentFolderPath
-                    isMoveSheetPresented = true
-                },
-                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                    copyMarkdown()
-                },
-                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                    exportMarkdown()
-                },
-                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    isArchiveAlertPresented = true
-                },
-                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                    isDeleteAlertPresented = true
-                }
-            ]
-        )
+        Button {
+            Task { await openActionsDialog() }
+        } label: {
+            HeaderActionIcon(systemName: "ellipsis.circle")
+        }
+        .buttonStyle(.plain)
         .frame(width: 28, height: 20)
         .accessibilityLabel("Note options")
         .disabled(viewModel.activeNote == nil)
