@@ -53,7 +53,8 @@ struct AddTaskIntent: AppIntent {
     static var openAppWhenRun: Bool = true
 
     func perform() async throws -> some IntentResult {
-        // The app will handle opening the add task sheet
+        // Record that we want to add a task - the app will check this on foreground
+        WidgetDataManager.shared.recordAddTaskIntent()
         return .result()
     }
 }

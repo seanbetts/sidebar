@@ -27,7 +27,7 @@ struct TaskCountWidgetView: View {
     }
 
     private var countView: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 16) {
             ZStack {
                 Circle()
                     .stroke(Color.secondary.opacity(0.2), lineWidth: 6)
@@ -55,10 +55,6 @@ struct TaskCountWidgetView: View {
                     .font(.caption)
                     .foregroundStyle(.green)
                     .widgetAccentable()
-            } else {
-                Text(entry.data.totalCount == 1 ? "task" : "tasks")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

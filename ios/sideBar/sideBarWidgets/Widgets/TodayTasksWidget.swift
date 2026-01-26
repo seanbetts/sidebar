@@ -39,24 +39,23 @@ struct TodayTasksWidgetView: View {
 
     private var taskListView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            headerView
-            tasksList
+            Link(destination: URL(string: "sidebar://tasks/today")!) {
+                VStack(alignment: .leading, spacing: 12) {
+                    headerView
+                    tasksList
+                }
+            }
+            .buttonStyle(.plain)
             Spacer(minLength: 0)
-            if showMoreIndicator {
-                HStack {
+            HStack {
+                if showMoreIndicator {
                     moreTasksIndicator
-                    Spacer()
-                    addTaskButton
                 }
-            } else {
-                HStack {
-                    Spacer()
-                    addTaskButton
-                }
+                Spacer()
+                addTaskButton
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 
     private var headerView: some View {
