@@ -496,6 +496,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         case ranges([Range<Int>])
     }
 
+    private struct LineInfo {
+        let range: Range<Int>
+        let text: String
+    }
+
     private func selectionSnapshot(in text: AttributedString) -> SelectionSnapshot {
         switch selection.indices(in: text) {
         case .insertionPoint(let index):
@@ -535,16 +540,18 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private func updatePrefixVisibility() {
         let selectionSnapshot = selectionSnapshot(in: attributedContent)
         var updated = attributedContent
-        let selectionForUpdated = selection(from: selectionSnapshot, in: updated)
 
-        for lineRange in lineRanges(in: updated) {
-            let lineText = String(updated[lineRange].characters)
-            let shouldShow = shouldShowPrefix(for: lineRange, selection: selectionForUpdated, in: updated)
-            let blockKind = updated.blockKind(in: lineRange) ?? inferredBlockKind(from: lineText)
+        let lines = lineInfos(in: updated)
+        for line in lines {
+            let lineStart = updated.index(updated.startIndex, offsetByCharacters: line.range.lowerBound)
+            let lineEnd = updated.index(updated.startIndex, offsetByCharacters: line.range.upperBound)
+            let lineRange = lineStart..<lineEnd
+            let shouldShow = shouldShowPrefix(for: line.range, selection: selectionSnapshot)
+            let blockKind = updated.blockKind(in: lineRange) ?? inferredBlockKind(from: line.text)
             let prefixRange = markdownPrefixRange(
                 in: updated,
                 lineRange: lineRange,
-                lineText: lineText,
+                lineText: line.text,
                 blockKind: blockKind
             )
 
@@ -560,7 +567,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 }
             }
 
-            let inlineRanges = ensureInlineMarkerRanges(in: &updated, lineRange: lineRange, lineText: lineText)
+            let inlineRanges = ensureInlineMarkerRanges(in: &updated, lineRange: lineRange, lineText: line.text)
             for inlineRange in inlineRanges {
                 if shouldShow {
                     updated[inlineRange].foregroundColor = DesignTokens.Colors.textSecondary
@@ -817,24 +824,47 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func shouldShowPrefix(
-        for lineRange: Range<AttributedString.Index>,
-        selection: AttributedTextSelection,
-        in text: AttributedString
+        for lineRange: Range<Int>,
+        selection: SelectionSnapshot
     ) -> Bool {
-        if isReadOnly {
-            return false
-        }
-        switch selection.indices(in: text) {
-        case .insertionPoint(let index):
-            return lineRange.contains(index) || index == lineRange.upperBound
+        guard !isReadOnly else { return false }
+        switch selection {
+        case .insertionPoint(let offset):
+            return lineRange.contains(offset) || offset == lineRange.upperBound
         case .ranges(let ranges):
-            return ranges.ranges.contains { range in
+            return ranges.contains { range in
                 if range.isEmpty {
                     return lineRange.contains(range.lowerBound) || range.lowerBound == lineRange.upperBound
                 }
                 return range.overlaps(lineRange)
             }
         }
+    }
+
+    private func lineInfos(in text: AttributedString) -> [LineInfo] {
+        var lines: [LineInfo] = []
+        var startIndex = text.startIndex
+        var currentIndex = text.startIndex
+        var startOffset = 0
+        var currentOffset = 0
+
+        while currentIndex < text.endIndex {
+            if text.characters[currentIndex].isNewline {
+                let lineText = String(text[startIndex..<currentIndex].characters)
+                lines.append(LineInfo(range: startOffset..<currentOffset, text: lineText))
+                currentIndex = text.index(afterCharacter: currentIndex)
+                currentOffset += 1
+                startIndex = currentIndex
+                startOffset = currentOffset
+            } else {
+                currentIndex = text.index(afterCharacter: currentIndex)
+                currentOffset += 1
+            }
+        }
+
+        let lineText = String(text[startIndex..<text.endIndex].characters)
+        lines.append(LineInfo(range: startOffset..<currentOffset, text: lineText))
+        return lines
     }
 
     private func paragraphStyle(for blockKind: BlockKind) -> NSParagraphStyle? {
