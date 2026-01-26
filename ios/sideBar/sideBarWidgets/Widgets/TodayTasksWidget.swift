@@ -22,6 +22,8 @@ struct TodayTasksWidgetView: View {
     var entry: TodayTasksEntry
 
     @Environment(\.widgetFamily) var family
+    @Environment(\.widgetRenderingMode) var renderingMode
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         if !entry.isAuthenticated {
@@ -124,12 +126,52 @@ struct TodayTasksWidgetView: View {
 
     private var addTaskButton: some View {
         Button(intent: AddTaskIntent()) {
-            Image(systemName: "plus.circle.fill")
-                .font(.system(size: family == .systemSmall ? 20 : 24))
-                .foregroundStyle(.white, Color.accentColor)
-                .widgetAccentable()
+            addTaskButtonContent
         }
         .buttonStyle(.plain)
+    }
+
+    private var buttonSize: CGFloat {
+        family == .systemSmall ? 20 : 24
+    }
+
+    @ViewBuilder
+    private var addTaskButtonContent: some View {
+        switch renderingMode {
+        case .fullColor:
+            // Default/Dark mode: contrasting colors
+            if colorScheme == .dark {
+                // Dark mode: black + on white background
+                Image(systemName: "plus")
+                    .font(.system(size: buttonSize * 0.5, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(width: buttonSize, height: buttonSize)
+                    .background(Circle().fill(.white))
+            } else {
+                // Light mode: white + on black background
+                Image(systemName: "plus")
+                    .font(.system(size: buttonSize * 0.5, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: buttonSize, height: buttonSize)
+                    .background(Circle().fill(.black))
+            }
+        case .accented:
+            // Clear/Tinted mode: + gets accent color (tint), background is tertiary fill
+            ZStack {
+                Circle()
+                    .fill(.fill.tertiary)
+                    .frame(width: buttonSize, height: buttonSize)
+                Image(systemName: "plus")
+                    .font(.system(size: buttonSize * 0.5, weight: .bold))
+                    .widgetAccentable()
+            }
+        default:
+            // Fallback (vibrant mode, etc.)
+            Image(systemName: "plus")
+                .font(.system(size: buttonSize * 0.5, weight: .bold))
+                .frame(width: buttonSize, height: buttonSize)
+                .background(Circle().fill(.fill.tertiary))
+        }
     }
 
     // MARK: - Empty State
