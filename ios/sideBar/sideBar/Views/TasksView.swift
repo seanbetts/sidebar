@@ -19,6 +19,10 @@ public struct TasksView: View {
             #if os(iOS)
             .onAppear {
                 environment.isTasksFocused = true
+                if environment.pendingNewTaskDeepLink {
+                    environment.pendingNewTaskDeepLink = false
+                    environment.tasksViewModel.startNewTask()
+                }
             }
             .onDisappear {
                 environment.isTasksFocused = false

@@ -48,6 +48,7 @@ public final class AppEnvironment: ObservableObject {
             #endif
         }
     }
+    @Published public var pendingNewTaskDeepLink: Bool = false
     @Published public var shortcutActionEvent: ShortcutActionEvent?
     var cancellables = Set<AnyCancellable>()
 
