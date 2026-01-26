@@ -2,17 +2,29 @@ import Foundation
 
 public enum ExtensionEventType: String, Codable {
     case websiteSaved
+    case fileSaved
+    case imageSaved
 }
 
 public struct ExtensionEvent: Codable, Equatable {
     public let type: ExtensionEventType
     public let timestamp: Date
     public let websiteUrl: String?
+    public let fileId: String?
+    public let filename: String?
 
-    public init(type: ExtensionEventType, timestamp: Date = Date(), websiteUrl: String? = nil) {
+    public init(
+        type: ExtensionEventType,
+        timestamp: Date = Date(),
+        websiteUrl: String? = nil,
+        fileId: String? = nil,
+        filename: String? = nil
+    ) {
         self.type = type
         self.timestamp = timestamp
         self.websiteUrl = websiteUrl
+        self.fileId = fileId
+        self.filename = filename
     }
 }
 
@@ -25,6 +37,14 @@ public final class ExtensionEventStore {
 
     public func recordWebsiteSaved(url: String?) {
         append(event: ExtensionEvent(type: .websiteSaved, websiteUrl: url))
+    }
+
+    public func recordFileSaved(fileId: String, filename: String?) {
+        append(event: ExtensionEvent(type: .fileSaved, fileId: fileId, filename: filename))
+    }
+
+    public func recordImageSaved(fileId: String, filename: String?) {
+        append(event: ExtensionEvent(type: .imageSaved, fileId: fileId, filename: filename))
     }
 
     public func consumeEvents() -> [ExtensionEvent] {
