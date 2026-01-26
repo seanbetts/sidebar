@@ -326,6 +326,10 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             return .system(size: heading5FontSize, weight: .semibold)
         case .heading6:
             return .system(size: heading6FontSize, weight: .semibold)
+        case .codeBlock:
+            return blockCodeFont
+        case .imageCaption:
+            return DesignTokens.Typography.footnote
         default:
             return bodyFont
         }
@@ -555,6 +559,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 blockKind: blockKind
             )
 
+            applyInlineIntentStyling(in: &updated, lineRange: lineRange, blockKind: blockKind)
+
             if let prefixRange {
                 if shouldShow {
                     updated[prefixRange].foregroundColor = DesignTokens.Colors.textSecondary
@@ -778,6 +784,41 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             }
         }
         return fallback
+    }
+
+    private func applyInlineIntentStyling(
+        in text: inout AttributedString,
+        lineRange: Range<AttributedString.Index>,
+        blockKind: BlockKind?
+    ) {
+        let baseFont = baseFont(for: blockKind)
+        let baseBackground = baseBackgroundColor(for: blockKind)
+        let baseForeground = baseForegroundColor(for: blockKind)
+        for run in text[lineRange].runs {
+            guard run.inlineMarker != true else { continue }
+            let intents = run.inlinePresentationIntent ?? []
+            let range = run.range
+
+            if intents.contains(.code) {
+                text[range].font = inlineCodeFont
+                text[range].foregroundColor = DesignTokens.Colors.textPrimary
+                text[range].backgroundColor = style.codeBackground
+                continue
+            }
+
+            var font = baseFont
+            if intents.contains(.emphasized) {
+                font = font.italic()
+            }
+            if intents.contains(.stronglyEmphasized) {
+                font = font.weight(.bold)
+            }
+            text[range].font = font
+            text[range].backgroundColor = baseBackground
+            if run.foregroundColor == nil {
+                text[range].foregroundColor = baseForeground
+            }
+        }
     }
 
     private func font(
