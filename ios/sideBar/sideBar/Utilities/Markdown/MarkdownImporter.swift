@@ -233,7 +233,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             lineText[fullRange(in: lineText)].paragraphStyle = paragraphStyle(
                 lineSpacing: em(0.5, fontSize: inlineCodeFontSize),
                 spacingBefore: index == 0 ? rem(1) : 0,
-                spacingAfter: index == totalLines - 1 ? rem(1) : 0
+                spacingAfter: index == totalLines - 1 ? rem(1) : 0,
+                headIndent: DesignTokens.Spacing.md,
+                tailIndent: DesignTokens.Spacing.md
             )
             applyPresentationIntent(for: .codeBlock, codeLanguage: language, to: &lineText)
             appendBlock(lineText)
@@ -300,10 +302,14 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
         itemText[fullRange(in: itemText)].listDepth = context.depth
         itemText[fullRange(in: itemText)].font = bodyFont
+        let listIndentUnit = em(1.5, fontSize: baseFontSize)
+        let listIndent = listIndentUnit * CGFloat(max(1, context.depth))
+        let quoteIndent = blockquoteDepth > 0 ? em(1, fontSize: baseFontSize) : 0
         itemText[fullRange(in: itemText)].paragraphStyle = paragraphStyle(
             lineSpacing: em(0.2, fontSize: baseFontSize),
             spacingBefore: isFirst ? rem(0.5) : 0,
-            spacingAfter: isLast ? rem(0.5) : 0
+            spacingAfter: isLast ? rem(0.5) : 0,
+            headIndent: listIndent + quoteIndent
         )
         applyPresentationIntent(
             for: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph,
@@ -631,7 +637,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         lineSpacing: CGFloat,
         spacingBefore: CGFloat,
         spacingAfter: CGFloat,
-        headIndent: CGFloat = 0
+        headIndent: CGFloat = 0,
+        tailIndent: CGFloat = 0
     ) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = lineSpacing
@@ -639,6 +646,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         style.paragraphSpacing = spacingAfter
         style.headIndent = headIndent
         style.firstLineHeadIndent = headIndent
+        if tailIndent != 0 {
+            style.tailIndent = -tailIndent
+        }
         return style
     }
 }
