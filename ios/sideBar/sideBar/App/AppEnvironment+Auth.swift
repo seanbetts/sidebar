@@ -72,4 +72,18 @@ extension AppEnvironment {
         await tasksViewModel.load(selection: .today, force: true)
         await tasksViewModel.loadCounts(force: true)
     }
+
+    /// Consumes pending add task intent from widget and opens the add task UI
+    @MainActor
+    public func consumeWidgetAddTask() {
+        guard WidgetDataManager.shared.consumeAddTaskIntent(), isAuthenticated else { return }
+
+        // Navigate to tasks section and start new task
+        commandSelection = .tasks
+        // Small delay to allow navigation to complete before showing the add task UI
+        Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+            tasksViewModel.startNewTask()
+        }
+    }
 }

@@ -56,6 +56,7 @@ extension ContentView {
                 Task {
                     await environment.consumeExtensionEvents()
                     await environment.consumeWidgetCompletions()
+                    environment.consumeWidgetAddTask()
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
                     await environment.consumeExtensionEvents()
                     await environment.websitesViewModel.load(force: true)
@@ -68,6 +69,7 @@ extension ContentView {
             Task {
                 await environment.consumeExtensionEvents()
                 await environment.consumeWidgetCompletions()
+                environment.consumeWidgetAddTask()
             }
         })
         #endif

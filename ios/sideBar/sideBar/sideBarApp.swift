@@ -108,6 +108,15 @@ struct SideBarApp: App {
         switch url.host {
         case "tasks":
             environment.commandSelection = .tasks
+            // Check for /new path to trigger add task
+            if url.path == "/new" {
+                Task {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    await MainActor.run {
+                        environment.tasksViewModel.startNewTask()
+                    }
+                }
+            }
         case "notes":
             environment.commandSelection = .notes
         case "files":

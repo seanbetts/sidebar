@@ -62,6 +62,7 @@ public final class WidgetDataManager {
     private let todayTasksKey = "widgetTodayTasks"
     private let isAuthenticatedKey = "widgetIsAuthenticated"
     private let pendingCompletionsKey = "widgetPendingCompletions"
+    private let pendingAddTaskKey = "widgetPendingAddTask"
 
     private init() {}
 
@@ -148,6 +149,26 @@ public final class WidgetDataManager {
             return []
         }
         return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+    }
+
+    // MARK: - Add Task Intent
+
+    /// Records that the add task intent was triggered from widget
+    public func recordAddTaskIntent() {
+        guard let defaults = userDefaults else { return }
+        defaults.set(true, forKey: pendingAddTaskKey)
+        defaults.synchronize()
+    }
+
+    /// Called by main app to check and clear pending add task intent
+    public func consumeAddTaskIntent() -> Bool {
+        guard let defaults = userDefaults else { return false }
+        let pending = defaults.bool(forKey: pendingAddTaskKey)
+        if pending {
+            defaults.removeObject(forKey: pendingAddTaskKey)
+            defaults.synchronize()
+        }
+        return pending
     }
 
     // MARK: - Widget Reload
