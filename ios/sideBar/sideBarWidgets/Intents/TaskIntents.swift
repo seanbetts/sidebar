@@ -22,7 +22,7 @@ struct CompleteTaskIntent: AppIntent {
         WidgetDataManager.shared.recordTaskCompletion(taskId: taskId)
 
         // Update widget data optimistically (remove the completed task)
-        var data = WidgetDataManager.shared.loadTodayTasks()
+        let data = WidgetDataManager.shared.loadTodayTasks()
         let updatedTasks = data.tasks.filter { $0.id != taskId }
         WidgetDataManager.shared.updateTodayTasks(updatedTasks, totalCount: max(0, data.totalCount - 1))
 
