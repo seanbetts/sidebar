@@ -234,10 +234,20 @@ extension TasksDetailView {
                 LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     ForEach(state.sections) { section in
                         if !section.title.isEmpty {
-                            if case .today = state.selection {
+                            switch state.selection {
+                            case .today:
                                 todaySectionHeader(section: section, state: state)
                                     .padding(.horizontal, DesignTokens.Spacing.md)
-                            } else {
+                            case .upcoming:
+                                sectionHeaderLabel(
+                                    title: section.title,
+                                    iconName: "calendar"
+                                )
+                                .padding(.horizontal, DesignTokens.Spacing.md)
+                            case .group:
+                                groupSectionHeader(section: section, state: state)
+                                    .padding(.horizontal, DesignTokens.Spacing.md)
+                            default:
                                 Text(section.title)
                                     .font(.caption)
                                     .foregroundStyle(DesignTokens.Colors.textSecondary)
@@ -250,8 +260,10 @@ extension TasksDetailView {
                             Label("No tasks due", systemImage: "checkmark.circle")
                                 .font(.subheadline)
                                 .foregroundStyle(DesignTokens.Colors.textTertiary)
-                                .padding(.horizontal, DesignTokens.Spacing.md)
+                                .padding(.leading, DesignTokens.Spacing.md + 14)
+                                .padding(.trailing, DesignTokens.Spacing.md)
                                 .padding(.vertical, DesignTokens.Spacing.xs)
+                                .padding(.bottom, DesignTokens.Spacing.md)
                         } else {
                             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
                                 ForEach(section.tasks, id: \.id) { task in
@@ -302,17 +314,7 @@ extension TasksDetailView {
     private func todaySectionHeader(section: TaskSection, state: TasksViewState) -> some View {
         let iconName = todaySectionIcon(for: section, state: state)
         let targetSelection = todaySectionSelection(for: section, state: state)
-        let label = HStack(spacing: 6) {
-            if let iconName {
-                Image(systemName: iconName)
-                    .font(.subheadline)
-                    .foregroundStyle(DesignTokens.Colors.textSecondary)
-            }
-            Text(section.title)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
-        }
+        let label = sectionHeaderLabel(title: section.title, iconName: iconName)
         if let targetSelection {
             Button {
                 Task { await viewModel.load(selection: targetSelection) }
@@ -333,6 +335,30 @@ extension TasksDetailView {
             return "square.3.layers.3d"
         }
         return nil
+    }
+
+    private func groupSectionHeader(section: TaskSection, state: TasksViewState) -> some View {
+        let iconName: String?
+        if section.id != "group" {
+            iconName = "list.bullet"
+        } else {
+            iconName = nil
+        }
+        return sectionHeaderLabel(title: section.title, iconName: iconName)
+    }
+
+    private func sectionHeaderLabel(title: String, iconName: String?) -> some View {
+        HStack(spacing: 6) {
+            if let iconName {
+                Image(systemName: iconName)
+                    .font(.subheadline)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+            }
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+        }
     }
 
     private func todaySectionSelection(for section: TaskSection, state: TasksViewState) -> TaskSelection? {
