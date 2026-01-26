@@ -36,15 +36,22 @@ struct TodayTasksWidgetView: View {
     // MARK: - Task List View
 
     private var taskListView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            headerView
-            Spacer(minLength: 4)
-            tasksList
-            if showMoreIndicator {
-                moreTasksIndicator
+        ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 0) {
+                headerView
+                Spacer(minLength: 4)
+                tasksList
+                if showMoreIndicator {
+                    moreTasksIndicator
+                }
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            // Add task button
+            addTaskButton
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 
     private var headerView: some View {
@@ -60,7 +67,6 @@ struct TodayTasksWidgetView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.bottom, 4)
     }
 
     private var tasksList: some View {
@@ -98,29 +104,41 @@ struct TodayTasksWidgetView: View {
     }
 
     private var moreTasksIndicator: some View {
-        HStack {
-            Spacer()
-            Text("+\(entry.data.totalCount - displayedTasks.count) more")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+        Text("+\(entry.data.totalCount - displayedTasks.count) more")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.top, 4)
+    }
+
+    private var addTaskButton: some View {
+        Button(intent: AddTaskIntent()) {
+            Image(systemName: "plus.circle.fill")
+                .font(.system(size: family == .systemSmall ? 20 : 24))
+                .foregroundStyle(.white, Color.accentColor)
         }
-        .padding(.top, 4)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 32))
-                .foregroundStyle(.green)
-            Text("All done!")
-                .font(.headline)
-            Text("No tasks for today")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        ZStack(alignment: .bottomTrailing) {
+            VStack(spacing: 8) {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.green)
+                Text("All done!")
+                    .font(.headline)
+                Text("No tasks for today")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            addTaskButton
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 
     // MARK: - Not Authenticated
@@ -170,13 +188,7 @@ struct TaskRowView: View {
                 }
             }
 
-            Spacer()
-
-            if task.hasNotes && !compact {
-                Image(systemName: "doc.text")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            Spacer(minLength: 0)
         }
     }
 }

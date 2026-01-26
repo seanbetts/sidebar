@@ -14,7 +14,6 @@ struct sideBarWidgetsBundle: WidgetBundle {
         // Home screen widgets
         TodayTasksWidget()
         TaskCountWidget()
-        AddTaskWidget()
 
         // Lock screen widgets
         LockScreenTaskCountWidget()

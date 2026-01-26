@@ -84,6 +84,9 @@ struct SideBarApp: App {
             #else
             ContentView()
                 .environmentObject(environment)
+                .onOpenURL { url in
+                    handleDeepLink(url)
+                }
             #endif
         }
         #if os(macOS)
@@ -98,4 +101,22 @@ struct SideBarApp: App {
         }
         #endif
     }
+
+    #if os(iOS)
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "sidebar" else { return }
+        switch url.host {
+        case "tasks":
+            environment.commandSelection = .tasks
+        case "notes":
+            environment.commandSelection = .notes
+        case "files":
+            environment.commandSelection = .files
+        case "chat":
+            environment.commandSelection = .chat
+        default:
+            break
+        }
+    }
+    #endif
 }
