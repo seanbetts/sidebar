@@ -22,6 +22,9 @@ extension AppEnvironment {
             biometricMonitor.stopMonitoring()
         }
         realtimeClientStopStart()
+
+        // Update widget auth state
+        WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)
     }
 
     public func beginSignOut() async {
@@ -42,5 +45,31 @@ extension AppEnvironment {
                 websitesViewModel.showPendingFromExtension(url: url)
             }
         }
+    }
+
+    /// Consumes pending task completions from widgets and syncs them with the server
+    public func consumeWidgetCompletions() async {
+        let taskIds = WidgetDataManager.shared.consumePendingCompletions()
+        guard !taskIds.isEmpty, isAuthenticated else { return }
+
+        // Complete each task that was marked done in the widget
+        for taskId in taskIds {
+            if let task = tasksStore.tasks.first(where: { $0.id == taskId }) {
+                await tasksViewModel.completeTask(task: task)
+            } else {
+                // Task not in current store, try to complete directly via API
+                let operation = TaskOperationPayload(
+                    operationId: TaskOperationId.make(),
+                    op: "complete",
+                    id: taskId,
+                    clientUpdatedAt: nil
+                )
+                _ = try? await container.tasksAPI.apply(TaskOperationBatch(operations: [operation]))
+            }
+        }
+
+        // Refresh tasks to get updated state
+        await tasksViewModel.load(selection: .today, force: true)
+        await tasksViewModel.loadCounts(force: true)
     }
 }

@@ -89,6 +89,21 @@ public final class TasksViewModel: ObservableObject {
         if case .upcoming = selection {
             filteredUpcomingCount = viewState.totalCount
         }
+
+        // Update widget data when loading Today's tasks
+        if case .today = selection {
+            updateWidgetData()
+        }
+    }
+
+    /// Updates widget data with current today tasks
+    private func updateWidgetData() {
+        let projectTitleById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.title) })
+        let todayTasks = tasks.filter { $0.status != "completed" && $0.status != "project" }
+        let widgetTasks = todayTasks.prefix(10).map { task in
+            WidgetTask(from: task, projectName: task.projectId.flatMap { projectTitleById[$0] })
+        }
+        WidgetDataManager.shared.updateTodayTasks(Array(widgetTasks), totalCount: todayTasks.count)
     }
 
     public func loadCounts(force: Bool = false) async {

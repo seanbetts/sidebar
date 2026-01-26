@@ -55,6 +55,7 @@ extension ContentView {
 
                 Task {
                     await environment.consumeExtensionEvents()
+                    await environment.consumeWidgetCompletions()
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
                     await environment.consumeExtensionEvents()
                     await environment.websitesViewModel.load(force: true)
@@ -64,7 +65,10 @@ extension ContentView {
         })
         #if os(iOS)
         content = AnyView(content.onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            Task { await environment.consumeExtensionEvents() }
+            Task {
+                await environment.consumeExtensionEvents()
+                await environment.consumeWidgetCompletions()
+            }
         })
         #endif
         content = AnyView(content.onChange(of: environment.biometricMonitor.isAvailable) { _, isAvailable in
@@ -150,7 +154,10 @@ extension ContentView {
             isSigningOut = false
             if isAuthenticated {
                 #if os(iOS)
-                Task { await environment.consumeExtensionEvents() }
+                Task {
+                    await environment.consumeExtensionEvents()
+                    await environment.consumeWidgetCompletions()
+                }
                 #endif
                 // When user just signed in (transitioned from not authenticated to authenticated),
                 // consider them already unlocked since they authenticated with password.
