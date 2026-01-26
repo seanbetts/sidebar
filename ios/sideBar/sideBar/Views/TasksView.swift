@@ -230,9 +230,16 @@ extension TasksDetailView {
                 LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                     ForEach(state.sections) { section in
                         if !section.title.isEmpty {
-                            Text(section.title)
-                                .font(.caption)
-                                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                            if case .today = state.selection {
+                                todaySectionHeader(section: section, state: state)
+                                    .padding(.horizontal, DesignTokens.Spacing.md)
+                            } else {
+                                Text(section.title)
+                                    .font(.caption)
+                                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+                                    .padding(.horizontal, DesignTokens.Spacing.md)
+                            }
+                            Divider()
                                 .padding(.horizontal, DesignTokens.Spacing.md)
                         }
                         if section.tasks.isEmpty, case .upcoming = state.selection {
@@ -245,13 +252,6 @@ extension TasksDetailView {
                             ForEach(section.tasks, id: \.id) { task in
                                 TaskRow(
                                     task: task,
-                                    subtitle: TasksUtils.taskSubtitle(
-                                        task: task,
-                                        selection: state.selection,
-                                        selectionLabel: state.selectionLabel,
-                                        projectTitleById: state.projectTitleById,
-                                        groupTitleById: state.groupTitleById
-                                    ),
                                     dueLabel: TasksUtils.dueLabel(for: task),
                                     repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
                                     selection: state.selection,
@@ -272,6 +272,61 @@ extension TasksDetailView {
                 .frame(maxWidth: .infinity, alignment: .center)
             }
         }
+    }
+
+    @ViewBuilder
+    private func todaySectionHeader(section: TaskSection, state: TasksViewState) -> some View {
+        let iconName = todaySectionIcon(for: section, state: state)
+        let targetSelection = todaySectionSelection(for: section, state: state)
+        let label = HStack(spacing: 6) {
+            if let iconName {
+                Image(systemName: iconName)
+                    .font(.caption)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+            }
+            Text(section.title)
+                .font(.caption)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+            if targetSelection != nil {
+                Text(">")
+                    .font(.caption)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+            }
+        }
+        if let targetSelection {
+            Button {
+                Task { await viewModel.load(selection: targetSelection) }
+            } label: {
+                label
+            }
+            .buttonStyle(.plain)
+        } else {
+            label
+        }
+    }
+
+    private func todaySectionIcon(for section: TaskSection, state: TasksViewState) -> String? {
+        if section.id.hasPrefix("project:") || state.projectTitleById[section.id] != nil {
+            return "list.bullet"
+        }
+        if state.groupTitleById[section.id] != nil {
+            return "square.3.layers.3d"
+        }
+        return nil
+    }
+
+    private func todaySectionSelection(for section: TaskSection, state: TasksViewState) -> TaskSelection? {
+        if section.id.hasPrefix("project:") {
+            let projectId = String(section.id.dropFirst("project:".count))
+            return .project(id: projectId)
+        }
+        if state.groupTitleById[section.id] != nil {
+            return .group(id: section.id)
+        }
+        if state.projectTitleById[section.id] != nil {
+            return .project(id: section.id)
+        }
+        return nil
     }
 
     private func taskMenu(for task: TaskItem, selection: TaskSelection) -> some View {

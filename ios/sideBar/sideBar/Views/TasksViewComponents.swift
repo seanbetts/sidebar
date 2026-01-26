@@ -37,7 +37,6 @@ struct TaskPill: View {
 
 struct TaskRow<MenuContent: View>: View {
     let task: TaskItem
-    let subtitle: String
     let dueLabel: String?
     let repeatLabel: String?
     let selection: TaskSelection
@@ -98,19 +97,13 @@ struct TaskRow<MenuContent: View>: View {
                         Button {
                             onOpenNotes()
                         } label: {
-                            Image(systemName: "note.text")
+                            Image(systemName: "text.document")
                                 .font(.caption)
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Edit notes")
                     }
-                }
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        .lineLimit(1)
                 }
             }
             Spacer()
@@ -130,14 +123,7 @@ struct TaskRow<MenuContent: View>: View {
                 .disabled(task.isPreview)
             }
         }
-        .padding(.horizontal, DesignTokens.Spacing.md)
-        .padding(.vertical, DesignTokens.Spacing.sm)
-        .background(DesignTokens.Colors.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
+        .padding(.vertical, DesignTokens.Spacing.xs)
         .contentShape(Rectangle())
         .onTapGesture { onSelect() }
     }
