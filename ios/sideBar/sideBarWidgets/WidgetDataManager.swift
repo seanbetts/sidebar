@@ -15,23 +15,12 @@ public final class WidgetDataManager {
     // MARK: - App Group Access
 
     private var userDefaults: UserDefaults? {
-        guard let suiteName = appGroupId else { return nil }
-        return UserDefaults(suiteName: suiteName)
+        UserDefaults(suiteName: appGroupId)
     }
 
-    private var appGroupId: String? {
-        // Try configured value first
-        if let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String,
-           !configured.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-           !configured.contains("$(") {
-            return configured
-        }
-        // Fall back to derived value
-        guard let bundleId = Bundle.main.bundleIdentifier else { return nil }
-        let normalized = bundleId
-            .replacingOccurrences(of: ".ShareExtension", with: "")
-            .replacingOccurrences(of: ".sideBarWidgets", with: "")
-        return "group.\(normalized)"
+    private var appGroupId: String {
+        // Hardcoded to ensure consistency between main app and widget
+        "group.ai.sidebar.sidebar"
     }
 
     // MARK: - Today Tasks
@@ -72,8 +61,41 @@ public final class WidgetDataManager {
 
     /// Called by widgets to check auth state
     public func isAuthenticated() -> Bool {
-        guard let defaults = userDefaults else { return false }
+        guard let defaults = userDefaults else {
+            return false
+        }
         return defaults.bool(forKey: isAuthenticatedKey)
+    }
+
+    /// Debug: returns description of what's in UserDefaults
+    public func debugInfo() -> String {
+        guard let defaults = userDefaults else {
+            return "No defaults for: \(appGroupId)"
+        }
+
+        // Self-test: write and read back
+        let testKey = "widgetSelfTest"
+        defaults.set(true, forKey: testKey)
+        defaults.synchronize()
+        let selfTest = defaults.bool(forKey: testKey)
+
+        let auth = defaults.bool(forKey: isAuthenticatedKey)
+        // Try reading from shared file
+        let fileAuth = readFromSharedFile()
+
+        let containerName = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId)?.lastPathComponent ?? "?"
+        return "f=\(fileAuth) c=\(containerName.prefix(8))"
+    }
+
+    private func readFromSharedFile() -> String {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) else {
+            return "NC" // no container
+        }
+        let fileURL = containerURL.appendingPathComponent("widget_auth.txt")
+        guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else {
+            return "NF" // no file
+        }
+        return content // should be "true" or "false"
     }
 
     // MARK: - Task Completion (Pending Operations)

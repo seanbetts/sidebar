@@ -8,6 +8,9 @@ extension AppEnvironment {
         }
         forwardObjectWillChange()
         monitorNetwork()
+
+        // Sync initial auth state to widgets
+        WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)
     }
 
     func configureRealtimeClient() {
