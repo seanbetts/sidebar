@@ -287,6 +287,7 @@ extension TasksDetailView {
                                         },
                                         onMove: { openMove(task) },
                                         onRepeat: { openRepeat(task) },
+                                        onDelete: { deleteTask = task },
                                         menuContent: {
                                         taskMenu(for: task, selection: state.selection)
                                     }
