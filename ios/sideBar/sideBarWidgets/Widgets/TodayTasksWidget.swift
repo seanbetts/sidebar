@@ -36,27 +36,35 @@ struct TodayTasksWidgetView: View {
     // MARK: - Task List View
 
     private var taskListView: some View {
-        ZStack(alignment: .bottomTrailing) {
-            VStack(alignment: .leading, spacing: 0) {
-                headerView
-                Spacer(minLength: 4)
-                tasksList
-                if showMoreIndicator {
+        VStack(alignment: .leading, spacing: 8) {
+            headerView
+            tasksList
+            Spacer(minLength: 0)
+            if showMoreIndicator {
+                HStack {
                     moreTasksIndicator
+                    Spacer()
+                    addTaskButton
                 }
-                Spacer(minLength: 0)
+            } else {
+                HStack {
+                    Spacer()
+                    addTaskButton
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-            // Add task button
-            addTaskButton
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 
     private var headerView: some View {
-        HStack {
-            Text("Today")
+        HStack(spacing: 6) {
+            Image("AppLogo")
+                .resizable()
+                .widgetAccentedRenderingMode(.accentedDesaturated)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 18, height: 18)
+            Text("Tasks")
                 .font(.headline)
                 .fontWeight(.semibold)
             Spacer()
@@ -65,6 +73,7 @@ struct TodayTasksWidgetView: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
+                    .widgetAccentable()
             }
         }
     }
@@ -72,7 +81,7 @@ struct TodayTasksWidgetView: View {
     private var tasksList: some View {
         VStack(alignment: .leading, spacing: taskSpacing) {
             ForEach(displayedTasks) { task in
-                TaskRowView(task: task, compact: family == .systemSmall)
+                TaskRowView(task: task, compact: isCompact)
             }
         }
     }
@@ -84,19 +93,23 @@ struct TodayTasksWidgetView: View {
     private var maxTasks: Int {
         switch family {
         case .systemSmall: return 3
-        case .systemMedium: return 4
+        case .systemMedium: return 3  // Same height as small
         case .systemLarge: return 8
-        default: return 4
+        default: return 3
         }
     }
 
     private var taskSpacing: CGFloat {
         switch family {
         case .systemSmall: return 6
-        case .systemMedium: return 8
+        case .systemMedium: return 6  // Same height as small
         case .systemLarge: return 10
-        default: return 8
+        default: return 6
         }
+    }
+
+    private var isCompact: Bool {
+        family == .systemSmall || family == .systemMedium
     }
 
     private var showMoreIndicator: Bool {
@@ -107,8 +120,6 @@ struct TodayTasksWidgetView: View {
         Text("+\(entry.data.totalCount - displayedTasks.count) more")
             .font(.caption2)
             .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.top, 4)
     }
 
     private var addTaskButton: some View {
@@ -116,6 +127,7 @@ struct TodayTasksWidgetView: View {
             Image(systemName: "plus.circle.fill")
                 .font(.system(size: family == .systemSmall ? 20 : 24))
                 .foregroundStyle(.white, Color.accentColor)
+                .widgetAccentable()
         }
         .buttonStyle(.plain)
     }
@@ -123,21 +135,24 @@ struct TodayTasksWidgetView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        ZStack(alignment: .bottomTrailing) {
-            VStack(spacing: 8) {
-                Image(systemName: "checkmark.circle")
-                    .font(.system(size: 32))
-                    .foregroundStyle(.green)
-                Text("All done!")
-                    .font(.headline)
-                Text("No tasks for today")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        VStack {
+            Spacer()
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 32))
+                .foregroundStyle(.green)
+                .widgetAccentable()
+            Text("All done!")
+                .font(.headline)
+            Text("No tasks for today")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            HStack {
+                Spacer()
+                addTaskButton
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            addTaskButton
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 

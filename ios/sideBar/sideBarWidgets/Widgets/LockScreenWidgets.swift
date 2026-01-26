@@ -27,6 +27,7 @@ struct LockScreenTaskCountView: View {
                 VStack(spacing: 0) {
                     Text("\(entry.data.totalCount)")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .widgetAccentable()
                     Text("tasks")
                         .font(.system(size: 8))
                         .textCase(.uppercase)
