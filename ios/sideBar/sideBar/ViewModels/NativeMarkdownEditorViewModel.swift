@@ -578,12 +578,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 if shouldShow {
                     updated[inlineRange].foregroundColor = DesignTokens.Colors.textSecondary
                     updated[inlineRange].backgroundColor = nil
-                    updated[inlineRange].font = inlineMarkerFont(
-                        for: inlineRange,
-                        lineRange: lineRange,
-                        in: updated,
-                        fallback: baseFont(for: blockKind)
-                    )
+                    updated[inlineRange].font = baseFont(for: blockKind)
                 } else {
                     updated[inlineRange].foregroundColor = .clear
                     updated[inlineRange].backgroundColor = nil
@@ -766,26 +761,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         return ranges
     }
 
-    private func inlineMarkerFont(
-        for markerRange: Range<AttributedString.Index>,
-        lineRange: Range<AttributedString.Index>,
-        in text: AttributedString,
-        fallback: Font
-    ) -> Font {
-        if markerRange.upperBound < lineRange.upperBound {
-            if let font = font(at: markerRange.upperBound, in: text, lineRange: lineRange) {
-                return font
-            }
-        }
-        if markerRange.lowerBound > lineRange.lowerBound {
-            let beforeIndex = text.index(beforeCharacter: markerRange.lowerBound)
-            if let font = font(at: beforeIndex, in: text, lineRange: lineRange) {
-                return font
-            }
-        }
-        return fallback
-    }
-
     private func applyInlineIntentStyling(
         in text: inout AttributedString,
         lineRange: Range<AttributedString.Index>,
@@ -819,17 +794,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 text[range].foregroundColor = baseForeground
             }
         }
-    }
-
-    private func font(
-        at index: AttributedString.Index,
-        in text: AttributedString,
-        lineRange: Range<AttributedString.Index>
-    ) -> Font? {
-        guard lineRange.contains(index) else { return nil }
-        let nextIndex = text.index(afterCharacter: index)
-        guard nextIndex <= text.endIndex else { return nil }
-        return text[index..<nextIndex].font
     }
 
     private func inferredBlockKind(from lineText: String) -> BlockKind? {
