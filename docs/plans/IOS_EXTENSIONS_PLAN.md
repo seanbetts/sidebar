@@ -1,7 +1,7 @@
 # iOS Extensions, Widgets, App Intents, and Siri Plan
 **Project:** sideBar iOS App
-**Document Version:** 1.0
-**Date:** 2026-01-13
+**Document Version:** 1.1
+**Date:** 2026-01-26
 **Estimated Total Effort:** 4-5 weeks (phased, shippable milestones)
 
 ---
@@ -11,7 +11,7 @@
 This plan consolidates the iOS Share Extension, Live Activities, Widgets, App Intents, and Siri integration into a single, phased roadmap. It builds on the existing ShareExtension architecture and the App Group/Keychain/IPC infrastructure already present in the codebase.
 
 **Phases:**
-1. Share Extension (URLs, images, files)
+1. ✅ Share Extension (URLs, images, files) - **COMPLETE**
 2. Live Activities for upload progress
 3. Widgets + App Intents + Siri (core)
 4. Widgets polish: interactive widgets, lock screen, Spotlight, background refresh
@@ -43,22 +43,31 @@ These should be used as templates for Widgets and Intents.
 
 ---
 
-## Phase 1: Share Extension (Week 1)
+## Phase 1: Share Extension (Week 1) ✅ COMPLETE
 
 **Goal:** Share URLs, images, and files into sideBar
-**Status:** Core infrastructure already exists; verify and finalize implementation.
+**Status:** Complete (2026-01-26)
 
 ### Tasks
-1. Confirm `ShareExtension` target has App Group and Keychain access groups configured.
-2. Verify `ShareExtensionEnvironment` uses `AppGroupConfiguration` for shared tokens.
-3. Implement URL, image, and file handling in `ShareViewController` (if not complete).
-4. Post share events via `ExtensionEventStore` for main app refresh.
-5. Add minimal UI states (loading, success, error).
+1. ✅ Confirm `ShareExtension` target has App Group and Keychain access groups configured.
+2. ✅ Verify `ShareExtensionEnvironment` uses `AppGroupConfiguration` for shared tokens.
+3. ✅ Implement URL, image, and file handling in `ShareViewController`.
+4. ✅ Post share events via `ExtensionEventStore` for main app refresh.
+5. ✅ Add minimal UI states (loading, success, error, progress).
 
-### Verification
-- Share URL from Safari saves website.
-- Share image/PDF uploads file.
-- Offline or unauthenticated shows user-friendly error.
+### Implementation Details
+- **ShareViewController.swift**: Complete rewrite with priority-based content detection (images → files → URLs)
+- **ShareExtensionEnvironment.swift**: Added `uploadFile()` method for multipart form uploads
+- **ShareProgressView.swift**: New progress bar UI for uploads
+- **ExtensionEventStore.swift**: Extended with `fileSaved` and `imageSaved` event types, plus `fileId` and `filename` fields
+- **MIME type detection**: Comprehensive support for 20+ file types (images, documents, media)
+
+### Verification ✅
+- ✅ Share URL from Safari saves website.
+- ✅ Share image uploads file (converts to JPEG).
+- ✅ Share PDF/documents uploads file.
+- ✅ Unauthenticated shows user-friendly error.
+- ✅ Events posted to ExtensionEventStore for main app refresh.
 
 ---
 
@@ -134,11 +143,18 @@ These should be used as templates for Widgets and Intents.
 
 ## Shared Code and File Locations
 
-### Existing (Reference Patterns)
-- `ios/sideBar/ShareExtension/ShareExtensionEnvironment.swift`
-- `ios/sideBar/sideBar/Utilities/AppGroupConfiguration.swift`
-- `ios/sideBar/sideBar/Utilities/ExtensionEventStore.swift`
-- `ios/sideBar/sideBar/Services/Auth/KeychainAuthStateStore.swift`
+### Share Extension (Complete)
+- `ios/sideBar/ShareExtension/ShareViewController.swift` - Main extension controller with URL/image/file handling
+- `ios/sideBar/ShareExtension/ShareExtensionEnvironment.swift` - Auth, API client, and file upload
+- `ios/sideBar/ShareExtension/ShareLoadingView.swift` - Loading state UI
+- `ios/sideBar/ShareExtension/ShareSuccessView.swift` - Success state UI
+- `ios/sideBar/ShareExtension/ShareErrorView.swift` - Error state UI
+- `ios/sideBar/ShareExtension/ShareProgressView.swift` - Upload progress UI
+
+### Shared Utilities (Reference Patterns)
+- `ios/sideBar/sideBar/Utilities/AppGroupConfiguration.swift` - App Group ID configuration
+- `ios/sideBar/sideBar/Utilities/ExtensionEventStore.swift` - IPC between extension and main app
+- `ios/sideBar/sideBar/Services/Auth/KeychainAuthStateStore.swift` - Shared keychain access
 
 ### New Targets (Planned)
 ```
@@ -175,8 +191,8 @@ ios/sideBar/sideBarWidgets/
 
 ## Next Steps
 
-1. Confirm App Group IDs and entitlements for all targets.
-2. Verify Share Extension completeness.
-3. Implement Live Activities with upload progress.
-4. Build core widgets and App Intents.
-5. Polish with interactive widgets, lock screen, and Spotlight.
+1. ✅ ~~Confirm App Group IDs and entitlements for all targets.~~
+2. ✅ ~~Verify Share Extension completeness.~~
+3. **Next:** Implement Live Activities with upload progress (Phase 2).
+4. Build core widgets and App Intents (Phase 3).
+5. Polish with interactive widgets, lock screen, and Spotlight (Phase 4).
