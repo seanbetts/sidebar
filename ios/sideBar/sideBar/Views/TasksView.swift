@@ -238,7 +238,7 @@ extension TasksDetailView {
                             case .today:
                                 todaySectionHeader(section: section, state: state)
                                     .padding(.horizontal, DesignTokens.Spacing.md)
-                            case .upcoming:
+                            case .upcoming, .completed:
                                 sectionHeaderLabel(
                                     title: section.title,
                                     iconName: "calendar"

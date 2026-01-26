@@ -349,6 +349,7 @@ async def get_counts(
             "inbox": counts.inbox,
             "today": counts.today,
             "upcoming": counts.upcoming,
+            "completed": counts.completed,
         },
         "projects": [
             {"id": project_id, "count": count}

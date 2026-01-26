@@ -179,6 +179,12 @@ extension TasksPanelView {
                         count: upcomingCount,
                         selection: .upcoming
                     )
+                    tasksListRow(
+                        title: "Completed",
+                        iconName: "calendar.badge.checkmark",
+                        count: viewModel.counts?.counts.completed,
+                        selection: .completed
+                    )
                 }
 
                 if !groupsSorted.isEmpty {

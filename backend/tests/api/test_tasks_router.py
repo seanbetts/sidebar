@@ -108,6 +108,14 @@ def test_tasks_counts(test_client, test_db):
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
             ),
+            Task(
+                user_id=DEFAULT_USER_ID,
+                title="Done",
+                status="completed",
+                completed_at=datetime.now(UTC),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            ),
         ]
     )
     test_db.commit()
@@ -118,6 +126,7 @@ def test_tasks_counts(test_client, test_db):
     assert payload["counts"]["inbox"] == 3
     assert payload["counts"]["today"] == 1
     assert payload["counts"]["upcoming"] == 1
+    assert payload["counts"]["completed"] == 1
 
 
 def test_tasks_group_and_project_payloads(test_client, test_db):
