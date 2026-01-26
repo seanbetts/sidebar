@@ -88,7 +88,7 @@ struct TodayTasksWidgetView: View {
     }
 
     private var displayedTasks: [WidgetTask] {
-        Array(entry.data.tasks.prefix(maxTasks))
+        Array(WidgetTasksUtils.sortByDueDate(entry.data.tasks).prefix(maxTasks))
     }
 
     private var maxTasks: Int {
@@ -253,6 +253,11 @@ struct TaskRowView: View {
             }
 
             Spacer(minLength: 0)
+            if WidgetTasksUtils.isOverdue(task) {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+            }
         }
     }
 }

@@ -12,19 +12,22 @@ public struct WidgetTask: Codable, Identifiable, Equatable {
     public let isCompleted: Bool
     public let projectName: String?
     public let hasNotes: Bool
+    public let deadline: String?
 
     public init(
         id: String,
         title: String,
         isCompleted: Bool = false,
         projectName: String? = nil,
-        hasNotes: Bool = false
+        hasNotes: Bool = false,
+        deadline: String? = nil
     ) {
         self.id = id
         self.title = title
         self.isCompleted = isCompleted
         self.projectName = projectName
         self.hasNotes = hasNotes
+        self.deadline = deadline
     }
 }
 
@@ -44,10 +47,10 @@ public struct WidgetTaskData: Codable, Equatable {
 
     public static let placeholder = WidgetTaskData(
         tasks: [
-            WidgetTask(id: "1", title: "Review project proposal", projectName: "Work"),
-            WidgetTask(id: "2", title: "Call dentist", hasNotes: true),
+            WidgetTask(id: "1", title: "Review project proposal", projectName: "Work", deadline: "2026-01-25"),
+            WidgetTask(id: "2", title: "Call dentist", hasNotes: true, deadline: "2026-01-26"),
             WidgetTask(id: "3", title: "Buy groceries"),
-            WidgetTask(id: "4", title: "Prepare presentation", projectName: "Work"),
+            WidgetTask(id: "4", title: "Prepare presentation", projectName: "Work", deadline: "2026-01-27"),
         ],
         totalCount: 6
     )
@@ -190,5 +193,6 @@ extension WidgetTask {
         self.isCompleted = task.status == "completed"
         self.projectName = projectName
         self.hasNotes = task.notes != nil && !task.notes!.isEmpty
+        self.deadline = task.deadline
     }
 }

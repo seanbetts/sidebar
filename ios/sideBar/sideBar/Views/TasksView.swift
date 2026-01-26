@@ -227,7 +227,7 @@ extension TasksDetailView {
             )
         } else {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     ForEach(state.sections) { section in
                         if !section.title.isEmpty {
                             if case .today = state.selection {
@@ -249,20 +249,24 @@ extension TasksDetailView {
                                 .padding(.horizontal, DesignTokens.Spacing.md)
                                 .padding(.vertical, DesignTokens.Spacing.xs)
                         } else {
-                            ForEach(section.tasks, id: \.id) { task in
-                                TaskRow(
-                                    task: task,
-                                    dueLabel: TasksUtils.dueLabel(for: task),
-                                    repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
-                                    selection: state.selection,
-                                    onComplete: { Task { await viewModel.completeTask(task: task) } },
-                                    onOpenNotes: { openNotes(task) },
-                                    onSelect: { setActiveTask(task) },
-                                    menuContent: {
-                                    taskMenu(for: task, selection: state.selection)
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                                ForEach(section.tasks, id: \.id) { task in
+                                    TaskRow(
+                                        task: task,
+                                        dueLabel: TasksUtils.dueLabel(for: task),
+                                        repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
+                                        selection: state.selection,
+                                        onComplete: { Task { await viewModel.completeTask(task: task) } },
+                                        onOpenNotes: { openNotes(task) },
+                                        onSelect: { setActiveTask(task) },
+                                        menuContent: {
+                                        taskMenu(for: task, selection: state.selection)
+                                    }
+                                    )
+                                    .padding(.horizontal, DesignTokens.Spacing.md)
                                 }
-                                )
                             }
+                            .padding(.bottom, section.title.isEmpty ? 0 : DesignTokens.Spacing.md)
                         }
                     }
                 }
@@ -281,17 +285,13 @@ extension TasksDetailView {
         let label = HStack(spacing: 6) {
             if let iconName {
                 Image(systemName: iconName)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
             }
             Text(section.title)
-                .font(.caption)
+                .font(.subheadline)
+                .fontWeight(.semibold)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
-            if targetSelection != nil {
-                Text(">")
-                    .font(.caption)
-                    .foregroundStyle(DesignTokens.Colors.textSecondary)
-            }
         }
         if let targetSelection {
             Button {

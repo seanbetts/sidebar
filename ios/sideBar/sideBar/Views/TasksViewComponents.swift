@@ -111,6 +111,9 @@ struct TaskRow<MenuContent: View>: View {
                 if showsDuePill, let dueLabel {
                     TaskPill(text: dueLabel)
                 }
+                if TasksUtils.isOverdue(task) {
+                    TaskPill(text: "Overdue", iconName: "exclamationmark.circle")
+                }
                 Menu {
                     menuContent()
                 } label: {
@@ -123,7 +126,7 @@ struct TaskRow<MenuContent: View>: View {
                 .disabled(task.isPreview)
             }
         }
-        .padding(.vertical, DesignTokens.Spacing.xs)
+        .padding(.vertical, DesignTokens.Spacing.xxs)
         .contentShape(Rectangle())
         .onTapGesture { onSelect() }
     }
