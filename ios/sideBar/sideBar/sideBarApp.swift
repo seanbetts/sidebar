@@ -5,6 +5,8 @@
 //  Created by Sean Betts on 08/01/2026.
 //
 
+import AppIntents
+import Foundation
 import SwiftUI
 import os
 
@@ -85,7 +87,7 @@ struct SideBarApp: App {
             ContentView()
                 .environmentObject(environment)
                 .onOpenURL { url in
-                    handleDeepLink(url)
+                    environment.handleDeepLink(url)
                 }
             #endif
         }
@@ -102,30 +104,36 @@ struct SideBarApp: App {
         #endif
     }
 
-    #if os(iOS)
-    private func handleDeepLink(_ url: URL) {
-        guard url.scheme == "sidebar" else { return }
-        switch url.host {
-        case "tasks":
-            environment.commandSelection = .tasks
-            // Check for /new path to trigger add task
-            if url.path == "/new" {
-                Task {
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                    await MainActor.run {
-                        environment.tasksViewModel.startNewTask()
-                    }
-                }
-            }
-        case "notes":
-            environment.commandSelection = .notes
-        case "files":
-            environment.commandSelection = .files
-        case "chat":
-            environment.commandSelection = .chat
-        default:
-            break
-        }
+}
+
+// MARK: - Widget Intents (App Process)
+
+/// App-target copy so openAppWhenRun executes in the app process and logs here.
+struct AddTaskIntent: AppIntent {
+    static var title: LocalizedStringResource = "Add Task"
+    static var description = IntentDescription("Opens sideBar to add a new task")
+    static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
+
+    func perform() async throws -> some IntentResult {
+        logger.info("AddTaskIntent recording pending add task (app process)")
+        WidgetDataManager.shared.recordAddTaskIntent()
+        return .result()
     }
-    #endif
+}
+
+struct OpenTodayIntent: AppIntent {
+    static var title: LocalizedStringResource = "Open Today"
+    static var description = IntentDescription("Opens sideBar to Today's tasks")
+    static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://tasks/today") else {
+            logger.error("OpenTodayIntent failed: invalid deep link URL")
+            return .result()
+        }
+        logger.info("OpenTodayIntent opening deep link (app process)")
+        return .result(opensIntent: OpenURLIntent(url))
+    }
 }

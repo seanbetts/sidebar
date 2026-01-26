@@ -1,5 +1,6 @@
 import AppIntents
 import WidgetKit
+import os
 
 // MARK: - Complete Task Intent
 
@@ -51,9 +52,10 @@ struct AddTaskIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Task"
     static var description = IntentDescription("Opens sideBar to add a new task")
     static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
 
     func perform() async throws -> some IntentResult {
-        // Record that we want to add a task - the app will check this on foreground
+        logger.info("AddTaskIntent recording pending add task")
         WidgetDataManager.shared.recordAddTaskIntent()
         return .result()
     }

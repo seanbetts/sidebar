@@ -124,8 +124,16 @@ struct TodayTasksWidgetView: View {
     }
 
     private var addTaskButton: some View {
-        Button(intent: AddTaskIntent()) {
-            addTaskButtonContent
+        Group {
+            if #available(iOS 17.0, *) {
+                Button(intent: AddTaskIntent()) {
+                    addTaskButtonContent
+                }
+            } else {
+                Link(destination: URL(string: "sidebar://tasks/new")!) {
+                    addTaskButtonContent
+                }
+            }
         }
         .buttonStyle(.plain)
     }
