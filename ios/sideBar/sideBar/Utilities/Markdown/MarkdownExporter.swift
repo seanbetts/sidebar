@@ -56,12 +56,10 @@ public struct MarkdownExporter {
                 isCodeBlock: blockKind == .codeBlock,
                 isTableBlock: false
             )
-            let isSoftBreak = isSoftBreakBeforeLine(in: attributedString, lineRange: lineRange)
-
             if shouldInsertBlankLine(
                 previous: previousContext,
                 current: currentContext,
-                isSoftBreak: isSoftBreak
+                isSoftBreak: false
             ) {
                 output.append("")
             }
@@ -223,18 +221,6 @@ private func isBlockquoteLine(blockKind: BlockKind, lineText: String) -> Bool {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func isSoftBreakBeforeLine(
-    in text: AttributedString,
-    lineRange: Range<AttributedString.Index>
-) -> Bool {
-    guard lineRange.lowerBound > text.startIndex else { return false }
-    let newlineIndex = text.index(beforeCharacter: lineRange.lowerBound)
-    guard newlineIndex >= text.startIndex, text.characters[newlineIndex].isNewline else { return false }
-    let nextIndex = text.index(afterCharacter: newlineIndex)
-    let newlineRange = newlineIndex..<nextIndex
-    return text.blockKind(in: newlineRange) != nil
-}
-
 @available(iOS 26.0, macOS 26.0, *)
 private func shouldInsertBlankLine(
     previous: ExportLineContext?,
