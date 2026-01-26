@@ -18,7 +18,7 @@ struct TaskPill: View {
             }
             Text(text)
                 .font(.caption2)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                .foregroundStyle(DesignTokens.Colors.textPrimary)
         }
         .padding(.horizontal, DesignTokens.Spacing.xs)
         .padding(.vertical, DesignTokens.Spacing.xxs)
@@ -154,9 +154,9 @@ struct TaskRow<MenuContent: View>: View {
                 : "No notes")
                 .font(.caption)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
-                .lineLimit(4)
+                .lineLimit(nil)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, DesignTokens.Spacing.md)
+                .padding(.bottom, DesignTokens.Spacing.sm)
             HStack {
                 if let dueLabel {
                     TaskPill(text: dueLabel)
@@ -171,7 +171,7 @@ struct TaskRow<MenuContent: View>: View {
         .padding(.leading, DesignTokens.Spacing.sm + 22 + DesignTokens.Spacing.sm)
         .padding(.trailing, DesignTokens.Spacing.sm)
         .padding(.top, 0)
-        .padding(.bottom, DesignTokens.Spacing.xs)
+        .padding(.bottom, DesignTokens.Spacing.md)
         .frame(maxHeight: isExpanded ? .infinity : 0, alignment: .top)
         .opacity(isExpanded ? 1 : 0)
         .scaleEffect(y: isExpanded ? 1 : 0, anchor: .top)
