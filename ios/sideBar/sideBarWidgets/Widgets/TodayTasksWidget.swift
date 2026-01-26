@@ -38,7 +38,7 @@ struct TodayTasksWidgetView: View {
     // MARK: - Task List View
 
     private var taskListView: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             headerView
             tasksList
             Spacer(minLength: 0)
