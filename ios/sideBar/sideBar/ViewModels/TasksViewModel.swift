@@ -99,7 +99,9 @@ public final class TasksViewModel: ObservableObject {
     /// Updates widget data with current today tasks
     private func updateWidgetData() {
         let projectTitleById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.title) })
-        let todayTasks = tasks.filter { $0.status != "completed" && $0.status != "project" }
+        let todayTasks = TasksUtils.sortByDueDate(
+            tasks.filter { $0.status != "completed" && $0.status != "project" }
+        )
         let widgetTasks = todayTasks.prefix(10).map { task in
             WidgetTask(from: task, projectName: task.projectId.flatMap { projectTitleById[$0] })
         }

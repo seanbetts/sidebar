@@ -77,6 +77,12 @@ public enum TasksUtils {
         }
     }
 
+    public static func isOverdue(_ task: TaskItem) -> Bool {
+        guard let date = parseTaskDate(task) else { return false }
+        let today = startOfDay(Date())
+        return dayDiff(from: today, to: date) < 0
+    }
+
     public static func expandRepeatingTasks(_ tasks: [TaskItem]) -> [TaskItem] {
         var expanded: [TaskItem] = []
         for task in tasks {
@@ -151,6 +157,13 @@ public enum TasksUtils {
                 groupTitleById: groupTitleById,
                 projectTitleById: projectTitleById
             )
+        }
+
+        for key in buckets.keys {
+            if var section = buckets[key] {
+                section.tasks = sortByDueDate(section.tasks)
+                buckets[key] = section
+            }
         }
 
         return orderedTodaySections(from: buckets, groups: groups)
@@ -457,6 +470,11 @@ public enum TasksUtils {
     private static func compareByDueThenTitle(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
         if lhs.isPreview != rhs.isPreview {
             return lhs.isPreview == false
+        }
+        let lhsOverdue = isOverdue(lhs)
+        let rhsOverdue = isOverdue(rhs)
+        if lhsOverdue != rhsOverdue {
+            return lhsOverdue
         }
         let dateA = parseTaskDate(lhs)
         let dateB = parseTaskDate(rhs)
