@@ -117,7 +117,9 @@ struct AddTaskIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         logger.info("AddTaskIntent recording pending add task (app process)")
-        WidgetDataManager.shared.recordAddTaskIntent()
+        await MainActor.run {
+            WidgetDataManager.shared.recordAddTaskIntent()
+        }
         return .result()
     }
 }

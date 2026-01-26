@@ -441,6 +441,41 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
     }
 
+    private func tableRowInfo(from intent: PresentationIntent?) -> (isHeader: Bool, rowIndex: Int?)? {
+        guard let intent else { return nil }
+        var isHeader = false
+        var rowIndex: Int?
+        var foundRow = false
+
+        for component in intent.components {
+            switch component.kind {
+            case .tableHeaderRow:
+                isHeader = true
+                rowIndex = 0
+                foundRow = true
+            case .tableRow(let index):
+                rowIndex = index
+                foundRow = true
+            default:
+                break
+            }
+        }
+
+        guard foundRow else { return nil }
+        return (isHeader: isHeader, rowIndex: rowIndex)
+    }
+
+    private func tableRowBackground(from info: (isHeader: Bool, rowIndex: Int?)?) -> Color? {
+        guard let info else { return nil }
+        if info.isHeader {
+            return DesignTokens.Colors.muted
+        }
+        if let rowIndex = info.rowIndex, rowIndex % 2 == 1 {
+            return DesignTokens.Colors.muted.opacity(0.4)
+        }
+        return nil
+    }
+
     private func platformColor(_ color: Color) -> PlatformColor {
 #if os(iOS)
         UIColor(color)
@@ -645,7 +680,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         setFont(font, platformFont: platformFont, in: &attributedContent, range: range)
         setForegroundColor(baseForegroundColor(for: blockKind), in: &attributedContent, range: range)
         setBackgroundColor(baseBackgroundColor(for: blockKind), in: &attributedContent, range: range)
-        if let paragraphStyle = paragraphStyle(for: blockKind) {
+        let listDepth = attributedContent[range].listDepth
+        if let paragraphStyle = paragraphStyle(for: blockKind, listDepth: listDepth) {
             attributedContent[range].paragraphStyle = paragraphStyle
         }
         if blockKind == .taskChecked {
@@ -759,6 +795,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         var updated = attributedContent
 
         let lines = lineInfos(in: updated)
+        applyCodeBlockSpacing(in: &updated, lines: lines)
         for line in lines {
             let lineStart = updated.index(updated.startIndex, offsetByCharacters: line.range.lowerBound)
             let lineEnd = updated.index(updated.startIndex, offsetByCharacters: line.range.upperBound)
@@ -830,6 +867,55 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
     }
 
+    private func applyCodeBlockSpacing(in text: inout AttributedString, lines: [LineInfo]) {
+        var index = 0
+        while index < lines.count {
+            let line = lines[index]
+            let lineStart = text.index(text.startIndex, offsetByCharacters: line.range.lowerBound)
+            let lineEnd = text.index(text.startIndex, offsetByCharacters: line.range.upperBound)
+            let lineRange = lineStart..<lineEnd
+            let blockKind = text.blockKind(in: lineRange) ?? inferredBlockKind(from: line.text)
+
+            guard blockKind == .codeBlock else {
+                index += 1
+                continue
+            }
+
+            var endIndex = index
+            while endIndex + 1 < lines.count {
+                let next = lines[endIndex + 1]
+                let nextStart = text.index(text.startIndex, offsetByCharacters: next.range.lowerBound)
+                let nextEnd = text.index(text.startIndex, offsetByCharacters: next.range.upperBound)
+                let nextRange = nextStart..<nextEnd
+                let nextKind = text.blockKind(in: nextRange) ?? inferredBlockKind(from: next.text)
+                if nextKind == .codeBlock {
+                    endIndex += 1
+                } else {
+                    break
+                }
+            }
+
+            for lineIndex in index...endIndex {
+                let info = lines[lineIndex]
+                let start = text.index(text.startIndex, offsetByCharacters: info.range.lowerBound)
+                let end = text.index(text.startIndex, offsetByCharacters: info.range.upperBound)
+                let range = start..<end
+                let isFirst = lineIndex == index
+                let isLast = lineIndex == endIndex
+                let style = paragraphStyle(
+                    lineSpacing: em(0.5, fontSize: inlineCodeFontSize),
+                    spacingBefore: isFirst ? rem(1) : 0,
+                    spacingAfter: isLast ? rem(1) : 0,
+                    headIndent: DesignTokens.Spacing.md,
+                    tailIndent: DesignTokens.Spacing.md
+                )
+                text[range].paragraphStyle = style
+            }
+
+            index = endIndex + 1
+        }
+    }
+
     private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
         var lines: [Range<AttributedString.Index>] = []
         var start = text.startIndex
@@ -879,6 +965,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         lineText: String,
         blockKind: BlockKind?
     ) -> Range<AttributedString.Index>? {
+        if blockKind == .horizontalRule {
+            return lineRange
+        }
         if let blockKind, let range = prefixRangeForBlockKind(
             blockKind,
             in: text,
@@ -1007,6 +1096,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             guard run.inlineMarker != true else { continue }
             let intents = run.inlinePresentationIntent ?? []
             let range = run.range
+            let tableInfo = tableRowInfo(from: run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
 
             if intents.contains(.code) {
                 setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &text, range: range)
@@ -1022,13 +1112,21 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             if intents.contains(.stronglyEmphasized) {
                 font = font.weight(.bold)
             }
+            if tableInfo?.isHeader == true {
+                font = font.weight(.semibold)
+            }
             let platformFont = platformFontApplyingTraits(
                 basePlatformFont,
-                bold: intents.contains(.stronglyEmphasized),
+                bold: intents.contains(.stronglyEmphasized) || tableInfo?.isHeader == true,
                 italic: intents.contains(.emphasized)
             )
             setFont(font, platformFont: platformFont, in: &text, range: range)
-            setBackgroundColor(baseBackground, in: &text, range: range)
+            let tableBackground = tableRowBackground(from: tableInfo)
+            if let baseBackground {
+                setBackgroundColor(baseBackground, in: &text, range: range)
+            } else if let tableBackground {
+                setBackgroundColor(tableBackground, in: &text, range: range)
+            }
             if run.link != nil {
                 setForegroundColor(.accentColor, in: &text, range: range)
             } else if run.strikethroughStyle != nil || run.imageInfo != nil {
@@ -1115,7 +1213,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         return lines
     }
 
-    private func paragraphStyle(for blockKind: BlockKind) -> NSParagraphStyle? {
+    private func paragraphStyle(for blockKind: BlockKind, listDepth: Int? = nil) -> NSParagraphStyle? {
         switch blockKind {
         case .heading1:
             return paragraphStyle(
@@ -1167,16 +1265,22 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 headIndent: em(1, fontSize: baseFontSize)
             )
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            let depth = max(1, listDepth ?? 1)
+            let listIndentUnit = em(1.5, fontSize: baseFontSize)
+            let listIndent = listIndentUnit * CGFloat(depth)
             return paragraphStyle(
                 lineSpacing: em(0.2, fontSize: baseFontSize),
                 spacingBefore: 0,
-                spacingAfter: 0
+                spacingAfter: 0,
+                headIndent: listIndent
             )
         case .codeBlock:
             return paragraphStyle(
                 lineSpacing: em(0.5, fontSize: inlineCodeFontSize),
                 spacingBefore: 0,
-                spacingAfter: 0
+                spacingAfter: 0,
+                headIndent: DesignTokens.Spacing.md,
+                tailIndent: DesignTokens.Spacing.md
             )
         case .horizontalRule:
             return paragraphStyle(
@@ -1211,7 +1315,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         lineSpacing: CGFloat,
         spacingBefore: CGFloat,
         spacingAfter: CGFloat,
-        headIndent: CGFloat = 0
+        headIndent: CGFloat = 0,
+        tailIndent: CGFloat = 0
     ) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = lineSpacing
@@ -1219,6 +1324,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         style.paragraphSpacing = spacingAfter
         style.headIndent = headIndent
         style.firstLineHeadIndent = headIndent
+        if tailIndent != 0 {
+            style.tailIndent = -tailIndent
+        }
         return style
     }
 }
