@@ -270,9 +270,11 @@ extension TasksDetailView {
                                             if expandedTaskIds.contains(task.id) {
                                                 expandedTaskIds.remove(task.id)
                                             } else {
-                                                expandedTaskIds.insert(task.id)
+                                                expandedTaskIds = [task.id]
                                             }
                                         },
+                                        onMove: { openMove(task) },
+                                        onRepeat: { openRepeat(task) },
                                         menuContent: {
                                         taskMenu(for: task, selection: state.selection)
                                     }
