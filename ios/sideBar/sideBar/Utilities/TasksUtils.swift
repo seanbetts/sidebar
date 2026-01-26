@@ -18,7 +18,7 @@ private let displayMonthFormatter: DateFormatter = {
 private let displayWeekFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = Locale.current
-    formatter.dateFormat = "MMM d"
+    formatter.dateFormat = "d MMM"
     return formatter
 }()
 
@@ -224,6 +224,7 @@ public enum TasksUtils {
 
     public static func buildUpcomingSections(tasks: [TaskItem]) -> [TaskSection] {
         let today = startOfDay(Date())
+        let dailyCutoff = calculateDailyCutoff(from: today)
         var overdue: [TaskItem] = []
         var daily: [String: TaskSection] = [:]
         var weekly: [Int: TaskSection] = [:]
@@ -234,7 +235,7 @@ public enum TasksUtils {
         let sorted = datedTasks.sorted { compareByDueThenTitle($0, $1) }
 
         for task in sorted {
-            let bucket = upcomingBucket(for: task, today: today)
+            let bucket = upcomingBucket(for: task, today: today, dailyCutoff: dailyCutoff)
             addUpcomingTask(
                 task,
                 bucket: bucket,
@@ -250,9 +251,9 @@ public enum TasksUtils {
             sections.append(TaskSection(id: "overdue", title: "Overdue", tasks: overdue))
         }
 
-        // Show all days for the next 7 days (tomorrow through 7 days out), even if empty
-        // Today is excluded from Upcoming since it has its own section
-        for offset in 1...7 {
+        // Show individual days from tomorrow through the Sunday of the week containing day 7
+        // This ensures weekly sections start cleanly on Monday with no overlap
+        for offset in 1...dailyCutoff {
             let date = Calendar.current.date(byAdding: .day, value: offset, to: today) ?? today
             let key = formatDateKey(date)
             let label = formatDayLabel(date: date, dayDiff: offset)
@@ -350,7 +351,7 @@ public enum TasksUtils {
         return sections
     }
 
-    private static func upcomingBucket(for task: TaskItem, today: Date) -> UpcomingBucket {
+    private static func upcomingBucket(for task: TaskItem, today: Date, dailyCutoff: Int) -> UpcomingBucket {
         guard let date = parseTaskDate(task) else {
             return .undated
         }
@@ -358,12 +359,12 @@ public enum TasksUtils {
         if diff < 0 {
             return .overdue
         }
-        if diff <= 7 {
+        if diff <= dailyCutoff {
             let key = formatDateKey(date)
             let label = formatDayLabel(date: date, dayDiff: diff)
             return .daily(key: key, label: label)
         }
-        if diff <= 28 {
+        if diff <= dailyCutoff + 21 {
             // Use Monday-based calendar weeks
             let todayMonday = mondayOfWeek(for: today)
             let dateMonday = mondayOfWeek(for: date)
@@ -382,6 +383,24 @@ public enum TasksUtils {
         calendar.firstWeekday = 2 // Monday = 2
         let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
         return calendar.date(from: components) ?? date
+    }
+
+    /// Calculates the daily section cutoff: extends through the Sunday of the week containing day 7.
+    /// This ensures weekly sections start cleanly on Monday with no overlap.
+    private static func calculateDailyCutoff(from today: Date) -> Int {
+        // Day 7 from today
+        guard let day7 = Calendar.current.date(byAdding: .day, value: 7, to: today) else {
+            return 7
+        }
+        // Find the Sunday of the week containing day 7
+        let sunday = sundayOfWeek(for: day7)
+        return dayDiff(from: today, to: sunday)
+    }
+
+    /// Returns the Sunday of the week containing the given date (Monday-based weeks).
+    private static func sundayOfWeek(for date: Date) -> Date {
+        let monday = mondayOfWeek(for: date)
+        return Calendar.current.date(byAdding: .day, value: 6, to: monday) ?? date
     }
 
     private static func addUpcomingTask(
