@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -17,8 +18,7 @@ public struct NativeMarkdownEditorView: View {
     }
 
     public var body: some View {
-        TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
-            .attributedTextFormattingDefinition(MarkdownFormattingDefinition())
+        NativeMarkdownTextView(text: $viewModel.attributedContent, selection: $viewModel.selection)
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
             .frame(maxWidth: maxContentWidth)
@@ -37,16 +37,21 @@ public struct NativeMarkdownEditorView: View {
 struct NativeMarkdownReadOnlyView: View {
     let attributedContent: AttributedString
     let maxContentWidth: CGFloat
+    let onTap: () -> Void
 
     var body: some View {
-        ScrollView {
-            Text(attributedContent)
-                .textSelection(.enabled)
-                .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
-                .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
-                .frame(maxWidth: maxContentWidth, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
+        NativeMarkdownTextView(
+            text: .constant(attributedContent),
+            selection: .constant(AttributedTextSelection()),
+            isEditable: false,
+            isSelectable: true,
+            syncSelection: false,
+            isScrollEnabled: true,
+            onTap: onTap
+        )
+        .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+        .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
+        .frame(maxWidth: maxContentWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
     }

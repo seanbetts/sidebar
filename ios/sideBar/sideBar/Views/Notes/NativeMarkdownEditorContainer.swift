@@ -26,11 +26,11 @@ struct NativeMarkdownEditorContainer: View {
             } else {
                 NativeMarkdownReadOnlyView(
                     attributedContent: nativeViewModel.attributedContent,
-                    maxContentWidth: maxContentWidth
+                    maxContentWidth: maxContentWidth,
+                    onTap: {
+                        isEditing = true
+                    }
                 )
-                .onTapGesture {
-                    isEditing = true
-                }
             }
         }
         .onAppear {
