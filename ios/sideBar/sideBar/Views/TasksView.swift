@@ -178,6 +178,9 @@ struct TasksDetailView: View {
                 break
             }
         }
+        .onChange(of: state.selection) { _, _ in
+            expandedTaskIds.removeAll()
+        }
     }
 }
 
@@ -252,7 +255,7 @@ extension TasksDetailView {
                         } else {
                             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
                                 ForEach(section.tasks, id: \.id) { task in
-                                    let isExpandable = state.selection == .today
+                                    let isExpandable = true
                                     TaskRow(
                                         task: task,
                                         dueLabel: TasksUtils.dueLabel(for: task),

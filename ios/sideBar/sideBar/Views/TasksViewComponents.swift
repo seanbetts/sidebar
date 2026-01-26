@@ -112,12 +112,12 @@ struct TaskRow<MenuContent: View>: View {
                 }
                 Spacer()
                 HStack(spacing: DesignTokens.Spacing.xs) {
-                    if showsDuePill, let dueLabel {
-                        TaskPill(text: dueLabel)
-                            .overlay(isExpanded ? pillBorder : nil)
-                    }
                     if TasksUtils.isOverdue(task) {
                         TaskPill(text: "Overdue", iconName: "exclamationmark.circle")
+                            .overlay(isExpanded ? pillBorder : nil)
+                    }
+                    if showsDuePill, let dueLabel {
+                        TaskPill(text: dueLabel)
                             .overlay(isExpanded ? pillBorder : nil)
                     }
                     Menu {
