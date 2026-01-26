@@ -796,6 +796,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
         let lines = lineInfos(in: updated)
         applyCodeBlockSpacing(in: &updated, lines: lines)
+        applyTableLayout(in: &updated, lines: lines)
         for line in lines {
             let lineStart = updated.index(updated.startIndex, offsetByCharacters: line.range.lowerBound)
             let lineEnd = updated.index(updated.startIndex, offsetByCharacters: line.range.upperBound)
@@ -914,6 +915,171 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
             index = endIndex + 1
         }
+    }
+
+    private func applyTableLayout(in text: inout AttributedString, lines: [LineInfo]) {
+        let string = String(text.characters)
+        let nsText = NSAttributedString(text)
+        let cellPaddingX = em(0.75, fontSize: baseFontSize)
+
+        var index = 0
+        while index < lines.count {
+            let line = lines[index]
+            let lineRange = attributedRange(for: line.range, in: text)
+            guard let info = tableRowInfo(in: text, range: lineRange) else {
+                index += 1
+                continue
+            }
+
+            var endIndex = index
+            var groupInfos: [(line: LineInfo, range: Range<AttributedString.Index>)] = [(line, lineRange)]
+            while endIndex + 1 < lines.count {
+                let nextLine = lines[endIndex + 1]
+                let nextRange = attributedRange(for: nextLine.range, in: text)
+                guard tableRowInfo(in: text, range: nextRange) != nil else { break }
+                endIndex += 1
+                groupInfos.append((nextLine, nextRange))
+            }
+
+            var alignments = info.alignments ?? []
+            if alignments.isEmpty {
+                for entry in groupInfos {
+                    if let rowAlignments = tableRowInfo(in: text, range: entry.range)?.alignments, !rowAlignments.isEmpty {
+                        alignments = rowAlignments
+                        break
+                    }
+                }
+            }
+
+            var columnWidths: [CGFloat] = []
+            for entry in groupInfos {
+                let cellRanges = splitCellRanges(in: text, lineRange: entry.range)
+                for (columnIndex, cellRange) in cellRanges.enumerated() {
+                    let nsRange = nsRange(for: cellRange, in: text, string: string)
+                    let measured = nsText.attributedSubstring(from: nsRange)
+                        .boundingRect(
+                            with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+                            options: [.usesLineFragmentOrigin, .usesFontLeading],
+                            context: nil
+                        ).width
+                    let width = measured + cellPaddingX * 2
+                    if columnIndex >= columnWidths.count {
+                        columnWidths.append(width)
+                    } else {
+                        columnWidths[columnIndex] = max(columnWidths[columnIndex], width)
+                    }
+                }
+            }
+
+            var tabStops: [NSTextTab] = []
+            var position = cellPaddingX
+            for (index, width) in columnWidths.enumerated() {
+                position += width
+                let alignment = alignments.indices.contains(index) ? alignments[index] : .left
+                let textAlignment: NSTextAlignment
+                switch alignment {
+                case .center:
+                    textAlignment = .center
+                case .right:
+                    textAlignment = .right
+                default:
+                    textAlignment = .left
+                }
+                tabStops.append(NSTextTab(textAlignment: textAlignment, location: position, options: [:]))
+            }
+
+            for entry in groupInfos {
+                let currentStyle = (text[entry.range].paragraphStyle?.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
+                currentStyle.tabStops = tabStops
+                currentStyle.defaultTabInterval = tabStops.last?.location ?? currentStyle.defaultTabInterval
+                let baseHead = currentStyle.headIndent
+                currentStyle.headIndent = baseHead + cellPaddingX
+                currentStyle.firstLineHeadIndent = baseHead + cellPaddingX
+                if currentStyle.tailIndent == 0 {
+                    currentStyle.tailIndent = -cellPaddingX
+                } else {
+                    currentStyle.tailIndent -= cellPaddingX
+                }
+                text[entry.range].paragraphStyle = currentStyle
+            }
+
+            index = endIndex + 1
+        }
+    }
+
+    private func attributedRange(for range: Range<Int>, in text: AttributedString) -> Range<AttributedString.Index> {
+        let start = text.index(text.startIndex, offsetByCharacters: range.lowerBound)
+        let end = text.index(text.startIndex, offsetByCharacters: range.upperBound)
+        return start..<end
+    }
+
+    private func splitCellRanges(
+        in text: AttributedString,
+        lineRange: Range<AttributedString.Index>
+    ) -> [Range<AttributedString.Index>] {
+        var ranges: [Range<AttributedString.Index>] = []
+        var start = lineRange.lowerBound
+        var current = lineRange.lowerBound
+
+        while current < lineRange.upperBound {
+            if text.characters[current] == "\t" {
+                ranges.append(start..<current)
+                let next = text.index(afterCharacter: current)
+                start = next
+                current = next
+            } else {
+                current = text.index(afterCharacter: current)
+            }
+        }
+
+        ranges.append(start..<lineRange.upperBound)
+        return ranges
+    }
+
+    private func nsRange(
+        for range: Range<AttributedString.Index>,
+        in text: AttributedString,
+        string: String
+    ) -> NSRange {
+        let lowerOffset = text.characters.distance(from: text.startIndex, to: range.lowerBound)
+        let upperOffset = text.characters.distance(from: text.startIndex, to: range.upperBound)
+        let lowerIndex = string.index(string.startIndex, offsetBy: lowerOffset)
+        let upperIndex = string.index(string.startIndex, offsetBy: upperOffset)
+        let location = lowerIndex.utf16Offset(in: string)
+        let length = upperIndex.utf16Offset(in: string) - location
+        return NSRange(location: location, length: max(0, length))
+    }
+
+    private func tableRowInfo(
+        in text: AttributedString,
+        range: Range<AttributedString.Index>
+    ) -> (isHeader: Bool, rowIndex: Int?, alignments: [PresentationIntent.TableColumn.Alignment]?)? {
+        var isHeader = false
+        var rowIndex: Int?
+        var alignments: [PresentationIntent.TableColumn.Alignment]?
+        var hasCell = false
+
+        for run in text[range].runs {
+            guard let intent = run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] else { continue }
+            for component in intent.components {
+                switch component.kind {
+                case .tableHeaderRow:
+                    isHeader = true
+                    rowIndex = 0
+                case .tableRow(let index):
+                    rowIndex = index
+                case .tableCell:
+                    hasCell = true
+                case .table(let columns):
+                    alignments = columns.map { $0.alignment }
+                default:
+                    break
+                }
+            }
+        }
+
+        guard hasCell else { return nil }
+        return (isHeader: isHeader, rowIndex: rowIndex, alignments: alignments)
     }
 
     private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
