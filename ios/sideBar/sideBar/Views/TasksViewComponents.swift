@@ -45,6 +45,8 @@ struct TaskRow<MenuContent: View>: View {
     let onOpenNotes: () -> Void
     let onSelect: () -> Void
     let onToggleExpanded: () -> Void
+    let onMove: () -> Void
+    let onRepeat: () -> Void
     let menuContent: () -> MenuContent
     @State private var showRepeatInfo = false
     @State private var isCompleting = false
@@ -157,7 +159,7 @@ struct TaskRow<MenuContent: View>: View {
                 .lineLimit(nil)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, DesignTokens.Spacing.sm)
-            HStack {
+            HStack(spacing: DesignTokens.Spacing.sm) {
                 if let dueLabel {
                     TaskPill(text: dueLabel)
                         .overlay(pillBorder)
@@ -166,6 +168,24 @@ struct TaskRow<MenuContent: View>: View {
                         .overlay(pillBorder)
                 }
                 Spacer()
+                Button {
+                    onMove()
+                } label: {
+                    Image(systemName: "folder")
+                        .font(.caption)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        .padding(DesignTokens.Spacing.xxxs)
+                }
+                .buttonStyle(.plain)
+                Button {
+                    onRepeat()
+                } label: {
+                    Image(systemName: "repeat")
+                        .font(.caption)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        .padding(DesignTokens.Spacing.xxxs)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.leading, DesignTokens.Spacing.sm + 22 + DesignTokens.Spacing.sm)
