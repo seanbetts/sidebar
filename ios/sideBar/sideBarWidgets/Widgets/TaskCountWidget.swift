@@ -39,13 +39,14 @@ struct TaskCountWidgetView: View {
                         .stroke(Color.green, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .frame(width: 64, height: 64)
                         .rotationEffect(.degrees(-90))
+                        .widgetAccentable()
                 }
 
                 Text("\(entry.data.totalCount)")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
             }
 
-            Text("Today")
+            Text("Tasks")
                 .font(.subheadline)
                 .fontWeight(.medium)
 
@@ -53,6 +54,7 @@ struct TaskCountWidgetView: View {
                 Text("All done!")
                     .font(.caption)
                     .foregroundStyle(.green)
+                    .widgetAccentable()
             } else {
                 Text(entry.data.totalCount == 1 ? "task" : "tasks")
                     .font(.caption)
