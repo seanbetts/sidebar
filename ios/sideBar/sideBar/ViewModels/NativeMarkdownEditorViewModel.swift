@@ -337,8 +337,10 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func baseForegroundColor(for blockKind: BlockKind?) -> Color {
         switch blockKind {
-        case .blockquote, .taskChecked:
+        case .blockquote, .taskChecked, .htmlBlock, .gallery:
             return DesignTokens.Colors.textSecondary
+        case .imageCaption:
+            return DesignTokens.Colors.textTertiary
         default:
             return DesignTokens.Colors.textPrimary
         }
@@ -790,7 +792,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             }
             text[range].font = font
             text[range].backgroundColor = baseBackground
-            if run.foregroundColor == nil {
+            if run.link != nil {
+                text[range].foregroundColor = .accentColor
+            } else if run.strikethroughStyle != nil || run.imageInfo != nil {
+                text[range].foregroundColor = DesignTokens.Colors.textSecondary
+            } else {
                 text[range].foregroundColor = baseForeground
             }
         }
