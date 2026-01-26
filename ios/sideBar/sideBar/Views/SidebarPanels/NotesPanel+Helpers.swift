@@ -132,7 +132,11 @@ extension NotesPanelView {
     }
 
     func confirmDelete(for item: FileNodeItem) {
-        deleteTarget = item
+        Task { @MainActor in
+            prepareForDestructiveAction()
+            await waitForKeyboardDismissal()
+            deleteTarget = item
+        }
     }
 
     func commitRename() {

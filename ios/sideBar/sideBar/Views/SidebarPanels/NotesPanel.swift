@@ -1,6 +1,9 @@
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(iOS)
+import UIKit
+#endif
 
 public struct NotesPanel: View {
     @EnvironmentObject var environment: AppEnvironment
@@ -101,7 +104,11 @@ struct NotesPanelView: View {
                 Task {
                     if let target {
                         if target.isFile {
-                            await viewModel.deleteNote(id: target.id)
+                            if viewModel.selectedNoteId == target.id {
+                                await deleteNoteAfterDismissal(id: target.id)
+                            } else {
+                                await viewModel.deleteNote(id: target.id)
+                            }
                         } else {
                             await viewModel.deleteFolder(path: target.id)
                         }
@@ -146,6 +153,43 @@ struct NotesPanelView: View {
                 break
             }
         }
+    }
+
+    func prepareForDestructiveAction() {
+        environment.notesEditorViewModel.setReadOnly(true)
+        #if os(iOS)
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        #endif
+    }
+
+    func deleteNoteAfterDismissal(id: String) async {
+        prepareForDestructiveAction()
+        await waitForKeyboardDismissal()
+        await viewModel.deleteNote(id: id)
+    }
+
+    @MainActor
+    func waitForKeyboardDismissal(timeout: UInt64 = 500_000_000) async {
+        #if os(iOS)
+        let notifications = NotificationCenter.default.notifications(named: UIResponder.keyboardDidHideNotification)
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                for await _ in notifications {
+                    break
+                }
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: timeout)
+            }
+            await group.next()
+            group.cancelAll()
+        }
+        #endif
     }
 
 }
