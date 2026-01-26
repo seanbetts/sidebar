@@ -1,6 +1,11 @@
 @preconcurrency import Foundation
 import Combine
 import SwiftUI
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
@@ -14,6 +19,16 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
     }
     @Published public private(set) var hasUnsavedChanges: Bool = false
+
+#if os(iOS)
+    private typealias PlatformFont = UIFont
+    private typealias PlatformFontWeight = UIFont.Weight
+    private typealias PlatformColor = UIColor
+#elseif os(macOS)
+    private typealias PlatformFont = NSFont
+    private typealias PlatformFontWeight = NSFont.Weight
+    private typealias PlatformColor = NSColor
+#endif
 
     private let importer = MarkdownImporter()
     private let exporter = MarkdownExporter()
@@ -86,7 +101,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     public func applyLink(_ url: URL) {
         attributedContent.transformAttributes(in: &selection) { attrs in
             attrs.link = url
-            attrs.foregroundColor = .accentColor
+            setForegroundColor(.accentColor, in: &attrs)
             attrs.underlineStyle = .single
         }
     }
@@ -194,11 +209,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         for range in ranges.ranges where !range.isEmpty {
             if attributedContent[range].strikethroughStyle == nil {
                 attributedContent[range].strikethroughStyle = .single
-                attributedContent[range].foregroundColor = DesignTokens.Colors.textSecondary
+                setForegroundColor(DesignTokens.Colors.textSecondary, range: range)
             } else {
                 attributedContent[range].strikethroughStyle = nil
                 let blockKind = attributedContent.blockKind(in: range)
-                attributedContent[range].foregroundColor = baseForegroundColor(for: blockKind)
+                setForegroundColor(baseForegroundColor(for: blockKind), range: range)
             }
         }
     }
@@ -253,7 +268,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             selection = AttributedTextSelection(range: cursorIndex..<cursorIndex)
         } else {
             attributedContent[range].link = url
-            attributedContent[range].foregroundColor = .accentColor
+            setForegroundColor(.accentColor, range: range)
             attributedContent[range].underlineStyle = .single
         }
     }
@@ -262,7 +277,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         var hr = AttributedString("---")
         let range = hr.startIndex..<hr.endIndex
         hr[range].blockKind = .horizontalRule
-        hr[range].foregroundColor = DesignTokens.Colors.border
+        setForegroundColor(DesignTokens.Colors.border, in: &hr, range: range)
 
         let insertIndex = selectionRanges().ranges.first?.lowerBound ?? attributedContent.endIndex
         attributedContent.insert(hr, at: insertIndex)
@@ -335,6 +350,77 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
     }
 
+    private func platformBaseFont(for blockKind: BlockKind?) -> PlatformFont {
+        switch blockKind {
+        case .heading1:
+            return platformSystemFont(size: heading1FontSize, weight: .bold)
+        case .heading2:
+            return platformSystemFont(size: heading2FontSize, weight: .semibold)
+        case .heading3:
+            return platformSystemFont(size: heading3FontSize, weight: .semibold)
+        case .heading4:
+            return platformSystemFont(size: heading4FontSize, weight: .semibold)
+        case .heading5:
+            return platformSystemFont(size: heading5FontSize, weight: .semibold)
+        case .heading6:
+            return platformSystemFont(size: heading6FontSize, weight: .semibold)
+        case .codeBlock:
+            return platformSystemFont(size: inlineCodeFontSize, weight: .regular, monospaced: true)
+        case .imageCaption:
+            return platformFootnoteFont()
+        default:
+            return platformSystemFont(size: baseFontSize, weight: .regular)
+        }
+    }
+
+    private func platformInlineCodeFont() -> PlatformFont {
+        platformSystemFont(size: inlineCodeFontSize, weight: .regular, monospaced: true)
+    }
+
+    private func platformFootnoteFont() -> PlatformFont {
+#if os(iOS)
+        return UIFont.preferredFont(forTextStyle: .footnote)
+#else
+        return NSFont.preferredFont(forTextStyle: .footnote)
+#endif
+    }
+
+    private func platformSystemFont(
+        size: CGFloat,
+        weight: PlatformFontWeight,
+        monospaced: Bool = false
+    ) -> PlatformFont {
+#if os(iOS)
+        return monospaced
+            ? UIFont.monospacedSystemFont(ofSize: size, weight: weight)
+            : UIFont.systemFont(ofSize: size, weight: weight)
+#else
+        return monospaced
+            ? NSFont.monospacedSystemFont(ofSize: size, weight: weight)
+            : NSFont.systemFont(ofSize: size, weight: weight)
+#endif
+    }
+
+    private func platformFontApplyingTraits(
+        _ font: PlatformFont,
+        bold: Bool,
+        italic: Bool
+    ) -> PlatformFont {
+#if os(iOS)
+        var traits = font.fontDescriptor.symbolicTraits
+        if bold { traits.insert(.traitBold) } else { traits.remove(.traitBold) }
+        if italic { traits.insert(.traitItalic) } else { traits.remove(.traitItalic) }
+        guard let descriptor = font.fontDescriptor.withSymbolicTraits(traits) else { return font }
+        return UIFont(descriptor: descriptor, size: font.pointSize)
+#else
+        var traits = font.fontDescriptor.symbolicTraits
+        if bold { traits.insert(.bold) } else { traits.remove(.bold) }
+        if italic { traits.insert(.italic) } else { traits.remove(.italic) }
+        guard let descriptor = font.fontDescriptor.withSymbolicTraits(traits) else { return font }
+        return NSFont(descriptor: descriptor, size: font.pointSize) ?? font
+#endif
+    }
+
     private func baseForegroundColor(for blockKind: BlockKind?) -> Color {
         switch blockKind {
         case .blockquote, .taskChecked, .htmlBlock, .gallery:
@@ -353,6 +439,130 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         default:
             return nil
         }
+    }
+
+    private func platformColor(_ color: Color) -> PlatformColor {
+#if os(iOS)
+        UIColor(color)
+#else
+        NSColor(color)
+#endif
+    }
+
+    private func platformColor(_ color: Color?) -> PlatformColor? {
+        guard let color else { return nil }
+        return platformColor(color)
+    }
+
+    private func setFont(_ font: Font, platformFont: PlatformFont, in attrs: inout AttributeContainer) {
+        attrs.font = font
+        setPlatformFont(platformFont, in: &attrs)
+    }
+
+    private func setForegroundColor(_ color: Color, in attrs: inout AttributeContainer) {
+        attrs.foregroundColor = color
+        setPlatformForegroundColor(platformColor(color), in: &attrs)
+    }
+
+    private func setBackgroundColor(_ color: Color?, in attrs: inout AttributeContainer) {
+        attrs.backgroundColor = color
+        setPlatformBackgroundColor(platformColor(color), in: &attrs)
+    }
+
+    private func setFont(
+        _ font: Font,
+        platformFont: PlatformFont,
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+        text[range].font = font
+        setPlatformFont(platformFont, in: &text, range: range)
+    }
+
+    private func setForegroundColor(
+        _ color: Color,
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+        text[range].foregroundColor = color
+        setPlatformForegroundColor(platformColor(color), in: &text, range: range)
+    }
+
+    private func setForegroundColor(_ color: Color, range: Range<AttributedString.Index>) {
+        setForegroundColor(color, in: &attributedContent, range: range)
+    }
+
+    private func setBackgroundColor(
+        _ color: Color?,
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+        text[range].backgroundColor = color
+        setPlatformBackgroundColor(platformColor(color), in: &text, range: range)
+    }
+
+    private func setBackgroundColor(_ color: Color?, range: Range<AttributedString.Index>) {
+        setBackgroundColor(color, in: &attributedContent, range: range)
+    }
+
+    private func setPlatformFont(_ font: PlatformFont, in attrs: inout AttributeContainer) {
+#if os(iOS)
+        attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] = font
+#else
+        attrs[AttributeScopes.AppKitAttributes.FontAttribute.self] = font
+#endif
+    }
+
+    private func setPlatformForegroundColor(_ color: PlatformColor, in attrs: inout AttributeContainer) {
+#if os(iOS)
+        attrs[AttributeScopes.UIKitAttributes.ForegroundColorAttribute.self] = color
+#else
+        attrs[AttributeScopes.AppKitAttributes.ForegroundColorAttribute.self] = color
+#endif
+    }
+
+    private func setPlatformBackgroundColor(_ color: PlatformColor?, in attrs: inout AttributeContainer) {
+#if os(iOS)
+        attrs[AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] = color
+#else
+        attrs[AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] = color
+#endif
+    }
+
+    private func setPlatformFont(
+        _ font: PlatformFont,
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+#if os(iOS)
+        text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = font
+#else
+        text[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = font
+#endif
+    }
+
+    private func setPlatformForegroundColor(
+        _ color: PlatformColor,
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+#if os(iOS)
+        text[range][AttributeScopes.UIKitAttributes.ForegroundColorAttribute.self] = color
+#else
+        text[range][AttributeScopes.AppKitAttributes.ForegroundColorAttribute.self] = color
+#endif
+    }
+
+    private func setPlatformBackgroundColor(
+        _ color: PlatformColor?,
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+#if os(iOS)
+        text[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] = color
+#else
+        text[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] = color
+#endif
     }
 
     private func hasInlineIntent(_ intent: InlinePresentationIntent) -> Bool {
@@ -391,13 +601,13 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         if intent == .code {
             let blockKind = attrs.blockKind
             if enabled {
-                attrs.font = inlineCodeFont
-                attrs.foregroundColor = DesignTokens.Colors.textPrimary
-                attrs.backgroundColor = style.codeBackground
+                setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &attrs)
+                setForegroundColor(DesignTokens.Colors.textPrimary, in: &attrs)
+                setBackgroundColor(style.codeBackground, in: &attrs)
             } else {
-                attrs.font = baseFont(for: blockKind)
-                attrs.foregroundColor = baseForegroundColor(for: blockKind)
-                attrs.backgroundColor = baseBackgroundColor(for: blockKind)
+                setFont(baseFont(for: blockKind), platformFont: platformBaseFont(for: blockKind), in: &attrs)
+                setForegroundColor(baseForegroundColor(for: blockKind), in: &attrs)
+                setBackgroundColor(baseBackgroundColor(for: blockKind), in: &attrs)
             }
         }
     }
@@ -418,28 +628,29 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         guard intent == .code else { return }
 
         if enabled {
-            attributedContent[range].font = inlineCodeFont
-            attributedContent[range].foregroundColor = DesignTokens.Colors.textPrimary
-            attributedContent[range].backgroundColor = style.codeBackground
+            setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &attributedContent, range: range)
+            setForegroundColor(DesignTokens.Colors.textPrimary, in: &attributedContent, range: range)
+            setBackgroundColor(style.codeBackground, in: &attributedContent, range: range)
         } else {
             let blockKind = attributedContent.blockKind(in: range)
-            attributedContent[range].font = baseFont(for: blockKind)
-            attributedContent[range].foregroundColor = baseForegroundColor(for: blockKind)
-            attributedContent[range].backgroundColor = baseBackgroundColor(for: blockKind)
+            setFont(baseFont(for: blockKind), platformFont: platformBaseFont(for: blockKind), in: &attributedContent, range: range)
+            setForegroundColor(baseForegroundColor(for: blockKind), in: &attributedContent, range: range)
+            setBackgroundColor(baseBackgroundColor(for: blockKind), in: &attributedContent, range: range)
         }
     }
 
     private func applyBlockStyle(blockKind: BlockKind, range: Range<AttributedString.Index>) {
         let font = blockKind == .codeBlock ? blockCodeFont : baseFont(for: blockKind)
-        attributedContent[range].font = font
-        attributedContent[range].foregroundColor = baseForegroundColor(for: blockKind)
-        attributedContent[range].backgroundColor = baseBackgroundColor(for: blockKind)
+        let platformFont = blockKind == .codeBlock ? platformInlineCodeFont() : platformBaseFont(for: blockKind)
+        setFont(font, platformFont: platformFont, in: &attributedContent, range: range)
+        setForegroundColor(baseForegroundColor(for: blockKind), in: &attributedContent, range: range)
+        setBackgroundColor(baseBackgroundColor(for: blockKind), in: &attributedContent, range: range)
         if let paragraphStyle = paragraphStyle(for: blockKind) {
             attributedContent[range].paragraphStyle = paragraphStyle
         }
         if blockKind == .taskChecked {
             attributedContent[range].strikethroughStyle = .single
-            attributedContent[range].foregroundColor = DesignTokens.Colors.textSecondary
+            setForegroundColor(DesignTokens.Colors.textSecondary, in: &attributedContent, range: range)
         }
     }
 
@@ -565,26 +776,46 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
             if let prefixRange {
                 if shouldShow {
-                    updated[prefixRange].foregroundColor = DesignTokens.Colors.textSecondary
-                    updated[prefixRange].backgroundColor = baseBackgroundColor(for: blockKind)
-                    updated[prefixRange].font = baseFont(for: blockKind)
+                    setForegroundColor(DesignTokens.Colors.textSecondary, in: &updated, range: prefixRange)
+                    setBackgroundColor(baseBackgroundColor(for: blockKind), in: &updated, range: prefixRange)
+                    setFont(
+                        baseFont(for: blockKind),
+                        platformFont: platformBaseFont(for: blockKind),
+                        in: &updated,
+                        range: prefixRange
+                    )
                 } else {
-                    updated[prefixRange].foregroundColor = .clear
-                    updated[prefixRange].backgroundColor = nil
-                    updated[prefixRange].font = .system(size: 0.1)
+                    setForegroundColor(.clear, in: &updated, range: prefixRange)
+                    setBackgroundColor(nil, in: &updated, range: prefixRange)
+                    setFont(
+                        .system(size: 0.1),
+                        platformFont: platformSystemFont(size: 0.1, weight: .regular),
+                        in: &updated,
+                        range: prefixRange
+                    )
                 }
             }
 
             let inlineRanges = ensureInlineMarkerRanges(in: &updated, lineRange: lineRange, lineText: line.text)
             for inlineRange in inlineRanges {
                 if shouldShow {
-                    updated[inlineRange].foregroundColor = DesignTokens.Colors.textSecondary
-                    updated[inlineRange].backgroundColor = nil
-                    updated[inlineRange].font = baseFont(for: blockKind)
+                    setForegroundColor(DesignTokens.Colors.textSecondary, in: &updated, range: inlineRange)
+                    setBackgroundColor(nil, in: &updated, range: inlineRange)
+                    setFont(
+                        baseFont(for: blockKind),
+                        platformFont: platformBaseFont(for: blockKind),
+                        in: &updated,
+                        range: inlineRange
+                    )
                 } else {
-                    updated[inlineRange].foregroundColor = .clear
-                    updated[inlineRange].backgroundColor = nil
-                    updated[inlineRange].font = .system(size: 0.1)
+                    setForegroundColor(.clear, in: &updated, range: inlineRange)
+                    setBackgroundColor(nil, in: &updated, range: inlineRange)
+                    setFont(
+                        .system(size: 0.1),
+                        platformFont: platformSystemFont(size: 0.1, weight: .regular),
+                        in: &updated,
+                        range: inlineRange
+                    )
                 }
             }
         }
@@ -771,15 +1002,16 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         let baseFont = baseFont(for: blockKind)
         let baseBackground = baseBackgroundColor(for: blockKind)
         let baseForeground = baseForegroundColor(for: blockKind)
+        let basePlatformFont = platformBaseFont(for: blockKind)
         for run in text[lineRange].runs {
             guard run.inlineMarker != true else { continue }
             let intents = run.inlinePresentationIntent ?? []
             let range = run.range
 
             if intents.contains(.code) {
-                text[range].font = inlineCodeFont
-                text[range].foregroundColor = DesignTokens.Colors.textPrimary
-                text[range].backgroundColor = style.codeBackground
+                setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &text, range: range)
+                setForegroundColor(DesignTokens.Colors.textPrimary, in: &text, range: range)
+                setBackgroundColor(style.codeBackground, in: &text, range: range)
                 continue
             }
 
@@ -790,14 +1022,19 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             if intents.contains(.stronglyEmphasized) {
                 font = font.weight(.bold)
             }
-            text[range].font = font
-            text[range].backgroundColor = baseBackground
+            let platformFont = platformFontApplyingTraits(
+                basePlatformFont,
+                bold: intents.contains(.stronglyEmphasized),
+                italic: intents.contains(.emphasized)
+            )
+            setFont(font, platformFont: platformFont, in: &text, range: range)
+            setBackgroundColor(baseBackground, in: &text, range: range)
             if run.link != nil {
-                text[range].foregroundColor = .accentColor
+                setForegroundColor(.accentColor, in: &text, range: range)
             } else if run.strikethroughStyle != nil || run.imageInfo != nil {
-                text[range].foregroundColor = DesignTokens.Colors.textSecondary
+                setForegroundColor(DesignTokens.Colors.textSecondary, in: &text, range: range)
             } else {
-                text[range].foregroundColor = baseForeground
+                setForegroundColor(baseForeground, in: &text, range: range)
             }
         }
     }
