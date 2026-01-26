@@ -251,14 +251,16 @@ public enum TasksUtils {
             sections.append(TaskSection(id: "overdue", title: "Overdue", tasks: overdue))
         }
 
-        // Show individual days from tomorrow through the Sunday of the week containing day 7
-        // This ensures weekly sections start cleanly on Monday with no overlap
-        for offset in 1...dailyCutoff {
-            let date = Calendar.current.date(byAdding: .day, value: offset, to: today) ?? today
-            let key = formatDateKey(date)
-            let label = formatDayLabel(date: date, dayDiff: offset)
-            let section = daily[key] ?? TaskSection(id: key, title: label, tasks: [])
-            sections.append(section)
+        // Show individual days from tomorrow through Sunday of the current week
+        // Weekly sections start from the following Monday
+        if dailyCutoff >= 1 {
+            for offset in 1...dailyCutoff {
+                let date = Calendar.current.date(byAdding: .day, value: offset, to: today) ?? today
+                let key = formatDateKey(date)
+                let label = formatDayLabel(date: date, dayDiff: offset)
+                let section = daily[key] ?? TaskSection(id: key, title: label, tasks: [])
+                sections.append(section)
+            }
         }
 
         for weekIndex in 1...3 {
@@ -385,15 +387,10 @@ public enum TasksUtils {
         return calendar.date(from: components) ?? date
     }
 
-    /// Calculates the daily section cutoff: extends through the Sunday of the week containing day 7.
-    /// This ensures weekly sections start cleanly on Monday with no overlap.
+    /// Calculates the daily section cutoff: shows individual days through Sunday of the current week.
+    /// Weekly sections start from next Monday.
     private static func calculateDailyCutoff(from today: Date) -> Int {
-        // Day 7 from today
-        guard let day7 = Calendar.current.date(byAdding: .day, value: 7, to: today) else {
-            return 7
-        }
-        // Find the Sunday of the week containing day 7
-        let sunday = sundayOfWeek(for: day7)
+        let sunday = sundayOfWeek(for: today)
         return dayDiff(from: today, to: sunday)
     }
 
