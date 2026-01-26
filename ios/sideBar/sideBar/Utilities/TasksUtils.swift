@@ -250,9 +250,9 @@ public enum TasksUtils {
             sections.append(TaskSection(id: "overdue", title: "Overdue", tasks: overdue))
         }
 
-        // Show all days for the next 6 days (tomorrow through 6 days out), even if empty
+        // Show all days for the next 7 days (tomorrow through 7 days out), even if empty
         // Today is excluded from Upcoming since it has its own section
-        for offset in 1...6 {
+        for offset in 1...7 {
             let date = Calendar.current.date(byAdding: .day, value: offset, to: today) ?? today
             let key = formatDateKey(date)
             let label = formatDayLabel(date: date, dayDiff: offset)
@@ -358,12 +358,12 @@ public enum TasksUtils {
         if diff < 0 {
             return .overdue
         }
-        if diff <= 6 {
+        if diff <= 7 {
             let key = formatDateKey(date)
             let label = formatDayLabel(date: date, dayDiff: diff)
             return .daily(key: key, label: label)
         }
-        if diff <= 27 {
+        if diff <= 28 {
             // Use Monday-based calendar weeks
             let todayMonday = mondayOfWeek(for: today)
             let dateMonday = mondayOfWeek(for: date)
