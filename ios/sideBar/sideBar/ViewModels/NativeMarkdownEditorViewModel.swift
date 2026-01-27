@@ -2,9 +2,9 @@
 import Combine
 import SwiftUI
 #if os(iOS)
-import UIKit
+@preconcurrency import UIKit
 #elseif os(macOS)
-import AppKit
+@preconcurrency import AppKit
 #endif
 
 @MainActor
@@ -550,8 +550,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private func setPlatformFont(_ font: PlatformFont, in attrs: inout AttributeContainer) {
 #if os(iOS)
         attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] = font
-#else
-        attrs[AttributeScopes.AppKitAttributes.FontAttribute.self] = font
 #endif
     }
 
@@ -578,8 +576,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     ) {
 #if os(iOS)
         text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = font
-#else
-        text[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = font
 #endif
     }
 
@@ -736,6 +732,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 .paragraph,
                 identity: 1
             )
+        @unknown default:
+            return
         }
     }
 
@@ -1574,6 +1572,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 spacingBefore: 0,
                 spacingAfter: 0
             )
+        @unknown default:
+            return nil
         }
     }
 
