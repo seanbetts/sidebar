@@ -80,10 +80,9 @@ extension AppEnvironment {
 
         // Navigate to tasks section and start new task
         commandSelection = .tasks
-        // Small delay to allow navigation to complete before showing the add task UI
-        Task {
-            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
-            tasksViewModel.startNewTask()
-        }
+        pendingNewTaskDeepLink = true
+        #if !os(macOS)
+        tasksViewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
+        #endif
     }
 }
