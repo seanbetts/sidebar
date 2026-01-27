@@ -11,27 +11,26 @@ struct NotesSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    ZStack(alignment: .topLeading) {
-                        if value.isEmpty {
-                            Text("Notes")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .padding(.top, 8)
-                        }
-                        NotesTextEditor(
-                            text: $value,
-                            isFocused: Binding(
-                                get: { isFocused },
-                                set: { isFocused = $0 }
-                            ),
-                            onSubmit: handleSave
-                        )
-                            .frame(minHeight: 160)
-                    }
+            ZStack(alignment: .topLeading) {
+                if value.isEmpty {
+                    Text("Notes")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 8)
+                        .padding(.leading, 6)
                 }
+                NotesTextEditor(
+                    text: $value,
+                    isFocused: Binding(
+                        get: { isFocused },
+                        set: { isFocused = $0 }
+                    ),
+                    onSubmit: handleSave
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
+            .padding(DesignTokens.Spacing.md)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .navigationTitle("Notes")
             .navigationBarTitleDisplayModeInline()
             .toolbar {

@@ -43,6 +43,7 @@ struct TaskRow<MenuContent: View>: View {
     let isExpanded: Bool
     let onComplete: () -> Void
     let onOpenNotes: () -> Void
+    let onOpenDue: () -> Void
     let onSelect: () -> Void
     let onToggleExpanded: () -> Void
     let onMove: () -> Void
@@ -145,8 +146,14 @@ struct TaskRow<MenuContent: View>: View {
                         }
                     }
                     if showsDuePill, let dueLabel {
-                        TaskPill(text: dueLabel)
-                            .overlay(isExpanded ? pillBorder : nil)
+                        Button {
+                            onOpenDue()
+                        } label: {
+                            TaskPill(text: dueLabel)
+                                .overlay(isExpanded ? pillBorder : nil)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Set due date")
                     }
                     if selection == .completed {
                         Button(role: .destructive) {
@@ -203,13 +210,19 @@ struct TaskRow<MenuContent: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, DesignTokens.Spacing.sm)
             HStack(spacing: DesignTokens.Spacing.sm) {
-                if let dueLabel {
-                    TaskPill(text: dueLabel)
-                        .overlay(pillBorder)
-                } else {
-                    TaskPill(text: "No due date")
-                        .overlay(pillBorder)
+                Button {
+                    onOpenDue()
+                } label: {
+                    if let dueLabel {
+                        TaskPill(text: dueLabel)
+                            .overlay(pillBorder)
+                    } else {
+                        TaskPill(text: "No due date")
+                            .overlay(pillBorder)
+                    }
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Set due date")
                 Spacer()
                 if selection != .completed {
                     Button {
