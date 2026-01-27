@@ -69,7 +69,7 @@ private struct TasksPanelView: View {
             case .focusSearch:
                 isSearchFocused = true
             case .newItem:
-                viewModel.startNewTask()
+                handleNewTaskTap()
             default:
                 break
             }
@@ -120,7 +120,7 @@ extension TasksPanelView {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Menu {
                         Button {
-                            viewModel.startNewTask()
+                            handleNewTaskTap()
                         } label: {
                             Label("New task", systemImage: "checkmark.circle")
                         }
@@ -239,6 +239,16 @@ extension TasksPanelView {
         }
     }
 
+    private func handleNewTaskTap() {
+        if isCompact {
+            environment.commandSelection = .tasks
+            environment.pendingNewTaskDeepLink = true
+            viewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
+        } else {
+            viewModel.startNewTask()
+        }
+    }
+
     @ViewBuilder
     private func tasksListRow(
         title: String,
@@ -253,7 +263,7 @@ extension TasksPanelView {
             title: title,
             iconName: iconName,
             count: count,
-            isSelected: viewModel.selection == selection,
+            isSelected: isCompact ? false : viewModel.selection == selection,
             indent: indent,
             onRename: onRename,
             onDelete: onDelete

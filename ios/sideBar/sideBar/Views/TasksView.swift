@@ -21,7 +21,10 @@ public struct TasksView: View {
                 environment.isTasksFocused = true
                 if environment.pendingNewTaskDeepLink {
                     environment.pendingNewTaskDeepLink = false
-                    environment.tasksViewModel.startNewTask()
+                    Task {
+                        await environment.tasksViewModel.load(selection: .today)
+                        environment.tasksViewModel.startNewTask()
+                    }
                 }
             }
             .onDisappear {
@@ -70,7 +73,10 @@ struct TasksDetailView: View {
             if environment.isOffline {
                 OfflineBanner()
             }
-            if !isCompact {
+            if isCompact {
+                compactHeader(state: state)
+                Divider()
+            } else {
                 header(state: state)
                 Divider()
             }
@@ -204,6 +210,33 @@ extension TasksDetailView {
                 Text(label)
                     .font(.caption)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
+            }
+        }
+        .padding(DesignTokens.Spacing.md)
+        .frame(height: LayoutMetrics.contentHeaderMinHeight)
+    }
+
+    @ViewBuilder
+    private func compactHeader(state: TasksViewState) -> some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            Image(systemName: state.titleIcon)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+            Text(state.selectionLabel)
+                .font(DesignTokens.Typography.title3Semibold)
+                .foregroundStyle(DesignTokens.Colors.textPrimary)
+                .lineLimit(1)
+            Spacer()
+            if state.selection != .completed {
+                Button {
+                    viewModel.startNewTask()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.subheadline)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("New task")
             }
         }
         .padding(DesignTokens.Spacing.md)

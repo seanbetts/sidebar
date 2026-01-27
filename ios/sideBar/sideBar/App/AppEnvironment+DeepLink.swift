@@ -13,9 +13,19 @@ extension AppEnvironment {
         switch url.host {
         case "tasks":
             commandSelection = .tasks
-            if url.path == "/new" {
+            if url.path == "/today" {
+                Task {
+                    await tasksViewModel.load(selection: .today, force: true)
+                }
+                #if !os(macOS)
+                tasksViewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
+                #endif
+            } else if url.path == "/new" {
                 logger.info("Deep link to new task")
                 pendingNewTaskDeepLink = true
+                #if !os(macOS)
+                tasksViewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
+                #endif
                 if isTasksFocused {
                     pendingNewTaskDeepLink = false
                     tasksViewModel.startNewTask()

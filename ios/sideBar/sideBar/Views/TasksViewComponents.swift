@@ -53,6 +53,9 @@ struct TaskRow<MenuContent: View>: View {
     @State private var isCompleting = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -132,8 +135,14 @@ struct TaskRow<MenuContent: View>: View {
                 Spacer()
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if selection != .completed && TasksUtils.isOverdue(task) {
-                        TaskPill(text: "Overdue", iconName: "exclamationmark.circle")
-                            .overlay(isExpanded ? pillBorder : nil)
+                        if isCompact {
+                            Image(systemName: "exclamationmark.circle")
+                                .font(.subheadline)
+                                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        } else {
+                            TaskPill(text: "Overdue", iconName: "exclamationmark.circle")
+                                .overlay(isExpanded ? pillBorder : nil)
+                        }
                     }
                     if showsDuePill, let dueLabel {
                         TaskPill(text: dueLabel)
@@ -273,5 +282,13 @@ struct TaskRow<MenuContent: View>: View {
         default:
             return false
         }
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 }
