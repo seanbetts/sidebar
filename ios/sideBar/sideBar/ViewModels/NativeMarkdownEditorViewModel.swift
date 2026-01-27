@@ -441,7 +441,13 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
     }
 
-    private func tableRowInfo(from intent: PresentationIntent?) -> (isHeader: Bool, rowIndex: Int?)? {
+    private struct TableRowInfo {
+        let isHeader: Bool
+        let rowIndex: Int?
+        let alignments: [PresentationIntent.TableColumn.Alignment]?
+    }
+
+    private func tableRowInfo(from intent: PresentationIntent?) -> TableRowInfo? {
         guard let intent else { return nil }
         var isHeader = false
         var rowIndex: Int?
@@ -462,10 +468,10 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         guard foundRow else { return nil }
-        return (isHeader: isHeader, rowIndex: rowIndex)
+        return TableRowInfo(isHeader: isHeader, rowIndex: rowIndex, alignments: nil)
     }
 
-    private func tableRowBackground(from info: (isHeader: Bool, rowIndex: Int?)?) -> Color? {
+    private func tableRowBackground(from info: TableRowInfo?) -> Color? {
         guard let info else { return nil }
         if info.isHeader {
             return DesignTokens.Colors.muted
@@ -695,43 +701,95 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         listDepth: Int?,
         range: Range<AttributedString.Index>
     ) {
+        if let headingLevel = headingLevel(for: blockKind) {
+            applyHeadingIntent(level: headingLevel, range: range)
+            return
+        }
+        if applyListIntent(blockKind: blockKind, listDepth: listDepth, range: range) {
+            return
+        }
         switch blockKind {
-        case .heading1:
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 1), identity: 1)
-        case .heading2:
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 2), identity: 2)
-        case .heading3:
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 3), identity: 3)
-        case .heading4:
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 4), identity: 4)
-        case .heading5:
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 5), identity: 5)
-        case .heading6:
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 6), identity: 6)
         case .blockquote:
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: quoteIntent
+            )
         case .codeBlock:
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .codeBlock(languageHint: nil),
+                identity: 1
+            )
         case .horizontalRule:
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.thematicBreak, identity: 1)
-        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
-            let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
-            let listId = listDepth ?? 1
-            let listIntent = PresentationIntent(listKind, identity: listId)
-            let listItemIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
-            if blockKind == .bulletList {
-                attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "•"
-            } else if blockKind == .taskChecked {
-                attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☑"
-            } else if blockKind == .taskUnchecked {
-                attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☐"
-            } else {
-                attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
-            }
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .thematicBreak,
+                identity: 1
+            )
         case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
-            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1
+            )
+        }
+    }
+
+    private func headingLevel(for blockKind: BlockKind) -> Int? {
+        switch blockKind {
+        case .heading1: return 1
+        case .heading2: return 2
+        case .heading3: return 3
+        case .heading4: return 4
+        case .heading5: return 5
+        case .heading6: return 6
+        default: return nil
+        }
+    }
+
+    private func applyHeadingIntent(level: Int, range: Range<AttributedString.Index>) {
+        attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .header(level: level),
+            identity: level
+        )
+    }
+
+    private func applyListIntent(
+        blockKind: BlockKind,
+        listDepth: Int?,
+        range: Range<AttributedString.Index>
+    ) -> Bool {
+        guard blockKind == .bulletList
+            || blockKind == .orderedList
+            || blockKind == .taskChecked
+            || blockKind == .taskUnchecked
+        else { return false }
+        let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
+        let listId = listDepth ?? 1
+        let listIntent = PresentationIntent(listKind, identity: listId)
+        let listItemIntent = PresentationIntent(
+            .listItem(ordinal: 1),
+            identity: listId * 1000 + 1,
+            parent: listIntent
+        )
+        attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .paragraph,
+            identity: 1,
+            parent: listItemIntent
+        )
+        attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
+        return true
+    }
+
+    private func listDelimiter(for blockKind: BlockKind) -> String? {
+        switch blockKind {
+        case .bulletList:
+            return "•"
+        case .taskChecked:
+            return "☑"
+        case .taskUnchecked:
+            return "☐"
+        default:
+            return nil
         }
     }
 
@@ -931,79 +989,146 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 continue
             }
 
-            var endIndex = index
-            var groupInfos: [(line: LineInfo, range: Range<AttributedString.Index>)] = [(line, lineRange)]
-            while endIndex + 1 < lines.count {
-                let nextLine = lines[endIndex + 1]
-                let nextRange = attributedRange(for: nextLine.range, in: text)
-                guard tableRowInfo(in: text, range: nextRange) != nil else { break }
-                endIndex += 1
-                groupInfos.append((nextLine, nextRange))
-            }
+            let group = tableRowGroup(
+                from: lines,
+                startIndex: index,
+                startRange: lineRange,
+                startInfo: info,
+                text: text
+            )
+            let columnWidths = tableColumnWidths(
+                for: group.ranges,
+                text: text,
+                string: string,
+                nsText: nsText,
+                cellPaddingX: cellPaddingX
+            )
+            let tabStops = tableTabStops(
+                columnWidths: columnWidths,
+                alignments: group.alignments,
+                cellPaddingX: cellPaddingX
+            )
+            applyTableTabStops(
+                tabStops,
+                cellPaddingX: cellPaddingX,
+                to: &text,
+                ranges: group.ranges
+            )
 
-            var alignments = info.alignments ?? []
-            if alignments.isEmpty {
-                for entry in groupInfos {
-                    if let rowAlignments = tableRowInfo(in: text, range: entry.range)?.alignments, !rowAlignments.isEmpty {
-                        alignments = rowAlignments
-                        break
-                    }
-                }
-            }
+            index = group.endIndex + 1
+        }
+    }
 
-            var columnWidths: [CGFloat] = []
-            for entry in groupInfos {
-                let cellRanges = splitCellRanges(in: text, lineRange: entry.range)
-                for (columnIndex, cellRange) in cellRanges.enumerated() {
-                    let nsRange = nsRange(for: cellRange, in: text, string: string)
-                    let measured = nsText.attributedSubstring(from: nsRange)
-                        .boundingRect(
-                            with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
-                            options: [.usesLineFragmentOrigin, .usesFontLeading],
-                            context: nil
-                        ).width
-                    let width = measured + cellPaddingX * 2
-                    if columnIndex >= columnWidths.count {
-                        columnWidths.append(width)
-                    } else {
-                        columnWidths[columnIndex] = max(columnWidths[columnIndex], width)
-                    }
-                }
-            }
+    private struct TableRowGroup {
+        let ranges: [Range<AttributedString.Index>]
+        let endIndex: Int
+        let alignments: [PresentationIntent.TableColumn.Alignment]
+    }
 
-            var tabStops: [NSTextTab] = []
-            var position = cellPaddingX
-            for (index, width) in columnWidths.enumerated() {
-                position += width
-                let alignment = alignments.indices.contains(index) ? alignments[index] : .left
-                let textAlignment: NSTextAlignment
-                switch alignment {
-                case .center:
-                    textAlignment = .center
-                case .right:
-                    textAlignment = .right
-                default:
-                    textAlignment = .left
-                }
-                tabStops.append(NSTextTab(textAlignment: textAlignment, location: position, options: [:]))
-            }
+    private func tableRowGroup(
+        from lines: [LineInfo],
+        startIndex: Int,
+        startRange: Range<AttributedString.Index>,
+        startInfo: TableRowInfo,
+        text: AttributedString
+    ) -> TableRowGroup {
+        var ranges: [Range<AttributedString.Index>] = [startRange]
+        var alignments = startInfo.alignments ?? []
+        var endIndex = startIndex
+        var nextIndex = startIndex + 1
 
-            for entry in groupInfos {
-                let currentStyle = (text[entry.range].paragraphStyle?.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
-                currentStyle.tabStops = tabStops
-                currentStyle.defaultTabInterval = tabStops.last?.location ?? currentStyle.defaultTabInterval
-                let baseHead = currentStyle.headIndent
-                currentStyle.headIndent = baseHead + cellPaddingX
-                currentStyle.firstLineHeadIndent = baseHead + cellPaddingX
-                if currentStyle.tailIndent == 0 {
-                    currentStyle.tailIndent = -cellPaddingX
+        while nextIndex < lines.count {
+            let line = lines[nextIndex]
+            let range = attributedRange(for: line.range, in: text)
+            guard let rowInfo = tableRowInfo(in: text, range: range) else { break }
+            ranges.append(range)
+            if alignments.isEmpty, let rowAlignments = rowInfo.alignments, !rowAlignments.isEmpty {
+                alignments = rowAlignments
+            }
+            endIndex = nextIndex
+            nextIndex += 1
+        }
+
+        return TableRowGroup(ranges: ranges, endIndex: endIndex, alignments: alignments)
+    }
+
+    private func tableColumnWidths(
+        for ranges: [Range<AttributedString.Index>],
+        text: AttributedString,
+        string: String,
+        nsText: NSAttributedString,
+        cellPaddingX: CGFloat
+    ) -> [CGFloat] {
+        var columnWidths: [CGFloat] = []
+
+        for range in ranges {
+            let cellRanges = splitCellRanges(in: text, lineRange: range)
+            for (columnIndex, cellRange) in cellRanges.enumerated() {
+                let nsRange = nsRange(for: cellRange, in: text, string: string)
+                let measured = nsText.attributedSubstring(from: nsRange)
+                    .boundingRect(
+                        with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+                        options: [.usesLineFragmentOrigin, .usesFontLeading],
+                        context: nil
+                    ).width
+                let width = measured + cellPaddingX * 2
+                if columnIndex >= columnWidths.count {
+                    columnWidths.append(width)
                 } else {
-                    currentStyle.tailIndent -= cellPaddingX
+                    columnWidths[columnIndex] = max(columnWidths[columnIndex], width)
                 }
-                text[entry.range].paragraphStyle = currentStyle
             }
+        }
 
-            index = endIndex + 1
+        return columnWidths
+    }
+
+    private func tableTabStops(
+        columnWidths: [CGFloat],
+        alignments: [PresentationIntent.TableColumn.Alignment],
+        cellPaddingX: CGFloat
+    ) -> [NSTextTab] {
+        var tabStops: [NSTextTab] = []
+        var position = cellPaddingX
+
+        for (index, width) in columnWidths.enumerated() {
+            position += width
+            let alignment = alignments.indices.contains(index) ? alignments[index] : .left
+            let textAlignment: NSTextAlignment
+            switch alignment {
+            case .center:
+                textAlignment = .center
+            case .right:
+                textAlignment = .right
+            default:
+                textAlignment = .left
+            }
+            tabStops.append(NSTextTab(textAlignment: textAlignment, location: position, options: [:]))
+        }
+
+        return tabStops
+    }
+
+    private func applyTableTabStops(
+        _ tabStops: [NSTextTab],
+        cellPaddingX: CGFloat,
+        to text: inout AttributedString,
+        ranges: [Range<AttributedString.Index>]
+    ) {
+        for range in ranges {
+            let currentStyle = (text[range].paragraphStyle?.mutableCopy() as? NSMutableParagraphStyle)
+                ?? NSMutableParagraphStyle()
+            currentStyle.tabStops = tabStops
+            currentStyle.defaultTabInterval = tabStops.last?.location ?? currentStyle.defaultTabInterval
+            let baseHead = currentStyle.headIndent
+            currentStyle.headIndent = baseHead + cellPaddingX
+            currentStyle.firstLineHeadIndent = baseHead + cellPaddingX
+            if currentStyle.tailIndent == 0 {
+                currentStyle.tailIndent = -cellPaddingX
+            } else {
+                currentStyle.tailIndent -= cellPaddingX
+            }
+            text[range].paragraphStyle = currentStyle
         }
     }
 
@@ -1053,7 +1178,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private func tableRowInfo(
         in text: AttributedString,
         range: Range<AttributedString.Index>
-    ) -> (isHeader: Bool, rowIndex: Int?, alignments: [PresentationIntent.TableColumn.Alignment]?)? {
+    ) -> TableRowInfo? {
         var isHeader = false
         var rowIndex: Int?
         var alignments: [PresentationIntent.TableColumn.Alignment]?
@@ -1079,7 +1204,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         guard hasCell else { return nil }
-        return (isHeader: isHeader, rowIndex: rowIndex, alignments: alignments)
+        return TableRowInfo(isHeader: isHeader, rowIndex: rowIndex, alignments: alignments)
     }
 
     private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
@@ -1316,23 +1441,31 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         if Self.bulletRegex?.firstMatch(in: lineText, range: range) != nil {
             return .bulletList
         }
-        if let regex = Self.headingRegex, let match = regex.firstMatch(in: lineText, range: range) {
-            let prefix = (lineText as NSString).substring(with: match.range)
-            let count = prefix.prefix { $0 == "#" }.count
-            switch count {
-            case 1: return .heading1
-            case 2: return .heading2
-            case 3: return .heading3
-            case 4: return .heading4
-            case 5: return .heading5
-            case 6: return .heading6
-            default: return nil
-            }
+        if let headingKind = headingBlockKind(in: lineText, range: range) {
+            return headingKind
         }
         if Self.quoteRegex?.firstMatch(in: lineText, range: range) != nil {
             return .blockquote
         }
         return nil
+    }
+
+    private func headingBlockKind(in lineText: String, range: NSRange) -> BlockKind? {
+        guard let regex = Self.headingRegex,
+              let match = regex.firstMatch(in: lineText, range: range) else {
+            return nil
+        }
+        let prefix = (lineText as NSString).substring(with: match.range)
+        let count = prefix.prefix { $0 == "#" }.count
+        switch count {
+        case 1: return .heading1
+        case 2: return .heading2
+        case 3: return .heading3
+        case 4: return .heading4
+        case 5: return .heading5
+        case 6: return .heading6
+        default: return nil
+        }
     }
 
     private func shouldShowPrefix(
@@ -1380,43 +1513,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func paragraphStyle(for blockKind: BlockKind, listDepth: Int? = nil) -> NSParagraphStyle? {
+        if let headingLevel = headingLevel(for: blockKind) {
+            return paragraphStyleForHeading(level: headingLevel)
+        }
+
         switch blockKind {
-        case .heading1:
-            return paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading1FontSize),
-                spacingBefore: 0,
-                spacingAfter: rem(0.3)
-            )
-        case .heading2:
-            return paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading2FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
-        case .heading3:
-            return paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading3FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
-        case .heading4:
-            return paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading4FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
-        case .heading5:
-            return paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading5FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
-        case .heading6:
-            return paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading6FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
         case .paragraph:
             return paragraphStyle(
                 lineSpacing: em(0.2, fontSize: baseFontSize),
@@ -1467,6 +1568,30 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 spacingAfter: 0
             )
         }
+    }
+
+    private func paragraphStyleForHeading(level: Int) -> NSParagraphStyle {
+        let fontSize: CGFloat
+        switch level {
+        case 1:
+            fontSize = heading1FontSize
+        case 2:
+            fontSize = heading2FontSize
+        case 3:
+            fontSize = heading3FontSize
+        case 4:
+            fontSize = heading4FontSize
+        case 5:
+            fontSize = heading5FontSize
+        default:
+            fontSize = heading6FontSize
+        }
+        let spacingBefore = level == 1 ? 0 : rem(1)
+        return paragraphStyle(
+            lineSpacing: em(0.3, fontSize: fontSize),
+            spacingBefore: spacingBefore,
+            spacingAfter: rem(0.3)
+        )
     }
 
     private func rem(_ value: CGFloat) -> CGFloat {

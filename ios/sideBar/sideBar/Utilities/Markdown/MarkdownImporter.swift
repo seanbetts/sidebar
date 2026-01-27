@@ -34,7 +34,14 @@ public struct MarkdownImporter {
 private struct MarkdownToAttributedStringWalker: MarkupWalker {
     var result = AttributedString()
 
-    private var listStack: [(ordered: Bool, depth: Int, listId: Int, itemIndex: Int)] = []
+    private struct ListStackEntry {
+        var ordered: Bool
+        var depth: Int
+        var listId: Int
+        var itemIndex: Int
+    }
+
+    private var listStack: [ListStackEntry] = []
     private var blockquoteDepth: Int = 0
     private var nextListId: Int = 1
     private let baseFontSize: CGFloat = 16
@@ -177,7 +184,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let depth = listStack.count + 1
         let listId = nextListId
         nextListId += 1
-        listStack.append((ordered: false, depth: depth, listId: listId, itemIndex: 0))
+        listStack.append(ListStackEntry(ordered: false, depth: depth, listId: listId, itemIndex: 0))
         let items = Array(unorderedList.listItems)
         for (index, item) in items.enumerated() {
             visitListItem(item, isFirst: index == 0, isLast: index == items.count - 1)
@@ -189,7 +196,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let depth = listStack.count + 1
         let listId = nextListId
         nextListId += 1
-        listStack.append((ordered: true, depth: depth, listId: listId, itemIndex: 0))
+        listStack.append(ListStackEntry(ordered: true, depth: depth, listId: listId, itemIndex: 0))
         let items = Array(orderedList.listItems)
         for (index, item) in items.enumerated() {
             visitListItem(item, isFirst: index == 0, isLast: index == items.count - 1)
@@ -482,43 +489,101 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         to text: inout AttributedString
     ) {
         let range = fullRange(in: text)
+        if let headingLevel = headingLevel(for: blockKind) {
+            applyHeadingIntent(level: headingLevel, to: &text, range: range)
+            return
+        }
+
         switch blockKind {
-        case .heading1:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 1), identity: 1)
-        case .heading2:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 2), identity: 2)
-        case .heading3:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 3), identity: 3)
-        case .heading4:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 4), identity: 4)
-        case .heading5:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 5), identity: 5)
-        case .heading6:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 6), identity: 6)
         case .blockquote:
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: quoteIntent
+            )
         case .codeBlock:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.codeBlock(languageHint: codeLanguage), identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .codeBlock(languageHint: codeLanguage),
+                identity: 1
+            )
         case .horizontalRule:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.thematicBreak, identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .thematicBreak,
+                identity: 1
+            )
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
-            let isOrdered = blockKind == .orderedList
-            let listKind: PresentationIntent.Kind = isOrdered ? .orderedList : .unorderedList
-            let listIdentity = listId ?? (listDepth ?? 1)
-            let listIntent = PresentationIntent(listKind, identity: listIdentity)
-            let ordinal = listOrdinal ?? 1
-            let listItemIntent = PresentationIntent(.listItem(ordinal: ordinal), identity: listIdentity * 1000 + ordinal, parent: listIntent)
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
-            if blockKind == .bulletList {
-                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "•"
-            } else if blockKind == .taskChecked {
-                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☑"
-            } else if blockKind == .taskUnchecked {
-                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☐"
-            }
+            applyListPresentationIntent(
+                blockKind,
+                listDepth: listDepth,
+                listOrdinal: listOrdinal,
+                listId: listId,
+                to: &text,
+                range: range
+            )
         case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
             text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
+        }
+    }
+
+    private func headingLevel(for blockKind: BlockKind) -> Int? {
+        switch blockKind {
+        case .heading1: return 1
+        case .heading2: return 2
+        case .heading3: return 3
+        case .heading4: return 4
+        case .heading5: return 5
+        case .heading6: return 6
+        default: return nil
+        }
+    }
+
+    private func applyHeadingIntent(
+        level: Int,
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .header(level: level),
+            identity: level
+        )
+    }
+
+    private func applyListPresentationIntent(
+        _ blockKind: BlockKind,
+        listDepth: Int?,
+        listOrdinal: Int?,
+        listId: Int?,
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+        let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
+        let listIdentity = listId ?? (listDepth ?? 1)
+        let listIntent = PresentationIntent(listKind, identity: listIdentity)
+        let ordinal = listOrdinal ?? 1
+        let listItemIntent = PresentationIntent(
+            .listItem(ordinal: ordinal),
+            identity: listIdentity * 1000 + ordinal,
+            parent: listIntent
+        )
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .paragraph,
+            identity: 1,
+            parent: listItemIntent
+        )
+        text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
+    }
+
+    private func listDelimiter(for blockKind: BlockKind) -> String? {
+        switch blockKind {
+        case .bulletList:
+            return "•"
+        case .taskChecked:
+            return "☑"
+        case .taskUnchecked:
+            return "☐"
+        default:
+            return nil
         }
     }
 
@@ -598,7 +663,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             identity: (rowIndex + 1) * 1000 + columnIndex,
             parent: rowIntent
         )
-        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: cellIntent)
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .paragraph,
+            identity: 1,
+            parent: cellIntent
+        )
     }
 
     private func makeTableIntent(columnAlignments: [Markdown.Table.ColumnAlignment?]) -> PresentationIntent {

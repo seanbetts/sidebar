@@ -9,7 +9,7 @@ import SwiftUI
 import WidgetKit
 
 @main
-struct sideBarWidgetsBundle: WidgetBundle {
+struct SideBarWidgetsBundle: WidgetBundle {
     var body: some Widget {
         // Home screen widgets
         TodayTasksWidget()

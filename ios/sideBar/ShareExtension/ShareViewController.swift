@@ -402,49 +402,31 @@ final class ShareViewController: UIViewController {
 
     private func mimeTypeForFilename(_ filename: String) -> String {
         let ext = (filename as NSString).pathExtension.lowercased()
-        switch ext {
-        case "jpg", "jpeg":
-            return "image/jpeg"
-        case "png":
-            return "image/png"
-        case "gif":
-            return "image/gif"
-        case "heic", "heif":
-            return "image/heic"
-        case "webp":
-            return "image/webp"
-        case "pdf":
-            return "application/pdf"
-        case "txt":
-            return "text/plain"
-        case "html", "htm":
-            return "text/html"
-        case "json":
-            return "application/json"
-        case "xml":
-            return "application/xml"
-        case "zip":
-            return "application/zip"
-        case "doc":
-            return "application/msword"
-        case "docx":
-            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        case "xls":
-            return "application/vnd.ms-excel"
-        case "xlsx":
-            return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        case "ppt":
-            return "application/vnd.ms-powerpoint"
-        case "pptx":
-            return "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        case "mp3":
-            return "audio/mpeg"
-        case "mp4":
-            return "video/mp4"
-        case "mov":
-            return "video/quicktime"
-        default:
-            return "application/octet-stream"
-        }
+        let mappings: [String: String] = [
+            "doc": "application/msword",
+            "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "gif": "image/gif",
+            "heic": "image/heic",
+            "heif": "image/heic",
+            "htm": "text/html",
+            "html": "text/html",
+            "jpeg": "image/jpeg",
+            "jpg": "image/jpeg",
+            "json": "application/json",
+            "mov": "video/quicktime",
+            "mp3": "audio/mpeg",
+            "mp4": "video/mp4",
+            "pdf": "application/pdf",
+            "png": "image/png",
+            "ppt": "application/vnd.ms-powerpoint",
+            "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "txt": "text/plain",
+            "webp": "image/webp",
+            "xls": "application/vnd.ms-excel",
+            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "xml": "application/xml",
+            "zip": "application/zip"
+        ]
+        return mappings[ext] ?? "application/octet-stream"
     }
 }

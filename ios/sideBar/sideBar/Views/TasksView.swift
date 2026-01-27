@@ -213,7 +213,11 @@ extension TasksDetailView {
     @ViewBuilder
     private func content(state: TasksViewState) -> some View {
         if viewModel.isLoading || (isSearchSelection(state.selection) && viewModel.searchPending) {
-            LoadingView(message: isSearchSelection(state.selection) ? "Loading search results..." : "Loading tasks...")
+            LoadingView(
+                message: isSearchSelection(state.selection)
+                    ? "Loading search results..."
+                    : "Loading tasks..."
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage {
             PlaceholderView(
@@ -233,29 +237,7 @@ extension TasksDetailView {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     ForEach(state.sections) { section in
-                        if !section.title.isEmpty {
-                            switch state.selection {
-                            case .today:
-                                todaySectionHeader(section: section, state: state)
-                                    .padding(.horizontal, DesignTokens.Spacing.md)
-                            case .upcoming, .completed:
-                                sectionHeaderLabel(
-                                    title: section.title,
-                                    iconName: "calendar"
-                                )
-                                .padding(.horizontal, DesignTokens.Spacing.md)
-                            case .group:
-                                groupSectionHeader(section: section, state: state)
-                                    .padding(.horizontal, DesignTokens.Spacing.md)
-                            default:
-                                Text(section.title)
-                                    .font(.caption)
-                                    .foregroundStyle(DesignTokens.Colors.textSecondary)
-                                    .padding(.horizontal, DesignTokens.Spacing.md)
-                            }
-                            Divider()
-                                .padding(.horizontal, DesignTokens.Spacing.md)
-                        }
+                        sectionHeaderView(section: section, state: state)
                         if section.tasks.isEmpty, case .upcoming = state.selection {
                             Label("No tasks due", systemImage: "checkmark.circle")
                                 .font(.subheadline)
@@ -309,6 +291,32 @@ extension TasksDetailView {
                 expandedTaskIds.removeAll()
             }
         }
+    }
+
+    @ViewBuilder
+    private func sectionHeaderView(section: TaskSection, state: TasksViewState) -> some View {
+        guard !section.title.isEmpty else { return }
+        switch state.selection {
+        case .today:
+            todaySectionHeader(section: section, state: state)
+                .padding(.horizontal, DesignTokens.Spacing.md)
+        case .upcoming, .completed:
+            sectionHeaderLabel(
+                title: section.title,
+                iconName: "calendar"
+            )
+            .padding(.horizontal, DesignTokens.Spacing.md)
+        case .group:
+            groupSectionHeader(section: section, state: state)
+                .padding(.horizontal, DesignTokens.Spacing.md)
+        default:
+            Text(section.title)
+                .font(.caption)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                .padding(.horizontal, DesignTokens.Spacing.md)
+        }
+        Divider()
+            .padding(.horizontal, DesignTokens.Spacing.md)
     }
 
     @ViewBuilder

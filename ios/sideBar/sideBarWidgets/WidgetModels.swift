@@ -45,7 +45,7 @@ public struct WidgetTaskData: Codable, Equatable {
             WidgetTask(id: "1", title: "Review project proposal", projectName: "Work", deadline: "2026-01-25"),
             WidgetTask(id: "2", title: "Call dentist", hasNotes: true, deadline: "2026-01-26"),
             WidgetTask(id: "3", title: "Buy groceries"),
-            WidgetTask(id: "4", title: "Prepare presentation", projectName: "Work", deadline: "2026-01-27"),
+            WidgetTask(id: "4", title: "Prepare presentation", projectName: "Work", deadline: "2026-01-27")
         ],
         totalCount: 6
     )

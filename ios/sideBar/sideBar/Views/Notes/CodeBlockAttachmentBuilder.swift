@@ -188,10 +188,8 @@ enum CodeBlockAttachmentBuilder {
         source: NSAttributedString
     ) -> BlockKind? {
         guard index < lineRanges.count else { return nil }
-        for i in index..<lineRanges.count {
-            if lineRanges[i].length > 0 {
-                return blockKind(at: lineRanges[i].location, in: source)
-            }
+        for lineIndex in index..<lineRanges.count where lineRanges[lineIndex].length > 0 {
+            return blockKind(at: lineRanges[lineIndex].location, in: source)
         }
         return nil
     }
