@@ -52,6 +52,18 @@ repos:
   # iOS - Xcode tests (manual only)
   - repo: local
     hooks:
+      - id: swiftlint
+        name: swiftlint
+        entry: bash -lc 'cd ios/sideBar && swiftlint --strict'
+        language: system
+        files: ^ios/.*\.swift$
+        pass_filenames: false
+      - id: ios-doc-comments
+        name: ios-doc-comments
+        entry: python scripts/check_ios_doc_comments.py
+        language: system
+        files: ^ios/sideBar/sideBar/(ViewModels|Services)/.*\.swift$
+        pass_filenames: false
       - id: ios-tests
         name: ios-tests
         entry: scripts/test-ios.sh

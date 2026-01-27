@@ -495,6 +495,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
 
         switch blockKind {
+        case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
+            return
         case .blockquote:
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
             text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
@@ -574,7 +576,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
     }
 
-    private func listDelimiter(for blockKind: BlockKind) -> String? {
+    private func listDelimiter(for blockKind: BlockKind) -> Character? {
         switch blockKind {
         case .bulletList:
             return "•"
