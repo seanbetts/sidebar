@@ -300,6 +300,7 @@ extension TasksDetailView {
                                             isExpanded: isExpandable && expandedTaskIds.contains(task.id),
                                             onComplete: { Task { await viewModel.completeTask(task: task) } },
                                             onOpenNotes: { openNotes(task) },
+                                            onOpenDue: { openDue(task) },
                                             onSelect: { setActiveTask(task) },
                                             onToggleExpanded: {
                                                 guard isExpandable, !task.isPreview else { return }
