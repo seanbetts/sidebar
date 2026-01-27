@@ -130,6 +130,8 @@ public enum TasksUtils {
         let groupTitle = task.groupId.flatMap { groupTitleById[$0] } ?? ""
 
         switch selection {
+        case .none:
+            return projectTitle.isEmpty ? selectionLabel : projectTitle
         case .project:
             return projectTitle.isEmpty ? selectionLabel : projectTitle
         case .group:

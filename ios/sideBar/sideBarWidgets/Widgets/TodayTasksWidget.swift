@@ -110,7 +110,7 @@ struct TodayTasksWidgetView: View {
     }
 
     private var isCompact: Bool {
-        family == .systemSmall || family == .systemMedium
+        family == .systemSmall
     }
 
     private var showMoreIndicator: Bool {
@@ -256,7 +256,9 @@ struct TaskRowView: View {
             if WidgetTasksUtils.isOverdue(task) {
                 Image(systemName: "exclamationmark.circle.fill")
                     .font(.caption2)
+                    .symbolRenderingMode(.monochrome)
                     .foregroundStyle(.secondary)
+                    .widgetAccentable(false)
             }
         }
     }
