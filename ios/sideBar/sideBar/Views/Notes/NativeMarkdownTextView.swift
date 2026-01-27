@@ -18,7 +18,7 @@ struct NativeMarkdownTextView: UIViewRepresentable {
     var isSelectable: Bool = true
     var syncSelection: Bool = true
     var isScrollEnabled: Bool = true
-    var onTap: (() -> Void)? = nil
+    var onTap: (() -> Void)?
 
     func makeUIView(context: Context) -> UITextView {
         let textView = MarkdownTextView()
@@ -317,10 +317,10 @@ private final class MarkdownTextView: UITextView {
             // Horizontal row separators
             for rowIndex in index...endIndex {
                 guard let rowRect = unionRect(lines[rowIndex].rects) else { continue }
-                let y = rowRect.maxY
+                let rowMaxY = rowRect.maxY
                 let path = UIBezierPath()
-                path.move(to: CGPoint(x: tableRect.minX, y: y))
-                path.addLine(to: CGPoint(x: tableRect.maxX, y: y))
+                path.move(to: CGPoint(x: tableRect.minX, y: rowMaxY))
+                path.addLine(to: CGPoint(x: tableRect.maxX, y: rowMaxY))
                 strokeColor.setStroke()
                 path.lineWidth = 1
                 path.stroke()
@@ -329,10 +329,10 @@ private final class MarkdownTextView: UITextView {
             // Vertical column separators based on tab positions in header row
             let headerRange = lines[index].range
             let tabPositions = tabStopsXPositions(in: headerRange).map { $0 + tableRect.minX }
-            for x in tabPositions {
+            for tabPositionX in tabPositions {
                 let path = UIBezierPath()
-                path.move(to: CGPoint(x: x, y: tableRect.minY))
-                path.addLine(to: CGPoint(x: x, y: tableRect.maxY))
+                path.move(to: CGPoint(x: tabPositionX, y: tableRect.minY))
+                path.addLine(to: CGPoint(x: tabPositionX, y: tableRect.maxY))
                 strokeColor.setStroke()
                 path.lineWidth = 1
                 path.stroke()
@@ -346,10 +346,10 @@ private final class MarkdownTextView: UITextView {
         let strokeColor = UIColor(DesignTokens.Colors.border)
         for line in lines where line.blockKind == .horizontalRule {
             guard let rect = unionRect(line.rects) else { continue }
-            let y = rect.midY
+            let midY = rect.midY
             let path = UIBezierPath()
-            path.move(to: CGPoint(x: rect.minX, y: y))
-            path.addLine(to: CGPoint(x: rect.maxX, y: y))
+            path.move(to: CGPoint(x: rect.minX, y: midY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: midY))
             strokeColor.setStroke()
             path.lineWidth = 1
             path.stroke()
@@ -493,7 +493,7 @@ struct NativeMarkdownTextView: NSViewRepresentable {
     var isSelectable: Bool = true
     var syncSelection: Bool = true
     var isScrollEnabled: Bool = true
-    var onTap: (() -> Void)? = nil
+    var onTap: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = MarkdownTextView()
@@ -802,10 +802,10 @@ private final class MarkdownTextView: NSTextView {
 
             for rowIndex in index...endIndex {
                 guard let rowRect = unionRect(lines[rowIndex].rects) else { continue }
-                let y = rowRect.maxY
+                let rowMaxY = rowRect.maxY
                 let path = NSBezierPath()
-                path.move(to: CGPoint(x: tableRect.minX, y: y))
-                path.line(to: CGPoint(x: tableRect.maxX, y: y))
+                path.move(to: CGPoint(x: tableRect.minX, y: rowMaxY))
+                path.line(to: CGPoint(x: tableRect.maxX, y: rowMaxY))
                 strokeColor.setStroke()
                 path.lineWidth = 1
                 path.stroke()
@@ -813,10 +813,10 @@ private final class MarkdownTextView: NSTextView {
 
             let headerRange = lines[index].range
             let tabPositions = tabStopsXPositions(in: headerRange).map { $0 + tableRect.minX }
-            for x in tabPositions {
+            for tabPositionX in tabPositions {
                 let path = NSBezierPath()
-                path.move(to: CGPoint(x: x, y: tableRect.minY))
-                path.line(to: CGPoint(x: x, y: tableRect.maxY))
+                path.move(to: CGPoint(x: tabPositionX, y: tableRect.minY))
+                path.line(to: CGPoint(x: tabPositionX, y: tableRect.maxY))
                 strokeColor.setStroke()
                 path.lineWidth = 1
                 path.stroke()
@@ -830,10 +830,10 @@ private final class MarkdownTextView: NSTextView {
         let strokeColor = NSColor(DesignTokens.Colors.border)
         for line in lines where line.blockKind == .horizontalRule {
             guard let rect = unionRect(line.rects) else { continue }
-            let y = rect.midY
+            let midY = rect.midY
             let path = NSBezierPath()
-            path.move(to: CGPoint(x: rect.minX, y: y))
-            path.line(to: CGPoint(x: rect.maxX, y: y))
+            path.move(to: CGPoint(x: rect.minX, y: midY))
+            path.line(to: CGPoint(x: rect.maxX, y: midY))
             strokeColor.setStroke()
             path.lineWidth = 1
             path.stroke()

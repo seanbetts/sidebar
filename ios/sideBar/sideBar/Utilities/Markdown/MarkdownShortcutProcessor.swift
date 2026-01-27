@@ -284,43 +284,100 @@ public struct MarkdownShortcutProcessor {
         blockKind: BlockKind,
         listDepth: Int?
     ) {
+        if let headingLevel = headingLevel(for: blockKind) {
+            applyHeadingIntent(to: &text, range: range, level: headingLevel)
+            return
+        }
+        if applyListIntent(to: &text, range: range, blockKind: blockKind, listDepth: listDepth) {
+            return
+        }
         switch blockKind {
-        case .heading1:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 1), identity: 1)
-        case .heading2:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 2), identity: 2)
-        case .heading3:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 3), identity: 3)
-        case .heading4:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 4), identity: 4)
-        case .heading5:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 5), identity: 5)
-        case .heading6:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 6), identity: 6)
         case .blockquote:
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: quoteIntent
+            )
         case .codeBlock:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .codeBlock(languageHint: nil),
+                identity: 1
+            )
         case .horizontalRule:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.thematicBreak, identity: 1)
-        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
-            let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
-            let listId = listDepth ?? 1
-            let listIntent = PresentationIntent(listKind, identity: listId)
-            let listItemIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
-            if blockKind == .bulletList {
-                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "•"
-            } else if blockKind == .taskChecked {
-                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☑"
-            } else if blockKind == .taskUnchecked {
-                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☐"
-            } else {
-                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
-            }
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .thematicBreak,
+                identity: 1
+            )
         case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1
+            )
+        }
+    }
+
+    private static func headingLevel(for blockKind: BlockKind) -> Int? {
+        switch blockKind {
+        case .heading1: return 1
+        case .heading2: return 2
+        case .heading3: return 3
+        case .heading4: return 4
+        case .heading5: return 5
+        case .heading6: return 6
+        default: return nil
+        }
+    }
+
+    private static func applyHeadingIntent(
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        level: Int
+    ) {
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .header(level: level),
+            identity: level
+        )
+    }
+
+    private static func applyListIntent(
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        blockKind: BlockKind,
+        listDepth: Int?
+    ) -> Bool {
+        guard blockKind == .bulletList
+            || blockKind == .orderedList
+            || blockKind == .taskChecked
+            || blockKind == .taskUnchecked
+        else { return false }
+        let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
+        let listId = listDepth ?? 1
+        let listIntent = PresentationIntent(listKind, identity: listId)
+        let listItemIntent = PresentationIntent(
+            .listItem(ordinal: 1),
+            identity: listId * 1000 + 1,
+            parent: listIntent
+        )
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .paragraph,
+            identity: 1,
+            parent: listItemIntent
+        )
+        text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
+        return true
+    }
+
+    private static func listDelimiter(for blockKind: BlockKind) -> String? {
+        switch blockKind {
+        case .bulletList:
+            return "•"
+        case .taskChecked:
+            return "☑"
+        case .taskUnchecked:
+            return "☐"
+        default:
+            return nil
         }
     }
 
@@ -329,36 +386,13 @@ public struct MarkdownShortcutProcessor {
         range: Range<AttributedString.Index>,
         blockKind: BlockKind
     ) {
-        switch blockKind {
-        case .heading1:
-            text[range].font = .system(size: 32, weight: .bold)
-        case .heading2:
-            text[range].font = .system(size: 24, weight: .semibold)
-        case .heading3:
-            text[range].font = .system(size: 20, weight: .semibold)
-        case .heading4:
-            text[range].font = .system(size: 18, weight: .semibold)
-        case .heading5:
-            text[range].font = .system(size: 17, weight: .semibold)
-        case .heading6:
-            text[range].font = .system(size: 16, weight: .semibold)
-        case .codeBlock:
-            text[range].font = Font.system(size: 14, weight: .regular, design: .monospaced)
-            text[range].backgroundColor = DesignTokens.Colors.muted
-        default:
-            text[range].font = Font.system(size: 16)
+        text[range].font = blockFont(for: blockKind)
+        if let backgroundColor = blockBackgroundColor(for: blockKind) {
+            text[range].backgroundColor = backgroundColor
         }
-
-        switch blockKind {
-        case .blockquote, .taskChecked:
-            text[range].foregroundColor = DesignTokens.Colors.textSecondary
-        default:
-            text[range].foregroundColor = DesignTokens.Colors.textPrimary
-        }
-
+        text[range].foregroundColor = blockForegroundColor(for: blockKind)
         if blockKind == .taskChecked {
             text[range].strikethroughStyle = .single
-            text[range].foregroundColor = DesignTokens.Colors.textSecondary
         }
     }
 
@@ -367,71 +401,91 @@ public struct MarkdownShortcutProcessor {
         blockKind: BlockKind,
         listDepth: Int?
     ) {
-        switch blockKind {
-        case .heading1:
-            attrs.font = .system(size: 32, weight: .bold)
-        case .heading2:
-            attrs.font = .system(size: 24, weight: .semibold)
-        case .heading3:
-            attrs.font = .system(size: 20, weight: .semibold)
-        case .heading4:
-            attrs.font = .system(size: 18, weight: .semibold)
-        case .heading5:
-            attrs.font = .system(size: 17, weight: .semibold)
-        case .heading6:
-            attrs.font = .system(size: 16, weight: .semibold)
-        case .codeBlock:
-            attrs.font = Font.system(size: 14, weight: .regular, design: .monospaced)
-            attrs.backgroundColor = DesignTokens.Colors.muted
-        default:
-            attrs.font = Font.system(size: 16)
+        attrs.font = blockFont(for: blockKind)
+        attrs.foregroundColor = blockForegroundColor(for: blockKind)
+        if let backgroundColor = blockBackgroundColor(for: blockKind) {
+            attrs.backgroundColor = backgroundColor
         }
-
-        switch blockKind {
-        case .blockquote, .taskChecked:
-            attrs.foregroundColor = DesignTokens.Colors.textSecondary
-        default:
-            attrs.foregroundColor = DesignTokens.Colors.textPrimary
-        }
-
         if blockKind == .taskChecked {
             attrs.strikethroughStyle = .single
         }
 
-        switch blockKind {
-        case .bulletList:
-            attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "•"
-        case .taskChecked:
-            attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☑"
-        case .taskUnchecked:
-            attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☐"
-        default:
-            attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
-        }
+        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
 
-        let listKind: PresentationIntent.Kind? = {
-            switch blockKind {
-            case .orderedList:
-                return .orderedList
-            case .bulletList, .taskChecked, .taskUnchecked:
-                return .unorderedList
-            default:
-                return nil
-            }
-        }()
-
-        if let listKind {
+        if let listKind = listKind(for: blockKind) {
             let listId = listDepth ?? 1
             let listIntent = PresentationIntent(listKind, identity: listId)
             let listItemIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
-            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: listItemIntent
+            )
         } else if blockKind == .blockquote {
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
-            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: quoteIntent
+            )
         } else if blockKind == .codeBlock {
-            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .codeBlock(languageHint: nil),
+                identity: 1
+            )
         } else {
             attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
+        }
+    }
+
+    private static func blockFont(for blockKind: BlockKind) -> Font {
+        if let level = headingLevel(for: blockKind) {
+            return headingFont(for: level)
+        }
+        if blockKind == .codeBlock {
+            return Font.system(size: 14, weight: .regular, design: .monospaced)
+        }
+        return Font.system(size: 16)
+    }
+
+    private static func headingFont(for level: Int) -> Font {
+        switch level {
+        case 1:
+            return .system(size: 32, weight: .bold)
+        case 2:
+            return .system(size: 24, weight: .semibold)
+        case 3:
+            return .system(size: 20, weight: .semibold)
+        case 4:
+            return .system(size: 18, weight: .semibold)
+        case 5:
+            return .system(size: 17, weight: .semibold)
+        default:
+            return .system(size: 16, weight: .semibold)
+        }
+    }
+
+    private static func blockForegroundColor(for blockKind: BlockKind) -> Color {
+        switch blockKind {
+        case .blockquote, .taskChecked:
+            return DesignTokens.Colors.textSecondary
+        default:
+            return DesignTokens.Colors.textPrimary
+        }
+    }
+
+    private static func blockBackgroundColor(for blockKind: BlockKind) -> Color? {
+        blockKind == .codeBlock ? DesignTokens.Colors.muted : nil
+    }
+
+    private static func listKind(for blockKind: BlockKind) -> PresentationIntent.Kind? {
+        switch blockKind {
+        case .orderedList:
+            return .orderedList
+        case .bulletList, .taskChecked, .taskUnchecked:
+            return .unorderedList
+        default:
+            return nil
         }
     }
 }

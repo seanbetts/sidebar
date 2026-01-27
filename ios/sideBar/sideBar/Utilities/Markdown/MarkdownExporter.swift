@@ -6,100 +6,215 @@ public struct MarkdownExporter {
     public init() {}
 
     public func markdown(from attributedString: AttributedString, frontmatter: String? = nil) -> String {
-        let lines = splitLines(in: attributedString)
-        var output: [String] = []
-        var isInCodeBlock = false
-        var lineIndex = 0
-        var previousContext: ExportLineContext?
+        let body = exportBody(from: attributedString)
+        return mergeFrontmatter(frontmatter, body: body)
+    }
+}
 
-        while lineIndex < lines.count {
-            let lineRange = lines[lineIndex]
+@available(iOS 26.0, macOS 26.0, *)
+private struct ExportLineResult {
+    let output: [String]
+    let nextIndex: Int
+    let isInCodeBlock: Bool
+    let context: ExportLineContext?
+}
 
-            if let tableBlock = tableBlock(from: attributedString, lines: lines, startIndex: lineIndex) {
-                if isInCodeBlock {
-                    closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
-                }
-                let currentContext = ExportLineContext.tableBlock()
-                if shouldInsertBlankLine(
-                    previous: previousContext,
-                    current: currentContext,
-                    isSoftBreak: false
-                ) {
-                    output.append("")
-                }
-                output.append(contentsOf: tableBlock.markdown)
-                previousContext = currentContext
-                lineIndex = tableBlock.nextIndex
-                continue
-            }
+@available(iOS 26.0, macOS 26.0, *)
+private func exportBody(from attributedString: AttributedString) -> String {
+    exportLines(in: attributedString).joined(separator: "\n")
+}
 
-            let lineText = String(attributedString[lineRange].characters)
-            let blockKind = attributedString.blockKind(in: lineRange) ?? .paragraph
+@available(iOS 26.0, macOS 26.0, *)
+private func mergeFrontmatter(_ frontmatter: String?, body: String) -> String {
+    guard let frontmatter, !frontmatter.isEmpty else {
+        return body
+    }
+    if body.isEmpty {
+        return frontmatter
+    }
+    return frontmatter + "\n\n" + body
+}
 
-            if isInCodeBlock && blockKind != .codeBlock {
-                closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
-            }
+@available(iOS 26.0, macOS 26.0, *)
+private func exportLines(in attributedString: AttributedString) -> [String] {
+    let lines = splitLines(in: attributedString)
+    var output: [String] = []
+    var isInCodeBlock = false
+    var lineIndex = 0
+    var previousContext: ExportLineContext?
 
-            if blockKind == .blankLine {
-                lineIndex += 1
-                continue
-            }
-
-            let listDepth = listDepth(in: attributedString, range: lineRange)
-            let codeLanguage = codeLanguage(in: attributedString, range: lineRange)
-            let currentContext = ExportLineContext(
-                blockKind: blockKind,
-                listDepth: listDepth,
-                listIdentity: listIdentity(in: attributedString, range: lineRange),
-                isListItem: isListItemBlockKind(blockKind),
-                isBlockquote: isBlockquoteLine(blockKind: blockKind, lineText: lineText),
-                isCodeBlock: blockKind == .codeBlock,
-                isTableBlock: false
-            )
-            if shouldInsertBlankLine(
-                previous: previousContext,
-                current: currentContext,
-                isSoftBreak: false
-            ) {
-                output.append("")
-            }
-
-            switch blockKind {
-            case .codeBlock:
-                if !isInCodeBlock {
-                    let fence = codeLanguage.map { "```\($0)" } ?? "```"
-                    output.append(fence)
-                    isInCodeBlock = true
-                }
-                output.append(lineText)
-            case .horizontalRule:
-                output.append("---")
-            case .gallery, .htmlBlock:
-                output.append(lineText)
-            case .imageCaption:
-                output.append("\(MarkdownRendering.imageCaptionMarker) \(lineText)")
-            default:
-                let prefix = hasExistingBlockPrefix(blockKind: blockKind, lineText: lineText)
-                    ? ""
-                    : prefix(for: blockKind, listDepth: listDepth)
-                let inlineMarkdown = serializeInline(attributedString[lineRange])
-                output.append(prefix + inlineMarkdown)
-            }
-
-            previousContext = currentContext
-            lineIndex += 1
+    while lineIndex < lines.count {
+        if let tableResult = exportTableBlock(
+            from: attributedString,
+            lines: lines,
+            startIndex: lineIndex,
+            isInCodeBlock: &isInCodeBlock,
+            previousContext: previousContext
+        ) {
+            output.append(contentsOf: tableResult.output)
+            previousContext = tableResult.context
+            lineIndex = tableResult.nextIndex
+            continue
         }
 
+        let lineResult = exportStandardLine(
+            from: attributedString,
+            lineRange: lines[lineIndex],
+            lineIndex: lineIndex,
+            isInCodeBlock: &isInCodeBlock,
+            previousContext: previousContext
+        )
+        output.append(contentsOf: lineResult.output)
+        previousContext = lineResult.context
+        lineIndex = lineResult.nextIndex
+    }
+
+    closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
+    return output
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func exportTableBlock(
+    from attributedString: AttributedString,
+    lines: [Range<AttributedString.Index>],
+    startIndex: Int,
+    isInCodeBlock: inout Bool,
+    previousContext: ExportLineContext?
+) -> ExportLineResult? {
+    guard let tableBlock = tableBlock(from: attributedString, lines: lines, startIndex: startIndex) else {
+        return nil
+    }
+
+    var output: [String] = []
+    closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
+    let currentContext = ExportLineContext.tableBlock()
+    if shouldInsertBlankLine(
+        previous: previousContext,
+        current: currentContext,
+        isSoftBreak: false
+    ) {
+        output.append("")
+    }
+    output.append(contentsOf: tableBlock.markdown)
+    return ExportLineResult(
+        output: output,
+        nextIndex: tableBlock.nextIndex,
+        isInCodeBlock: isInCodeBlock,
+        context: currentContext
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func exportStandardLine(
+    from attributedString: AttributedString,
+    lineRange: Range<AttributedString.Index>,
+    lineIndex: Int,
+    isInCodeBlock: inout Bool,
+    previousContext: ExportLineContext?
+) -> ExportLineResult {
+    var output: [String] = []
+    let lineText = String(attributedString[lineRange].characters)
+    let blockKind = attributedString.blockKind(in: lineRange) ?? .paragraph
+
+    if isInCodeBlock && blockKind != .codeBlock {
         closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
+    }
 
-        let body = output.joined(separator: "\n")
-        guard let frontmatter, !frontmatter.isEmpty else {
-            return body
+    if blockKind == .blankLine {
+        return ExportLineResult(
+            output: output,
+            nextIndex: lineIndex + 1,
+            isInCodeBlock: isInCodeBlock,
+            context: previousContext
+        )
+    }
+
+    let listDepth = listDepth(in: attributedString, range: lineRange)
+    let codeLanguage = codeLanguage(in: attributedString, range: lineRange)
+    let currentContext = exportLineContext(
+        attributedString: attributedString,
+        lineRange: lineRange,
+        lineText: lineText,
+        blockKind: blockKind,
+        listDepth: listDepth
+    )
+    if shouldInsertBlankLine(
+        previous: previousContext,
+        current: currentContext,
+        isSoftBreak: false
+    ) {
+        output.append("")
+    }
+
+    appendLineOutput(
+        to: &output,
+        blockKind: blockKind,
+        lineText: lineText,
+        lineRange: lineRange,
+        listDepth: listDepth,
+        codeLanguage: codeLanguage,
+        isInCodeBlock: &isInCodeBlock,
+        attributedString: attributedString
+    )
+
+    return ExportLineResult(
+        output: output,
+        nextIndex: lineIndex + 1,
+        isInCodeBlock: isInCodeBlock,
+        context: currentContext
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func exportLineContext(
+    attributedString: AttributedString,
+    lineRange: Range<AttributedString.Index>,
+    lineText: String,
+    blockKind: BlockKind,
+    listDepth: Int?
+) -> ExportLineContext {
+    ExportLineContext(
+        blockKind: blockKind,
+        listDepth: listDepth,
+        listIdentity: listIdentity(in: attributedString, range: lineRange),
+        isListItem: isListItemBlockKind(blockKind),
+        isBlockquote: isBlockquoteLine(blockKind: blockKind, lineText: lineText),
+        isCodeBlock: blockKind == .codeBlock,
+        isTableBlock: false
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func appendLineOutput(
+    to output: inout [String],
+    blockKind: BlockKind,
+    lineText: String,
+    lineRange: Range<AttributedString.Index>,
+    listDepth: Int?,
+    codeLanguage: String?,
+    isInCodeBlock: inout Bool,
+    attributedString: AttributedString
+) {
+    switch blockKind {
+    case .codeBlock:
+        if !isInCodeBlock {
+            let fence = codeLanguage.map { "```\($0)" } ?? "```"
+            output.append(fence)
+            isInCodeBlock = true
         }
-        if body.isEmpty {
-            return frontmatter
-        }
-        return frontmatter + "\n\n" + body
+        output.append(lineText)
+    case .horizontalRule:
+        output.append("---")
+    case .gallery, .htmlBlock:
+        output.append(lineText)
+    case .imageCaption:
+        output.append("\(MarkdownRendering.imageCaptionMarker) \(lineText)")
+    default:
+        let prefix = hasExistingBlockPrefix(blockKind: blockKind, lineText: lineText)
+            ? ""
+            : prefix(for: blockKind, listDepth: listDepth)
+        let inlineMarkdown = serializeInline(attributedString[lineRange])
+        output.append(prefix + inlineMarkdown)
     }
 }
 
@@ -347,10 +462,8 @@ private func lineHasInlineMarkers(_ lineText: String) -> Bool {
         #"_[^_]+?_"#
     ]
 
-    for pattern in patterns {
-        if lineText.range(of: pattern, options: .regularExpression) != nil {
-            return true
-        }
+    for pattern in patterns where lineText.range(of: pattern, options: .regularExpression) != nil {
+        return true
     }
 
     return false
@@ -359,31 +472,43 @@ private func lineHasInlineMarkers(_ lineText: String) -> Bool {
 @available(iOS 26.0, macOS 26.0, *)
 private func hasExistingBlockPrefix(blockKind: BlockKind, lineText: String) -> Bool {
     let trimmed = lineText.trimmingCharacters(in: .whitespaces)
+    if let prefix = headingPrefix(for: blockKind) {
+        return trimmed.hasPrefix(prefix)
+    }
+    if let pattern = blockPrefixPattern(for: blockKind) {
+        return trimmed.range(of: pattern, options: .regularExpression) != nil
+    }
+    return false
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func headingPrefix(for blockKind: BlockKind) -> String? {
     switch blockKind {
-    case .heading1:
-        return trimmed.hasPrefix("# ")
-    case .heading2:
-        return trimmed.hasPrefix("## ")
-    case .heading3:
-        return trimmed.hasPrefix("### ")
-    case .heading4:
-        return trimmed.hasPrefix("#### ")
-    case .heading5:
-        return trimmed.hasPrefix("##### ")
-    case .heading6:
-        return trimmed.hasPrefix("###### ")
+    case .heading1: return "# "
+    case .heading2: return "## "
+    case .heading3: return "### "
+    case .heading4: return "#### "
+    case .heading5: return "##### "
+    case .heading6: return "###### "
+    default: return nil
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func blockPrefixPattern(for blockKind: BlockKind) -> String? {
+    switch blockKind {
     case .bulletList:
-        return trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("+ ")
+        return #"^[-+*]\s"#
     case .orderedList:
-        return trimmed.range(of: #"^\d+\.\s"#, options: .regularExpression) != nil
+        return #"^\d+\.\s"#
     case .taskChecked:
-        return trimmed.range(of: #"^[-+*]\s+\[[xX]\]\s"#, options: .regularExpression) != nil
+        return #"^[-+*]\s+\[[xX]\]\s"#
     case .taskUnchecked:
-        return trimmed.range(of: #"^[-+*]\s+\[\s\]\s"#, options: .regularExpression) != nil
+        return #"^[-+*]\s+\[\s\]\s"#
     case .blockquote:
-        return trimmed.hasPrefix("> ")
+        return #"^>\s"#
     default:
-        return false
+        return nil
     }
 }
 
@@ -442,7 +567,7 @@ private struct TableRowInfo {
 @available(iOS 26.0, macOS 26.0, *)
 private func tableRowInfo(in text: AttributedString, range: Range<AttributedString.Index>) -> TableRowInfo? {
     var isHeader = false
-    var alignments: [PresentationIntent.TableColumn.Alignment]? = nil
+    var alignments: [PresentationIntent.TableColumn.Alignment]?
     var hasTableCell = false
 
     for run in text[range].runs {
