@@ -292,6 +292,10 @@ public struct MarkdownShortcutProcessor {
             return
         }
         switch blockKind {
+        case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
+            return
+        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            return
         case .blockquote:
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
             text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
@@ -368,7 +372,7 @@ public struct MarkdownShortcutProcessor {
         return true
     }
 
-    private static func listDelimiter(for blockKind: BlockKind) -> String? {
+    private static func listDelimiter(for blockKind: BlockKind) -> Character? {
         switch blockKind {
         case .bulletList:
             return "•"

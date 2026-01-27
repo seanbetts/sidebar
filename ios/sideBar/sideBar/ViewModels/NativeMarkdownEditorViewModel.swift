@@ -9,6 +9,7 @@ import AppKit
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
+/// View model for editing and styling native markdown content.
 public final class NativeMarkdownEditorViewModel: ObservableObject {
     @Published public var attributedContent: AttributedString = AttributedString()
     @Published public var selection: AttributedTextSelection = AttributedTextSelection()
@@ -416,7 +417,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         var traits = font.fontDescriptor.symbolicTraits
         if bold { traits.insert(.bold) } else { traits.remove(.bold) }
         if italic { traits.insert(.italic) } else { traits.remove(.italic) }
-        guard let descriptor = font.fontDescriptor.withSymbolicTraits(traits) else { return font }
+        let descriptor = font.fontDescriptor.withSymbolicTraits(traits)
         return NSFont(descriptor: descriptor, size: font.pointSize) ?? font
 #endif
     }
@@ -709,6 +710,10 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             return
         }
         switch blockKind {
+        case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
+            return
+        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            return
         case .blockquote:
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
             attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
@@ -780,7 +785,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         return true
     }
 
-    private func listDelimiter(for blockKind: BlockKind) -> String? {
+    private func listDelimiter(for blockKind: BlockKind) -> Character? {
         switch blockKind {
         case .bulletList:
             return "•"
@@ -1518,6 +1523,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         switch blockKind {
+        case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
+            return paragraphStyleForHeading(level: headingLevel(for: blockKind) ?? 1)
         case .paragraph:
             return paragraphStyle(
                 lineSpacing: em(0.2, fontSize: baseFontSize),
@@ -1623,6 +1630,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+/// Formatting actions available for native markdown editing.
 public enum MarkdownFormatting {
     case bold
     case italic

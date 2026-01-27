@@ -506,7 +506,6 @@ struct NativeMarkdownTextView: NSViewRepresentable {
         textView.textContainer?.lineFragmentPadding = 0
         textView.textStorage?.setAttributedString(displayText(for: text, isEditable: isEditable))
         let tap = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
-        tap.cancelsTouchesInView = false
         textView.addGestureRecognizer(tap)
         context.coordinator.tapRecognizer = tap
 
