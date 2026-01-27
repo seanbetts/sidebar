@@ -1,5 +1,9 @@
 import Combine
 import Foundation
+#if os(iOS)
+import UIKit
+import UserNotifications
+#endif
 
 extension AppEnvironment {
     func configureSubscriptions() {
@@ -8,6 +12,7 @@ extension AppEnvironment {
         }
         forwardObjectWillChange()
         monitorNetwork()
+        setupTaskBadgeUpdates()
 
         // Sync initial auth state to widgets
         WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)
@@ -99,4 +104,26 @@ extension AppEnvironment {
             }
             .store(in: &cancellables)
     }
+
+    private func setupTaskBadgeUpdates() {
+#if os(iOS)
+        requestBadgeAuthorizationIfNeeded()
+        Publishers.CombineLatest($isAuthenticated, tasksViewModel.$counts)
+            .receive(on: DispatchQueue.main)
+            .sink { isAuthenticated, counts in
+                let badgeCount = isAuthenticated ? (counts?.counts.today ?? 0) : 0
+                UIApplication.shared.applicationIconBadgeNumber = badgeCount
+            }
+            .store(in: &cancellables)
+#endif
+    }
+
+#if os(iOS)
+    private func requestBadgeAuthorizationIfNeeded() {
+        let key = "sideBar.didRequestBadgePermission"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        UNUserNotificationCenter.current().requestAuthorization(options: [.badge]) { _, _ in }
+    }
+#endif
 }
