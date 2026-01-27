@@ -112,7 +112,7 @@ extension AppEnvironment {
             .receive(on: DispatchQueue.main)
             .sink { isAuthenticated, counts in
                 let badgeCount = isAuthenticated ? (counts?.counts.today ?? 0) : 0
-                UIApplication.shared.applicationIconBadgeNumber = badgeCount
+                UNUserNotificationCenter.current().setBadgeCount(badgeCount, withCompletionHandler: nil)
             }
             .store(in: &cancellables)
 #endif
