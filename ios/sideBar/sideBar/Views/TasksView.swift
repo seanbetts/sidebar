@@ -228,68 +228,77 @@ extension TasksDetailView {
                 Task { await viewModel.load(selection: viewModel.selection, force: true) }
             }
         } else if state.sections.isEmpty {
-            PlaceholderView(
-                title: state.selectionLabel == "Today" ? "All done for the day" : "No tasks to show.",
-                subtitle: searchSubtitle(selection: state.selection),
-                iconName: "checkmark.circle"
-            )
+            if state.selection == .none {
+                PlaceholderView(
+                    title: "Select a list",
+                    subtitle: "Pick a task list from the sidebar to get started.",
+                    iconName: "checkmark.circle"
+                )
+            } else {
+                PlaceholderView(
+                    title: state.selectionLabel == "Today" ? "All done for the day" : "No tasks to show.",
+                    subtitle: searchSubtitle(selection: state.selection),
+                    iconName: "checkmark.circle"
+                )
+            }
         } else {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                    ForEach(state.sections) { section in
-                        sectionHeaderView(section: section, state: state)
-                        if section.tasks.isEmpty, case .upcoming = state.selection {
-                            Label("No tasks due", systemImage: "checkmark.circle")
-                                .font(.subheadline)
-                                .foregroundStyle(DesignTokens.Colors.textTertiary)
-                                .padding(.leading, DesignTokens.Spacing.md + 14)
-                                .padding(.trailing, DesignTokens.Spacing.md)
-                                .padding(.vertical, DesignTokens.Spacing.xs)
-                                .padding(.bottom, DesignTokens.Spacing.md)
-                        } else {
-                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
-                                ForEach(section.tasks, id: \.id) { task in
-                                    let isExpandable = true
-                                    TaskRow(
-                                        task: task,
-                                        dueLabel: TasksUtils.dueLabel(for: task),
-                                        repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
-                                        selection: state.selection,
-                                        isExpanded: isExpandable && expandedTaskIds.contains(task.id),
-                                        onComplete: { Task { await viewModel.completeTask(task: task) } },
-                                        onOpenNotes: { openNotes(task) },
-                                        onSelect: { setActiveTask(task) },
-                                        onToggleExpanded: {
-                                            guard isExpandable, !task.isPreview else { return }
-                                            if expandedTaskIds.contains(task.id) {
-                                                expandedTaskIds.remove(task.id)
-                                            } else {
-                                                expandedTaskIds = [task.id]
-                                            }
-                                        },
-                                        onMove: { openMove(task) },
-                                        onRepeat: { openRepeat(task) },
-                                        onDelete: { deleteTask = task },
-                                        menuContent: {
-                                        taskMenu(for: task, selection: state.selection)
+            GeometryReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                        ForEach(state.sections) { section in
+                            sectionHeaderView(section: section, state: state)
+                            if section.tasks.isEmpty, case .upcoming = state.selection {
+                                Label("No tasks due", systemImage: "checkmark.circle")
+                                    .font(.subheadline)
+                                    .foregroundStyle(DesignTokens.Colors.textTertiary)
+                                    .padding(.leading, DesignTokens.Spacing.md + 14)
+                                    .padding(.trailing, DesignTokens.Spacing.md)
+                                    .padding(.vertical, DesignTokens.Spacing.xs)
+                                    .padding(.bottom, DesignTokens.Spacing.md)
+                            } else {
+                                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
+                                    ForEach(section.tasks, id: \.id) { task in
+                                        let isExpandable = true
+                                        TaskRow(
+                                            task: task,
+                                            dueLabel: TasksUtils.dueLabel(for: task),
+                                            repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
+                                            selection: state.selection,
+                                            isExpanded: isExpandable && expandedTaskIds.contains(task.id),
+                                            onComplete: { Task { await viewModel.completeTask(task: task) } },
+                                            onOpenNotes: { openNotes(task) },
+                                            onSelect: { setActiveTask(task) },
+                                            onToggleExpanded: {
+                                                guard isExpandable, !task.isPreview else { return }
+                                                if expandedTaskIds.contains(task.id) {
+                                                    expandedTaskIds.remove(task.id)
+                                                } else {
+                                                    expandedTaskIds = [task.id]
+                                                }
+                                            },
+                                            onMove: { openMove(task) },
+                                            onRepeat: { openRepeat(task) },
+                                            onDelete: { deleteTask = task },
+                                            menuContent: {
+                                            taskMenu(for: task, selection: state.selection)
+                                        }
+                                        )
+                                        .padding(.horizontal, DesignTokens.Spacing.md)
                                     }
-                                    )
-                                    .padding(.horizontal, DesignTokens.Spacing.md)
                                 }
+                                .padding(.bottom, section.title.isEmpty ? 0 : DesignTokens.Spacing.md)
                             }
-                            .padding(.bottom, section.title.isEmpty ? 0 : DesignTokens.Spacing.md)
                         }
                     }
+                    .padding(.vertical, DesignTokens.Spacing.lg)
+                    .frame(width: proxy.size.width, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.vertical, DesignTokens.Spacing.lg)
-                .frame(maxWidth: DesignTokens.Size.contentMaxWidth, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .center)
+                .contentShape(Rectangle())
+                .simultaneousGesture(TapGesture().onEnded {
+                    expandedTaskIds.removeAll()
+                })
             }
-            .contentShape(Rectangle())
-            .simultaneousGesture(TapGesture().onEnded {
-                expandedTaskIds.removeAll()
-            })
         }
     }
 

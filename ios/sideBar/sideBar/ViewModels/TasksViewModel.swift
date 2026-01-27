@@ -11,7 +11,7 @@ public final class TasksViewModel: ObservableObject {
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var searchPending: Bool = false
     @Published public internal(set) var errorMessage: String?
-    @Published public private(set) var selection: TaskSelection = .today
+    @Published public private(set) var selection: TaskSelection = .none
     @Published public var searchQuery: String = ""
     @Published public var newTaskDraft: TaskDraft?
     @Published public private(set) var newTaskSaving: Bool = false
@@ -81,6 +81,10 @@ public final class TasksViewModel: ObservableObject {
     }
 
     public func load(selection: TaskSelection, force: Bool = false) async {
+        if selection == .none {
+            await store.load(selection: selection, force: force)
+            return
+        }
         if !selection.isSearch {
             lastNonSearchSelection = selection
         }
@@ -123,6 +127,8 @@ extension TasksViewModel {
 
         let sortedTasks: [TaskItem]
         switch selection {
+        case .none:
+            sortedTasks = []
         case .group(let groupId):
             let projectIds = Set(projects.filter { $0.groupId == groupId }.map { $0.id })
             let scoped = expanded.filter { task in
@@ -149,6 +155,10 @@ extension TasksViewModel {
         let sections: [TaskSection]
 
         switch selection {
+        case .none:
+            selectionLabel = "Tasks"
+            titleIcon = "checkmark.square"
+            sections = []
         case .today:
             selectionLabel = "Today"
             titleIcon = "calendar"
@@ -233,6 +243,8 @@ extension TasksViewModel {
         var listName: String?
 
         switch baseSelection {
+        case .none:
+            break
         case .group(let id):
             listId = id
             listName = groups.first(where: { $0.id == id })?.title
@@ -326,9 +338,9 @@ extension TasksViewModel {
         let nextSelection: TaskSelection
         switch selection {
         case .group(let id) where id == groupId:
-            nextSelection = .today
+            nextSelection = .none
         case .project(let id) where projectIds.contains(id):
-            nextSelection = .today
+            nextSelection = .none
         default:
             nextSelection = selection
         }
@@ -357,7 +369,7 @@ extension TasksViewModel {
         let nextSelection: TaskSelection
         switch selection {
         case .project(let id) where id == projectId:
-            nextSelection = .today
+            nextSelection = .none
         default:
             nextSelection = selection
         }

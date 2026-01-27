@@ -5,7 +5,7 @@ import Combine
 
 @MainActor
 public final class TasksStore: ObservableObject {
-    @Published public private(set) var selection: TaskSelection = .today
+    @Published public private(set) var selection: TaskSelection = .none
     @Published public private(set) var tasks: [TaskItem] = []
     @Published public private(set) var groups: [TaskGroup] = []
     @Published public private(set) var projects: [TaskProject] = []
@@ -24,6 +24,23 @@ public final class TasksStore: ObservableObject {
     }
 
     public func load(selection: TaskSelection, force: Bool = false) async {
+        if selection == .none {
+            self.selection = selection
+            errorMessage = nil
+            let fallbackSelection: TaskSelection = .today
+            let cacheKey = CacheKeys.tasksList(selectionKey: fallbackSelection.cacheKey)
+            if let cached: TaskListResponse = cache.get(key: cacheKey) {
+                apply(list: cached, persist: false)
+                Task { [weak self] in
+                    await self?.refresh(selection: fallbackSelection)
+                }
+                return
+            }
+            Task { [weak self] in
+                await self?.refresh(selection: fallbackSelection)
+            }
+            return
+        }
         let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
         let cached: TaskListResponse? = cache.get(key: cacheKey)
         self.selection = selection
@@ -61,7 +78,7 @@ public final class TasksStore: ObservableObject {
     }
 
     public func reset() {
-        selection = .today
+        selection = .none
         tasks = []
         groups = []
         projects = []
@@ -109,6 +126,8 @@ public final class TasksStore: ObservableObject {
 
     private func fetch(selection: TaskSelection) async throws -> TaskListResponse {
         switch selection {
+        case .none:
+            throw APIClientError.invalidUrl
         case .search(let query):
             return try await api.search(query: query)
         case .group(let id):

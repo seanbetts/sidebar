@@ -67,7 +67,9 @@ extension ContentView {
             return environment.ingestionViewModel.selectedFileId == nil
         case .websites:
             return environment.websitesViewModel.selectedWebsiteId == nil
-        case .tasks, .settings:
+        case .tasks:
+            return environment.tasksViewModel.phoneDetailRouteId == nil
+        case .settings:
             return true
         }
     }

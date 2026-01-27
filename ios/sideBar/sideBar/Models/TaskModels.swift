@@ -145,6 +145,7 @@ public struct TaskSyncConflict: Codable, Equatable {
 }
 
 public enum TaskSelection: Equatable, Hashable {
+    case none
     case inbox
     case today
     case upcoming
@@ -155,6 +156,8 @@ public enum TaskSelection: Equatable, Hashable {
 
     public var scope: String? {
         switch self {
+        case .none:
+            return nil
         case .inbox:
             return "inbox"
         case .today:
@@ -174,6 +177,8 @@ public enum TaskSelection: Equatable, Hashable {
 
     public var cacheKey: String {
         switch self {
+        case .none:
+            return "none"
         case .inbox:
             return "inbox"
         case .today:
