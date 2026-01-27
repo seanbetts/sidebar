@@ -259,6 +259,10 @@ extension TasksPanelView {
             onDelete: onDelete
         )
         .onTapGesture {
+            if isCompact {
+                viewModel.phoneDetailRouteId = selection.cacheKey
+            }
+            environment.commandSelection = .tasks
             Task { await viewModel.load(selection: selection) }
         }
     }

@@ -57,80 +57,112 @@ extension ContentView {
     func sectionDefinition(for section: AppSection) -> SectionDefinition {
         switch section {
         case .chat:
-            return SectionDefinition(
-                section: .chat,
-                panelView: { AnyView(ConversationsPanel()) },
-                detailView: { AnyView(ChatView()) },
-                phoneSelection: {
-                    Binding(
-                        get: { environment.chatViewModel.selectedConversationId.map(PhoneDetailRoute.init) },
-                        set: { route in
-                            guard route == nil else { return }
-                            Task { await environment.chatViewModel.selectConversation(id: nil) }
-                        }
-                    )
-                }
-            )
+            return chatSectionDefinition
         case .notes:
-            return SectionDefinition(
-                section: .notes,
-                panelView: { AnyView(NotesPanel()) },
-                detailView: { AnyView(NotesView()) },
-                phoneSelection: {
-                    Binding(
-                        get: { environment.notesViewModel.selectedNoteId.map(PhoneDetailRoute.init) },
-                        set: { route in
-                            guard route == nil else { return }
-                            environment.notesViewModel.clearSelection()
-                        }
-                    )
-                }
-            )
+            return notesSectionDefinition
         case .files:
-            return SectionDefinition(
-                section: .files,
-                panelView: { AnyView(FilesPanel()) },
-                detailView: { AnyView(FilesView()) },
-                phoneSelection: {
-                    Binding(
-                        get: { environment.ingestionViewModel.selectedFileId.map(PhoneDetailRoute.init) },
-                        set: { route in
-                            guard route == nil else { return }
-                            environment.ingestionViewModel.clearSelection()
-                        }
-                    )
-                }
-            )
+            return filesSectionDefinition
         case .websites:
-            return SectionDefinition(
-                section: .websites,
-                panelView: { AnyView(WebsitesPanel()) },
-                detailView: { AnyView(WebsitesView()) },
-                phoneSelection: {
-                    Binding(
-                        get: { environment.websitesViewModel.selectedWebsiteId.map(PhoneDetailRoute.init) },
-                        set: { route in
-                            guard route == nil else { return }
-                            environment.websitesViewModel.clearSelection()
-                        }
-                    )
-                }
-            )
+            return websitesSectionDefinition
         case .settings:
-            return SectionDefinition(
-                section: .settings,
-                panelView: { AnyView(SettingsView()) },
-                detailView: { AnyView(SettingsView()) },
-                phoneSelection: { Binding(get: { nil }, set: { _ in }) }
-            )
+            return settingsSectionDefinition
         case .tasks:
-            return SectionDefinition(
-                section: .tasks,
-                panelView: { AnyView(TasksPanel()) },
-                detailView: { AnyView(TasksView()) },
-                phoneSelection: { Binding(get: { nil }, set: { _ in }) }
-            )
+            return tasksSectionDefinition
         }
+    }
+
+    private var chatSectionDefinition: SectionDefinition {
+        SectionDefinition(
+            section: .chat,
+            panelView: { AnyView(ConversationsPanel()) },
+            detailView: { AnyView(ChatView()) },
+            phoneSelection: {
+                Binding(
+                    get: { environment.chatViewModel.selectedConversationId.map(PhoneDetailRoute.init) },
+                    set: { route in
+                        guard route == nil else { return }
+                        Task { await environment.chatViewModel.selectConversation(id: nil) }
+                    }
+                )
+            }
+        )
+    }
+
+    private var notesSectionDefinition: SectionDefinition {
+        SectionDefinition(
+            section: .notes,
+            panelView: { AnyView(NotesPanel()) },
+            detailView: { AnyView(NotesView()) },
+            phoneSelection: {
+                Binding(
+                    get: { environment.notesViewModel.selectedNoteId.map(PhoneDetailRoute.init) },
+                    set: { route in
+                        guard route == nil else { return }
+                        environment.notesViewModel.clearSelection()
+                    }
+                )
+            }
+        )
+    }
+
+    private var filesSectionDefinition: SectionDefinition {
+        SectionDefinition(
+            section: .files,
+            panelView: { AnyView(FilesPanel()) },
+            detailView: { AnyView(FilesView()) },
+            phoneSelection: {
+                Binding(
+                    get: { environment.ingestionViewModel.selectedFileId.map(PhoneDetailRoute.init) },
+                    set: { route in
+                        guard route == nil else { return }
+                        environment.ingestionViewModel.clearSelection()
+                    }
+                )
+            }
+        )
+    }
+
+    private var websitesSectionDefinition: SectionDefinition {
+        SectionDefinition(
+            section: .websites,
+            panelView: { AnyView(WebsitesPanel()) },
+            detailView: { AnyView(WebsitesView()) },
+            phoneSelection: {
+                Binding(
+                    get: { environment.websitesViewModel.selectedWebsiteId.map(PhoneDetailRoute.init) },
+                    set: { route in
+                        guard route == nil else { return }
+                        environment.websitesViewModel.clearSelection()
+                    }
+                )
+            }
+        )
+    }
+
+    private var settingsSectionDefinition: SectionDefinition {
+        SectionDefinition(
+            section: .settings,
+            panelView: { AnyView(SettingsView()) },
+            detailView: { AnyView(SettingsView()) },
+            phoneSelection: { Binding(get: { nil }, set: { _ in }) }
+        )
+    }
+
+    private var tasksSectionDefinition: SectionDefinition {
+        SectionDefinition(
+            section: .tasks,
+            panelView: { AnyView(TasksPanel()) },
+            detailView: { AnyView(TasksView()) },
+            phoneSelection: {
+                Binding(
+                    get: { environment.tasksViewModel.phoneDetailRouteId.map(PhoneDetailRoute.init) },
+                    set: { route in
+                        guard route == nil else { return }
+                        environment.tasksViewModel.phoneDetailRouteId = nil
+                    }
+                )
+            }
+        )
     }
 
 }

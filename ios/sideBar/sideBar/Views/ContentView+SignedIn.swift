@@ -138,6 +138,9 @@ extension ContentView {
                 environment.commandSelection = nil
                 return
             }
+            if newValue != .chat {
+                handleNonChatSelection(newValue)
+            }
             sidebarSelection = newValue
             if !isLeftPanelExpanded {
                 isLeftPanelExpanded = true
