@@ -318,6 +318,8 @@ public struct MarkdownShortcutProcessor {
                 .paragraph,
                 identity: 1
             )
+        @unknown default:
+            return
         }
     }
 

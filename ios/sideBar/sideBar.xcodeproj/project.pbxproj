@@ -11,7 +11,7 @@
 		142516B72F1EB96B0072E4F9 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6C92F27A6420066EE47 /* WidgetKit.framework */; };
 		1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6CB2F27A6420066EE47 /* SwiftUI.framework */; };
-		1448E6DD2F27A6430066EE47 /* sideBarWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1448E6DD2F27A6430066EE47 /* sideBarWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
 		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
 		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
@@ -586,7 +586,6 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
@@ -621,7 +620,6 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
@@ -659,7 +657,6 @@
 				CODE_SIGN_ENTITLEMENTS = sideBarWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = sideBarWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
@@ -695,7 +692,6 @@
 				CODE_SIGN_ENTITLEMENTS = sideBarWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = sideBarWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
@@ -760,6 +756,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = A7FXNR4C35;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -824,6 +821,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = A7FXNR4C35;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -856,7 +854,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -927,7 +924,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -992,7 +988,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
@@ -1019,7 +1014,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
@@ -1045,7 +1039,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
@@ -1071,7 +1064,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MACOSX_DEPLOYMENT_TARGET = 26.1;

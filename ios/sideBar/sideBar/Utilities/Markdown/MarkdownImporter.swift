@@ -525,6 +525,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             )
         case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
             text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
+        @unknown default:
+            return
         }
     }
 
