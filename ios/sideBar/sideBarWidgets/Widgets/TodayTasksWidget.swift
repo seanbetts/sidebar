@@ -256,7 +256,7 @@ struct TaskRowView: View {
             if WidgetTasksUtils.isOverdue(task) {
                 Image(systemName: "exclamationmark.circle.fill")
                     .font(.caption2)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.secondary)
             }
         }
     }

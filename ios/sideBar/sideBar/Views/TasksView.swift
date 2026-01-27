@@ -287,9 +287,9 @@ extension TasksDetailView {
                 .frame(maxWidth: .infinity, alignment: .center)
             }
             .contentShape(Rectangle())
-            .onTapGesture {
+            .simultaneousGesture(TapGesture().onEnded {
                 expandedTaskIds.removeAll()
-            }
+            })
         }
     }
 

@@ -17,6 +17,7 @@ public final class TasksViewModel: ObservableObject {
     @Published public private(set) var newTaskSaving: Bool = false
     @Published public private(set) var newTaskError: String = ""
     @Published public private(set) var filteredUpcomingCount: Int?
+    @Published public var phoneDetailRouteId: String?
 
     let api: any TasksProviding
     let store: TasksStore
