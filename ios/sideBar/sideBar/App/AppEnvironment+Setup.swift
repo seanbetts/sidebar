@@ -119,6 +119,8 @@ extension AppEnvironment {
                 UNUserNotificationCenter.current().setBadgeCount(badgeCount, withCompletionHandler: nil)
             }
             .store(in: &cancellables)
+#elseif os(macOS)
+        registerForRemoteNotificationsIfNeeded()
 #endif
     }
 

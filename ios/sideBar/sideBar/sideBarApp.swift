@@ -14,6 +14,8 @@ import os
 struct SideBarApp: App {
     #if os(iOS)
     @UIApplicationDelegateAdaptor(AppLaunchDelegate.self) private var appDelegate
+    #elseif os(macOS)
+    @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var appDelegate
     #endif
     @StateObject private var environment: AppEnvironment
 

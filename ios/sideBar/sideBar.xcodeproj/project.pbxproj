@@ -845,6 +845,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */;
 			buildSettings = {
+				"APS_ENVIRONMENT[sdk=iphoneos*]" = development;
+				"APS_ENVIRONMENT[sdk=macosx*]" = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -878,13 +880,12 @@
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a profile photo for your sideBar account.";
 				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
 				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
-				"APS_ENVIRONMENT[sdk=iphoneos*]" = development;
-				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphoneos*]" = "remote-notification";
-				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphonesimulator*]" = "remote-notification";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphoneos*]" = "remote-notification";
+				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphonesimulator*]" = "remote-notification";
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
 				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphoneos*]" = SideBarLaunchScreen;
@@ -919,6 +920,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */;
 			buildSettings = {
+				"APS_ENVIRONMENT[sdk=iphoneos*]" = production;
+				"APS_ENVIRONMENT[sdk=macosx*]" = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -952,13 +955,12 @@
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a profile photo for your sideBar account.";
 				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
 				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
-				"APS_ENVIRONMENT[sdk=iphoneos*]" = production;
-				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphoneos*]" = "remote-notification";
-				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphonesimulator*]" = "remote-notification";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphoneos*]" = "remote-notification";
+				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphonesimulator*]" = "remote-notification";
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
 				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphoneos*]" = SideBarLaunchScreen;
