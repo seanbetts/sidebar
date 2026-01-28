@@ -1,6 +1,7 @@
 """SQLAlchemy models."""
 
 from api.models.conversation import Conversation
+from api.models.device_token import DeviceToken
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.models.note import Note
 from api.models.task import Task
@@ -13,6 +14,7 @@ from api.models.website import Website
 
 __all__ = [
     "Conversation",
+    "DeviceToken",
     "Note",
     "Website",
     "UserSettings",

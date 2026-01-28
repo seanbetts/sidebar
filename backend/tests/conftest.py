@@ -141,6 +141,7 @@ if not os.getenv("SUPABASE_PROJECT_ID"):
 
 # Ensure all SQLAlchemy models are registered before metadata operations.
 from api.models.conversation import Conversation  # noqa: F401, E402
+from api.models.device_token import DeviceToken  # noqa: F401, E402
 from api.models.file_ingestion import (  # noqa: F401, E402
     FileDerivative,
     FileProcessingJob,
