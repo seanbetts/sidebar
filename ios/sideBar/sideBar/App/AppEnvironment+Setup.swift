@@ -14,6 +14,9 @@ extension AppEnvironment {
         monitorNetwork()
         setupTaskBadgeUpdates()
 
+        // Migrate widget data to new generic keys (one-time)
+        WidgetDataManager.shared.migrateIfNeeded()
+
         // Sync initial auth state to widgets
         WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)
     }

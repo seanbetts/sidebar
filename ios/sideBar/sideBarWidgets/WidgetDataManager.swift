@@ -1,118 +1,154 @@
 import Foundation
 import WidgetKit
 
-/// Manages shared data between the main app and widgets via App Group UserDefaults.
+/// Lightweight widget data manager for extension use only.
+/// Supports read operations and recording pending operations.
 public final class WidgetDataManager {
-    public static let shared = WidgetDataManager()
+  public static let shared = WidgetDataManager()
 
-    private let todayTasksKey = "widgetTodayTasks"
-    private let isAuthenticatedKey = "widgetIsAuthenticated"
-    private let pendingCompletionsKey = "widgetPendingCompletions"
-    private let pendingAddTaskKey = "widgetPendingAddTask"
+  private let authKey = "widgetIsAuthenticated"
 
-    private init() {}
+  // Legacy keys (for backward compatibility during transition)
+  private let legacyTodayTasksKey = "widgetTodayTasks"
+  private let legacyPendingCompletionsKey = "widgetPendingCompletions"
+  private let legacyPendingAddTaskKey = "widgetPendingAddTask"
 
-    // MARK: - App Group Access
+  private init() {}
 
-    private var userDefaults: UserDefaults? {
-        UserDefaults(suiteName: appGroupId)
+  // MARK: - App Group Access
+
+  private var userDefaults: UserDefaults? {
+    UserDefaults(suiteName: appGroupId)
+  }
+
+  private var appGroupId: String {
+    // Try configured value from Info.plist first
+    if let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String,
+       !configured.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+       !configured.contains("$(") {
+      return configured
     }
+    // Fall back to derived value from bundle ID
+    let bundleId = Bundle.main.bundleIdentifier ?? "ai.sidebar.sidebar"
+    let normalized = bundleId
+      .replacingOccurrences(of: ".ShareExtension", with: "")
+      .replacingOccurrences(of: ".sideBarWidgets", with: "")
+    return "group.\(normalized)"
+  }
 
-    private var appGroupId: String {
-        // Try configured value from Info.plist first
-        if let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String,
-           !configured.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-           !configured.contains("$(") {
-            return configured
-        }
-        // Fall back to derived value from bundle ID
-        let bundleId = Bundle.main.bundleIdentifier ?? "ai.sidebar.sidebar"
-        let normalized = bundleId
-            .replacingOccurrences(of: ".ShareExtension", with: "")
-            .replacingOccurrences(of: ".sideBarWidgets", with: "")
-        return "group.\(normalized)"
+  // MARK: - Generic Data Storage
+
+  /// Loads widget data for a content type
+  public func load<T: WidgetDataContainer>(for contentType: WidgetContentType) -> T {
+    guard let defaults = userDefaults,
+          let data = defaults.data(forKey: contentType.dataKey) else {
+      return T.empty
     }
+    return (try? Self.makeDecoder().decode(T.self, from: data)) ?? T.empty
+  }
 
-    // MARK: - Today Tasks
-
-    /// Called by main app to update widget data
-    public func updateTodayTasks(_ tasks: [WidgetTask], totalCount: Int) {
-        let data = WidgetTaskData(tasks: tasks, totalCount: totalCount)
-        guard let defaults = userDefaults else { return }
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let encoded = try? encoder.encode(data) {
-            defaults.set(encoded, forKey: todayTasksKey)
-            defaults.synchronize()
-        }
-        WidgetCenter.shared.reloadTimelines(ofKind: "TodayTasksWidget")
+  /// Stores widget data for a content type (used for optimistic updates from intents)
+  public func store<T: WidgetDataContainer>(_ data: T, for contentType: WidgetContentType) {
+    guard let defaults = userDefaults else { return }
+    if let encoded = try? Self.makeEncoder().encode(data) {
+      defaults.set(encoded, forKey: contentType.dataKey)
+      defaults.synchronize()
     }
-
-    /// Called by widgets to read cached data
-    public func loadTodayTasks() -> WidgetTaskData {
-        guard let defaults = userDefaults,
-              let data = defaults.data(forKey: todayTasksKey) else {
-            return .empty
-        }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return (try? decoder.decode(WidgetTaskData.self, from: data)) ?? .empty
+    if let firstKind = contentType.widgetKinds.first {
+      WidgetCenter.shared.reloadTimelines(ofKind: firstKind)
     }
+  }
 
-    // MARK: - Authentication State
+  // MARK: - Generic Pending Operations
 
-    /// Called by main app when auth state changes
-    public func updateAuthState(isAuthenticated: Bool) {
-        guard let defaults = userDefaults else { return }
-        defaults.set(isAuthenticated, forKey: isAuthenticatedKey)
+  /// Records a pending operation from widget
+  public func recordPendingOperation<A: Codable & Equatable>(
+    _ operation: WidgetPendingOperation<A>,
+    for contentType: WidgetContentType
+  ) {
+    guard let defaults = userDefaults else { return }
+    var pending = loadPendingOperations(for: contentType, actionType: A.self)
+
+    // Deduplicate by itemId + action
+    if !pending.contains(where: { $0.itemId == operation.itemId && $0.action == operation.action }) {
+      pending.append(operation)
+      if let encoded = try? Self.makeEncoder().encode(pending) {
+        defaults.set(encoded, forKey: contentType.pendingKey)
         defaults.synchronize()
-        WidgetCenter.shared.reloadAllTimelines()
+      }
     }
+  }
 
-    /// Called by widgets to check auth state
-    public func isAuthenticated() -> Bool {
-        guard let defaults = userDefaults else { return false }
-        return defaults.bool(forKey: isAuthenticatedKey)
+  private func loadPendingOperations<A: Codable & Equatable>(
+    for contentType: WidgetContentType,
+    actionType: A.Type
+  ) -> [WidgetPendingOperation<A>] {
+    guard let defaults = userDefaults,
+          let data = defaults.data(forKey: contentType.pendingKey) else {
+      return []
     }
+    return (try? Self.makeDecoder().decode([WidgetPendingOperation<A>].self, from: data)) ?? []
+  }
 
-    // MARK: - Task Completion (Pending Operations)
+  // MARK: - Authentication State
 
-    /// Records a task completion from widget (to be synced by main app)
-    public func recordTaskCompletion(taskId: String) {
-        guard let defaults = userDefaults else { return }
-        var pending = loadPendingCompletions()
-        if !pending.contains(taskId) {
-            pending.append(taskId)
-            if let encoded = try? JSONEncoder().encode(pending) {
-                defaults.set(encoded, forKey: pendingCompletionsKey)
-                defaults.synchronize()
-            }
-        }
+  /// Called by widgets to check auth state
+  public func isAuthenticated() -> Bool {
+    userDefaults?.bool(forKey: authKey) ?? false
+  }
+
+  // MARK: - Encoder/Decoder
+
+  private static func makeEncoder() -> JSONEncoder {
+    let encoder = JSONEncoder()
+    encoder.dateEncodingStrategy = .iso8601
+    return encoder
+  }
+
+  private static func makeDecoder() -> JSONDecoder {
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .iso8601
+    return decoder
+  }
+}
+
+// MARK: - Backward Compatibility
+
+extension WidgetDataManager {
+  /// Backward compatible method for loading tasks
+  public func loadTodayTasks() -> WidgetTaskData {
+    // Try new key first, fall back to legacy key
+    if let defaults = userDefaults,
+       let data = defaults.data(forKey: WidgetContentType.tasks.dataKey) {
+      if let decoded = try? Self.makeDecoder().decode(WidgetTaskData.self, from: data) {
+        return decoded
+      }
     }
-
-    /// Called by main app to get and clear pending completions
-    public func consumePendingCompletions() -> [String] {
-        guard let defaults = userDefaults else { return [] }
-        let pending = loadPendingCompletions()
-        defaults.removeObject(forKey: pendingCompletionsKey)
-        defaults.synchronize()
-        return pending
+    // Fall back to legacy key
+    if let defaults = userDefaults,
+       let data = defaults.data(forKey: legacyTodayTasksKey) {
+      if let decoded = try? Self.makeDecoder().decode(WidgetTaskData.self, from: data) {
+        return decoded
+      }
     }
+    return .empty
+  }
 
-    private func loadPendingCompletions() -> [String] {
-        guard let defaults = userDefaults,
-              let data = defaults.data(forKey: pendingCompletionsKey) else {
-            return []
-        }
-        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
-    }
+  /// Backward compatible method for updating tasks (optimistic update from intent)
+  public func updateTodayTasks(_ tasks: [WidgetTask], totalCount: Int) {
+    let data = WidgetTaskData(tasks: tasks, totalCount: totalCount)
+    store(data, for: .tasks)
+  }
 
-    // MARK: - Add Task Intent
+  /// Backward compatible method for recording task completion
+  public func recordTaskCompletion(taskId: String) {
+    let operation = WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete)
+    recordPendingOperation(operation, for: .tasks)
+  }
 
-    /// Records that the add task intent was triggered from widget
-    public func recordAddTaskIntent() {
-        guard let defaults = userDefaults else { return }
-        defaults.set(true, forKey: pendingAddTaskKey)
-        defaults.synchronize()
-    }
+  /// Backward compatible method for recording add task intent
+  public func recordAddTaskIntent() {
+    let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
+    recordPendingOperation(operation, for: .tasks)
+  }
 }
