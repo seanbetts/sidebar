@@ -51,10 +51,10 @@ public final class AppEnvironment: ObservableObject {
     @Published public var pendingNewTaskDeepLink: Bool = false
     @Published public var shortcutActionEvent: ShortcutActionEvent?
     var cancellables = Set<AnyCancellable>()
-    #if os(iOS)
-    private var deviceToken: String?
-    private var lastRegisteredDeviceToken: String?
-    private var lastRegisteredUserId: String?
+    #if os(iOS) || os(macOS)
+    var deviceToken: String?
+    var lastRegisteredDeviceToken: String?
+    var lastRegisteredUserId: String?
     #endif
 
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {

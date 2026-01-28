@@ -55,7 +55,13 @@ extension AppEnvironment {
 
     /// Consumes pending task completions from widgets and syncs them with the server
     public func consumeWidgetCompletions() async {
-        let taskIds = WidgetDataManager.shared.consumePendingCompletions()
+        let operations = WidgetDataManager.shared.consumePendingOperations(
+            for: .tasks,
+            actionType: TaskWidgetAction.self
+        )
+        let taskIds = operations
+            .filter { $0.action == .complete }
+            .map { $0.itemId }
         guard !taskIds.isEmpty, isAuthenticated else { return }
 
         // Complete each task that was marked done in the widget
@@ -82,7 +88,11 @@ extension AppEnvironment {
     /// Consumes pending add task intent from widget and opens the add task UI
     @MainActor
     public func consumeWidgetAddTask() {
-        guard WidgetDataManager.shared.consumeAddTaskIntent(), isAuthenticated else { return }
+        let operations = WidgetDataManager.shared.consumePendingOperations(
+            for: .tasks,
+            actionType: TaskWidgetAction.self
+        )
+        guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
 
         // Navigate to tasks section and start new task
         commandSelection = .tasks
