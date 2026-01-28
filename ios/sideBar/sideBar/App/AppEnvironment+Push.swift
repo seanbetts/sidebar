@@ -1,16 +1,25 @@
 import Foundation
+import os
 #if os(iOS)
+import Security
 import UIKit
 #elseif os(macOS)
 import AppKit
+import Security
 #endif
 
 #if os(iOS) || os(macOS)
 extension AppEnvironment {
+    private var pushLogger: Logger {
+        Logger(subsystem: "sideBar", category: "Push")
+    }
+
     func registerForRemoteNotificationsIfNeeded() {
 #if os(iOS)
+        logPushEntitlementsIfNeeded()
         UIApplication.shared.registerForRemoteNotifications()
 #elseif os(macOS)
+        logPushEntitlementsIfNeeded()
         NSApplication.shared.registerForRemoteNotifications()
 #endif
     }
@@ -54,6 +63,7 @@ extension AppEnvironment {
                     self.lastRegisteredUserId = userId
                 }
             } catch {
+                self.pushLogger.error("Device token registration failed.")
                 return
             }
         }
@@ -82,6 +92,19 @@ extension AppEnvironment {
         #else
         return "ios"
         #endif
+    }
+
+    private func logPushEntitlementsIfNeeded() {
+        let task = SecTaskCreateFromSelf(nil)
+        guard let value = SecTaskCopyValueForEntitlement(task, "aps-environment" as CFString, nil) else {
+            pushLogger.error("Missing aps-environment entitlement.")
+            return
+        }
+        if let environment = value as? String {
+            pushLogger.info("aps-environment entitlement: \(environment, privacy: .public)")
+        } else {
+            pushLogger.info("aps-environment entitlement present.")
+        }
     }
 }
 #endif
