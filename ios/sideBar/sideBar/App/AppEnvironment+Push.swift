@@ -16,10 +16,8 @@ extension AppEnvironment {
 
     func registerForRemoteNotificationsIfNeeded() {
 #if os(iOS)
-        logPushEntitlementsIfNeeded()
         UIApplication.shared.registerForRemoteNotifications()
 #elseif os(macOS)
-        logPushEntitlementsIfNeeded()
         NSApplication.shared.registerForRemoteNotifications()
 #endif
     }
@@ -94,29 +92,6 @@ extension AppEnvironment {
         #endif
     }
 
-    private func logPushEntitlementsIfNeeded() {
-        guard let task = SecTaskCreateFromSelf(nil) else {
-            pushLogger.error("Unable to read task for entitlement check.")
-            return
-        }
-        let iosKey = "aps-environment" as CFString
-        let macKey = "com.apple.developer.aps-environment" as CFString
-        let iosValue = SecTaskCopyValueForEntitlement(task, iosKey, nil)
-        let macValue = SecTaskCopyValueForEntitlement(task, macKey, nil)
-        if iosValue == nil && macValue == nil {
-            pushLogger.error("Missing APNs entitlement.")
-            return
-        }
-        if let environment = iosValue as? String {
-            pushLogger.info("aps-environment entitlement: \(environment, privacy: .public)")
-        } else if iosValue != nil {
-            pushLogger.info("aps-environment entitlement present.")
-        }
-        if let environment = macValue as? String {
-            pushLogger.info("com.apple.developer.aps-environment entitlement: \(environment, privacy: .public)")
-        } else if macValue != nil {
-            pushLogger.info("com.apple.developer.aps-environment entitlement present.")
-        }
-    }
+    // Entitlement logging removed after verification.
 }
 #endif
