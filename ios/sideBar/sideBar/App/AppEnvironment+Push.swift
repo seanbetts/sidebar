@@ -95,7 +95,10 @@ extension AppEnvironment {
     }
 
     private func logPushEntitlementsIfNeeded() {
-        let task = SecTaskCreateFromSelf(nil)
+        guard let task = SecTaskCreateFromSelf(nil) else {
+            pushLogger.error("Unable to read task for entitlement check.")
+            return
+        }
         guard let value = SecTaskCopyValueForEntitlement(task, "aps-environment" as CFString, nil) else {
             pushLogger.error("Missing aps-environment entitlement.")
             return
