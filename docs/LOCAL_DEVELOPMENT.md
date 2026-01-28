@@ -14,6 +14,7 @@ cp .env.example .env.local
 # - Set API_URL=http://localhost:8001
 # - Set APP_ENV=local
 # - Configure Doppler (DOPPLER_TOKEN or doppler login)
+# - (Optional) APNs env vars for push: APNS_ENV, APNS_TOPIC, APNS_TOPIC_IOS, APNS_TOPIC_MACOS
 
 # 3. Install dependencies
 cd backend && uv sync && cd ..

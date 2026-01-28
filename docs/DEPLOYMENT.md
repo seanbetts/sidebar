@@ -14,6 +14,7 @@ Create a `.env` from `.env.example` and fill in:
 - Supabase connection settings (`SUPABASE_*`)
 - R2 storage settings (`R2_*`)
 - API keys (Anthropic, Google, etc.)
+- APNs config for push (`APNS_ENV`, `APNS_TOPIC`, `APNS_TOPIC_IOS`, `APNS_TOPIC_MACOS`, plus auth key in Doppler)
 - `BEARER_TOKEN` for API auth
 - SSL settings (`DISABLE_SSL_VERIFY` for dev only, `CUSTOM_CA_BUNDLE` for production MITM)
 
