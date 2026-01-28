@@ -28,6 +28,8 @@ from api.models.user_settings import UserSettings
 from api.routers import (
     chat,
     conversations,
+    device_tokens,
+    events,
     health,
     ingestion,
     memories,
@@ -226,6 +228,8 @@ app.include_router(places.router, prefix="/api/v1", tags=["places"])
 app.include_router(skills.router, prefix="/api/v1", tags=["skills"])
 app.include_router(weather.router, prefix="/api/v1", tags=["weather"])
 app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
+app.include_router(events.router, prefix="/api/v1", tags=["events"])
+app.include_router(device_tokens.router, prefix="/api/v1", tags=["device-tokens"])
 
 # Legacy routes (deprecated)
 app.include_router(

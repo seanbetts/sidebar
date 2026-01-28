@@ -141,6 +141,15 @@ class Settings(BaseSettings):
     r2_access_key: str = ""
     r2_secret_access_key: str = ""
 
+    # APNs push notifications
+    apns_key_id: str | None = os.getenv("APNS_KEY_ID") or None
+    apns_team_id: str | None = os.getenv("APNS_TEAM_ID") or None
+    apns_auth_key: str | None = os.getenv("APNS_AUTH_KEY") or None
+    apns_env: str = os.getenv("APNS_ENV", "dev")
+    apns_topic: str | None = os.getenv("APNS_TOPIC") or None
+    apns_topic_ios: str | None = os.getenv("APNS_TOPIC_IOS") or None
+    apns_topic_macos: str | None = os.getenv("APNS_TOPIC_MACOS") or None
+
     # Observability
     sentry_dsn: str | None = os.getenv("SENTRY_DSN") or None
     sentry_traces_sample_rate: float = float(

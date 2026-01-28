@@ -1,4 +1,5 @@
 """Tasks router."""
+# ruff: noqa: B008
 
 from datetime import UTC, datetime
 
@@ -6,10 +7,15 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
+from api.config import settings
 from api.db.dependencies import get_current_user_id
 from api.db.session import SessionLocal, get_db, set_session_user_id
 from api.exceptions import BadRequestError
+from api.services.change_bus import change_bus
+from api.services.device_token_service import DeviceTokenService
+from api.services.push_notification_service import PushNotificationService
 from api.services.recurrence_service import RecurrenceService
+from api.services.task_change_service import TaskChangeService
 from api.services.task_service import TaskService
 from api.services.task_sync_service import TaskSyncService
 from api.services.tasks_snapshot_service import TasksSnapshotService
@@ -147,6 +153,7 @@ async def search_tasks(
 @router.post("/apply")
 async def apply_task_operation(
     request: dict,
+    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -155,8 +162,28 @@ async def apply_task_operation(
     set_session_user_id(db, user_id)
     operations = request.get("operations")
     op_list = operations if isinstance(operations, list) else [request]
+    counts_before = TaskService.get_counts(db, user_id)
     result = TaskSyncService.apply_operations(db, user_id, op_list)
     db.commit()
+    counts_after = TaskService.get_counts(db, user_id)
+    notifications = TaskChangeService.build_notifications(
+        user_id=user_id,
+        before=counts_before,
+        after=counts_after,
+    )
+    if notifications.event:
+        await change_bus.publish(user_id, notifications.event)
+    if notifications.badge_count is not None:
+        environment = DeviceTokenService.normalize_environment(settings.apns_env)
+        tokens = DeviceTokenService.list_active_tokens(
+            db, user_id, environment=environment
+        )
+        if tokens:
+            background_tasks.add_task(
+                PushNotificationService.send_badge_update,
+                tokens,
+                notifications.badge_count,
+            )
     return {
         "applied": result.applied_ids,
         "tasks": [_task_payload(task) for task in result.tasks],
@@ -169,14 +196,35 @@ async def apply_task_operation(
 @router.post("/sync")
 async def sync_tasks(
     request: dict,
+    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Apply offline operations and return updates since the last sync."""
     set_session_user_id(db, user_id)
+    counts_before = TaskService.get_counts(db, user_id)
     result = TaskSyncService.sync_operations(db, user_id, request)
     db.commit()
+    counts_after = TaskService.get_counts(db, user_id)
+    notifications = TaskChangeService.build_notifications(
+        user_id=user_id,
+        before=counts_before,
+        after=counts_after,
+    )
+    if notifications.event:
+        await change_bus.publish(user_id, notifications.event)
+    if notifications.badge_count is not None:
+        environment = DeviceTokenService.normalize_environment(settings.apns_env)
+        tokens = DeviceTokenService.list_active_tokens(
+            db, user_id, environment=environment
+        )
+        if tokens:
+            background_tasks.add_task(
+                PushNotificationService.send_badge_update,
+                tokens,
+                notifications.badge_count,
+            )
     return {
         "applied": result.applied_ids,
         "tasks": [_task_payload(task) for task in result.tasks],
