@@ -99,14 +99,23 @@ extension AppEnvironment {
             pushLogger.error("Unable to read task for entitlement check.")
             return
         }
-        guard let value = SecTaskCopyValueForEntitlement(task, "aps-environment" as CFString, nil) else {
-            pushLogger.error("Missing aps-environment entitlement.")
+        let iosKey = "aps-environment" as CFString
+        let macKey = "com.apple.developer.aps-environment" as CFString
+        let iosValue = SecTaskCopyValueForEntitlement(task, iosKey, nil)
+        let macValue = SecTaskCopyValueForEntitlement(task, macKey, nil)
+        if iosValue == nil && macValue == nil {
+            pushLogger.error("Missing APNs entitlement.")
             return
         }
-        if let environment = value as? String {
+        if let environment = iosValue as? String {
             pushLogger.info("aps-environment entitlement: \(environment, privacy: .public)")
-        } else {
+        } else if iosValue != nil {
             pushLogger.info("aps-environment entitlement present.")
+        }
+        if let environment = macValue as? String {
+            pushLogger.info("com.apple.developer.aps-environment entitlement: \(environment, privacy: .public)")
+        } else if macValue != nil {
+            pushLogger.info("com.apple.developer.aps-environment entitlement present.")
         }
     }
 }
