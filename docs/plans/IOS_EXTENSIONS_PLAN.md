@@ -1,7 +1,7 @@
 # iOS Extensions, Widgets, App Intents, and Siri Plan
 **Project:** sideBar iOS App
-**Document Version:** 1.1
-**Date:** 2026-01-26
+**Document Version:** 1.2
+**Date:** 2026-01-28
 **Estimated Total Effort:** 4-5 weeks (phased, shippable milestones)
 
 ---
@@ -13,7 +13,7 @@ This plan consolidates the iOS Share Extension, Live Activities, Widgets, App In
 **Phases:**
 1. ✅ Share Extension (URLs, images, files) - **COMPLETE**
 2. Live Activities for upload progress
-3. Widgets + App Intents + Siri (core)
+3. ✅ Widgets + App Intents + Siri (core) - **PARTIAL** (Tasks widgets complete)
 4. Widgets polish: interactive widgets, lock screen, Spotlight, background refresh
 
 ---
@@ -90,34 +90,76 @@ These should be used as templates for Widgets and Intents.
 
 ---
 
-## Phase 3: Widgets + App Intents + Siri (Week 3)
+## Phase 3: Widgets + App Intents + Siri (Week 3) - PARTIAL ✅
 
 **Goal:** Core widgets and App Intents (Siri + Shortcuts)
+**Status:** Tasks widgets complete (2026-01-28), other content types ready for implementation
 
-### Widget Foundation
-- Create `sideBarWidgets` target (iOS 17+ recommended).
-- Add `WidgetEnvironment` mirroring `ShareExtensionEnvironment`.
-- Add `WidgetDataManager` for cached data in App Group UserDefaults.
+### Widget Foundation ✅ COMPLETE
+- ✅ Created `sideBarWidgets` target with App Group and Keychain sharing.
+- ✅ Added `WidgetDataManager` with generic type-safe storage architecture.
+- ✅ Implemented deep linking via `sidebar://` URL scheme.
 
-### Widgets (Core)
-1. Recent Conversations widget.
-2. Recent Notes widget.
-3. Scratchpad widget (read-only for MVP).
+### Generic Widget Storage Architecture ✅ COMPLETE
+The widget system now uses a generic, type-safe storage architecture supporting multiple content types:
 
-### App Intents (Core)
+**Protocols:**
+- `WidgetStorable` - Protocol for widget data models (Codable, Identifiable, Equatable)
+- `WidgetDataContainer` - Protocol for data containers with items, totalCount, lastUpdated
+
+**Content Types (`WidgetContentType` enum):**
+- `.tasks` - Today's tasks (implemented)
+- `.notes` - Recent notes (models ready)
+- `.websites` - Saved websites (models ready)
+- `.files` - Recent files (models ready)
+
+**Generic API:**
+```swift
+// Store data (type-safe)
+WidgetDataManager.shared.store(data, for: .tasks)
+
+// Load data (type-safe)
+let data: WidgetTaskData = WidgetDataManager.shared.load(for: .tasks)
+
+// Pending operations (widget → main app)
+let op = WidgetPendingOperation(itemId: id, action: TaskWidgetAction.complete)
+WidgetDataManager.shared.recordPendingOperation(op, for: .tasks)
+```
+
+### Widgets Implemented ✅
+1. ✅ **TodayTasksWidget** - Shows today's tasks with completion buttons
+2. ✅ **TaskCountWidget** - Compact task count display
+3. ✅ **LockScreenTaskCountWidget** - Circular lock screen widget
+4. ✅ **LockScreenTaskPreviewWidget** - Rectangular lock screen widget
+5. ✅ **LockScreenInlineWidget** - Inline text lock screen widget
+
+### Widgets Remaining
+1. Recent Notes widget (use `WidgetNoteData`)
+2. Saved Websites widget (use `WidgetWebsiteData`)
+3. Recent Files widget (use `WidgetFileData`)
+4. Recent Conversations widget
+
+### App Intents Implemented ✅
+1. ✅ `CompleteTaskIntent` - Marks task complete from widget
+2. ✅ `OpenTodayIntent` - Opens app to Today view
+3. ✅ `AddTaskIntent` - Opens app to add new task
+4. ✅ `OpenTaskIntent` - Opens specific task
+
+### App Intents Remaining
 1. `StartChatIntent` (opens app).
 2. `CreateNoteIntent` (no UI required).
 3. `QuickSaveIntent` (saves URL).
 4. `OpenScratchpadIntent` (opens app).
 
-### Siri and Shortcuts
-- Register `AppShortcutsProvider` with Siri phrases.
-- Ensure `NSUserActivityTypes` contains all intent identifiers.
+### Siri and Shortcuts ✅ PARTIAL
+- ✅ Registered `TaskShortcutsProvider` with Siri phrases for tasks.
+- Remaining: Add shortcuts for notes, chat, websites.
 
-### Verification
-- Widgets show cached data instantly, then refresh with API data.
-- Deep links open correct destinations.
-- Intents appear in Shortcuts and respond to Siri phrases.
+### Verification ✅
+- ✅ Task widgets show cached data instantly.
+- ✅ Deep links open correct destinations (`sidebar://tasks/today`, `sidebar://tasks/new`).
+- ✅ Task completion from widget syncs to main app.
+- ✅ Intents appear in Shortcuts app.
 
 ---
 
@@ -151,21 +193,35 @@ These should be used as templates for Widgets and Intents.
 - `ios/sideBar/ShareExtension/ShareErrorView.swift` - Error state UI
 - `ios/sideBar/ShareExtension/ShareProgressView.swift` - Upload progress UI
 
-### Shared Utilities (Reference Patterns)
+### Shared Utilities
 - `ios/sideBar/sideBar/Utilities/AppGroupConfiguration.swift` - App Group ID configuration
 - `ios/sideBar/sideBar/Utilities/ExtensionEventStore.swift` - IPC between extension and main app
 - `ios/sideBar/sideBar/Services/Auth/KeychainAuthStateStore.swift` - Shared keychain access
 
-### New Targets (Planned)
+### Widget Storage Architecture (Main App)
+- `ios/sideBar/sideBar/Utilities/WidgetStorable.swift` - Protocols for widget models
+- `ios/sideBar/sideBar/Utilities/WidgetContentType.swift` - Content type enum with storage keys
+- `ios/sideBar/sideBar/Utilities/WidgetPendingOperation.swift` - Generic pending operation types
+- `ios/sideBar/sideBar/Utilities/WidgetDataManager.swift` - Generic storage + migration + deprecated wrappers
+
+### Widget Extension (Implemented)
 ```
 ios/sideBar/sideBarWidgets/
 ├── sideBarWidgets.entitlements
-├── WidgetsBundle.swift
-├── WidgetEnvironment.swift
-├── WidgetDataManager.swift
+├── sideBarWidgetsBundle.swift          # Widget bundle registration
+├── WidgetStorable.swift                # Shared protocols
+├── WidgetContentType.swift             # Content type enum
+├── WidgetPendingOperation.swift        # Pending operation types
+├── WidgetDataManager.swift             # Lightweight read/record operations
+├── WidgetModels.swift                  # All widget models (Task, Note, Website, File)
 ├── Providers/
+│   └── TodayTasksProvider.swift        # Timeline provider for task widgets
 ├── Widgets/
+│   ├── TodayTasksWidget.swift          # Main tasks widget
+│   ├── TaskCountWidget.swift           # Compact task count
+│   └── LockScreenWidgets.swift         # Lock screen variants
 └── Intents/
+    └── TaskIntents.swift               # Task-related App Intents
 ```
 
 ---
@@ -193,6 +249,52 @@ ios/sideBar/sideBarWidgets/
 
 1. ✅ ~~Confirm App Group IDs and entitlements for all targets.~~
 2. ✅ ~~Verify Share Extension completeness.~~
-3. **Next:** Implement Live Activities with upload progress (Phase 2).
-4. Build core widgets and App Intents (Phase 3).
-5. Polish with interactive widgets, lock screen, and Spotlight (Phase 4).
+3. ✅ ~~Build Tasks widgets with generic storage architecture (Phase 3 partial).~~
+4. **Next:** Add Notes/Websites/Files widgets using existing generic architecture.
+5. Implement Live Activities with upload progress (Phase 2).
+6. Add remaining App Intents (chat, notes, scratchpad).
+7. Polish with Spotlight indexing and background refresh (Phase 4).
+
+### Adding a New Widget Type
+
+To add widgets for notes, websites, or files:
+
+1. **Create timeline provider** in `sideBarWidgets/Providers/`:
+   ```swift
+   struct RecentNotesProvider: TimelineProvider {
+     func getTimeline(...) {
+       let data: WidgetNoteData = WidgetDataManager.shared.load(for: .notes)
+       // Build timeline entries
+     }
+   }
+   ```
+
+2. **Create widget view** in `sideBarWidgets/Widgets/`:
+   ```swift
+   struct RecentNotesWidget: Widget {
+     var body: some WidgetConfiguration {
+       StaticConfiguration(kind: "RecentNotesWidget", provider: RecentNotesProvider()) { entry in
+         RecentNotesWidgetView(entry: entry)
+       }
+     }
+   }
+   ```
+
+3. **Update ViewModel** to push data to widgets:
+   ```swift
+   // In NotesViewModel after loading notes
+   let widgetNotes = recentNotes.prefix(5).map { WidgetNote(from: $0) }
+   let data = WidgetNoteData(notes: Array(widgetNotes), totalCount: allNotes.count)
+   WidgetDataManager.shared.store(data, for: .notes)
+   ```
+
+4. **Register widget** in `sideBarWidgetsBundle.swift`:
+   ```swift
+   var body: some Widget {
+     TodayTasksWidget()
+     // ... existing widgets
+     RecentNotesWidget()  // Add new widget
+   }
+   ```
+
+5. **Add deep link handling** (if needed) in `AppEnvironment+DeepLink.swift`.
