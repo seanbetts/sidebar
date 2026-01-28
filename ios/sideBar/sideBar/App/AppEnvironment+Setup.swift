@@ -111,6 +111,7 @@ extension AppEnvironment {
     private func setupTaskBadgeUpdates() {
 #if os(iOS)
         requestBadgeAuthorizationIfNeeded()
+        registerForRemoteNotificationsIfNeeded()
         Publishers.CombineLatest($isAuthenticated, tasksViewModel.$counts)
             .receive(on: DispatchQueue.main)
             .sink { isAuthenticated, counts in

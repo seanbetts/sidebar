@@ -18,6 +18,9 @@ extension AppEnvironment {
         }
         if isAuthenticated {
             biometricMonitor.startMonitoring()
+            #if os(iOS)
+            registerDeviceTokenIfNeeded()
+            #endif
         } else {
             biometricMonitor.stopMonitoring()
         }
@@ -30,6 +33,9 @@ extension AppEnvironment {
     public func beginSignOut() async {
         signOutEvent = UUID()
         sessionExpiryWarning = nil
+        #if os(iOS)
+        await disableDeviceTokenIfNeeded()
+        #endif
         await container.authSession.signOut()
         refreshAuthState()
     }
