@@ -110,7 +110,8 @@ public final class TasksViewModel: ObservableObject {
         let widgetTasks = todayTasks.prefix(10).map { task in
             WidgetTask(from: task, projectName: task.projectId.flatMap { projectTitleById[$0] })
         }
-        WidgetDataManager.shared.updateTodayTasks(Array(widgetTasks), totalCount: todayTasks.count)
+        let data = WidgetTaskData(tasks: Array(widgetTasks), totalCount: todayTasks.count)
+        WidgetDataManager.shared.store(data, for: .tasks)
     }
 
     public func loadCounts(force: Bool = false) async {

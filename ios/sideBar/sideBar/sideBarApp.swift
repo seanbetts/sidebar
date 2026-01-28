@@ -120,7 +120,8 @@ struct AddTaskIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         logger.info("AddTaskIntent recording pending add task (app process)")
         await MainActor.run {
-            WidgetDataManager.shared.recordAddTaskIntent()
+            let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
+            WidgetDataManager.shared.recordPendingOperation(operation, for: .tasks)
         }
         return .result()
     }
