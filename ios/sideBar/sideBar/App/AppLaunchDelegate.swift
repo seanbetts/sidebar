@@ -48,6 +48,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
     private let shortcutsHelpIdentifier = UIMenu.Identifier("ai.sidebar.shortcuts.help")
     private let shortcutsContextIdentifier = UIMenu.Identifier("ai.sidebar.shortcuts.context")
     private let router = ShortcutActionRouter()
+    private let logger = Logger(subsystem: "sideBar", category: "Push")
 
     override init() {
         super.init()
@@ -90,6 +91,35 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
     }
 
     // URL handling moved to UIWindowSceneDelegate to avoid deprecated API.
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
+        guard !tokenString.isEmpty else { return }
+        AppEnvironment.shared?.updateDeviceToken(tokenString)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        logger.error("Remote notifications registration failed: \(error.localizedDescription, privacy: .public)")
+    }
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        guard let environment = AppEnvironment.shared else {
+            completionHandler(.noData)
+            return
+        }
+        environment.handleRemoteNotification(userInfo)
+        completionHandler(.newData)
+    }
 
     override func buildMenu(with builder: UIMenuBuilder) {
         guard builder.system == .main else { return }

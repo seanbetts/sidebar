@@ -19,6 +19,7 @@
 	} from '$lib/utils/cache';
 	import { applyThemeMode, getStoredTheme } from '$lib/utils/theme';
 	import { startRealtime, stopRealtime } from '$lib/realtime/realtime';
+	import { startTaskEvents, stopTaskEvents } from '$lib/realtime/task_events';
 	import { logError } from '$lib/utils/errorHandling';
 	import { initWebVitals } from '$lib/utils/performance';
 
@@ -79,8 +80,10 @@
 		stopRealtimeListener = user.subscribe((currentUser) => {
 			if (currentUser?.id) {
 				void startRealtime(currentUser.id);
+				startTaskEvents(currentUser.id);
 			} else {
 				stopRealtime();
+				stopTaskEvents();
 			}
 		});
 		stopStorageListener = listenForStorageEvents();
@@ -99,6 +102,7 @@
 		stopRealtimeListener?.();
 		stopDebugListener?.();
 		stopRealtime();
+		stopTaskEvents();
 		chatStore.cleanup?.();
 	});
 
