@@ -401,6 +401,11 @@
 					};
 					14C84A472F10562300FE0C16 = {
 						CreatedOnToolsVersion = 26.2;
+						SystemCapabilities = {
+							com.apple.Push = {
+								enabled = 1;
+							};
+						};
 					};
 					14C84A542F10562500FE0C16 = {
 						CreatedOnToolsVersion = 26.2;
