@@ -9,7 +9,7 @@ import UIKit
 
 @MainActor
 public final class AppEnvironment: ObservableObject {
-    #if os(iOS)
+    #if os(iOS) || os(macOS)
     public static weak var shared: AppEnvironment?
     #endif
     public let container: ServiceContainer
@@ -95,7 +95,7 @@ public final class AppEnvironment: ObservableObject {
         self.biometricMonitor = dependencies.biometricMonitor
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
-        #if os(iOS)
+        #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
         #endif
         #if DEBUG

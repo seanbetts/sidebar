@@ -9,7 +9,9 @@ import httpx
 import jwt
 
 from api.config import settings
+from api.db.session import SessionLocal
 from api.models.device_token import DeviceToken
+from api.services.device_token_service import DeviceTokenService
 
 
 class PushNotificationService:
@@ -40,6 +42,7 @@ class PushNotificationService:
             else "api.sandbox.push.apple.com"
         )
 
+        invalid_tokens: list[str] = []
         with httpx.Client(http2=True, timeout=5.0) as client:
             for token in tokens:
                 topic = cls._topic_for_token(token)
@@ -62,9 +65,23 @@ class PushNotificationService:
                 try:
                     response = client.post(url, json=payload, headers=headers)
                     if response.status_code >= 400:
+                        reason = None
+                        try:
+                            body = response.json()
+                            reason = body.get("reason")
+                        except Exception:
+                            reason = None
+                        if response.status_code in {400, 410} and reason in {
+                            "BadDeviceToken",
+                            "Unregistered",
+                            "DeviceTokenNotForTopic",
+                        }:
+                            invalid_tokens.append(token.token)
                         continue
                 except httpx.HTTPError:
                     continue
+        if invalid_tokens:
+            cls._disable_invalid_tokens(invalid_tokens)
 
     @classmethod
     def _get_auth_token(cls) -> str | None:
@@ -97,3 +114,9 @@ class PushNotificationService:
         if token.platform == "macos":
             return settings.apns_topic_macos or settings.apns_topic
         return settings.apns_topic
+
+    @staticmethod
+    def _disable_invalid_tokens(tokens: list[str]) -> None:
+        with SessionLocal() as db:
+            DeviceTokenService.disable_tokens_by_value(db, tokens)
+            db.commit()

@@ -1,12 +1,18 @@
 import Foundation
 #if os(iOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
 #endif
 
-#if os(iOS)
+#if os(iOS) || os(macOS)
 extension AppEnvironment {
     func registerForRemoteNotificationsIfNeeded() {
+#if os(iOS)
         UIApplication.shared.registerForRemoteNotifications()
+#elseif os(macOS)
+        NSApplication.shared.registerForRemoteNotifications()
+#endif
     }
 
     func updateDeviceToken(_ token: String) {
@@ -35,11 +41,12 @@ extension AppEnvironment {
             return
         }
         let environment = pushEnvironment
+        let platform = pushPlatform
         Task {
             do {
                 try await container.deviceTokensAPI.register(
                     token: token,
-                    platform: "ios",
+                    platform: platform,
                     environment: environment
                 )
                 await MainActor.run {
@@ -66,6 +73,14 @@ extension AppEnvironment {
         return "dev"
         #else
         return "prod"
+        #endif
+    }
+
+    private var pushPlatform: String {
+        #if os(macOS)
+        return "macos"
+        #else
+        return "ios"
         #endif
     }
 }

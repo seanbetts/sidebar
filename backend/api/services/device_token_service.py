@@ -110,6 +110,20 @@ class DeviceTokenService:
         return record
 
     @staticmethod
+    def disable_tokens_by_value(db: Session, tokens: list[str]) -> int:
+        """Disable a batch of device tokens by value."""
+        cleaned = [token.strip() for token in tokens if token and token.strip()]
+        if not cleaned:
+            return 0
+        now = datetime.now(UTC)
+        records = db.query(DeviceToken).filter(DeviceToken.token.in_(cleaned)).all()
+        for record in records:
+            record.disabled_at = now
+            record.updated_at = now
+        db.flush()
+        return len(records)
+
+    @staticmethod
     def list_active_tokens(
         db: Session,
         user_id: str,
