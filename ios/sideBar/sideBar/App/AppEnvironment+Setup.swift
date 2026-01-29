@@ -94,6 +94,12 @@ extension AppEnvironment {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+
+        writeQueue.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     private func monitorNetwork() {

@@ -35,6 +35,7 @@ public final class AppEnvironment: ObservableObject {
     public let configError: EnvironmentConfigLoadError?
     let networkMonitor: NetworkMonitor
     public let biometricMonitor: BiometricMonitor
+    public let writeQueue: WriteQueue
 
     @Published public internal(set) var isAuthenticated: Bool = false
     @Published public internal(set) var isOffline: Bool = false
@@ -94,6 +95,7 @@ public final class AppEnvironment: ObservableObject {
         self.realtimeClient = dependencies.realtimeClient
         self.networkMonitor = dependencies.networkMonitor
         self.biometricMonitor = dependencies.biometricMonitor
+        self.writeQueue = dependencies.writeQueue
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
         #if os(iOS) || os(macOS)
