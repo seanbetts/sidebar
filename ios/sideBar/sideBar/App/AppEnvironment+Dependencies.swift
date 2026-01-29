@@ -23,6 +23,7 @@ extension AppEnvironment {
         let realtimeClient: RealtimeClient
         let networkMonitor: NetworkMonitor
         let biometricMonitor: BiometricMonitor
+        let writeQueue: WriteQueue
     }
 
     static func buildDependencies(
@@ -72,6 +73,13 @@ extension AppEnvironment {
         let realtimeClient = container.makeRealtimeClient(handler: nil)
         let networkMonitor = NetworkMonitor(startMonitoring: !isTestMode)
         let biometricMonitor = BiometricMonitor()
+        let persistenceController = isTestMode
+            ? PersistenceController(inMemory: true)
+            : PersistenceController.shared
+        let writeQueue = WriteQueue(
+            container: persistenceController.container,
+            networkMonitor: networkMonitor
+        )
         return EnvironmentDependencies(
             themeManager: themeManager,
             chatStore: chatStore,
@@ -92,7 +100,8 @@ extension AppEnvironment {
             weatherViewModel: weatherViewModel,
             realtimeClient: realtimeClient,
             networkMonitor: networkMonitor,
-            biometricMonitor: biometricMonitor
+            biometricMonitor: biometricMonitor,
+            writeQueue: writeQueue
         )
     }
 }
