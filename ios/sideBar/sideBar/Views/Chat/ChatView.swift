@@ -103,11 +103,17 @@ private struct ChatDetailView: View {
                 ChatInputBar(
                     text: $draftMessage,
                     measuredHeight: $inputMeasuredHeight,
-                    isEnabled: !viewModel.isStreaming,
-                    isSendEnabled: !viewModel.isStreaming && !viewModel.hasPendingAttachments,
+                    isEnabled: canSendMessages,
+                    isSendEnabled: canSendMessages && !viewModel.hasPendingAttachments,
                     onSend: handleSend,
                     onAttach: { isFileImporterPresented = true }
                 )
+                if !environment.isNetworkAvailable {
+                    Text("Chat is unavailable offline. You can still read past conversations.")
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .padding(.horizontal, DesignTokens.Spacing.xl)
             .padding(.bottom, DesignTokens.Spacing.md)
@@ -177,6 +183,10 @@ private struct ChatDetailView: View {
         #else
         return 46
         #endif
+    }
+
+    private var canSendMessages: Bool {
+        !viewModel.isStreaming && environment.isNetworkAvailable
     }
 
     private func handleSend() {
