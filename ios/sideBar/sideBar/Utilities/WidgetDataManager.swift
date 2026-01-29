@@ -293,3 +293,68 @@ extension WidgetTask {
     self.deadline = task.deadline
   }
 }
+
+// MARK: - WidgetNote Models
+
+/// Lightweight note model for widgets
+public struct WidgetNote: WidgetStorable {
+  public let id: String
+  public let name: String
+  public let contentPreview: String?
+  public let path: String
+  public let modifiedAt: Date?
+
+  public init(
+    id: String,
+    name: String,
+    contentPreview: String? = nil,
+    path: String,
+    modifiedAt: Date? = nil
+  ) {
+    self.id = id
+    self.name = name
+    self.contentPreview = contentPreview
+    self.path = path
+    self.modifiedAt = modifiedAt
+  }
+}
+
+/// Data snapshot for note widgets
+public struct WidgetNoteData: WidgetDataContainer {
+  public typealias Item = WidgetNote
+
+  public let notes: [WidgetNote]
+  public let totalCount: Int
+  public let lastUpdated: Date
+
+  public var items: [WidgetNote] { notes }
+
+  public init(notes: [WidgetNote], totalCount: Int, lastUpdated: Date = Date()) {
+    self.notes = notes
+    self.totalCount = totalCount
+    self.lastUpdated = lastUpdated
+  }
+
+  public static let empty = WidgetNoteData(notes: [], totalCount: 0)
+
+  public static let placeholder = WidgetNoteData(
+    notes: [
+      WidgetNote(id: "1", name: "Meeting Notes", contentPreview: "Discussed project timeline...", path: "/notes/meeting.md"),
+      WidgetNote(id: "2", name: "Ideas", contentPreview: "New feature concepts", path: "/notes/ideas.md")
+    ],
+    totalCount: 5
+  )
+}
+
+// MARK: - FileNode to WidgetNote Conversion
+
+extension WidgetNote {
+  /// Creates a WidgetNote from a FileNode
+  public init(from node: FileNode) {
+    self.id = node.path
+    self.name = node.name.hasSuffix(".md") ? String(node.name.dropLast(3)) : node.name
+    self.contentPreview = nil
+    self.path = node.path
+    self.modifiedAt = node.modified.map { Date(timeIntervalSince1970: $0) }
+  }
+}

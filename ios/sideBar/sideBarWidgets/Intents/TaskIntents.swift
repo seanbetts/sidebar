@@ -85,8 +85,9 @@ struct OpenTaskIntent: AppIntent {
 
 // MARK: - App Shortcuts Provider
 
-struct TaskShortcutsProvider: AppShortcutsProvider {
+struct SideBarShortcutsProvider: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        // Task shortcuts
         AppShortcut(
             intent: OpenTodayIntent(),
             phrases: [
@@ -106,6 +107,27 @@ struct TaskShortcutsProvider: AppShortcutsProvider {
             ],
             shortTitle: "Add Task",
             systemImageName: "plus.circle"
+        )
+        // Note shortcuts
+        AppShortcut(
+            intent: OpenNotesIntent(),
+            phrases: [
+                "Show my notes in \(.applicationName)",
+                "Open notes in \(.applicationName)",
+                "View my notes in \(.applicationName)"
+            ],
+            shortTitle: "My Notes",
+            systemImageName: "doc.text"
+        )
+        AppShortcut(
+            intent: CreateNoteIntent(),
+            phrases: [
+                "Create a note in \(.applicationName)",
+                "New note in \(.applicationName)",
+                "Add a note in \(.applicationName)"
+            ],
+            shortTitle: "Create Note",
+            systemImageName: "doc.badge.plus"
         )
     }
 }

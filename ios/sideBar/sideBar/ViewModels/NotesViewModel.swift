@@ -269,6 +269,10 @@ public final class NotesViewModel: ObservableObject {
             store.applyEditorUpdate(updated)
             return true
         } catch {
+            if let urlError = error as? URLError,
+               urlError.code == .notConnectedToInternet || urlError.code == .timedOut {
+                return false
+            }
             toastCenter.show(message: "Failed to update note")
             return false
         }

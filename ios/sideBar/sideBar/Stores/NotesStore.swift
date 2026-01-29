@@ -1,5 +1,8 @@
 import Foundation
 import Combine
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 // MARK: - NotesStore
 
@@ -142,6 +145,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         if persist {
             cache.set(key: CacheKeys.notesTree, value: incoming, ttlSeconds: CachePolicy.notesTree)
         }
+        updateWidgetData(from: incoming)
     }
 
     private func shouldUpdateTree(_ incoming: FileTree) -> Bool {
@@ -169,5 +173,28 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             current.content != incoming.content ||
             current.name != incoming.name ||
             current.path != incoming.path
+    }
+
+    // MARK: - Widget Data
+
+    private func updateWidgetData(from tree: FileTree) {
+        let allNotes = flattenNotes(from: tree.children)
+            .sorted { ($0.modifiedAt ?? .distantPast) > ($1.modifiedAt ?? .distantPast) }
+        let recentNotes = Array(allNotes.prefix(10))
+        let data = WidgetNoteData(notes: recentNotes, totalCount: allNotes.count)
+        WidgetDataManager.shared.store(data, for: .notes)
+    }
+
+    private func flattenNotes(from nodes: [FileNode]) -> [WidgetNote] {
+        var notes: [WidgetNote] = []
+        for node in nodes {
+            if node.type == .file, node.archived != true {
+                notes.append(WidgetNote(from: node))
+            }
+            if let children = node.children {
+                notes.append(contentsOf: flattenNotes(from: children))
+            }
+        }
+        return notes
     }
 }

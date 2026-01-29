@@ -11,13 +11,21 @@ import WidgetKit
 @main
 struct SideBarWidgetsBundle: WidgetBundle {
     var body: some Widget {
-        // Home screen widgets
+        // Home screen widgets - Tasks
         TodayTasksWidget()
         TaskCountWidget()
 
-        // Lock screen widgets
+        // Home screen widgets - Notes
+        RecentNotesWidget()
+
+        // Lock screen widgets - Tasks
         LockScreenTaskCountWidget()
         LockScreenTaskPreviewWidget()
         LockScreenInlineWidget()
+
+        // Lock screen widgets - Notes
+        LockScreenNoteCountWidget()
+        LockScreenNotePreviewWidget()
+        LockScreenNotesInlineWidget()
     }
 }

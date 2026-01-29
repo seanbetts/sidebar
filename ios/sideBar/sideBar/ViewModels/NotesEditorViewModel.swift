@@ -56,6 +56,7 @@ public final class NotesEditorViewModel: ObservableObject {
         }
         currentNoteId = note.id
         content = note.content
+        syncNativeEditorContent(note.content)
         isDirty = false
         isSaving = false
         lastSavedAt = nil
@@ -98,6 +99,7 @@ public final class NotesEditorViewModel: ObservableObject {
                 return
             }
             content = draft.content
+            syncNativeEditorContent(draft.content)
             isDirty = true
             isQueuedForSync = true
         } catch {
@@ -144,6 +146,7 @@ public final class NotesEditorViewModel: ObservableObject {
                 entityId: noteId,
                 payload: payload
             )
+            nativeViewModel.markSaved(markdown: markdown)
             isSaving = false
             isDirty = false
             isQueuedForSync = true
@@ -224,6 +227,12 @@ public final class NotesEditorViewModel: ObservableObject {
 
     public func setReadOnly(_ readOnly: Bool) {
         isReadOnly = readOnly
+    }
+
+    private func syncNativeEditorContent(_ markdown: String) {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            nativeEditorViewModel?.loadMarkdown(markdown)
+        }
     }
 }
 

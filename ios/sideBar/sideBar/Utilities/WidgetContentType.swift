@@ -32,8 +32,10 @@ public enum WidgetContentType: String, CaseIterable {
       ]
     case .notes:
       return [
-        "QuickNotesWidget",
-        "RecentNotesWidget"
+        "RecentNotesWidget",
+        "LockScreenNoteCount",
+        "LockScreenNotePreview",
+        "LockScreenNotesInline"
       ]
     case .websites:
       return [
