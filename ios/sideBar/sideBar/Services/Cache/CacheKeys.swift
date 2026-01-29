@@ -25,6 +25,10 @@ public enum CacheKeys {
         "conversations.detail.\(id)"
     }
 
+    public nonisolated static func conversationMessages(id: String) -> String {
+        "conversations.messages.\(id)"
+    }
+
     public nonisolated static func websiteDetail(id: String) -> String {
         "websites.detail.\(id)"
     }

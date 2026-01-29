@@ -51,8 +51,24 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
 
     public func loadConversation(id: String, force: Bool = false) async throws {
         let cacheKey = CacheKeys.conversation(id: id)
+        let messagesCacheKey = CacheKeys.conversationMessages(id: id)
         if !force, let cached: ConversationWithMessages = cache.get(key: cacheKey) {
-            conversationDetails[id] = cached
+            let cachedMessages: [Message]? = cache.get(key: messagesCacheKey)
+            if let cachedMessages, !cachedMessages.isEmpty {
+                conversationDetails[id] = ConversationWithMessages(
+                    id: cached.id,
+                    title: cached.title,
+                    titleGenerated: cached.titleGenerated,
+                    createdAt: cached.createdAt,
+                    updatedAt: cached.updatedAt,
+                    messageCount: cached.messageCount,
+                    firstMessage: cached.firstMessage,
+                    isArchived: cached.isArchived,
+                    messages: cachedMessages
+                )
+            } else {
+                conversationDetails[id] = cached
+            }
             return
         }
 
@@ -87,6 +103,8 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         if persist {
             let cacheKey = CacheKeys.conversation(id: detail.id)
             cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+            let messagesCacheKey = CacheKeys.conversationMessages(id: detail.id)
+            cache.set(key: messagesCacheKey, value: detail.messages, ttlSeconds: CachePolicy.conversationMessages)
         }
     }
 
@@ -172,7 +190,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     public func updateConversationMessages(
         id: String,
         messages: [Message],
-        persist: Bool = false
+        persist: Bool = true
     ) {
         guard let existing = conversationDetails[id] else {
             return
@@ -192,6 +210,8 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         if persist {
             let cacheKey = CacheKeys.conversation(id: id)
             cache.set(key: cacheKey, value: updated, ttlSeconds: CachePolicy.conversationDetail)
+            let messagesCacheKey = CacheKeys.conversationMessages(id: id)
+            cache.set(key: messagesCacheKey, value: messages, ttlSeconds: CachePolicy.conversationMessages)
         }
     }
 

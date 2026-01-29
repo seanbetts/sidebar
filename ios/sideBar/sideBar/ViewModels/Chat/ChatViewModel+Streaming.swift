@@ -299,7 +299,7 @@ extension ChatViewModel {
         return "application/octet-stream"
     }
 
-    func syncMessagesToStore(conversationId: String?, persist: Bool = false) {
+    func syncMessagesToStore(conversationId: String?, persist: Bool = true) {
         guard let conversationId else {
             return
         }

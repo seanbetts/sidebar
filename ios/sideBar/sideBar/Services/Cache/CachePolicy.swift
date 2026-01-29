@@ -4,6 +4,7 @@ import Foundation
 public enum CachePolicy {
     public static let conversationsList: TimeInterval = 30 * 60
     public static let conversationDetail: TimeInterval = 2 * 60 * 60
+    public static let conversationMessages: TimeInterval = 7 * 24 * 60 * 60
     public static let notesTree: TimeInterval = 30 * 60
     public static let noteContent: TimeInterval = 2 * 60 * 60
     public static let websitesList: TimeInterval = 30 * 60
