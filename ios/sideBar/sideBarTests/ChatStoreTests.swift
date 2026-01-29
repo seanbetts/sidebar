@@ -69,6 +69,43 @@ final class ChatStoreTests: XCTestCase {
         XCTAssertEqual(store.conversationDetails["c1"]?.title, "Cached")
         XCTAssertEqual(api.getCallCount, 0)
     }
+
+    func testUpdateConversationMessagesPersistsMessagesCache() {
+        let cache = TestCacheClient()
+        let api = MockConversationsAPI(listResult: .success([]), getResult: .failure(MockError.forced))
+        let store = ChatStore(conversationsAPI: api, cache: cache)
+        let detail = ConversationWithMessages(
+            id: "c1",
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2024-01-01",
+            updatedAt: "2024-01-01",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: false,
+            messages: []
+        )
+        store.upsertConversationDetail(detail, persist: true)
+
+        let messages = [
+            Message(
+                id: "m1",
+                role: .user,
+                content: "Hello",
+                status: .complete,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2024-01-01T00:00:00Z",
+                error: nil
+            )
+        ]
+        store.updateConversationMessages(id: "c1", messages: messages, persist: true)
+
+        let cached: [Message]? = cache.get(key: CacheKeys.conversationMessages(id: "c1"))
+        XCTAssertEqual(cached?.count, 1)
+        XCTAssertEqual(cached?.first?.id, "m1")
+        XCTAssertEqual(cached?.first?.content, "Hello")
+    }
 }
 
 private enum MockError: Error {

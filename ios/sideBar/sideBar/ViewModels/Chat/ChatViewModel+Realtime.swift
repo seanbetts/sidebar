@@ -237,6 +237,24 @@ extension ChatViewModel {
             await MainActor.run {
                 errorMessage = error.localizedDescription
             }
+            let payload = ChatMessageQueuePayload(
+                conversationId: conversationId,
+                message: ConversationMessageCreate(
+                    id: message.id,
+                    role: message.role.rawValue,
+                    content: message.content,
+                    status: message.status.rawValue,
+                    timestamp: message.timestamp,
+                    toolCalls: message.toolCalls?.map { AnyCodable($0) },
+                    error: message.error
+                )
+            )
+            try? writeQueue.enqueue(
+                operation: .create,
+                entityType: .message,
+                entityId: message.id,
+                payload: payload
+            )
         }
     }
 
@@ -297,4 +315,9 @@ extension ChatViewModel {
         }
         return messages.last(where: { $0.role == .assistant && $0.status == .streaming })?.id
     }
+}
+
+private struct ChatMessageQueuePayload: Codable {
+    let conversationId: String
+    let message: ConversationMessageCreate
 }

@@ -38,22 +38,6 @@ extension AppEnvironment {
         let tasksStore = TasksStore(api: container.tasksAPI, cache: container.cacheClient)
         let scratchpadStore = ScratchpadStore()
         let toastCenter = ToastCenter()
-        let chatViewModel = ChatViewModel(
-            chatAPI: container.chatAPI,
-            conversationsAPI: container.conversationsAPI,
-            ingestionAPI: container.ingestionAPI,
-            cache: container.cacheClient,
-            notesStore: notesStore,
-            websitesStore: websitesStore,
-            ingestionStore: ingestionStore,
-            themeManager: themeManager,
-            streamClient: container.makeChatStreamClient(handler: nil),
-            chatStore: chatStore,
-            toastCenter: toastCenter,
-            scratchpadStore: scratchpadStore
-        )
-        let temporaryStore = TemporaryFileStore.shared
-        let notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore, toastCenter: toastCenter)
         let realtimeClient = container.makeRealtimeClient(handler: nil)
         let networkMonitor = NetworkMonitor(startMonitoring: !isTestMode)
         let biometricMonitor = BiometricMonitor()
@@ -65,6 +49,23 @@ extension AppEnvironment {
             container: persistenceController.container,
             networkMonitor: networkMonitor
         )
+        let chatViewModel = ChatViewModel(
+            chatAPI: container.chatAPI,
+            conversationsAPI: container.conversationsAPI,
+            ingestionAPI: container.ingestionAPI,
+            cache: container.cacheClient,
+            notesStore: notesStore,
+            websitesStore: websitesStore,
+            ingestionStore: ingestionStore,
+            themeManager: themeManager,
+            streamClient: container.makeChatStreamClient(handler: nil),
+            chatStore: chatStore,
+            writeQueue: writeQueue,
+            toastCenter: toastCenter,
+            scratchpadStore: scratchpadStore
+        )
+        let temporaryStore = TemporaryFileStore.shared
+        let notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore, toastCenter: toastCenter)
         let notesEditorViewModel = NotesEditorViewModel(
             notesViewModel: notesViewModel,
             draftStorage: draftStorage,

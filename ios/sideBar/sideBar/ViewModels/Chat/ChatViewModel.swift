@@ -50,6 +50,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     let themeManager: ThemeManager
     let streamClient: ChatStreamClient
     let chatStore: ChatStore
+    let writeQueue: WriteQueue
     let userDefaults: UserDefaults
     let toastCenter: ToastCenter?
     let clock: () -> Date
@@ -74,6 +75,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         themeManager: ThemeManager,
         streamClient: ChatStreamClient,
         chatStore: ChatStore,
+        writeQueue: WriteQueue,
         toastCenter: ToastCenter? = nil,
         userDefaults: UserDefaults = .standard,
         clock: @escaping () -> Date = Date.init,
@@ -89,6 +91,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         self.themeManager = themeManager
         self.streamClient = streamClient
         self.chatStore = chatStore
+        self.writeQueue = writeQueue
         self.userDefaults = userDefaults
         self.toastCenter = toastCenter
         self.clock = clock
