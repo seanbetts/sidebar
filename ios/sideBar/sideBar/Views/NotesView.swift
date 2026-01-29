@@ -128,6 +128,14 @@ private struct NotesDetailView: View {
                 }
             )
         }
+        .sheet(item: conflictBinding) { conflict in
+            ConflictResolutionSheet(conflict: conflict) { choice in
+                Task {
+                    await handleConflictChoice(choice)
+                }
+            }
+            .interactiveDismissDisabled(true)
+        }
         .alert("Rename note", isPresented: $isRenameDialogPresented) {
             TextField("Note name", text: $renameValue)
                 .submitLabel(.done)
@@ -461,6 +469,24 @@ extension NotesDetailView {
     private func resetSavedIndicator() {
         hideSavedIndicator()
         lastSavedTimestamp = 0
+    }
+
+    private var conflictBinding: Binding<NoteSyncConflict?> {
+        Binding(
+            get: { editorViewModel.conflict },
+            set: { _ in }
+        )
+    }
+
+    private func handleConflictChoice(_ choice: NoteConflictChoice) async {
+        switch choice {
+        case .keepLocal:
+            await editorViewModel.resolveConflictKeepLocal()
+        case .keepServer:
+            await editorViewModel.resolveConflictKeepServer()
+        case .keepBoth:
+            await editorViewModel.resolveConflictKeepBoth()
+        }
     }
 
     private var displayTitle: String {

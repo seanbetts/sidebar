@@ -13,6 +13,7 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var lastSavedAt: Date?
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var isReadOnly: Bool = true
+    @Published public private(set) var conflict: NoteSyncConflict?
 
     private let notesViewModel: NotesViewModel
     private let draftStorage: DraftStorage
@@ -45,6 +46,7 @@ public final class NotesEditorViewModel: ObservableObject {
             isSaving = false
             lastSavedAt = nil
             saveErrorMessage = nil
+            conflict = nil
             return
         }
         currentNoteId = note.id
@@ -53,6 +55,7 @@ public final class NotesEditorViewModel: ObservableObject {
         isSaving = false
         lastSavedAt = nil
         saveErrorMessage = nil
+        conflict = nil
         Task { [weak self] in
             await self?.applyDraftIfAvailable(for: note)
         }
@@ -63,7 +66,28 @@ public final class NotesEditorViewModel: ObservableObject {
             guard let draft = try await draftStorage.getDraft(entityType: "note", entityId: note.id) else { return }
             guard draft.syncedAt == nil else { return }
             let serverDate = note.modified.map { Date(timeIntervalSince1970: $0) }
-            if let serverDate, draft.savedAt < serverDate {
+            if let serverDate, shouldPresentNoteConflict(
+                localContent: draft.content,
+                localDate: draft.savedAt,
+                serverContent: note.content,
+                serverDate: serverDate
+            ) {
+                conflict = NoteSyncConflict(
+                    id: UUID(),
+                    noteId: note.id,
+                    noteName: note.name,
+                    notePath: note.path,
+                    localContent: draft.content,
+                    serverContent: note.content,
+                    localDate: draft.savedAt,
+                    serverDate: serverDate
+                )
+                content = note.content
+                isDirty = false
+                return
+            }
+            if draft.content == note.content {
+                try? await draftStorage.markSynced(entityType: "note", entityId: note.id)
                 return
             }
             content = draft.content
@@ -131,6 +155,43 @@ public final class NotesEditorViewModel: ObservableObject {
         }
     }
 
+    public func resolveConflictKeepLocal() async {
+        guard let conflict else { return }
+        content = conflict.localContent
+        isDirty = true
+        try? await draftStorage.saveDraft(
+            entityType: "note",
+            entityId: conflict.noteId,
+            content: conflict.localContent
+        )
+        self.conflict = nil
+    }
+
+    public func resolveConflictKeepServer() async {
+        guard let conflict else { return }
+        content = conflict.serverContent
+        isDirty = false
+        try? await draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
+        self.conflict = nil
+    }
+
+    public func resolveConflictKeepBoth() async {
+        guard let conflict else { return }
+        let folder = folderPath(from: conflict.notePath)
+        let copyTitle = copyTitle(from: conflict.noteName)
+        let localContent = conflict.localContent
+        content = conflict.serverContent
+        isDirty = false
+        try? await draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
+        self.conflict = nil
+
+        guard let created = await notesViewModel.createNote(title: copyTitle, folder: folder) else {
+            saveErrorMessage = "Failed to create copy"
+            return
+        }
+        _ = await notesViewModel.updateNoteContent(id: created.id, content: localContent)
+    }
+
     public func setDirty(_ dirty: Bool) {
         isDirty = dirty
     }
@@ -142,4 +203,19 @@ public final class NotesEditorViewModel: ObservableObject {
 
 private struct NoteUpdatePayload: Codable {
     let content: String
+}
+
+private func folderPath(from notePath: String) -> String? {
+    let trimmed = notePath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    let parts = trimmed.split(separator: "/")
+    guard parts.count > 1 else { return nil }
+    return parts.dropLast().joined(separator: "/")
+}
+
+private func copyTitle(from noteName: String) -> String {
+    if noteName.hasSuffix(".md") {
+        let base = String(noteName.dropLast(3))
+        return "\(base) (Offline Copy)"
+    }
+    return "\(noteName) (Offline Copy)"
 }

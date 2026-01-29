@@ -128,6 +128,41 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.content, "Draft")
         XCTAssertTrue(viewModel.isDirty)
     }
+
+    func testDetectsConflictWhenServerIsNewer() async throws {
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            networkMonitor: NetworkMonitor(startMonitoring: false),
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue
+        )
+        let serverDate = Date().addingTimeInterval(60)
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Server",
+            path: "/note.md",
+            modified: serverDate.timeIntervalSince1970
+        )
+
+        try await draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
+        store.applyEditorUpdate(note)
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(viewModel.content, "Server")
+        XCTAssertNotNil(viewModel.conflict)
+    }
 }
 
 private enum MockError: Error {
