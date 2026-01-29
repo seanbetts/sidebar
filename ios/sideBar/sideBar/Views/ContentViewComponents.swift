@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct PhoneDetailRoute: Identifiable, Hashable {
     let id: String

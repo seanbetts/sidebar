@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 extension IngestionViewModel {
     func buildYouTubeEmbedURL(from file: IngestedFileMeta) -> URL? {

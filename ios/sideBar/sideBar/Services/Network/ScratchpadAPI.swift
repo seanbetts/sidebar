@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// Defines the requirements for ScratchpadProviding.
 public protocol ScratchpadProviding {

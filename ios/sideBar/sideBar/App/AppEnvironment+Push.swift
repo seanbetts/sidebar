@@ -5,7 +5,6 @@ import Security
 import UIKit
 #elseif os(macOS)
 import AppKit
-import Security
 #endif
 
 #if os(iOS) || os(macOS)

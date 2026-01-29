@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 extension AppEnvironment {
     struct EnvironmentDependencies {

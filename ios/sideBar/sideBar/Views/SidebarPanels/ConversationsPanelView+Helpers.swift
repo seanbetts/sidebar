@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 extension ConversationsPanelView {
     var header: some View {

@@ -1,4 +1,5 @@
 import XCTest
+import sideBarShared
 @testable import sideBar
 
 @available(iOS 26.0, macOS 26.0, *)

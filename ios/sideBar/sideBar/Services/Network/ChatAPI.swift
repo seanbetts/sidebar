@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// API client for chat-related endpoints.
 public struct ChatAPI {

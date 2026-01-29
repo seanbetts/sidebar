@@ -1,4 +1,5 @@
 import BackgroundTasks
+import sideBarShared
 import Foundation
 import os
 

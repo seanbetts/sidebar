@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 public struct TemporaryFileStore {
     public static let shared = TemporaryFileStore()

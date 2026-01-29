@@ -26,7 +26,7 @@ public enum APIClientError: Error {
 
 /// HTTP client for JSON and binary API requests.
 public final class APIClient {
-    let config: APIClientConfig
+    public let config: APIClientConfig
     private let session: URLSession
     private let logger = Logger(subsystem: "sideBar", category: "APIClient")
 
@@ -182,7 +182,7 @@ public final class APIClient {
         }
     }
 
-    static func decodeErrorMessage(data: Data, decoder: JSONDecoder) -> String? {
+    public static func decodeErrorMessage(data: Data, decoder: JSONDecoder) -> String? {
         guard let payload = try? decoder.decode(APIErrorResponse.self, from: data) else {
             if let errorPayload = try? decoder.decode(APIErrorEnvelope.self, from: data) {
                 return errorPayload.error.message

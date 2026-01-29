@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct FolderOption: Identifiable, Hashable {
     let id: String

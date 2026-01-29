@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 private let tasksDateFormatter: DateFormatter = {
     let formatter = DateFormatter()

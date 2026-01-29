@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// Defines ChatStreamEventType.
 public enum ChatStreamEventType: String {

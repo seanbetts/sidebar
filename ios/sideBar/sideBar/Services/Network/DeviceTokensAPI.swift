@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// Encodes a device token registration request.
 public struct DeviceTokenRegisterRequest: Encodable {

@@ -5,7 +5,6 @@ import PDFKit
 import QuickLook
 import QuickLookUI
 #else
-import QuickLook
 #endif
 import SwiftUI
 import UniformTypeIdentifiers

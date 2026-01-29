@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 public final class ServiceContainer {
     public let config: EnvironmentConfig

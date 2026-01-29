@@ -1,5 +1,6 @@
 #if canImport(MarkdownUI)
 import MarkdownUI
+import sideBarShared
 #endif
 import SwiftUI
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 struct RenameItemSheet: View {
     let title: String

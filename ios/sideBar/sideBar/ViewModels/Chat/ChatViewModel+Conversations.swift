@@ -1,4 +1,5 @@
 import Combine
+import sideBarShared
 import Foundation
 
 // MARK: - ChatViewModel+Conversations

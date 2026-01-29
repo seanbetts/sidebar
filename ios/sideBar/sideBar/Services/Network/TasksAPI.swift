@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// Defines task API operations used by the app.
 public protocol TasksProviding {

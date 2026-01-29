@@ -1,4 +1,5 @@
 import XCTest
+import sideBarShared
 import Security
 @testable import sideBar
 

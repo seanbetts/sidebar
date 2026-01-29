@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 #if canImport(WidgetKit)
 import WidgetKit
 #endif

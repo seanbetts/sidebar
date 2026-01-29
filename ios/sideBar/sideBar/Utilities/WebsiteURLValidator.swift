@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 enum WebsiteURLValidator {
     static func isValid(_ input: String) -> Bool {

@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 import OSLog
 import XCTest
 @testable import sideBar
