@@ -6,16 +6,18 @@ struct OfflineBanner: View {
 
     var body: some View {
         if shouldShow {
-            HStack(spacing: 8) {
+            HStack(spacing: 0) {
                 statusIcon
-                Text(statusText)
-                    .font(DesignTokens.Typography.subheadlineSemibold)
             }
             .foregroundStyle(foregroundColor)
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.vertical, DesignTokens.Spacing.xs)
+            .padding(.horizontal, DesignTokens.Spacing.xs)
+            .padding(.vertical, DesignTokens.Spacing.xxs)
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            #if !os(macOS)
+            .padding(.vertical, -4)
+            #endif
+            .accessibilityLabel(statusText)
         }
     }
 

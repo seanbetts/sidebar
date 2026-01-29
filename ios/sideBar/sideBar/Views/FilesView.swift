@@ -33,6 +33,9 @@ public struct FilesView: View {
         .toolbar {
             if isCompact {
                 ToolbarItemGroup(placement: .navigationBarLeading) {
+                    if !environment.isNetworkAvailable {
+                        OfflineBanner()
+                    }
                     if shouldShowPdfControls {
                         PdfHeaderControls(controller: pdfController, isCompact: true)
                     }
