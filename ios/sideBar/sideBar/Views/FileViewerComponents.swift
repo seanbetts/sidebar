@@ -4,7 +4,8 @@ import PDFKit
 #if os(macOS)
 import QuickLook
 import QuickLookUI
-#else
+#elseif canImport(QuickLook)
+import QuickLook
 #endif
 import SwiftUI
 import UniformTypeIdentifiers
