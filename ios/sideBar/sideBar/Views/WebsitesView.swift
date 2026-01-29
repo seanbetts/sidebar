@@ -77,9 +77,7 @@ private struct WebsitesDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if environment.isOffline {
-                OfflineBanner()
-            }
+            OfflineBanner()
             if !isCompact {
                 header
                 Divider()

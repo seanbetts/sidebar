@@ -13,9 +13,7 @@ public struct IngestionDetailView: View {
 
     public var body: some View {
         VStack(spacing: 12) {
-            if viewModel.isOffline {
-                OfflineBanner()
-            }
+            OfflineBanner()
             viewer
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
