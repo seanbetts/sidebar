@@ -33,12 +33,13 @@ public final class AppEnvironment: ObservableObject {
     public let weatherViewModel: WeatherViewModel
     let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
-    let networkMonitor: NetworkMonitor
+    let connectivityMonitor: ConnectivityMonitor
     public let biometricMonitor: BiometricMonitor
     public let writeQueue: WriteQueue
 
     @Published public internal(set) var isAuthenticated: Bool = false
     @Published public internal(set) var isOffline: Bool = false
+    @Published public internal(set) var isNetworkAvailable: Bool = true
     @Published public var commandSelection: AppSection?
     @Published public var sessionExpiryWarning: Date?
     @Published public internal(set) var signOutEvent: UUID?
@@ -93,7 +94,7 @@ public final class AppEnvironment: ObservableObject {
         self.settingsViewModel = dependencies.settingsViewModel
         self.weatherViewModel = dependencies.weatherViewModel
         self.realtimeClient = dependencies.realtimeClient
-        self.networkMonitor = dependencies.networkMonitor
+        self.connectivityMonitor = dependencies.connectivityMonitor
         self.biometricMonitor = dependencies.biometricMonitor
         self.writeQueue = dependencies.writeQueue
         self.configError = configError

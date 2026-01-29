@@ -6,10 +6,13 @@ import XCTest
 final class WriteQueueTests: XCTestCase {
     func testEnqueueCreatesPendingWrite() async throws {
         let persistence = PersistenceController(inMemory: true)
-        let networkMonitor = NetworkMonitor(startMonitoring: false)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let queue = WriteQueue(
             container: persistence.container,
-            networkMonitor: networkMonitor,
+            connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
 
@@ -40,11 +43,14 @@ final class WriteQueueTests: XCTestCase {
 
     func testProcessQueueExecutesAndDeletesPendingWrite() async throws {
         let persistence = PersistenceController(inMemory: true)
-        let networkMonitor = NetworkMonitor(startMonitoring: false)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let executor = TestWriteExecutor()
         let queue = WriteQueue(
             container: persistence.container,
-            networkMonitor: networkMonitor,
+            connectivityMonitor: connectivityMonitor,
             executor: executor,
             autoProcessEnabled: false
         )
@@ -75,10 +81,13 @@ final class WriteQueueTests: XCTestCase {
 
     func testFetchPendingWritesReturnsQueuedItems() async throws {
         let persistence = PersistenceController(inMemory: true)
-        let networkMonitor = NetworkMonitor(startMonitoring: false)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let queue = WriteQueue(
             container: persistence.container,
-            networkMonitor: networkMonitor,
+            connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
 

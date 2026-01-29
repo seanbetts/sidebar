@@ -49,7 +49,7 @@ public final class WriteQueue: ObservableObject {
     @Published private(set) var isProcessing: Bool = false
 
     private let container: NSPersistentContainer
-    private let networkMonitor: NetworkMonitor
+    private let connectivityMonitor: ConnectivityMonitor
     private let executor: WriteQueueExecutor?
     private let autoProcessEnabled: Bool
     private var cancellables = Set<AnyCancellable>()
@@ -57,12 +57,12 @@ public final class WriteQueue: ObservableObject {
 
     init(
         container: NSPersistentContainer,
-        networkMonitor: NetworkMonitor,
+        connectivityMonitor: ConnectivityMonitor,
         executor: WriteQueueExecutor? = nil,
         autoProcessEnabled: Bool = true
     ) {
         self.container = container
-        self.networkMonitor = networkMonitor
+        self.connectivityMonitor = connectivityMonitor
         self.executor = executor
         self.autoProcessEnabled = autoProcessEnabled
         loadPendingCount()
@@ -89,7 +89,7 @@ public final class WriteQueue: ObservableObject {
         try context.save()
         pendingCount += 1
 
-        if autoProcessEnabled, executor != nil, !networkMonitor.isOffline {
+        if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
             Task { [weak self] in
                 await self?.processQueue()
             }
@@ -97,7 +97,7 @@ public final class WriteQueue: ObservableObject {
     }
 
     func processQueue() async {
-        guard !isProcessing, executor != nil, !networkMonitor.isOffline else { return }
+        guard !isProcessing, executor != nil, !connectivityMonitor.isOffline else { return }
         isProcessing = true
         defer { isProcessing = false }
 
@@ -198,7 +198,7 @@ public final class WriteQueue: ObservableObject {
     }
 
     private func observeNetwork() {
-        networkMonitor.$isOffline
+        connectivityMonitor.$isOffline
             .removeDuplicates()
             .filter { !$0 }
             .sink { [weak self] _ in

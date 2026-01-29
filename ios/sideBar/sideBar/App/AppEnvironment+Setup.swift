@@ -104,13 +104,20 @@ extension AppEnvironment {
     }
 
     private func monitorNetwork() {
-        networkMonitor.$isOffline
+        connectivityMonitor.$isOffline
             .removeDuplicates()
             .sink { [weak self] isOffline in
                 self?.isOffline = isOffline
                 if isOffline == false {
                     self?.refreshOnReconnect()
                 }
+            }
+            .store(in: &cancellables)
+
+        connectivityMonitor.$isNetworkAvailable
+            .removeDuplicates()
+            .sink { [weak self] isAvailable in
+                self?.isNetworkAvailable = isAvailable
             }
             .store(in: &cancellables)
     }

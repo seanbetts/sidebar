@@ -3,6 +3,11 @@ import os
 
 // MARK: - APIClient
 
+public extension Notification.Name {
+    static let apiClientRequestFailed = Notification.Name("sideBar.apiClient.requestFailed")
+    static let apiClientRequestSucceeded = Notification.Name("sideBar.apiClient.requestSucceeded")
+}
+
 /// Configuration for APIClient base URL and auth token.
 public struct APIClientConfig {
     public let baseUrl: URL
@@ -134,10 +139,21 @@ public final class APIClient {
         if let url = request.url {
             logger.debug("Request \(request.httpMethod ?? "GET") \(url.absoluteString, privacy: .public)")
         }
-        let (data, response) = try await session.data(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            NotificationCenter.default.post(
+                name: .apiClientRequestFailed,
+                object: nil,
+                userInfo: ["error": error]
+            )
+            throw error
+        }
         let elapsedMs = Int(Date().timeIntervalSince(start) * 1000)
         guard let http = response as? HTTPURLResponse else {
             logger.error("Response failed: non-HTTP response")
+            NotificationCenter.default.post(name: .apiClientRequestFailed, object: nil)
             throw APIClientError.unknown
         }
         logger.debug("Response \(http.statusCode) in \(elapsedMs)ms")
@@ -146,6 +162,11 @@ public final class APIClient {
                 let preview = body.prefix(2000)
                 logger.error("Response body: \(preview, privacy: .private)")
             }
+            NotificationCenter.default.post(
+                name: .apiClientRequestFailed,
+                object: nil,
+                userInfo: ["statusCode": http.statusCode]
+            )
             let decoder = Self.makeDecoder()
             let message = Self.decodeErrorMessage(data: data, decoder: decoder)
             if let message {
@@ -153,6 +174,7 @@ public final class APIClient {
             }
             throw APIClientError.requestFailed(http.statusCode)
         }
+        NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
         return (data, http)
     }
 

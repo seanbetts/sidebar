@@ -13,9 +13,13 @@ final class NotesEditorViewModelTests: XCTestCase {
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let writeQueue = WriteQueue(
             container: persistence.container,
-            networkMonitor: NetworkMonitor(startMonitoring: false),
+            connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
         let viewModel = NotesEditorViewModel(
@@ -40,9 +44,13 @@ final class NotesEditorViewModelTests: XCTestCase {
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let writeQueue = WriteQueue(
             container: persistence.container,
-            networkMonitor: NetworkMonitor(startMonitoring: false),
+            connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
         let viewModel = NotesEditorViewModel(
@@ -73,9 +81,13 @@ final class NotesEditorViewModelTests: XCTestCase {
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let writeQueue = WriteQueue(
             container: persistence.container,
-            networkMonitor: NetworkMonitor(startMonitoring: false),
+            connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
         let viewModel = NotesEditorViewModel(
@@ -109,9 +121,13 @@ final class NotesEditorViewModelTests: XCTestCase {
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let writeQueue = WriteQueue(
             container: persistence.container,
-            networkMonitor: NetworkMonitor(startMonitoring: false),
+            connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
         let viewModel = NotesEditorViewModel(

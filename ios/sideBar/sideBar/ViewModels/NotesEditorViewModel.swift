@@ -66,7 +66,7 @@ public final class NotesEditorViewModel: ObservableObject {
             guard let draft = try draftStorage.getDraft(entityType: "note", entityId: note.id) else { return }
             guard draft.syncedAt == nil else { return }
             let serverDate = note.modified.map { Date(timeIntervalSince1970: $0) }
-            if let serverDate, shouldPresentNoteConflict(
+            if shouldPresentNoteConflict(
                 localContent: draft.content,
                 localDate: draft.savedAt,
                 serverContent: note.content,
@@ -80,7 +80,7 @@ public final class NotesEditorViewModel: ObservableObject {
                     localContent: draft.content,
                     serverContent: note.content,
                     localDate: draft.savedAt,
-                    serverDate: serverDate
+                    serverDate: serverDate ?? Date()
                 )
                 content = note.content
                 isDirty = false
