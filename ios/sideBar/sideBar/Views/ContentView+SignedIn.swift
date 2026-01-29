@@ -41,10 +41,12 @@ extension ContentView {
                 if biometricUnlockEnabled {
                     backgroundedAt = Date()
                 }
+                #if os(iOS)
                 // Schedule background token refresh
                 if environment.isAuthenticated {
                     AppLaunchDelegate.scheduleTokenRefresh()
                 }
+                #endif
             }
             #if os(iOS)
             if newValue == .active {
