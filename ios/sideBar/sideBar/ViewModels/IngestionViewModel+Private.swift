@@ -386,14 +386,28 @@ extension IngestionViewModel {
     }
 
     func makeBookmarkData(for url: URL) -> Data? {
-        try? url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+        #if os(macOS)
+        let options: URL.BookmarkCreationOptions = [.withSecurityScope]
+        #else
+        let options: URL.BookmarkCreationOptions = [.minimalBookmark]
+        #endif
+        return try? url.bookmarkData(
+            options: options,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        )
     }
 
     func resolveBookmark(_ data: Data) -> URL? {
         var isStale = false
+        #if os(macOS)
+        let options: URL.BookmarkResolutionOptions = [.withSecurityScope]
+        #else
+        let options: URL.BookmarkResolutionOptions = []
+        #endif
         return try? URL(
             resolvingBookmarkData: data,
-            options: [.withSecurityScope],
+            options: options,
             relativeTo: nil,
             bookmarkDataIsStale: &isStale
         )

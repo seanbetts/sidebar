@@ -358,7 +358,7 @@ extension IngestionStore {
         items = mergeItems(remoteItems)
     }
 
-    public func pendingUploadsForResume() -> [LocalUploadResumeItem] {
+    func pendingUploadsForResume() -> [LocalUploadResumeItem] {
         localUploadRecords.values.compactMap { record in
             guard let bookmarkData = record.bookmarkData else { return nil }
             let status = record.item.job.status ?? ""
@@ -594,7 +594,7 @@ private struct LocalUploadRecord: Codable {
     let bookmarkData: Data?
 }
 
-struct LocalUploadResumeItem: Equatable {
+struct LocalUploadResumeItem {
     let item: IngestionListItem
     let bookmarkData: Data
 }
