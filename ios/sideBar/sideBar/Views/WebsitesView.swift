@@ -33,6 +33,15 @@ public struct WebsitesView: View {
             #if !os(macOS)
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if isCompact {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        if !environment.isNetworkAvailable {
+                            OfflineBanner()
+                        }
+                    }
+                }
+            }
             #endif
     }
 

@@ -5,6 +5,7 @@ struct PanelHeader<Trailing: View>: View {
     let subtitle: String?
     let trailing: Trailing
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var environment: AppEnvironment
 
     init(
         title: String,
@@ -35,6 +36,9 @@ struct PanelHeader<Trailing: View>: View {
                 }
             }
             Spacer()
+            if !environment.isNetworkAvailable {
+                OfflineBanner()
+            }
             trailing
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
