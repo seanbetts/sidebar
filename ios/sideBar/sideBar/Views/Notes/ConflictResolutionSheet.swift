@@ -39,7 +39,9 @@ struct ConflictResolutionSheet: View {
             }
             .padding(DesignTokens.Spacing.lg)
             .navigationTitle("Resolve Conflict")
+            #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
         }
     }
 
