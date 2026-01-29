@@ -61,13 +61,39 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private var warningTask: Task<Void, Never>?
     private var signInTask: Task<Void, Error>?
     private let logger = Logger(subsystem: "sideBar", category: "Auth")
-    private let sessionWarningLeadTime: TimeInterval = 300
+    private let sessionRefreshLeadTime: TimeInterval = 600  // 10 min before expiry
+    private let sessionWarningLeadTime: TimeInterval = 120  // 2 min before expiry
     private let refreshCooldown: TimeInterval = 60
     private let offlineAccessWindow: TimeInterval = 60 * 60 * 24
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
     private var lastSessionExpiryDate: Date?
     private var lastRefreshAttempt: Date?
     private var sessionWarningToken = UUID()
+
+    // Rate limiting for login attempts
+    private var failedLoginAttempts: Int = 0
+    private var lockoutEndTime: Date?
+    private let maxFailedAttempts: Int = 5
+    private let lockoutDuration: TimeInterval = 300  // 5 minutes
+
+    /// Returns true if the user is locked out due to too many failed login attempts
+    public var isLockedOut: Bool {
+        guard let endTime = lockoutEndTime else { return false }
+        if Date() >= endTime {
+            // Lockout expired, reset state
+            lockoutEndTime = nil
+            failedLoginAttempts = 0
+            return false
+        }
+        return true
+    }
+
+    /// Returns remaining lockout time in seconds, or nil if not locked out
+    public var lockoutRemainingSeconds: Int? {
+        guard let endTime = lockoutEndTime else { return nil }
+        let remaining = Int(endTime.timeIntervalSinceNow)
+        return remaining > 0 ? remaining : nil
+    }
 
     public init(
         config: EnvironmentConfig,
@@ -124,6 +150,11 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     }
 
     public func signIn(email: String, password: String) async throws {
+        // Check rate limiting
+        if isLockedOut {
+            throw AuthAdapterError.rateLimited
+        }
+
         guard signInTask == nil else {
             throw AuthAdapterError.signInInProgress
         }
@@ -134,8 +165,18 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
                 if let session = self.supabase.auth.currentSession {
                     self.applySession(session)
                 }
+                // Reset rate limiting on successful login
+                self.failedLoginAttempts = 0
+                self.lockoutEndTime = nil
                 self.logger.notice("Sign in succeeded")
             } catch {
+                // Track failed attempts for rate limiting
+                self.failedLoginAttempts += 1
+                if self.failedLoginAttempts >= self.maxFailedAttempts {
+                    self.lockoutEndTime = Date().addingTimeInterval(self.lockoutDuration)
+                    self.logger.warning("Login rate limit exceeded, locked out for \(Int(self.lockoutDuration))s")
+                }
+
                 let mappedError = self.mapAuthError(error)
                 self.logger.error("Sign in failed: \(mappedError.localizedDescription, privacy: .public)")
                 throw mappedError
@@ -144,6 +185,13 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         signInTask = task
         defer { signInTask = nil }
         try await task.value
+    }
+
+    /// Refreshes session only if close to expiry (avoids unnecessary refreshes on foreground)
+    public func refreshSessionIfStale() async {
+        guard let expiry = lastSessionExpiryDate,
+              expiry.timeIntervalSinceNow < sessionRefreshLeadTime else { return }
+        await refreshSession()
     }
 
     public func refreshSession() async {
@@ -248,6 +296,8 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             return
         }
         lastSessionExpiryDate = expiresAt
+
+        // Schedule warning 2 min before expiry (only shows if refresh fails)
         let warningDelay = expiresAt.addingTimeInterval(-sessionWarningLeadTime).timeIntervalSinceNow
         if warningDelay > 5 {
             warningTask = Task { [weak self] in
@@ -266,7 +316,8 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             }
         }
 
-        let refreshDelay = max(warningDelay, 0)
+        // Schedule refresh 10 min before expiry (separate from warning)
+        let refreshDelay = expiresAt.addingTimeInterval(-sessionRefreshLeadTime).timeIntervalSinceNow
         if refreshDelay > 0 {
             refreshScheduleTask = Task { [weak self] in
                 do {

@@ -1,3 +1,4 @@
+import BackgroundTasks
 import Foundation
 import os
 
@@ -7,6 +8,7 @@ import UIKit
 // MARK: - AppLaunchDelegate
 
 final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
+    static let tokenRefreshTaskIdentifier = "ai.sidebar.sidebar.tokenrefresh"
     enum ShortcutCommandKeys {
         static let type = "type"
         static let section = "section"
@@ -74,7 +76,53 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         #if DEBUG
         AppLaunchMetrics.shared.mark("didFinishLaunching")
         #endif
+
+        // Register background task for token refresh
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: Self.tokenRefreshTaskIdentifier,
+            using: nil
+        ) { [weak self] task in
+            guard let refreshTask = task as? BGAppRefreshTask else { return }
+            self?.handleTokenRefresh(task: refreshTask)
+        }
+
         return true
+    }
+
+    // MARK: - Background Token Refresh
+
+    private func handleTokenRefresh(task: BGAppRefreshTask) {
+        // Schedule next refresh
+        Self.scheduleTokenRefresh()
+
+        let refreshTask = Task {
+            guard let environment = AppEnvironment.shared,
+                  environment.isAuthenticated else {
+                return false
+            }
+            await environment.container.authSession.refreshSession()
+            return true
+        }
+
+        task.expirationHandler = {
+            refreshTask.cancel()
+        }
+
+        Task {
+            let success = await refreshTask.value
+            task.setTaskCompleted(success: success)
+        }
+    }
+
+    static func scheduleTokenRefresh() {
+        let request = BGAppRefreshTaskRequest(identifier: tokenRefreshTaskIdentifier)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)  // 15 minutes
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            let logger = Logger(subsystem: "sideBar", category: "BackgroundTask")
+            logger.error("Failed to schedule token refresh: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     func application(

@@ -36,9 +36,15 @@ extension ContentView {
         })
         content = AnyView(content.animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast))
         content = AnyView(content.onChange(of: scenePhase) { _, newValue in
-            if newValue == .background && biometricUnlockEnabled {
-                // Record when we went to background (don't lock yet)
-                backgroundedAt = Date()
+            if newValue == .background {
+                // Record when we went to background for biometric grace period
+                if biometricUnlockEnabled {
+                    backgroundedAt = Date()
+                }
+                // Schedule background token refresh
+                if environment.isAuthenticated {
+                    AppLaunchDelegate.scheduleTokenRefresh()
+                }
             }
             #if os(iOS)
             if newValue == .active {
@@ -52,6 +58,13 @@ extension ContentView {
                     }
                 }
                 backgroundedAt = nil
+
+                // Refresh session if close to expiry (silent, no alert unless it fails)
+                if environment.isAuthenticated {
+                    Task {
+                        await environment.container.authSession.refreshSessionIfStale()
+                    }
+                }
 
                 Task {
                     await environment.consumeExtensionEvents()
