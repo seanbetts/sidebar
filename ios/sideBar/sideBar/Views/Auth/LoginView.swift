@@ -89,8 +89,8 @@ public struct LoginView: View {
         .onReceive(lockoutTimer) { _ in
             updateLockoutState()
         }
-        .onChange(of: environment.isOffline) { _, isOffline in
-            if !isOffline, errorMessage == AuthAdapterError.networkUnavailable.errorDescription {
+        .onChange(of: environment.isNetworkAvailable) { _, isAvailable in
+            if isAvailable, errorMessage == AuthAdapterError.networkUnavailable.errorDescription {
                 errorMessage = nil
             }
         }
@@ -116,7 +116,7 @@ public struct LoginView: View {
             if trimmedEmail != email {
                 email = trimmedEmail
             }
-            if environment.isOffline {
+            if !environment.isNetworkAvailable {
                 if await attemptOfflineUnlock() {
                     return
                 }
@@ -261,7 +261,7 @@ public struct LoginView: View {
 
     @ViewBuilder
     private var errorView: some View {
-        if environment.isOffline {
+        if !environment.isNetworkAvailable {
             offlineNoticeView
         }
         if isLockedOut, let seconds = lockoutSecondsRemaining {
@@ -347,7 +347,7 @@ public struct LoginView: View {
     }
 
     private var shouldShowOfflineUnlock: Bool {
-        guard environment.isOffline else { return false }
+        guard !environment.isNetworkAvailable else { return false }
         guard let authAdapter = environment.container.authSession as? SupabaseAuthAdapter else {
             return false
         }
@@ -469,7 +469,7 @@ public struct LoginView: View {
     }
 
     private var isSignInDisabled: Bool {
-        isSigningIn || email.isEmpty || password.isEmpty || isLockedOut || environment.isOffline
+        isSigningIn || email.isEmpty || password.isEmpty || isLockedOut || !environment.isNetworkAvailable
     }
 
     private var fieldBackground: some View {
