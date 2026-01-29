@@ -49,7 +49,9 @@ struct NativeMarkdownEditorContainer: View {
         }
         .onChange(of: nativeViewModel.hasUnsavedChanges) { _, hasChanges in
             editorViewModel.setDirty(hasChanges)
-            guard hasChanges else { return }
+        }
+        .onChange(of: nativeViewModel.autosaveToken) { _, _ in
+            guard nativeViewModel.hasUnsavedChanges, !nativeViewModel.isReadOnly else { return }
             Task {
                 await editorViewModel.syncFromNativeEditor(nativeViewModel)
             }

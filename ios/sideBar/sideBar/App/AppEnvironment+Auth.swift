@@ -102,4 +102,18 @@ extension AppEnvironment {
         tasksViewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
         #endif
     }
+
+    /// Consumes pending add note intent from widget and opens the add note UI
+    @MainActor
+    public func consumeWidgetAddNote() {
+        let operations = WidgetDataManager.shared.consumePendingOperations(
+            for: .notes,
+            actionType: NoteWidgetAction.self
+        )
+        guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
+
+        // Navigate to notes section and trigger new note creation
+        commandSelection = .notes
+        pendingNewNoteDeepLink = true
+    }
 }

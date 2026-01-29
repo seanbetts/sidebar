@@ -27,6 +27,7 @@ final class DraftStorage {
         draft.entityId = entityId
         draft.content = content
         draft.savedAt = Date()
+        draft.syncedAt = nil
         try context.save()
     }
 

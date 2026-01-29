@@ -20,6 +20,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
     }
     @Published public private(set) var hasUnsavedChanges: Bool = false
+    @Published public private(set) var autosaveToken: Int = 0
 
 #if os(iOS)
     private typealias PlatformFont = UIFont
@@ -290,7 +291,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             try? await Task.sleep(for: .seconds(1.5))
             guard let self else { return }
             let current = self.currentMarkdown()
-            self.hasUnsavedChanges = current != self.lastSavedContent
+            let hasChanges = current != self.lastSavedContent
+            self.hasUnsavedChanges = hasChanges
+            if hasChanges {
+                self.autosaveToken &+= 1
+            }
         }
     }
 
