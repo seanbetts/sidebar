@@ -146,6 +146,9 @@ public struct SiteHeaderBar: View {
         HStack(alignment: .center, spacing: 12) {
             SyncStatusIndicator()
             if !isCompact {
+                if !environment.isNetworkAvailable {
+                    OfflineBanner()
+                }
                 VStack(alignment: .trailing, spacing: 4) {
                     HeaderInfoItem(icon: "cloud.sun", text: weatherText)
                         .fontWeight(.semibold)
