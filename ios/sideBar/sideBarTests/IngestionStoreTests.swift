@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 import sideBarShared
 @testable import sideBar
@@ -6,7 +7,8 @@ import sideBarShared
 final class IngestionStoreTests: XCTestCase {
     func testApplyIngestedFileEventCachesList() async {
         let cache = TestCacheClient()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache)
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
 
         let payload = RealtimePayload<IngestedFileRealtimeRecord>(
             eventType: .insert,
@@ -39,7 +41,8 @@ final class IngestionStoreTests: XCTestCase {
 
     func testApplyFileJobEventUpdatesJobStatus() async {
         let cache = TestCacheClient()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache)
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
 
         let insert = RealtimePayload<IngestedFileRealtimeRecord>(
             eventType: .insert,
@@ -86,6 +89,44 @@ final class IngestionStoreTests: XCTestCase {
         let cached: IngestionListResponse? = cache.get(key: CacheKeys.ingestionList)
         XCTAssertEqual(cached?.items.first?.job.status, "failed")
     }
+
+    func testLocalUploadsPersistAndReload() async {
+        let cache = TestCacheClient()
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let item = IngestionListItem(
+            file: IngestedFileMeta(
+                id: "local-1",
+                filenameOriginal: "doc.txt",
+                path: nil,
+                mimeOriginal: "text/plain",
+                sizeBytes: 10,
+                sha256: nil,
+                pinned: false,
+                pinnedOrder: nil,
+                category: nil,
+                sourceUrl: nil,
+                sourceMetadata: nil,
+                createdAt: "2026-01-01T00:00:00Z"
+            ),
+            job: IngestionJob(
+                status: "uploading",
+                stage: "uploading",
+                errorCode: nil,
+                errorMessage: nil,
+                userMessage: nil,
+                progress: 0,
+                attempts: 0,
+                updatedAt: nil
+            ),
+            recommendedViewer: nil
+        )
+
+        store.addLocalUpload(item)
+
+        let reloaded = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        XCTAssertTrue(reloaded.items.contains { $0.file.id == "local-1" })
+    }
 }
 
 private struct MockIngestionAPI: IngestionProviding {
@@ -126,6 +167,12 @@ private struct MockIngestionAPI: IngestionProviding {
         _ = url
         throw MockError.forced
     }
+}
+
+private func makeDefaults() -> UserDefaults {
+    let defaults = UserDefaults(suiteName: "IngestionStoreTests") ?? .standard
+    defaults.removePersistentDomain(forName: "IngestionStoreTests")
+    return defaults
 }
 
 private enum MockError: Error {

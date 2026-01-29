@@ -13,6 +13,7 @@ extension AppEnvironment {
         forwardObjectWillChange()
         monitorNetwork()
         setupTaskBadgeUpdates()
+        ingestionViewModel.resumePendingUploads()
 
         // Migrate widget data to new generic keys (one-time)
         WidgetDataManager.shared.migrateIfNeeded()

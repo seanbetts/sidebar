@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 import sideBarShared
 @testable import sideBar
@@ -19,7 +20,8 @@ final class IngestionViewModelTests: XCTestCase {
             pinResult: .failure(MockError.forced),
             youtubeResult: .failure(MockError.forced)
         )
-        let store = IngestionStore(api: api, cache: cache)
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: cache, userDefaults: defaults)
         let viewModel = IngestionViewModel(
             api: api,
             store: store,
@@ -58,7 +60,8 @@ final class IngestionViewModelTests: XCTestCase {
         )
         let tempDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = TemporaryFileStore(directory: tempDirectory)
-        let ingestionStore = IngestionStore(api: api, cache: TestCacheClient())
+        let defaults = makeDefaults()
+        let ingestionStore = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
         let viewModel = IngestionViewModel(
             api: api,
             store: ingestionStore,
@@ -94,7 +97,8 @@ final class IngestionViewModelTests: XCTestCase {
             pinResult: .failure(MockError.forced),
             youtubeResult: .failure(MockError.forced)
         )
-        let store = IngestionStore(api: api, cache: cache)
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: cache, userDefaults: defaults)
         let viewModel = IngestionViewModel(
             api: api,
             store: store,
@@ -143,7 +147,8 @@ final class IngestionViewModelTests: XCTestCase {
             pinResult: .success(()),
             youtubeResult: .success("yt-1")
         )
-        let store = IngestionStore(api: api, cache: TestCacheClient())
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
         let viewModel = IngestionViewModel(
             api: api,
             store: store,
@@ -195,6 +200,12 @@ final class IngestionViewModelTests: XCTestCase {
             updatedAt: nil
         )
     }
+}
+
+private func makeDefaults() -> UserDefaults {
+    let defaults = UserDefaults(suiteName: "IngestionViewModelTests") ?? .standard
+    defaults.removePersistentDomain(forName: "IngestionViewModelTests")
+    return defaults
 }
 
 private enum MockError: Error {
