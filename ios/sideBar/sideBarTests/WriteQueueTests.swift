@@ -72,6 +72,32 @@ final class WriteQueueTests: XCTestCase {
         let remaining = try persistence.container.viewContext.fetch(request)
         XCTAssertTrue(remaining.isEmpty)
     }
+
+    func testFetchPendingWritesReturnsQueuedItems() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let networkMonitor = NetworkMonitor(startMonitoring: false)
+        let queue = WriteQueue(
+            container: persistence.container,
+            networkMonitor: networkMonitor,
+            autoProcessEnabled: false
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+
+        try queue.enqueue(
+            operation: .update,
+            entityType: .note,
+            entityId: "note-1",
+            payload: Payload(value: "Hi")
+        )
+
+        let pending = queue.fetchPendingWrites()
+
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.note.rawValue)
+    }
 }
 
 private final class TestWriteExecutor: WriteQueueExecutor {

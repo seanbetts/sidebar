@@ -22,6 +22,18 @@ enum WriteQueueStatus: String {
     case failed
 }
 
+struct PendingWriteSummary: Identifiable {
+    let id: UUID
+    let operationType: String
+    let entityType: String
+    let entityId: String?
+    let status: String
+    let attempts: Int16
+    let lastError: String?
+    let createdAt: Date
+    let lastAttemptAt: Date?
+}
+
 enum WriteQueueError: Error {
     case missingExecutor
 }
@@ -94,6 +106,40 @@ final class WriteQueue: ObservableObject {
         }
 
         loadPendingCount()
+    }
+
+    func fetchPendingWrites() -> [PendingWriteSummary] {
+        let request = PendingWrite.fetchRequest()
+        request.sortDescriptors = [
+            NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)
+        ]
+        guard let writes = try? container.viewContext.fetch(request) else {
+            return []
+        }
+        return writes.map { write in
+            PendingWriteSummary(
+                id: write.id,
+                operationType: write.operationType,
+                entityType: write.entityType,
+                entityId: write.entityId,
+                status: write.status,
+                attempts: write.attempts,
+                lastError: write.lastError,
+                createdAt: write.createdAt,
+                lastAttemptAt: write.lastAttemptAt
+            )
+        }
+    }
+
+    func deleteWrites(ids: [UUID]) {
+        guard !ids.isEmpty else { return }
+        let request = PendingWrite.fetchRequest()
+        request.predicate = NSPredicate(format: "id IN %@", ids)
+        if let writes = try? container.viewContext.fetch(request) {
+            writes.forEach { container.viewContext.delete($0) }
+            try? container.viewContext.save()
+            loadPendingCount()
+        }
     }
 
     private func processWrite(_ write: PendingWrite) async {

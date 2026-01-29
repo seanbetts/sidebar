@@ -236,9 +236,23 @@ struct GeneralSettingsView: View {
 
 struct SystemSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
+    @EnvironmentObject private var environment: AppEnvironment
+    @State private var isPendingWritesPresented = false
 
     var body: some View {
         Form {
+            if environment.writeQueue.pendingCount > 0 || environment.writeQueue.isProcessing {
+                Section("Sync Status") {
+                    HStack(spacing: 8) {
+                        SyncStatusIndicator()
+                        Text(pendingStatusText)
+                            .font(DesignTokens.Typography.labelMd)
+                    }
+                    Button("View pending changes") {
+                        isPendingWritesPresented = true
+                    }
+                }
+            }
             Section {
                 Text("Customize the prompts that guide sideBar")
                     .foregroundStyle(.secondary)
@@ -255,6 +269,11 @@ struct SystemSettingsView: View {
         #if os(macOS)
         .formStyle(.grouped)
         #endif
+        .sheet(isPresented: $isPendingWritesPresented) {
+            NavigationStack {
+                PendingWritesView()
+            }
+        }
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
                 ProgressView()
@@ -265,6 +284,13 @@ struct SystemSettingsView: View {
     private func displayValue(_ value: String?) -> String {
         let trimmed = value?.trimmed ?? ""
         return trimmed.isEmpty ? "Not set" : trimmed
+    }
+
+    private var pendingStatusText: String {
+        if environment.writeQueue.isProcessing {
+            return "Syncing \(environment.writeQueue.pendingCount) changes"
+        }
+        return "\(environment.writeQueue.pendingCount) pending changes"
     }
 }
 

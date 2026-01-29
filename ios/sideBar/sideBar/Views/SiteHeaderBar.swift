@@ -144,6 +144,7 @@ public struct SiteHeaderBar: View {
 
     private var trailingControls: some View {
         HStack(alignment: .center, spacing: 12) {
+            SyncStatusIndicator()
             if !isCompact {
                 VStack(alignment: .trailing, spacing: 4) {
                     HeaderInfoItem(icon: "cloud.sun", text: weatherText)
