@@ -62,6 +62,7 @@ extension AppEnvironment {
             await chatViewModel.refreshConversations(silent: true)
             await chatViewModel.refreshActiveConversation(silent: true)
             await notesViewModel.loadTree()
+            await notesViewModel.refreshSelectedNoteIfNeeded()
             await websitesViewModel.load()
             await ingestionViewModel.load()
             await tasksViewModel.load(selection: tasksViewModel.selection, force: true)

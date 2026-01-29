@@ -48,6 +48,7 @@ public final class NotesViewModel: ObservableObject {
     private let networkStatus: any NetworkStatusProviding
     private let searchTask = ManagedTask()
     private var cancellables = Set<AnyCancellable>()
+    private var pendingNoteId: String?
 
     public init(
         api: any NotesProviding,
@@ -98,10 +99,12 @@ public final class NotesViewModel: ObservableObject {
         store.clearActiveNote()
         if !networkStatus.isNetworkAvailable, !store.hasCachedNote(id: id) {
             errorMessage = "This note isn't available offline yet."
+            pendingNoteId = id
             return
         }
         do {
             try await store.loadNote(id: id)
+            pendingNoteId = nil
         } catch {
             if activeNote == nil {
                 errorMessage = error.localizedDescription
@@ -115,7 +118,17 @@ public final class NotesViewModel: ObservableObject {
 
     public func clearSelection() {
         selectedNoteId = nil
+        pendingNoteId = nil
         store.clearActiveNote()
+    }
+
+    public func refreshSelectedNoteIfNeeded() async {
+        if let pendingNoteId {
+            await loadNote(id: pendingNoteId)
+            return
+        }
+        guard let selectedNoteId, activeNote == nil else { return }
+        await loadNote(id: selectedNoteId)
     }
 
     public func noteNode(id: String) -> FileNode? {
