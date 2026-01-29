@@ -11,12 +11,6 @@ struct ChatHeaderView: View {
             VStack(alignment: .leading, spacing: 6) {
                 headerContent
 
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(DesignTokens.Colors.error)
-                }
-
                 if let activeTool = viewModel.activeTool {
                     ChatActiveToolBanner(activeTool: activeTool)
                 }
@@ -40,8 +34,7 @@ struct ChatHeaderView: View {
         if isCompact {
             return false
         }
-        return viewModel.errorMessage != nil ||
-            viewModel.activeTool != nil ||
+        return viewModel.activeTool != nil ||
             viewModel.promptPreview != nil
     }
 

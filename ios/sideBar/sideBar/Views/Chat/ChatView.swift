@@ -90,6 +90,24 @@ private struct ChatDetailView: View {
                     } else {
                         EmptyView()
                     }
+                } else if let errorMessage = viewModel.errorMessage {
+                    PlaceholderView(
+                        title: "Unable to load chat",
+                        subtitle: environment.isNetworkAvailable ? errorMessage : "This chat isn't available offline yet.",
+                        actionTitle: "Retry"
+                    ) {
+                        guard let selectedId = viewModel.selectedConversationId else { return }
+                        Task { await viewModel.loadConversation(id: selectedId) }
+                    }
+                } else if !environment.isNetworkAvailable, !viewModel.hasCachedSelectedConversation {
+                    PlaceholderView(
+                        title: "Unable to load chat",
+                        subtitle: "This chat isn't available offline yet.",
+                        actionTitle: "Retry"
+                    ) {
+                        guard let selectedId = viewModel.selectedConversationId else { return }
+                        Task { await viewModel.loadConversation(id: selectedId) }
+                    }
                 } else if viewModel.messages.isEmpty {
                     EmptyView()
                 } else {

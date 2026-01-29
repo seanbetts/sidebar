@@ -23,7 +23,16 @@ import Foundation
 ///
 /// ## Usage
 /// ```swift
-/// let viewModel = ChatViewModel(chatAPI: api, conversationsAPI: convAPI, ...)
+/// let viewModel = ChatViewModel(
+///     chatAPI: api,
+///     conversationsAPI: convAPI,
+///     ingestionAPI: ingestionAPI,
+///     cache: cache,
+///     themeManager: themeManager,
+///     streamClient: streamClient,
+///     chatStore: chatStore,
+///     networkStatus: connectivityMonitor
+/// )
 /// await viewModel.loadConversations()
 /// await viewModel.selectConversation(id: conversationId)
 /// await viewModel.sendMessage(text: "Hello")
@@ -50,6 +59,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     let themeManager: ThemeManager
     let streamClient: ChatStreamClient
     let chatStore: ChatStore
+    let networkStatus: any NetworkStatusProviding
     let userDefaults: UserDefaults
     let toastCenter: ToastCenter?
     let clock: () -> Date
@@ -74,6 +84,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         themeManager: ThemeManager,
         streamClient: ChatStreamClient,
         chatStore: ChatStore,
+        networkStatus: any NetworkStatusProviding,
         toastCenter: ToastCenter? = nil,
         userDefaults: UserDefaults = .standard,
         clock: @escaping () -> Date = Date.init,
@@ -89,6 +100,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         self.themeManager = themeManager
         self.streamClient = streamClient
         self.chatStore = chatStore
+        self.networkStatus = networkStatus
         self.userDefaults = userDefaults
         self.toastCenter = toastCenter
         self.clock = clock
@@ -173,6 +185,11 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             return messages.isEmpty
         }
         return conversation.messageCount == 0 && messages.isEmpty
+    }
+
+    public var hasCachedSelectedConversation: Bool {
+        guard let selectedConversationId else { return false }
+        return chatStore.hasCachedConversation(id: selectedConversationId)
     }
 
     public var hasPendingAttachments: Bool {

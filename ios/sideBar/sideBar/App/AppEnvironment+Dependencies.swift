@@ -63,6 +63,7 @@ extension AppEnvironment {
             themeManager: themeManager,
             streamClient: container.makeChatStreamClient(handler: nil),
             chatStore: chatStore,
+            networkStatus: connectivityMonitor,
             toastCenter: toastCenter,
             scratchpadStore: scratchpadStore
         )
