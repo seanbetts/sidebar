@@ -13,11 +13,13 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var lastSavedAt: Date?
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var isReadOnly: Bool = true
+    @Published public private(set) var isQueuedForSync: Bool = false
     @Published private(set) var conflict: NoteSyncConflict?
 
     private let notesViewModel: NotesViewModel
     private let draftStorage: DraftStorage
     private let writeQueue: WriteQueue
+    private let networkStatus: any NetworkStatusProviding
     @available(iOS 26.0, macOS 26.0, *)
     private weak var nativeEditorViewModel: NativeMarkdownEditorViewModel?
     private var cancellables = Set<AnyCancellable>()
@@ -25,11 +27,13 @@ public final class NotesEditorViewModel: ObservableObject {
     init(
         notesViewModel: NotesViewModel,
         draftStorage: DraftStorage,
-        writeQueue: WriteQueue
+        writeQueue: WriteQueue,
+        networkStatus: any NetworkStatusProviding
     ) {
         self.notesViewModel = notesViewModel
         self.draftStorage = draftStorage
         self.writeQueue = writeQueue
+        self.networkStatus = networkStatus
 
         notesViewModel.$activeNote
             .sink { [weak self] note in
@@ -46,6 +50,7 @@ public final class NotesEditorViewModel: ObservableObject {
             isSaving = false
             lastSavedAt = nil
             saveErrorMessage = nil
+            isQueuedForSync = false
             conflict = nil
             return
         }
@@ -55,6 +60,7 @@ public final class NotesEditorViewModel: ObservableObject {
         isSaving = false
         lastSavedAt = nil
         saveErrorMessage = nil
+        isQueuedForSync = false
         conflict = nil
         Task { [weak self] in
             await self?.applyDraftIfAvailable(for: note)
@@ -88,10 +94,12 @@ public final class NotesEditorViewModel: ObservableObject {
             }
             if draft.content == note.content {
                 try? draftStorage.markSynced(entityType: "note", entityId: note.id)
+                isQueuedForSync = false
                 return
             }
             content = draft.content
             isDirty = true
+            isQueuedForSync = true
         } catch {
             saveErrorMessage = "Failed to load draft"
         }
@@ -128,6 +136,19 @@ public final class NotesEditorViewModel: ObservableObject {
         } catch {
             saveErrorMessage = "Failed to save draft"
         }
+        if !networkStatus.isNetworkAvailable {
+            let payload = NoteUpdatePayload(content: markdown)
+            try? writeQueue.enqueue(
+                operation: .update,
+                entityType: .note,
+                entityId: noteId,
+                payload: payload
+            )
+            isSaving = false
+            isDirty = false
+            isQueuedForSync = true
+            return
+        }
         let saved = await notesViewModel.updateNoteContent(id: noteId, content: markdown)
         isSaving = false
         if saved {
@@ -135,6 +156,7 @@ public final class NotesEditorViewModel: ObservableObject {
             nativeViewModel.markSaved(markdown: markdown)
             isDirty = false
             lastSavedAt = Date()
+            isQueuedForSync = false
         } else {
             saveErrorMessage = "Failed to save note"
             let payload = NoteUpdatePayload(content: markdown)
@@ -144,6 +166,7 @@ public final class NotesEditorViewModel: ObservableObject {
                 entityId: noteId,
                 payload: payload
             )
+            isQueuedForSync = true
         }
     }
 
@@ -159,6 +182,7 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let conflict else { return }
         content = conflict.localContent
         isDirty = true
+        isQueuedForSync = true
         try? draftStorage.saveDraft(
             entityType: "note",
             entityId: conflict.noteId,
@@ -172,6 +196,7 @@ public final class NotesEditorViewModel: ObservableObject {
         content = conflict.serverContent
         isDirty = false
         try? draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
+        isQueuedForSync = false
         self.conflict = nil
     }
 
@@ -183,6 +208,7 @@ public final class NotesEditorViewModel: ObservableObject {
         content = conflict.serverContent
         isDirty = false
         try? draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
+        isQueuedForSync = false
         self.conflict = nil
 
         guard let created = await notesViewModel.createNote(title: copyTitle, folder: folder) else {

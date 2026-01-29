@@ -409,14 +409,15 @@ extension NotesDetailView {
     }
 
     private var noteStatus: NoteStatus? {
-        if editorViewModel.isReadOnly {
-            return NoteStatus(text: "Read-only preview", color: DesignTokens.Colors.textSecondary)
+        if editorViewModel.isSaving {
+            return NoteStatus(text: "Saving...", color: DesignTokens.Colors.textSecondary)
+        }
+        if editorViewModel.isQueuedForSync {
+            let label = environment.isNetworkAvailable ? "Queued to sync" : "Saved offline"
+            return NoteStatus(text: label, color: DesignTokens.Colors.textSecondary)
         }
         if let error = editorViewModel.saveErrorMessage, !error.isEmpty {
             return NoteStatus(text: error, color: DesignTokens.Colors.error)
-        }
-        if editorViewModel.isSaving {
-            return NoteStatus(text: "Saving...", color: DesignTokens.Colors.textSecondary)
         }
         if editorViewModel.isDirty {
             return NoteStatus(text: "Unsaved changes", color: DesignTokens.Colors.textSecondary)
