@@ -86,6 +86,9 @@ public struct SiteHeaderBar: View {
                     .font(DesignTokens.Typography.caption2Semibold)
                     .foregroundStyle(.secondary)
             }
+            if environment.writeQueue.pendingCount > 0 {
+                syncStatusPill
+            }
             if shouldShowIngestionStatus {
                 Button {
                     isIngestionCenterPresented = true
@@ -144,7 +147,6 @@ public struct SiteHeaderBar: View {
 
     private var trailingControls: some View {
         HStack(alignment: .center, spacing: 12) {
-            SyncStatusIndicator()
             if !isCompact {
                 if !environment.isNetworkAvailable {
                     OfflineBanner()
@@ -293,6 +295,23 @@ public struct SiteHeaderBar: View {
         !environment.ingestionViewModel.activeUploadItems.isEmpty ||
             !environment.ingestionViewModel.failedUploadItems.isEmpty ||
             environment.ingestionViewModel.lastReadyMessage != nil
+    }
+
+    private var syncStatusPill: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(environment.writeQueue.isProcessing ? DesignTokens.Colors.success : DesignTokens.Colors.warning)
+                .frame(width: 8, height: 8)
+            Text(environment.writeQueue.isProcessing ? "Syncing" : "Pending")
+                .font(DesignTokens.Typography.captionSemibold)
+                .foregroundStyle(.secondary)
+        }
+        .pillStyle()
+        .accessibilityLabel(syncAccessibilityLabel)
+    }
+
+    private var syncAccessibilityLabel: String {
+        environment.writeQueue.isProcessing ? "Syncing pending changes" : "Pending changes"
     }
 
     private var ingestionStatusText: String {

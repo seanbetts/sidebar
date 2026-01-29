@@ -38,6 +38,7 @@ enum WriteQueueError: Error {
     case missingExecutor
 }
 
+@MainActor
 protocol WriteQueueExecutor {
     func execute(write: PendingWrite) async throws
 }

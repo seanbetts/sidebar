@@ -48,9 +48,11 @@ extension AppEnvironment {
             ? PersistenceController(inMemory: true)
             : PersistenceController.shared
         let draftStorage = DraftStorage(container: persistenceController.container)
+        let writeQueueExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
         let writeQueue = WriteQueue(
             container: persistenceController.container,
-            connectivityMonitor: connectivityMonitor
+            connectivityMonitor: connectivityMonitor,
+            executor: writeQueueExecutor
         )
         let chatViewModel = ChatViewModel(
             chatAPI: container.chatAPI,
@@ -77,7 +79,8 @@ extension AppEnvironment {
         let notesEditorViewModel = NotesEditorViewModel(
             notesViewModel: notesViewModel,
             draftStorage: draftStorage,
-            writeQueue: writeQueue
+            writeQueue: writeQueue,
+            networkStatus: connectivityMonitor
         )
         let ingestionViewModel = IngestionViewModel(
             api: container.ingestionAPI,

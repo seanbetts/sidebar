@@ -30,7 +30,8 @@ final class NotesEditorViewModelTests: XCTestCase {
         let viewModel = NotesEditorViewModel(
             notesViewModel: notesViewModel,
             draftStorage: draftStorage,
-            writeQueue: writeQueue
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
 
@@ -66,7 +67,8 @@ final class NotesEditorViewModelTests: XCTestCase {
         let viewModel = NotesEditorViewModel(
             notesViewModel: notesViewModel,
             draftStorage: draftStorage,
-            writeQueue: writeQueue
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
 
@@ -108,7 +110,8 @@ final class NotesEditorViewModelTests: XCTestCase {
         let viewModel = NotesEditorViewModel(
             notesViewModel: notesViewModel,
             draftStorage: draftStorage,
-            writeQueue: writeQueue
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
 
@@ -153,7 +156,8 @@ final class NotesEditorViewModelTests: XCTestCase {
         let viewModel = NotesEditorViewModel(
             notesViewModel: notesViewModel,
             draftStorage: draftStorage,
-            writeQueue: writeQueue
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
         let note = NotePayload(id: "n1", name: "Note", content: "Server", path: "/note.md", modified: nil)
 
@@ -190,7 +194,8 @@ final class NotesEditorViewModelTests: XCTestCase {
         let viewModel = NotesEditorViewModel(
             notesViewModel: notesViewModel,
             draftStorage: draftStorage,
-            writeQueue: writeQueue
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
         let serverDate = Date().addingTimeInterval(60)
         let note = NotePayload(
@@ -208,6 +213,55 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.content, "Server")
         XCTAssertNotNil(viewModel.conflict)
     }
+
+    func testOfflineSaveQueuesDraftWithoutApiCall() async throws {
+        let api = NotesAPISpy(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false)
+        )
+        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
+
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        nativeViewModel.attributedContent = AttributedString("Offline Draft")
+        nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
+        try? await Task.sleep(nanoseconds: 1_700_000_000)
+
+        await viewModel.syncFromNativeEditor(nativeViewModel)
+
+        XCTAssertTrue(viewModel.isQueuedForSync)
+        XCTAssertFalse(viewModel.isSaving)
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(writeQueue.fetchPendingWrites().count, 1)
+    }
 }
 
 private enum MockError: Error {
@@ -217,6 +271,94 @@ private enum MockError: Error {
 @MainActor
 private struct TestNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
+}
+
+@MainActor
+private final class NotesAPISpy: NotesProviding {
+    private(set) var updateCallCount = 0
+    let updateResult: Result<NotePayload, Error>
+
+    init(updateResult: Result<NotePayload, Error>) {
+        self.updateResult = updateResult
+    }
+
+    func listTree() async throws -> FileTree {
+        throw MockError.forced
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        updateCallCount += 1
+        return try updateResult.get()
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw MockError.forced
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
+    }
 }
 
 private final class MockNotesAPI: NotesProviding {
