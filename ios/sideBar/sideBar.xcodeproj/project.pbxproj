@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0A12F21000000BEEF02 /* MarkdownUI */; };
-		1413DE402F2B4F96002495EE /* sidebar-api.cer in Resources */ = {isa = PBXBuildFile; fileRef = 1413DE3F2F2B4F96002495EE /* sidebar-api.cer */; };
 		1413DE4E2F2B514C002495EE /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		1413DE4F2F2B514C002495EE /* sideBarShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1413DE702F2B53B3002495EE /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
@@ -98,7 +97,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		1413DE3F2F2B4F96002495EE /* sidebar-api.cer */ = {isa = PBXFileReference; lastKnownFileType = file; name = "sidebar-api.cer"; path = "sideBar/Resources/sidebar-api.cer"; sourceTree = "<group>"; };
 		1413DE462F2B514C002495EE /* sideBarShared.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = sideBarShared.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = sideBarWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -268,7 +266,6 @@
 				14C84A492F10562300FE0C16 /* Products */,
 				1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */,
 				14E6F4CB2F179BA4005B8045 /* Recovered References */,
-				1413DE3F2F2B4F96002495EE /* sidebar-api.cer */,
 			);
 			sourceTree = "<group>";
 		};
@@ -548,7 +545,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1413DE402F2B4F96002495EE /* sidebar-api.cer in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -701,7 +697,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -742,7 +738,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

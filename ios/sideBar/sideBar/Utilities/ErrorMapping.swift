@@ -32,25 +32,30 @@ public enum ErrorMapping {
         case .missingToken:
             return "Authentication required. Please sign in."
         case .requestFailed(let status):
-            if status == 401 {
-                return "Session expired. Please sign in again."
-            }
-            if status == 403 {
-                return "You do not have permission to perform this action."
-            }
-            if status == 413 {
-                return "File too large. Max size is 100MB."
-            }
-            if status >= 500 {
-                return "Server error. Please try again soon."
-            }
-            return "Request failed (HTTP \(status))."
+            return messageForStatus(status)
         case .decodingFailed:
             return "Unexpected response from server."
         case .invalidUrl:
             return "Invalid request URL."
         case .unknown:
             return "Unexpected error."
+        @unknown default:
+            return "Unexpected error."
+        }
+    }
+
+    private static func messageForStatus(_ status: Int) -> String {
+        switch status {
+        case 401:
+            return "Session expired. Please sign in again."
+        case 403:
+            return "You do not have permission to perform this action."
+        case 413:
+            return "File too large. Max size is 100MB."
+        case 500...:
+            return "Server error. Please try again soon."
+        default:
+            return "Request failed (HTTP \(status))."
         }
     }
 }
