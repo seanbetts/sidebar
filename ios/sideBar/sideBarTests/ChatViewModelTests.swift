@@ -181,7 +181,8 @@ final class ChatViewModelTests: XCTestCase {
             cache: cache,
             themeManager: themeManager,
             streamClient: streamClient,
-            chatStore: chatStore
+            chatStore: chatStore,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
         let message = Message(
@@ -198,6 +199,31 @@ final class ChatViewModelTests: XCTestCase {
         await viewModel.persistMessage(conversationId: "c1", message: message)
 
         XCTAssertNotNil(viewModel.errorMessage)
+    }
+
+    func testLoadConversationOfflineWithoutCacheSetsError() async {
+        let cache = TestCacheClient()
+        let api = ConversationsAPISpy()
+        let chatAPI = ChatAPI(client: Self.sharedAPIClient)
+        let themeManager = Self.sharedThemeManager
+        let streamClient = MockChatStreamClient()
+        let chatStore = ChatStore(conversationsAPI: api, cache: cache)
+        let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
+        let viewModel = ChatViewModel(
+            chatAPI: chatAPI,
+            conversationsAPI: api,
+            ingestionAPI: ingestionAPI,
+            cache: cache,
+            themeManager: themeManager,
+            streamClient: streamClient,
+            chatStore: chatStore,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false)
+        )
+
+        await viewModel.loadConversation(id: "conv-1")
+
+        XCTAssertEqual(viewModel.errorMessage, "This chat isn't available offline yet.")
+        XCTAssertEqual(api.getCallCount, 0)
     }
 
     private func makeViewModel(
@@ -220,6 +246,7 @@ final class ChatViewModelTests: XCTestCase {
             themeManager: themeManager,
             streamClient: streamClient,
             chatStore: chatStore,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
             userDefaults: defaults,
             clock: { Date(timeIntervalSince1970: 0) },
             scratchpadStore: scratchpadStore
@@ -231,6 +258,54 @@ final class ChatViewModelTests: XCTestCase {
 
 private enum MockError: Error {
     case forced
+}
+
+@MainActor
+private struct TestNetworkStatus: NetworkStatusProviding {
+    let isNetworkAvailable: Bool
+}
+
+@MainActor
+private final class ConversationsAPISpy: ConversationsAPIProviding, ConversationsProviding {
+    private(set) var getCallCount = 0
+
+    func list() async throws -> [Conversation] {
+        return []
+    }
+
+    func get(id: String) async throws -> ConversationWithMessages {
+        _ = id
+        getCallCount += 1
+        throw MockError.forced
+    }
+
+    func search(query: String, limit: Int) async throws -> [Conversation] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func delete(conversationId: String) async throws -> Conversation {
+        _ = conversationId
+        throw MockError.forced
+    }
+
+    func create(title: String) async throws -> Conversation {
+        _ = title
+        throw MockError.forced
+    }
+
+    func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
+        _ = conversationId
+        _ = message
+        throw MockError.forced
+    }
+
+    func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
+        _ = conversationId
+        _ = updates
+        throw MockError.forced
+    }
 }
 
 private final class MockChatStreamClient: ChatStreamClient {

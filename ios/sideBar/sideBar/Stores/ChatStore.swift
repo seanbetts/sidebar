@@ -79,6 +79,20 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         }
     }
 
+    public func hasCachedConversation(id: String) -> Bool {
+        if conversationDetails[id] != nil {
+            return true
+        }
+        let cacheKey = CacheKeys.conversation(id: id)
+        let cached: ConversationWithMessages? = cache.get(key: cacheKey)
+        if cached != nil {
+            return true
+        }
+        let messagesCacheKey = CacheKeys.conversationMessages(id: id)
+        let cachedMessages: [Message]? = cache.get(key: messagesCacheKey)
+        return cachedMessages != nil && !(cachedMessages?.isEmpty ?? true)
+    }
+
     public func reset() {
         conversations = []
         conversationDetails = [:]
