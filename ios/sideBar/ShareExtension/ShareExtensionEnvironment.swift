@@ -11,11 +11,16 @@ final class ShareExtensionEnvironment {
             service: AppGroupConfiguration.keychainService,
             accessGroup: AppGroupConfiguration.keychainAccessGroup
         )
-        guard let token = try keychain.loadAccessToken(), !token.isEmpty else {
+        // Validate token exists at init (fail fast if not authenticated)
+        guard let initialToken = try keychain.loadAccessToken(), !initialToken.isEmpty else {
             throw ShareExtensionError.notAuthenticated
         }
         let baseUrl = try ShareExtensionEnvironment.apiBaseURL()
-        let config = APIClientConfig(baseUrl: baseUrl, accessTokenProvider: { token })
+        // Use live token provider to get fresh token on each request
+        // (in case main app refreshed the token while extension is active)
+        let config = APIClientConfig(baseUrl: baseUrl, accessTokenProvider: {
+            try? keychain.loadAccessToken()
+        })
         self.apiClient = APIClient(config: config)
         self.websitesAPI = WebsitesAPI(client: apiClient)
         self.session = URLSession.shared

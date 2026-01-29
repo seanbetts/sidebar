@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 // MARK: - LoginView
@@ -11,7 +12,10 @@ public struct LoginView: View {
     @State private var errorMessage: String?
     @State private var isSigningIn: Bool = false
     @State private var showSuccess: Bool = false
+    @State private var lockoutSecondsRemaining: Int?
     @FocusState private var focusedField: Field?
+
+    private let lockoutTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private enum Field {
         case email
@@ -74,7 +78,21 @@ public struct LoginView: View {
                     focusedField = .email
                 }
             }
+            updateLockoutState()
         }
+        .onReceive(lockoutTimer) { _ in
+            updateLockoutState()
+        }
+    }
+
+    private func updateLockoutState() {
+        if let authAdapter = environment.container.authSession as? SupabaseAuthAdapter {
+            lockoutSecondsRemaining = authAdapter.lockoutRemainingSeconds
+        }
+    }
+
+    private var isLockedOut: Bool {
+        lockoutSecondsRemaining != nil && lockoutSecondsRemaining! > 0
     }
 
     private func signIn() async {
@@ -205,7 +223,25 @@ public struct LoginView: View {
 
     @ViewBuilder
     private var errorView: some View {
-        if let errorMessage {
+        if isLockedOut, let seconds = lockoutSecondsRemaining {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "lock.fill")
+                    .foregroundStyle(DesignTokens.Colors.error)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Too many failed attempts")
+                        .foregroundStyle(DesignTokens.Colors.error)
+                        .font(.callout)
+                    Text("Try again in \(formatLockoutTime(seconds)).")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
+            }
+            .padding(DesignTokens.Spacing.sm)
+            .background(DesignTokens.Colors.errorBackground)
+            .cornerRadius(DesignTokens.Radius.xsPlus)
+            .accessibilityLabel("Locked out")
+            .accessibilityValue("Try again in \(formatLockoutTime(seconds))")
+        } else if let errorMessage {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(DesignTokens.Colors.error)
@@ -225,6 +261,15 @@ public struct LoginView: View {
             .accessibilityValue(errorMessage)
             .accessibilityHint("Double-check your credentials and connection, then try again.")
         }
+    }
+
+    private func formatLockoutTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let secs = seconds % 60
+        if minutes > 0 {
+            return "\(minutes):\(String(format: "%02d", secs))"
+        }
+        return "\(secs) seconds"
     }
 
     private var signInButton: some View {
@@ -255,7 +300,7 @@ public struct LoginView: View {
         .controlSize(.large)
         .tint(.white)
         .foregroundStyle(.black)
-        .disabled(isSigningIn || email.isEmpty || password.isEmpty)
+        .disabled(isSigningIn || email.isEmpty || password.isEmpty || isLockedOut)
         .accessibilitySortPriority(1)
     }
 

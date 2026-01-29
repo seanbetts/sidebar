@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0A12F21000000BEEF02 /* MarkdownUI */; };
+		1413DE402F2B4F96002495EE /* sidebar-api.cer in Resources */ = {isa = PBXBuildFile; fileRef = 1413DE3F2F2B4F96002495EE /* sidebar-api.cer */; };
 		142516B72F1EB96B0072E4F9 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6C92F27A6420066EE47 /* WidgetKit.framework */; };
 		1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6CB2F27A6420066EE47 /* SwiftUI.framework */; };
@@ -69,6 +70,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1413DE3F2F2B4F96002495EE /* sidebar-api.cer */ = {isa = PBXFileReference; lastKnownFileType = file; name = "sidebar-api.cer"; path = "sideBar/Resources/sidebar-api.cer"; sourceTree = "<group>"; };
 		142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = sideBarWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1448E6C92F27A6420066EE47 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -233,6 +235,7 @@
 				14C84A492F10562300FE0C16 /* Products */,
 				1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */,
 				14E6F4CB2F179BA4005B8045 /* Recovered References */,
+				1413DE3F2F2B4F96002495EE /* sidebar-api.cer */,
 			);
 			sourceTree = "<group>";
 		};
@@ -464,6 +467,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1413DE402F2B4F96002495EE /* sidebar-api.cer in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
