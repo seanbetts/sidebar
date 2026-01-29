@@ -23,12 +23,21 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     private let api: any IngestionProviding
     private var remoteItems: [IngestionListItem] = []
     private var localItems: [String: IngestionListItem] = [:]
+    private var localUploadRecords: [String: LocalUploadRecord] = [:]
+    private let userDefaults: UserDefaults
     private var isRefreshingList = false
     private var refreshingMetaIds = Set<String>()
+    private let localUploadsKey = "ingestion.localUploads"
 
-    public init(api: any IngestionProviding, cache: CacheClient) {
+    public init(
+        api: any IngestionProviding,
+        cache: CacheClient,
+        userDefaults: UserDefaults = .standard
+    ) {
         self.api = api
+        self.userDefaults = userDefaults
         super.init(cache: cache)
+        loadLocalUploads()
     }
 
     // MARK: - CachedStoreBase Overrides
@@ -82,7 +91,9 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
         items = []
         remoteItems = []
         localItems = [:]
+        localUploadRecords = [:]
         activeMeta = nil
+        userDefaults.removeObject(forKey: localUploadsKey)
     }
 }
 
@@ -127,7 +138,12 @@ extension IngestionStore {
             let existing = remoteItems[index]
             remoteItems[index] = IngestionListItem(file: existing.file, job: job, recommendedViewer: existing.recommendedViewer)
         } else if let local = localItems[record.fileId] {
-            localItems[record.fileId] = IngestionListItem(file: local.file, job: job, recommendedViewer: local.recommendedViewer)
+            let updated = IngestionListItem(
+                file: local.file,
+                job: job,
+                recommendedViewer: local.recommendedViewer
+            )
+            setLocalUpload(item: updated, bookmarkData: nil)
         } else {
             return
         }
@@ -147,11 +163,12 @@ extension IngestionStore {
         }
         if let local = localItems[fileId] {
             let updatedFile = updatingPinned(local.file, pinned: pinned)
-            localItems[fileId] = IngestionListItem(
+            let updated = IngestionListItem(
                 file: updatedFile,
                 job: local.job,
                 recommendedViewer: local.recommendedViewer
             )
+            setLocalUpload(item: updated, bookmarkData: nil)
         }
         if let meta = activeMeta, meta.file.id == fileId {
             let updatedFile = updatingPinned(meta.file, pinned: pinned)
@@ -184,11 +201,12 @@ extension IngestionStore {
         }
         if let local = localItems[fileId] {
             let updatedFile = updatingFilename(local.file, filename: filename)
-            localItems[fileId] = IngestionListItem(
+            let updated = IngestionListItem(
                 file: updatedFile,
                 job: local.job,
                 recommendedViewer: local.recommendedViewer
             )
+            setLocalUpload(item: updated, bookmarkData: nil)
         }
         if let meta = activeMeta, meta.file.id == fileId {
             let updatedFile = updatingFilename(meta.file, filename: filename)
@@ -219,11 +237,12 @@ extension IngestionStore {
             )
         }
         if let local = localItems[fileId] {
-            localItems[fileId] = IngestionListItem(
+            let updated = IngestionListItem(
                 file: local.file,
                 job: job,
                 recommendedViewer: recommendedViewer ?? local.recommendedViewer
             )
+            setLocalUpload(item: updated, bookmarkData: nil)
         }
         if let meta = activeMeta, meta.file.id == fileId {
             let updatedMeta = IngestionMetaResponse(
@@ -245,7 +264,7 @@ extension IngestionStore {
 
     public func removeItem(fileId: String) {
         remoteItems.removeAll { $0.file.id == fileId }
-        localItems.removeValue(forKey: fileId)
+        removeLocalUploadRecord(fileId: fileId)
         items = mergeItems(remoteItems)
         if activeMeta?.file.id == fileId {
             activeMeta = nil
@@ -255,7 +274,12 @@ extension IngestionStore {
     }
 
     public func addLocalUpload(_ item: IngestionListItem) {
-        localItems[item.file.id] = item
+        setLocalUpload(item: item, bookmarkData: nil)
+        items = mergeItems(remoteItems)
+    }
+
+    public func addLocalUpload(_ item: IngestionListItem, bookmarkData: Data?) {
+        setLocalUpload(item: item, bookmarkData: bookmarkData)
         items = mergeItems(remoteItems)
     }
 
@@ -277,11 +301,12 @@ extension IngestionStore {
             attempts: existing.job.attempts,
             updatedAt: existing.job.updatedAt
         )
-        localItems[fileId] = IngestionListItem(
+        let updated = IngestionListItem(
             file: existing.file,
             job: updatedJob,
             recommendedViewer: existing.recommendedViewer
         )
+        setLocalUpload(item: updated, bookmarkData: nil)
         items = mergeItems(remoteItems)
     }
 
@@ -294,7 +319,7 @@ extension IngestionStore {
         sourceUrl: String? = nil
     ) {
         guard let existing = localItems[tempId] else { return }
-        localItems.removeValue(forKey: tempId)
+        removeLocalUploadRecord(fileId: tempId)
         let updatedFile = IngestedFileMeta(
             id: fileId,
             filenameOriginal: filename,
@@ -319,17 +344,27 @@ extension IngestionStore {
             attempts: existing.job.attempts,
             updatedAt: existing.job.updatedAt
         )
-        localItems[fileId] = IngestionListItem(
+        let updated = IngestionListItem(
             file: updatedFile,
             job: updatedJob,
             recommendedViewer: existing.recommendedViewer
         )
+        setLocalUpload(item: updated, bookmarkData: nil)
         items = mergeItems(remoteItems)
     }
 
     public func removeLocalUpload(fileId: String) {
-        localItems.removeValue(forKey: fileId)
+        removeLocalUploadRecord(fileId: fileId)
         items = mergeItems(remoteItems)
+    }
+
+    public func pendingUploadsForResume() -> [LocalUploadResumeItem] {
+        localUploadRecords.values.compactMap { record in
+            guard let bookmarkData = record.bookmarkData else { return nil }
+            let status = record.item.job.status ?? ""
+            guard status == "uploading" || status == "queued" else { return nil }
+            return LocalUploadResumeItem(item: record.item, bookmarkData: bookmarkData)
+        }
     }
 }
 
@@ -412,7 +447,12 @@ extension IngestionStore {
 
     private func mergeItems(_ remote: [IngestionListItem]) -> [IngestionListItem] {
         let remoteIds = Set(remote.map { $0.file.id })
-        localItems = localItems.filter { !remoteIds.contains($0.key) }
+        let filteredLocal = localItems.filter { !remoteIds.contains($0.key) }
+        if filteredLocal.count != localItems.count {
+            localItems = filteredLocal
+            localUploadRecords = localUploadRecords.filter { !remoteIds.contains($0.key) }
+            persistLocalUploads()
+        }
         var merged = remote
         let sortedLocal = localItems.values.sorted { lhs, rhs in
             let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
@@ -508,11 +548,12 @@ extension IngestionStore {
         }
         if let local = localItems[fileId], local.file.filenameOriginal != filename {
             let updatedFile = updatingFilename(local.file, filename: filename)
-            localItems[fileId] = IngestionListItem(
+            let updated = IngestionListItem(
                 file: updatedFile,
                 job: local.job,
                 recommendedViewer: local.recommendedViewer
             )
+            setLocalUpload(item: updated, bookmarkData: nil)
             didUpdate = true
         }
         if didUpdate {
@@ -520,4 +561,40 @@ extension IngestionStore {
             persistListCache()
         }
     }
+
+    private func loadLocalUploads() {
+        guard let data = userDefaults.data(forKey: localUploadsKey) else { return }
+        guard let records = try? JSONDecoder().decode([String: LocalUploadRecord].self, from: data) else { return }
+        localUploadRecords = records
+        localItems = records.mapValues { $0.item }
+        items = mergeItems(remoteItems)
+    }
+
+    private func persistLocalUploads() {
+        guard let data = try? JSONEncoder().encode(localUploadRecords) else { return }
+        userDefaults.set(data, forKey: localUploadsKey)
+    }
+
+    private func setLocalUpload(item: IngestionListItem, bookmarkData: Data?) {
+        localItems[item.file.id] = item
+        let existingBookmark = bookmarkData ?? localUploadRecords[item.file.id]?.bookmarkData
+        localUploadRecords[item.file.id] = LocalUploadRecord(item: item, bookmarkData: existingBookmark)
+        persistLocalUploads()
+    }
+
+    private func removeLocalUploadRecord(fileId: String) {
+        localItems.removeValue(forKey: fileId)
+        localUploadRecords.removeValue(forKey: fileId)
+        persistLocalUploads()
+    }
+}
+
+private struct LocalUploadRecord: Codable {
+    let item: IngestionListItem
+    let bookmarkData: Data?
+}
+
+struct LocalUploadResumeItem: Equatable {
+    let item: IngestionListItem
+    let bookmarkData: Data
 }

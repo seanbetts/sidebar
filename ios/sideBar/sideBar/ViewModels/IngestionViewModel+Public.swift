@@ -135,6 +135,14 @@ extension IngestionViewModel {
         }
     }
 
+    public func resumePendingUploads() {
+        let pending = store.pendingUploadsForResume()
+        guard !pending.isEmpty else { return }
+        for record in pending {
+            resumeUpload(record)
+        }
+    }
+
     public func ingestYouTube(url: String) async -> String? {
         let trimmed = url.trimmed
         guard let normalized = normalizeYouTubeUrlCandidate(trimmed) else {

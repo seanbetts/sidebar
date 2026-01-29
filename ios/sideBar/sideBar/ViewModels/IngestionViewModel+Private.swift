@@ -204,6 +204,7 @@ extension IngestionViewModel {
         if access {
             securityScopedURLs[tempId] = url
         }
+        let bookmarkData = makeBookmarkData(for: url)
         let sizeBytes = fileSizeBytes(for: url)
         let item = makeLocalItem(
             input: LocalIngestionItemInput(
@@ -217,7 +218,7 @@ extension IngestionViewModel {
                 sourceUrl: nil
             )
         )
-        store.addLocalUpload(item)
+        store.addLocalUpload(item, bookmarkData: bookmarkData)
         prepareSelection(fileId: tempId)
 
         uploadManager.startUpload(
@@ -245,6 +246,48 @@ extension IngestionViewModel {
                         filename: filename,
                         mimeType: mimeType,
                         sizeBytes: sizeBytes,
+                        result: result
+                    )
+                }
+            }
+        )
+    }
+
+    func resumeUpload(_ record: LocalUploadResumeItem) {
+        let fileId = record.item.file.id
+        guard let url = resolveBookmark(record.bookmarkData) else {
+            store.updateLocalUpload(fileId: fileId, status: "failed", stage: "failed", progress: nil)
+            return
+        }
+        let access = url.startAccessingSecurityScopedResource()
+        if access {
+            securityScopedURLs[fileId] = url
+        }
+        store.updateLocalUpload(fileId: fileId, status: "uploading", stage: "uploading", progress: 0)
+        uploadManager.startUpload(
+            request: UploadRequest(
+                uploadId: fileId,
+                fileURL: url,
+                filename: record.item.file.filenameOriginal,
+                mimeType: record.item.file.mimeOriginal,
+                folder: ""
+            ),
+            onProgress: { [weak self] progress in
+                self?.store.updateLocalUpload(
+                    fileId: fileId,
+                    status: "uploading",
+                    stage: "uploading",
+                    progress: progress
+                )
+            },
+            onCompletion: { [weak self] result in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.handleUploadCompletion(
+                        tempId: fileId,
+                        filename: record.item.file.filenameOriginal,
+                        mimeType: record.item.file.mimeOriginal,
+                        sizeBytes: record.item.file.sizeBytes,
                         result: result
                     )
                 }
@@ -340,6 +383,20 @@ extension IngestionViewModel {
     func releaseSecurityScopedAccess(for fileId: String) {
         guard let url = securityScopedURLs.removeValue(forKey: fileId) else { return }
         url.stopAccessingSecurityScopedResource()
+    }
+
+    func makeBookmarkData(for url: URL) -> Data? {
+        try? url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+    }
+
+    func resolveBookmark(_ data: Data) -> URL? {
+        var isStale = false
+        return try? URL(
+            resolvingBookmarkData: data,
+            options: [.withSecurityScope],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        )
     }
 
     func makeFilename(base: String, mimeType: String, fallback: String) -> String {
