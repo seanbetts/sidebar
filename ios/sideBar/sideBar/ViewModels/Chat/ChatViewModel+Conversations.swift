@@ -65,6 +65,7 @@ extension ChatViewModel {
         }
 
         var conversationId = selectedConversationId
+        var isLocalConversation = false
         if conversationId == nil {
             do {
                 let conversation = try await conversationsAPI.create(title: "New Chat")
@@ -85,8 +86,36 @@ extension ChatViewModel {
                     )
                 )
             } catch {
-                errorMessage = error.localizedDescription
-                return
+                let localId = "local-\(UUID().uuidString)"
+                let timestamp = Self.isoTimestamp(from: self.clock())
+                let conversation = Conversation(
+                    id: localId,
+                    title: "Offline Chat",
+                    titleGenerated: false,
+                    createdAt: timestamp,
+                    updatedAt: timestamp,
+                    messageCount: 0,
+                    firstMessage: nil,
+                    isArchived: nil
+                )
+                conversationId = localId
+                selectedConversationId = localId
+                isLocalConversation = true
+                chatStore.addConversation(conversation, persist: true)
+                chatStore.upsertConversationDetail(
+                    ConversationWithMessages(
+                        id: localId,
+                        title: conversation.title,
+                        titleGenerated: conversation.titleGenerated,
+                        createdAt: conversation.createdAt,
+                        updatedAt: conversation.updatedAt,
+                        messageCount: conversation.messageCount,
+                        firstMessage: conversation.firstMessage,
+                        isArchived: conversation.isArchived,
+                        messages: []
+                    ),
+                    persist: true
+                )
             }
         }
 
@@ -98,7 +127,7 @@ extension ChatViewModel {
             id: userMessageId,
             role: .user,
             content: trimmed,
-            status: .complete,
+            status: isLocalConversation ? .pending : .complete,
             toolCalls: nil,
             needsNewline: nil,
             timestamp: timestamp,
@@ -106,6 +135,10 @@ extension ChatViewModel {
         )
         messages.append(userMessage)
         syncMessagesToStore(conversationId: conversationId, persist: true)
+
+        if isLocalConversation {
+            return
+        }
 
         let assistantMessage = Message(
             id: assistantMessageId,

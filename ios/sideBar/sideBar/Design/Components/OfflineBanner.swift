@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OfflineBanner: View {
     @EnvironmentObject private var environment: AppEnvironment
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         if shouldShow {
@@ -9,20 +10,12 @@ struct OfflineBanner: View {
                 statusIcon
                 Text(statusText)
                     .font(DesignTokens.Typography.subheadlineSemibold)
-                if pendingCount > 0 {
-                    Text("• \(pendingCount) pending")
-                        .font(DesignTokens.Typography.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
-            .foregroundStyle(.primary)
+            .foregroundStyle(foregroundColor)
             .padding(.horizontal, DesignTokens.Spacing.sm)
             .padding(.vertical, DesignTokens.Spacing.xs)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(DesignTokens.Colors.warningBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.top, DesignTokens.Spacing.xs)
+            .background(backgroundColor)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 
@@ -31,7 +24,7 @@ struct OfflineBanner: View {
     }
 
     private var shouldShow: Bool {
-        environment.isOffline || pendingCount > 0
+        !environment.isNetworkAvailable
     }
 
     private var statusText: String {
@@ -42,6 +35,14 @@ struct OfflineBanner: View {
             return "Syncing..."
         }
         return "Pending changes"
+    }
+
+    private var backgroundColor: Color {
+        colorScheme == .dark ? .white : .black
+    }
+
+    private var foregroundColor: Color {
+        colorScheme == .dark ? .black : .white
     }
 
     @ViewBuilder

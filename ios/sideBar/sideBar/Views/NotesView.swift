@@ -80,7 +80,6 @@ private struct NotesDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            OfflineBanner()
             if !isCompact {
                 header
                 Divider()
@@ -347,7 +346,7 @@ extension NotesDetailView {
                 if let error = viewModel.errorMessage {
                     PlaceholderView(
                         title: "Unable to load note",
-                        subtitle: error,
+                        subtitle: environment.isOffline ? "This note isn't available offline yet." : error,
                         actionTitle: "Retry"
                     ) {
                         guard let selectedId = viewModel.selectedNoteId else { return }

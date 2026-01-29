@@ -21,7 +21,7 @@ extension AppEnvironment {
         let settingsViewModel: SettingsViewModel
         let weatherViewModel: WeatherViewModel
         let realtimeClient: RealtimeClient
-        let networkMonitor: NetworkMonitor
+        let connectivityMonitor: ConnectivityMonitor
         let biometricMonitor: BiometricMonitor
         let writeQueue: WriteQueue
     }
@@ -39,7 +39,10 @@ extension AppEnvironment {
         let scratchpadStore = ScratchpadStore()
         let toastCenter = ToastCenter()
         let realtimeClient = container.makeRealtimeClient(handler: nil)
-        let networkMonitor = NetworkMonitor(startMonitoring: !isTestMode)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: container.apiClient.config.baseUrl,
+            startMonitoring: !isTestMode
+        )
         let biometricMonitor = BiometricMonitor()
         let persistenceController = isTestMode
             ? PersistenceController(inMemory: true)
@@ -47,7 +50,7 @@ extension AppEnvironment {
         let draftStorage = DraftStorage(container: persistenceController.container)
         let writeQueue = WriteQueue(
             container: persistenceController.container,
-            networkMonitor: networkMonitor
+            connectivityMonitor: connectivityMonitor
         )
         let chatViewModel = ChatViewModel(
             chatAPI: container.chatAPI,
@@ -105,7 +108,7 @@ extension AppEnvironment {
             settingsViewModel: settingsViewModel,
             weatherViewModel: weatherViewModel,
             realtimeClient: realtimeClient,
-            networkMonitor: networkMonitor,
+            connectivityMonitor: connectivityMonitor,
             biometricMonitor: biometricMonitor,
             writeQueue: writeQueue
         )

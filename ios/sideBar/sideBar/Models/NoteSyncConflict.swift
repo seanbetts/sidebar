@@ -15,8 +15,9 @@ func shouldPresentNoteConflict(
     localContent: String,
     localDate: Date,
     serverContent: String,
-    serverDate: Date
+    serverDate: Date?
 ) -> Bool {
     guard localContent != serverContent else { return false }
+    guard let serverDate else { return true }
     return serverDate > localDate
 }

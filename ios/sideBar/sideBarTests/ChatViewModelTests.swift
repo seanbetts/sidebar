@@ -175,9 +175,13 @@ final class ChatViewModelTests: XCTestCase {
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
         let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let writeQueue = WriteQueue(
             container: persistence.container,
-            networkMonitor: NetworkMonitor(startMonitoring: false),
+            connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
         let viewModel = ChatViewModel(
@@ -224,9 +228,13 @@ final class ChatViewModelTests: XCTestCase {
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
         let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let writeQueue = WriteQueue(
             container: persistence.container,
-            networkMonitor: NetworkMonitor(startMonitoring: false),
+            connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
         let viewModel = ChatViewModel(
