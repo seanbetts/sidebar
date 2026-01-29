@@ -17,7 +17,6 @@ public struct FilesView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            OfflineBanner()
             if !isCompact {
                 FilesHeaderView(
                     viewModel: environment.ingestionViewModel,

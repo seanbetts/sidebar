@@ -76,7 +76,6 @@ private struct ChatDetailView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
-                OfflineBanner()
                 if !isCompact {
                     ChatHeaderView(viewModel: viewModel)
                     Divider()
