@@ -1,4 +1,5 @@
 import UIKit
+import sideBarShared
 import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController {

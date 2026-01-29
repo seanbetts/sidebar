@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// API client for places endpoints.
 public struct PlacesAPI {

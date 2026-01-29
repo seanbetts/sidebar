@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 import Combine
 import UniformTypeIdentifiers
 

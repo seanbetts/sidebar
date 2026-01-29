@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 @MainActor
 final class ShareExtensionEnvironment {

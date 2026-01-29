@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 public enum ErrorMapping {
     public static func message(for error: Error) -> String {

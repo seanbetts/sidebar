@@ -6,6 +6,7 @@
 //
 
 import Testing
+import sideBarShared
 
 struct SideBarTests {
 

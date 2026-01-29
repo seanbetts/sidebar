@@ -1,4 +1,5 @@
 import CoreData
+import sideBarShared
 import Foundation
 import OSLog
 

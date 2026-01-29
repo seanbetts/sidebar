@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// Streams chat events over URLSession SSE.
 public final class URLSessionChatStreamClient: ChatStreamClient {

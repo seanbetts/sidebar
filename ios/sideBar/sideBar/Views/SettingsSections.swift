@@ -1,4 +1,5 @@
 import LocalAuthentication
+import sideBarShared
 import SwiftUI
 #if os(macOS)
 import UniformTypeIdentifiers

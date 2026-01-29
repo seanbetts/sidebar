@@ -1,5 +1,6 @@
 #if os(iOS)
 import SwiftUI
+import sideBarShared
 import UIKit
 
 // MARK: - ChatInputUIKit

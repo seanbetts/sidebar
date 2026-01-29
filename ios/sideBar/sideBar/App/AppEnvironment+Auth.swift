@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 extension AppEnvironment {
     public func refreshAuthState() {

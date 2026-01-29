@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 /// Represents RealtimeMappers.
 public struct RealtimeMappers {

@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 public func stripFileExtension(_ name: String) -> String {
     let trimmed = name.trimmed

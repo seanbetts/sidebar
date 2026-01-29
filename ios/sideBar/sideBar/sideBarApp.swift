@@ -6,6 +6,7 @@
 //
 
 import AppIntents
+import sideBarShared
 import Foundation
 import SwiftUI
 import os

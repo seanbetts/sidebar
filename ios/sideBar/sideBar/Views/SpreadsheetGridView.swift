@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 #if os(iOS)
 import UIKit

@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 import SwiftUI
 
 struct ToolCallListView: View {

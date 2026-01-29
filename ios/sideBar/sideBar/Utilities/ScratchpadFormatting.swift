@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 public enum ScratchpadConstants {
     public static let title = "✏️ Scratchpad"

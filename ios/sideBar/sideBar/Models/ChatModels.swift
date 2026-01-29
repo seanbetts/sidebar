@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 public enum MessageRole: String, Codable {
     case user

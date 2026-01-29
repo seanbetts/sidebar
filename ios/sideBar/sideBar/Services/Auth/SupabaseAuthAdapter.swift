@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 import Combine
 import Supabase
 import os
