@@ -70,7 +70,6 @@ struct TasksDetailView: View {
     var body: some View {
         let state = viewModel.viewState
         VStack(spacing: 0) {
-            OfflineBanner()
             if isCompact {
                 compactHeader(state: state)
                 Divider()
