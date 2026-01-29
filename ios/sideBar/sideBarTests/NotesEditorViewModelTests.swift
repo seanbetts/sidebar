@@ -121,7 +121,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
         let note = NotePayload(id: "n1", name: "Note", content: "Server", path: "/note.md", modified: nil)
 
-        try await draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
+        try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
         store.applyEditorUpdate(note)
         try? await Task.sleep(nanoseconds: 100_000_000)
 
@@ -156,7 +156,7 @@ final class NotesEditorViewModelTests: XCTestCase {
             modified: serverDate.timeIntervalSince1970
         )
 
-        try await draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
+        try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
         store.applyEditorUpdate(note)
         try? await Task.sleep(nanoseconds: 100_000_000)
 

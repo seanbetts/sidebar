@@ -43,7 +43,8 @@ protocol WriteQueueExecutor {
 }
 
 @MainActor
-final class WriteQueue: ObservableObject {
+/// Queues offline write operations and retries them when online.
+public final class WriteQueue: ObservableObject {
     @Published private(set) var pendingCount: Int = 0
     @Published private(set) var isProcessing: Bool = false
 
