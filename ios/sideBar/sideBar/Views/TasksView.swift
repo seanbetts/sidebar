@@ -44,9 +44,6 @@ public struct TasksView: View {
             .toolbar {
                 if isCompact {
                     ToolbarItem(placement: .navigationBarLeading) {
-                        if !environment.isNetworkAvailable {
-                            OfflineBanner()
-                        }
                     }
                 }
             }

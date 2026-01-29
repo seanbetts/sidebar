@@ -10,7 +10,12 @@ final class NotesEditorViewModelTests: XCTestCase {
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
         let connectivityMonitor = ConnectivityMonitor(
@@ -41,7 +46,12 @@ final class NotesEditorViewModelTests: XCTestCase {
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
         let connectivityMonitor = ConnectivityMonitor(
@@ -78,7 +88,12 @@ final class NotesEditorViewModelTests: XCTestCase {
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
         let connectivityMonitor = ConnectivityMonitor(
@@ -118,7 +133,12 @@ final class NotesEditorViewModelTests: XCTestCase {
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
         let connectivityMonitor = ConnectivityMonitor(
@@ -150,12 +170,21 @@ final class NotesEditorViewModelTests: XCTestCase {
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
         let writeQueue = WriteQueue(
             container: persistence.container,
-            networkMonitor: NetworkMonitor(startMonitoring: false),
+            connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
         let viewModel = NotesEditorViewModel(
@@ -183,6 +212,11 @@ final class NotesEditorViewModelTests: XCTestCase {
 
 private enum MockError: Error {
     case forced
+}
+
+@MainActor
+private struct TestNetworkStatus: NetworkStatusProviding {
+    let isNetworkAvailable: Bool
 }
 
 private final class MockNotesAPI: NotesProviding {

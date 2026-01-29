@@ -36,9 +36,6 @@ public struct WebsitesView: View {
             .toolbar {
                 if isCompact {
                     ToolbarItem(placement: .navigationBarLeading) {
-                        if !environment.isNetworkAvailable {
-                            OfflineBanner()
-                        }
                     }
                 }
             }

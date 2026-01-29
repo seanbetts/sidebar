@@ -26,7 +26,12 @@ final class NotesViewModelTests: XCTestCase {
         let api = MockNotesAPI(listTreeResult: .failure(MockError.forced))
         let store = NotesStore(api: api, cache: cache)
         let toastCenter = ToastCenter()
-        let viewModel = NotesViewModel(api: api, store: store, toastCenter: toastCenter)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         await viewModel.loadTree()
 
@@ -54,7 +59,12 @@ final class NotesViewModelTests: XCTestCase {
         let api = MockNotesAPI(listTreeResult: .success(freshTree))
         let store = NotesStore(api: api, cache: cache)
         let toastCenter = ToastCenter()
-        let viewModel = NotesViewModel(api: api, store: store, toastCenter: toastCenter)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         await viewModel.loadTree()
 
@@ -99,7 +109,12 @@ final class NotesViewModelTests: XCTestCase {
         let api = MockNotesAPI(listTreeResult: .success(freshTree))
         let store = NotesStore(api: api, cache: cache)
         let toastCenter = ToastCenter()
-        let viewModel = NotesViewModel(api: api, store: store, toastCenter: toastCenter)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         await viewModel.loadTree()
 
@@ -143,7 +158,12 @@ final class NotesViewModelTests: XCTestCase {
         )
         let store = NotesStore(api: api, cache: cache)
         let toastCenter = ToastCenter()
-        let viewModel = NotesViewModel(api: api, store: store, toastCenter: toastCenter)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         await viewModel.selectNote(id: "note-id")
         XCTAssertEqual(viewModel.selectedNoteId, "note-id")
@@ -168,10 +188,117 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.selectedNoteId)
         XCTAssertNil(viewModel.activeNote)
     }
+
+    func testLoadNoteOfflineWithoutCacheShowsOfflineMessage() async {
+        let api = NotesAPISpy()
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false)
+        )
+
+        await viewModel.loadNote(id: "note-id")
+
+        XCTAssertEqual(viewModel.errorMessage, "This note isn't available offline yet.")
+        XCTAssertNil(viewModel.activeNote)
+        XCTAssertEqual(api.getNoteCallCount, 0)
+    }
 }
 
 private enum MockError: Error {
     case forced
+}
+
+@MainActor
+private struct TestNetworkStatus: NetworkStatusProviding {
+    let isNetworkAvailable: Bool
+}
+
+@MainActor
+private final class NotesAPISpy: NotesProviding {
+    private(set) var getNoteCallCount = 0
+
+    func listTree() async throws -> FileTree {
+        throw MockError.forced
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        _ = id
+        getNoteCallCount += 1
+        throw MockError.forced
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        throw MockError.forced
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw MockError.forced
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
+    }
 }
 
 @MainActor

@@ -70,6 +70,12 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         cache.remove(key: CacheKeys.note(id: id))
     }
 
+    public func hasCachedNote(id: String) -> Bool {
+        let cacheKey = CacheKeys.note(id: id)
+        let cached: NotePayload? = cache.get(key: cacheKey)
+        return cached != nil
+    }
+
     public func clearActiveNote() {
         activeNote = nil
     }
