@@ -67,7 +67,12 @@ extension AppEnvironment {
             scratchpadStore: scratchpadStore
         )
         let temporaryStore = TemporaryFileStore.shared
-        let notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore, toastCenter: toastCenter)
+        let notesViewModel = NotesViewModel(
+            api: container.notesAPI,
+            store: notesStore,
+            toastCenter: toastCenter,
+            networkStatus: connectivityMonitor
+        )
         let notesEditorViewModel = NotesEditorViewModel(
             notesViewModel: notesViewModel,
             draftStorage: draftStorage,

@@ -262,6 +262,31 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         }
     }
 
+    public var canRestoreOfflineSession: Bool {
+        do {
+            let storedToken = try stateStore.loadAccessToken()
+            let storedUserId = try stateStore.loadUserId()
+            guard storedToken != nil, storedUserId != nil else { return false }
+            return shouldAllowOfflineAccess(hasStoredToken: true)
+        } catch {
+            return false
+        }
+    }
+
+    @discardableResult
+    public func restoreOfflineSession() -> Bool {
+        do {
+            let storedToken = try stateStore.loadAccessToken()
+            let storedUserId = try stateStore.loadUserId()
+            guard let storedToken, let storedUserId else { return false }
+            guard shouldAllowOfflineAccess(hasStoredToken: true) else { return false }
+            restoreSession(accessToken: storedToken, userId: storedUserId)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     private func applySession(_ session: Session?) {
         guard let session else {
             restoreSession(accessToken: nil, userId: nil)

@@ -1,17 +1,22 @@
 import Combine
 import sideBarShared
 import SwiftUI
+#if canImport(LocalAuthentication)
+import LocalAuthentication
+#endif
 
 // MARK: - LoginView
 
 public struct LoginView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(AppStorageKeys.biometricUnlockEnabled) private var biometricUnlockEnabled = false
 
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var errorMessage: String?
     @State private var isSigningIn: Bool = false
+    @State private var isOfflineUnlocking: Bool = false
     @State private var showSuccess: Bool = false
     @State private var lockoutSecondsRemaining: Int?
     @FocusState private var focusedField: Field?
@@ -84,6 +89,11 @@ public struct LoginView: View {
         .onReceive(lockoutTimer) { _ in
             updateLockoutState()
         }
+        .onChange(of: environment.isOffline) { _, isOffline in
+            if !isOffline, errorMessage == AuthAdapterError.networkUnavailable.errorDescription {
+                errorMessage = nil
+            }
+        }
     }
 
     private func updateLockoutState() {
@@ -106,7 +116,10 @@ public struct LoginView: View {
             if trimmedEmail != email {
                 email = trimmedEmail
             }
-            guard !environment.isOffline else {
+            if environment.isOffline {
+                if await attemptOfflineUnlock() {
+                    return
+                }
                 throw AuthAdapterError.networkUnavailable
             }
             try await environment.container.authSession.signIn(email: trimmedEmail, password: password)
@@ -137,6 +150,30 @@ public struct LoginView: View {
             triggerHaptic(.error)
             #endif
         }
+    }
+
+    private func attemptOfflineUnlock() async -> Bool {
+        guard let authAdapter = environment.container.authSession as? SupabaseAuthAdapter else {
+            return false
+        }
+        guard authAdapter.canRestoreOfflineSession else {
+            return false
+        }
+        isOfflineUnlocking = true
+        defer { isOfflineUnlocking = false }
+        if biometricUnlockEnabled {
+            let authenticated = await authenticateForOfflineUnlock()
+            guard authenticated else {
+                errorMessage = "Offline unlock failed."
+                return false
+            }
+        }
+        if authAdapter.restoreOfflineSession() {
+            environment.refreshAuthState()
+            return true
+        }
+        errorMessage = "Offline unlock failed."
+        return false
     }
 
     private var headerView: some View {
@@ -224,11 +261,14 @@ public struct LoginView: View {
 
     @ViewBuilder
     private var errorView: some View {
+        if environment.isOffline {
+            offlineNoticeView
+        }
         if isLockedOut, let seconds = lockoutSecondsRemaining {
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "lock.fill")
-                    .foregroundStyle(DesignTokens.Colors.error)
-                VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                VStack(alignment: .center, spacing: 6) {
+                    Image(systemName: "lock.fill")
+                        .foregroundStyle(DesignTokens.Colors.error)
                     Text("Too many failed attempts")
                         .foregroundStyle(DesignTokens.Colors.error)
                         .font(.callout)
@@ -236,17 +276,19 @@ public struct LoginView: View {
                         .foregroundStyle(.secondary)
                         .font(.caption)
                 }
+                .multilineTextAlignment(.center)
             }
             .padding(DesignTokens.Spacing.sm)
             .background(DesignTokens.Colors.errorBackground)
             .cornerRadius(DesignTokens.Radius.xsPlus)
+            .frame(maxWidth: .infinity, alignment: .center)
             .accessibilityLabel("Locked out")
             .accessibilityValue("Try again in \(formatLockoutTime(seconds))")
-        } else if let errorMessage {
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(DesignTokens.Colors.error)
-                VStack(alignment: .leading, spacing: 4) {
+        } else if let errorMessage, shouldShowErrorMessage {
+            HStack {
+                VStack(alignment: .center, spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(DesignTokens.Colors.error)
                     Text(errorMessage)
                         .foregroundStyle(DesignTokens.Colors.error)
                         .font(.callout)
@@ -254,14 +296,45 @@ public struct LoginView: View {
                         .foregroundStyle(.secondary)
                         .font(.caption)
                 }
+                .multilineTextAlignment(.center)
             }
             .padding(DesignTokens.Spacing.sm)
             .background(DesignTokens.Colors.errorBackground)
             .cornerRadius(DesignTokens.Radius.xsPlus)
+            .frame(maxWidth: .infinity, alignment: .center)
             .accessibilityLabel("Error")
             .accessibilityValue(errorMessage)
             .accessibilityHint("Double-check your credentials and connection, then try again.")
         }
+        if shouldShowOfflineUnlock {
+            offlineUnlockView
+        }
+    }
+
+    private var offlineNoticeView: some View {
+        HStack {
+            VStack(alignment: .center, spacing: 6) {
+                Image(systemName: "wifi.slash")
+                    .foregroundStyle(DesignTokens.Colors.error)
+                Text("You're offline.")
+                    .foregroundStyle(DesignTokens.Colors.error)
+                    .font(.callout)
+                Text("Sign in requires a connection.")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+            }
+            .multilineTextAlignment(.center)
+        }
+        .padding(DesignTokens.Spacing.sm)
+        .background(DesignTokens.Colors.surface)
+        .cornerRadius(DesignTokens.Radius.xsPlus)
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity, alignment: .center)
+        .accessibilityLabel("Offline")
+        .accessibilityValue("Sign in requires a connection.")
     }
 
     private func formatLockoutTime(_ seconds: Int) -> String {
@@ -271,6 +344,96 @@ public struct LoginView: View {
             return "\(minutes):\(String(format: "%02d", secs))"
         }
         return "\(secs) seconds"
+    }
+
+    private var shouldShowOfflineUnlock: Bool {
+        guard environment.isOffline else { return false }
+        guard let authAdapter = environment.container.authSession as? SupabaseAuthAdapter else {
+            return false
+        }
+        return authAdapter.canRestoreOfflineSession
+    }
+
+    private var shouldShowErrorMessage: Bool {
+        if environment.isOffline,
+           errorMessage == AuthAdapterError.networkUnavailable.errorDescription {
+            return false
+        }
+        return true
+    }
+
+    private var offlineUnlockTitle: String {
+        #if canImport(LocalAuthentication)
+        let context = LAContext()
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
+        switch context.biometryType {
+        case .faceID:
+            return "Unlock with Face ID"
+        case .touchID:
+            return "Unlock with Touch ID"
+        default:
+            return "Unlock Offline"
+        }
+        #else
+        return "Unlock Offline"
+        #endif
+    }
+
+    private var offlineUnlockView: some View {
+        VStack(spacing: 10) {
+            Text("You're offline.")
+                .font(.callout)
+                .foregroundStyle(DesignTokens.Colors.textPrimary)
+            Text("Continue using your cached session.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button {
+                Task { _ = await attemptOfflineUnlock() }
+            } label: {
+                if isOfflineUnlocking {
+                    ProgressView()
+                        .tint(.black)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text(offlineUnlockTitle)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(.white)
+            .foregroundStyle(.black)
+            .disabled(isOfflineUnlocking)
+        }
+        .padding(DesignTokens.Spacing.sm)
+        .background(DesignTokens.Colors.surface)
+        .cornerRadius(DesignTokens.Radius.xsPlus)
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private func authenticateForOfflineUnlock() async -> Bool {
+        #if canImport(LocalAuthentication)
+        await withCheckedContinuation { continuation in
+            let context = LAContext()
+            var authError: NSError?
+            guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &authError) else {
+                continuation.resume(returning: false)
+                return
+            }
+            context.evaluatePolicy(
+                .deviceOwnerAuthentication,
+                localizedReason: "Unlock sideBar to continue."
+            ) { success, _ in
+                continuation.resume(returning: success)
+            }
+        }
+        #else
+        return false
+        #endif
     }
 
     private var signInButton: some View {
@@ -300,9 +463,13 @@ public struct LoginView: View {
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
         .tint(.white)
-        .foregroundStyle(.black)
-        .disabled(isSigningIn || email.isEmpty || password.isEmpty || isLockedOut)
+        .foregroundStyle(isSignInDisabled ? Color.secondary : Color.black)
+        .disabled(isSignInDisabled)
         .accessibilitySortPriority(1)
+    }
+
+    private var isSignInDisabled: Bool {
+        isSigningIn || email.isEmpty || password.isEmpty || isLockedOut || environment.isOffline
     }
 
     private var fieldBackground: some View {

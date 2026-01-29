@@ -48,7 +48,7 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
         let available = path.status == .satisfied
         if !available {
             setStatus(networkAvailable: false, serverReachable: false)
-            probeTask?.cancel()
+            scheduleProbe(immediate: false)
             return
         }
         setStatus(networkAvailable: true, serverReachable: isServerReachable)
@@ -107,7 +107,9 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
     private func probeNetworkAndServer() async {
         let networkAvailable = await probeInternet()
         if !networkAvailable {
+            consecutiveFailures += 1
             setStatus(networkAvailable: false, serverReachable: false)
+            scheduleProbe(immediate: false)
             return
         }
         let serverReachable = await probeServer()

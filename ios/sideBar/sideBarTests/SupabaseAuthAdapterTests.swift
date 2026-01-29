@@ -63,6 +63,40 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertNil(adapter.userId)
     }
 
+    func testCanRestoreOfflineSessionRespectsWindow() {
+        let store = InMemoryAuthStateStore()
+        try? store.saveAccessToken("token")
+        try? store.saveUserId("user")
+        let withinWindow = Date().addingTimeInterval(-2 * 60 * 60)
+        UserDefaults.standard.set(withinWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+
+        let adapter = SupabaseAuthAdapter(
+            config: EnvironmentConfig.fallbackForTesting(),
+            stateStore: store
+        )
+
+        XCTAssertTrue(adapter.canRestoreOfflineSession)
+        XCTAssertTrue(adapter.restoreOfflineSession())
+        XCTAssertEqual(adapter.accessToken, "token")
+        XCTAssertEqual(adapter.userId, "user")
+    }
+
+    func testRestoreOfflineSessionFailsOutsideWindow() {
+        let store = InMemoryAuthStateStore()
+        try? store.saveAccessToken("token")
+        try? store.saveUserId("user")
+        let outsideWindow = Date().addingTimeInterval(-48 * 60 * 60)
+        UserDefaults.standard.set(outsideWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+
+        let adapter = SupabaseAuthAdapter(
+            config: EnvironmentConfig.fallbackForTesting(),
+            stateStore: store
+        )
+
+        XCTAssertFalse(adapter.canRestoreOfflineSession)
+        XCTAssertFalse(adapter.restoreOfflineSession())
+    }
+
     private func base64UrlEncode(_ payload: [String: Any]) -> String {
         let data = try? JSONSerialization.data(withJSONObject: payload, options: [])
         let encoded = data?.base64EncodedString() ?? ""

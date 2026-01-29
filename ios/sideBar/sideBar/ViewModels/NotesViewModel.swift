@@ -23,7 +23,12 @@ import Combine
 ///
 /// ## Usage
 /// ```swift
-/// let viewModel = NotesViewModel(api: notesAPI, store: notesStore, toastCenter: toast)
+/// let viewModel = NotesViewModel(
+///     api: notesAPI,
+///     store: notesStore,
+///     toastCenter: toast,
+///     networkStatus: connectivityMonitor
+/// )
 /// await viewModel.loadTree()
 /// await viewModel.selectNote(id: "path/to/note.md")
 /// await viewModel.createNote(title: "New Note", folder: "subfolder")
@@ -40,17 +45,20 @@ public final class NotesViewModel: ObservableObject {
     private let api: any NotesProviding
     private let store: NotesStore
     private let toastCenter: ToastCenter
+    private let networkStatus: any NetworkStatusProviding
     private let searchTask = ManagedTask()
     private var cancellables = Set<AnyCancellable>()
 
     public init(
         api: any NotesProviding,
         store: NotesStore,
-        toastCenter: ToastCenter
+        toastCenter: ToastCenter,
+        networkStatus: any NetworkStatusProviding
     ) {
         self.api = api
         self.store = store
         self.toastCenter = toastCenter
+        self.networkStatus = networkStatus
 
         store.$tree
             .sink { [weak self] tree in
@@ -87,6 +95,11 @@ public final class NotesViewModel: ObservableObject {
     public func loadNote(id: String) async {
         errorMessage = nil
         selectedNoteId = id
+        store.clearActiveNote()
+        if !networkStatus.isNetworkAvailable, !store.hasCachedNote(id: id) {
+            errorMessage = "This note isn't available offline yet."
+            return
+        }
         do {
             try await store.loadNote(id: id)
         } catch {

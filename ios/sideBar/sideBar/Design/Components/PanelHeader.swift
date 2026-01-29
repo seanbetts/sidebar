@@ -6,6 +6,9 @@ struct PanelHeader<Trailing: View>: View {
     let trailing: Trailing
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var environment: AppEnvironment
+#if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
 
     init(
         title: String,
@@ -36,7 +39,7 @@ struct PanelHeader<Trailing: View>: View {
                 }
             }
             Spacer()
-            if !environment.isNetworkAvailable {
+            if shouldShowOfflineBanner {
                 OfflineBanner()
             }
             trailing
@@ -57,6 +60,14 @@ struct PanelHeader<Trailing: View>: View {
         return DesignTokens.Colors.surface
         #else
         return DesignTokens.Colors.surface
+        #endif
+    }
+
+    private var shouldShowOfflineBanner: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact && !environment.isNetworkAvailable
         #endif
     }
 }
