@@ -163,7 +163,7 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.messages.last?.id, "msg-2")
     }
 
-    func testPersistMessageQueuesOnFailure() async {
+    func testPersistMessageSetsErrorOnFailure() async {
         let cache = TestCacheClient()
         let api = MockConversationsAPI(
             listResult: .success([]),
@@ -174,16 +174,6 @@ final class ChatViewModelTests: XCTestCase {
         let streamClient = MockChatStreamClient()
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
-        let persistence = PersistenceController(inMemory: true)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
         let viewModel = ChatViewModel(
             chatAPI: chatAPI,
             conversationsAPI: api,
@@ -191,8 +181,7 @@ final class ChatViewModelTests: XCTestCase {
             cache: cache,
             themeManager: themeManager,
             streamClient: streamClient,
-            chatStore: chatStore,
-            writeQueue: writeQueue
+            chatStore: chatStore
         )
 
         let message = Message(
@@ -208,11 +197,7 @@ final class ChatViewModelTests: XCTestCase {
 
         await viewModel.persistMessage(conversationId: "c1", message: message)
 
-        let request = PendingWrite.fetchRequest()
-        let writes = try? persistence.container.viewContext.fetch(request)
-        XCTAssertEqual(writes?.count, 1)
-        XCTAssertEqual(writes?.first?.entityType, WriteEntityType.message.rawValue)
-        XCTAssertEqual(writes?.first?.entityId, "m1")
+        XCTAssertNotNil(viewModel.errorMessage)
     }
 
     private func makeViewModel(
@@ -227,16 +212,6 @@ final class ChatViewModelTests: XCTestCase {
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
-        let persistence = PersistenceController(inMemory: true)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
         let viewModel = ChatViewModel(
             chatAPI: chatAPI,
             conversationsAPI: api,
@@ -245,7 +220,6 @@ final class ChatViewModelTests: XCTestCase {
             themeManager: themeManager,
             streamClient: streamClient,
             chatStore: chatStore,
-            writeQueue: writeQueue,
             userDefaults: defaults,
             clock: { Date(timeIntervalSince1970: 0) },
             scratchpadStore: scratchpadStore
