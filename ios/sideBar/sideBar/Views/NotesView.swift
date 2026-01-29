@@ -352,6 +352,15 @@ extension NotesDetailView {
                         guard let selectedId = viewModel.selectedNoteId else { return }
                         Task { await viewModel.loadNote(id: selectedId) }
                     }
+                } else if !environment.isNetworkAvailable {
+                    PlaceholderView(
+                        title: "Unable to load note",
+                        subtitle: "This note isn't available offline yet.",
+                        actionTitle: "Retry"
+                    ) {
+                        guard let selectedId = viewModel.selectedNoteId else { return }
+                        Task { await viewModel.loadNote(id: selectedId) }
+                    }
                 } else {
                     LoadingView(message: "Loading note…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
