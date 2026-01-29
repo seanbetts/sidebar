@@ -54,7 +54,22 @@ extension AppEnvironment {
         )
         let temporaryStore = TemporaryFileStore.shared
         let notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore, toastCenter: toastCenter)
-        let notesEditorViewModel = NotesEditorViewModel(notesViewModel: notesViewModel)
+        let realtimeClient = container.makeRealtimeClient(handler: nil)
+        let networkMonitor = NetworkMonitor(startMonitoring: !isTestMode)
+        let biometricMonitor = BiometricMonitor()
+        let persistenceController = isTestMode
+            ? PersistenceController(inMemory: true)
+            : PersistenceController.shared
+        let draftStorage = DraftStorage(container: persistenceController.container)
+        let writeQueue = WriteQueue(
+            container: persistenceController.container,
+            networkMonitor: networkMonitor
+        )
+        let notesEditorViewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue
+        )
         let ingestionViewModel = IngestionViewModel(
             api: container.ingestionAPI,
             store: ingestionStore,
@@ -70,16 +85,6 @@ extension AppEnvironment {
             cache: container.cacheClient
         )
         let weatherViewModel = WeatherViewModel(api: container.weatherAPI)
-        let realtimeClient = container.makeRealtimeClient(handler: nil)
-        let networkMonitor = NetworkMonitor(startMonitoring: !isTestMode)
-        let biometricMonitor = BiometricMonitor()
-        let persistenceController = isTestMode
-            ? PersistenceController(inMemory: true)
-            : PersistenceController.shared
-        let writeQueue = WriteQueue(
-            container: persistenceController.container,
-            networkMonitor: networkMonitor
-        )
         return EnvironmentDependencies(
             themeManager: themeManager,
             chatStore: chatStore,

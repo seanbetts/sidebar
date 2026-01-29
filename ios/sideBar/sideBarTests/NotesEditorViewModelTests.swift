@@ -11,7 +11,18 @@ final class NotesEditorViewModelTests: XCTestCase {
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
-        let viewModel = NotesEditorViewModel(notesViewModel: notesViewModel)
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            networkMonitor: NetworkMonitor(startMonitoring: false),
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue
+        )
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
 
         store.applyEditorUpdate(note)
@@ -27,7 +38,18 @@ final class NotesEditorViewModelTests: XCTestCase {
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
-        let viewModel = NotesEditorViewModel(notesViewModel: notesViewModel)
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            networkMonitor: NetworkMonitor(startMonitoring: false),
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue
+        )
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
 
         store.applyEditorUpdate(note)
@@ -49,7 +71,18 @@ final class NotesEditorViewModelTests: XCTestCase {
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
-        let viewModel = NotesEditorViewModel(notesViewModel: notesViewModel)
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            networkMonitor: NetworkMonitor(startMonitoring: false),
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue
+        )
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
 
         store.applyEditorUpdate(note)
@@ -66,6 +99,34 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         XCTAssertEqual(store.activeNote?.content, "Updated")
         XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
+    }
+
+    func testLoadsUnsyncedDraftWhenAvailable() async throws {
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            networkMonitor: NetworkMonitor(startMonitoring: false),
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue
+        )
+        let note = NotePayload(id: "n1", name: "Note", content: "Server", path: "/note.md", modified: nil)
+
+        try await draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
+        store.applyEditorUpdate(note)
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(viewModel.content, "Draft")
+        XCTAssertTrue(viewModel.isDirty)
     }
 }
 
