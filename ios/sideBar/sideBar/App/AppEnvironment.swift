@@ -127,4 +127,5 @@ public final class AppEnvironment: ObservableObject {
         logStep("Realtime + monitors", initStart)
         #endif
     }
+
 }

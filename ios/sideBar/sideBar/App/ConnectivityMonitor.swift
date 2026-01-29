@@ -15,8 +15,19 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
     private let internetProbeUrl: URL
     private let session: URLSession
     private var probeTask: Task<Void, Never>?
+    private var schedulerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
-    private var consecutiveFailures = 0
+    private var lastProbeAt: Date?
+    private var isProbing = false
+    private let minimumProbeInterval: TimeInterval = 2
+    private let offlineFailureThreshold = 2
+    private let onlineSuccessThreshold = 2
+    private let offlineProbeInterval: TimeInterval = 5
+    private let onlineProbeInterval: TimeInterval = 30
+    private var consecutiveInternetFailures = 0
+    private var consecutiveInternetSuccesses = 0
+    private var consecutiveServerFailures = 0
+    private var consecutiveServerSuccesses = 0
 
     init(
         baseUrl: URL,
@@ -37,21 +48,25 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
             monitor.start(queue: queue)
         }
         observeRequestFailures()
+        startScheduler()
     }
 
     deinit {
         monitor.cancel()
         probeTask?.cancel()
+        schedulerTask?.cancel()
     }
 
     private func handlePathUpdate(_ path: NWPath) {
         let available = path.status == .satisfied
         if !available {
+            resetCounters()
             setStatus(networkAvailable: false, serverReachable: false)
             scheduleProbe(immediate: false)
             return
         }
-        setStatus(networkAvailable: true, serverReachable: isServerReachable)
+        resetCounters()
+        recordInternetSuccess()
         scheduleProbe(immediate: true)
     }
 
@@ -75,30 +90,42 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet, .networkConnectionLost, .cannotFindHost, .cannotConnectToHost:
-                setStatus(networkAvailable: false, serverReachable: false)
+                recordInternetFailure()
+                recordServerFailure()
                 return
             default:
                 break
             }
         }
         if let statusCode, statusCode >= 500 {
-            setStatus(networkAvailable: true, serverReachable: false)
+            recordServerFailure()
         }
         scheduleProbe(immediate: false)
     }
 
     private func handleRequestSuccess() {
-        consecutiveFailures = 0
-        setStatus(networkAvailable: true, serverReachable: true)
+        recordInternetSuccess()
+        recordServerSuccess()
     }
 
     private func scheduleProbe(immediate: Bool) {
+        if let lastProbeAt,
+           !immediate,
+           Date().timeIntervalSince(lastProbeAt) < minimumProbeInterval {
+            return
+        }
+        if isProbing {
+            return
+        }
         probeTask?.cancel()
         probeTask = Task { [weak self] in
             guard let self else { return }
+            self.isProbing = true
+            self.lastProbeAt = Date()
+            defer { self.isProbing = false }
             if !immediate {
-                let delay = backoffDelay(for: consecutiveFailures)
-                try? await Task.sleep(nanoseconds: delay)
+                let delay = probeDelay()
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
             await self.probeNetworkAndServer()
         }
@@ -107,19 +134,18 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
     private func probeNetworkAndServer() async {
         let networkAvailable = await probeInternet()
         if !networkAvailable {
-            consecutiveFailures += 1
-            setStatus(networkAvailable: false, serverReachable: false)
+            recordInternetFailure()
+            recordServerFailure()
             scheduleProbe(immediate: false)
             return
         }
+        recordInternetSuccess()
         let serverReachable = await probeServer()
         if serverReachable {
-            consecutiveFailures = 0
-            setStatus(networkAvailable: true, serverReachable: true)
+            recordServerSuccess()
             return
         }
-        consecutiveFailures += 1
-        setStatus(networkAvailable: true, serverReachable: false)
+        recordServerFailure()
         scheduleProbe(immediate: false)
     }
 
@@ -127,6 +153,45 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
         isNetworkAvailable = networkAvailable
         isServerReachable = serverReachable
         isOffline = !networkAvailable || !serverReachable
+    }
+
+    private func recordInternetFailure() {
+        consecutiveInternetFailures += 1
+        consecutiveInternetSuccesses = 0
+        if consecutiveInternetFailures >= offlineFailureThreshold {
+            setStatus(networkAvailable: false, serverReachable: false)
+        }
+    }
+
+    private func recordInternetSuccess() {
+        consecutiveInternetSuccesses += 1
+        consecutiveInternetFailures = 0
+        if consecutiveInternetSuccesses >= onlineSuccessThreshold {
+            setStatus(networkAvailable: true, serverReachable: isServerReachable)
+        }
+    }
+
+    private func recordServerFailure() {
+        consecutiveServerFailures += 1
+        consecutiveServerSuccesses = 0
+        if consecutiveServerFailures >= offlineFailureThreshold {
+            setStatus(networkAvailable: isNetworkAvailable, serverReachable: false)
+        }
+    }
+
+    private func recordServerSuccess() {
+        consecutiveServerSuccesses += 1
+        consecutiveServerFailures = 0
+        if consecutiveServerSuccesses >= onlineSuccessThreshold {
+            setStatus(networkAvailable: isNetworkAvailable, serverReachable: true)
+        }
+    }
+
+    private func resetCounters() {
+        consecutiveInternetFailures = 0
+        consecutiveInternetSuccesses = 0
+        consecutiveServerFailures = 0
+        consecutiveServerSuccesses = 0
     }
 
     private func probeInternet() async -> Bool {
@@ -160,9 +225,22 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
         return false
     }
 
-    private func backoffDelay(for failures: Int) -> UInt64 {
-        let attempt = max(failures, 1)
-        let seconds = min(pow(2.0, Double(attempt - 1)), 30.0)
-        return UInt64(seconds * 1_000_000_000)
+    private func probeDelay() -> TimeInterval {
+        if isOffline {
+            return offlineProbeInterval
+        }
+        return onlineProbeInterval
+    }
+
+    private func startScheduler() {
+        schedulerTask?.cancel()
+        schedulerTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                let delay = probeDelay()
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                await self.probeNetworkAndServer()
+            }
+        }
     }
 }
