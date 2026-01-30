@@ -65,7 +65,11 @@ public final class OfflineStore {
         deleteEntry(forKey: key)
     }
 
-    public func cleanupSnapshots(retention: OfflineSnapshotRetention = OfflineSnapshotRetention()) async {
+    public func cleanupSnapshots() async {
+        await cleanupSnapshots(retention: OfflineSnapshotRetention())
+    }
+
+    public func cleanupSnapshots(retention: OfflineSnapshotRetention) async {
         await pruneNoteSnapshots(keepLatest: retention.maxNotes)
         await pruneEntries(entityType: "website", keepLatest: retention.maxWebsites)
         await pruneEntries(entityType: "file", keepLatest: retention.maxFiles)

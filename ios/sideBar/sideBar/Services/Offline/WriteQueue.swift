@@ -276,7 +276,7 @@ public final class WriteQueue: ObservableObject {
                     context.delete(write)
                 case .keepLocal:
                     if write.entityType == WriteEntityType.task.rawValue,
-                       let rebasedPayload = rebaseTaskPayload(
+                       let rebasedPayload = self.rebaseTaskPayload(
                         payloadData: write.payload,
                         serverSnapshot: write.serverSnapshot
                        ) {
