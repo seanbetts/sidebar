@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from api.db.base import Base
+from api.exceptions import ConflictError
 from api.schemas.filters import WebsiteFilters
 from api.services.websites_service import WebsitesService
 from sqlalchemy import text
@@ -154,3 +155,24 @@ def test_list_websites_filters(db_session):
     )
     assert len(title_filtered) == 1
     assert title_filtered[0].id == site_a.id
+
+
+def test_update_website_conflict(db_session):
+    website = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/conflict",
+        title="Conflict",
+        content="Content",
+        source="https://example.com/conflict",
+    )
+    stale = website.updated_at - timedelta(seconds=10)
+
+    with pytest.raises(ConflictError):
+        WebsitesService.update_website(
+            db_session,
+            "test_user",
+            website.id,
+            title="Updated",
+            client_updated_at=stale,
+        )

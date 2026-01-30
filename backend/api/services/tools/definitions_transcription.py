@@ -10,8 +10,7 @@ def get_transcription_definitions() -> dict:
     return {
         "Transcribe Audio": {
             "description": (
-                "Transcribe an audio file into text and save it to the files "
-                "workspace."
+                "Transcribe an audio file into text and save it to the files workspace."
             ),
             "input_schema": {
                 "type": "object",

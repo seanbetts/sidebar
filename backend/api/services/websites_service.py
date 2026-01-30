@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
-from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
@@ -13,6 +12,11 @@ from sqlalchemy.orm.attributes import flag_modified
 from api.exceptions import WebsiteNotFoundError
 from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
+from api.services.websites_utils import (
+    ensure_website_no_conflict,
+    extract_domain,
+    normalize_url,
+)
 from api.utils.metadata_helpers import get_max_pinned_order
 from api.utils.pinned_order import lock_pinned_order
 from api.utils.search import build_text_search_filter
@@ -20,33 +24,6 @@ from api.utils.search import build_text_search_filter
 
 class WebsitesService:
     """Service layer for websites operations."""
-
-    @staticmethod
-    def normalize_url(value: str) -> str:
-        """Normalize a URL for storage.
-
-        Args:
-            value: Raw URL string.
-
-        Returns:
-            Normalized URL without query or fragment.
-        """
-        parsed = urlparse(value)
-        normalized = parsed._replace(query="", fragment="").geturl()
-        return normalized
-
-    @staticmethod
-    def extract_domain(value: str) -> str:
-        """Extract a domain from a URL.
-
-        Args:
-            value: URL string.
-
-        Returns:
-            Domain host portion or original value.
-        """
-        parsed = urlparse(value)
-        return parsed.netloc or value
 
     @staticmethod
     def get_by_url(
@@ -63,7 +40,7 @@ class WebsitesService:
         Returns:
             Matching Website or None.
         """
-        normalized_url = WebsitesService.normalize_url(url)
+        normalized_url = normalize_url(url)
         query = db.query(Website).filter(
             Website.user_id == user_id,
             Website.url == normalized_url,
@@ -106,8 +83,8 @@ class WebsitesService:
             Newly created Website.
         """
         now = datetime.now(UTC)
-        normalized_url = WebsitesService.normalize_url(url)
-        domain = WebsitesService.extract_domain(normalized_url)
+        normalized_url = normalize_url(url)
+        domain = extract_domain(normalized_url)
         metadata = {"pinned": pinned, "archived": archived}
 
         website = Website(
@@ -165,8 +142,8 @@ class WebsitesService:
             Upserted Website.
         """
         now = datetime.now(UTC)
-        normalized_url = WebsitesService.normalize_url(url)
-        domain = WebsitesService.extract_domain(normalized_url)
+        normalized_url = normalize_url(url)
+        domain = extract_domain(normalized_url)
 
         website = WebsitesService.get_by_url(
             db, user_id, normalized_url, include_deleted=True
@@ -224,6 +201,7 @@ class WebsitesService:
         source: str | None = None,
         saved_at: datetime | None = None,
         published_at: datetime | None = None,
+        client_updated_at: datetime | None = None,
     ) -> Website:
         """Update a website record by ID.
 
@@ -236,6 +214,7 @@ class WebsitesService:
             source: Optional new source label.
             saved_at: Optional new saved timestamp.
             published_at: Optional new published timestamp.
+            client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
             Updated Website.
@@ -254,6 +233,8 @@ class WebsitesService:
         )
         if not website:
             raise WebsiteNotFoundError(f"Website not found: {website_id}")
+
+        ensure_website_no_conflict(website, client_updated_at, op="update")
 
         if title is not None:
             website.title = title
@@ -277,6 +258,8 @@ class WebsitesService:
         user_id: str,
         website_id: uuid.UUID,
         pinned: bool,
+        *,
+        client_updated_at: datetime | None = None,
     ) -> Website:
         """Update pinned status for a website.
 
@@ -285,6 +268,7 @@ class WebsitesService:
             user_id: Current user ID.
             website_id: Website UUID.
             pinned: Desired pinned state.
+            client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
             Updated Website.
@@ -303,6 +287,8 @@ class WebsitesService:
         )
         if not website:
             raise WebsiteNotFoundError(f"Website not found: {website_id}")
+
+        ensure_website_no_conflict(website, client_updated_at, op="pin")
 
         metadata = website.metadata_ or {}
         metadata["pinned"] = pinned
@@ -356,6 +342,8 @@ class WebsitesService:
         user_id: str,
         website_id: uuid.UUID,
         archived: bool,
+        *,
+        client_updated_at: datetime | None = None,
     ) -> Website:
         """Update archived status for a website.
 
@@ -364,6 +352,7 @@ class WebsitesService:
             user_id: Current user ID.
             website_id: Website UUID.
             archived: Desired archived state.
+            client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
             Updated Website.
@@ -383,6 +372,8 @@ class WebsitesService:
         if not website:
             raise WebsiteNotFoundError(f"Website not found: {website_id}")
 
+        ensure_website_no_conflict(website, client_updated_at, op="archive")
+
         website.metadata_ = {**(website.metadata_ or {}), "archived": archived}
         flag_modified(website, "metadata_")
         website.updated_at = datetime.now(UTC)
@@ -391,34 +382,64 @@ class WebsitesService:
         return website
 
     @staticmethod
-    def delete_website(db: Session, user_id: str, website_id: uuid.UUID) -> bool:
+    def delete_website(
+        db: Session,
+        user_id: str,
+        website_id: uuid.UUID,
+        *,
+        client_updated_at: datetime | None = None,
+        allow_missing: bool = False,
+    ) -> bool:
         """Soft delete a website by setting deleted_at.
 
         Args:
             db: Database session.
             user_id: Current user ID.
             website_id: Website UUID.
+            client_updated_at: Optional client timestamp for conflict checks.
+            allow_missing: When True, treat missing websites as deleted.
 
         Returns:
             True if deleted, False if not found.
         """
+        website = WebsitesService.soft_delete_website(
+            db,
+            user_id,
+            website_id,
+            client_updated_at=client_updated_at,
+            allow_missing=allow_missing,
+        )
+        if website is None and allow_missing:
+            return True
+        return website is not None
+
+    @staticmethod
+    def soft_delete_website(
+        db: Session,
+        user_id: str,
+        website_id: uuid.UUID,
+        *,
+        client_updated_at: datetime | None = None,
+        allow_missing: bool = False,
+    ) -> Website | None:
+        """Soft delete a website and return the record."""
         website = (
             db.query(Website)
-            .filter(
-                Website.user_id == user_id,
-                Website.id == website_id,
-                Website.deleted_at.is_(None),
-            )
+            .filter(Website.user_id == user_id, Website.id == website_id)
             .first()
         )
         if not website:
-            return False
+            return None
+        if website.deleted_at is not None:
+            return website
+
+        ensure_website_no_conflict(website, client_updated_at, op="delete")
 
         now = datetime.now(UTC)
         website.deleted_at = now
         website.updated_at = now
         db.commit()
-        return True
+        return website
 
     @staticmethod
     def get_website(
@@ -427,6 +448,7 @@ class WebsitesService:
         website_id: uuid.UUID,
         *,
         mark_opened: bool = True,
+        include_deleted: bool = False,
     ) -> Website | None:
         """Fetch a website by ID.
 
@@ -435,23 +457,22 @@ class WebsitesService:
             user_id: Current user ID.
             website_id: Website UUID.
             mark_opened: Whether to update last_opened_at. Defaults to True.
+            include_deleted: Include soft-deleted websites when True.
 
         Returns:
             Website if found, otherwise None.
         """
-        website = (
-            db.query(Website)
-            .filter(
-                Website.user_id == user_id,
-                Website.id == website_id,
-                Website.deleted_at.is_(None),
-            )
-            .first()
+        query = db.query(Website).filter(
+            Website.user_id == user_id,
+            Website.id == website_id,
         )
+        if not include_deleted:
+            query = query.filter(Website.deleted_at.is_(None))
+        website = query.first()
         if not website:
             return None
 
-        if mark_opened:
+        if mark_opened and website.deleted_at is None:
             website.last_opened_at = datetime.now(UTC)
             db.commit()
         return website

@@ -1,24 +1,19 @@
 """Files router for uploads and processing status."""
+# ruff: noqa: B008
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
-from api.exceptions import (
-    BadRequestError,
-    ConflictError,
-    InternalServerError,
-    NotFoundError,
-    RangeNotSatisfiableError,
-)
+from api.exceptions import BadRequestError, NotFoundError, RangeNotSatisfiableError
 from api.routers.ingestion_helpers import (
     _category_for_file,
     _extract_youtube_id,
@@ -31,8 +26,10 @@ from api.routers.ingestion_helpers import (
     _user_message_for_job,
 )
 from api.services.file_ingestion_service import FileIngestionService
+from api.services.files_sync_service import FilesSyncService
 from api.services.storage.service import get_storage_backend
 from api.services.website_transcript_service import WebsiteTranscriptService
+from api.utils.timestamps import parse_client_timestamp
 from api.utils.validation import parse_uuid
 
 router = APIRouter()
@@ -146,6 +143,12 @@ async def list_ingestions(
                         source_metadata=record.source_metadata,
                     ),
                     "created_at": record.created_at.isoformat(),
+                    "updated_at": record.updated_at.isoformat()
+                    if record.updated_at
+                    else None,
+                    "deleted_at": record.deleted_at.isoformat()
+                    if record.deleted_at
+                    else None,
                 },
                 "job": {
                     "status": job.status if job else None,
@@ -238,6 +241,8 @@ async def get_file_meta(
                 source_metadata=record.source_metadata,
             ),
             "created_at": record.created_at.isoformat(),
+            "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+            "deleted_at": record.deleted_at.isoformat() if record.deleted_at else None,
         },
         "job": {
             "status": job.status if job else None,
@@ -374,7 +379,17 @@ async def update_pin(
         raise NotFoundError("File", str(file_id))
 
     pinned = bool(request.get("pinned", False))
-    FileIngestionService.update_pinned(db, user_id, file_id, pinned)
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
+    FileIngestionService.update_pinned(
+        db,
+        user_id,
+        file_id,
+        pinned,
+        client_updated_at=client_updated_at,
+    )
     return {"success": True}
 
 
@@ -411,16 +426,27 @@ async def rename_file(
         raise NotFoundError("File", str(file_id))
 
     new_name = str(request.get("filename", "")).strip()
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
     if not new_name:
         raise BadRequestError("filename is required")
 
-    FileIngestionService.update_filename(db, user_id, file_id, new_name)
+    FileIngestionService.update_filename(
+        db,
+        user_id,
+        file_id,
+        new_name,
+        client_updated_at=client_updated_at,
+    )
     return {"success": True, "filename": new_name}
 
 
 @router.delete("/{file_id}")
 async def delete_file(
     file_id: UUID,
+    request: dict | None = Body(default=None),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -430,18 +456,42 @@ async def delete_file(
     if not record:
         raise NotFoundError("File", str(file_id))
 
-    job = FileIngestionService.get_job(db, file_id)
-    if job and job.status not in {"ready", "failed", "canceled"}:
-        raise ConflictError("File is still processing")
-
-    derivatives = FileIngestionService.list_derivatives(db, file_id)
-    storage = get_storage_backend()
-    for derivative in derivatives:
-        try:
-            storage.delete_object(derivative.storage_key)
-        except Exception as exc:
-            raise InternalServerError("Failed to delete file data") from exc
-    FileIngestionService.delete_derivatives(db, file_id)
-    FileIngestionService.soft_delete_file(db, file_id)
-    _safe_cleanup(_staging_path(file_id))
+    payload = request or {}
+    client_updated_at = parse_client_timestamp(
+        payload.get("client_updated_at") or payload.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
+    FileIngestionService.delete_file(
+        db,
+        user_id,
+        file_id,
+        client_updated_at=client_updated_at,
+    )
     return {"status": "deleted"}
+
+
+@router.post("/sync")
+async def sync_files(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Apply offline file operations and return updates since last sync."""
+    result = FilesSyncService.sync_operations(db, user_id, request)
+    return {
+        "applied": result.applied_ids,
+        "files": [
+            FileIngestionService._file_sync_payload(record) for record in result.files
+        ],
+        "conflicts": result.conflicts,
+        "updates": {
+            "items": [
+                FileIngestionService._file_sync_payload(record)
+                for record in result.updated_files
+            ],
+        },
+        "serverUpdatedSince": result.server_updated_since.isoformat()
+        if result.server_updated_since
+        else None,
+    }

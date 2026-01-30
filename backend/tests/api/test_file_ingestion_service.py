@@ -1,7 +1,9 @@
 import uuid
+from datetime import timedelta
 
 import pytest
 from api.db.base import Base
+from api.exceptions import ConflictError
 from api.services.file_ingestion_service import FileIngestionService
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
@@ -128,3 +130,24 @@ def test_list_ingestions_hides_ai_md_paths(db_session):
 
     assert len(records) == 1
     assert records[0].filename_original == "notes.md"
+
+
+def test_update_filename_conflict(db_session):
+    file_record = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="report.pdf",
+        path="report.pdf",
+        mime_original="application/pdf",
+        size_bytes=10,
+    )[0]
+    stale = file_record.updated_at - timedelta(seconds=10)
+
+    with pytest.raises(ConflictError):
+        FileIngestionService.update_filename(
+            db_session,
+            "user-1",
+            file_record.id,
+            "renamed.pdf",
+            client_updated_at=stale,
+        )

@@ -1,9 +1,10 @@
 """Websites router for archived web content in Postgres."""
+# ruff: noqa: B008
 
 import logging
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
@@ -16,6 +17,9 @@ from api.schemas.filters import WebsiteFilters
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_transcript_service import WebsiteTranscriptService
 from api.services.websites_service import WebsitesService
+from api.services.websites_sync_service import WebsitesSyncService
+from api.services.websites_utils import website_sync_payload
+from api.utils.timestamps import parse_client_timestamp
 from api.utils.validation import parse_uuid
 
 logger = logging.getLogger(__name__)
@@ -247,6 +251,7 @@ async def get_website(
 
     Args:
         website_id: Website UUID.
+        request: Optional payload with client_updated_at.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -299,8 +304,18 @@ async def update_pin(
         NotFoundError: If not found.
     """
     pinned = bool(request.get("pinned", False))
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
     try:
-        website = WebsitesService.update_pinned(db, user_id, website_id, pinned)
+        website = WebsitesService.update_pinned(
+            db,
+            user_id,
+            website_id,
+            pinned,
+            client_updated_at=client_updated_at,
+        )
     except WebsiteNotFoundError as exc:
         raise NotFoundError("Website", str(website_id)) from exc
 
@@ -332,10 +347,20 @@ async def update_title(
         NotFoundError: If not found.
     """
     title = request.get("title", "")
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
     if not title:
         raise BadRequestError("title required")
     try:
-        website = WebsitesService.update_website(db, user_id, website_id, title=title)
+        website = WebsitesService.update_website(
+            db,
+            user_id,
+            website_id,
+            title=title,
+            client_updated_at=client_updated_at,
+        )
     except WebsiteNotFoundError as exc:
         raise NotFoundError("Website", str(website_id)) from exc
 
@@ -366,8 +391,18 @@ async def update_archive(
         NotFoundError: If not found.
     """
     archived = bool(request.get("archived", False))
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
     try:
-        website = WebsitesService.update_archived(db, user_id, website_id, archived)
+        website = WebsitesService.update_archived(
+            db,
+            user_id,
+            website_id,
+            archived,
+            client_updated_at=client_updated_at,
+        )
     except WebsiteNotFoundError as exc:
         raise NotFoundError("Website", str(website_id)) from exc
 
@@ -407,6 +442,7 @@ async def download_website(
 @router.delete("/{website_id}")
 async def delete_website(
     website_id: uuid.UUID,
+    request: dict | None = Body(default=None),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -415,6 +451,7 @@ async def delete_website(
 
     Args:
         website_id: Website UUID.
+        request: Optional payload with client_updated_at.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -428,8 +465,40 @@ async def delete_website(
     website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
     if not website:
         raise NotFoundError("Website", str(website_id))
-    deleted = WebsitesService.delete_website(db, user_id, website_id)
+    payload = request or {}
+    client_updated_at = parse_client_timestamp(
+        payload.get("client_updated_at") or payload.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
+    deleted = WebsitesService.delete_website(
+        db,
+        user_id,
+        website_id,
+        client_updated_at=client_updated_at,
+    )
     if not deleted:
         raise NotFoundError("Website", str(website_id))
 
     return website_summary(website)
+
+
+@router.post("/sync")
+async def sync_websites(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Apply offline website operations and return updates since last sync."""
+    result = WebsitesSyncService.sync_operations(db, user_id, request)
+    return {
+        "applied": result.applied_ids,
+        "websites": [website_summary(site) for site in result.websites],
+        "conflicts": result.conflicts,
+        "updates": {
+            "items": [website_sync_payload(site) for site in result.updated_websites],
+        },
+        "serverUpdatedSince": result.server_updated_since.isoformat()
+        if result.server_updated_since
+        else None,
+    }

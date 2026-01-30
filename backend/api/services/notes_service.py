@@ -6,7 +6,6 @@ import re
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy import or_
 from sqlalchemy.exc import InvalidRequestError
@@ -17,6 +16,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 from api.exceptions import BadRequestError, NoteNotFoundError
 from api.models.note import Note
 from api.schemas.filters import NoteFilters
+from api.services.notes_helpers import ensure_note_no_conflict
 from api.utils.metadata_helpers import get_max_pinned_order
 from api.utils.pinned_order import lock_pinned_order
 from api.utils.validation import parse_uuid
@@ -74,88 +74,6 @@ class NotesService:
             return None
 
     @staticmethod
-    def is_archived_folder(folder: str) -> bool:
-        """Return True if a folder path is within Archive."""
-        return folder == "Archive" or folder.startswith("Archive/")
-
-    @staticmethod
-    def build_notes_tree(notes: Iterable[Note]) -> dict[str, Any]:
-        """Build a hierarchical notes tree for UI display.
-
-        Args:
-            notes: Iterable of Note records.
-
-        Returns:
-            Tree dict with folders and note files.
-        """
-        root: dict[str, Any] = {
-            "name": "notes",
-            "path": "/",
-            "type": "directory",
-            "children": [],
-            "expanded": False,
-        }
-        index: dict[str, dict[str, Any]] = {"": root}
-
-        for note in notes:
-            if note.title == "✏️ Scratchpad":
-                continue
-            metadata = note.metadata_ or {}
-            folder = metadata.get("folder") or ""
-            is_folder_marker = bool(metadata.get("folder_marker"))
-            folder_parts = [part for part in folder.split("/") if part]
-            current_path = ""
-            current_node: dict[str, Any] = root
-
-            for part in folder_parts:
-                current_path = f"{current_path}/{part}" if current_path else part
-                if current_path not in index:
-                    node: dict[str, Any] = {
-                        "name": part,
-                        "path": f"folder:{current_path}",
-                        "type": "directory",
-                        "children": [],
-                        "expanded": False,
-                    }
-                    index[current_path] = node
-                    current_node["children"].append(node)
-                current_node = index[current_path]
-
-            if is_folder_marker:
-                current_node["folderMarker"] = True
-                continue
-
-            is_archived = NotesService.is_archived_folder(folder)
-            current_node["children"].append(
-                {
-                    "name": f"{note.title}.md",
-                    "path": str(note.id),
-                    "type": "file",
-                    "modified": note.updated_at.timestamp()
-                    if note.updated_at
-                    else None,
-                    "pinned": bool(metadata.get("pinned")),
-                    "pinned_order": metadata.get("pinned_order"),
-                    "archived": is_archived,
-                }
-            )
-
-        def sort_children(node: dict) -> None:
-            """Sort tree children with folders first then by name."""
-            node["children"].sort(
-                key=lambda item: (
-                    item.get("type") != "directory",
-                    item.get("name", "").lower(),
-                )
-            )
-            for child in node["children"]:
-                if child.get("type") == "directory":
-                    sort_children(child)
-
-        sort_children(root)
-        return root
-
-    @staticmethod
     def create_note(
         db: Session,
         user_id: str,
@@ -165,6 +83,7 @@ class NotesService:
         folder: str = "",
         pinned: bool = False,
         tags: list[str] | None = None,
+        note_id: uuid.UUID | None = None,
     ) -> Note:
         """Create a new note record.
 
@@ -176,6 +95,7 @@ class NotesService:
             folder: Folder path. Defaults to "".
             pinned: Whether the note is pinned. Defaults to False.
             tags: Optional list of tags.
+            note_id: Optional note UUID for idempotent create.
 
         Returns:
             Newly created Note.
@@ -185,8 +105,25 @@ class NotesService:
         metadata = {"folder": folder, "pinned": pinned}
         if tags:
             metadata["tags"] = tags
+        if note_id is not None:
+            existing = (
+                db.query(Note)
+                .filter(Note.user_id == user_id, Note.id == note_id)
+                .first()
+            )
+            if existing:
+                if existing.deleted_at is not None:
+                    existing.deleted_at = None
+                    existing.title = resolved_title
+                    existing.content = content
+                    existing.metadata_ = metadata
+                    flag_modified(existing, "metadata_")
+                    existing.updated_at = now
+                    db.commit()
+                return existing
 
         note = Note(
+            id=note_id or uuid.uuid4(),
             user_id=user_id,
             title=resolved_title,
             content=content,
@@ -224,6 +161,7 @@ class NotesService:
         content: str,
         *,
         title: str | None = None,
+        client_updated_at: datetime | None = None,
     ) -> Note:
         """Update a note's content and title.
 
@@ -234,6 +172,7 @@ class NotesService:
             content: Updated markdown content.
             title: Optional explicit title. If not provided, existing title
                 is preserved.
+            client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
             Updated Note.
@@ -253,9 +192,54 @@ class NotesService:
         if not note:
             raise NoteNotFoundError(f"Note not found: {note_id}")
 
+        ensure_note_no_conflict(note, client_updated_at, op="update")
+
         if title is not None:
             note.title = title
         note.content = content
+        note.updated_at = datetime.now(UTC)
+        db.commit()
+        return note
+
+    @staticmethod
+    def rename_note(
+        db: Session,
+        user_id: str,
+        note_id: uuid.UUID,
+        title: str,
+        *,
+        client_updated_at: datetime | None = None,
+    ) -> Note:
+        """Rename a note by updating its title.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note UUID.
+            title: New note title.
+            client_updated_at: Optional client timestamp for conflict checks.
+
+        Returns:
+            Updated Note.
+
+        Raises:
+            NoteNotFoundError: If the note does not exist.
+        """
+        note = (
+            db.query(Note)
+            .filter(
+                Note.user_id == user_id,
+                Note.id == note_id,
+                Note.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not note:
+            raise NoteNotFoundError(f"Note not found: {note_id}")
+
+        ensure_note_no_conflict(note, client_updated_at, op="rename")
+
+        note.title = title
         note.updated_at = datetime.now(UTC)
         db.commit()
         return note
@@ -266,6 +250,9 @@ class NotesService:
         user_id: str,
         note_id: uuid.UUID,
         folder: str,
+        *,
+        client_updated_at: datetime | None = None,
+        op: str = "move",
     ) -> Note:
         """Update a note's folder.
 
@@ -274,6 +261,8 @@ class NotesService:
             user_id: Current user ID.
             note_id: Note UUID.
             folder: New folder path.
+            client_updated_at: Optional client timestamp for conflict checks.
+            op: Operation label for conflict payloads.
 
         Returns:
             Updated Note.
@@ -292,6 +281,8 @@ class NotesService:
         )
         if not note:
             raise NoteNotFoundError(f"Note not found: {note_id}")
+
+        ensure_note_no_conflict(note, client_updated_at, op=op)
 
         note.metadata_ = {**(note.metadata_ or {}), "folder": folder}
         flag_modified(note, "metadata_")
@@ -305,6 +296,8 @@ class NotesService:
         user_id: str,
         note_id: uuid.UUID,
         pinned: bool,
+        *,
+        client_updated_at: datetime | None = None,
     ) -> Note:
         """Update a note's pinned status.
 
@@ -313,6 +306,7 @@ class NotesService:
             user_id: Current user ID.
             note_id: Note UUID.
             pinned: Desired pinned state.
+            client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
             Updated Note.
@@ -331,6 +325,8 @@ class NotesService:
         )
         if not note:
             raise NoteNotFoundError(f"Note not found: {note_id}")
+
+        ensure_note_no_conflict(note, client_updated_at, op="pin")
 
         metadata = note.metadata_ or {}
         metadata["pinned"] = pinned
@@ -376,34 +372,67 @@ class NotesService:
         db.commit()
 
     @staticmethod
-    def delete_note(db: Session, user_id: str, note_id: uuid.UUID) -> bool:
+    def delete_note(
+        db: Session,
+        user_id: str,
+        note_id: uuid.UUID,
+        *,
+        client_updated_at: datetime | None = None,
+        allow_missing: bool = False,
+    ) -> bool:
         """Soft delete a note by setting deleted_at.
 
         Args:
             db: Database session.
             user_id: Current user ID.
             note_id: Note UUID.
+            client_updated_at: Optional client timestamp for conflict checks.
+            allow_missing: When True, treat missing notes as already deleted.
 
         Returns:
             True if the note was deleted, False if not found.
         """
+        note = NotesService.soft_delete_note(
+            db,
+            user_id,
+            note_id,
+            client_updated_at=client_updated_at,
+            allow_missing=allow_missing,
+        )
+        if note is None and allow_missing:
+            return True
+        return note is not None
+
+    @staticmethod
+    def soft_delete_note(
+        db: Session,
+        user_id: str,
+        note_id: uuid.UUID,
+        *,
+        client_updated_at: datetime | None = None,
+        allow_missing: bool = False,
+    ) -> Note | None:
+        """Soft delete a note and return the record."""
         note = (
             db.query(Note)
             .filter(
                 Note.user_id == user_id,
                 Note.id == note_id,
-                Note.deleted_at.is_(None),
             )
             .first()
         )
         if not note:
-            return False
+            return None
+        if note.deleted_at is not None:
+            return note
+
+        ensure_note_no_conflict(note, client_updated_at, op="delete")
 
         now = datetime.now(UTC)
         note.deleted_at = now
         note.updated_at = now
         db.commit()
-        return True
+        return note
 
     @staticmethod
     def get_note(
@@ -412,6 +441,7 @@ class NotesService:
         note_id: uuid.UUID,
         *,
         mark_opened: bool = True,
+        include_deleted: bool = False,
     ) -> Note | None:
         """Fetch a note by ID.
 
@@ -420,23 +450,22 @@ class NotesService:
             user_id: Current user ID.
             note_id: Note UUID.
             mark_opened: Whether to update last_opened_at. Defaults to True.
+            include_deleted: Include soft-deleted notes when True.
 
         Returns:
             Note if found, otherwise None.
         """
-        note = (
-            db.query(Note)
-            .filter(
-                Note.user_id == user_id,
-                Note.id == note_id,
-                Note.deleted_at.is_(None),
-            )
-            .first()
+        query = db.query(Note).filter(
+            Note.user_id == user_id,
+            Note.id == note_id,
         )
+        if not include_deleted:
+            query = query.filter(Note.deleted_at.is_(None))
+        note = query.first()
         if not note:
             return None
 
-        if mark_opened:
+        if mark_opened and note.deleted_at is None:
             note.last_opened_at = datetime.now(UTC)
             db.commit()
         return note

@@ -93,7 +93,10 @@ def run_quick_save(
                 )
                 if web_save_mode == "compare" and local_parsed:
                     logger.info(
-                        "Compare parse for %s: jina_len=%s local_len=%s jina_title=%s local_title=%s",
+                        (
+                            "Compare parse for %s: jina_len=%s local_len=%s "
+                            "jina_title=%s local_title=%s"
+                        ),
                         url,
                         len(cleaned),
                         len(local_parsed.content),
@@ -135,4 +138,5 @@ def website_summary(website: Website) -> dict:
         "last_opened_at": website.last_opened_at.isoformat()
         if website.last_opened_at
         else None,
+        "deleted_at": website.deleted_at.isoformat() if website.deleted_at else None,
     }
