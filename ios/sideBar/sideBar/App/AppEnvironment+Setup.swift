@@ -14,12 +14,20 @@ extension AppEnvironment {
         monitorNetwork()
         setupTaskBadgeUpdates()
         ingestionViewModel.resumePendingUploads()
+        runOfflineMaintenance()
 
         // Migrate widget data to new generic keys (one-time)
         WidgetDataManager.shared.migrateIfNeeded()
 
         // Sync initial auth state to widgets
         WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)
+    }
+
+    func runOfflineMaintenance() {
+        Task { [weak self] in
+            guard let self else { return }
+            try? self.draftStorage.cleanupSyncedDrafts(olderThan: 7)
+        }
     }
 
     func configureRealtimeClient() {

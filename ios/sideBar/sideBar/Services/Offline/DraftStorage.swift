@@ -57,4 +57,27 @@ final class DraftStorage {
             try context.save()
         }
     }
+
+    func cleanupSyncedDrafts(olderThan days: Int) throws {
+        guard days > 0 else { return }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let context = container.newBackgroundContext()
+        var capturedError: Error?
+        context.performAndWait {
+            do {
+                let request = LocalDraft.fetchRequest()
+                request.predicate = NSPredicate(format: "syncedAt != nil AND syncedAt < %@", cutoff as NSDate)
+                let drafts = try context.fetch(request)
+                drafts.forEach { context.delete($0) }
+                if context.hasChanges {
+                    try context.save()
+                }
+            } catch {
+                capturedError = error
+            }
+        }
+        if let capturedError {
+            throw capturedError
+        }
+    }
 }

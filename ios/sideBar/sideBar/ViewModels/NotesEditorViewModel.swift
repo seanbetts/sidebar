@@ -140,12 +140,18 @@ public final class NotesEditorViewModel: ObservableObject {
         }
         if !networkStatus.isNetworkAvailable {
             let payload = NoteUpdatePayload(content: markdown)
-            try? writeQueue.enqueue(
-                operation: .update,
-                entityType: .note,
-                entityId: noteId,
-                payload: payload
-            )
+            do {
+                try await writeQueue.enqueue(
+                    operation: .update,
+                    entityType: .note,
+                    entityId: noteId,
+                    payload: payload
+                )
+            } catch WriteQueueError.queueFull {
+                saveErrorMessage = "Sync queue full. Review pending changes."
+            } catch {
+                saveErrorMessage = "Failed to queue changes"
+            }
             nativeViewModel.markSaved(markdown: markdown)
             isSaving = false
             isDirty = false
@@ -163,12 +169,18 @@ public final class NotesEditorViewModel: ObservableObject {
         } else {
             saveErrorMessage = "Failed to save note"
             let payload = NoteUpdatePayload(content: markdown)
-            try? writeQueue.enqueue(
-                operation: .update,
-                entityType: .note,
-                entityId: noteId,
-                payload: payload
-            )
+            do {
+                try await writeQueue.enqueue(
+                    operation: .update,
+                    entityType: .note,
+                    entityId: noteId,
+                    payload: payload
+                )
+            } catch WriteQueueError.queueFull {
+                saveErrorMessage = "Sync queue full. Review pending changes."
+            } catch {
+                saveErrorMessage = "Failed to queue changes"
+            }
             isQueuedForSync = true
         }
     }

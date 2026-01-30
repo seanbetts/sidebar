@@ -14,7 +14,9 @@ public extension PendingWrite {
     @NSManaged var payload: Data
     @NSManaged var createdAt: Date
     @NSManaged var attempts: Int16
+    @NSManaged var conflictReason: String?
     @NSManaged var lastAttemptAt: Date?
     @NSManaged var lastError: String?
     @NSManaged var status: String
+    @NSManaged var serverSnapshot: Data?
 }

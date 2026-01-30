@@ -77,6 +77,7 @@ extension ContentView {
                     await environment.consumeExtensionEvents()
                     await environment.websitesViewModel.load(force: true)
                 }
+                environment.runOfflineMaintenance()
             }
             #endif
         })

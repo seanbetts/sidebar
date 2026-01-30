@@ -13,7 +13,7 @@ public final class PersistenceController {
         #if os(iOS)
         container.persistentStoreDescriptions.forEach { description in
             description.setOption(
-                FileProtectionType.complete as NSObject,
+                FileProtectionType.completeUntilFirstUserAuthentication as NSObject,
                 forKey: NSPersistentStoreFileProtectionKey
             )
         }

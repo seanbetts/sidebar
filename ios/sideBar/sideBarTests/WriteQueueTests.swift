@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 import XCTest
 @testable import sideBar
@@ -20,7 +21,7 @@ final class WriteQueueTests: XCTestCase {
             let value: String
         }
 
-        try queue.enqueue(
+        try await queue.enqueue(
             operation: .update,
             entityType: .note,
             entityId: "note-1",
@@ -59,7 +60,7 @@ final class WriteQueueTests: XCTestCase {
             let value: String
         }
 
-        try queue.enqueue(
+        try await queue.enqueue(
             operation: .create,
             entityType: .message,
             entityId: nil,
@@ -95,24 +96,109 @@ final class WriteQueueTests: XCTestCase {
             let value: String
         }
 
-        try queue.enqueue(
+        try await queue.enqueue(
             operation: .update,
             entityType: .note,
             entityId: "note-1",
             payload: Payload(value: "Hi")
         )
 
-        let pending = queue.fetchPendingWrites()
+        let pending = await queue.fetchPendingWrites()
 
         XCTAssertEqual(pending.count, 1)
         XCTAssertEqual(pending.first?.entityType, WriteEntityType.note.rawValue)
+    }
+
+    func testQueueRespectsMaxPendingWrites() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false,
+            maxPendingWrites: 1
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .note,
+            entityId: "note-1",
+            payload: Payload(value: "Hi")
+        )
+
+        await XCTAssertThrowsErrorAsync {
+            try await queue.enqueue(
+                operation: .update,
+                entityType: .note,
+                entityId: "note-2",
+                payload: Payload(value: "Hi")
+            )
+        }
+    }
+
+    func testPruneOldestWritesKeepsMostRecent() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .note,
+            entityId: "note-1",
+            payload: Payload(value: "One")
+        )
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .note,
+            entityId: "note-2",
+            payload: Payload(value: "Two")
+        )
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .note,
+            entityId: "note-3",
+            payload: Payload(value: "Three")
+        )
+
+        await queue.pruneOldestWrites(keeping: 1)
+
+        let pending = await queue.fetchPendingWrites()
+        XCTAssertEqual(pending.count, 1)
     }
 }
 
 private final class TestWriteExecutor: WriteQueueExecutor {
     private(set) var executedIds: [UUID] = []
 
-    func execute(write: PendingWrite) async throws {
+    func execute(write: PendingWriteRecord) async throws {
         executedIds.append(write.id)
+    }
+}
+
+@MainActor
+private func XCTAssertThrowsErrorAsync(_ expression: @escaping () async throws -> Void) async {
+    do {
+        try await expression()
+        XCTFail("Expected error to be thrown")
+    } catch {
+        // expected
     }
 }
