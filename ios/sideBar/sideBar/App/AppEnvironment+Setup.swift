@@ -27,6 +27,7 @@ extension AppEnvironment {
         Task { [weak self] in
             guard let self else { return }
             try? self.draftStorage.cleanupSyncedDrafts(olderThan: 7)
+            await self.offlineStore.cleanupSnapshots()
         }
     }
 

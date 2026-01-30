@@ -17,8 +17,8 @@ import WidgetKit
 /// - Apply editor updates from `NotesEditorViewModel`
 /// - Handle real-time note events (insert, update, delete)
 public final class NotesStore: CachedStoreBase<FileTree> {
-    @Published public private(set) var tree: FileTree?
-    @Published public private(set) var activeNote: NotePayload?
+    @Published public internal(set) var tree: FileTree?
+    @Published public internal(set) var activeNote: NotePayload?
 
     private let api: any NotesProviding
     let offlineStore: OfflineStore?

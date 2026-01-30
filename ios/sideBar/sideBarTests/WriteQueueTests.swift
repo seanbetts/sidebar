@@ -183,6 +183,79 @@ final class WriteQueueTests: XCTestCase {
         let pending = await queue.fetchPendingWrites()
         XCTAssertEqual(pending.count, 1)
     }
+
+    func testResolveConflictKeepLocalResetsPendingWrite() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+
+        let writeId = UUID()
+        let context = persistence.container.viewContext
+        let write = PendingWrite(context: context)
+        write.id = writeId
+        write.operationType = WriteOperation.update.rawValue
+        write.entityType = WriteEntityType.note.rawValue
+        write.entityId = "note-1"
+        write.payload = Data()
+        write.createdAt = Date()
+        write.attempts = 2
+        write.status = WriteQueueStatus.failed.rawValue
+        write.lastError = "Conflict"
+        write.conflictReason = "Note changed"
+        write.serverSnapshot = Data("snapshot".utf8)
+        try context.save()
+
+        await queue.resolveConflict(id: writeId, resolution: .keepLocal)
+
+        let request = PendingWrite.fetchRequest()
+        request.predicate = NSPredicate(format: "id == %@", writeId as CVarArg)
+        let refreshed = try persistence.container.viewContext.fetch(request)
+        let updated = try XCTUnwrap(refreshed.first)
+        XCTAssertEqual(updated.status, WriteQueueStatus.pending.rawValue)
+        XCTAssertEqual(updated.attempts, 0)
+        XCTAssertNil(updated.conflictReason)
+        XCTAssertNil(updated.serverSnapshot)
+    }
+
+    func testResolveConflictKeepServerDeletesPendingWrite() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+
+        let writeId = UUID()
+        let context = persistence.container.viewContext
+        let write = PendingWrite(context: context)
+        write.id = writeId
+        write.operationType = WriteOperation.update.rawValue
+        write.entityType = WriteEntityType.note.rawValue
+        write.entityId = "note-1"
+        write.payload = Data()
+        write.createdAt = Date()
+        write.attempts = 1
+        write.status = WriteQueueStatus.failed.rawValue
+        try context.save()
+
+        await queue.resolveConflict(id: writeId, resolution: .keepServer)
+
+        let request = PendingWrite.fetchRequest()
+        request.predicate = NSPredicate(format: "id == %@", writeId as CVarArg)
+        let remaining = try persistence.container.viewContext.fetch(request)
+        XCTAssertTrue(remaining.isEmpty)
+    }
 }
 
 private final class TestWriteExecutor: WriteQueueExecutor {

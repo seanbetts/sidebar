@@ -110,7 +110,7 @@ public struct NotesAPI {
 extension NotesAPI: NotesProviding {}
 
 /// Response payload for note data.
-public struct NotePayload: Codable {
+public struct NotePayload: Codable, Equatable {
     public let id: String
     public let name: String
     public let content: String

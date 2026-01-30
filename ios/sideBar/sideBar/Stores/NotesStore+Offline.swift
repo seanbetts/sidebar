@@ -118,34 +118,34 @@ extension NotesStore {
     }
 
     private func applyLocalRename(notePath: String, newName: String) {
-        guard let updatedTree = updatedTree(notePath: notePath) { node in
+        guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
             let newPath = replacingFilename(in: notePath, with: newName)
             return copyNode(node, name: newName, path: newPath)
-        } else { return }
+        }) else { return }
         persistLocalTree(updatedTree)
         updateCachedNotePath(from: notePath, to: replacingFilename(in: notePath, with: newName), newName: newName)
     }
 
     private func applyLocalMove(notePath: String, folder: String) {
         let newPath = movingPath(notePath, to: folder)
-        guard let updatedTree = updatedTree(notePath: notePath) { node in
+        guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
             copyNode(node, path: newPath)
-        } else { return }
+        }) else { return }
         persistLocalTree(updatedTree)
         updateCachedNotePath(from: notePath, to: newPath, newName: nil)
     }
 
     private func applyLocalPin(notePath: String, pinned: Bool) {
-        guard let updatedTree = updatedTree(notePath: notePath) { node in
+        guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
             copyNode(node, pinned: pinned)
-        } else { return }
+        }) else { return }
         persistLocalTree(updatedTree)
     }
 
     private func applyLocalArchive(notePath: String, archived: Bool) {
-        guard let updatedTree = updatedTree(notePath: notePath) { node in
+        guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
             copyNode(node, archived: archived)
-        } else { return }
+        }) else { return }
         persistLocalTree(updatedTree)
         if archived, activeNote?.path == notePath {
             activeNote = nil
@@ -327,7 +327,7 @@ extension NotesStore {
         return nil
     }
 
-    private func notePayload(forId noteId: String) -> NotePayload? {
+    func notePayload(forId noteId: String) -> NotePayload? {
         if let activeNote, activeNote.id == noteId {
             return activeNote
         }
@@ -340,7 +340,7 @@ extension NotesStore {
         return cached.first { $0.id == noteId }
     }
 
-    private func notePayload(forPath path: String) -> NotePayload? {
+    func notePayload(forPath path: String) -> NotePayload? {
         if let activeNote, activeNote.path == path {
             return activeNote
         }
