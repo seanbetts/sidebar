@@ -7,31 +7,36 @@ import Foundation
 extension ChatViewModel {
     func handleNoteCreate(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
-        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
+        cache.remove(key: CacheKeys.notesTree)
+        notesStore?.invalidateNote(id: id)
         refreshNotesTree()
     }
 
     func handleNoteUpdate(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
-        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
+        cache.remove(key: CacheKeys.notesTree)
+        notesStore?.invalidateNote(id: id)
         refreshNotesTree()
     }
 
     func handleNoteDelete(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
-        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
+        cache.remove(key: CacheKeys.notesTree)
+        notesStore?.invalidateNote(id: id)
         refreshNotesTree()
     }
 
     func handleNotePinned(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
-        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
+        cache.remove(key: CacheKeys.notesTree)
+        notesStore?.invalidateNote(id: id)
         refreshNotesTree()
     }
 
     func handleNoteMoved(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
-        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
+        cache.remove(key: CacheKeys.notesTree)
+        notesStore?.invalidateNote(id: id)
         refreshNotesTree()
     }
 

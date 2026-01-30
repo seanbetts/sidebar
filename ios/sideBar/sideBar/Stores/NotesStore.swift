@@ -21,11 +21,21 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     @Published public private(set) var activeNote: NotePayload?
 
     private let api: any NotesProviding
+    let offlineStore: OfflineStore?
+    let networkStatus: (any NetworkStatusProviding)?
+    weak var writeQueue: WriteQueue?
     private var isRefreshingTree = false
     private var refreshingNotes = Set<String>()
 
-    public init(api: any NotesProviding, cache: CacheClient) {
+    public init(
+        api: any NotesProviding,
+        cache: CacheClient,
+        offlineStore: OfflineStore? = nil,
+        networkStatus: (any NetworkStatusProviding)? = nil
+    ) {
         self.api = api
+        self.offlineStore = offlineStore
+        self.networkStatus = networkStatus
         super.init(cache: cache)
     }
 
@@ -49,7 +59,28 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     // MARK: - Public API
 
     public func loadTree(force: Bool = false) async throws {
-        try await loadWithCache(force: force)
+        if !force {
+            let cached: FileTree? = cache.get(key: cacheKey)
+            if let cached {
+                applyTreeUpdate(cached, persist: false)
+                Task { [weak self] in
+                    await self?.refreshTree()
+                }
+                return
+            }
+            if let offline = offlineStore?.get(key: cacheKey, as: FileTree.self) {
+                applyTreeUpdate(offline, persist: false)
+                if networkStatus?.isNetworkAvailable ?? true {
+                    Task { [weak self] in
+                        await self?.refreshTree()
+                    }
+                }
+                return
+            }
+        }
+        let remote = try await fetchFromAPI()
+        applyTreeUpdate(remote, persist: true)
+        cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
     }
 
     public func loadNote(id: String, force: Bool = false) async throws {
@@ -58,6 +89,15 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             applyNoteUpdate(cached, persist: false)
             Task { [weak self] in
                 await self?.refreshNote(id: id)
+            }
+            return
+        }
+        if !force, let offline = offlineStore?.get(key: cacheKey, as: NotePayload.self) {
+            applyNoteUpdate(offline, persist: false)
+            if networkStatus?.isNetworkAvailable ?? true {
+                Task { [weak self] in
+                    await self?.refreshNote(id: id)
+                }
             }
             return
         }
@@ -71,12 +111,25 @@ public final class NotesStore: CachedStoreBase<FileTree> {
 
     public func invalidateNote(id: String) {
         cache.remove(key: CacheKeys.note(id: id))
+        offlineStore?.remove(key: CacheKeys.note(id: id))
+        if let note = notePayload(forPath: id) ?? notePayload(forId: id) {
+            cache.remove(key: CacheKeys.note(id: note.id))
+            cache.remove(key: CacheKeys.note(id: note.path))
+            offlineStore?.remove(key: CacheKeys.note(id: note.id))
+            offlineStore?.remove(key: CacheKeys.note(id: note.path))
+        }
     }
 
     public func hasCachedNote(id: String) -> Bool {
         let cacheKey = CacheKeys.note(id: id)
         let cached: NotePayload? = cache.get(key: cacheKey)
-        return cached != nil
+        if cached != nil {
+            return true
+        }
+        if let offlineStore, offlineStore.get(key: cacheKey, as: NotePayload.self) != nil {
+            return true
+        }
+        return false
     }
 
     public func clearActiveNote() {
@@ -94,7 +147,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
                 activeNote = nil
             }
             if let noteId {
-                cache.remove(key: CacheKeys.note(id: noteId))
+                invalidateNote(id: noteId)
             }
         } else if let record = payload.record, let mapped = RealtimeMappers.mapNote(record) {
             applyNoteUpdate(mapped, persist: true)
@@ -137,13 +190,15 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         }
     }
 
-    private func applyTreeUpdate(_ incoming: FileTree, persist: Bool) {
+    func applyTreeUpdate(_ incoming: FileTree, persist: Bool) {
         guard shouldUpdateTree(incoming) else {
             return
         }
         tree = incoming
         if persist {
             cache.set(key: CacheKeys.notesTree, value: incoming, ttlSeconds: CachePolicy.notesTree)
+            let lastSyncAt = Date()
+            offlineStore?.set(key: cacheKey, entityType: "notesTree", value: incoming, lastSyncAt: lastSyncAt)
         }
         updateWidgetData(from: incoming)
     }
@@ -155,13 +210,19 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         return FileTreeSignature.make(current) != FileTreeSignature.make(incoming)
     }
 
-    private func applyNoteUpdate(_ incoming: NotePayload, persist: Bool) {
+    func applyNoteUpdate(_ incoming: NotePayload, persist: Bool) {
         guard shouldUpdateActiveNote(incoming) else {
             return
         }
         activeNote = incoming
         if persist {
-            cache.set(key: CacheKeys.note(id: incoming.id), value: incoming, ttlSeconds: CachePolicy.noteContent)
+            let idKey = CacheKeys.note(id: incoming.id)
+            let pathKey = CacheKeys.note(id: incoming.path)
+            cache.set(key: idKey, value: incoming, ttlSeconds: CachePolicy.noteContent)
+            cache.set(key: pathKey, value: incoming, ttlSeconds: CachePolicy.noteContent)
+            let lastSyncAt = Date()
+            offlineStore?.set(key: idKey, entityType: "note", value: incoming, lastSyncAt: lastSyncAt)
+            offlineStore?.set(key: pathKey, entityType: "note", value: incoming, lastSyncAt: lastSyncAt)
         }
     }
 
@@ -177,7 +238,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
 
     // MARK: - Widget Data
 
-    private func updateWidgetData(from tree: FileTree) {
+    func updateWidgetData(from tree: FileTree) {
         let allNotes = flattenNotes(from: tree.children)
             .sorted { ($0.modifiedAt ?? .distantPast) > ($1.modifiedAt ?? .distantPast) }
         let recentNotes = Array(allNotes.prefix(10))

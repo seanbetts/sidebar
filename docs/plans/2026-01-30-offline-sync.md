@@ -470,16 +470,16 @@ Add tests in `ios/sideBar/sideBarTests/`:
   - [x] Chat messages persisted to cache by default
   - [x] Upload tracking persisted + resume on launch
 
-- [ ] Add `OfflineEntry` entity to Core Data model
-- [ ] Add `OfflineStore`
-- [ ] Add `SyncState` + `SyncConflict`
-- [ ] Expand `WriteQueue` enums
-- [ ] Add `CompositeWriteQueueExecutor`
-- [ ] Add queue size cap + overflow handling (block vs confirm drop)
-- [ ] Add synced draft cleanup (folded from 2026-01-22 plan)
-- [ ] Align offline banner with syncing + pending count (folded from 2026-01-22 plan) (in progress)
-- [ ] Implement conflict detection + resolution policy (updated_at/modified + task sync conflicts)
-- [ ] Implement queue overflow UX (block + user-initiated drop oldest)
+- [x] Add `OfflineEntry` entity to Core Data model
+- [x] Add `OfflineStore`
+- [x] Add `SyncState` + `SyncConflict`
+- [x] Expand `WriteQueue` enums
+- [x] Add `CompositeWriteQueueExecutor`
+- [x] Add queue size cap + overflow handling (block vs confirm drop)
+- [x] Add synced draft cleanup (folded from 2026-01-22 plan)
+- [x] Align offline banner with syncing + pending count (folded from 2026-01-22 plan)
+- [ ] Implement conflict detection + resolution policy (updated_at/modified + task sync conflicts) (notes only so far)
+- [x] Implement queue overflow UX (block + user-initiated drop oldest)
 - [ ] Implement snapshot retention/size limits + cleanup policy
 
 #### Phase 1 Detailed Task List (with file targets)
@@ -601,9 +601,9 @@ public func cleanupSyncedDrafts(olderThan days: Int) throws
 - Offline snapshot retention limits apply without deleting unsynced local data.
 
 ### Phase 2: Notes (template)
-- [ ] Extend `NotesStore` with offline snapshot + queue
-- [ ] Expand `NotesWriteQueueExecutor`
-- [ ] Update `NotesViewModel` to use store
+- [x] Extend `NotesStore` with offline snapshot + queue
+- [x] Expand `NotesWriteQueueExecutor`
+- [x] Update `NotesViewModel` to use store
 - [x] Add basic conflict UX (already in notes; reuse for shared UI)
 
 #### Phase 2 Detailed Task List (with file targets)
@@ -617,6 +617,7 @@ public func saveOfflineSnapshot() async
    - Cache keys:
      - `notes/tree` -> `OfflineStore` snapshot
      - `notes/{id}` -> `OfflineStore` snapshot per note
+   - Status: done
 
 2) Notes store queued writes
    - Add queue APIs:
@@ -628,11 +629,13 @@ public func enqueuePin(noteId: String, pinned: Bool) async
 public func enqueueArchive(noteId: String, archived: Bool) async
 public func enqueueDelete(noteId: String) async
 ```
-   - Mark `syncState = .pending` in local cache and surface to UI.
+   - Mark `syncState = .pending` in local cache and surface to UI. (pending)
+   - Status: done (syncState pending)
 
 3) Notes executor expansion
    - Update `ios/sideBar/sideBar/Services/Offline/NotesWriteQueueExecutor.swift`
-   - Support: create, rename, move, pin, archive, delete + update.
+   - Support: create, rename, move, pin, archive, delete + update. (create pending)
+   - Status: partial (update/rename/move/pin/archive/delete)
 
 4) Notes conflict handling
    - Use existing notes conflict UI; align with `SyncConflict` type.
@@ -641,6 +644,7 @@ public func enqueueDelete(noteId: String) async
 ```
 public func resolveConflict(_ conflict: SyncConflict<NotePayload>, keepLocal: Bool) async
 ```
+   - Status: partial (queue conflict detection for updates; UI wiring pending)
 
 #### Phase 2 Acceptance Checklist
 - Notes tree + note content available offline after restart.

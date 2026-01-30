@@ -33,14 +33,13 @@ extension AppEnvironment {
         isTestMode: Bool
     ) -> EnvironmentDependencies {
         let themeManager = ThemeManager()
+        let toastCenter = ToastCenter()
+        let realtimeClient = container.makeRealtimeClient(handler: nil)
         let chatStore = ChatStore(conversationsAPI: container.conversationsAPI, cache: container.cacheClient)
-        let notesStore = NotesStore(api: container.notesAPI, cache: container.cacheClient)
         let websitesStore = WebsitesStore(api: container.websitesAPI, cache: container.cacheClient)
         let ingestionStore = IngestionStore(api: container.ingestionAPI, cache: container.cacheClient)
         let tasksStore = TasksStore(api: container.tasksAPI, cache: container.cacheClient)
         let scratchpadStore = ScratchpadStore()
-        let toastCenter = ToastCenter()
-        let realtimeClient = container.makeRealtimeClient(handler: nil)
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: container.apiClient.config.baseUrl,
             startMonitoring: !isTestMode
@@ -51,6 +50,12 @@ extension AppEnvironment {
             : PersistenceController.shared
         let draftStorage = DraftStorage(container: persistenceController.container)
         let offlineStore = OfflineStore(container: persistenceController.container)
+        let notesStore = NotesStore(
+            api: container.notesAPI,
+            cache: container.cacheClient,
+            offlineStore: offlineStore,
+            networkStatus: connectivityMonitor
+        )
         let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
         let writeQueueExecutor = CompositeWriteQueueExecutor(executors: [.note: notesExecutor])
         let writeQueue = WriteQueue(
@@ -58,6 +63,7 @@ extension AppEnvironment {
             connectivityMonitor: connectivityMonitor,
             executor: writeQueueExecutor
         )
+        notesStore.attachWriteQueue(writeQueue)
         let chatViewModel = ChatViewModel(
             chatAPI: container.chatAPI,
             conversationsAPI: container.conversationsAPI,
