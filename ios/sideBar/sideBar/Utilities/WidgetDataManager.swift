@@ -303,19 +303,25 @@ public struct WidgetNote: WidgetStorable {
   public let contentPreview: String?
   public let path: String
   public let modifiedAt: Date?
+  public let pinned: Bool
+  public let pinnedOrder: Int?
 
   public init(
     id: String,
     name: String,
     contentPreview: String? = nil,
     path: String,
-    modifiedAt: Date? = nil
+    modifiedAt: Date? = nil,
+    pinned: Bool = false,
+    pinnedOrder: Int? = nil
   ) {
     self.id = id
     self.name = name
     self.contentPreview = contentPreview
     self.path = path
     self.modifiedAt = modifiedAt
+    self.pinned = pinned
+    self.pinnedOrder = pinnedOrder
   }
 }
 
@@ -339,8 +345,72 @@ public struct WidgetNoteData: WidgetDataContainer {
 
   public static let placeholder = WidgetNoteData(
     notes: [
-      WidgetNote(id: "1", name: "Meeting Notes", contentPreview: "Discussed project timeline...", path: "/notes/meeting.md"),
-      WidgetNote(id: "2", name: "Ideas", contentPreview: "New feature concepts", path: "/notes/ideas.md")
+      WidgetNote(
+        id: "1", name: "Meeting Notes", contentPreview: "Discussed project timeline...",
+        path: "/notes/meeting.md", pinned: true, pinnedOrder: 0
+      ),
+      WidgetNote(
+        id: "2", name: "Ideas", contentPreview: "New feature concepts",
+        path: "/notes/ideas.md", pinned: true, pinnedOrder: 1
+      )
+    ],
+    totalCount: 2
+  )
+}
+
+// MARK: - WidgetWebsite Models
+
+/// Lightweight website model for widgets
+public struct WidgetWebsite: WidgetStorable {
+  public let id: String
+  public let title: String
+  public let url: String
+  public let domain: String
+  public let pinned: Bool
+  public let pinnedOrder: Int?
+  public let archived: Bool
+
+  public init(
+    id: String,
+    title: String,
+    url: String,
+    domain: String,
+    pinned: Bool = false,
+    pinnedOrder: Int? = nil,
+    archived: Bool = false
+  ) {
+    self.id = id
+    self.title = title
+    self.url = url
+    self.domain = domain
+    self.pinned = pinned
+    self.pinnedOrder = pinnedOrder
+    self.archived = archived
+  }
+}
+
+/// Data snapshot for website widgets
+public struct WidgetWebsiteData: WidgetDataContainer {
+  public typealias Item = WidgetWebsite
+
+  public let websites: [WidgetWebsite]
+  public let totalCount: Int
+  public let lastUpdated: Date
+
+  public var items: [WidgetWebsite] { websites }
+
+  public init(websites: [WidgetWebsite], totalCount: Int, lastUpdated: Date = Date()) {
+    self.websites = websites
+    self.totalCount = totalCount
+    self.lastUpdated = lastUpdated
+  }
+
+  public static let empty = WidgetWebsiteData(websites: [], totalCount: 0)
+
+  public static let placeholder = WidgetWebsiteData(
+    websites: [
+      WidgetWebsite(id: "1", title: "Apple", url: "https://apple.com", domain: "apple.com"),
+      WidgetWebsite(id: "2", title: "GitHub", url: "https://github.com", domain: "github.com")
     ],
     totalCount: 5
   )
