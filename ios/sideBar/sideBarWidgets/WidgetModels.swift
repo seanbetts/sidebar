@@ -166,10 +166,10 @@ public struct WidgetWebsiteData: WidgetDataContainer {
 
   public static let placeholder = WidgetWebsiteData(
     websites: [
-      WidgetWebsite(id: "1", title: "Apple", url: "https://apple.com", domain: "apple.com", pinned: true, pinnedOrder: 0),
-      WidgetWebsite(id: "2", title: "GitHub", url: "https://github.com", domain: "github.com", pinned: true, pinnedOrder: 1)
+      WidgetWebsite(id: "1", title: "Apple", url: "https://apple.com", domain: "apple.com"),
+      WidgetWebsite(id: "2", title: "GitHub", url: "https://github.com", domain: "github.com")
     ],
-    totalCount: 2
+    totalCount: 5
   )
 }
 
