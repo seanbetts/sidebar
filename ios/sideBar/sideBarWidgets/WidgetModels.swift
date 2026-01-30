@@ -124,6 +124,7 @@ public struct WidgetWebsite: WidgetStorable {
   public let url: String
   public let domain: String
   public let pinned: Bool
+  public let pinnedOrder: Int?
   public let archived: Bool
 
   public init(
@@ -132,6 +133,7 @@ public struct WidgetWebsite: WidgetStorable {
     url: String,
     domain: String,
     pinned: Bool = false,
+    pinnedOrder: Int? = nil,
     archived: Bool = false
   ) {
     self.id = id
@@ -139,6 +141,7 @@ public struct WidgetWebsite: WidgetStorable {
     self.url = url
     self.domain = domain
     self.pinned = pinned
+    self.pinnedOrder = pinnedOrder
     self.archived = archived
   }
 }
@@ -163,10 +166,10 @@ public struct WidgetWebsiteData: WidgetDataContainer {
 
   public static let placeholder = WidgetWebsiteData(
     websites: [
-      WidgetWebsite(id: "1", title: "Apple", url: "https://apple.com", domain: "apple.com", pinned: true),
-      WidgetWebsite(id: "2", title: "GitHub", url: "https://github.com", domain: "github.com")
+      WidgetWebsite(id: "1", title: "Apple", url: "https://apple.com", domain: "apple.com", pinned: true, pinnedOrder: 0),
+      WidgetWebsite(id: "2", title: "GitHub", url: "https://github.com", domain: "github.com", pinned: true, pinnedOrder: 1)
     ],
-    totalCount: 10
+    totalCount: 2
   )
 }
 
