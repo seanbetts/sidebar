@@ -5,6 +5,7 @@ from collections.abc import Generator
 
 from fastapi import Depends
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from api.config import settings
@@ -22,6 +23,14 @@ engine = create_engine(
     pool_size=pool_size,
     max_overflow=max_overflow,
     pool_timeout=5,
+    pool_recycle=300,
+    connect_args={
+        "connect_timeout": 5,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    },
 )
 
 # Create SessionLocal class
@@ -44,11 +53,19 @@ def _track_db_checkin(dbapi_connection, connection_record) -> None:
 def _set_app_user_id(session: Session, transaction, connection) -> None:
     user_id = session.info.get("app_user_id")
     if user_id:
-        connection.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
+        try:
+            connection.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
+        except OperationalError:
+            connection.invalidate()
+            connection.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
     if session.info.get("force_public_search_path") and not session.info.get(
         "skip_search_path"
     ):
-        connection.execute(text("SET search_path TO public"))
+        try:
+            connection.execute(text("SET search_path TO public"))
+        except OperationalError:
+            connection.invalidate()
+            connection.execute(text("SET search_path TO public"))
 
 
 def get_db(
@@ -76,4 +93,8 @@ def set_session_user_id(db: Session, user_id: str | None) -> None:
         db.info.pop("app_user_id", None)
         return
     db.info["app_user_id"] = user_id
-    db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
+    try:
+        db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
+    except OperationalError:
+        db.invalidate()
+        db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
