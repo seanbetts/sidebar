@@ -152,7 +152,8 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
     private func setStatus(networkAvailable: Bool, serverReachable: Bool) {
         isNetworkAvailable = networkAvailable
         isServerReachable = serverReachable
-        isOffline = !networkAvailable || !serverReachable
+        // Offline reflects device connectivity only; server reachability is tracked separately.
+        isOffline = !networkAvailable
     }
 
     private func recordInternetFailure() {
@@ -226,7 +227,7 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
     }
 
     private func probeDelay() -> TimeInterval {
-        if isOffline {
+        if !isNetworkAvailable || !isServerReachable {
             return offlineProbeInterval
         }
         return onlineProbeInterval
