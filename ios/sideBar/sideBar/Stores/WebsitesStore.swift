@@ -1,5 +1,8 @@
 import Foundation
 import Combine
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 // MARK: - WebsitesStore
 
@@ -18,10 +21,20 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     @Published public private(set) var active: WebsiteDetail?
 
     private let api: any WebsitesProviding
+    private let offlineStore: OfflineStore?
+    private let networkStatus: (any NetworkStatusProviding)?
+    weak var writeQueue: WriteQueue?
     private var isRefreshingList = false
 
-    public init(api: any WebsitesProviding, cache: CacheClient) {
+    public init(
+        api: any WebsitesProviding,
+        cache: CacheClient,
+        offlineStore: OfflineStore? = nil,
+        networkStatus: (any NetworkStatusProviding)? = nil
+    ) {
         self.api = api
+        self.offlineStore = offlineStore
+        self.networkStatus = networkStatus
         super.init(cache: cache)
     }
 
@@ -45,13 +58,43 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     // MARK: - Public API
 
     public func loadList(force: Bool = false) async throws {
-        try await loadWithCache(force: force)
+        if !force {
+            let cached: WebsitesResponse? = cache.get(key: cacheKey)
+            if let cached {
+                applyListUpdate(cached.items, persist: false)
+                Task { [weak self] in
+                    await self?.refreshList()
+                }
+                return
+            }
+            if let offline = offlineStore?.get(key: cacheKey, as: WebsitesResponse.self) {
+                applyListUpdate(offline.items, persist: false)
+                if !(networkStatus?.isOffline ?? false) {
+                    Task { [weak self] in
+                        await self?.refreshList()
+                    }
+                }
+                return
+            }
+        }
+        let remote = try await fetchFromAPI()
+        applyListUpdate(remote.items, persist: true)
+        cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
     }
 
     public func loadDetail(id: String, force: Bool = false) async throws {
         let cacheKey = CacheKeys.websiteDetail(id: id)
         if !force, let cached: WebsiteDetail = cache.get(key: cacheKey) {
             applyDetailUpdate(cached, persist: false)
+            return
+        }
+        if !force, let offline = offlineStore?.get(key: cacheKey, as: WebsiteDetail.self) {
+            applyDetailUpdate(offline, persist: false)
+            if !(networkStatus?.isOffline ?? false) {
+                Task { [weak self] in
+                    await self?.refreshDetail(id: id)
+                }
+            }
             return
         }
         let response = try await api.get(id: id)
@@ -99,6 +142,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         if persist {
             persistListCache()
         }
+        offlineStore?.remove(key: CacheKeys.websiteDetail(id: id))
     }
 
     public func invalidateList() {
@@ -116,6 +160,24 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     public func reset() {
         items = []
         active = nil
+    }
+
+    public func attachWriteQueue(_ writeQueue: WriteQueue) {
+        self.writeQueue = writeQueue
+    }
+
+    public func loadFromOffline() async {
+        guard let offline = offlineStore?.get(key: cacheKey, as: WebsitesResponse.self) else { return }
+        applyListUpdate(offline.items, persist: false)
+    }
+
+    public func saveOfflineSnapshot() async {
+        persistListCache()
+        if let active {
+            let key = CacheKeys.websiteDetail(id: active.id)
+            let lastSyncAt = offlineStore?.lastSyncAt(for: key)
+            offlineStore?.set(key: key, entityType: "website", value: active, lastSyncAt: lastSyncAt)
+        }
     }
 
     public func applyRealtimeEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>) {
@@ -152,6 +214,15 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         }
     }
 
+    private func refreshDetail(id: String) async {
+        do {
+            let response = try await api.get(id: id)
+            applyDetailUpdate(response, persist: true)
+        } catch {
+            // Ignore background refresh failures; cache remains source of truth.
+        }
+    }
+
     private func applyListUpdate(_ incoming: [WebsiteItem], persist: Bool) {
         guard shouldUpdateList(incoming) else {
             return
@@ -160,6 +231,19 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         if persist {
             persistListCache()
         }
+        updateWidgetData(from: incoming)
+    }
+
+    // MARK: - Widget Data
+
+    func updateWidgetData(from items: [WebsiteItem]) {
+        let pinnedSites = items
+            .filter { $0.pinned && !$0.archived }
+            .sorted { ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max) }
+            .map { WidgetWebsite(from: $0) }
+        let displaySites = Array(pinnedSites.prefix(10))
+        let data = WidgetWebsiteData(websites: displaySites, totalCount: pinnedSites.count)
+        WidgetDataManager.shared.store(data, for: .websites)
     }
 
     private func shouldUpdateList(_ incoming: [WebsiteItem]) -> Bool {
@@ -190,6 +274,13 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         active = incoming
         if persist {
             cache.set(key: CacheKeys.websiteDetail(id: incoming.id), value: incoming, ttlSeconds: CachePolicy.websiteDetail)
+            let lastSyncAt = Date()
+            offlineStore?.set(
+                key: CacheKeys.websiteDetail(id: incoming.id),
+                entityType: "website",
+                value: incoming,
+                lastSyncAt: lastSyncAt
+            )
         }
     }
 
@@ -203,6 +294,13 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     private func persistListCache() {
         let response = WebsitesResponse(items: items)
         cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: CachePolicy.websitesList)
+        let lastSyncAt = Date()
+        offlineStore?.set(
+            key: CacheKeys.websitesList,
+            entityType: "websitesList",
+            value: response,
+            lastSyncAt: lastSyncAt
+        )
     }
 
     private func updateDetail(_ detail: WebsiteDetail, with item: WebsiteItem) -> WebsiteDetail {
@@ -222,6 +320,201 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             youtubeTranscripts: detail.youtubeTranscripts ?? item.youtubeTranscripts,
             updatedAt: item.updatedAt ?? detail.updatedAt,
             lastOpenedAt: item.lastOpenedAt ?? detail.lastOpenedAt
+        )
+    }
+}
+
+extension WebsitesStore {
+    func currentUpdatedAt(id: String) -> String? {
+        websiteItem(for: id)?.updatedAt
+    }
+
+    func enqueueRename(id: String, title: String) async throws {
+        guard let writeQueue else { throw WriteQueueError.missingQueue }
+        let operationId = UUID().uuidString
+        let payload = WebsiteOperationPayload(
+            operationId: operationId,
+            op: "rename",
+            id: id,
+            title: title,
+            clientUpdatedAt: websiteItem(for: id)?.updatedAt
+        )
+        let snapshot = makeServerSnapshot(websiteId: id)
+        try await writeQueue.enqueue(
+            operation: .rename,
+            entityType: .website,
+            entityId: id,
+            payload: payload,
+            serverSnapshot: snapshot
+        )
+        applyLocalUpdate(id: id) { item in
+            WebsiteItem(
+                id: item.id,
+                title: title,
+                url: item.url,
+                domain: item.domain,
+                savedAt: item.savedAt,
+                publishedAt: item.publishedAt,
+                pinned: item.pinned,
+                pinnedOrder: item.pinnedOrder,
+                archived: item.archived,
+                youtubeTranscripts: item.youtubeTranscripts,
+                updatedAt: item.updatedAt,
+                lastOpenedAt: item.lastOpenedAt,
+                deletedAt: item.deletedAt
+            )
+        }
+    }
+
+    func enqueuePin(id: String, pinned: Bool) async throws {
+        guard let writeQueue else { throw WriteQueueError.missingQueue }
+        let operationId = UUID().uuidString
+        let payload = WebsiteOperationPayload(
+            operationId: operationId,
+            op: "pin",
+            id: id,
+            pinned: pinned,
+            clientUpdatedAt: websiteItem(for: id)?.updatedAt
+        )
+        let snapshot = makeServerSnapshot(websiteId: id)
+        try await writeQueue.enqueue(
+            operation: .pin,
+            entityType: .website,
+            entityId: id,
+            payload: payload,
+            serverSnapshot: snapshot
+        )
+        applyLocalUpdate(id: id) { item in
+            WebsiteItem(
+                id: item.id,
+                title: item.title,
+                url: item.url,
+                domain: item.domain,
+                savedAt: item.savedAt,
+                publishedAt: item.publishedAt,
+                pinned: pinned,
+                pinnedOrder: item.pinnedOrder,
+                archived: item.archived,
+                youtubeTranscripts: item.youtubeTranscripts,
+                updatedAt: item.updatedAt,
+                lastOpenedAt: item.lastOpenedAt,
+                deletedAt: item.deletedAt
+            )
+        }
+    }
+
+    func enqueueArchive(id: String, archived: Bool) async throws {
+        guard let writeQueue else { throw WriteQueueError.missingQueue }
+        let operationId = UUID().uuidString
+        let payload = WebsiteOperationPayload(
+            operationId: operationId,
+            op: "archive",
+            id: id,
+            archived: archived,
+            clientUpdatedAt: websiteItem(for: id)?.updatedAt
+        )
+        let snapshot = makeServerSnapshot(websiteId: id)
+        try await writeQueue.enqueue(
+            operation: .archive,
+            entityType: .website,
+            entityId: id,
+            payload: payload,
+            serverSnapshot: snapshot
+        )
+        applyLocalUpdate(id: id) { item in
+            WebsiteItem(
+                id: item.id,
+                title: item.title,
+                url: item.url,
+                domain: item.domain,
+                savedAt: item.savedAt,
+                publishedAt: item.publishedAt,
+                pinned: item.pinned,
+                pinnedOrder: item.pinnedOrder,
+                archived: archived,
+                youtubeTranscripts: item.youtubeTranscripts,
+                updatedAt: item.updatedAt,
+                lastOpenedAt: item.lastOpenedAt,
+                deletedAt: item.deletedAt
+            )
+        }
+        if archived, active?.id == id {
+            active = nil
+        }
+    }
+
+    func enqueueDelete(id: String) async throws {
+        guard let writeQueue else { throw WriteQueueError.missingQueue }
+        let operationId = UUID().uuidString
+        let payload = WebsiteOperationPayload(
+            operationId: operationId,
+            op: "delete",
+            id: id,
+            clientUpdatedAt: websiteItem(for: id)?.updatedAt
+        )
+        let snapshot = makeServerSnapshot(websiteId: id)
+        try await writeQueue.enqueue(
+            operation: .delete,
+            entityType: .website,
+            entityId: id,
+            payload: payload,
+            serverSnapshot: snapshot
+        )
+        removeItem(id: id, persist: true)
+    }
+
+    func applySyncItem(_ item: WebsiteItem) {
+        if item.deletedAt != nil {
+            removeItem(id: item.id, persist: true)
+            return
+        }
+        updateListItem(item, persist: true)
+    }
+
+    private func applyLocalUpdate(id: String, update: (WebsiteItem) -> WebsiteItem) {
+        guard let current = websiteItem(for: id) else { return }
+        let updated = update(current)
+        updateListItem(updated, persist: true)
+    }
+
+    private func websiteItem(for id: String) -> WebsiteItem? {
+        if let item = items.first(where: { $0.id == id }) {
+            return item
+        }
+        if let active, active.id == id {
+            return WebsiteItem(
+                id: active.id,
+                title: active.title,
+                url: active.url,
+                domain: active.domain,
+                savedAt: active.savedAt,
+                publishedAt: active.publishedAt,
+                pinned: active.pinned,
+                pinnedOrder: active.pinnedOrder,
+                archived: active.archived,
+                youtubeTranscripts: active.youtubeTranscripts,
+                updatedAt: active.updatedAt,
+                lastOpenedAt: active.lastOpenedAt,
+                deletedAt: nil
+            )
+        }
+        return nil
+    }
+
+    private func makeServerSnapshot(websiteId: String) -> ServerSnapshot? {
+        guard let item = websiteItem(for: websiteId) else { return nil }
+        let snapshot = WebsiteSnapshot(
+            updatedAt: item.updatedAt,
+            title: item.title,
+            pinned: item.pinned,
+            pinnedOrder: item.pinnedOrder,
+            archived: item.archived
+        )
+        return ServerSnapshot(
+            entityType: .website,
+            entityId: websiteId,
+            capturedAt: Date(),
+            payload: .website(snapshot)
         )
     }
 }

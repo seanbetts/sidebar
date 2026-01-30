@@ -360,3 +360,18 @@ extension WidgetNote {
     self.pinnedOrder = node.pinnedOrder
   }
 }
+
+// MARK: - WebsiteItem to WidgetWebsite Conversion
+
+extension WidgetWebsite {
+  /// Creates a WidgetWebsite from a WebsiteItem
+  public init(from item: WebsiteItem) {
+    self.id = item.id
+    self.title = item.title
+    self.url = item.url
+    self.domain = item.domain
+    self.pinned = item.pinned
+    self.pinnedOrder = item.pinnedOrder
+    self.archived = item.archived
+  }
+}

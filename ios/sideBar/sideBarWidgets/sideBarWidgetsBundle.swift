@@ -18,6 +18,9 @@ struct SideBarWidgetsBundle: WidgetBundle {
         // Home screen widgets - Notes
         PinnedNotesWidget()
 
+        // Home screen widgets - Sites
+        PinnedSitesWidget()
+
         // Lock screen widgets - Tasks
         LockScreenTaskCountWidget()
         LockScreenTaskPreviewWidget()
@@ -27,5 +30,10 @@ struct SideBarWidgetsBundle: WidgetBundle {
         LockScreenNoteCountWidget()
         LockScreenNotePreviewWidget()
         LockScreenNotesInlineWidget()
+
+        // Lock screen widgets - Sites
+        LockScreenSiteCountWidget()
+        LockScreenSitePreviewWidget()
+        LockScreenSitesInlineWidget()
     }
 }

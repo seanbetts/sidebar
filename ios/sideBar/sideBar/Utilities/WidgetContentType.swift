@@ -40,7 +40,9 @@ public enum WidgetContentType: String, CaseIterable {
     case .websites:
       return [
         "PinnedSitesWidget",
-        "ReadingListWidget"
+        "LockScreenSiteCount",
+        "LockScreenSitePreview",
+        "LockScreenSitesInline"
       ]
     case .files:
       return [
