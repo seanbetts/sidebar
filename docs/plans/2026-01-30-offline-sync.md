@@ -10,6 +10,7 @@ Status: Active (pivoted from 2026-01-22 plan)
 - Writes are queued offline and replayed on reconnect.
 - Conflicts prompt user choice (server vs local).
 - Consistent UX across all sections: cached data immediately, sync status, pending badges, conflict prompts.
+- Keep implementations native to iOS/macOS patterns (Core Data, Background Tasks, Swift Concurrency, URLSession).
 
 ## Architecture Overview
 
@@ -86,12 +87,15 @@ Status: Active (pivoted from 2026-01-22 plan)
   - Processes queue when online
   - Runs background refreshes on foreground/reconnect
   - Suspends queue on conflict
+  - Uses native background task scheduling for periodic refresh
 
 ### Data Flow
 - On app start: load offline snapshot -> show immediately -> background refresh if online.
 - On mutation while offline: apply locally -> enqueue write -> mark pending.
 - On reconnect: process queue in order -> refresh lists -> clear pending states.
 - On realtime events: apply only if no local pending; otherwise mark conflict.
+- Conflict trigger: compare server `updated_at`/`modified` to local snapshot at enqueue time. For tasks, use `TaskSyncResponse.conflicts` from `/tasks/sync`. Pause queue until resolved.
+- Offline detection should use `ConnectivityMonitor.isOffline` (network + server reachability), not just `isNetworkAvailable`.
 
 ## File-by-File Change List (with method signatures)
 
@@ -117,6 +121,7 @@ Use and extend existing infrastructure rather than replacing it:
 - Do not re-implement chat offline queueing (out of scope).
 - Use `CoreDataCacheClient` for TTL cache only; add `OfflineStore` for durable snapshots.
 - Prefer Store-level APIs for offline load + queued writes; avoid adding business logic to ViewModels.
+- Reuse `ConnectivityMonitor` + `AppEnvironment.refreshOnReconnect()` wiring; avoid adding a parallel network monitor.
 
 ### 1) Persistence + Offline Cache
 
@@ -132,6 +137,50 @@ Add entity `OfflineEntry`:
 Optional: extend `PendingWrite` with:
 - `conflictReason: String?`
 - `serverSnapshot: Data?` (for conflict prompt)
+  - Snapshot schema (JSON, Codable):
+```
+enum ServerSnapshotPayload: Codable, Equatable {
+    case note(NoteSnapshot)
+    case website(WebsiteSnapshot)
+    case file(FileSnapshot)
+}
+
+struct ServerSnapshot: Codable, Equatable {
+    let entityType: WriteEntityType
+    let entityId: String
+    let capturedAt: Date
+    let payload: ServerSnapshotPayload
+}
+
+struct NoteSnapshot: Codable, Equatable {
+    let modified: Double?
+    let name: String?
+    let path: String?
+    let pinned: Bool?
+    let pinnedOrder: Int?
+    let archived: Bool?
+}
+
+struct WebsiteSnapshot: Codable, Equatable {
+    let updatedAt: String?
+    let title: String?
+    let pinned: Bool?
+    let pinnedOrder: Int?
+    let archived: Bool?
+}
+
+struct FileSnapshot: Codable, Equatable {
+    let filenameOriginal: String?
+    let pinned: Bool?
+    let pinnedOrder: Int?
+    let path: String?
+}
+```
+Comparison rules (conflict checks):
+- Notes: compare current server `modified` to snapshot `modified`. If different -> conflict.
+- Websites: compare current server `updated_at` to snapshot `updatedAt`. If different -> conflict.
+- Files: compare current server fields (`filename_original`, `pinned`, `pinned_order`, `path`) to snapshot. Any difference -> conflict.
+- Delete ops: if server record is already deleted, treat as success and drop the write.
 
 #### `ios/sideBar/sideBar/Services/Persistence/PersistenceController.swift`
 - Ensure migration works (lightweight by default).
@@ -148,6 +197,17 @@ public final class OfflineStore {
     public func remove(key: String)
 }
 ```
+Notes:
+- Use Core Data background contexts for read/write; only deliver decoded results on the main actor.
+- Set store protection to `NSFileProtectionCompleteUntilFirstUserAuthentication` for offline snapshots.
+- Retention/size limits (defaults):
+  - Notes: keep `notes/tree` always; keep latest 200 note bodies by `modified` (LRU by `updatedAt` fallback).
+  - Tasks: keep all active tasks + counts; prune completed tasks older than 30 days from offline snapshots.
+  - Websites: keep list snapshot + latest 500 detail records by `updatedAt`.
+  - Files: keep list snapshot + latest 500 metadata records by `updatedAt` (no binary content).
+  - Chat: keep latest 100 conversations; per-conversation keep last 7 days or 1,000 messages (whichever smaller) to align with `CachePolicy.conversationMessages`.
+  - Drafts are handled by `DraftStorage` and are not pruned here.
+- Prefer reusing existing `CacheKeys` for offline snapshot keys to keep identifiers consistent.
 
 ### 2) Sync State + Conflict Types
 
@@ -162,13 +222,21 @@ public enum SyncState: String, Codable {
 
 #### New: `ios/sideBar/sideBar/Services/Offline/SyncConflict.swift`
 ```
-public struct SyncConflict<T: Codable>: Codable, Equatable {
+public struct SyncConflict<T: Codable & Equatable>: Codable, Equatable {
     public let entityId: String
     public let local: T
     public let server: T
     public let reason: String
 }
 ```
+Conflict rules (shared):
+- Trigger on server `updated_at`/`modified` mismatch versus local snapshot at enqueue time.
+- Tasks: rely on `TaskSyncResponse.conflicts` from `/tasks/sync`; `/tasks/apply` always returns an empty conflict list.
+- Notes: use `modified` (timestamp) from note payload/tree.
+- Websites: use `updated_at` from `website_summary` (list/detail responses).
+- Files: ingestion responses do not include a file `updated_at` field (only `created_at` and job `updated_at`), so store a snapshot of relevant fields at enqueue time (e.g., `filename_original`, `pinned`, `pinned_order`) and compare against the latest `/files` response before applying queued writes.
+- Store server snapshot in conflict payload to avoid re-fetch loops.
+- Queue pauses until user resolves; resolution chooses server/local and replays if needed.
 
 ### 3) Write Queue Expansion
 
@@ -195,27 +263,34 @@ enum WriteEntityType: String {
     case scratchpad
 }
 ```
+Current code notes:
+- `WriteOperation` is currently `create/update/delete`, and `WriteEntityType` excludes `task` (add it).
+- `WriteQueueExecutor` + `WriteQueue` are `@MainActor` and use `viewContext`; move heavy Core Data work to background contexts, keeping only published state updates on the main actor.
 
 - Add queue cap + cleanup:
 ```
 public var maxPendingWrites: Int { get }
 public func pruneOldestWrites(keeping maxCount: Int)
 ```
+Queue overflow policy (explicit):
+- Default: block enqueue with a user-visible error ("Sync queue full") and link to `ios/sideBar/sideBar/Views/Settings/PendingWritesView.swift`.
+- Allow user-initiated "Drop oldest" action to prune and retry enqueue.
 
 - Add enqueue convenience methods (optional):
 ```
 public func enqueueNoteUpdate(noteId: String, payload: NoteUpdateRequest) throws
-public func enqueueTaskUpdate(taskId: String, payload: TaskUpdateRequest) throws
+public func enqueueTaskOperation(_ operation: TaskOperationPayload) throws
 ```
 
 #### New: `ios/sideBar/sideBar/Services/Offline/CompositeWriteQueueExecutor.swift`
 ```
-@MainActor
 final class CompositeWriteQueueExecutor: WriteQueueExecutor {
     init(executors: [WriteEntityType: WriteQueueExecutor])
     func execute(write: PendingWrite) async throws
 }
 ```
+Notes:
+- Executors should perform network work off the main actor; only UI state updates should be main-actor.
 
 #### New: `ios/sideBar/sideBar/Services/Offline/TasksWriteQueueExecutor.swift`
 ```
@@ -252,9 +327,7 @@ public func cleanupSyncedDrafts(olderThan days: Int) throws
 
 ### 4) Store Layer Changes
 
-(Exact store paths may vary; update these files where they exist in your repo.)
-
-#### `ios/sideBar/sideBar/Services/Notes/NotesStore.swift`
+#### `ios/sideBar/sideBar/Stores/NotesStore.swift`
 Add:
 ```
 public func loadFromOffline() async
@@ -263,16 +336,16 @@ public func enqueueUpdate(noteId: String, content: String) async
 public func resolveConflict(_ conflict: SyncConflict<NotePayload>, keepLocal: Bool) async
 ```
 
-#### `ios/sideBar/sideBar/Services/Tasks/TasksStore.swift`
+#### `ios/sideBar/sideBar/Stores/TasksStore.swift`
 Add:
 ```
 public func loadFromOffline() async
 public func saveOfflineSnapshot() async
-public func enqueueUpdate(taskId: String, payload: TaskUpdateRequest) async
+public func enqueueOperation(_ operation: TaskOperationPayload) async
 public func resolveConflict(_ conflict: SyncConflict<TaskItem>, keepLocal: Bool) async
 ```
 
-#### `ios/sideBar/sideBar/Services/Websites/WebsitesStore.swift`
+#### `ios/sideBar/sideBar/Stores/WebsitesStore.swift`
 Add:
 ```
 public func loadFromOffline() async
@@ -284,7 +357,7 @@ public func enqueueDelete(id: String) async
 public func resolveConflict(_ conflict: SyncConflict<WebsiteItem>, keepLocal: Bool) async
 ```
 
-#### `ios/sideBar/sideBar/Services/Ingestion/IngestionStore.swift`
+#### `ios/sideBar/sideBar/Stores/IngestionStore.swift`
 Add:
 ```
 public func loadFromOffline() async
@@ -294,8 +367,9 @@ public func enqueuePin(fileId: String, pinned: Bool) async
 public func enqueueDelete(fileId: String) async
 public func resolveConflict(_ conflict: SyncConflict<IngestedFileItem>, keepLocal: Bool) async
 ```
+Note: `IngestionStore` already tracks `isOffline` based on API failures; ensure this aligns with `ConnectivityMonitor.isOffline`.
 
-#### `ios/sideBar/sideBar/Services/Chat/ChatStore.swift`
+#### `ios/sideBar/sideBar/Stores/ChatStore.swift`
 Add:
 ```
 public func loadFromOffline() async
@@ -307,15 +381,19 @@ public func saveOfflineSnapshot() async
 #### `ios/sideBar/sideBar/ViewModels/NotesViewModel.swift`
 - Replace direct API calls with store methods.
 - Expose `syncState` + conflicts.
+- `NetworkStatusProviding` currently only exposes `isNetworkAvailable`; extend or inject `ConnectivityMonitor` where true offline state is needed.
 
 #### `ios/sideBar/sideBar/ViewModels/TasksViewModel.swift`
 - Use store for all mutations; queue when offline.
+- Migrate current operations from `ios/sideBar/sideBar/ViewModels/TasksViewModel+Operations.swift` into `TasksStore`.
 
 #### `ios/sideBar/sideBar/ViewModels/WebsitesViewModel.swift`
 - Queue pin/rename/archive/delete while offline.
+- Migrate direct API calls in `ios/sideBar/sideBar/ViewModels/WebsitesViewModel.swift` into `WebsitesStore`.
 
 #### `ios/sideBar/sideBar/ViewModels/IngestionViewModel.swift`
 - Queue file pin/rename/delete while offline.
+- Migrate direct API calls in `ios/sideBar/sideBar/ViewModels/IngestionViewModel+Public.swift` into `IngestionStore`.
 
 #### `ios/sideBar/sideBar/ViewModels/Chat/ChatViewModel.swift`
 - Read from offline snapshots when offline.
@@ -329,26 +407,45 @@ final class SyncCoordinator {
     init(
         connectivityMonitor: ConnectivityMonitor,
         writeQueue: WriteQueue,
-        stores: [AnyObject]
+        stores: [SyncableStore]
     )
     func start()
     func refreshAll() async
 }
 ```
+Add a protocol:
+```
+public protocol SyncableStore: AnyObject {
+    func loadFromOffline() async
+    func saveOfflineSnapshot() async
+    func refreshRemote() async
+}
+```
+Native iOS/macOS background refresh:
+- iOS: `BGTaskScheduler` for periodic refresh + enqueue processing.
+- macOS: `NSBackgroundActivityScheduler` for periodic refresh + enqueue processing.
+Implementation note:
+- `AppEnvironment+Selection.refreshOnReconnect()` already performs multi-store refresh on reconnect; SyncCoordinator should replace or call into that logic rather than duplicating it.
 
 #### `ios/sideBar/sideBar/App/AppEnvironment+Setup.swift`
 - Instantiate `OfflineStore` and inject into Stores.
 - Wire `WriteQueue` with `CompositeWriteQueueExecutor`.
 - Start `SyncCoordinator`.
 - Run queue pruning and draft cleanup at launch/foreground.
+- Configure background tasks to call `SyncCoordinator.refreshAll()` when permitted.
 
 ### 7) UI Consistency
 
-#### New: `ios/sideBar/sideBar/Views/Offline/SyncStatusBanner.swift`
-- Shows offline/syncing/pending count.
+#### Update: `ios/sideBar/sideBar/Design/Components/OfflineBanner.swift`
+- Extend existing banner (used by `ios/sideBar/sideBar/Design/Components/PanelHeader.swift` and `ios/sideBar/sideBar/Views/SiteHeaderBar.swift`) to show:
+  - Offline (use `environment.isOffline` to include server-unreachable cases).
+  - Syncing (`WriteQueue.isProcessing`).
+  - Pending count (`WriteQueue.pendingCount`) and a link to `PendingWritesView`.
+- Show banner when offline or pending changes exist (not only `!isNetworkAvailable`).
 
 #### New: `ios/sideBar/sideBar/Views/Offline/ConflictResolutionSheet.swift`
 - Standard conflict prompt with server vs local.
+Note: Notes already use `NoteSyncConflict` + `Views/Notes/ConflictResolutionSheet.swift`; generalize that pattern instead of replacing it.
 
 #### Update section views to show:
 - Pending badge if `syncState == .pending`.
@@ -378,9 +475,12 @@ Add tests in `ios/sideBar/sideBarTests/`:
 - [ ] Add `SyncState` + `SyncConflict`
 - [ ] Expand `WriteQueue` enums
 - [ ] Add `CompositeWriteQueueExecutor`
-- [ ] Add queue size cap + pruning (folded from 2026-01-22 plan)
+- [ ] Add queue size cap + overflow handling (block vs confirm drop)
 - [ ] Add synced draft cleanup (folded from 2026-01-22 plan)
 - [ ] Align offline banner with syncing + pending count (folded from 2026-01-22 plan) (in progress)
+- [ ] Implement conflict detection + resolution policy (updated_at/modified + task sync conflicts)
+- [ ] Implement queue overflow UX (block + user-initiated drop oldest)
+- [ ] Implement snapshot retention/size limits + cleanup policy
 
 #### Phase 1 Detailed Task List (with file targets)
 1) Core Data model updates
@@ -406,6 +506,9 @@ public final class OfflineStore {
     public func remove(key: String)
 }
 ```
+   - Use Core Data background contexts for read/write; only deliver decoded results on the main actor.
+   - Set store protection to `NSFileProtectionCompleteUntilFirstUserAuthentication` for offline snapshots.
+   - Define retention/size limits per entity type (especially chat/files) and cleanup routines.
 
 3) Sync state + conflict types
    - Add:
@@ -423,13 +526,17 @@ public struct SyncConflict<T: Codable & Equatable>: Codable, Equatable {
     public let reason: String
 }
 ```
+   - Conflict trigger: server `updated_at`/`modified` mismatch versus local snapshot at enqueue time.
+   - Tasks: rely on `TaskSyncResponse.conflicts` as the source of truth.
+   - Store server snapshot in conflict payload to avoid re-fetch loops.
 
 4) WriteQueue expansion
    - Update `ios/sideBar/sideBar/Services/Offline/WriteQueue.swift`
      - Expand enums for tasks/websites/files operations.
      - Add `maxPendingWrites` (configurable, default 200).
-     - Add `pruneOldestWrites(keeping:)` and call on enqueue.
+     - Add `pruneOldestWrites(keeping:)` and call only after user confirms dropping oldest.
      - Preserve current coalescing behavior for note updates.
+     - Move Core Data work off the main actor (background context) while keeping published state updates on main.
    - Method signatures:
 ```
 public final class WriteQueue: ObservableObject {
@@ -437,6 +544,7 @@ public final class WriteQueue: ObservableObject {
     public func pruneOldestWrites(keeping maxCount: Int)
 }
 ```
+   - Queue overflow policy: block enqueue with user-visible error, allow user-initiated "Drop oldest" to prune then retry.
    - Enum updates:
 ```
 enum WriteOperation: String { case create, update, delete, rename, pin, archive, move, copy }
@@ -448,41 +556,49 @@ enum WriteEntityType: String { case note, task, website, file, message, scratchp
    - No business logic here; just route by `entityType`.
    - Method signatures:
 ```
-@MainActor
 final class CompositeWriteQueueExecutor: WriteQueueExecutor {
     init(executors: [WriteEntityType: WriteQueueExecutor])
     func execute(write: PendingWrite) async throws
 }
 ```
+   - Executors should perform network work off the main actor; only UI state updates should be main-actor.
 
 6) Draft cleanup
    - Extend `ios/sideBar/sideBar/Services/Offline/DraftStorage.swift`
      - Add `cleanupSyncedDrafts(olderThan days: Int)` to delete old synced drafts.
+     - Consider moving Core Data work to a background context.
    - Method signature:
 ```
 public func cleanupSyncedDrafts(olderThan days: Int) throws
 ```
+   - Default retention: 7 days (aligns with prior offline plan).
 
 7) Offline banner alignment
    - Update existing offline banner and sync indicator to show:
      - Offline state
      - Syncing state (`WriteQueue.isProcessing`)
      - Pending count (`WriteQueue.pendingCount`)
-   - Files likely: `ios/sideBar/sideBar/Views/...` (existing OfflineBanner + header)
+   - Files: `ios/sideBar/sideBar/Design/Components/OfflineBanner.swift`,
+     `ios/sideBar/sideBar/Design/Components/PanelHeader.swift`,
+     `ios/sideBar/sideBar/Views/SiteHeaderBar.swift`
 
 8) Wiring + initialization
    - Update `ios/sideBar/sideBar/App/AppEnvironment+Setup.swift`
      - Initialize `OfflineStore`.
      - Initialize `WriteQueue` with `CompositeWriteQueueExecutor`.
      - Call queue pruning + draft cleanup on launch/foreground.
+     - Configure background tasks to call `SyncCoordinator.refreshAll()` when permitted.
 
 #### Phase 1 Acceptance Checklist
 - `OfflineEntry` persists and returns durable snapshots after app restart.
-- `WriteQueue` refuses to grow beyond `maxPendingWrites` and prunes oldest.
+- `WriteQueue` refuses to grow beyond `maxPendingWrites`.
 - Draft cleanup removes synced drafts older than N days without touching unsynced drafts.
 - Offline banner shows: Offline, Syncing, Pending count (correct live values).
 - `WriteQueue` still processes on reconnect and preserves note update coalescing.
 - No regression in existing notes draft or conflict behavior.
+- Conflict detection uses server `updated_at`/`modified` (tasks use `TaskSyncResponse.conflicts`) and pauses queue until resolution.
+- Queue overflow behavior is user-visible (blocked or confirmed drop).
+- Offline snapshot retention limits apply without deleting unsynced local data.
 
 ### Phase 2: Notes (template)
 - [ ] Extend `NotesStore` with offline snapshot + queue
@@ -492,7 +608,7 @@ public func cleanupSyncedDrafts(olderThan days: Int) throws
 
 #### Phase 2 Detailed Task List (with file targets)
 1) Notes store offline snapshot
-   - Update `ios/sideBar/sideBar/Services/Notes/NotesStore.swift` (or actual path)
+   - Update `ios/sideBar/sideBar/Stores/NotesStore.swift`
    - Add methods:
 ```
 public func loadFromOffline() async
@@ -520,6 +636,7 @@ public func enqueueDelete(noteId: String) async
 
 4) Notes conflict handling
    - Use existing notes conflict UI; align with `SyncConflict` type.
+   - Conflict source of truth: server `modified` timestamp vs local snapshot; store server snapshot in conflict payload.
    - Add:
 ```
 public func resolveConflict(_ conflict: SyncConflict<NotePayload>, keepLocal: Bool) async
@@ -538,22 +655,25 @@ public func resolveConflict(_ conflict: SyncConflict<NotePayload>, keepLocal: Bo
 
 #### Phase 3 Detailed Task List (with file targets)
 1) Tasks offline snapshot
-   - Update `ios/sideBar/sideBar/Services/Tasks/TasksStore.swift`
+   - Update `ios/sideBar/sideBar/Stores/TasksStore.swift`
    - Add:
 ```
 public func loadFromOffline() async
 public func saveOfflineSnapshot() async
 ```
    - Store full lists + counts in `OfflineStore`.
+   - Persist `serverUpdatedSince` from `/tasks/sync` as `last_sync` in `OfflineStore`.
 
 2) Tasks queued writes
    - Add:
 ```
-public func enqueueCreateTask(payload: TaskCreateRequest) async
-public func enqueueUpdateTask(taskId: String, payload: TaskUpdateRequest) async
-public func enqueueComplete(taskId: String, completed: Bool) async
-public func enqueueDelete(taskId: String) async
+public func enqueueOperation(_ operation: TaskOperationPayload) async
+public func enqueueBatch(_ batch: TaskOperationBatch) async
 ```
+   - Reuse existing `TaskOperationPayload` + `clientUpdatedAt` pattern from `ios/sideBar/sideBar/ViewModels/TasksViewModel+Operations.swift`.
+   - For queued offline operations, prefer `/tasks/sync` (POST `/sync`) to apply outbox + receive conflicts/deltas.
+   - Persist `last_sync` timestamp in `OfflineStore` (per user) to feed `/tasks/sync`.
+   - Keep `/tasks/apply` for immediate online mutations where conflicts are handled optimistically.
 
 3) Tasks executor
    - Add `ios/sideBar/sideBar/Services/Offline/TasksWriteQueueExecutor.swift`
@@ -566,6 +686,7 @@ public func enqueueDelete(taskId: String) async
 - Tasks lists + counts available offline.
 - Task edits queue and sync.
 - Conflicts prompt user.
+- `/tasks/sync` returns conflicts when `client_updated_at` is stale and updates `serverUpdatedSince`.
 
 
 ### Phase 4: Websites + Files
@@ -576,7 +697,7 @@ public func enqueueDelete(taskId: String) async
 
 #### Phase 4 Detailed Task List (with file targets)
 1) Websites offline snapshot
-   - Update `ios/sideBar/sideBar/Services/Websites/WebsitesStore.swift`
+   - Update `ios/sideBar/sideBar/Stores/WebsitesStore.swift`
    - Add:
 ```
 public func loadFromOffline() async
@@ -599,7 +720,7 @@ public func enqueueDelete(id: String) async
    - Route ops to `WebsitesAPI`.
 
 4) Files offline snapshot
-   - Update `ios/sideBar/sideBar/Services/Ingestion/IngestionStore.swift`
+   - Update `ios/sideBar/sideBar/Stores/IngestionStore.swift`
    - Add:
 ```
 public func loadFromOffline() async
@@ -615,6 +736,7 @@ public func enqueuePin(fileId: String, pinned: Bool) async
 public func enqueueDelete(fileId: String) async
 ```
    - Copy action is local only unless server duplication is required later.
+   - Since `/files` responses do not include file `updated_at`, store server snapshot fields in the queued write (`PendingWrite.serverSnapshot`) for conflict checks.
 
 6) Files executor
    - Add `ios/sideBar/sideBar/Services/Offline/FilesWriteQueueExecutor.swift`
@@ -656,7 +778,7 @@ public func saveOfflineSnapshot() async
 ### Phase 6: Sync Coordinator + Global UI
 - [ ] Add `SyncCoordinator`
 - [ ] Wire in `AppEnvironment+Setup`
-- [ ] Add `SyncStatusBanner`
+- [ ] Update `OfflineBanner`
 - [x] Add `ConflictResolutionSheet` (notes-only, needs generalization)
 
 #### Phase 6 Detailed Task List (with file targets)
@@ -665,16 +787,17 @@ public func saveOfflineSnapshot() async
 ```
 @MainActor
 final class SyncCoordinator {
-    init(connectivityMonitor: ConnectivityMonitor, writeQueue: WriteQueue, stores: [AnyObject])
+    init(connectivityMonitor: ConnectivityMonitor, writeQueue: WriteQueue, stores: [SyncableStore])
     func start()
     func refreshAll() async
 }
 ```
    - On reconnect: process queue then refresh lists.
    - Pause queue on conflict flag.
+   - Schedule native background refresh (iOS `BGTaskScheduler`, macOS `NSBackgroundActivityScheduler`).
 
 2) Global UI elements
-   - Add `ios/sideBar/sideBar/Views/Offline/SyncStatusBanner.swift`
+   - Update `ios/sideBar/sideBar/Design/Components/OfflineBanner.swift` (and usages in `PanelHeader`/`SiteHeaderBar`)
    - Add `ios/sideBar/sideBar/Views/Offline/ConflictResolutionSheet.swift`
    - Wire in common UI via `ContentView` / shared layout.
 
@@ -702,6 +825,7 @@ final class SyncCoordinator {
 #### Phase 7 Acceptance Checklist
 - Tests cover offline load, queued writes, conflicts.
 - No lingering debug output.
+- Queue overflow and conflict-trigger tests added.
 
 ## Comprehensive Manual Test Checklist (End-to-End)
 
