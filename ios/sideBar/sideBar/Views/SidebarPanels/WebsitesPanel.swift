@@ -173,24 +173,16 @@ extension WebsitesPanelView {
         } else {
             List {
                 if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
-                    Section("Pinned") {
-                        if pinnedItemsSorted.isEmpty {
-                            Text("No pinned websites")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
+                    if !pinnedItemsSorted.isEmpty {
+                        Section("Pinned") {
                             ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
                                 websiteListRow(item: item, index: index)
                             }
                         }
                     }
 
-                    Section("Websites") {
-                        if mainItems.isEmpty && viewModel.pendingWebsite == nil {
-                            Text("No websites saved")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
+                    if !mainItems.isEmpty || viewModel.pendingWebsite != nil {
+                        Section("Websites") {
                             if let pending = viewModel.pendingWebsite {
                                 PendingWebsiteRow(pending: pending, useListStyling: true)
                             }
@@ -289,24 +281,16 @@ extension WebsitesPanelView {
     private var websitesListView: some View {
         List {
             if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
-                Section("Pinned") {
-                    if pinnedItemsSorted.isEmpty {
-                        Text("No pinned websites")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
+                if !pinnedItemsSorted.isEmpty {
+                    Section("Pinned") {
                         ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
                             websiteListRow(item: item, index: index)
                         }
                     }
                 }
 
-                Section("Websites") {
-                    if mainItems.isEmpty && viewModel.pendingWebsite == nil {
-                        Text("No websites saved")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
+                if !mainItems.isEmpty || viewModel.pendingWebsite != nil {
+                    Section("Websites") {
                         if let pending = viewModel.pendingWebsite {
                             PendingWebsiteRow(pending: pending, useListStyling: true)
                         }
