@@ -260,7 +260,8 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isQueuedForSync)
         XCTAssertFalse(viewModel.isSaving)
         XCTAssertEqual(api.updateCallCount, 0)
-        XCTAssertEqual(writeQueue.fetchPendingWrites().count, 1)
+        let pending = await writeQueue.fetchPendingWrites()
+        XCTAssertEqual(pending.count, 1)
     }
 }
 

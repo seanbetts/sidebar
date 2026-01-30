@@ -148,7 +148,9 @@ public struct SiteHeaderBar: View {
     private var trailingControls: some View {
         HStack(alignment: .center, spacing: 12) {
             if !isCompact {
-                if !environment.isNetworkAvailable {
+                if environment.isOffline
+                    || environment.writeQueue.isProcessing
+                    || environment.writeQueue.pendingCount > 0 {
                     OfflineBanner()
                 }
                 VStack(alignment: .trailing, spacing: 4) {

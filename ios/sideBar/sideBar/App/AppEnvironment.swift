@@ -21,6 +21,7 @@ public final class AppEnvironment: ObservableObject {
     public let ingestionStore: IngestionStore
     public let tasksStore: TasksStore
     public let scratchpadStore: ScratchpadStore
+    public let offlineStore: OfflineStore
     public let toastCenter: ToastCenter
     public let chatViewModel: ChatViewModel
     public let notesViewModel: NotesViewModel
@@ -36,6 +37,7 @@ public final class AppEnvironment: ObservableObject {
     let connectivityMonitor: ConnectivityMonitor
     public let biometricMonitor: BiometricMonitor
     public let writeQueue: WriteQueue
+    let draftStorage: DraftStorage
 
     @Published public internal(set) var isAuthenticated: Bool = false
     @Published public internal(set) var isOffline: Bool = false
@@ -84,6 +86,7 @@ public final class AppEnvironment: ObservableObject {
         self.ingestionStore = dependencies.ingestionStore
         self.tasksStore = dependencies.tasksStore
         self.scratchpadStore = dependencies.scratchpadStore
+        self.offlineStore = dependencies.offlineStore
         self.toastCenter = dependencies.toastCenter
         self.chatViewModel = dependencies.chatViewModel
         self.notesViewModel = dependencies.notesViewModel
@@ -98,6 +101,7 @@ public final class AppEnvironment: ObservableObject {
         self.connectivityMonitor = dependencies.connectivityMonitor
         self.biometricMonitor = dependencies.biometricMonitor
         self.writeQueue = dependencies.writeQueue
+        self.draftStorage = dependencies.draftStorage
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
         #if os(iOS) || os(macOS)

@@ -3,21 +3,34 @@ import SwiftUI
 struct OfflineBanner: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isPendingWritesPresented = false
 
     var body: some View {
         if shouldShow {
-            HStack(spacing: 0) {
-                statusIcon
+            Button {
+                isPendingWritesPresented = true
+            } label: {
+                HStack(spacing: 6) {
+                    statusIcon
+                    Text(statusText)
+                        .font(DesignTokens.Typography.captionSemibold)
+                }
+                .foregroundStyle(foregroundColor)
+                .padding(.horizontal, DesignTokens.Spacing.xs)
+                .padding(.vertical, DesignTokens.Spacing.xxs)
+                .background(backgroundColor)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                #if !os(macOS)
+                .padding(.vertical, -4)
+                #endif
             }
-            .foregroundStyle(foregroundColor)
-            .padding(.horizontal, DesignTokens.Spacing.xs)
-            .padding(.vertical, DesignTokens.Spacing.xxs)
-            .background(backgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            #if !os(macOS)
-            .padding(.vertical, -4)
-            #endif
+            .buttonStyle(.plain)
             .accessibilityLabel(statusText)
+            .sheet(isPresented: $isPendingWritesPresented) {
+                NavigationStack {
+                    PendingWritesView()
+                }
+            }
         }
     }
 
@@ -26,7 +39,7 @@ struct OfflineBanner: View {
     }
 
     private var shouldShow: Bool {
-        !environment.isNetworkAvailable
+        environment.isOffline || environment.writeQueue.isProcessing || pendingCount > 0
     }
 
     private var statusText: String {
@@ -34,9 +47,9 @@ struct OfflineBanner: View {
             return "Offline"
         }
         if environment.writeQueue.isProcessing {
-            return "Syncing..."
+            return "Syncing \(pendingCount) changes"
         }
-        return "Pending changes"
+        return "\(pendingCount) pending changes"
     }
 
     private var backgroundColor: Color {

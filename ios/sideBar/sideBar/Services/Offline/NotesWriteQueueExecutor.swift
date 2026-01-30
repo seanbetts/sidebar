@@ -10,7 +10,7 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         self.store = store
     }
 
-    func execute(write: PendingWrite) async throws {
+    func execute(write: PendingWriteRecord) async throws {
         guard let operation = WriteOperation(rawValue: write.operationType) else {
             return
         }

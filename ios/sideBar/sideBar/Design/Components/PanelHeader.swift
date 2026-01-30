@@ -67,7 +67,8 @@ struct PanelHeader<Trailing: View>: View {
         #if os(macOS)
         return false
         #else
-        return horizontalSizeClass == .compact && !environment.isNetworkAvailable
+        return horizontalSizeClass == .compact
+            && (environment.isOffline || environment.writeQueue.isProcessing || environment.writeQueue.pendingCount > 0)
         #endif
     }
 }

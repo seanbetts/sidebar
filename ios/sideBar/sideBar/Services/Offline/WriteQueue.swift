@@ -6,10 +6,16 @@ enum WriteOperation: String {
     case create
     case update
     case delete
+    case rename
+    case pin
+    case archive
+    case move
+    case copy
 }
 
 enum WriteEntityType: String {
     case note
+    case task
     case message
     case website
     case file
@@ -34,13 +40,23 @@ struct PendingWriteSummary: Identifiable {
     let lastAttemptAt: Date?
 }
 
+struct PendingWriteRecord: Sendable, Equatable {
+    let id: UUID
+    let operationType: String
+    let entityType: String
+    let entityId: String?
+    let payload: Data
+    let attempts: Int16
+}
+
 enum WriteQueueError: Error {
     case missingExecutor
+    case queueFull
 }
 
 @MainActor
 protocol WriteQueueExecutor {
-    func execute(write: PendingWrite) async throws
+    func execute(write: PendingWriteRecord) async throws
 }
 
 @MainActor
@@ -48,6 +64,7 @@ protocol WriteQueueExecutor {
 public final class WriteQueue: ObservableObject {
     @Published private(set) var pendingCount: Int = 0
     @Published private(set) var isProcessing: Bool = false
+    public let maxPendingWrites: Int
 
     private let container: NSPersistentContainer
     private let connectivityMonitor: ConnectivityMonitor
@@ -60,13 +77,17 @@ public final class WriteQueue: ObservableObject {
         container: NSPersistentContainer,
         connectivityMonitor: ConnectivityMonitor,
         executor: WriteQueueExecutor? = nil,
-        autoProcessEnabled: Bool = true
+        autoProcessEnabled: Bool = true,
+        maxPendingWrites: Int = 200
     ) {
         self.container = container
         self.connectivityMonitor = connectivityMonitor
         self.executor = executor
         self.autoProcessEnabled = autoProcessEnabled
-        loadPendingCount()
+        self.maxPendingWrites = maxPendingWrites
+        Task { [weak self] in
+            await self?.loadPendingCount()
+        }
         observeNetwork()
     }
 
@@ -75,24 +96,13 @@ public final class WriteQueue: ObservableObject {
         entityType: WriteEntityType,
         entityId: String?,
         payload: T
-    ) throws {
-        let context = container.viewContext
+    ) async throws {
+        let payloadData = try encoder.encode(payload)
         if operation == .update,
            entityType == .note,
            let entityId,
-           let existing = fetchCoalescableWrite(
-               operation: operation,
-               entityType: entityType,
-               entityId: entityId
-           ) {
-            existing.payload = try encoder.encode(payload)
-            existing.createdAt = Date()
-            existing.status = WriteQueueStatus.pending.rawValue
-            existing.attempts = 0
-            existing.lastError = nil
-            existing.lastAttemptAt = nil
-            try context.save()
-
+           try await coalesceNoteUpdate(entityId: entityId, payload: payloadData) {
+            await loadPendingCount()
             if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
                 Task { [weak self] in
                     await self?.processQueue()
@@ -100,18 +110,25 @@ public final class WriteQueue: ObservableObject {
             }
             return
         }
-        let write = PendingWrite(context: context)
-        write.id = UUID()
-        write.operationType = operation.rawValue
-        write.entityType = entityType.rawValue
-        write.entityId = entityId
-        write.payload = try encoder.encode(payload)
-        write.createdAt = Date()
-        write.attempts = 0
-        write.status = WriteQueueStatus.pending.rawValue
 
-        try context.save()
-        pendingCount += 1
+        let currentCount = try await countPendingWrites()
+        if currentCount >= maxPendingWrites {
+            throw WriteQueueError.queueFull
+        }
+
+        try await performBackgroundTask { context in
+            let write = PendingWrite(context: context)
+            write.id = UUID()
+            write.operationType = operation.rawValue
+            write.entityType = entityType.rawValue
+            write.entityId = entityId
+            write.payload = payloadData
+            write.createdAt = Date()
+            write.attempts = 0
+            write.status = WriteQueueStatus.pending.rawValue
+        }
+
+        await loadPendingCount()
 
         if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
             Task { [weak self] in
@@ -125,68 +142,94 @@ public final class WriteQueue: ObservableObject {
         isProcessing = true
         defer { isProcessing = false }
 
-        while let write = fetchNextPending() {
+        while let write = try? await fetchNextPending() {
             await processWrite(write)
             await Task.yield()
         }
 
-        loadPendingCount()
+        await loadPendingCount()
     }
 
-    func fetchPendingWrites() -> [PendingWriteSummary] {
-        let request = PendingWrite.fetchRequest()
-        request.sortDescriptors = [
-            NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)
-        ]
-        guard let writes = try? container.viewContext.fetch(request) else {
+    func fetchPendingWrites() async -> [PendingWriteSummary] {
+        do {
+            return try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.sortDescriptors = [
+                    NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)
+                ]
+                let writes = try context.fetch(request)
+                return writes.map { write in
+                    PendingWriteSummary(
+                        id: write.id,
+                        operationType: write.operationType,
+                        entityType: write.entityType,
+                        entityId: write.entityId,
+                        status: write.status,
+                        attempts: write.attempts,
+                        lastError: write.lastError,
+                        createdAt: write.createdAt,
+                        lastAttemptAt: write.lastAttemptAt
+                    )
+                }
+            }
+        } catch {
             return []
         }
-        return writes.map { write in
-            PendingWriteSummary(
-                id: write.id,
-                operationType: write.operationType,
-                entityType: write.entityType,
-                entityId: write.entityId,
-                status: write.status,
-                attempts: write.attempts,
-                lastError: write.lastError,
-                createdAt: write.createdAt,
-                lastAttemptAt: write.lastAttemptAt
-            )
-        }
     }
 
-    func deleteWrites(ids: [UUID]) {
+    func deleteWrites(ids: [UUID]) async {
         guard !ids.isEmpty else { return }
-        let request = PendingWrite.fetchRequest()
-        request.predicate = NSPredicate(format: "id IN %@", ids)
-        if let writes = try? container.viewContext.fetch(request) {
-            writes.forEach { container.viewContext.delete($0) }
-            try? container.viewContext.save()
-            loadPendingCount()
+        do {
+            try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.predicate = NSPredicate(format: "id IN %@", ids)
+                let writes = try context.fetch(request)
+                writes.forEach { context.delete($0) }
+            }
+        } catch {
+            return
+        }
+        await loadPendingCount()
+    }
+
+    public func pruneOldestWrites(keeping maxCount: Int) async {
+        guard maxCount >= 0 else { return }
+        do {
+            try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.predicate = NSPredicate(
+                    format: "status == %@ OR status == %@",
+                    WriteQueueStatus.pending.rawValue,
+                    WriteQueueStatus.failed.rawValue
+                )
+                request.sortDescriptors = [
+                    NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
+                ]
+                let writes = try context.fetch(request)
+                guard writes.count > maxCount else { return }
+                let deleteCount = writes.count - maxCount
+                for write in writes.prefix(deleteCount) {
+                    context.delete(write)
+                }
+            }
+            await loadPendingCount()
+        } catch {
+            return
         }
     }
 
-    private func processWrite(_ write: PendingWrite) async {
-        let context = container.viewContext
-        write.status = WriteQueueStatus.inProgress.rawValue
-        write.attempts += 1
-        write.lastAttemptAt = Date()
-        try? context.save()
+    // MARK: - Private
 
+    private func processWrite(_ write: PendingWriteRecord) async {
         do {
             guard let executor else {
                 throw WriteQueueError.missingExecutor
             }
             try await executor.execute(write: write)
-            context.delete(write)
-            try? context.save()
+            try await deleteWrite(id: write.id)
         } catch {
-            let shouldRetry = shouldRetry(write)
-            write.status = shouldRetry ? WriteQueueStatus.pending.rawValue : WriteQueueStatus.failed.rawValue
-            write.lastError = String(describing: error)
-            try? context.save()
-
+            let shouldRetry = shouldRetry(attempts: write.attempts)
+            await markWriteFailed(id: write.id, error: error, shouldRetry: shouldRetry)
             if shouldRetry {
                 let delay = backoffDelay(for: Int(write.attempts))
                 try? await Task.sleep(nanoseconds: delay)
@@ -194,8 +237,8 @@ public final class WriteQueue: ObservableObject {
         }
     }
 
-    private func shouldRetry(_ write: PendingWrite) -> Bool {
-        write.attempts < 5
+    private func shouldRetry(attempts: Int16) -> Bool {
+        attempts < 5
     }
 
     private func backoffDelay(for attempt: Int) -> UInt64 {
@@ -203,41 +246,98 @@ public final class WriteQueue: ObservableObject {
         return UInt64(seconds * 1_000_000_000)
     }
 
-    private func fetchNextPending() -> PendingWrite? {
-        let request = PendingWrite.fetchRequest()
-        request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.pending.rawValue)
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)]
-        request.fetchLimit = 1
-        return try? container.viewContext.fetch(request).first
+    private func fetchNextPending() async throws -> PendingWriteRecord? {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.pending.rawValue)
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)]
+            request.fetchLimit = 1
+            guard let write = try context.fetch(request).first else {
+                return nil
+            }
+            write.status = WriteQueueStatus.inProgress.rawValue
+            write.attempts += 1
+            write.lastAttemptAt = Date()
+            return PendingWriteRecord(
+                id: write.id,
+                operationType: write.operationType,
+                entityType: write.entityType,
+                entityId: write.entityId,
+                payload: write.payload,
+                attempts: write.attempts
+            )
+        }
     }
 
-    private func fetchCoalescableWrite(
-        operation: WriteOperation,
-        entityType: WriteEntityType,
-        entityId: String
-    ) -> PendingWrite? {
-        let request = PendingWrite.fetchRequest()
-        request.predicate = NSPredicate(
-            format: "operationType == %@ AND entityType == %@ AND entityId == %@ AND (status == %@ OR status == %@)",
-            operation.rawValue,
-            entityType.rawValue,
-            entityId,
-            WriteQueueStatus.pending.rawValue,
-            WriteQueueStatus.failed.rawValue
-        )
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
-        request.fetchLimit = 1
-        return try? container.viewContext.fetch(request).first
+    private func coalesceNoteUpdate(entityId: String, payload: Data) async throws -> Bool {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.predicate = NSPredicate(
+                format: "operationType == %@ AND entityType == %@ AND entityId == %@ AND (status == %@ OR status == %@)",
+                WriteOperation.update.rawValue,
+                WriteEntityType.note.rawValue,
+                entityId,
+                WriteQueueStatus.pending.rawValue,
+                WriteQueueStatus.failed.rawValue
+            )
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
+            request.fetchLimit = 1
+            guard let write = try context.fetch(request).first else {
+                return false
+            }
+            write.payload = payload
+            write.createdAt = Date()
+            write.status = WriteQueueStatus.pending.rawValue
+            write.attempts = 0
+            write.lastError = nil
+            write.lastAttemptAt = nil
+            return true
+        }
     }
 
-    private func loadPendingCount() {
-        let request = PendingWrite.fetchRequest()
-        request.predicate = NSPredicate(
-            format: "status == %@ OR status == %@",
-            WriteQueueStatus.pending.rawValue,
-            WriteQueueStatus.failed.rawValue
-        )
-        pendingCount = (try? container.viewContext.count(for: request)) ?? 0
+    private func markWriteFailed(id: UUID, error: Error, shouldRetry: Bool) async {
+        do {
+            try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.fetchLimit = 1
+                request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+                guard let write = try context.fetch(request).first else { return }
+                write.status = shouldRetry ? WriteQueueStatus.pending.rawValue : WriteQueueStatus.failed.rawValue
+                write.lastError = String(describing: error)
+            }
+        } catch {
+            return
+        }
+    }
+
+    private func deleteWrite(id: UUID) async throws {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            guard let write = try context.fetch(request).first else { return }
+            context.delete(write)
+        }
+    }
+
+    private func countPendingWrites() async throws -> Int {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.predicate = NSPredicate(
+                format: "status == %@ OR status == %@",
+                WriteQueueStatus.pending.rawValue,
+                WriteQueueStatus.failed.rawValue
+            )
+            return try context.count(for: request)
+        }
+    }
+
+    private func loadPendingCount() async {
+        do {
+            pendingCount = try await countPendingWrites()
+        } catch {
+            pendingCount = 0
+        }
     }
 
     private func observeNetwork() {
@@ -251,5 +351,24 @@ public final class WriteQueue: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    private func performBackgroundTask<T>(
+        _ work: @escaping (NSManagedObjectContext) throws -> T
+    ) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            container.performBackgroundTask { context in
+                context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+                do {
+                    let result = try work(context)
+                    if context.hasChanges {
+                        try context.save()
+                    }
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 }

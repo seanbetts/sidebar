@@ -25,24 +25,40 @@ struct PendingWritesView: View {
                 Button("Retry All") {
                     Task {
                         await environment.writeQueue.processQueue()
-                        reloadPendingWrites()
+                        await reloadPendingWrites()
+                    }
+                }
+            }
+            if shouldShowDropOldest {
+                Button("Drop Oldest") {
+                    Task {
+                        await environment.writeQueue.pruneOldestWrites(
+                            keeping: environment.writeQueue.maxPendingWrites
+                        )
+                        await reloadPendingWrites()
                     }
                 }
             }
         }
         .task {
-            reloadPendingWrites()
+            await reloadPendingWrites()
         }
     }
 
-    private func reloadPendingWrites() {
-        pendingWrites = environment.writeQueue.fetchPendingWrites()
+    private func reloadPendingWrites() async {
+        pendingWrites = await environment.writeQueue.fetchPendingWrites()
     }
 
     private func deletePendingWrites(at offsets: IndexSet) {
         let ids = offsets.map { pendingWrites[$0].id }
-        environment.writeQueue.deleteWrites(ids: ids)
-        reloadPendingWrites()
+        Task {
+            await environment.writeQueue.deleteWrites(ids: ids)
+            await reloadPendingWrites()
+        }
+    }
+
+    private var shouldShowDropOldest: Bool {
+        environment.writeQueue.pendingCount >= environment.writeQueue.maxPendingWrites
     }
 }
 

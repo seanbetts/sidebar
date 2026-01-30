@@ -10,6 +10,7 @@ extension AppEnvironment {
         let ingestionStore: IngestionStore
         let tasksStore: TasksStore
         let scratchpadStore: ScratchpadStore
+        let offlineStore: OfflineStore
         let toastCenter: ToastCenter
         let chatViewModel: ChatViewModel
         let notesViewModel: NotesViewModel
@@ -24,6 +25,7 @@ extension AppEnvironment {
         let connectivityMonitor: ConnectivityMonitor
         let biometricMonitor: BiometricMonitor
         let writeQueue: WriteQueue
+        let draftStorage: DraftStorage
     }
 
     static func buildDependencies(
@@ -48,7 +50,9 @@ extension AppEnvironment {
             ? PersistenceController(inMemory: true)
             : PersistenceController.shared
         let draftStorage = DraftStorage(container: persistenceController.container)
-        let writeQueueExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
+        let offlineStore = OfflineStore(container: persistenceController.container)
+        let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
+        let writeQueueExecutor = CompositeWriteQueueExecutor(executors: [.note: notesExecutor])
         let writeQueue = WriteQueue(
             container: persistenceController.container,
             connectivityMonitor: connectivityMonitor,
@@ -105,6 +109,7 @@ extension AppEnvironment {
             ingestionStore: ingestionStore,
             tasksStore: tasksStore,
             scratchpadStore: scratchpadStore,
+            offlineStore: offlineStore,
             toastCenter: toastCenter,
             chatViewModel: chatViewModel,
             notesViewModel: notesViewModel,
@@ -118,7 +123,8 @@ extension AppEnvironment {
             realtimeClient: realtimeClient,
             connectivityMonitor: connectivityMonitor,
             biometricMonitor: biometricMonitor,
-            writeQueue: writeQueue
+            writeQueue: writeQueue,
+            draftStorage: draftStorage
         )
     }
 }
