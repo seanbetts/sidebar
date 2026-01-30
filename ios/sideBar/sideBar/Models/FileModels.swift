@@ -44,6 +44,8 @@ public struct IngestedFileMeta: Codable {
     public let sourceUrl: String?
     public let sourceMetadata: [String: AnyCodable]?
     public let createdAt: String
+    public let updatedAt: String?
+    public let deletedAt: String?
 }
 
 public struct IngestionJob: Codable {
@@ -71,6 +73,28 @@ extension IngestionListItem: StatusFilterable {
 
 public struct IngestionListResponse: Codable {
     public let items: [IngestionListItem]
+}
+
+public struct IngestionSyncResponse: Codable {
+    public let applied: [String]
+    public let files: [IngestedFileMeta]
+    public let conflicts: [IngestionSyncConflict]
+    public let updates: IngestionSyncUpdates?
+    public let serverUpdatedSince: String?
+}
+
+public struct IngestionSyncUpdates: Codable {
+    public let items: [IngestedFileMeta]
+}
+
+public struct IngestionSyncConflict: Codable {
+    public let operationId: String
+    public let op: String?
+    public let id: String?
+    public let clientUpdatedAt: String?
+    public let serverUpdatedAt: String?
+    public let serverFile: IngestedFileMeta?
+    public let reason: String?
 }
 
 public struct IngestionMetaResponse: Codable {

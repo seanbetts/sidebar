@@ -107,7 +107,9 @@ final class IngestionStoreTests: XCTestCase {
                 category: nil,
                 sourceUrl: nil,
                 sourceMetadata: nil,
-                createdAt: "2026-01-01T00:00:00Z"
+                createdAt: "2026-01-01T00:00:00Z",
+                updatedAt: nil,
+                deletedAt: nil
             ),
             job: IngestionJob(
                 status: "uploading",
@@ -146,25 +148,33 @@ private struct MockIngestionAPI: IngestionProviding {
         throw MockError.forced
     }
 
-    func pin(fileId: String, pinned: Bool) async throws {
+    func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
         _ = fileId
         _ = pinned
+        _ = clientUpdatedAt
         throw MockError.forced
     }
 
-    func delete(fileId: String) async throws {
+    func delete(fileId: String, clientUpdatedAt: String?) async throws {
         _ = fileId
+        _ = clientUpdatedAt
         throw MockError.forced
     }
 
-    func rename(fileId: String, filename: String) async throws {
+    func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws {
         _ = fileId
         _ = filename
+        _ = clientUpdatedAt
         throw MockError.forced
     }
 
     func ingestYouTube(url: String) async throws -> String {
         _ = url
+        throw MockError.forced
+    }
+
+    func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
+        _ = payload
         throw MockError.forced
     }
 }

@@ -74,9 +74,11 @@ final class TasksStoreTests: XCTestCase {
 @MainActor
 private final class TestNetworkStatus: NetworkStatusProviding {
     var isNetworkAvailable: Bool
+    var isOffline: Bool
 
-    init(isNetworkAvailable: Bool) {
+    init(isNetworkAvailable: Bool, isOffline: Bool = false) {
         self.isNetworkAvailable = isNetworkAvailable
+        self.isOffline = isOffline
     }
 }
 

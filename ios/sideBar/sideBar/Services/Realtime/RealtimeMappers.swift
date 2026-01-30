@@ -30,7 +30,8 @@ public struct RealtimeMappers {
             archived: (record.metadata?["archived"]?.value as? Bool) ?? false,
             youtubeTranscripts: nil,
             updatedAt: record.updatedAt,
-            lastOpenedAt: record.lastOpenedAt
+            lastOpenedAt: record.lastOpenedAt,
+            deletedAt: record.deletedAt
         )
     }
 
@@ -49,7 +50,9 @@ public struct RealtimeMappers {
             category: nil,
             sourceUrl: record.sourceUrl,
             sourceMetadata: record.sourceMetadata,
-            createdAt: record.createdAt ?? record.updatedAt ?? ""
+            createdAt: record.createdAt ?? record.updatedAt ?? "",
+            updatedAt: record.updatedAt,
+            deletedAt: record.deletedAt
         )
     }
 

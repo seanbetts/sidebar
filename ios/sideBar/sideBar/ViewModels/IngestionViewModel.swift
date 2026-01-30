@@ -59,6 +59,7 @@ public final class IngestionViewModel: ObservableObject {
     let temporaryStore: TemporaryFileStore
     let store: IngestionStore
     let uploadManager: IngestionUploadManaging
+    let networkStatus: (any NetworkStatusProviding)?
     var cancellables = Set<AnyCancellable>()
     var securityScopedURLs: [String: URL] = [:]
     var jobPollingTasks: [String: Task<Void, Never>] = [:]
@@ -70,12 +71,14 @@ public final class IngestionViewModel: ObservableObject {
         api: any IngestionProviding,
         store: IngestionStore,
         temporaryStore: TemporaryFileStore,
-        uploadManager: IngestionUploadManaging
+        uploadManager: IngestionUploadManaging,
+        networkStatus: (any NetworkStatusProviding)? = nil
     ) {
         self.api = api
         self.temporaryStore = temporaryStore
         self.store = store
         self.uploadManager = uploadManager
+        self.networkStatus = networkStatus
 
         store.$items
             .sink { [weak self] items in
