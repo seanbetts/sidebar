@@ -275,6 +275,13 @@ public final class WriteQueue: ObservableObject {
                 case .keepServer:
                     context.delete(write)
                 case .keepLocal:
+                    if write.entityType == WriteEntityType.task.rawValue,
+                       let rebasedPayload = rebaseTaskPayload(
+                        payloadData: write.payload,
+                        serverSnapshot: write.serverSnapshot
+                       ) {
+                        write.payload = rebasedPayload
+                    }
                     write.status = WriteQueueStatus.pending.rawValue
                     write.attempts = 0
                     write.lastError = nil
@@ -454,6 +461,29 @@ public final class WriteQueue: ObservableObject {
     private func encodeSnapshot(_ snapshot: ServerSnapshot?) throws -> Data? {
         guard let snapshot else { return nil }
         return try encoder.encode(snapshot)
+    }
+
+    private func rebaseTaskPayload(payloadData: Data, serverSnapshot: Data?) -> Data? {
+        guard let serverSnapshot else { return nil }
+        let decoder = JSONDecoder()
+        guard let conflict = try? decoder.decode(TaskSyncConflict.self, from: serverSnapshot),
+              let serverUpdatedAt = conflict.serverUpdatedAt,
+              let payload = try? decoder.decode(TaskOperationPayload.self, from: payloadData) else {
+            return nil
+        }
+        let rebased = TaskOperationPayload(
+            operationId: payload.operationId,
+            op: payload.op,
+            id: payload.id,
+            title: payload.title,
+            notes: payload.notes,
+            listId: payload.listId,
+            dueDate: payload.dueDate,
+            startDate: payload.startDate,
+            recurrenceRule: payload.recurrenceRule,
+            clientUpdatedAt: serverUpdatedAt
+        )
+        return try? encoder.encode(rebased)
     }
 
     private func performBackgroundTask<T>(

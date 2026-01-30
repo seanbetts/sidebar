@@ -35,21 +35,26 @@ extension AppEnvironment {
         let themeManager = ThemeManager()
         let toastCenter = ToastCenter()
         let realtimeClient = container.makeRealtimeClient(handler: nil)
-        let chatStore = ChatStore(conversationsAPI: container.conversationsAPI, cache: container.cacheClient)
-        let websitesStore = WebsitesStore(api: container.websitesAPI, cache: container.cacheClient)
-        let ingestionStore = IngestionStore(api: container.ingestionAPI, cache: container.cacheClient)
-        let tasksStore = TasksStore(api: container.tasksAPI, cache: container.cacheClient)
-        let scratchpadStore = ScratchpadStore()
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: container.apiClient.config.baseUrl,
             startMonitoring: !isTestMode
         )
+        let chatStore = ChatStore(conversationsAPI: container.conversationsAPI, cache: container.cacheClient)
+        let websitesStore = WebsitesStore(api: container.websitesAPI, cache: container.cacheClient)
+        let ingestionStore = IngestionStore(api: container.ingestionAPI, cache: container.cacheClient)
+        let scratchpadStore = ScratchpadStore()
         let biometricMonitor = BiometricMonitor()
         let persistenceController = isTestMode
             ? PersistenceController(inMemory: true)
             : PersistenceController.shared
         let draftStorage = DraftStorage(container: persistenceController.container)
         let offlineStore = OfflineStore(container: persistenceController.container)
+        let tasksStore = TasksStore(
+            api: container.tasksAPI,
+            cache: container.cacheClient,
+            offlineStore: offlineStore,
+            networkStatus: connectivityMonitor
+        )
         let notesStore = NotesStore(
             api: container.notesAPI,
             cache: container.cacheClient,
@@ -57,13 +62,20 @@ extension AppEnvironment {
             networkStatus: connectivityMonitor
         )
         let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
-        let writeQueueExecutor = CompositeWriteQueueExecutor(executors: [.note: notesExecutor])
+        let tasksExecutor = TasksWriteQueueExecutor(api: container.tasksAPI, store: tasksStore)
+        let writeQueueExecutor = CompositeWriteQueueExecutor(
+            executors: [
+                .note: notesExecutor,
+                .task: tasksExecutor
+            ]
+        )
         let writeQueue = WriteQueue(
             container: persistenceController.container,
             connectivityMonitor: connectivityMonitor,
             executor: writeQueueExecutor
         )
         notesStore.attachWriteQueue(writeQueue)
+        tasksStore.attachWriteQueue(writeQueue)
         let chatViewModel = ChatViewModel(
             chatAPI: container.chatAPI,
             conversationsAPI: container.conversationsAPI,
@@ -99,7 +111,12 @@ extension AppEnvironment {
             uploadManager: IngestionUploadManager(config: container.apiClient.config)
         )
         let websitesViewModel = WebsitesViewModel(api: container.websitesAPI, store: websitesStore)
-        let tasksViewModel = TasksViewModel(api: container.tasksAPI, store: tasksStore, toastCenter: toastCenter)
+        let tasksViewModel = TasksViewModel(
+            api: container.tasksAPI,
+            store: tasksStore,
+            toastCenter: toastCenter,
+            networkStatus: connectivityMonitor
+        )
         let memoriesViewModel = MemoriesViewModel(api: container.memoriesAPI, cache: container.cacheClient)
         let settingsViewModel = SettingsViewModel(
             settingsAPI: container.settingsAPI,

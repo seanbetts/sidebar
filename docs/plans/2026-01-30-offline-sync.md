@@ -682,9 +682,9 @@ public func resolveConflict(_ conflict: SyncConflict<NotePayload>, keepLocal: Bo
 
 
 ### Phase 3: Tasks
-- [ ] Add `TasksWriteQueueExecutor`
-- [ ] Extend `TasksStore`
-- [ ] Update `TasksViewModel`
+- [x] Add `TasksWriteQueueExecutor`
+- [x] Extend `TasksStore`
+- [x] Update `TasksViewModel`
 
 #### Phase 3 Detailed Task List (with file targets)
 1) Tasks offline snapshot

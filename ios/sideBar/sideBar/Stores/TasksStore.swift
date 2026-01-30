@@ -17,11 +17,26 @@ public final class TasksStore: ObservableObject {
 
     private let api: any TasksProviding
     private let cache: CacheClient
+    private let offlineStore: OfflineStore?
+    private let networkStatus: (any NetworkStatusProviding)?
     private var pendingRemovals: Set<String> = []
+    private var currentScope: String?
+    weak var writeQueue: WriteQueue?
 
-    public init(api: any TasksProviding, cache: CacheClient) {
+    public init(
+        api: any TasksProviding,
+        cache: CacheClient,
+        offlineStore: OfflineStore? = nil,
+        networkStatus: (any NetworkStatusProviding)? = nil
+    ) {
         self.api = api
         self.cache = cache
+        self.offlineStore = offlineStore
+        self.networkStatus = networkStatus
+    }
+
+    public func attachWriteQueue(_ writeQueue: WriteQueue) {
+        self.writeQueue = writeQueue
     }
 
     public func load(selection: TaskSelection, force: Bool = false) async {
@@ -34,6 +49,15 @@ public final class TasksStore: ObservableObject {
                 apply(list: cached, persist: false)
                 Task { [weak self] in
                     await self?.refresh(selection: fallbackSelection)
+                }
+                return
+            }
+            if !force, let offline = offlineSnapshot(for: fallbackSelection) {
+                apply(list: offline, persist: false)
+                if networkStatus?.isNetworkAvailable ?? true {
+                    Task { [weak self] in
+                        await self?.refresh(selection: fallbackSelection)
+                    }
                 }
                 return
             }
@@ -62,6 +86,16 @@ public final class TasksStore: ObservableObject {
             finishLoading(isSearch: selection.isSearch)
             return
         }
+        if !force, let offline = offlineSnapshot(for: selection) {
+            apply(list: offline, persist: false)
+            if networkStatus?.isNetworkAvailable ?? true {
+                Task { [weak self] in
+                    await self?.refresh(selection: selection)
+                }
+            }
+            finishLoading(isSearch: selection.isSearch)
+            return
+        }
         await refresh(selection: selection)
         finishLoading(isSearch: selection.isSearch)
     }
@@ -72,6 +106,15 @@ public final class TasksStore: ObservableObject {
             counts = cached
             Task { [weak self] in
                 await self?.refreshCounts()
+            }
+            return
+        }
+        if !force, let offline = offlineStore?.get(key: CacheKeys.tasksCounts, as: TaskCountsResponse.self) {
+            counts = offline
+            if networkStatus?.isNetworkAvailable ?? true {
+                Task { [weak self] in
+                    await self?.refreshCounts()
+                }
             }
             return
         }
@@ -120,6 +163,12 @@ public final class TasksStore: ObservableObject {
             let response = try await api.counts()
             counts = response
             cache.set(key: CacheKeys.tasksCounts, value: response, ttlSeconds: CachePolicy.tasksCounts)
+            offlineStore?.set(
+                key: CacheKeys.tasksCounts,
+                entityType: "taskCounts",
+                value: response,
+                lastSyncAt: nil
+            )
         } catch {
             // Ignore counts refresh failures; keep last known counts.
         }
@@ -148,6 +197,7 @@ public final class TasksStore: ObservableObject {
         tasks = list.tasks.filter { !pendingRemovals.contains($0.id) }
         groups = list.groups ?? []
         projects = list.projects ?? []
+        currentScope = list.scope
 
         // Clean up pendingRemovals: remove IDs that are no longer in the server response
         // (confirms the server has processed the removal)
@@ -157,6 +207,12 @@ public final class TasksStore: ObservableObject {
 
             let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
             cache.set(key: cacheKey, value: list, ttlSeconds: CachePolicy.tasksList)
+            offlineStore?.set(
+                key: cacheKey,
+                entityType: "taskList",
+                value: list,
+                lastSyncAt: nil
+            )
         }
     }
 
@@ -167,6 +223,226 @@ public final class TasksStore: ObservableObject {
             isLoading = false
         }
     }
+
+    private func offlineSnapshot(for selection: TaskSelection) -> TaskListResponse? {
+        guard let offlineStore else { return nil }
+        let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
+        return offlineStore.get(key: cacheKey, as: TaskListResponse.self)
+    }
+}
+
+extension TasksStore {
+    func enqueueOperation(_ operation: TaskOperationPayload) async throws {
+        guard let writeQueue else { throw WriteQueueError.missingQueue }
+        try await writeQueue.enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: operation.id,
+            payload: operation
+        )
+    }
+
+    func enqueueBatch(_ batch: TaskOperationBatch) async throws {
+        for operation in batch.operations {
+            try await enqueueOperation(operation)
+        }
+    }
+
+    func applyLocalOperation(_ operation: TaskOperationPayload) {
+        guard let kind = localOperation(from: operation.op) else { return }
+        applyLocalOperation(operation, kind: kind)
+        persistCurrentSnapshot()
+    }
+
+    func removePendingTaskPlaceholder(operationId: String) {
+        guard let offlineStore else { return }
+        let key = pendingTaskKey(operationId: operationId)
+        guard let placeholderId = offlineStore.get(key: key, as: String.self) else { return }
+        tasks.removeAll { $0.id == placeholderId }
+        offlineStore.remove(key: key)
+        persistCurrentSnapshot()
+    }
+
+    func lastSyncToken() -> String? {
+        offlineStore?.get(key: CacheKeys.tasksSync, as: String.self)
+    }
+
+    func updateLastSyncToken(_ token: String?) {
+        guard let offlineStore else { return }
+        guard let token else {
+            offlineStore.remove(key: CacheKeys.tasksSync)
+            return
+        }
+        offlineStore.set(key: CacheKeys.tasksSync, entityType: "taskSync", value: token, lastSyncAt: nil)
+    }
+
+    func refreshAfterSync() async {
+        guard selection != .none else {
+            return
+        }
+        await load(selection: selection, force: true)
+        await loadCounts(force: true)
+    }
+
+    private func persistCurrentSnapshot() {
+        guard selection != .none else { return }
+        let scopeValue = currentScope ?? selection.scope ?? selection.cacheKey
+        let snapshot = TaskListResponse(
+            scope: scopeValue,
+            generatedAt: nil,
+            tasks: tasks,
+            projects: projects,
+            groups: groups
+        )
+        let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
+        cache.set(key: cacheKey, value: snapshot, ttlSeconds: CachePolicy.tasksList)
+        offlineStore?.set(key: cacheKey, entityType: "taskList", value: snapshot, lastSyncAt: nil)
+    }
+
+    private func updateTask(id: String, update: (TaskItem) -> TaskItem) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        tasks[index] = update(tasks[index])
+    }
+
+    private func addLocalTask(operation: TaskOperationPayload, title: String) {
+        let placeholderId = "local-\(UUID().uuidString)"
+        registerPendingTask(operationId: operation.operationId, placeholderId: placeholderId)
+        let task = TaskItem(
+            id: placeholderId,
+            title: title,
+            status: "open",
+            deadline: operation.dueDate,
+            notes: operation.notes,
+            projectId: operation.listId,
+            groupId: nil,
+            repeating: operation.recurrenceRule != nil,
+            repeatTemplate: nil,
+            recurrenceRule: operation.recurrenceRule,
+            nextInstanceDate: nil,
+            updatedAt: nil,
+            deletedAt: nil,
+            isPreview: true
+        )
+        tasks.insert(task, at: 0)
+    }
+
+    private func updatedTask(
+        _ task: TaskItem,
+        title: String? = nil,
+        notes: String? = nil,
+        projectId: String? = nil,
+        deadline: String? = nil,
+        recurrenceRule: RecurrenceRule? = nil,
+        repeating: Bool? = nil
+    ) -> TaskItem {
+        TaskItem(
+            id: task.id,
+            title: title ?? task.title,
+            status: task.status,
+            deadline: deadline ?? task.deadline,
+            notes: notes ?? task.notes,
+            projectId: projectId ?? task.projectId,
+            groupId: task.groupId,
+            repeating: repeating ?? task.repeating,
+            repeatTemplate: task.repeatTemplate,
+            recurrenceRule: recurrenceRule ?? task.recurrenceRule,
+            nextInstanceDate: task.nextInstanceDate,
+            updatedAt: task.updatedAt,
+            deletedAt: task.deletedAt,
+            isPreview: task.isPreview
+        )
+    }
+
+    private func registerPendingTask(operationId: String, placeholderId: String) {
+        guard let offlineStore else { return }
+        let key = pendingTaskKey(operationId: operationId)
+        offlineStore.set(key: key, entityType: "taskPending", value: placeholderId, lastSyncAt: nil)
+    }
+
+    private func pendingTaskKey(operationId: String) -> String {
+        "tasks.pending.\(operationId)"
+    }
+
+    private func localOperation(from op: String) -> LocalTaskOperation? {
+        switch op.lowercased() {
+        case "add":
+            return .add
+        case "complete", "trash":
+            return .remove
+        case "rename":
+            return .rename
+        case "notes":
+            return .notes
+        case "move":
+            return .move
+        case "set_due", "defer":
+            return .setDue
+        case "clear_due":
+            return .clearDue
+        case "set_repeat":
+            return .setRepeat
+        default:
+            return nil
+        }
+    }
+
+    private func applyLocalOperation(_ operation: TaskOperationPayload, kind: LocalTaskOperation) {
+        switch kind {
+        case .add:
+            guard let title = operation.title else { return }
+            addLocalTask(operation: operation, title: title)
+        case .remove:
+            guard let taskId = operation.id else { return }
+            _ = removeTask(id: taskId)
+        case .rename:
+            updateOperationTask(operation) { task in
+                updatedTask(task, title: operation.title)
+            }
+        case .notes:
+            updateOperationTask(operation) { task in
+                updatedTask(task, notes: operation.notes)
+            }
+        case .move:
+            updateOperationTask(operation) { task in
+                updatedTask(task, projectId: operation.listId)
+            }
+        case .setDue:
+            updateOperationTask(operation) { task in
+                updatedTask(task, deadline: operation.dueDate)
+            }
+        case .clearDue:
+            updateOperationTask(operation) { task in
+                updatedTask(task, deadline: nil)
+            }
+        case .setRepeat:
+            updateOperationTask(operation) { task in
+                updatedTask(
+                    task,
+                    recurrenceRule: operation.recurrenceRule,
+                    repeating: operation.recurrenceRule != nil
+                )
+            }
+        }
+    }
+
+    private func updateOperationTask(
+        _ operation: TaskOperationPayload,
+        update: (TaskItem) -> TaskItem
+    ) {
+        guard let taskId = operation.id else { return }
+        updateTask(id: taskId, update: update)
+    }
+}
+
+private enum LocalTaskOperation {
+    case add
+    case remove
+    case rename
+    case notes
+    case move
+    case setDue
+    case clearDue
+    case setRepeat
 }
 
 extension TaskSelection {

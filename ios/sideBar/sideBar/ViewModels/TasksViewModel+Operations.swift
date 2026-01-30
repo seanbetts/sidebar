@@ -6,6 +6,17 @@ extension TasksViewModel {
     }
 
     public func completeTask(task: TaskItem) async {
+        if !networkStatus.isNetworkAvailable {
+            await queueOfflineOperation(
+                TaskOperationPayload(
+                    operationId: TaskOperationId.make(),
+                    op: "complete",
+                    id: task.id,
+                    clientUpdatedAt: task.updatedAt
+                )
+            )
+            return
+        }
         // Optimistically remove the task immediately
         let removedTask = store.removeTask(id: task.id)
 
@@ -142,6 +153,10 @@ extension TasksViewModel {
 
     private func applyTaskOperation(_ operation: TaskOperationPayload) async {
         errorMessage = nil
+        if !networkStatus.isNetworkAvailable {
+            await queueOfflineOperation(operation)
+            return
+        }
         do {
             let response = try await api.apply(TaskOperationBatch(operations: [operation]))
             if !response.nextTasks.isEmpty {
@@ -155,6 +170,17 @@ extension TasksViewModel {
             await loadCounts(force: true)
         } catch {
             errorMessage = ErrorMapping.message(for: error)
+        }
+    }
+
+    private func queueOfflineOperation(_ operation: TaskOperationPayload) async {
+        do {
+            try await store.enqueueOperation(operation)
+            store.applyLocalOperation(operation)
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
+        } catch {
+            errorMessage = "Failed to queue task changes"
         }
     }
 }
