@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 import XCTest
 @testable import sideBar
@@ -63,5 +64,32 @@ final class OfflineStoreTests: XCTestCase {
 
         let loaded: Payload? = store.get(key: "notes/1", as: Payload.self)
         XCTAssertNil(loaded)
+    }
+
+    func testCleanupSnapshotsPrunesNoteEntries() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let store = OfflineStore(container: persistence.container)
+
+        let notes = [
+            NotePayload(id: "note-1", name: "One", content: "A", path: "/one.md", modified: 1),
+            NotePayload(id: "note-2", name: "Two", content: "B", path: "/two.md", modified: 2),
+            NotePayload(id: "note-3", name: "Three", content: "C", path: "/three.md", modified: 3)
+        ]
+
+        for note in notes {
+            store.set(key: CacheKeys.note(id: note.id), entityType: "note", value: note, lastSyncAt: nil)
+            store.set(key: CacheKeys.note(id: note.path), entityType: "note", value: note, lastSyncAt: nil)
+        }
+
+        await store.cleanupSnapshots(retention: OfflineSnapshotRetention(maxNotes: 2))
+
+        let request = OfflineEntry.fetchRequest()
+        request.predicate = NSPredicate(format: "entityType == %@", "note")
+        let entries = try persistence.container.viewContext.fetch(request)
+        let decoded = entries.compactMap { try? JSONDecoder().decode(NotePayload.self, from: $0.payload) }
+        let remainingIds = Set(decoded.map(\.id))
+
+        XCTAssertEqual(remainingIds, Set(["note-2", "note-3"]))
+        XCTAssertEqual(entries.count, 4)
     }
 }

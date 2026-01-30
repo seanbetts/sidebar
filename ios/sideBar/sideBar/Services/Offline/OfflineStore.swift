@@ -2,6 +2,28 @@ import CoreData
 import Foundation
 import OSLog
 
+/// Limits for retained offline snapshots by entity type.
+public struct OfflineSnapshotRetention: Sendable {
+    public let maxNotes: Int
+    public let maxWebsites: Int
+    public let maxFiles: Int
+    public let maxConversations: Int
+
+    public init(
+        maxNotes: Int = 200,
+        maxWebsites: Int = 500,
+        maxFiles: Int = 500,
+        maxConversations: Int = 100
+    ) {
+        self.maxNotes = maxNotes
+        self.maxWebsites = maxWebsites
+        self.maxFiles = maxFiles
+        self.maxConversations = maxConversations
+    }
+
+    public static let `default` = OfflineSnapshotRetention()
+}
+
 @MainActor
 /// Durable Core Data-backed storage for offline snapshots.
 public final class OfflineStore {
@@ -42,6 +64,13 @@ public final class OfflineStore {
 
     public func remove(key: String) {
         deleteEntry(forKey: key)
+    }
+
+    public func cleanupSnapshots(retention: OfflineSnapshotRetention = .default) async {
+        await pruneNoteSnapshots(keepLatest: retention.maxNotes)
+        await pruneEntries(entityType: "website", keepLatest: retention.maxWebsites)
+        await pruneEntries(entityType: "file", keepLatest: retention.maxFiles)
+        await pruneEntries(entityType: "conversation", keepLatest: retention.maxConversations)
     }
 
     // MARK: - Core Data Helpers
@@ -142,6 +171,79 @@ public final class OfflineStore {
                 try context.save()
             } catch {
                 logger.error("OfflineStore remove failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func pruneNoteSnapshots(keepLatest maxCount: Int) async {
+        guard maxCount >= 0 else { return }
+        do {
+            try await performBackgroundTask { context in
+                let decoder = JSONDecoder()
+                let request = OfflineEntry.fetchRequest()
+                request.predicate = NSPredicate(format: "entityType == %@", "note")
+                let entries = try context.fetch(request)
+                var entriesById: [String: [OfflineEntry]] = [:]
+                var lastTouched: [String: Date] = [:]
+                for entry in entries {
+                    guard let payload = try? decoder.decode(NotePayload.self, from: entry.payload) else {
+                        continue
+                    }
+                    entriesById[payload.id, default: []].append(entry)
+                    let modifiedDate = payload.modified.map { Date(timeIntervalSince1970: $0) } ?? entry.updatedAt
+                    if let existing = lastTouched[payload.id] {
+                        if modifiedDate > existing {
+                            lastTouched[payload.id] = modifiedDate
+                        }
+                    } else {
+                        lastTouched[payload.id] = modifiedDate
+                    }
+                }
+                let sortedIds = lastTouched
+                    .sorted { $0.value > $1.value }
+                    .map(\.key)
+                let keepIds = Set(sortedIds.prefix(maxCount))
+                for (noteId, noteEntries) in entriesById where !keepIds.contains(noteId) {
+                    noteEntries.forEach { context.delete($0) }
+                }
+            }
+        } catch {
+            logger.error("OfflineStore prune notes failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func pruneEntries(entityType: String, keepLatest maxCount: Int) async {
+        guard maxCount >= 0 else { return }
+        do {
+            try await performBackgroundTask { context in
+                let request = OfflineEntry.fetchRequest()
+                request.predicate = NSPredicate(format: "entityType == %@", entityType)
+                request.sortDescriptors = [NSSortDescriptor(keyPath: \OfflineEntry.updatedAt, ascending: false)]
+                let entries = try context.fetch(request)
+                guard entries.count > maxCount else { return }
+                let deleteEntries = entries.suffix(from: maxCount)
+                deleteEntries.forEach { context.delete($0) }
+            }
+        } catch {
+            logger.error("OfflineStore prune failed for \(entityType, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func performBackgroundTask<T>(
+        _ work: @escaping (NSManagedObjectContext) throws -> T
+    ) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            container.performBackgroundTask { context in
+                context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+                do {
+                    let result = try work(context)
+                    if context.hasChanges {
+                        try context.save()
+                    }
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
         }
     }

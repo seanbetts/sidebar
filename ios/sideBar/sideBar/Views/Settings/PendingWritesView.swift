@@ -14,7 +14,12 @@ struct PendingWritesView: View {
                 )
             } else {
                 ForEach(pendingWrites) { write in
-                    PendingWriteRow(write: write)
+                    PendingWriteRow(write: write) { resolution in
+                        Task {
+                            await environment.writeQueue.resolveConflict(id: write.id, resolution: resolution)
+                            await reloadPendingWrites()
+                        }
+                    }
                 }
                 .onDelete(perform: deletePendingWrites)
             }
@@ -64,6 +69,7 @@ struct PendingWritesView: View {
 
 private struct PendingWriteRow: View {
     let write: PendingWriteSummary
+    let onResolveConflict: (WriteQueueConflictResolution) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -76,7 +82,22 @@ private struct PendingWriteRow: View {
                     .font(DesignTokens.Typography.captionSemibold)
                     .foregroundStyle(statusColor)
             }
-            if let error = write.lastError {
+            if let conflictReason = write.conflictReason {
+                Text(conflictReason)
+                    .font(DesignTokens.Typography.caption)
+                    .foregroundStyle(DesignTokens.Colors.error)
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    Button("Keep Local") {
+                        onResolveConflict(.keepLocal)
+                    }
+                    .buttonStyle(.bordered)
+                    Button("Keep Server") {
+                        onResolveConflict(.keepServer)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+            if write.conflictReason == nil, let error = write.lastError {
                 Text(error)
                     .font(DesignTokens.Typography.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
@@ -112,10 +133,16 @@ private struct PendingWriteRow: View {
     }
 
     private var statusText: String {
-        write.status.capitalized
+        if write.conflictReason != nil {
+            return "Conflict"
+        }
+        return write.status.capitalized
     }
 
     private var statusColor: Color {
+        if write.conflictReason != nil {
+            return DesignTokens.Colors.error
+        }
         switch write.status {
         case WriteQueueStatus.failed.rawValue:
             return DesignTokens.Colors.error

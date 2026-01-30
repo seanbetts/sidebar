@@ -13,7 +13,7 @@ enum WriteOperation: String {
     case copy
 }
 
-enum WriteEntityType: String {
+enum WriteEntityType: String, Codable {
     case note
     case task
     case message
@@ -36,6 +36,7 @@ struct PendingWriteSummary: Identifiable {
     let status: String
     let attempts: Int16
     let lastError: String?
+    let conflictReason: String?
     let createdAt: Date
     let lastAttemptAt: Date?
 }
@@ -59,6 +60,11 @@ enum WriteQueueError: Error {
 struct WriteQueueConflictError: Error {
     let reason: String
     let serverSnapshot: Data?
+}
+
+enum WriteQueueConflictResolution {
+    case keepLocal
+    case keepServer
 }
 
 @MainActor
@@ -181,6 +187,7 @@ public final class WriteQueue: ObservableObject {
                         status: write.status,
                         attempts: write.attempts,
                         lastError: write.lastError,
+                        conflictReason: write.conflictReason,
                         createdAt: write.createdAt,
                         lastAttemptAt: write.lastAttemptAt
                     )
@@ -255,6 +262,32 @@ public final class WriteQueue: ObservableObject {
         Task { [weak self] in
             await self?.processQueue()
         }
+    }
+
+    func resolveConflict(id: UUID, resolution: WriteQueueConflictResolution) async {
+        do {
+            try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.fetchLimit = 1
+                request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+                guard let write = try context.fetch(request).first else { return }
+                switch resolution {
+                case .keepServer:
+                    context.delete(write)
+                case .keepLocal:
+                    write.status = WriteQueueStatus.pending.rawValue
+                    write.attempts = 0
+                    write.lastError = nil
+                    write.lastAttemptAt = nil
+                    write.conflictReason = nil
+                    write.serverSnapshot = nil
+                }
+            }
+        } catch {
+            return
+        }
+        await loadPendingCount()
+        resumeProcessing()
     }
 
     // MARK: - Private

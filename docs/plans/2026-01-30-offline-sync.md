@@ -468,6 +468,7 @@ Add tests in `ios/sideBar/sideBarTests/`:
 - [ ] Idempotency for creates (idempotency keys or client-generated IDs)
 - [ ] Conflict responses include server snapshot to avoid extra fetches
 - [ ] Soft-delete/tombstone fields included in list/sync responses for idempotent deletes
+ - Sequencing: land after Phase 2 (notes fully wired) and before Phase 3/4 (tasks/websites/files)
 
 ### Phase 1: Core Offline Infrastructure
 - Completed (prior work)
@@ -486,9 +487,9 @@ Add tests in `ios/sideBar/sideBarTests/`:
 - [x] Add queue size cap + overflow handling (block vs confirm drop)
 - [x] Add synced draft cleanup (folded from 2026-01-22 plan)
 - [x] Align offline banner with syncing + pending count (folded from 2026-01-22 plan)
-- [ ] Implement conflict detection + resolution policy (updated_at/modified + task sync conflicts) (notes only so far)
+- [x] Implement conflict detection + resolution policy (updated_at/modified + task sync conflicts) (notes only so far)
 - [x] Implement queue overflow UX (block + user-initiated drop oldest)
-- [ ] Implement snapshot retention/size limits + cleanup policy
+- [x] Implement snapshot retention/size limits + cleanup policy
 
 #### Phase 1 Detailed Task List (with file targets)
 1) Core Data model updates
@@ -517,6 +518,7 @@ public final class OfflineStore {
    - Use Core Data background contexts for read/write; only deliver decoded results on the main actor.
    - Set store protection to `NSFileProtectionCompleteUntilFirstUserAuthentication` for offline snapshots.
    - Define retention/size limits per entity type (especially chat/files) and cleanup routines.
+   - Status: done for notes/websites/files/conversations (counts), pending for task-specific pruning rules.
 
 3) Sync state + conflict types
    - Add:
@@ -652,7 +654,7 @@ public func enqueueDelete(noteId: String) async
 ```
 public func resolveConflict(_ conflict: SyncConflict<NotePayload>, keepLocal: Bool) async
 ```
-   - Status: partial (queue conflict detection for updates; UI wiring pending)
+   - Status: partial (queue conflict detection for update/rename/move/pin/archive/delete; pending writes UI supports keep local/server)
 
 #### Phase 2 Acceptance Checklist
 - Notes tree + note content available offline after restart.
