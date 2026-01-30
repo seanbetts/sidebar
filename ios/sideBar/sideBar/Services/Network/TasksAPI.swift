@@ -28,7 +28,7 @@ public struct TaskOperationBatch: Encodable {
 }
 
 /// Encodes an individual task operation for sync.
-public struct TaskOperationPayload: Encodable {
+public struct TaskOperationPayload: Codable, Equatable {
     public let operationId: String
     public let op: String
     public let id: String?

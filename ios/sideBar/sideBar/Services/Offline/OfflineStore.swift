@@ -21,7 +21,6 @@ public struct OfflineSnapshotRetention: Sendable {
         self.maxConversations = maxConversations
     }
 
-    public static let `default` = OfflineSnapshotRetention()
 }
 
 @MainActor
@@ -66,7 +65,7 @@ public final class OfflineStore {
         deleteEntry(forKey: key)
     }
 
-    public func cleanupSnapshots(retention: OfflineSnapshotRetention = .default) async {
+    public func cleanupSnapshots(retention: OfflineSnapshotRetention = OfflineSnapshotRetention()) async {
         await pruneNoteSnapshots(keepLatest: retention.maxNotes)
         await pruneEntries(entityType: "website", keepLatest: retention.maxWebsites)
         await pruneEntries(entityType: "file", keepLatest: retention.maxFiles)

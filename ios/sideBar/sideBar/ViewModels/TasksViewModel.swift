@@ -22,14 +22,21 @@ public final class TasksViewModel: ObservableObject {
     let api: any TasksProviding
     let store: TasksStore
     let toastCenter: ToastCenter
+    let networkStatus: any NetworkStatusProviding
     private var cancellables = Set<AnyCancellable>()
     private var searchDebounce: Task<Void, Never>?
     private var lastNonSearchSelection: TaskSelection = .today
 
-    public init(api: any TasksProviding, store: TasksStore, toastCenter: ToastCenter) {
+    public init(
+        api: any TasksProviding,
+        store: TasksStore,
+        toastCenter: ToastCenter,
+        networkStatus: any NetworkStatusProviding
+    ) {
         self.api = api
         self.store = store
         self.toastCenter = toastCenter
+        self.networkStatus = networkStatus
 
         store.$tasks
             .sink { [weak self] tasks in
@@ -307,6 +314,20 @@ extension TasksViewModel {
             recurrenceRule: nil,
             clientUpdatedAt: nil
         )
+
+        if !networkStatus.isNetworkAvailable {
+            do {
+                try await store.enqueueOperation(operation)
+                store.applyLocalOperation(operation)
+                newTaskDraft = nil
+                toastCenter.show(message: "Task queued for sync.")
+            } catch WriteQueueError.queueFull {
+                newTaskError = "Sync queue full. Review pending changes."
+            } catch {
+                newTaskError = "Failed to queue task"
+            }
+            return
+        }
 
         do {
             _ = try await api.apply(TaskOperationBatch(operations: [operation]))

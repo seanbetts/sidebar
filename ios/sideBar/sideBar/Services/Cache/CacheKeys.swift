@@ -16,6 +16,7 @@ public enum CacheKeys {
     public nonisolated static let skillsList = "settings.skills"
     public nonisolated static let profileImage = "settings.profile-image"
     public nonisolated static let tasksCounts = "tasks.counts"
+    public nonisolated static let tasksSync = "tasks.sync"
 
     public nonisolated static func note(id: String) -> String {
         "notes.note.\(id)"
