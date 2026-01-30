@@ -75,11 +75,7 @@ def test_seed_and_delete_round_trip(db_session):
     )
     assert conversations
 
-    memories = (
-        db_session.query(UserMemory)
-        .filter(UserMemory.user_id == user_id)
-        .all()
-    )
+    memories = db_session.query(UserMemory).filter(UserMemory.user_id == user_id).all()
     assert memories
 
     tasks = (

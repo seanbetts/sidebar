@@ -234,9 +234,7 @@ def test_trash_task_series_removes_instances(db_session):
 
 def test_list_tasks_by_scope_and_counts(db_session):
     today = date.today()
-    TaskService.create_task(
-        db_session, "user", "Inbox task", status="inbox"
-    )
+    TaskService.create_task(db_session, "user", "Inbox task", status="inbox")
     TaskService.create_task(
         db_session,
         "user",

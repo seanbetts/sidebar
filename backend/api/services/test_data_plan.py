@@ -195,8 +195,7 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
         SeedNote(
             title="Archived draft - Old brief",
             content=(
-                "# Old brief\n\n"
-                "This draft was superseded by the new product brief.\n"
+                "# Old brief\n\nThis draft was superseded by the new product brief.\n"
             ),
             folder="Archive/2025",
             tags=[seed_tag, "archive"],
@@ -381,7 +380,7 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
 
     settings = SeedSettings(
         system_prompt=(
-            f"Seed tag: {seed_tag}\n" "You are a helpful assistant for a beta tester."
+            f"Seed tag: {seed_tag}\nYou are a helpful assistant for a beta tester."
         ),
         first_message_prompt="Welcome to your seeded workspace.",
         communication_style="Concise, actionable, and friendly.",

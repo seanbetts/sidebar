@@ -11,9 +11,11 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.exceptions import NoteNotFoundError
 from api.models.note import Note
+from api.services.notes_helpers import build_notes_tree, is_archived_folder
 from api.services.notes_service import NotesService
 from api.services.workspace_service import WorkspaceService
 from api.utils.search import build_text_search_filter
+from api.utils.validation import parse_uuid
 
 
 class NotesWorkspaceService(WorkspaceService[Note]):
@@ -51,7 +53,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
     @classmethod
     def _build_tree(cls, items: list[Note], **kwargs: object) -> dict:
-        return NotesService.build_notes_tree(items)
+        return build_notes_tree(items)
 
     @classmethod
     def _search_items(
@@ -89,7 +91,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             "modified": item.updated_at.timestamp() if item.updated_at else None,
             "pinned": bool(metadata.get("pinned")),
             "pinned_order": metadata.get("pinned_order"),
-            "archived": NotesService.is_archived_folder(folder),
+            "archived": is_archived_folder(folder),
         }
 
     @staticmethod
@@ -262,6 +264,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         title: str | None = None,
         path: str = "",
         folder: str = "",
+        client_id: str | None = None,
     ) -> dict:
         """Create a note using workspace request data.
 
@@ -272,6 +275,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             title: Optional note title.
             path: Optional file path hint.
             folder: Optional folder override.
+            client_id: Optional client-generated note ID.
 
         Returns:
             Creation result payload.
@@ -281,8 +285,14 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             folder_path = Path(path).parent.as_posix()
             resolved_folder = "" if folder_path == "." else folder_path
 
+        note_uuid = parse_uuid(client_id, "note", "id") if client_id else None
         created = NotesService.create_note(
-            db, user_id, content, title=title, folder=resolved_folder
+            db,
+            user_id,
+            content,
+            title=title,
+            folder=resolved_folder,
+            note_id=note_uuid,
         )
         try:
             return NotesWorkspaceService.build_note_payload(
@@ -303,7 +313,14 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             }
 
     @staticmethod
-    def update_note(db: Session, user_id: str, note_id: str, content: str) -> dict:
+    def update_note(
+        db: Session,
+        user_id: str,
+        note_id: str,
+        content: str,
+        *,
+        client_updated_at: datetime | None = None,
+    ) -> dict:
         """Update note content using workspace request data.
 
         Args:
@@ -311,6 +328,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             user_id: Current user ID.
             note_id: Note ID (UUID string).
             content: Updated markdown content.
+            client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
             Update result payload.
@@ -319,11 +337,24 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         if not note_uuid:
             raise ValueError("Invalid note ID")
 
-        updated = NotesService.update_note(db, user_id, note_uuid, content)
+        updated = NotesService.update_note(
+            db,
+            user_id,
+            note_uuid,
+            content,
+            client_updated_at=client_updated_at,
+        )
         return NotesWorkspaceService.build_note_payload(updated, include_content=True)
 
     @staticmethod
-    def rename_note(db: Session, user_id: str, note_id: str, new_name: str) -> dict:
+    def rename_note(
+        db: Session,
+        user_id: str,
+        note_id: str,
+        new_name: str,
+        *,
+        client_updated_at: datetime | None = None,
+    ) -> dict:
         """Rename a note (updates title only, content unchanged).
 
         Args:
@@ -331,6 +362,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             user_id: Current user ID.
             note_id: Note ID (UUID string).
             new_name: New filename or title.
+            client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
             Rename result payload.
@@ -343,21 +375,15 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         if not note_uuid:
             raise ValueError("Invalid note ID")
 
-        note = (
-            db.query(Note)
-            .filter(
-                Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None)
-            )
-            .first()
-        )
-        if not note:
-            raise NoteNotFoundError("Note not found")
-
         title = Path(new_name).stem
-        note.title = title
-        note.updated_at = datetime.now(UTC)
-        db.commit()
-        return NotesWorkspaceService.build_note_payload(note, include_content=True)
+        updated = NotesService.rename_note(
+            db,
+            user_id,
+            note_uuid,
+            title,
+            client_updated_at=client_updated_at,
+        )
+        return NotesWorkspaceService.build_note_payload(updated, include_content=True)
 
     @staticmethod
     def download_note(db: Session, user_id: str, note_id: str) -> dict:

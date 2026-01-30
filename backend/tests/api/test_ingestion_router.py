@@ -108,9 +108,7 @@ def test_ingestion_meta_syncs_failed_transcript_status(test_client, test_db):
     test_db.add(job)
     test_db.commit()
 
-    response = test_client.get(
-        f"/api/v1/files/{file_id}/meta", headers=_auth_headers()
-    )
+    response = test_client.get(f"/api/v1/files/{file_id}/meta", headers=_auth_headers())
     assert response.status_code == 200
 
     test_db.refresh(website)

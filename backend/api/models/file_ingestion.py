@@ -18,6 +18,7 @@ class IngestedFile(Base):
     __table_args__ = (
         Index("idx_ingested_files_user_id", "user_id"),
         Index("idx_ingested_files_created_at", "created_at"),
+        Index("idx_ingested_files_updated_at", "updated_at"),
         Index("idx_ingested_files_deleted_at", "deleted_at"),
         Index("idx_ingested_files_last_opened_at", "last_opened_at"),
         Index("idx_ingested_files_user_last_opened", "user_id", "last_opened_at"),
@@ -38,6 +39,9 @@ class IngestedFile(Base):
     pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     pinned_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
     last_opened_at: Mapped[datetime | None] = mapped_column(

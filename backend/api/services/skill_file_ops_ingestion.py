@@ -766,7 +766,7 @@ def _copy_storage_key(
     """Build a new storage key for a copied derivative."""
     prefix = f"{user_id}/files/{source_id}/"
     if storage_key.startswith(prefix):
-        return f"{user_id}/files/{target_id}/{storage_key[len(prefix):]}"
+        return f"{user_id}/files/{target_id}/{storage_key[len(prefix) :]}"
     return f"{user_id}/files/{target_id}/derivatives/{Path(storage_key).name}"
 
 

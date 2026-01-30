@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from api.db.base import Base
+from api.exceptions import ConflictError
 from api.schemas.filters import NoteFilters
 from api.services.notes_service import NotesService
 from sqlalchemy import text
@@ -113,3 +114,17 @@ def test_list_notes_filters(db_session):
     )
     assert len(filtered) == 1
     assert filtered[0].id == note_a.id
+
+
+def test_update_note_conflict(db_session):
+    note = NotesService.create_note(db_session, "test_user", "# Title\n\nBody")
+    stale = note.updated_at - timedelta(seconds=10)
+
+    with pytest.raises(ConflictError):
+        NotesService.update_note(
+            db_session,
+            "test_user",
+            note.id,
+            "# Title\n\nUpdated",
+            client_updated_at=stale,
+        )

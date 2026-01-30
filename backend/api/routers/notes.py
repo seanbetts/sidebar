@@ -1,4 +1,5 @@
 """Notes router for database-backed note operations."""
+# ruff: noqa: B008
 
 from __future__ import annotations
 
@@ -13,11 +14,15 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NoteNotFoundError, NotFoundError
+from api.routers.notes_folders import router as notes_folders_router
+from api.services.notes_helpers import note_sync_payload
 from api.services.notes_service import NotesService
+from api.services.notes_sync_service import NotesSyncService
 from api.services.notes_workspace_service import NotesWorkspaceService
-from api.utils.validation import parse_uuid
+from api.utils.timestamps import parse_client_timestamp
 
 router = APIRouter(prefix="/notes", tags=["notes"])
+router.include_router(notes_folders_router, tags=["notes"])
 
 
 class NotesSearchRequest(BaseModel):
@@ -80,152 +85,6 @@ async def search_notes(
     return NotesWorkspaceService.search(db, user_id, query, limit=limit)
 
 
-@router.patch("/pinned-order")
-async def update_pinned_order(
-    request: dict,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Update pinned order for notes.
-
-    Args:
-        request: Request payload with order list.
-        user_id: Current authenticated user ID.
-        _: Authorization token (validated).
-        db: Database session.
-
-    Returns:
-        Success flag.
-    """
-    order = request.get("order", [])
-    if not isinstance(order, list):
-        raise BadRequestError("order must be a list")
-    note_ids: list[uuid.UUID] = []
-    for item in order:
-        note_ids.append(parse_uuid(item, "note", "id"))
-
-    NotesService.update_pinned_order(db, user_id, note_ids)
-    return {"success": True}
-
-
-@router.post("/folders")
-async def create_folder(
-    request: dict,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Create a notes folder.
-
-    Args:
-        request: Request payload with path.
-        user_id: Current authenticated user ID.
-        _: Authorization token (validated).
-        db: Database session.
-
-    Returns:
-        Folder creation result.
-
-    Raises:
-        BadRequestError: If path is missing.
-    """
-    path = (request.get("path") or "").strip("/")
-    if not path:
-        raise BadRequestError("path required")
-
-    return NotesWorkspaceService.create_folder(db, user_id, path)
-
-
-@router.patch("/folders/rename")
-async def rename_folder(
-    request: dict,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Rename a notes folder.
-
-    Args:
-        request: Request payload with oldPath and newName.
-        user_id: Current authenticated user ID.
-        _: Authorization token (validated).
-        db: Database session.
-
-    Returns:
-        Folder rename result.
-
-    Raises:
-        BadRequestError: If required fields are missing.
-    """
-    old_path = (request.get("oldPath") or "").strip("/")
-    new_name = (request.get("newName") or "").strip("/")
-    if not old_path or not new_name:
-        raise BadRequestError("oldPath and newName required")
-
-    return NotesWorkspaceService.rename_folder(db, user_id, old_path, new_name)
-
-
-@router.patch("/folders/move")
-async def move_folder(
-    request: dict,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Move a notes folder to a new parent.
-
-    Args:
-        request: Request payload with oldPath and newParent.
-        user_id: Current authenticated user ID.
-        _: Authorization token (validated).
-        db: Database session.
-
-    Returns:
-        Folder move result.
-
-    Raises:
-        BadRequestError: For missing or invalid paths.
-    """
-    old_path = (request.get("oldPath") or "").strip("/")
-    new_parent = (request.get("newParent") or "").strip("/")
-    if not old_path:
-        raise BadRequestError("oldPath required")
-
-    try:
-        return NotesWorkspaceService.move_folder(db, user_id, old_path, new_parent)
-    except ValueError as exc:
-        raise BadRequestError(str(exc)) from exc
-
-
-@router.delete("/folders")
-async def delete_folder(
-    request: dict,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Delete a notes folder.
-
-    Args:
-        request: Request payload with path.
-        user_id: Current authenticated user ID.
-        _: Authorization token (validated).
-        db: Database session.
-
-    Returns:
-        Folder deletion result.
-
-    Raises:
-        BadRequestError: If path is missing.
-    """
-    path = (request.get("path") or "").strip("/")
-    if not path:
-        raise BadRequestError("path required")
-
-    return NotesWorkspaceService.delete_folder(db, user_id, path)
-
-
 @router.get("/{note_id}")
 async def get_note(
     note_id: uuid.UUID,
@@ -237,6 +96,7 @@ async def get_note(
 
     Args:
         note_id: Note UUID.
+        request: Optional payload with client_updated_at.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -281,12 +141,19 @@ async def create_note(
     title = request.get("title") or None
     path = request.get("path", "")
     folder = (request.get("folder") or "").strip("/")
+    client_id = request.get("client_id") or request.get("clientId")
 
     if content is None:
         raise BadRequestError("content required")
 
     return NotesWorkspaceService.create_note(
-        db, user_id, content, title=title, path=path, folder=folder
+        db,
+        user_id,
+        content,
+        title=title,
+        path=path,
+        folder=folder,
+        client_id=client_id,
     )
 
 
@@ -315,11 +182,21 @@ async def rename_note(
         NotFoundError: If not found.
     """
     new_name = request.get("newName", "")
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
     if not new_name:
         raise BadRequestError("newName required")
 
     try:
-        return NotesWorkspaceService.rename_note(db, user_id, str(note_id), new_name)
+        return NotesWorkspaceService.rename_note(
+            db,
+            user_id,
+            str(note_id),
+            new_name,
+            client_updated_at=client_updated_at,
+        )
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError as exc:
@@ -329,6 +206,7 @@ async def rename_note(
 @router.delete("/{note_id}")
 async def delete_note(
     note_id: uuid.UUID,
+    request: dict | None = Body(default=None),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -337,6 +215,7 @@ async def delete_note(
 
     Args:
         note_id: Note UUID.
+        request: Optional payload with client_updated_at.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -351,10 +230,45 @@ async def delete_note(
     note = NotesService.get_note(db, user_id, note_id, mark_opened=False)
     if not note:
         raise NotFoundError("Note", str(note_id))
-    deleted = NotesService.delete_note(db, user_id, note_id)
+    payload = request or {}
+    client_updated_at = parse_client_timestamp(
+        payload.get("client_updated_at") or payload.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
+    deleted = NotesService.delete_note(
+        db,
+        user_id,
+        note_id,
+        client_updated_at=client_updated_at,
+    )
     if not deleted:
         raise NotFoundError("Note", str(note_id))
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
+
+
+@router.post("/sync")
+async def sync_notes(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Apply offline note operations and return updates since last sync."""
+    result = NotesSyncService.sync_operations(db, user_id, request)
+    return {
+        "applied": result.applied_ids,
+        "notes": [
+            NotesWorkspaceService.build_note_payload(note, include_content=True)
+            for note in result.notes
+        ],
+        "conflicts": result.conflicts,
+        "updates": {
+            "notes": [note_sync_payload(note) for note in result.updated_notes],
+        },
+        "serverUpdatedSince": result.server_updated_since.isoformat()
+        if result.server_updated_since
+        else None,
+    }
 
 
 @router.get("/{note_id}/download")
@@ -415,8 +329,18 @@ async def update_pin(
         NotFoundError: If not found.
     """
     pinned = bool(request.get("pinned", False))
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
     try:
-        note = NotesService.update_pinned(db, user_id, note_id, pinned)
+        note = NotesService.update_pinned(
+            db,
+            user_id,
+            note_id,
+            pinned,
+            client_updated_at=client_updated_at,
+        )
     except NoteNotFoundError as exc:
         raise NotFoundError("Note", str(note_id)) from exc
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
@@ -447,11 +371,21 @@ async def update_note(
         NotFoundError: If not found.
     """
     content = request.get("content")
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
     if content is None:
         raise BadRequestError("content required")
 
     try:
-        return NotesWorkspaceService.update_note(db, user_id, str(note_id), content)
+        return NotesWorkspaceService.update_note(
+            db,
+            user_id,
+            str(note_id),
+            content,
+            client_updated_at=client_updated_at,
+        )
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError as exc:
@@ -483,8 +417,19 @@ async def update_folder(
         NotFoundError: If not found.
     """
     folder = request.get("folder", "") or ""
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
     try:
-        note = NotesService.update_folder(db, user_id, note_id, folder)
+        note = NotesService.update_folder(
+            db,
+            user_id,
+            note_id,
+            folder,
+            client_updated_at=client_updated_at,
+            op="archive",
+        )
     except NoteNotFoundError as exc:
         raise NotFoundError("Note", str(note_id)) from exc
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
@@ -516,8 +461,18 @@ async def update_archive(
     """
     archived = bool(request.get("archived", False))
     folder = "Archive" if archived else ""
+    client_updated_at = parse_client_timestamp(
+        request.get("client_updated_at") or request.get("clientUpdatedAt"),
+        field_name="client_updated_at",
+    )
     try:
-        note = NotesService.update_folder(db, user_id, note_id, folder)
+        note = NotesService.update_folder(
+            db,
+            user_id,
+            note_id,
+            folder,
+            client_updated_at=client_updated_at,
+        )
     except NoteNotFoundError as exc:
         raise NotFoundError("Note", str(note_id)) from exc
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
