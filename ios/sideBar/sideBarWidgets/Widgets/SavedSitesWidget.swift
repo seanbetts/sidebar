@@ -2,24 +2,24 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-struct PinnedSitesWidget: Widget {
-    let kind: String = "PinnedSitesWidget"
+struct SavedSitesWidget: Widget {
+    let kind: String = "SavedSitesWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedSitesProvider()) { entry in
-            PinnedSitesWidgetView(entry: entry)
+        StaticConfiguration(kind: kind, provider: SavedSitesProvider()) { entry in
+            SavedSitesWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Sites")
-        .description("Quick access to your pinned sites.")
+        .description("Quick access to your saved sites.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
 // MARK: - Widget View
 
-struct PinnedSitesWidgetView: View {
-    var entry: PinnedSitesEntry
+struct SavedSitesWidgetView: View {
+    var entry: SavedSitesEntry
 
     @Environment(\.widgetFamily) var family
     @Environment(\.widgetRenderingMode) var renderingMode
@@ -129,13 +129,13 @@ struct PinnedSitesWidgetView: View {
     private var emptyStateView: some View {
         VStack {
             Spacer()
-            Image(systemName: "pin")
+            Image(systemName: "globe")
                 .font(.system(size: 32))
                 .foregroundStyle(.secondary)
                 .widgetAccentable()
-            Text("No pinned sites")
+            Text("No saved sites")
                 .font(.headline)
-            Text("Pin a site to see it here")
+            Text("Save a site to see it here")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -198,31 +198,31 @@ struct SiteRowView: View {
 // MARK: - Previews
 
 #Preview("Small", as: .systemSmall) {
-    PinnedSitesWidget()
+    SavedSitesWidget()
 } timeline: {
-    PinnedSitesEntry.placeholder
+    SavedSitesEntry.placeholder
 }
 
 #Preview("Medium", as: .systemMedium) {
-    PinnedSitesWidget()
+    SavedSitesWidget()
 } timeline: {
-    PinnedSitesEntry.placeholder
+    SavedSitesEntry.placeholder
 }
 
 #Preview("Large", as: .systemLarge) {
-    PinnedSitesWidget()
+    SavedSitesWidget()
 } timeline: {
-    PinnedSitesEntry.placeholder
+    SavedSitesEntry.placeholder
 }
 
 #Preview("Empty", as: .systemMedium) {
-    PinnedSitesWidget()
+    SavedSitesWidget()
 } timeline: {
-    PinnedSitesEntry(date: Date(), data: .empty, isAuthenticated: true)
+    SavedSitesEntry(date: Date(), data: .empty, isAuthenticated: true)
 }
 
 #Preview("Not Authenticated", as: .systemMedium) {
-    PinnedSitesWidget()
+    SavedSitesWidget()
 } timeline: {
-    PinnedSitesEntry.notAuthenticated
+    SavedSitesEntry.notAuthenticated
 }

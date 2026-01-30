@@ -1,32 +1,32 @@
 import SwiftUI
 import WidgetKit
 
-struct PinnedSitesEntry: TimelineEntry {
+struct SavedSitesEntry: TimelineEntry {
     let date: Date
     let data: WidgetWebsiteData
     let isAuthenticated: Bool
 
-    static let placeholder = PinnedSitesEntry(
+    static let placeholder = SavedSitesEntry(
         date: Date(),
         data: .placeholder,
         isAuthenticated: true
     )
 
-    static let notAuthenticated = PinnedSitesEntry(
+    static let notAuthenticated = SavedSitesEntry(
         date: Date(),
         data: .empty,
         isAuthenticated: false
     )
 }
 
-struct PinnedSitesProvider: TimelineProvider {
-    typealias Entry = PinnedSitesEntry
+struct SavedSitesProvider: TimelineProvider {
+    typealias Entry = SavedSitesEntry
 
-    func placeholder(in context: Context) -> PinnedSitesEntry {
+    func placeholder(in context: Context) -> SavedSitesEntry {
         .placeholder
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (PinnedSitesEntry) -> Void) {
+    func getSnapshot(in context: Context, completion: @escaping (SavedSitesEntry) -> Void) {
         if context.isPreview {
             completion(.placeholder)
             return
@@ -36,7 +36,7 @@ struct PinnedSitesProvider: TimelineProvider {
         completion(entry)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedSitesEntry>) -> Void) {
+    func getTimeline(in context: Context, completion: @escaping (Timeline<SavedSitesEntry>) -> Void) {
         let entry = createEntry()
 
         // Refresh every 15 minutes
@@ -45,13 +45,13 @@ struct PinnedSitesProvider: TimelineProvider {
         completion(timeline)
     }
 
-    private func createEntry() -> PinnedSitesEntry {
+    private func createEntry() -> SavedSitesEntry {
         let isAuthenticated = WidgetDataManager.shared.isAuthenticated()
         guard isAuthenticated else {
             return .notAuthenticated
         }
 
         let data: WidgetWebsiteData = WidgetDataManager.shared.load(for: .websites)
-        return PinnedSitesEntry(date: Date(), data: data, isAuthenticated: true)
+        return SavedSitesEntry(date: Date(), data: data, isAuthenticated: true)
     }
 }

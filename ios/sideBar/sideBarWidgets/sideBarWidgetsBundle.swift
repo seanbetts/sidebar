@@ -19,7 +19,7 @@ struct SideBarWidgetsBundle: WidgetBundle {
         PinnedNotesWidget()
 
         // Home screen widgets - Sites
-        PinnedSitesWidget()
+        SavedSitesWidget()
 
         // Lock screen widgets - Tasks
         LockScreenTaskCountWidget()

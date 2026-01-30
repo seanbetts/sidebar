@@ -112,6 +112,13 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             self.active = updated
             if persist {
                 cache.set(key: CacheKeys.websiteDetail(id: updated.id), value: updated, ttlSeconds: CachePolicy.websiteDetail)
+                let lastSyncAt = Date()
+                offlineStore?.set(
+                    key: CacheKeys.websiteDetail(id: updated.id),
+                    entityType: "website",
+                    value: updated,
+                    lastSyncAt: lastSyncAt
+                )
             }
         }
         if persist {
@@ -127,6 +134,13 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             self.active = updated
             if persist {
                 cache.set(key: CacheKeys.websiteDetail(id: updated.id), value: updated, ttlSeconds: CachePolicy.websiteDetail)
+                let lastSyncAt = Date()
+                offlineStore?.set(
+                    key: CacheKeys.websiteDetail(id: updated.id),
+                    entityType: "website",
+                    value: updated,
+                    lastSyncAt: lastSyncAt
+                )
             }
         }
         if persist {
@@ -237,12 +251,12 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     // MARK: - Widget Data
 
     func updateWidgetData(from items: [WebsiteItem]) {
-        let pinnedSites = items
-            .filter { $0.pinned && !$0.archived }
-            .sorted { ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max) }
+        let savedSites = items
+            .filter { !$0.pinned && !$0.archived }
+            .sorted { ($0.savedAt ?? "") > ($1.savedAt ?? "") }
             .map { WidgetWebsite(from: $0) }
-        let displaySites = Array(pinnedSites.prefix(10))
-        let data = WidgetWebsiteData(websites: displaySites, totalCount: pinnedSites.count)
+        let displaySites = Array(savedSites.prefix(10))
+        let data = WidgetWebsiteData(websites: displaySites, totalCount: savedSites.count)
         WidgetDataManager.shared.store(data, for: .websites)
     }
 
@@ -260,7 +274,8 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
                 || current.pinnedOrder != item.pinnedOrder
                 || current.archived != item.archived
                 || current.lastOpenedAt != item.lastOpenedAt
-                || current.title != item.title {
+                || current.title != item.title
+                || current.deletedAt != item.deletedAt {
                 return true
             }
         }

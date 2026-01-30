@@ -7,18 +7,18 @@ struct LockScreenSiteCountWidget: Widget {
     let kind: String = "LockScreenSiteCount"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedSitesProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: SavedSitesProvider()) { entry in
             LockScreenSiteCountView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Pinned Sites Count")
-        .description("Shows your pinned site count.")
+        .configurationDisplayName("Saved Sites Count")
+        .description("Shows your saved site count.")
         .supportedFamilies([.accessoryCircular])
     }
 }
 
 struct LockScreenSiteCountView: View {
-    var entry: PinnedSitesEntry
+    var entry: SavedSitesEntry
 
     var body: some View {
         if entry.isAuthenticated {
@@ -49,18 +49,18 @@ struct LockScreenSitePreviewWidget: Widget {
     let kind: String = "LockScreenSitePreview"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedSitesProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: SavedSitesProvider()) { entry in
             LockScreenSitePreviewView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Pinned Sites")
-        .description("Shows your pinned sites.")
+        .configurationDisplayName("Saved Sites")
+        .description("Shows your saved sites.")
         .supportedFamilies([.accessoryRectangular])
     }
 }
 
 struct LockScreenSitePreviewView: View {
-    var entry: PinnedSitesEntry
+    var entry: SavedSitesEntry
 
     var body: some View {
         if !entry.isAuthenticated {
@@ -71,8 +71,8 @@ struct LockScreenSitePreviewView: View {
             }
         } else if entry.data.websites.isEmpty {
             HStack {
-                Image(systemName: "pin")
-                Text("No pinned sites")
+                Image(systemName: "globe")
+                Text("No saved sites")
                     .font(.caption)
             }
         } else {
@@ -104,26 +104,26 @@ struct LockScreenSitesInlineWidget: Widget {
     let kind: String = "LockScreenSitesInline"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedSitesProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: SavedSitesProvider()) { entry in
             LockScreenSitesInlineView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Pinned Sites Inline")
-        .description("Shows pinned site count inline on lock screen.")
+        .configurationDisplayName("Saved Sites Inline")
+        .description("Shows saved site count inline on lock screen.")
         .supportedFamilies([.accessoryInline])
     }
 }
 
 struct LockScreenSitesInlineView: View {
-    var entry: PinnedSitesEntry
+    var entry: SavedSitesEntry
 
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label("No pinned sites", systemImage: "globe")
+                Label("No saved sites", systemImage: "globe")
             } else {
                 Label(
-                    "\(entry.data.totalCount) pinned site\(entry.data.totalCount == 1 ? "" : "s")",
+                    "\(entry.data.totalCount) saved site\(entry.data.totalCount == 1 ? "" : "s")",
                     systemImage: "globe"
                 )
             }
@@ -138,17 +138,17 @@ struct LockScreenSitesInlineView: View {
 #Preview("Circular", as: .accessoryCircular) {
     LockScreenSiteCountWidget()
 } timeline: {
-    PinnedSitesEntry.placeholder
+    SavedSitesEntry.placeholder
 }
 
 #Preview("Rectangular", as: .accessoryRectangular) {
     LockScreenSitePreviewWidget()
 } timeline: {
-    PinnedSitesEntry.placeholder
+    SavedSitesEntry.placeholder
 }
 
 #Preview("Inline", as: .accessoryInline) {
     LockScreenSitesInlineWidget()
 } timeline: {
-    PinnedSitesEntry.placeholder
+    SavedSitesEntry.placeholder
 }
