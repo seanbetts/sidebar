@@ -15,21 +15,21 @@ import Combine
 /// - Handle offline state detection
 /// - Handle real-time file job events
 public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
-    @Published public private(set) var items: [IngestionListItem] = []
-    @Published public private(set) var activeMeta: IngestionMetaResponse?
-    @Published public private(set) var isOffline: Bool = false
+    @Published public internal(set) var items: [IngestionListItem] = []
+    @Published public internal(set) var activeMeta: IngestionMetaResponse?
+    @Published public internal(set) var isOffline: Bool = false
 
-    private let api: any IngestionProviding
-    private let offlineStore: OfflineStore?
-    private let networkStatus: (any NetworkStatusProviding)?
+    let api: any IngestionProviding
+    let offlineStore: OfflineStore?
+    let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
-    private var remoteItems: [IngestionListItem] = []
-    private var localItems: [String: IngestionListItem] = [:]
-    private var localUploadRecords: [String: LocalUploadRecord] = [:]
-    private let userDefaults: UserDefaults
-    private var isRefreshingList = false
-    private var refreshingMetaIds = Set<String>()
-    private let localUploadsKey = "ingestion.localUploads"
+    var remoteItems: [IngestionListItem] = []
+    var localItems: [String: IngestionListItem] = [:]
+    var localUploadRecords: [String: LocalUploadRecord] = [:]
+    let userDefaults: UserDefaults
+    var isRefreshingList = false
+    var refreshingMetaIds = Set<String>()
+    let localUploadsKey = "ingestion.localUploads"
 
     public init(
         api: any IngestionProviding,

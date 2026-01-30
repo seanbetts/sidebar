@@ -242,7 +242,7 @@ extension IngestionStore {
     }
 }
 
-private struct LocalUploadRecord: Codable {
+struct LocalUploadRecord: Codable {
     let item: IngestionListItem
     let bookmarkData: Data?
 }
