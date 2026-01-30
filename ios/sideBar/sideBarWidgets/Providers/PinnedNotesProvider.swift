@@ -1,32 +1,32 @@
 import WidgetKit
 import SwiftUI
 
-struct RecentNotesEntry: TimelineEntry {
+struct PinnedNotesEntry: TimelineEntry {
     let date: Date
     let data: WidgetNoteData
     let isAuthenticated: Bool
 
-    static let placeholder = RecentNotesEntry(
+    static let placeholder = PinnedNotesEntry(
         date: Date(),
         data: .placeholder,
         isAuthenticated: true
     )
 
-    static let notAuthenticated = RecentNotesEntry(
+    static let notAuthenticated = PinnedNotesEntry(
         date: Date(),
         data: .empty,
         isAuthenticated: false
     )
 }
 
-struct RecentNotesProvider: TimelineProvider {
-    typealias Entry = RecentNotesEntry
+struct PinnedNotesProvider: TimelineProvider {
+    typealias Entry = PinnedNotesEntry
 
-    func placeholder(in context: Context) -> RecentNotesEntry {
+    func placeholder(in context: Context) -> PinnedNotesEntry {
         .placeholder
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (RecentNotesEntry) -> Void) {
+    func getSnapshot(in context: Context, completion: @escaping (PinnedNotesEntry) -> Void) {
         if context.isPreview {
             completion(.placeholder)
             return
@@ -36,7 +36,7 @@ struct RecentNotesProvider: TimelineProvider {
         completion(entry)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<RecentNotesEntry>) -> Void) {
+    func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedNotesEntry>) -> Void) {
         let entry = createEntry()
 
         // Refresh every 15 minutes
@@ -45,13 +45,13 @@ struct RecentNotesProvider: TimelineProvider {
         completion(timeline)
     }
 
-    private func createEntry() -> RecentNotesEntry {
+    private func createEntry() -> PinnedNotesEntry {
         let isAuthenticated = WidgetDataManager.shared.isAuthenticated()
         guard isAuthenticated else {
             return .notAuthenticated
         }
 
         let data: WidgetNoteData = WidgetDataManager.shared.load(for: .notes)
-        return RecentNotesEntry(date: Date(), data: data, isAuthenticated: true)
+        return PinnedNotesEntry(date: Date(), data: data, isAuthenticated: true)
     }
 }

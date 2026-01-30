@@ -16,7 +16,7 @@ struct SideBarWidgetsBundle: WidgetBundle {
         TaskCountWidget()
 
         // Home screen widgets - Notes
-        RecentNotesWidget()
+        PinnedNotesWidget()
 
         // Lock screen widgets - Tasks
         LockScreenTaskCountWidget()

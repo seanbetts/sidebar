@@ -356,5 +356,7 @@ extension WidgetNote {
     self.contentPreview = nil
     self.path = node.path
     self.modifiedAt = node.modified.map { Date(timeIntervalSince1970: $0) }
+    self.pinned = node.pinned ?? false
+    self.pinnedOrder = node.pinnedOrder
   }
 }

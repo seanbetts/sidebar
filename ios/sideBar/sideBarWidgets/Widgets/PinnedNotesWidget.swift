@@ -2,24 +2,24 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-struct RecentNotesWidget: Widget {
-    let kind: String = "RecentNotesWidget"
+struct PinnedNotesWidget: Widget {
+    let kind: String = "PinnedNotesWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: RecentNotesProvider()) { entry in
-            RecentNotesWidgetView(entry: entry)
+        StaticConfiguration(kind: kind, provider: PinnedNotesProvider()) { entry in
+            PinnedNotesWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Recent Notes")
-        .description("View and access your recent notes at a glance.")
+        .configurationDisplayName("Notes")
+        .description("View and access your pinned notes.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
 // MARK: - Widget View
 
-struct RecentNotesWidgetView: View {
-    var entry: RecentNotesEntry
+struct PinnedNotesWidgetView: View {
+    var entry: PinnedNotesEntry
 
     @Environment(\.widgetFamily) var family
     @Environment(\.widgetRenderingMode) var renderingMode
@@ -183,13 +183,13 @@ struct RecentNotesWidgetView: View {
     private var emptyStateView: some View {
         VStack {
             Spacer()
-            Image(systemName: "doc.text")
+            Image(systemName: "pin")
                 .font(.system(size: 32))
                 .foregroundStyle(.secondary)
                 .widgetAccentable()
-            Text("No notes yet")
+            Text("No pinned notes")
                 .font(.headline)
-            Text("Create your first note")
+            Text("Pin a note to see it here")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -256,31 +256,31 @@ struct NoteRowView: View {
 // MARK: - Previews
 
 #Preview("Small", as: .systemSmall) {
-    RecentNotesWidget()
+    PinnedNotesWidget()
 } timeline: {
-    RecentNotesEntry.placeholder
+    PinnedNotesEntry.placeholder
 }
 
 #Preview("Medium", as: .systemMedium) {
-    RecentNotesWidget()
+    PinnedNotesWidget()
 } timeline: {
-    RecentNotesEntry.placeholder
+    PinnedNotesEntry.placeholder
 }
 
 #Preview("Large", as: .systemLarge) {
-    RecentNotesWidget()
+    PinnedNotesWidget()
 } timeline: {
-    RecentNotesEntry.placeholder
+    PinnedNotesEntry.placeholder
 }
 
 #Preview("Empty", as: .systemMedium) {
-    RecentNotesWidget()
+    PinnedNotesWidget()
 } timeline: {
-    RecentNotesEntry(date: Date(), data: .empty, isAuthenticated: true)
+    PinnedNotesEntry(date: Date(), data: .empty, isAuthenticated: true)
 }
 
 #Preview("Not Authenticated", as: .systemMedium) {
-    RecentNotesWidget()
+    PinnedNotesWidget()
 } timeline: {
-    RecentNotesEntry.notAuthenticated
+    PinnedNotesEntry.notAuthenticated
 }
