@@ -28,7 +28,7 @@ import Combine
 ///
 /// ## Usage
 /// ```swift
-/// let viewModel = WebsitesViewModel(api: websitesAPI, store: websitesStore)
+/// let viewModel = WebsitesViewModel(api: websitesAPI, store: websitesStore, networkStatus: connectivityMonitor)
 /// await viewModel.load()
 /// let success = await viewModel.saveWebsite(url: "https://example.com")
 /// await viewModel.selectWebsite(id: websiteId)
@@ -54,11 +54,17 @@ public final class WebsitesViewModel: ObservableObject {
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore
+    private let networkStatus: any NetworkStatusProviding
     private var cancellables = Set<AnyCancellable>()
 
-    public init(api: any WebsitesProviding, store: WebsitesStore) {
+    public init(
+        api: any WebsitesProviding,
+        store: WebsitesStore,
+        networkStatus: any NetworkStatusProviding
+    ) {
         self.api = api
         self.store = store
+        self.networkStatus = networkStatus
 
         store.$items
             .sink { [weak self] items in
@@ -174,7 +180,8 @@ public final class WebsitesViewModel: ObservableObject {
                     archived: detail?.archived ?? false,
                     youtubeTranscripts: detail?.youtubeTranscripts,
                     updatedAt: detail?.updatedAt,
-                    lastOpenedAt: detail?.lastOpenedAt
+                    lastOpenedAt: detail?.lastOpenedAt,
+                    deletedAt: nil
                 ),
                 persist: true
             )
@@ -194,8 +201,22 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func setPinned(id: String, pinned: Bool) async {
         errorMessage = nil
+        if networkStatus.isOffline {
+            do {
+                try await store.enqueuePin(id: id, pinned: pinned)
+            } catch WriteQueueError.queueFull {
+                errorMessage = "Sync queue full. Review pending changes."
+            } catch {
+                errorMessage = "Failed to queue website update"
+            }
+            return
+        }
         do {
-            let updated = try await api.pin(id: id, pinned: pinned)
+            let updated = try await api.pin(
+                id: id,
+                pinned: pinned,
+                clientUpdatedAt: store.currentUpdatedAt(id: id)
+            )
             store.updateListItem(updated, persist: true)
         } catch {
             errorMessage = error.localizedDescription
@@ -207,8 +228,22 @@ public final class WebsitesViewModel: ObservableObject {
             return
         }
         errorMessage = nil
+        if networkStatus.isOffline {
+            do {
+                try await store.enqueueRename(id: id, title: trimmed)
+            } catch WriteQueueError.queueFull {
+                errorMessage = "Sync queue full. Review pending changes."
+            } catch {
+                errorMessage = "Failed to queue website update"
+            }
+            return
+        }
         do {
-            let updated = try await api.rename(id: id, title: trimmed)
+            let updated = try await api.rename(
+                id: id,
+                title: trimmed,
+                clientUpdatedAt: store.currentUpdatedAt(id: id)
+            )
             store.updateListItem(updated, persist: true)
         } catch {
             errorMessage = error.localizedDescription
@@ -217,8 +252,25 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func setArchived(id: String, archived: Bool) async {
         errorMessage = nil
+        if networkStatus.isOffline {
+            do {
+                try await store.enqueueArchive(id: id, archived: archived)
+                if archived, selectedWebsiteId == id {
+                    clearSelection()
+                }
+            } catch WriteQueueError.queueFull {
+                errorMessage = "Sync queue full. Review pending changes."
+            } catch {
+                errorMessage = "Failed to queue website update"
+            }
+            return
+        }
         do {
-            let updated = try await api.archive(id: id, archived: archived)
+            let updated = try await api.archive(
+                id: id,
+                archived: archived,
+                clientUpdatedAt: store.currentUpdatedAt(id: id)
+            )
             store.updateListItem(updated, persist: true)
             if archived, selectedWebsiteId == id {
                 clearSelection()
@@ -230,8 +282,21 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func deleteWebsite(id: String) async {
         errorMessage = nil
+        if networkStatus.isOffline {
+            do {
+                try await store.enqueueDelete(id: id)
+                if selectedWebsiteId == id {
+                    clearSelection()
+                }
+            } catch WriteQueueError.queueFull {
+                errorMessage = "Sync queue full. Review pending changes."
+            } catch {
+                errorMessage = "Failed to queue website update"
+            }
+            return
+        }
         do {
-            try await api.delete(id: id)
+            try await api.delete(id: id, clientUpdatedAt: store.currentUpdatedAt(id: id))
             store.removeItem(id: id, persist: true)
             if selectedWebsiteId == id {
                 clearSelection()

@@ -17,7 +17,8 @@ final class WebsitesStoreTests: XCTestCase {
             archived: false,
             youtubeTranscripts: nil,
             updatedAt: "2024-01-01",
-            lastOpenedAt: nil
+            lastOpenedAt: nil,
+            deletedAt: nil
         )
         let detail = WebsiteDetail(
             id: "w1",
@@ -99,26 +100,35 @@ private final class MockWebsitesAPI: WebsitesProviding {
         throw MockError.forced
     }
 
-    func pin(id: String, pinned: Bool) async throws -> WebsiteItem {
+    func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = pinned
+        _ = clientUpdatedAt
         throw MockError.forced
     }
 
-    func rename(id: String, title: String) async throws -> WebsiteItem {
+    func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = title
+        _ = clientUpdatedAt
         throw MockError.forced
     }
 
-    func archive(id: String, archived: Bool) async throws -> WebsiteItem {
+    func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = archived
+        _ = clientUpdatedAt
         throw MockError.forced
     }
 
-    func delete(id: String) async throws {
+    func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
+        _ = clientUpdatedAt
+        throw MockError.forced
+    }
+
+    func sync(_ payload: WebsiteSyncRequest) async throws -> WebsiteSyncResponse {
+        _ = payload
         throw MockError.forced
     }
 }

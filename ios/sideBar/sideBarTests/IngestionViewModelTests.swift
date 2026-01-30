@@ -132,7 +132,9 @@ final class IngestionViewModelTests: XCTestCase {
             category: nil,
             sourceUrl: "https://www.youtube.com/watch?v=abc123",
             sourceMetadata: nil,
-            createdAt: "2026-01-10T00:00:00Z"
+            createdAt: "2026-01-10T00:00:00Z",
+            updatedAt: nil,
+            deletedAt: nil
         )
         let meta = IngestionMetaResponse(
             file: file,
@@ -184,7 +186,9 @@ final class IngestionViewModelTests: XCTestCase {
             category: nil,
             sourceUrl: nil,
             sourceMetadata: nil,
-            createdAt: "2026-01-10T00:00:00Z"
+            createdAt: "2026-01-10T00:00:00Z",
+            updatedAt: nil,
+            deletedAt: nil
         )
     }
 
@@ -235,26 +239,34 @@ private struct MockIngestionAPI: IngestionProviding {
         return try contentResult.get()
     }
 
-    func pin(fileId: String, pinned: Bool) async throws {
+    func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
         _ = fileId
         _ = pinned
+        _ = clientUpdatedAt
         return try pinResult.get()
     }
 
-    func delete(fileId: String) async throws {
+    func delete(fileId: String, clientUpdatedAt: String?) async throws {
         _ = fileId
+        _ = clientUpdatedAt
         throw MockError.forced
     }
 
-    func rename(fileId: String, filename: String) async throws {
+    func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws {
         _ = fileId
         _ = filename
+        _ = clientUpdatedAt
         throw MockError.forced
     }
 
     func ingestYouTube(url: String) async throws -> String {
         _ = url
         return try youtubeResult.get()
+    }
+
+    func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
+        _ = payload
+        return IngestionSyncResponse(applied: [], files: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
     }
 }
 

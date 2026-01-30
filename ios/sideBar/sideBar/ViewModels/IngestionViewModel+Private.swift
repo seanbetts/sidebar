@@ -341,7 +341,9 @@ extension IngestionViewModel {
             category: nil,
             sourceUrl: input.sourceUrl,
             sourceMetadata: nil,
-            createdAt: ISO8601DateFormatter().string(from: Date())
+            createdAt: ISO8601DateFormatter().string(from: Date()),
+            updatedAt: nil,
+            deletedAt: nil
         )
         let job = IngestionJob(
             status: input.status,

@@ -263,6 +263,12 @@ private enum MockError: Error {
 @MainActor
 private struct TestNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
+    let isOffline: Bool
+
+    init(isNetworkAvailable: Bool, isOffline: Bool = false) {
+        self.isNetworkAvailable = isNetworkAvailable
+        self.isOffline = isOffline
+    }
 }
 
 @MainActor

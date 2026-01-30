@@ -14,6 +14,7 @@ public struct WebsiteItem: Codable, Identifiable {
     public let youtubeTranscripts: [String: WebsiteTranscriptEntry]?
     public let updatedAt: String?
     public let lastOpenedAt: String?
+    public let deletedAt: String?
 }
 
 public struct WebsitesResponse: Codable {
@@ -73,4 +74,26 @@ public struct WebsiteSaveData: Codable {
     public let title: String
     public let url: String
     public let domain: String
+}
+
+public struct WebsiteSyncResponse: Codable {
+    public let applied: [String]
+    public let websites: [WebsiteItem]
+    public let conflicts: [WebsiteSyncConflict]
+    public let updates: WebsiteSyncUpdates?
+    public let serverUpdatedSince: String?
+}
+
+public struct WebsiteSyncUpdates: Codable {
+    public let items: [WebsiteItem]
+}
+
+public struct WebsiteSyncConflict: Codable {
+    public let operationId: String
+    public let op: String?
+    public let id: String?
+    public let clientUpdatedAt: String?
+    public let serverUpdatedAt: String?
+    public let serverWebsite: WebsiteItem?
+    public let reason: String?
 }

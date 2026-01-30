@@ -71,9 +71,29 @@ extension IngestionViewModel {
             }
             return nil
         }()
+        if networkStatus?.isOffline ?? store.isOffline {
+            do {
+                try await store.enqueuePin(fileId: fileId, pinned: pinned)
+            } catch WriteQueueError.queueFull {
+                if let previousPinned {
+                    store.updatePinned(fileId: fileId, pinned: previousPinned)
+                }
+                errorMessage = "Sync queue full. Review pending changes."
+            } catch {
+                if let previousPinned {
+                    store.updatePinned(fileId: fileId, pinned: previousPinned)
+                }
+                errorMessage = "Failed to queue file update"
+            }
+            return
+        }
         store.updatePinned(fileId: fileId, pinned: pinned)
         do {
-            try await api.pin(fileId: fileId, pinned: pinned)
+            try await api.pin(
+                fileId: fileId,
+                pinned: pinned,
+                clientUpdatedAt: store.currentUpdatedAt(fileId: fileId)
+            )
         } catch {
             if let previousPinned {
                 store.updatePinned(fileId: fileId, pinned: previousPinned)
@@ -106,12 +126,27 @@ extension IngestionViewModel {
     }
 
     public func deleteFile(fileId: String) async -> Bool {
+        if networkStatus?.isOffline ?? store.isOffline {
+            do {
+                try await store.enqueueDelete(fileId: fileId)
+                if selectedFileId == fileId {
+                    clearSelection()
+                }
+                return true
+            } catch WriteQueueError.queueFull {
+                errorMessage = "Sync queue full. Review pending changes."
+            } catch {
+                errorMessage = "Failed to queue file delete"
+            }
+            return false
+        }
         if selectedFileId == fileId {
             clearSelection()
         }
+        let clientUpdatedAt = store.currentUpdatedAt(fileId: fileId)
         store.removeItem(fileId: fileId)
         do {
-            try await api.delete(fileId: fileId)
+            try await api.delete(fileId: fileId, clientUpdatedAt: clientUpdatedAt)
             return true
         } catch {
             await load(force: true)
@@ -120,8 +155,23 @@ extension IngestionViewModel {
     }
 
     public func renameFile(fileId: String, filename: String) async -> Bool {
+        if networkStatus?.isOffline ?? store.isOffline {
+            do {
+                try await store.enqueueRename(fileId: fileId, filename: filename)
+                return true
+            } catch WriteQueueError.queueFull {
+                errorMessage = "Sync queue full. Review pending changes."
+            } catch {
+                errorMessage = "Failed to queue file rename"
+            }
+            return false
+        }
         do {
-            try await api.rename(fileId: fileId, filename: filename)
+            try await api.rename(
+                fileId: fileId,
+                filename: filename,
+                clientUpdatedAt: store.currentUpdatedAt(fileId: fileId)
+            )
             store.updateFilename(fileId: fileId, filename: filename)
             return true
         } catch {

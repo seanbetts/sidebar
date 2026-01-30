@@ -6,10 +6,108 @@ public protocol IngestionProviding {
     func list() async throws -> IngestionListResponse
     func getMeta(fileId: String) async throws -> IngestionMetaResponse
     func getContent(fileId: String, kind: String, range: String?) async throws -> Data
-    func pin(fileId: String, pinned: Bool) async throws
-    func delete(fileId: String) async throws
-    func rename(fileId: String, filename: String) async throws
+    func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws
+    func delete(fileId: String, clientUpdatedAt: String?) async throws
+    func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws
     func ingestYouTube(url: String) async throws -> String
+    func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse
+}
+
+public extension IngestionProviding {
+    func pin(fileId: String, pinned: Bool) async throws {
+        try await pin(fileId: fileId, pinned: pinned, clientUpdatedAt: nil)
+    }
+
+    func rename(fileId: String, filename: String) async throws {
+        try await rename(fileId: fileId, filename: filename, clientUpdatedAt: nil)
+    }
+
+    func delete(fileId: String) async throws {
+        try await delete(fileId: fileId, clientUpdatedAt: nil)
+    }
+}
+
+/// Encodes an individual file operation for sync.
+public struct IngestionOperationPayload: Codable, Equatable {
+    public let operationId: String
+    public let op: String
+    public let id: String
+    public let filename: String?
+    public let pinned: Bool?
+    public let clientUpdatedAt: String?
+
+    public init(
+        operationId: String,
+        op: String,
+        id: String,
+        filename: String? = nil,
+        pinned: Bool? = nil,
+        clientUpdatedAt: String? = nil
+    ) {
+        self.operationId = operationId
+        self.op = op
+        self.id = id
+        self.filename = filename
+        self.pinned = pinned
+        self.clientUpdatedAt = clientUpdatedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case operationId = "operation_id"
+        case op
+        case id
+        case filename
+        case pinned
+        case clientUpdatedAt = "client_updated_at"
+    }
+}
+
+/// Encodes a file sync request payload.
+public struct IngestionSyncRequest: Encodable {
+    public let lastSync: String?
+    public let operations: [IngestionOperationPayload]
+
+    public init(lastSync: String?, operations: [IngestionOperationPayload]) {
+        self.lastSync = lastSync
+        self.operations = operations
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case lastSync = "last_sync"
+        case operations
+    }
+}
+
+private struct IngestionPinRequest: Codable {
+    let pinned: Bool
+    let clientUpdatedAt: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case pinned
+        case clientUpdatedAt = "client_updated_at"
+    }
+}
+
+private struct IngestionPinnedOrderRequest: Codable {
+    let order: [String]
+}
+
+private struct IngestionRenameRequest: Codable {
+    let filename: String
+    let clientUpdatedAt: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case filename
+        case clientUpdatedAt = "client_updated_at"
+    }
+}
+
+private struct IngestionDeleteRequest: Codable {
+    let clientUpdatedAt: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case clientUpdatedAt = "client_updated_at"
+    }
 }
 
 /// API client for ingestion endpoints.
@@ -41,18 +139,39 @@ public struct IngestionAPI {
     }
 
     public func pin(fileId: String, pinned: Bool) async throws {
-        struct PinRequest: Codable { let pinned: Bool }
-        try await client.requestVoid("files/\(fileId)/pin", method: "PATCH", body: PinRequest(pinned: pinned))
+        try await pin(fileId: fileId, pinned: pinned, clientUpdatedAt: nil)
+    }
+
+    public func pin(fileId: String, pinned: Bool, clientUpdatedAt: String? = nil) async throws {
+        try await client.requestVoid(
+            "files/\(fileId)/pin",
+            method: "PATCH",
+            body: IngestionPinRequest(pinned: pinned, clientUpdatedAt: clientUpdatedAt)
+        )
     }
 
     public func updatePinnedOrder(ids: [String]) async throws {
-        struct PinnedOrderRequest: Codable { let order: [String] }
-        try await client.requestVoid("files/pinned-order", method: "PATCH", body: PinnedOrderRequest(order: ids))
+        try await client.requestVoid(
+            "files/pinned-order",
+            method: "PATCH",
+            body: IngestionPinnedOrderRequest(order: ids)
+        )
     }
 
     public func rename(fileId: String, filename: String) async throws {
-        struct RenameRequest: Codable { let filename: String }
-        try await client.requestVoid("files/\(fileId)/rename", method: "PATCH", body: RenameRequest(filename: filename))
+        try await rename(fileId: fileId, filename: filename, clientUpdatedAt: nil)
+    }
+
+    public func rename(
+        fileId: String,
+        filename: String,
+        clientUpdatedAt: String? = nil
+    ) async throws {
+        try await client.requestVoid(
+            "files/\(fileId)/rename",
+            method: "PATCH",
+            body: IngestionRenameRequest(filename: filename, clientUpdatedAt: clientUpdatedAt)
+        )
     }
 
     public func pause(fileId: String) async throws {
@@ -68,7 +187,12 @@ public struct IngestionAPI {
     }
 
     public func delete(fileId: String) async throws {
-        try await client.requestVoid("files/\(fileId)", method: "DELETE")
+        try await delete(fileId: fileId, clientUpdatedAt: nil)
+    }
+
+    public func delete(fileId: String, clientUpdatedAt: String? = nil) async throws {
+        let body = clientUpdatedAt == nil ? nil : IngestionDeleteRequest(clientUpdatedAt: clientUpdatedAt)
+        try await client.requestVoid("files/\(fileId)", method: "DELETE", body: body)
     }
 
     public func upload(fileData: Data, filename: String, mimeType: String, folder: String = "") async throws -> String {
@@ -116,6 +240,10 @@ public struct IngestionAPI {
         struct YouTubeResponse: Codable { let fileId: String }
         let response: YouTubeResponse = try await client.request("files/youtube", method: "POST", body: YouTubeRequest(url: url))
         return response.fileId
+    }
+
+    public func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
+        try await client.request("files/sync", method: "POST", body: payload)
     }
 }
 

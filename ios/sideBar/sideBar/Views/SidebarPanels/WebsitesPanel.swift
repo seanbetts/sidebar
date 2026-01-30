@@ -31,6 +31,7 @@ private struct WebsitesPanelView: View {
     @State private var newWebsiteUrl: String = ""
     @State private var saveErrorMessage: String?
     @State private var archiveHeight: CGFloat = 0
+    @State private var deleteTarget: WebsiteItem?
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
@@ -87,6 +88,18 @@ private struct WebsitesPanelView: View {
             }
         } message: {
             Text(saveErrorMessage ?? "Failed to save website. Please try again.")
+        }
+        .alert("Delete website", isPresented: isDeleteAlertPresented) {
+            Button("Delete", role: .destructive) {
+                guard let item = deleteTarget else { return }
+                deleteTarget = nil
+                Task { await viewModel.deleteWebsite(id: item.id) }
+            }
+            Button("Cancel", role: .cancel) {
+                deleteTarget = nil
+            }
+        } message: {
+            Text("This will remove the website and cannot be undone.")
         }
         .onReceive(environment.$shortcutActionEvent) { event in
             guard let event, event.section == .websites else { return }
@@ -377,7 +390,7 @@ extension WebsitesPanelView {
             }
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
-                    Task { await viewModel.deleteWebsite(id: item.id) }
+                    deleteTarget = item
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
@@ -485,6 +498,17 @@ extension WebsitesPanelView {
             set: { newValue in
                 if !newValue {
                     saveErrorMessage = nil
+                }
+            }
+        )
+    }
+
+    private var isDeleteAlertPresented: Binding<Bool> {
+        Binding(
+            get: { deleteTarget != nil },
+            set: { newValue in
+                if !newValue {
+                    deleteTarget = nil
                 }
             }
         )

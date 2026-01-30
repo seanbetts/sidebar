@@ -10,7 +10,7 @@ final class WebsitesViewModelTests: XCTestCase {
         cache.set(key: CacheKeys.websitesList, value: cached, ttlSeconds: 60)
         let api = MockWebsitesAPI(listResult: .failure(MockError.forced))
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store)
+        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
 
         await viewModel.load()
 
@@ -23,7 +23,7 @@ final class WebsitesViewModelTests: XCTestCase {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(getResult: .success(detail))
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store)
+        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
 
         await viewModel.selectWebsite(id: "site-1")
 
@@ -40,7 +40,7 @@ final class WebsitesViewModelTests: XCTestCase {
             getResult: .success(detail)
         )
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store)
+        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
 
         await viewModel.load()
         await viewModel.selectWebsite(id: "site-1")
@@ -75,7 +75,7 @@ final class WebsitesViewModelTests: XCTestCase {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store)
+        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
 
         let payload = RealtimePayload(
             eventType: .update,
@@ -116,7 +116,7 @@ final class WebsitesViewModelTests: XCTestCase {
             ))
         )
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store)
+        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
 
         let saved = await viewModel.saveWebsite(url: "https://example.com")
 
@@ -139,7 +139,7 @@ final class WebsitesViewModelTests: XCTestCase {
             ))
         )
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store)
+        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
 
         let saved = await viewModel.saveWebsite(url: "example.com")
 
@@ -151,7 +151,7 @@ final class WebsitesViewModelTests: XCTestCase {
         let cache = InMemoryCacheClient()
         let api = ControlledWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store)
+        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
 
         let saveTask = Task { await viewModel.saveWebsite(url: "https://example.com") }
         await Task.yield()
@@ -182,7 +182,7 @@ final class WebsitesViewModelTests: XCTestCase {
             deleteResult: .success(())
         )
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store)
+        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
 
         await viewModel.selectWebsite(id: "site-1")
         await viewModel.deleteWebsite(id: "site-1")
@@ -196,6 +196,17 @@ private enum MockError: Error {
     case forced
 }
 
+@MainActor
+private struct TestNetworkStatus: NetworkStatusProviding {
+    let isNetworkAvailable: Bool
+    let isOffline: Bool
+
+    init(isNetworkAvailable: Bool, isOffline: Bool = false) {
+        self.isNetworkAvailable = isNetworkAvailable
+        self.isOffline = isOffline
+    }
+}
+
 private final class MockWebsitesAPI: WebsitesProviding {
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
@@ -204,6 +215,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let renameResult: Result<WebsiteItem, Error>
     let archiveResult: Result<WebsiteItem, Error>
     let deleteResult: Result<Void, Error>
+    let syncResult: Result<WebsiteSyncResponse, Error>
     private(set) var lastSavedUrl: String?
 
     init(
@@ -213,7 +225,10 @@ private final class MockWebsitesAPI: WebsitesProviding {
         pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
         renameResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
         archiveResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
-        deleteResult: Result<Void, Error> = .failure(MockError.forced)
+        deleteResult: Result<Void, Error> = .failure(MockError.forced),
+        syncResult: Result<WebsiteSyncResponse, Error> = .success(
+            WebsiteSyncResponse(applied: [], websites: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+        )
     ) {
         self.listResult = listResult
         self.getResult = getResult
@@ -222,6 +237,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         self.renameResult = renameResult
         self.archiveResult = archiveResult
         self.deleteResult = deleteResult
+        self.syncResult = syncResult
     }
 
     func list() async throws -> WebsitesResponse {
@@ -238,27 +254,36 @@ private final class MockWebsitesAPI: WebsitesProviding {
         return try saveResult.get()
     }
 
-    func pin(id: String, pinned: Bool) async throws -> WebsiteItem {
+    func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = pinned
+        _ = clientUpdatedAt
         return try pinResult.get()
     }
 
-    func rename(id: String, title: String) async throws -> WebsiteItem {
+    func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = title
+        _ = clientUpdatedAt
         return try renameResult.get()
     }
 
-    func archive(id: String, archived: Bool) async throws -> WebsiteItem {
+    func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = archived
+        _ = clientUpdatedAt
         return try archiveResult.get()
     }
 
-    func delete(id: String) async throws {
+    func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
+        _ = clientUpdatedAt
         try deleteResult.get()
+    }
+
+    func sync(_ payload: WebsiteSyncRequest) async throws -> WebsiteSyncResponse {
+        _ = payload
+        return try syncResult.get()
     }
 }
 
@@ -279,20 +304,29 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
         }
     }
 
-    func pin(id: String, pinned: Bool) async throws -> WebsiteItem {
+    func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
+        _ = clientUpdatedAt
         makeItem(id: id)
     }
 
-    func rename(id: String, title: String) async throws -> WebsiteItem {
+    func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem {
+        _ = clientUpdatedAt
         makeItem(id: id)
     }
 
-    func archive(id: String, archived: Bool) async throws -> WebsiteItem {
+    func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
+        _ = clientUpdatedAt
         makeItem(id: id)
     }
 
-    func delete(id: String) async throws {
+    func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
+        _ = clientUpdatedAt
+    }
+
+    func sync(_ payload: WebsiteSyncRequest) async throws -> WebsiteSyncResponse {
+        _ = payload
+        return WebsiteSyncResponse(applied: [], websites: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
     }
 
     func resumeSave(result: Result<WebsiteSaveResponse, Error>) {
@@ -315,7 +349,8 @@ private func makeItem(id: String) -> WebsiteItem {
         archived: false,
         youtubeTranscripts: nil,
         updatedAt: nil,
-        lastOpenedAt: nil
+        lastOpenedAt: nil,
+        deletedAt: nil
     )
 }
 

@@ -723,10 +723,10 @@ public func enqueueBatch(_ batch: TaskOperationBatch) async
 
 
 ### Phase 4: Websites + Files
-- [ ] Add `WebsitesWriteQueueExecutor`
-- [ ] Extend `WebsitesStore` for offline queued ops
-- [ ] Add `FilesWriteQueueExecutor`
-- [ ] Extend `IngestionStore`
+- [x] Add `WebsitesWriteQueueExecutor`
+- [x] Extend `WebsitesStore` for offline queued ops
+- [x] Add `FilesWriteQueueExecutor`
+- [x] Extend `IngestionStore`
 
 #### Phase 4 Detailed Task List (with file targets)
 1) Websites offline snapshot

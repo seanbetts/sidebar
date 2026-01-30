@@ -1,5 +1,4 @@
 import Foundation
-import sideBarShared
 import Combine
 
 // MARK: - IngestionStore
@@ -21,6 +20,9 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     @Published public private(set) var isOffline: Bool = false
 
     private let api: any IngestionProviding
+    private let offlineStore: OfflineStore?
+    private let networkStatus: (any NetworkStatusProviding)?
+    weak var writeQueue: WriteQueue?
     private var remoteItems: [IngestionListItem] = []
     private var localItems: [String: IngestionListItem] = [:]
     private var localUploadRecords: [String: LocalUploadRecord] = [:]
@@ -32,9 +34,13 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     public init(
         api: any IngestionProviding,
         cache: CacheClient,
+        offlineStore: OfflineStore? = nil,
+        networkStatus: (any NetworkStatusProviding)? = nil,
         userDefaults: UserDefaults = .standard
     ) {
         self.api = api
+        self.offlineStore = offlineStore
+        self.networkStatus = networkStatus
         self.userDefaults = userDefaults
         super.init(cache: cache)
         loadLocalUploads()
@@ -62,7 +68,28 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     // MARK: - Public API
 
     public func loadList(force: Bool = false) async throws {
-        try await loadWithCache(force: force)
+        if !force {
+            let cached: IngestionListResponse? = cache.get(key: cacheKey)
+            if let cached {
+                applyListUpdate(cached.items, persist: false)
+                Task { [weak self] in
+                    await self?.refreshList()
+                }
+                return
+            }
+            if let offline = offlineStore?.get(key: cacheKey, as: IngestionListResponse.self) {
+                applyListUpdate(offline.items, persist: false)
+                if !(networkStatus?.isOffline ?? false) {
+                    Task { [weak self] in
+                        await self?.refreshList()
+                    }
+                }
+                return
+            }
+        }
+        let remote = try await fetchFromAPI()
+        applyListUpdate(remote.items, persist: true)
+        cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
     }
 
     public func loadMeta(fileId: String, force: Bool = false) async throws {
@@ -71,6 +98,15 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
             applyMetaUpdate(cached, persist: false)
             Task { [weak self] in
                 await self?.refreshMeta(fileId: fileId)
+            }
+            return
+        }
+        if !force, let offline = offlineStore?.get(key: cacheKey, as: IngestionMetaResponse.self) {
+            applyMetaUpdate(offline, persist: false)
+            if !(networkStatus?.isOffline ?? false) {
+                Task { [weak self] in
+                    await self?.refreshMeta(fileId: fileId)
+                }
             }
             return
         }
@@ -95,506 +131,22 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
         activeMeta = nil
         userDefaults.removeObject(forKey: localUploadsKey)
     }
-}
 
-extension IngestionStore {
-    public func applyIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) {
-        let fileId = payload.record?.id ?? payload.oldRecord?.id
-        switch payload.eventType {
-        case .delete:
-            if let fileId {
-                remoteItems.removeAll { $0.file.id == fileId }
-                items = mergeItems(remoteItems)
-                persistListCache()
-                if activeMeta?.file.id == fileId {
-                    activeMeta = nil
-                }
-            }
-        case .insert, .update:
-            guard let record = payload.record,
-                  let mapped = RealtimeMappers.mapIngestedFile(record) else {
-                return
-            }
-            let job = remoteItems.first(where: { $0.file.id == mapped.id })?.job ?? IngestionJob(
-                status: nil,
-                stage: nil,
-                errorCode: nil,
-                errorMessage: nil,
-                userMessage: nil,
-                progress: nil,
-                attempts: 0,
-                updatedAt: nil
-            )
-            upsertRemoteItem(IngestionListItem(file: mapped, job: job, recommendedViewer: nil))
-        }
+    public func attachWriteQueue(_ writeQueue: WriteQueue) {
+        self.writeQueue = writeQueue
     }
 
-    public func applyFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>) {
-        guard let record = payload.record else {
-            return
-        }
-        let job = RealtimeMappers.mapFileJob(record)
-        if let index = remoteItems.firstIndex(where: { $0.file.id == record.fileId }) {
-            let existing = remoteItems[index]
-            remoteItems[index] = IngestionListItem(file: existing.file, job: job, recommendedViewer: existing.recommendedViewer)
-        } else if let local = localItems[record.fileId] {
-            let updated = IngestionListItem(
-                file: local.file,
-                job: job,
-                recommendedViewer: local.recommendedViewer
-            )
-            setLocalUpload(item: updated, bookmarkData: nil)
-        } else {
-            return
-        }
-        items = mergeItems(remoteItems)
+    public func loadFromOffline() async {
+        guard let offline = offlineStore?.get(key: cacheKey, as: IngestionListResponse.self) else { return }
+        applyListUpdate(offline.items, persist: false)
+    }
+
+    public func saveOfflineSnapshot() async {
         persistListCache()
-    }
-
-    public func updatePinned(fileId: String, pinned: Bool) {
-        if let index = remoteItems.firstIndex(where: { $0.file.id == fileId }) {
-            let existing = remoteItems[index]
-            let updatedFile = updatingPinned(existing.file, pinned: pinned)
-            remoteItems[index] = IngestionListItem(
-                file: updatedFile,
-                job: existing.job,
-                recommendedViewer: existing.recommendedViewer
-            )
-        }
-        if let local = localItems[fileId] {
-            let updatedFile = updatingPinned(local.file, pinned: pinned)
-            let updated = IngestionListItem(
-                file: updatedFile,
-                job: local.job,
-                recommendedViewer: local.recommendedViewer
-            )
-            setLocalUpload(item: updated, bookmarkData: nil)
-        }
-        if let meta = activeMeta, meta.file.id == fileId {
-            let updatedFile = updatingPinned(meta.file, pinned: pinned)
-            let updatedMeta = IngestionMetaResponse(
-                file: updatedFile,
-                job: meta.job,
-                derivatives: meta.derivatives,
-                recommendedViewer: meta.recommendedViewer
-            )
-            activeMeta = updatedMeta
-            cache.set(
-                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
-                value: updatedMeta,
-                ttlSeconds: CachePolicy.ingestionMeta
-            )
-        }
-        items = mergeItems(remoteItems)
-        persistListCache()
-    }
-
-    public func updateFilename(fileId: String, filename: String) {
-        if let index = remoteItems.firstIndex(where: { $0.file.id == fileId }) {
-            let existing = remoteItems[index]
-            let updatedFile = updatingFilename(existing.file, filename: filename)
-            remoteItems[index] = IngestionListItem(
-                file: updatedFile,
-                job: existing.job,
-                recommendedViewer: existing.recommendedViewer
-            )
-        }
-        if let local = localItems[fileId] {
-            let updatedFile = updatingFilename(local.file, filename: filename)
-            let updated = IngestionListItem(
-                file: updatedFile,
-                job: local.job,
-                recommendedViewer: local.recommendedViewer
-            )
-            setLocalUpload(item: updated, bookmarkData: nil)
-        }
-        if let meta = activeMeta, meta.file.id == fileId {
-            let updatedFile = updatingFilename(meta.file, filename: filename)
-            let updatedMeta = IngestionMetaResponse(
-                file: updatedFile,
-                job: meta.job,
-                derivatives: meta.derivatives,
-                recommendedViewer: meta.recommendedViewer
-            )
-            activeMeta = updatedMeta
-            cache.set(
-                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
-                value: updatedMeta,
-                ttlSeconds: CachePolicy.ingestionMeta
-            )
-        }
-        items = mergeItems(remoteItems)
-        persistListCache()
-    }
-
-    public func updateJob(fileId: String, job: IngestionJob, recommendedViewer: String?) {
-        if let index = remoteItems.firstIndex(where: { $0.file.id == fileId }) {
-            let existing = remoteItems[index]
-            remoteItems[index] = IngestionListItem(
-                file: existing.file,
-                job: job,
-                recommendedViewer: recommendedViewer ?? existing.recommendedViewer
-            )
-        }
-        if let local = localItems[fileId] {
-            let updated = IngestionListItem(
-                file: local.file,
-                job: job,
-                recommendedViewer: recommendedViewer ?? local.recommendedViewer
-            )
-            setLocalUpload(item: updated, bookmarkData: nil)
-        }
-        if let meta = activeMeta, meta.file.id == fileId {
-            let updatedMeta = IngestionMetaResponse(
-                file: meta.file,
-                job: job,
-                derivatives: meta.derivatives,
-                recommendedViewer: recommendedViewer ?? meta.recommendedViewer
-            )
-            activeMeta = updatedMeta
-            cache.set(
-                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
-                value: updatedMeta,
-                ttlSeconds: CachePolicy.ingestionMeta
-            )
-        }
-        items = mergeItems(remoteItems)
-        persistListCache()
-    }
-
-    public func removeItem(fileId: String) {
-        remoteItems.removeAll { $0.file.id == fileId }
-        removeLocalUploadRecord(fileId: fileId)
-        items = mergeItems(remoteItems)
-        if activeMeta?.file.id == fileId {
-            activeMeta = nil
-        }
-        persistListCache()
-        cache.remove(key: CacheKeys.ingestionMeta(fileId: fileId))
-    }
-
-    public func addLocalUpload(_ item: IngestionListItem) {
-        setLocalUpload(item: item, bookmarkData: nil)
-        items = mergeItems(remoteItems)
-    }
-
-    public func addLocalUpload(_ item: IngestionListItem, bookmarkData: Data?) {
-        setLocalUpload(item: item, bookmarkData: bookmarkData)
-        items = mergeItems(remoteItems)
-    }
-
-    public func updateLocalUpload(
-        fileId: String,
-        status: String? = nil,
-        stage: String? = nil,
-        progress: Double? = nil,
-        errorMessage: String? = nil
-    ) {
-        guard let existing = localItems[fileId] else { return }
-        let updatedJob = IngestionJob(
-            status: status ?? existing.job.status,
-            stage: stage ?? existing.job.stage,
-            errorCode: existing.job.errorCode,
-            errorMessage: errorMessage ?? existing.job.errorMessage,
-            userMessage: existing.job.userMessage,
-            progress: progress ?? existing.job.progress,
-            attempts: existing.job.attempts,
-            updatedAt: existing.job.updatedAt
-        )
-        let updated = IngestionListItem(
-            file: existing.file,
-            job: updatedJob,
-            recommendedViewer: existing.recommendedViewer
-        )
-        setLocalUpload(item: updated, bookmarkData: nil)
-        items = mergeItems(remoteItems)
-    }
-
-    public func replaceLocalUpload(
-        tempId: String,
-        fileId: String,
-        filename: String,
-        mimeType: String,
-        sizeBytes: Int,
-        sourceUrl: String? = nil
-    ) {
-        guard let existing = localItems[tempId] else { return }
-        removeLocalUploadRecord(fileId: tempId)
-        let updatedFile = IngestedFileMeta(
-            id: fileId,
-            filenameOriginal: filename,
-            path: existing.file.path,
-            mimeOriginal: mimeType,
-            sizeBytes: sizeBytes,
-            sha256: existing.file.sha256,
-            pinned: existing.file.pinned,
-            pinnedOrder: existing.file.pinnedOrder,
-            category: existing.file.category,
-            sourceUrl: sourceUrl ?? existing.file.sourceUrl,
-            sourceMetadata: existing.file.sourceMetadata,
-            createdAt: existing.file.createdAt
-        )
-        let updatedJob = IngestionJob(
-            status: existing.job.status,
-            stage: existing.job.stage,
-            errorCode: existing.job.errorCode,
-            errorMessage: existing.job.errorMessage,
-            userMessage: existing.job.userMessage,
-            progress: existing.job.progress,
-            attempts: existing.job.attempts,
-            updatedAt: existing.job.updatedAt
-        )
-        let updated = IngestionListItem(
-            file: updatedFile,
-            job: updatedJob,
-            recommendedViewer: existing.recommendedViewer
-        )
-        setLocalUpload(item: updated, bookmarkData: nil)
-        items = mergeItems(remoteItems)
-    }
-
-    public func removeLocalUpload(fileId: String) {
-        removeLocalUploadRecord(fileId: fileId)
-        items = mergeItems(remoteItems)
-    }
-
-    func pendingUploadsForResume() -> [LocalUploadResumeItem] {
-        localUploadRecords.values.compactMap { record in
-            guard let bookmarkData = record.bookmarkData else { return nil }
-            let status = record.item.job.status ?? ""
-            guard status == "uploading" || status == "queued" else { return nil }
-            return LocalUploadResumeItem(item: record.item, bookmarkData: bookmarkData)
+        if let meta = activeMeta {
+            let key = CacheKeys.ingestionMeta(fileId: meta.file.id)
+            let lastSyncAt = offlineStore?.lastSyncAt(for: key)
+            offlineStore?.set(key: key, entityType: "file", value: meta, lastSyncAt: lastSyncAt)
         }
     }
-}
-
-extension IngestionStore {
-    // MARK: - Private
-
-    private func refreshList() async {
-        guard !isRefreshingList else {
-            return
-        }
-        isRefreshingList = true
-        defer { isRefreshingList = false }
-        do {
-            let response = try await api.list()
-            isOffline = false
-            applyListUpdate(response.items, persist: true)
-        } catch {
-            isOffline = true
-            // Ignore background refresh failures; cache remains source of truth.
-        }
-    }
-
-    private func refreshMeta(fileId: String) async {
-        guard !refreshingMetaIds.contains(fileId) else {
-            return
-        }
-        refreshingMetaIds.insert(fileId)
-        defer { refreshingMetaIds.remove(fileId) }
-        do {
-            let response = try await api.getMeta(fileId: fileId)
-            isOffline = false
-            applyMetaUpdate(response, persist: true)
-        } catch {
-            isOffline = true
-            // Ignore background refresh failures; cache remains source of truth.
-        }
-    }
-
-    private func applyListUpdate(_ incoming: [IngestionListItem], persist: Bool) {
-        guard shouldUpdateList(incoming) else {
-            return
-        }
-        remoteItems = incoming
-        items = mergeItems(incoming)
-        if persist {
-            persistListCache()
-        }
-    }
-
-    private func shouldUpdateList(_ incoming: [IngestionListItem]) -> Bool {
-        guard remoteItems.count == incoming.count else {
-            return true
-        }
-        let existing = Dictionary(uniqueKeysWithValues: remoteItems.map { ($0.file.id, $0) })
-        for item in incoming {
-            guard let current = existing[item.file.id] else {
-                return true
-            }
-            if current.job.updatedAt != item.job.updatedAt
-                || current.job.status != item.job.status
-                || current.job.stage != item.job.stage
-                || current.file.pinned != item.file.pinned
-                || current.file.pinnedOrder != item.file.pinnedOrder
-                || current.file.filenameOriginal != item.file.filenameOriginal {
-                return true
-            }
-        }
-        return false
-    }
-
-    private func upsertRemoteItem(_ item: IngestionListItem) {
-        if let index = remoteItems.firstIndex(where: { $0.file.id == item.file.id }) {
-            remoteItems[index] = item
-        } else {
-            remoteItems.append(item)
-        }
-        items = mergeItems(remoteItems)
-        persistListCache()
-    }
-
-    private func mergeItems(_ remote: [IngestionListItem]) -> [IngestionListItem] {
-        let remoteIds = Set(remote.map { $0.file.id })
-        let filteredLocal = localItems.filter { !remoteIds.contains($0.key) }
-        if filteredLocal.count != localItems.count {
-            localItems = filteredLocal
-            localUploadRecords = localUploadRecords.filter { !remoteIds.contains($0.key) }
-            persistLocalUploads()
-        }
-        var merged = remote
-        let sortedLocal = localItems.values.sorted { lhs, rhs in
-            let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
-            let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
-            return leftDate > rightDate
-        }
-        merged.append(contentsOf: sortedLocal)
-        return merged
-    }
-
-    private func updatingPinned(_ file: IngestedFileMeta, pinned: Bool) -> IngestedFileMeta {
-        IngestedFileMeta(
-            id: file.id,
-            filenameOriginal: file.filenameOriginal,
-            path: file.path,
-            mimeOriginal: file.mimeOriginal,
-            sizeBytes: file.sizeBytes,
-            sha256: file.sha256,
-            pinned: pinned,
-            pinnedOrder: file.pinnedOrder,
-            category: file.category,
-            sourceUrl: file.sourceUrl,
-            sourceMetadata: file.sourceMetadata,
-            createdAt: file.createdAt
-        )
-    }
-
-    private func updatingFilename(_ file: IngestedFileMeta, filename: String) -> IngestedFileMeta {
-        IngestedFileMeta(
-            id: file.id,
-            filenameOriginal: filename,
-            path: file.path,
-            mimeOriginal: file.mimeOriginal,
-            sizeBytes: file.sizeBytes,
-            sha256: file.sha256,
-            pinned: file.pinned,
-            pinnedOrder: file.pinnedOrder,
-            category: file.category,
-            sourceUrl: file.sourceUrl,
-            sourceMetadata: file.sourceMetadata,
-            createdAt: file.createdAt
-        )
-    }
-
-    private func applyMetaUpdate(_ incoming: IngestionMetaResponse, persist: Bool) {
-        guard shouldUpdateMeta(incoming) else {
-            return
-        }
-        activeMeta = incoming
-        updateFilenameForItems(fileId: incoming.file.id, filename: incoming.file.filenameOriginal)
-        if persist {
-            cache.set(
-                key: CacheKeys.ingestionMeta(fileId: incoming.file.id),
-                value: incoming,
-                ttlSeconds: CachePolicy.ingestionMeta
-            )
-        }
-    }
-
-    private func shouldUpdateMeta(_ incoming: IngestionMetaResponse) -> Bool {
-        guard let current = activeMeta else {
-            return true
-        }
-        return current.file.pinned != incoming.file.pinned
-            || current.file.pinnedOrder != incoming.file.pinnedOrder
-            || current.job.updatedAt != incoming.job.updatedAt
-            || current.job.status != incoming.job.status
-            || current.job.stage != incoming.job.stage
-            || current.derivatives.count != incoming.derivatives.count
-    }
-
-    private func persistListCache() {
-        cache.set(
-            key: CacheKeys.ingestionList,
-            value: IngestionListResponse(items: remoteItems),
-            ttlSeconds: CachePolicy.ingestionList
-        )
-    }
-
-    private func updateFilenameForItems(fileId: String, filename: String) {
-        var didUpdate = false
-        if let index = remoteItems.firstIndex(where: { $0.file.id == fileId }) {
-            let existing = remoteItems[index]
-            if existing.file.filenameOriginal != filename {
-                let updatedFile = updatingFilename(existing.file, filename: filename)
-                remoteItems[index] = IngestionListItem(
-                    file: updatedFile,
-                    job: existing.job,
-                    recommendedViewer: existing.recommendedViewer
-                )
-                didUpdate = true
-            }
-        }
-        if let local = localItems[fileId], local.file.filenameOriginal != filename {
-            let updatedFile = updatingFilename(local.file, filename: filename)
-            let updated = IngestionListItem(
-                file: updatedFile,
-                job: local.job,
-                recommendedViewer: local.recommendedViewer
-            )
-            setLocalUpload(item: updated, bookmarkData: nil)
-            didUpdate = true
-        }
-        if didUpdate {
-            items = mergeItems(remoteItems)
-            persistListCache()
-        }
-    }
-
-    private func loadLocalUploads() {
-        guard let data = userDefaults.data(forKey: localUploadsKey) else { return }
-        guard let records = try? JSONDecoder().decode([String: LocalUploadRecord].self, from: data) else { return }
-        localUploadRecords = records
-        localItems = records.mapValues { $0.item }
-        items = mergeItems(remoteItems)
-    }
-
-    private func persistLocalUploads() {
-        guard let data = try? JSONEncoder().encode(localUploadRecords) else { return }
-        userDefaults.set(data, forKey: localUploadsKey)
-    }
-
-    private func setLocalUpload(item: IngestionListItem, bookmarkData: Data?) {
-        localItems[item.file.id] = item
-        let existingBookmark = bookmarkData ?? localUploadRecords[item.file.id]?.bookmarkData
-        localUploadRecords[item.file.id] = LocalUploadRecord(item: item, bookmarkData: existingBookmark)
-        persistLocalUploads()
-    }
-
-    private func removeLocalUploadRecord(fileId: String) {
-        localItems.removeValue(forKey: fileId)
-        localUploadRecords.removeValue(forKey: fileId)
-        persistLocalUploads()
-    }
-}
-
-private struct LocalUploadRecord: Codable {
-    let item: IngestionListItem
-    let bookmarkData: Data?
-}
-
-struct LocalUploadResumeItem {
-    let item: IngestionListItem
-    let bookmarkData: Data
 }
