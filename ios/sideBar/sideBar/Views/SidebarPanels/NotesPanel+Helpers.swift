@@ -172,6 +172,13 @@ extension NotesPanelView {
     func requestNoteSelection(id: String) {
         guard viewModel.selectedNoteId != id else { return }
         if environment.notesEditorViewModel.isDirty, viewModel.selectedNoteId != nil {
+            if environment.isOffline {
+                Task {
+                    await environment.notesEditorViewModel.saveIfNeeded()
+                    await viewModel.selectNote(id: id)
+                }
+                return
+            }
             pendingNoteId = id
             isSaveChangesDialogPresented = true
             return
