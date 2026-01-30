@@ -140,12 +140,14 @@ public final class NotesEditorViewModel: ObservableObject {
         }
         if !networkStatus.isNetworkAvailable {
             let payload = NoteUpdatePayload(content: markdown)
+            let snapshot = makeServerSnapshot(noteId: noteId)
             do {
                 try await writeQueue.enqueue(
                     operation: .update,
                     entityType: .note,
                     entityId: noteId,
-                    payload: payload
+                    payload: payload,
+                    serverSnapshot: snapshot
                 )
             } catch WriteQueueError.queueFull {
                 saveErrorMessage = "Sync queue full. Review pending changes."
@@ -169,12 +171,14 @@ public final class NotesEditorViewModel: ObservableObject {
         } else {
             saveErrorMessage = "Failed to save note"
             let payload = NoteUpdatePayload(content: markdown)
+            let snapshot = makeServerSnapshot(noteId: noteId)
             do {
                 try await writeQueue.enqueue(
                     operation: .update,
                     entityType: .note,
                     entityId: noteId,
-                    payload: payload
+                    payload: payload,
+                    serverSnapshot: snapshot
                 )
             } catch WriteQueueError.queueFull {
                 saveErrorMessage = "Sync queue full. Review pending changes."
@@ -245,6 +249,27 @@ public final class NotesEditorViewModel: ObservableObject {
         if #available(iOS 26.0, macOS 26.0, *) {
             nativeEditorViewModel?.loadMarkdown(markdown)
         }
+    }
+
+    private func makeServerSnapshot(noteId: String) -> ServerSnapshot? {
+        guard let note = notesViewModel.activeNote, note.id == noteId else {
+            return nil
+        }
+        let node = notesViewModel.noteNode(id: note.path)
+        let snapshot = NoteSnapshot(
+            modified: note.modified,
+            name: note.name,
+            path: note.path,
+            pinned: node?.pinned,
+            pinnedOrder: node?.pinnedOrder,
+            archived: node?.archived
+        )
+        return ServerSnapshot(
+            entityType: .note,
+            entityId: noteId,
+            capturedAt: Date(),
+            payload: .note(snapshot)
+        )
     }
 }
 

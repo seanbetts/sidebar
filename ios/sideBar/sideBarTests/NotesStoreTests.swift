@@ -82,10 +82,48 @@ final class NotesStoreTests: XCTestCase {
         let cached: NotePayload? = cache.get(key: CacheKeys.note(id: "n1"))
         XCTAssertNil(cached)
     }
+
+    func testLoadTreeUsesOfflineStoreWhenCacheMissing() async {
+        let offlineTree = FileTree(children: [
+            FileNode(
+                name: "Offline",
+                path: "/offline.md",
+                type: .file,
+                size: nil,
+                modified: nil,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        offlineStore.set(key: CacheKeys.notesTree, entityType: "notesTree", value: offlineTree, lastSyncAt: nil)
+        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(
+            api: api,
+            cache: cache,
+            offlineStore: offlineStore,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false)
+        )
+
+        try? await store.loadTree()
+
+        XCTAssertEqual(store.tree?.children.first?.name, "Offline")
+    }
 }
 
 private enum MockError: Error {
     case forced
+}
+
+@MainActor
+private struct TestNetworkStatus: NetworkStatusProviding {
+    let isNetworkAvailable: Bool
 }
 
 private final class MockNotesAPI: NotesProviding {

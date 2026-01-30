@@ -189,20 +189,15 @@ public final class NotesViewModel: ObservableObject {
         guard filename.lowercased() != currentName?.lowercased() else {
             return
         }
+        if !networkStatus.isNetworkAvailable {
+            await queueOfflineRename(notePath: id, newName: filename)
+            return
+        }
         // The server expects the note's UUID, not the path
         // If renaming the active note, use its UUID; otherwise load the note first
-        let noteUuid: String
-        if activeNote?.path == id, let uuid = activeNote?.id {
-            noteUuid = uuid
-        } else {
-            // Need to load the note to get its UUID
-            do {
-                let note = try await api.getNote(id: id)
-                noteUuid = note.id
-            } catch {
-                toastCenter.show(message: "Failed to rename note")
-                return
-            }
+        guard let noteUuid = await resolveNoteUuid(for: id) else {
+            toastCenter.show(message: "Failed to rename note")
+            return
         }
         do {
             let updated = try await api.renameNote(id: noteUuid, newName: filename)
@@ -217,6 +212,19 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func moveNote(id: String, folder: String) async {
+        if !networkStatus.isNetworkAvailable {
+            do {
+                try await store.enqueueMove(notePath: id, folder: folder)
+                if selectedNoteId == id {
+                    selectedNoteId = movingPath(id, to: folder)
+                }
+            } catch WriteQueueError.queueFull {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+            } catch {
+                toastCenter.show(message: "Failed to queue move")
+            }
+            return
+        }
         do {
             let updated = try await api.moveNote(id: id, folder: folder)
             store.applyEditorUpdate(updated)
@@ -230,6 +238,19 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func setArchived(id: String, archived: Bool) async {
+        if !networkStatus.isNetworkAvailable {
+            do {
+                try await store.enqueueArchive(notePath: id, archived: archived)
+                if archived, selectedNoteId == id {
+                    clearSelection()
+                }
+            } catch WriteQueueError.queueFull {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+            } catch {
+                toastCenter.show(message: archived ? "Failed to queue archive" : "Failed to queue unarchive")
+            }
+            return
+        }
         do {
             _ = try await api.archiveNote(id: id, archived: archived)
             if archived, selectedNoteId == id {
@@ -242,6 +263,16 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func setPinned(id: String, pinned: Bool) async {
+        if !networkStatus.isNetworkAvailable {
+            do {
+                try await store.enqueuePin(notePath: id, pinned: pinned)
+            } catch WriteQueueError.queueFull {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+            } catch {
+                toastCenter.show(message: pinned ? "Failed to queue pin" : "Failed to queue unpin")
+            }
+            return
+        }
         do {
             _ = try await api.pinNote(id: id, pinned: pinned)
             await refreshTree(force: true)
@@ -251,6 +282,19 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func deleteNote(id: String) async {
+        if !networkStatus.isNetworkAvailable {
+            do {
+                try await store.enqueueDelete(notePath: id)
+                if selectedNoteId == id {
+                    clearSelection()
+                }
+            } catch WriteQueueError.queueFull {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+            } catch {
+                toastCenter.show(message: "Failed to queue delete")
+            }
+            return
+        }
         do {
             _ = try await api.deleteNote(id: id)
             if selectedNoteId == id {
@@ -372,5 +416,50 @@ public final class NotesViewModel: ObservableObject {
     private func parentFolderPath(_ path: String) -> String {
         guard let lastSlash = path.lastIndex(of: "/") else { return "" }
         return String(path[..<lastSlash])
+    }
+
+    private func movingPath(_ path: String, to folder: String) -> String {
+        let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let filename = trimmed.split(separator: "/").last.map(String.init) ?? trimmed
+        let normalizedFolder = folder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let newPath = normalizedFolder.isEmpty ? filename : "\(normalizedFolder)/\(filename)"
+        return path.hasPrefix("/") ? "/\(newPath)" : newPath
+    }
+
+    private func replacingFilename(in path: String, with newName: String) -> String {
+        let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let parts = trimmed.split(separator: "/")
+        let folder = parts.dropLast().joined(separator: "/")
+        let newPath = folder.isEmpty ? newName : "\(folder)/\(newName)"
+        return path.hasPrefix("/") ? "/\(newPath)" : newPath
+    }
+
+    private func resolveNoteUuid(for notePath: String) async -> String? {
+        if activeNote?.path == notePath, let uuid = activeNote?.id {
+            return uuid
+        }
+        do {
+            let note = try await api.getNote(id: notePath)
+            return note.id
+        } catch {
+            return nil
+        }
+    }
+
+    private func queueOfflineRename(notePath: String, newName: String) async {
+        guard let note = store.cachedNotePayload(path: notePath) else {
+            toastCenter.show(message: "This note isn't available offline yet.")
+            return
+        }
+        do {
+            try await store.enqueueRename(noteId: note.id, notePath: notePath, newName: newName)
+            if selectedNoteId == notePath {
+                selectedNoteId = replacingFilename(in: notePath, with: newName)
+            }
+        } catch WriteQueueError.queueFull {
+            toastCenter.show(message: "Sync queue full. Review pending changes.")
+        } catch {
+            toastCenter.show(message: "Failed to queue rename")
+        }
     }
 }

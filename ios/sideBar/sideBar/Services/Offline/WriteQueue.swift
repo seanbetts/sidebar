@@ -46,12 +46,19 @@ struct PendingWriteRecord: Sendable, Equatable {
     let entityType: String
     let entityId: String?
     let payload: Data
+    let serverSnapshot: Data?
     let attempts: Int16
 }
 
 enum WriteQueueError: Error {
     case missingExecutor
+    case missingQueue
     case queueFull
+}
+
+struct WriteQueueConflictError: Error {
+    let reason: String
+    let serverSnapshot: Data?
 }
 
 @MainActor
@@ -64,6 +71,7 @@ protocol WriteQueueExecutor {
 public final class WriteQueue: ObservableObject {
     @Published private(set) var pendingCount: Int = 0
     @Published private(set) var isProcessing: Bool = false
+    @Published private(set) var isPausedForConflict: Bool = false
     public let maxPendingWrites: Int
 
     private let container: NSPersistentContainer
@@ -95,9 +103,11 @@ public final class WriteQueue: ObservableObject {
         operation: WriteOperation,
         entityType: WriteEntityType,
         entityId: String?,
-        payload: T
+        payload: T,
+        serverSnapshot: ServerSnapshot? = nil
     ) async throws {
         let payloadData = try encoder.encode(payload)
+        let snapshotData = try? encodeSnapshot(serverSnapshot)
         if operation == .update,
            entityType == .note,
            let entityId,
@@ -126,6 +136,7 @@ public final class WriteQueue: ObservableObject {
             write.createdAt = Date()
             write.attempts = 0
             write.status = WriteQueueStatus.pending.rawValue
+            write.serverSnapshot = snapshotData
         }
 
         await loadPendingCount()
@@ -138,12 +149,15 @@ public final class WriteQueue: ObservableObject {
     }
 
     func processQueue() async {
-        guard !isProcessing, executor != nil, !connectivityMonitor.isOffline else { return }
+        guard !isProcessing, !isPausedForConflict, executor != nil, !connectivityMonitor.isOffline else { return }
         isProcessing = true
         defer { isProcessing = false }
 
         while let write = try? await fetchNextPending() {
-            await processWrite(write)
+            let shouldContinue = await processWrite(write)
+            if !shouldContinue {
+                break
+            }
             await Task.yield()
         }
 
@@ -192,6 +206,24 @@ public final class WriteQueue: ObservableObject {
         await loadPendingCount()
     }
 
+    func deleteWrites(entityType: WriteEntityType, entityId: String) async {
+        do {
+            try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.predicate = NSPredicate(
+                    format: "entityType == %@ AND entityId == %@",
+                    entityType.rawValue,
+                    entityId
+                )
+                let writes = try context.fetch(request)
+                writes.forEach { context.delete($0) }
+            }
+        } catch {
+            return
+        }
+        await loadPendingCount()
+    }
+
     public func pruneOldestWrites(keeping maxCount: Int) async {
         guard maxCount >= 0 else { return }
         do {
@@ -218,22 +250,42 @@ public final class WriteQueue: ObservableObject {
         }
     }
 
+    public func resumeProcessing() {
+        isPausedForConflict = false
+        Task { [weak self] in
+            await self?.processQueue()
+        }
+    }
+
     // MARK: - Private
 
-    private func processWrite(_ write: PendingWriteRecord) async {
+    private func processWrite(_ write: PendingWriteRecord) async -> Bool {
         do {
             guard let executor else {
                 throw WriteQueueError.missingExecutor
             }
             try await executor.execute(write: write)
             try await deleteWrite(id: write.id)
+            return true
         } catch {
+            if let conflictError = error as? WriteQueueConflictError {
+                await markWriteFailed(
+                    id: write.id,
+                    error: conflictError,
+                    shouldRetry: false,
+                    conflictReason: conflictError.reason,
+                    serverSnapshot: conflictError.serverSnapshot
+                )
+                isPausedForConflict = true
+                return false
+            }
             let shouldRetry = shouldRetry(attempts: write.attempts)
             await markWriteFailed(id: write.id, error: error, shouldRetry: shouldRetry)
             if shouldRetry {
                 let delay = backoffDelay(for: Int(write.attempts))
                 try? await Task.sleep(nanoseconds: delay)
             }
+            return true
         }
     }
 
@@ -264,6 +316,7 @@ public final class WriteQueue: ObservableObject {
                 entityType: write.entityType,
                 entityId: write.entityId,
                 payload: write.payload,
+                serverSnapshot: write.serverSnapshot,
                 attempts: write.attempts
             )
         }
@@ -295,7 +348,13 @@ public final class WriteQueue: ObservableObject {
         }
     }
 
-    private func markWriteFailed(id: UUID, error: Error, shouldRetry: Bool) async {
+    private func markWriteFailed(
+        id: UUID,
+        error: Error,
+        shouldRetry: Bool,
+        conflictReason: String? = nil,
+        serverSnapshot: Data? = nil
+    ) async {
         do {
             try await performBackgroundTask { context in
                 let request = PendingWrite.fetchRequest()
@@ -304,6 +363,12 @@ public final class WriteQueue: ObservableObject {
                 guard let write = try context.fetch(request).first else { return }
                 write.status = shouldRetry ? WriteQueueStatus.pending.rawValue : WriteQueueStatus.failed.rawValue
                 write.lastError = String(describing: error)
+                if let conflictReason {
+                    write.conflictReason = conflictReason
+                }
+                if let serverSnapshot {
+                    write.serverSnapshot = serverSnapshot
+                }
             }
         } catch {
             return
@@ -345,12 +410,17 @@ public final class WriteQueue: ObservableObject {
             .removeDuplicates()
             .filter { !$0 }
             .sink { [weak self] _ in
-                guard let self, self.autoProcessEnabled else { return }
+                guard let self, self.autoProcessEnabled, !self.isPausedForConflict else { return }
                 Task { [weak self] in
                     await self?.processQueue()
                 }
             }
             .store(in: &cancellables)
+    }
+
+    private func encodeSnapshot(_ snapshot: ServerSnapshot?) throws -> Data? {
+        guard let snapshot else { return nil }
+        return try encoder.encode(snapshot)
     }
 
     private func performBackgroundTask<T>(
