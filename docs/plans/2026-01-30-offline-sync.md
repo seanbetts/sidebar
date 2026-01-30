@@ -462,13 +462,13 @@ Add tests in `ios/sideBar/sideBarTests/`:
 ## Progress Tracking
 
 ### Backend Workstream (recommended to improve offline sync quality)
-- [ ] Conflict-aware mutations (notes/websites/files): accept `client_updated_at`/`expected_version` (or `If-Match`) and return structured conflict payloads
-- [ ] Add `updated_at` to file list responses (avoid field-diff workaround)
-- [ ] Batch apply endpoints (notes/websites/files) to process queued ops with per-op results
-- [ ] Idempotency for creates (idempotency keys or client-generated IDs)
-- [ ] Conflict responses include server snapshot to avoid extra fetches
-- [ ] Soft-delete/tombstone fields included in list/sync responses for idempotent deletes
- - Sequencing: land after Phase 2 (notes fully wired) and before Phase 3/4 (tasks/websites/files)
+- [x] Conflict-aware mutations (notes/websites/files): accept `client_updated_at`/`expected_version` (or `If-Match`) and return structured conflict payloads
+- [x] Add `updated_at` to file list responses (avoid field-diff workaround)
+- [x] Batch apply endpoints (notes/websites/files) to process queued ops with per-op results
+- [x] Idempotency for creates (idempotency keys or client-generated IDs)
+- [x] Conflict responses include server snapshot to avoid extra fetches
+- [x] Soft-delete/tombstone fields included in list/sync responses for idempotent deletes
+- Sequencing: completed before Phase 4 (2026-01-30)
 
 ### Phase 1: Core Offline Infrastructure
 - Completed (prior work)
