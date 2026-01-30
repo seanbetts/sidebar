@@ -66,19 +66,25 @@ public struct WidgetNote: WidgetStorable {
   public let contentPreview: String?
   public let path: String
   public let modifiedAt: Date?
+  public let pinned: Bool
+  public let pinnedOrder: Int?
 
   public init(
     id: String,
     name: String,
     contentPreview: String? = nil,
     path: String,
-    modifiedAt: Date? = nil
+    modifiedAt: Date? = nil,
+    pinned: Bool = false,
+    pinnedOrder: Int? = nil
   ) {
     self.id = id
     self.name = name
     self.contentPreview = contentPreview
     self.path = path
     self.modifiedAt = modifiedAt
+    self.pinned = pinned
+    self.pinnedOrder = pinnedOrder
   }
 }
 
@@ -102,10 +108,10 @@ public struct WidgetNoteData: WidgetDataContainer {
 
   public static let placeholder = WidgetNoteData(
     notes: [
-      WidgetNote(id: "1", name: "Meeting Notes", contentPreview: "Discussed project timeline...", path: "/notes/meeting.md"),
-      WidgetNote(id: "2", name: "Ideas", contentPreview: "New feature concepts", path: "/notes/ideas.md")
+      WidgetNote(id: "1", name: "Meeting Notes", contentPreview: "Discussed project timeline...", path: "/notes/meeting.md", pinned: true, pinnedOrder: 0),
+      WidgetNote(id: "2", name: "Ideas", contentPreview: "New feature concepts", path: "/notes/ideas.md", pinned: true, pinnedOrder: 1)
     ],
-    totalCount: 5
+    totalCount: 2
   )
 }
 

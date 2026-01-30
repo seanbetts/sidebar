@@ -239,10 +239,11 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     // MARK: - Widget Data
 
     func updateWidgetData(from tree: FileTree) {
-        let allNotes = flattenNotes(from: tree.children)
-            .sorted { ($0.modifiedAt ?? .distantPast) > ($1.modifiedAt ?? .distantPast) }
-        let recentNotes = Array(allNotes.prefix(10))
-        let data = WidgetNoteData(notes: recentNotes, totalCount: allNotes.count)
+        let pinnedNotes = flattenNotes(from: tree.children)
+            .filter { $0.pinned }
+            .sorted { ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max) }
+        let displayNotes = Array(pinnedNotes.prefix(10))
+        let data = WidgetNoteData(notes: displayNotes, totalCount: pinnedNotes.count)
         WidgetDataManager.shared.store(data, for: .notes)
     }
 
