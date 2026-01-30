@@ -77,6 +77,29 @@ public final class WriteQueue: ObservableObject {
         payload: T
     ) throws {
         let context = container.viewContext
+        if operation == .update,
+           entityType == .note,
+           let entityId,
+           let existing = fetchCoalescableWrite(
+               operation: operation,
+               entityType: entityType,
+               entityId: entityId
+           ) {
+            existing.payload = try encoder.encode(payload)
+            existing.createdAt = Date()
+            existing.status = WriteQueueStatus.pending.rawValue
+            existing.attempts = 0
+            existing.lastError = nil
+            existing.lastAttemptAt = nil
+            try context.save()
+
+            if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
+                Task { [weak self] in
+                    await self?.processQueue()
+                }
+            }
+            return
+        }
         let write = PendingWrite(context: context)
         write.id = UUID()
         write.operationType = operation.rawValue
@@ -184,6 +207,25 @@ public final class WriteQueue: ObservableObject {
         let request = PendingWrite.fetchRequest()
         request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.pending.rawValue)
         request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)]
+        request.fetchLimit = 1
+        return try? container.viewContext.fetch(request).first
+    }
+
+    private func fetchCoalescableWrite(
+        operation: WriteOperation,
+        entityType: WriteEntityType,
+        entityId: String
+    ) -> PendingWrite? {
+        let request = PendingWrite.fetchRequest()
+        request.predicate = NSPredicate(
+            format: "operationType == %@ AND entityType == %@ AND entityId == %@ AND (status == %@ OR status == %@)",
+            operation.rawValue,
+            entityType.rawValue,
+            entityId,
+            WriteQueueStatus.pending.rawValue,
+            WriteQueueStatus.failed.rawValue
+        )
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
         request.fetchLimit = 1
         return try? container.viewContext.fetch(request).first
     }
