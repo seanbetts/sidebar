@@ -46,7 +46,9 @@ struct RecentNotesWidgetView: View {
                 }
             }
             .buttonStyle(.plain)
-            Spacer(minLength: 0)
+            if family == .systemLarge {
+                Spacer(minLength: 0)
+            }
             HStack {
                 if showMoreIndicator {
                     moreNotesIndicator
@@ -55,19 +57,7 @@ struct RecentNotesWidgetView: View {
                 createNoteButton
             }
         }
-        .padding(.top, topPadding)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private var topPadding: CGFloat {
-        // Medium widget needs more top padding to visually match large widget
-        // because it has fewer content rows and more empty space below
-        switch family {
-        case .systemSmall: return 0
-        case .systemMedium: return 12
-        case .systemLarge: return 4
-        default: return 0
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: family == .systemLarge ? .topLeading : .top)
     }
 
     private var headerView: some View {
