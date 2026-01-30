@@ -4,6 +4,7 @@ import SwiftUI
 struct NativeMarkdownEditorContainer: View {
     @ObservedObject var editorViewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
+    @EnvironmentObject var environment: AppEnvironment
 
     @StateObject private var nativeViewModel = NativeMarkdownEditorViewModel()
     @State private var loadedNoteId: String?
@@ -36,6 +37,7 @@ struct NativeMarkdownEditorContainer: View {
         .onAppear {
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
+            applyAutosaveDelay(isOffline: environment.isOffline)
             nativeViewModel.isReadOnly = !isEditing
             editorViewModel.setReadOnly(!isEditing)
         }
@@ -68,6 +70,9 @@ struct NativeMarkdownEditorContainer: View {
             isTextEditorFocused = editing
             nativeViewModel.isReadOnly = readOnly
         }
+        .onChange(of: environment.isOffline) { _, isOffline in
+            applyAutosaveDelay(isOffline: isOffline)
+        }
         .onChange(of: isTextEditorFocused) { _, focused in
             // When user taps into the editor, enter edit mode
             if focused && !isEditing {
@@ -81,5 +86,10 @@ struct NativeMarkdownEditorContainer: View {
         guard noteId != loadedNoteId else { return }
         loadedNoteId = noteId
         nativeViewModel.loadMarkdown(editorViewModel.content)
+    }
+
+    private func applyAutosaveDelay(isOffline: Bool) {
+        _ = isOffline
+        nativeViewModel.autosaveDelay = 1.5
     }
 }

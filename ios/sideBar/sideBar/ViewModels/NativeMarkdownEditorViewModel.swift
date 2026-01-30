@@ -21,6 +21,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
     @Published public private(set) var hasUnsavedChanges: Bool = false
     @Published public private(set) var autosaveToken: Int = 0
+    public var autosaveDelay: TimeInterval = 1.5
 
 #if os(iOS)
     private typealias PlatformFont = UIFont
@@ -287,8 +288,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func scheduleAutosave() {
         autosaveTask?.cancel()
+        let delay = max(0.3, autosaveDelay)
         autosaveTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1.5))
+            try? await Task.sleep(for: .seconds(delay))
             guard let self else { return }
             let current = self.currentMarkdown()
             let hasChanges = current != self.lastSavedContent
