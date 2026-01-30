@@ -461,6 +461,14 @@ Add tests in `ios/sideBar/sideBarTests/`:
 
 ## Progress Tracking
 
+### Backend Workstream (recommended to improve offline sync quality)
+- [ ] Conflict-aware mutations (notes/websites/files): accept `client_updated_at`/`expected_version` (or `If-Match`) and return structured conflict payloads
+- [ ] Add `updated_at` to file list responses (avoid field-diff workaround)
+- [ ] Batch apply endpoints (notes/websites/files) to process queued ops with per-op results
+- [ ] Idempotency for creates (idempotency keys or client-generated IDs)
+- [ ] Conflict responses include server snapshot to avoid extra fetches
+- [ ] Soft-delete/tombstone fields included in list/sync responses for idempotent deletes
+
 ### Phase 1: Core Offline Infrastructure
 - Completed (prior work)
   - [x] `PendingWrite` Core Data entity
@@ -650,6 +658,25 @@ public func resolveConflict(_ conflict: SyncConflict<NotePayload>, keepLocal: Bo
 - Notes tree + note content available offline after restart.
 - All note edits queue while offline and sync when online.
 - Conflicts prompt user with server vs local.
+
+
+### Backend Detail (to fold into API work)
+1) Conflict-aware mutations
+   - Notes/Websites/Files: accept `client_updated_at` (or ETag/If-Match)
+   - Return `409 Conflict` with a structured payload (server snapshot + reason)
+
+2) File list schema
+   - Add `updated_at` to `/files` list response items
+
+3) Batch apply endpoints
+   - Add `/notes/sync` and `/websites/sync` (or `/apply`) to accept queued ops
+   - Response includes per-op success/failure/conflict, plus updated snapshots
+
+4) Idempotency
+   - Support `idempotency_key` (or client-generated IDs) for creates
+
+5) Tombstones
+   - Return `deleted_at` or `is_deleted` in list/sync responses so deletes are idempotent
 
 
 ### Phase 3: Tasks
