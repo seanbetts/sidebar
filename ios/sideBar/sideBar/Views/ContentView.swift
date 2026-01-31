@@ -33,7 +33,7 @@ public struct ContentView: View {
     @AppStorage(AppStorageKeys.leftPanelExpanded) var isLeftPanelExpanded: Bool = true
     @AppStorage(AppStorageKeys.biometricUnlockEnabled) var biometricUnlockEnabled: Bool = false
     @State var isSettingsPresented = false
-    @State var phoneSelection: AppSection = .chat
+    @State var phoneSelection: AppSection = .tasks
     @State var isPhoneScratchpadPresented = false
     @State var isShortcutsPresented = false
     @State var didSetInitialSelection = false

@@ -12,6 +12,7 @@ public struct WidgetTask: WidgetStorable {
   public let title: String
   public let isCompleted: Bool
   public let projectName: String?
+  public let groupName: String?
   public let hasNotes: Bool
   public let deadline: String?
 
@@ -20,6 +21,7 @@ public struct WidgetTask: WidgetStorable {
     title: String,
     isCompleted: Bool = false,
     projectName: String? = nil,
+    groupName: String? = nil,
     hasNotes: Bool = false,
     deadline: String? = nil
   ) {
@@ -27,6 +29,7 @@ public struct WidgetTask: WidgetStorable {
     self.title = title
     self.isCompleted = isCompleted
     self.projectName = projectName
+    self.groupName = groupName
     self.hasNotes = hasNotes
     self.deadline = deadline
   }
@@ -54,7 +57,7 @@ public struct WidgetTaskData: WidgetDataContainer {
     tasks: [
       WidgetTask(id: "1", title: "Review project proposal", projectName: "Work", deadline: "2026-01-25"),
       WidgetTask(id: "2", title: "Call dentist", hasNotes: true, deadline: "2026-01-26"),
-      WidgetTask(id: "3", title: "Buy groceries"),
+      WidgetTask(id: "3", title: "Buy groceries", groupName: "Home"),
       WidgetTask(id: "4", title: "Prepare presentation", projectName: "Work", deadline: "2026-01-27")
     ],
     totalCount: 6
@@ -308,12 +311,13 @@ extension WidgetDataManager {
 // MARK: - TaskItem to WidgetTask Conversion
 
 extension WidgetTask {
-  /// Creates a WidgetTask from a TaskItem with optional project name lookup
-  public init(from task: TaskItem, projectName: String? = nil) {
+  /// Creates a WidgetTask from a TaskItem with optional name lookups
+  public init(from task: TaskItem, projectName: String? = nil, groupName: String? = nil) {
     self.id = task.id
     self.title = task.title
     self.isCompleted = task.status == "completed"
     self.projectName = projectName
+    self.groupName = groupName
     self.hasNotes = task.notes != nil && !task.notes!.isEmpty
     self.deadline = task.deadline
   }
