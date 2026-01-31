@@ -22,6 +22,7 @@ Structure per item:
   - Time handling: prompt includes only timezone for cache stability; current time is fetched via `session_status` instead. See `docs/concepts/system-prompt.md`, `docs/date-time.md`.
   - Skills list is metadata only; model is instructed to read SKILL.md on demand. See `docs/tools/skills.md`, `src/agents/skills.ts`.
   - Context reporting: `/context list|detail` reports prompt/skills/tool sizes without dumping the full prompt. See `docs/concepts/context.md`.
+  - Tool overhead has two costs: the tool list text in the system prompt plus JSON tool schemas; `/context detail` reports the largest schemas. See `docs/concepts/context.md`.
   - Docs links: `https://docs.openclaw.ai/concepts/system-prompt`, `https://docs.openclaw.ai/context`, `https://docs.openclaw.ai/tools/skills`, `https://docs.openclaw.ai/date-time`, `https://docs.openclaw.ai/token-use`.
 - Design notes:
   - Service layer: extend `PromptContextService.build_prompts()` to return a structured prompt (sections + metadata) and a flattened string.
@@ -94,7 +95,9 @@ Structure per item:
   - Memory lives in `MEMORY.md` plus daily `memory/YYYY-MM-DD.md` logs; recommended to read today/yesterday on session start. See `docs/concepts/agent-workspace.md`, `docs/concepts/memory.md`.
   - System prompt includes a "Memory Recall" section that mandates search + targeted retrieval. See `docs/concepts/system-prompt.md`, `src/agents/system-prompt.ts`.
   - Memory flush can run before compaction to persist durable notes. See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
-  - Memory search builds a vector index over Markdown chunks with configurable providers (local/OpenAI/Gemini) and extra paths. See `docs/concepts/memory.md`.
+  - Memory files live in the agent workspace under `MEMORY.md` and `memory/*.md`. See `docs/concepts/memory.md`.
+  - `memory_search` returns scored snippets with file + line ranges (no full files), and `memory_get` fetches those ranges. See `docs/concepts/memory.md`.
+  - Memory search builds a vector index over memory files, supports hybrid search (vector + BM25), and can include extra paths. See `docs/concepts/memory.md`.
   - Docs links: `https://docs.openclaw.ai/concepts/memory`, `https://docs.openclaw.ai/agent-workspace`, `https://docs.openclaw.ai/reference/session-management-compaction`.
 - Design notes:
   - Service layer: add memory categories (facts, preferences, projects) and recall hints; standardize path scheme (`/memories/{category}/{name}`).
@@ -129,6 +132,7 @@ Structure per item:
   - Main-session jobs enqueue system events and can wake the next heartbeat; isolated jobs run in `cron:<jobId>` sessions and can deliver output. See `docs/automation/cron-jobs.md`, `docs/automation/cron-vs-heartbeat.md`.
   - Wake modes: `now` vs `next-heartbeat` for controlling when the agent runs. See `docs/automation/cron-jobs.md`.
   - Cron job payloads differentiate `systemEvent` vs `agentTurn`, and isolated runs post summaries back to main. See `docs/automation/cron-jobs.md`.
+  - Cron vs heartbeat guidance: heartbeat is for batching periodic checks, cron for exact timing and isolated runs. See `docs/automation/cron-vs-heartbeat.md`.
   - Docs links: `https://docs.openclaw.ai/automation/cron-jobs`, `https://docs.openclaw.ai/cron-vs-heartbeat`.
 - Design notes:
   - Service layer: add a scheduler service (maybe via `backend/workers`) and a `cron_jobs` table (soft delete).
@@ -147,6 +151,8 @@ Structure per item:
   - Heartbeat visibility is configurable per channel/account (showOk/showAlerts/useIndicator). See `docs/gateway/heartbeat.md`.
   - Heartbeat runs are separate from cron but can be triggered by cron or webhooks. See `docs/automation/cron-jobs.md`, `docs/automation/webhook.md`.
   - Heartbeat replies do not extend session idle timers; delivery can be suppressed entirely when all visibility flags are false. See `docs/gateway/heartbeat.md`.
+  - Default cadence is 30m (or 1h for certain auth modes) and a tiny `HEARTBEAT.md` checklist is recommended. See `docs/gateway/heartbeat.md`.
+  - If `HEARTBEAT.md` exists but is effectively empty, the heartbeat run is skipped to save API calls. See `docs/gateway/heartbeat.md`.
   - Docs links: `https://docs.openclaw.ai/gateway/heartbeat`, `https://docs.openclaw.ai/cron-vs-heartbeat`, `https://docs.openclaw.ai/automation/webhook`.
 - Design notes:
   - Service layer: add a heartbeat runner that can enqueue a system event and run the assistant at intervals.
@@ -163,7 +169,10 @@ Structure per item:
   - Session keys encode context (main, group, channel, cron); isolated jobs use `cron:<jobId>`. See `docs/concepts/session.md`, `docs/reference/session-management-compaction.md`.
   - Subagents get minimal prompts and restricted bootstrap files. See `docs/concepts/system-prompt.md`, `src/agents/workspace.ts`.
   - Compaction and pruning are session-scoped. See `docs/concepts/compaction.md`, `docs/concepts/session-pruning.md`.
-  - Session tools expose list/history/send/spawn with session-key conventions. See `docs/concepts/session-tool.md`.\n+  - Docs links: `https://docs.openclaw.ai/concepts/session`, `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/concepts/session-pruning`, `https://docs.openclaw.ai/concepts/session-tool`.
+  - Session tools expose list/history/send/spawn with session-key conventions and session kind filters. See `docs/concepts/session-tool.md`.
+  - Session key kinds include main, group/channel, cron, hook, and node; `global`/`unknown` are reserved and not listed. See `docs/concepts/session-tool.md`.
+  - `sessions_list` supports `kinds`, `limit`, and `activeMinutes` filters, and can include recent messages with `messageLimit`. See `docs/concepts/session-tool.md`.
+  - Docs links: `https://docs.openclaw.ai/concepts/session`, `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/concepts/session-pruning`, `https://docs.openclaw.ai/concepts/session-tool`.
 - Design notes:
   - Data model: add `conversation_type` or `session_kind` to conversations (main, automation, background).
   - API/UI: filter conversations by type; hide background sessions by default.
@@ -194,7 +203,9 @@ Structure per item:
 - OpenClaw implementation notes:
   - Gateway emits event types like presence, health, heartbeat, cron, and agent stream events. See `docs/concepts/architecture.md`, `docs/concepts/agent-loop.md`.
   - Heartbeat events can be toggled, and indicators are suppressed when noise is high. See `docs/gateway/heartbeat.md`.
-  - Docs links: `https://docs.openclaw.ai/architecture`, `https://docs.openclaw.ai/agent-loop`, `https://docs.openclaw.ai/gateway/heartbeat`.
+  - Presence is ephemeral: entries expire after a TTL, dedupe by `instanceId`, and the list is capped. See `docs/concepts/presence.md`.
+  - Defaults: presence entries expire after 5 minutes and the list caps at 200, using `instanceId` to keep one entry per instance. See `docs/concepts/presence.md`.
+  - Docs links: `https://docs.openclaw.ai/architecture`, `https://docs.openclaw.ai/agent-loop`, `https://docs.openclaw.ai/gateway/heartbeat`, `https://docs.openclaw.ai/concepts/presence`.
 - Design notes:
   - Service layer: standardize event types (presence, tool start/end, long-running task states).
   - API: extend `/events` to include richer event types beyond task changes.
@@ -228,6 +239,7 @@ Structure per item:
   - Used for pre-compaction memory flush (a silent turn run before compaction to persist durable memory). See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
   - Reply normalization strips silent replies unless media/attachments are present. See `src/auto-reply/reply/normalize-reply.ts`.
   - Typing indicators suppress silent-only replies (`message` mode ignores `NO_REPLY`). See `docs/concepts/typing-indicators.md`.
+  - Heartbeat runs disable typing indicators entirely. See `docs/concepts/typing-indicators.md`.
   - Docs links: `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/agent-loop`, `https://docs.openclaw.ai/concepts/typing-indicators`.
 - Design notes:
   - Service layer: add a "silent" flag to tool-driven runs (or detect a silent token in assistant output) and suppress UI delivery while still persisting side effects.
