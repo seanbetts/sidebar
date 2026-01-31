@@ -179,10 +179,50 @@ extension TasksViewModel {
         do {
             try await store.enqueueOperation(operation)
             store.applyLocalOperation(operation)
+
+            // Update widget data and counts optimistically for offline operations
+            updateWidgetDataAfterOfflineOperation(operation)
+            updateCountsAfterOfflineOperation(operation)
         } catch WriteQueueError.queueFull {
             toastCenter.show(message: "Sync queue full. Review pending changes.")
         } catch {
             errorMessage = "Failed to queue task changes"
+        }
+    }
+
+    /// Updates widget data optimistically after an offline operation
+    private func updateWidgetDataAfterOfflineOperation(_ operation: TaskOperationPayload) {
+        // Only update widget for operations that affect "today" view
+        guard case .today = selection else {
+            // For non-today views, just update with current filtered tasks
+            updateWidgetData()
+            return
+        }
+
+        updateWidgetData()
+    }
+
+    /// Updates task counts optimistically after an offline operation
+    private func updateCountsAfterOfflineOperation(_ operation: TaskOperationPayload) {
+        guard counts != nil else { return }
+
+        switch operation.op.lowercased() {
+        case "complete", "trash":
+            // Decrement today count for completed/deleted tasks
+            store.decrementTodayCount()
+        case "add":
+            // Increment today count for new tasks (if due today)
+            if let dueDate = operation.dueDate {
+                let today = TasksUtils.formatDateKey(Date())
+                if dueDate == today {
+                    store.incrementTodayCount()
+                }
+            } else {
+                // No due date defaults to today
+                store.incrementTodayCount()
+            }
+        default:
+            break
         }
     }
 }

@@ -67,6 +67,8 @@ extension AppEnvironment {
             await ingestionViewModel.load()
             await tasksViewModel.load(selection: tasksViewModel.selection, force: true)
             await tasksViewModel.loadCounts(force: true)
+            // Refresh widget data to sync with server after reconnect
+            await tasksViewModel.refreshWidgetData()
         }
     }
 }
