@@ -3,12 +3,12 @@ import SwiftUI
 struct FaviconImageView: View {
     let faviconUrl: String?
     let faviconR2Key: String?
-    let r2PublicBaseUrl: URL?
+    let r2Endpoint: URL?
     let size: CGFloat
     let placeholderTint: Color
 
     private var resolvedUrl: URL? {
-        if let base = r2PublicBaseUrl, let key = faviconR2Key, !key.isEmpty {
+        if let base = r2Endpoint, let key = faviconR2Key, !key.isEmpty {
             return base.appendingPathComponent(key)
         }
         if let faviconUrl, let url = URL(string: faviconUrl) {
