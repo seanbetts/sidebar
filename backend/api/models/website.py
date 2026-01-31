@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Index, Text, UniqueConstraint
+from sqlalchemy import Boolean, Computed, DateTime, Index, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -45,6 +45,14 @@ class Website(Base):
     )
     metadata_: Mapped[dict[str, Any]] = mapped_column(
         "metadata", JSONB, nullable=False, default=dict
+    )
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean,
+        Computed(
+            "(COALESCE(metadata->>'archived','false') = 'true')",
+            persisted=True,
+        ),
+        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
