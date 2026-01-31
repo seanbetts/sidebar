@@ -18,8 +18,10 @@ Structure per item:
 - OpenClaw implementation notes:
   - Prompt built per run with fixed sections (tooling, skills list, workspace, docs, sandbox, time, reply tags, heartbeats, runtime, reasoning, memory recall). See `docs/concepts/system-prompt.md`, `src/agents/system-prompt.ts`.
   - Prompt modes: full, minimal, none; minimal drops some sections for subagents. See `docs/concepts/system-prompt.md`.
-  - Injects bootstrap files (AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md, HEARTBEAT.md, BOOTSTRAP.md) under a "Project Context" block. See `docs/concepts/system-prompt.md`, `src/agents/workspace.ts`, `src/agents/bootstrap-files.ts`.
-  - Skills list is metadata only; model is instructed to read SKILL.md on demand. See `docs/tools/skills.md` and `src/agents/skills.ts`.
+  - Injects bootstrap files under "Project Context" (AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md, HEARTBEAT.md, BOOTSTRAP.md). See `docs/concepts/system-prompt.md`, `src/agents/workspace.ts`, `src/agents/bootstrap-files.ts`.
+  - Time handling: prompt includes only timezone for cache stability; current time is fetched via `session_status` instead. See `docs/concepts/system-prompt.md`, `docs/date-time.md`.
+  - Skills list is metadata only; model is instructed to read SKILL.md on demand. See `docs/tools/skills.md`, `src/agents/skills.ts`.
+  - Docs links: `https://docs.openclaw.ai/concepts/system-prompt`, `https://docs.openclaw.ai/context`, `https://docs.openclaw.ai/tools/skills`, `https://docs.openclaw.ai/date-time`.
 - Design notes:
   - Service layer: extend `PromptContextService.build_prompts()` to return a structured prompt (sections + metadata) and a flattened string.
   - Data model: optionally store a prompt report (sections, sizes, source) on the conversation or in a separate table for diagnostics.
@@ -33,10 +35,12 @@ Structure per item:
 - sideBar touchpoints: conversation JSONB in `backend/api/models/conversation.py`, history assembly in `backend/api/routers/chat.py`.
 - Potential fit: Keep long conversations usable while avoiding JSONB size bloat and model context overflow.
 - OpenClaw implementation notes:
-  - Auto-compaction triggers on context overflow; compaction summary is stored in session history. See `docs/concepts/compaction.md`, `src/agents/pi-embedded-runner/run.ts`, `src/agents/pi-embedded-runner/compact.ts`.
-  - Manual `/compact` command forces a summarization pass with optional instructions. See `docs/concepts/compaction.md` and `docs/tools/slash-commands.md`.
-  - Distinguishes compaction (persistent summary) from pruning (in-memory trimming of tool results). See `docs/concepts/compaction.md`, `docs/concepts/session-pruning.md`.
-  - Can run a silent memory flush before compaction to persist durable notes. See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
+  - Auto-compaction triggers on context overflow and may retry after compaction; summary is persisted in session history. See `docs/concepts/compaction.md`, `src/agents/pi-embedded-runner/run.ts`, `src/agents/pi-embedded-runner/compact.ts`.
+  - Manual `/compact` forces a summarization pass with optional instructions. See `docs/concepts/compaction.md`, `docs/tools/slash-commands.md`.
+  - `/status` shows compaction count and verbose mode emits completion banners. See `docs/concepts/compaction.md`.
+  - Compaction persists in transcript; pruning is in-memory and tool-result-only. See `docs/concepts/compaction.md`, `docs/concepts/session-pruning.md`.
+  - Silent memory flush can run before compaction to persist durable notes. See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
+  - Docs links: `https://docs.openclaw.ai/concepts/compaction`, `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/concepts/session-pruning`, `https://docs.openclaw.ai/tools/slash-commands`.
 - Design notes:
   - Service layer: add a `ConversationCompactionService` that summarizes older messages into a compact summary entry and trims history.
   - Data model: store `compaction_count`, `compaction_summary`, or inject a synthetic "summary" message into `messages`.
@@ -50,10 +54,12 @@ Structure per item:
 - sideBar touchpoints: workspace files in R2 (see storage + ingestion services), file ingestion derivatives in `backend/api/services/file_ingestion_service.py`.
 - Potential fit: A user-editable "assistant workspace" could unify identity, memory, and operating rules while remaining transparent.
 - OpenClaw implementation notes:
-  - Default workspace at `~/.openclaw/workspace` (profile-specific variants supported). See `docs/concepts/agent-workspace.md`, `src/agents/workspace.ts`.
-  - Standard file set: AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md, HEARTBEAT.md, BOOTSTRAP.md, MEMORY.md. See `docs/concepts/agent-workspace.md`, `src/agents/workspace.ts`.
+  - Workspace is the agent's default cwd, not a hard sandbox. If sandboxing is enabled and workspaceAccess is not rw, tools run inside sandbox workspaces under `~/.openclaw/sandboxes`. See `docs/concepts/agent-workspace.md`.
+  - Default location `~/.openclaw/workspace`, profile-specific variants supported via `OPENCLAW_PROFILE`. See `docs/concepts/agent-workspace.md`, `src/agents/workspace.ts`.
+  - Standard file set: AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md, HEARTBEAT.md, BOOTSTRAP.md, MEMORY.md plus daily `memory/YYYY-MM-DD.md`. See `docs/concepts/agent-workspace.md`.
   - Bootstrap files are auto-created from templates; git init is attempted for backups. See `src/agents/workspace.ts`, `docs/reference/templates/*`.
   - Subagents get a reduced bootstrap allowlist. See `src/agents/workspace.ts`.
+  - Docs links: `https://docs.openclaw.ai/agent-workspace`, `https://docs.openclaw.ai/concepts/agent`.
 - Design notes:
   - Service layer: define a logical workspace path per user (e.g., `/workspace/{user_id}/...`) stored in R2, and load key files during prompt assembly.
   - Data model: optionally mirror workspace metadata in DB for search and UI browsing.
@@ -68,7 +74,8 @@ Structure per item:
 - Potential fit: Split "assistant identity" from user profile and system prompts, giving a stable persona.
 - OpenClaw implementation notes:
   - SOUL.md (persona), IDENTITY.md (assistant name/vibe), USER.md (user details) are injected each run. See `docs/concepts/agent-workspace.md`, `src/agents/workspace.ts`.
-  - Hooks can swap the injected soul content before prompt assembly (no file mutation). See `docs/hooks/soul-evil.md`, `docs/hooks/bundled/soul-evil/HOOK.md`.
+  - Hooks can swap injected soul content before prompt assembly (no file mutation). See `docs/hooks/soul-evil.md`, `docs/hooks/bundled/soul-evil/HOOK.md`.
+  - Docs links: `https://docs.openclaw.ai/agent-workspace`, `https://docs.openclaw.ai/cli/agents`, `https://docs.openclaw.ai/hooks/soul-evil`.
 - Design notes:
   - Service layer: add `AssistantIdentity` model (name, tone, boundaries, values) with default values.
   - Prompt: inject identity block as a dedicated section in `build_system_prompt()`.
@@ -81,9 +88,10 @@ Structure per item:
 - sideBar touchpoints: `backend/api/services/memory_service.py`, `backend/api/services/memory_tools/*`, memory tool events in `backend/api/services/claude_streaming.py`.
 - Potential fit: Make memory behavior predictable, auditable, and user-controlled.
 - OpenClaw implementation notes:
-  - Memory lives in `MEMORY.md` plus daily `memory/YYYY-MM-DD.md` logs. See `docs/concepts/agent-workspace.md`, `docs/concepts/memory.md`.
+  - Memory lives in `MEMORY.md` plus daily `memory/YYYY-MM-DD.md` logs; recommended to read today/yesterday on session start. See `docs/concepts/agent-workspace.md`, `docs/concepts/memory.md`.
   - System prompt includes a "Memory Recall" section that mandates search + targeted retrieval. See `docs/concepts/system-prompt.md`, `src/agents/system-prompt.ts`.
   - Memory flush can run before compaction to persist durable notes. See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
+  - Docs links: `https://docs.openclaw.ai/concepts/memory`, `https://docs.openclaw.ai/agent-workspace`, `https://docs.openclaw.ai/reference/session-management-compaction`.
 - Design notes:
   - Service layer: add memory categories (facts, preferences, projects) and recall hints; standardize path scheme (`/memories/{category}/{name}`).
   - Prompt: add a memory section that tells the assistant when to search or ask.
@@ -98,7 +106,9 @@ Structure per item:
 - OpenClaw implementation notes:
   - Markdown is parsed into an IR (text + style/link spans) before chunking. See `docs/concepts/markdown-formatting.md`, `src/markdown/ir.ts`.
   - Chunking happens on IR to avoid splitting inline styles or code fences. See `docs/concepts/markdown-formatting.md`, `src/markdown/ir.ts`, `src/auto-reply/chunk.ts`.
-  - Channel renderers convert IR to Slack/Telegram/Signal formatting and handle table conversion modes. See `docs/concepts/markdown-formatting.md`, `src/markdown/tables.ts`, channel adapters.
+  - Table conversion modes (`code`, `bullets`, `off`) are configurable per channel/account. See `docs/concepts/markdown-formatting.md`, `src/markdown/tables.ts`.
+  - Different channel renderers map IR to native formats (Slack mrkdwn, Telegram HTML, Signal style ranges). See `docs/concepts/markdown-formatting.md`.
+  - Docs links: `https://docs.openclaw.ai/concepts/markdown-formatting`, `https://docs.openclaw.ai/concepts/streaming`.
 - Design notes:
   - Service layer: optional; mostly frontend. Introduce a shared Markdown parser/IR for export or notifications.
   - UI: could use IR for chat/notifications if sending to external surfaces in the future.
@@ -112,7 +122,9 @@ Structure per item:
 - OpenClaw implementation notes:
   - Cron jobs stored under `~/.openclaw/cron/` with JSON job store and JSONL run history. See `docs/automation/cron-jobs.md`.
   - Supports schedule kinds: `at`, `every`, `cron` with timezone; uses croner. See `docs/automation/cron-jobs.md`.
-  - Main-session jobs enqueue system events and trigger heartbeat; isolated jobs run in `cron:<jobId>` sessions. See `docs/automation/cron-jobs.md`, `docs/automation/cron-vs-heartbeat.md`.
+  - Main-session jobs enqueue system events and can wake the next heartbeat; isolated jobs run in `cron:<jobId>` sessions and can deliver output. See `docs/automation/cron-jobs.md`, `docs/automation/cron-vs-heartbeat.md`.
+  - Wake modes: `now` vs `next-heartbeat` for controlling when the agent runs. See `docs/automation/cron-jobs.md`.
+  - Docs links: `https://docs.openclaw.ai/automation/cron-jobs`, `https://docs.openclaw.ai/cron-vs-heartbeat`.
 - Design notes:
   - Service layer: add a scheduler service (maybe via `backend/workers`) and a `cron_jobs` table (soft delete).
   - API: endpoints for create/list/run, plus SSE notifications via change bus.
@@ -127,7 +139,9 @@ Structure per item:
 - OpenClaw implementation notes:
   - Heartbeat prompt is a dedicated message; `HEARTBEAT_OK` is stripped and often suppressed. See `docs/gateway/heartbeat.md`, `src/auto-reply/heartbeat.ts`.
   - Heartbeats can be restricted to active hours and sent to a target channel or "last" route. See `docs/gateway/heartbeat.md`, `src/infra/heartbeat-runner.ts`.
+  - Heartbeat visibility is configurable per channel/account (showOk/showAlerts/useIndicator). See `docs/gateway/heartbeat.md`.
   - Heartbeat runs are separate from cron but can be triggered by cron or webhooks. See `docs/automation/cron-jobs.md`, `docs/automation/webhook.md`.
+  - Docs links: `https://docs.openclaw.ai/gateway/heartbeat`, `https://docs.openclaw.ai/cron-vs-heartbeat`, `https://docs.openclaw.ai/automation/webhook`.
 - Design notes:
   - Service layer: add a heartbeat runner that can enqueue a system event and run the assistant at intervals.
   - Data: store last heartbeat timestamp and per-user config in settings.
@@ -143,6 +157,7 @@ Structure per item:
   - Session keys encode context (main, group, channel, cron); isolated jobs use `cron:<jobId>`. See `docs/concepts/session.md`, `docs/reference/session-management-compaction.md`.
   - Subagents get minimal prompts and restricted bootstrap files. See `docs/concepts/system-prompt.md`, `src/agents/workspace.ts`.
   - Compaction and pruning are session-scoped. See `docs/concepts/compaction.md`, `docs/concepts/session-pruning.md`.
+  - Docs links: `https://docs.openclaw.ai/concepts/session`, `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/concepts/session-pruning`.
 - Design notes:
   - Data model: add `conversation_type` or `session_kind` to conversations (main, automation, background).
   - API/UI: filter conversations by type; hide background sessions by default.
@@ -158,6 +173,7 @@ Structure per item:
   - Nodes connect to the gateway with `role: node` over WebSocket and declare capabilities. See `docs/concepts/architecture.md`, `docs/nodes/*`.
   - Commands include `canvas.*`, `camera.*`, `screen.record`, `location.get`. See `docs/nodes/*` and gateway protocol schema.
   - Pairing is device-based; device approval issues a token for later connects. See `docs/gateway/pairing.md`.
+  - Docs links: `https://docs.openclaw.ai/nodes`, `https://docs.openclaw.ai/architecture`, `https://docs.openclaw.ai/pairing`.
 - Design notes:
   - Service layer: store device capabilities alongside tokens; add a "device action" tool.
   - API: endpoints to register device capabilities and call device actions.
@@ -172,6 +188,7 @@ Structure per item:
 - OpenClaw implementation notes:
   - Gateway emits event types like presence, health, heartbeat, cron, and agent stream events. See `docs/concepts/architecture.md`, `docs/concepts/agent-loop.md`.
   - Heartbeat events can be toggled, and indicators are suppressed when noise is high. See `docs/gateway/heartbeat.md`.
+  - Docs links: `https://docs.openclaw.ai/architecture`, `https://docs.openclaw.ai/agent-loop`, `https://docs.openclaw.ai/gateway/heartbeat`.
 - Design notes:
   - Service layer: standardize event types (presence, tool start/end, long-running task states).
   - API: extend `/events` to include richer event types beyond task changes.
@@ -187,6 +204,7 @@ Structure per item:
   - Sessions persist as JSONL logs on disk, separate from config/credentials. See `docs/reference/session-management-compaction.md`.
   - Cron jobs and run history persist across restarts. See `docs/automation/cron-jobs.md`.
   - Gateway is the single control plane for stateful operations. See `docs/concepts/architecture.md`.
+  - Docs links: `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/automation/cron-jobs`, `https://docs.openclaw.ai/architecture`.
 - Design notes:
   - Service layer: introduce a shared operation log schema or helper utilities to reduce duplicated sync logic.
   - Data: add soft delete + conflict handling for memories and workspace files.
@@ -203,6 +221,7 @@ Structure per item:
   - Streaming suppression: partial chunks that begin with `NO_REPLY` are withheld to avoid leaking silent output mid-turn. See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/streaming-directives.ts`.
   - Used for pre-compaction memory flush (a silent turn run before compaction to persist durable memory). See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
   - Reply normalization strips silent replies unless media/attachments are present. See `src/auto-reply/reply/normalize-reply.ts`.
+  - Docs links: `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/agent-loop`, `https://docs.openclaw.ai/concepts/typing-indicators`.
 - Design notes:
   - Service layer: add a "silent" flag to tool-driven runs (or detect a silent token in assistant output) and suppress UI delivery while still persisting side effects.
   - API: optional `silent` mode for background tasks (e.g., compaction/memory flush), emitting only telemetry events.
