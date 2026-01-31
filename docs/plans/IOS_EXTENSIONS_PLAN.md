@@ -157,20 +157,42 @@ WidgetDataManager.shared.recordPendingOperation(op, for: .tasks)
 1. Recent Conversations widget (not planned)
 
 ### App Intents Implemented ✅
+
+**Tasks:**
 1. ✅ `CompleteTaskIntent` - Marks task complete from widget
 2. ✅ `OpenTodayIntent` - Opens app to Today view
 3. ✅ `AddTaskIntent` - Opens app to add new task
 4. ✅ `OpenTaskIntent` - Opens specific task
 
-### App Intents Remaining
-1. `StartChatIntent` (opens app).
-2. `CreateNoteIntent` (no UI required).
-3. `QuickSaveIntent` (saves URL).
-4. `OpenScratchpadIntent` (opens app).
+**Notes:**
+5. ✅ `OpenNotesIntent` - Opens notes view
+6. ✅ `CreateNoteIntent` - Opens app to create new note
+7. ✅ `OpenNoteIntent` - Opens specific note
 
-### Siri and Shortcuts ✅ PARTIAL
-- ✅ Registered `TaskShortcutsProvider` with Siri phrases for tasks.
-- Remaining: Add shortcuts for notes, chat, websites.
+**Websites:**
+8. ✅ `OpenWebsitesIntent` - Opens saved websites view
+9. ✅ `QuickSaveIntent` - Saves URL to websites
+10. ✅ `OpenWebsiteIntent` - Opens specific website
+
+**Files:**
+11. ✅ `OpenFilesIntent` - Opens files view
+12. ✅ `OpenFileIntent` - Opens specific file
+
+**General:**
+13. ✅ `OpenScratchpadIntent` - Opens scratchpad
+14. ✅ `StartChatIntent` - Starts new AI chat
+15. ✅ `OpenChatIntent` - Opens specific chat
+
+### App Intents Remaining
+None - all planned intents implemented.
+
+### Siri and Shortcuts ✅ COMPLETE
+- ✅ Registered `SideBarShortcutsProvider` with Siri phrases for all content types:
+  - Tasks: "Show my tasks", "Add a task"
+  - Notes: "Show my notes", "Create a note"
+  - Websites: "Show my saved websites", "Save this website"
+  - Files: "Show my files"
+  - General: "Open scratchpad", "Start a chat"
 
 ### Verification ✅
 - ✅ Task widgets show cached data instantly.
@@ -286,9 +308,9 @@ ios/sideBar/sideBarWidgets/
 4. ✅ ~~Add Notes/Websites/Files widgets using existing generic architecture.~~
 5. ✅ ~~Add background refresh for widget data (BGAppRefreshTask + push notifications).~~
 6. ✅ ~~Add lock screen widgets for Files.~~
-7. **Next:** Implement Live Activities with upload progress (Phase 2).
-8. **Next:** Add remaining App Intents (chat, notes, scratchpad).
-9. Add Spotlight indexing for conversations and notes.
+7. ✅ ~~Add App Intents for all content types (notes, websites, files, chat, scratchpad).~~
+8. **Next:** Implement Live Activities with upload progress (Phase 2).
+9. Add Spotlight indexing for notes and files.
 10. Add interactive widgets (iOS 17) for quick actions.
 
 ### Adding a New Widget Type
