@@ -20,7 +20,8 @@ public extension EnvironmentConfig {
         let supabaseUrlString = try loadString(key: "SUPABASE_URL")
         let supabaseAnonKey = try loadString(key: "SUPABASE_ANON_KEY")
         let r2EndpointString = loadOptionalString(key: "R2_ENDPOINT")
-        let r2Bucket = loadOptionalString(key: "R2_BUCKET")
+        let r2FaviconBucket = loadOptionalString(key: "R2_FAVICON_BUCKET")
+        let r2BucketFallback = loadOptionalString(key: "R2_BUCKET")
 
         guard let apiBaseUrl = URL(string: apiBaseUrlString) else {
             throw EnvironmentConfigLoadError.invalidUrl(key: "API_BASE_URL", value: apiBaseUrlString)
@@ -46,7 +47,7 @@ public extension EnvironmentConfig {
             supabaseUrl: supabaseUrl,
             supabaseAnonKey: supabaseAnonKey,
             r2Endpoint: r2Endpoint,
-            r2Bucket: r2Bucket
+            r2FaviconBucket: r2FaviconBucket ?? r2BucketFallback
         )
     }
 

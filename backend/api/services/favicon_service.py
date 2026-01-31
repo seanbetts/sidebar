@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 import requests
 from PIL import Image  # type: ignore[import-untyped]
 
-from api.services.storage.service import get_storage_backend
+from api.services.storage.service import get_favicon_storage_backend
 from api.services.web_save_constants import USER_AGENT
 from api.utils.domain_utils import extract_effective_domain
 
@@ -47,7 +47,7 @@ class FaviconService:
 
         try:
             storage_key = FaviconService.build_storage_key(domain)
-            storage = get_storage_backend()
+            storage = get_favicon_storage_backend()
             if storage.object_exists(storage_key):
                 return storage_key
             raw_bytes, content_type = FaviconService._download_favicon(
@@ -70,7 +70,7 @@ class FaviconService:
     def existing_storage_key(domain: str) -> str | None:
         """Return shared storage key if a favicon already exists."""
         storage_key = FaviconService.build_storage_key(domain)
-        storage = get_storage_backend()
+        storage = get_favicon_storage_backend()
         if storage.object_exists(storage_key):
             return storage_key
         return None

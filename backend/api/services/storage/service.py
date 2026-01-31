@@ -27,3 +27,19 @@ def get_storage_backend() -> StorageBackend:
         )
 
     return LocalStorage(Path(settings.workspace_base))
+
+
+def get_favicon_storage_backend() -> StorageBackend:
+    """Return storage backend configured for favicons."""
+    backend = settings.storage_backend.lower()
+    if backend == "r2":
+        access_key_id = settings.r2_access_key_id or settings.r2_access_key
+        bucket = settings.r2_favicon_bucket or settings.r2_bucket
+        return R2Storage(
+            endpoint=settings.r2_endpoint,
+            bucket=bucket,
+            access_key_id=access_key_id,
+            secret_access_key=settings.r2_secret_access_key,
+        )
+
+    return LocalStorage(Path(settings.workspace_base))

@@ -4,14 +4,14 @@ struct FaviconImageView: View {
     let faviconUrl: String?
     let faviconR2Key: String?
     let r2Endpoint: URL?
-    let r2Bucket: String?
+    let r2FaviconBucket: String?
     let size: CGFloat
     let placeholderTint: Color
 
     private var resolvedUrl: URL? {
         if let base = r2Endpoint, let key = faviconR2Key, !key.isEmpty {
             var url = base
-            if let bucket = r2Bucket, !bucket.isEmpty {
+            if let bucket = r2FaviconBucket, !bucket.isEmpty {
                 url = url.appendingPathComponent(bucket)
             }
             return url.appendingPathComponent(key)
