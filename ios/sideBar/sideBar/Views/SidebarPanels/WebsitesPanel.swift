@@ -477,7 +477,7 @@ extension WebsitesPanelView {
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(panelBackground)
-        .onChange(of: isArchiveExpanded) { expanded in
+        .onChange(of: isArchiveExpanded) { _, expanded in
             if expanded {
                 Task { await viewModel.loadArchived() }
             }
