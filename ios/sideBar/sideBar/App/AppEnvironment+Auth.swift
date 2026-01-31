@@ -16,6 +16,9 @@ extension AppEnvironment {
             websitesViewModel.clearSelection()
             ingestionViewModel.clearSelection()
             sessionExpiryWarning = nil
+            Task {
+                await spotlightIndexer.clearAllIndexes()
+            }
         }
         if isAuthenticated {
             biometricMonitor.startMonitoring()

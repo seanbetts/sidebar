@@ -23,6 +23,7 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     let offlineStore: OfflineStore?
     let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
+    weak var spotlightIndexer: (any SpotlightIndexing)?
     var remoteItems: [IngestionListItem] = []
     var localItems: [String: IngestionListItem] = [:]
     var localUploadRecords: [String: LocalUploadRecord] = [:]

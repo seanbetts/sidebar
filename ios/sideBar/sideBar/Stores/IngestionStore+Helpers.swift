@@ -44,8 +44,34 @@ extension IngestionStore {
         items = mergeItems(incoming)
         if persist {
             persistListCache()
+            indexFilesInSpotlight(incoming)
         }
         updateWidgetData()
+    }
+
+    private func indexFilesInSpotlight(_ items: [IngestionListItem]) {
+        guard let indexer = spotlightIndexer else { return }
+        let spotlightFiles = items.compactMap { item -> SpotlightFile? in
+            guard item.file.deletedAt == nil else { return nil }
+            return SpotlightFile(
+                id: item.file.id,
+                filename: item.file.filenameOriginal,
+                category: item.file.category,
+                mimeType: item.file.mimeOriginal,
+                sizeBytes: item.file.sizeBytes,
+                createdAt: DateParsing.parseISO8601(item.file.createdAt)
+            )
+        }
+        Task {
+            await indexer.indexFiles(spotlightFiles)
+        }
+    }
+
+    func removeFileFromSpotlight(id: String) {
+        guard let indexer = spotlightIndexer else { return }
+        Task {
+            await indexer.removeFile(id: id)
+        }
     }
 
     func updateWidgetData() {

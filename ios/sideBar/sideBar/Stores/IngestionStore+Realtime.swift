@@ -198,6 +198,7 @@ extension IngestionStore {
         persistListCache()
         cache.remove(key: CacheKeys.ingestionMeta(fileId: fileId))
         offlineStore?.remove(key: CacheKeys.ingestionMeta(fileId: fileId))
+        removeFileFromSpotlight(id: fileId)
     }
 
     public func addLocalUpload(_ item: IngestionListItem) {
