@@ -59,6 +59,7 @@ struct WebsiteRow: View, Equatable {
     let useListStyling: Bool
     let faviconBaseUrl: URL?
     let r2FaviconBucket: String?
+    let r2FaviconPublicBaseUrl: URL?
     private let titleText: String
     private let domainText: String
 
@@ -67,13 +68,15 @@ struct WebsiteRow: View, Equatable {
         isSelected: Bool,
         useListStyling: Bool = true,
         faviconBaseUrl: URL? = nil,
-        r2FaviconBucket: String? = nil
+        r2FaviconBucket: String? = nil,
+        r2FaviconPublicBaseUrl: URL? = nil
     ) {
         self.item = item
         self.isSelected = isSelected
         self.useListStyling = useListStyling
         self.faviconBaseUrl = faviconBaseUrl
         self.r2FaviconBucket = r2FaviconBucket
+        self.r2FaviconPublicBaseUrl = r2FaviconPublicBaseUrl
         self.titleText = item.title.isEmpty ? item.url : item.title
         self.domainText = WebsiteRow.formatDomain(item.domain)
     }
@@ -91,7 +94,8 @@ struct WebsiteRow: View, Equatable {
         lhs.item.updatedAt == rhs.item.updatedAt &&
         lhs.item.faviconUrl == rhs.item.faviconUrl &&
         lhs.item.faviconR2Key == rhs.item.faviconR2Key &&
-        lhs.r2FaviconBucket == rhs.r2FaviconBucket
+        lhs.r2FaviconBucket == rhs.r2FaviconBucket &&
+        lhs.r2FaviconPublicBaseUrl == rhs.r2FaviconPublicBaseUrl
     }
 
     var body: some View {
@@ -106,6 +110,7 @@ struct WebsiteRow: View, Equatable {
                     faviconR2Key: item.faviconR2Key,
                     r2Endpoint: faviconBaseUrl,
                     r2FaviconBucket: r2FaviconBucket,
+                    r2FaviconPublicBaseUrl: r2FaviconPublicBaseUrl,
                     size: 16,
                     placeholderTint: isSelected ? selectedTextColor : secondaryTextColor
                 )
