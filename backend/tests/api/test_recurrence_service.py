@@ -81,3 +81,36 @@ def test_complete_repeating_task_is_idempotent(test_db_engine):
         session.close()
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
         connection.close()
+
+
+def test_complete_repeating_task_uses_next_instance_date(test_db_engine):
+    session, connection, schema = _build_session(test_db_engine)
+    try:
+        task = Task(
+            user_id="user",
+            title="Repeat",
+            status="today",
+            deadline=date(2026, 1, 1),
+            recurrence_rule={"type": "daily", "interval": 1},
+            repeating=True,
+            repeat_template=True,
+            next_instance_date=date(2026, 1, 2),
+        )
+        session.add(task)
+        session.commit()
+        session.refresh(task)
+
+        task.deadline = date(2026, 1, 10)
+        session.commit()
+        session.refresh(task)
+
+        next_task = RecurrenceService.complete_repeating_task(session, task)
+        session.commit()
+
+        assert next_task is not None
+        assert next_task.deadline == date(2026, 1, 2)
+        assert next_task.next_instance_date == date(2026, 1, 3)
+    finally:
+        session.close()
+        connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+        connection.close()
