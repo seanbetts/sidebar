@@ -33,6 +33,16 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(loaded.first?.kind, .youtube)
     }
 
+    func testEnqueueYouTubeDeduplicates() {
+        let store = makeStore()
+
+        let first = store.enqueueYouTube(url: "https://youtube.com/watch?v=abc123")
+        let second = store.enqueueYouTube(url: "https://youtube.com/watch?v=abc123")
+
+        XCTAssertEqual(first?.id, second?.id)
+        XCTAssertEqual(store.loadAll().count, 1)
+    }
+
     func testEnqueueFileWritesData() throws {
         let store = makeStore()
         let payload = Data("hello".utf8)

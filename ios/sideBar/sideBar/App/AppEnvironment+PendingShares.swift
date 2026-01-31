@@ -41,7 +41,7 @@ extension AppEnvironment {
 
     private func handlePendingYouTube(_ item: PendingShareItem) async -> Bool {
         guard let url = item.url else { return true }
-        let error = await ingestionViewModel.ingestYouTube(url: url)
+        let error = await ingestionViewModel.ingestYouTube(url: url, showQueuedToast: false)
         return error != nil
     }
 
