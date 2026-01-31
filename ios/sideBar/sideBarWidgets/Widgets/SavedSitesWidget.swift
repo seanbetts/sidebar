@@ -65,9 +65,9 @@ struct SavedSitesWidgetView: View {
                 .resizable()
                 .widgetAccentedRenderingMode(.accentedDesaturated)
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 18, height: 18)
+                .frame(width: family == .systemSmall ? 16 : 18, height: family == .systemSmall ? 16 : 18)
             Text("Websites")
-                .font(.headline)
+                .font(family == .systemSmall ? .subheadline : .headline)
                 .fontWeight(.semibold)
             Spacer()
             if entry.data.totalCount > 0 {
@@ -111,7 +111,7 @@ struct SavedSitesWidgetView: View {
     }
 
     private var isCompact: Bool {
-        family == .systemSmall || family == .systemMedium
+        family == .systemSmall
     }
 
     private var showMoreIndicator: Bool {
@@ -174,19 +174,10 @@ struct SiteRowView: View {
                     .font(.system(size: compact ? 14 : 16))
                     .foregroundStyle(.secondary)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(site.title)
-                        .font(compact ? .caption : .subheadline)
-                        .lineLimit(1)
-                        .foregroundStyle(.primary)
-
-                    if !compact {
-                        Text(site.domain)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
+                Text(site.title)
+                    .font(compact ? .caption : .subheadline)
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
 
                 Spacer(minLength: 0)
             }
