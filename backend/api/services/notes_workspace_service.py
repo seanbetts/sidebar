@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import ObjectDeletedError
@@ -13,7 +12,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 from api.exceptions import NoteNotFoundError
 from api.models.note import Note
 from api.schemas.filters import NoteFilters
-from api.services.notes_helpers import build_notes_tree, is_archived_folder
+from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
 from api.services.workspace_service import WorkspaceService
 from api.utils.search import build_text_search_filter
@@ -47,18 +46,15 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         **kwargs: object,
     ) -> list[Note]:
         query = db.query(Note).options(
-            load_only(Note.id, Note.title, Note.metadata_, Note.updated_at)
+            load_only(
+                Note.id, Note.title, Note.metadata_, Note.updated_at, Note.is_archived
+            )
         )
         query = query.filter(Note.user_id == user_id)
         if not include_deleted:
             query = query.filter(Note.deleted_at.is_(None))
         if not include_archived:
-            archived_filter = or_(
-                func.coalesce(Note.metadata_["archived"].astext, "false") == "true",
-                func.coalesce(Note.metadata_["folder"].astext, "").like("Archive/%"),
-                func.coalesce(Note.metadata_["folder"].astext, "") == "Archive",
-            )
-            query = query.filter(~archived_filter)
+            query = query.filter(Note.is_archived.is_(False))
         return query.order_by(Note.updated_at.desc()).all()
 
     @staticmethod
@@ -112,7 +108,6 @@ class NotesWorkspaceService(WorkspaceService[Note]):
     @classmethod
     def _item_to_dict(cls, item: Note, **kwargs: object) -> dict:
         metadata = item.metadata_ or {}
-        folder = metadata.get("folder") or ""
         return {
             "name": f"{item.title}.md",
             "path": str(item.id),
@@ -120,7 +115,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             "modified": item.updated_at.timestamp() if item.updated_at else None,
             "pinned": bool(metadata.get("pinned")),
             "pinned_order": metadata.get("pinned_order"),
-            "archived": is_archived_folder(folder),
+            "archived": bool(item.is_archived),
         }
 
     @staticmethod

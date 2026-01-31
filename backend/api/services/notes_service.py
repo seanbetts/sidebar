@@ -7,7 +7,7 @@ import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
 
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -542,14 +542,7 @@ class NotesService:
             )
 
         if filters.archived is not None:
-            archived_filter = or_(
-                func.coalesce(Note.metadata_["archived"].astext, "false") == "true",
-                func.coalesce(Note.metadata_["folder"].astext, "").like("Archive/%"),
-                func.coalesce(Note.metadata_["folder"].astext, "") == "Archive",
-            )
-            query = query.filter(
-                archived_filter if filters.archived else ~archived_filter
-            )
+            query = query.filter(Note.is_archived.is_(filters.archived))
 
         if filters.created_after is not None:
             query = query.filter(Note.created_at >= filters.created_after)
@@ -578,17 +571,12 @@ class NotesService:
     @staticmethod
     def archived_summary(db: Session, user_id: str) -> dict[str, object]:
         """Return archived note count and last updated timestamp."""
-        archived_filter = or_(
-            func.coalesce(Note.metadata_["archived"].astext, "false") == "true",
-            func.coalesce(Note.metadata_["folder"].astext, "").like("Archive/%"),
-            func.coalesce(Note.metadata_["folder"].astext, "") == "Archive",
-        )
         count, last_updated = (
             db.query(func.count(Note.id), func.max(Note.updated_at))
             .filter(
                 Note.user_id == user_id,
                 Note.deleted_at.is_(None),
-                archived_filter,
+                Note.is_archived.is_(True),
             )
             .one()
         )
