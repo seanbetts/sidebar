@@ -66,6 +66,7 @@ Structure per item:
   - Bootstrap files are auto-created from templates; git init is attempted for backups. See `src/agents/workspace.ts`, `docs/reference/templates/*`.
   - Subagents get a reduced bootstrap allowlist. See `src/agents/workspace.ts`.
   - Bootstrap injection happens on first session turn; missing files inject a marker line and blank files are skipped. See `docs/concepts/agent.md`.
+  - Auto-bootstrap can be disabled (`agent.skipBootstrap`); `openclaw setup` can recreate missing defaults without overwriting. See `docs/concepts/agent-workspace.md`.
   - Docs links: `https://docs.openclaw.ai/agent-workspace`, `https://docs.openclaw.ai/concepts/agent`.
 - Design notes:
   - Service layer: define a logical workspace path per user (e.g., `/workspace/{user_id}/...`) stored in R2, and load key files during prompt assembly.
@@ -120,6 +121,7 @@ Structure per item:
   - Chunking happens on IR to avoid splitting inline styles or code fences. See `docs/concepts/markdown-formatting.md`, `src/markdown/ir.ts`, `src/auto-reply/chunk.ts`.
   - Table conversion modes (`code`, `bullets`, `off`) are configurable per channel/account. See `docs/concepts/markdown-formatting.md`, `src/markdown/tables.ts`.
   - Different channel renderers map IR to native formats (Slack mrkdwn, Telegram HTML, Signal style ranges). See `docs/concepts/markdown-formatting.md`.
+  - Link handling differs per channel (Slack `<url|label>`, Telegram HTML, Signal `label (url)` when labels differ). See `docs/concepts/markdown-formatting.md`.
   - Docs links: `https://docs.openclaw.ai/concepts/markdown-formatting`, `https://docs.openclaw.ai/concepts/streaming`.
 - Design notes:
   - Service layer: optional; mostly frontend. Introduce a shared Markdown parser/IR for export or notifications.
@@ -159,6 +161,7 @@ Structure per item:
   - Heartbeat replies do not extend session idle timers; delivery can be suppressed entirely when all visibility flags are false. See `docs/gateway/heartbeat.md`.
   - Default cadence is 30m (or 1h for certain auth modes) and a tiny `HEARTBEAT.md` checklist is recommended. See `docs/gateway/heartbeat.md`.
   - If `HEARTBEAT.md` exists but is effectively empty, the heartbeat run is skipped to save API calls. See `docs/gateway/heartbeat.md`.
+  - Heartbeat can override model/thinking and optionally deliver reasoning as a separate message. See `docs/gateway/heartbeat.md`.
   - Docs links: `https://docs.openclaw.ai/gateway/heartbeat`, `https://docs.openclaw.ai/cron-vs-heartbeat`, `https://docs.openclaw.ai/automation/webhook`.
 - Design notes:
   - Service layer: add a heartbeat runner that can enqueue a system event and run the assistant at intervals.
@@ -178,6 +181,7 @@ Structure per item:
   - Session tools expose list/history/send/spawn with session-key conventions and session kind filters. See `docs/concepts/session-tool.md`.
   - Session key kinds include main, group/channel, cron, hook, and node; `global`/`unknown` are reserved and not listed. See `docs/concepts/session-tool.md`.
   - `sessions_list` supports `kinds`, `limit`, and `activeMinutes` filters, and can include recent messages with `messageLimit`. See `docs/concepts/session-tool.md`.
+  - Session ids rotate on daily reset or idle expiry; a new session id is created on the next message after the boundary. See `docs/reference/session-management-compaction.md`.
   - Docs links: `https://docs.openclaw.ai/concepts/session`, `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/concepts/session-pruning`, `https://docs.openclaw.ai/concepts/session-tool`.
 - Design notes:
   - Data model: add `conversation_type` or `session_kind` to conversations (main, automation, background).
@@ -194,6 +198,7 @@ Structure per item:
   - Nodes connect to the gateway with `role: node` over WebSocket and declare capabilities. See `docs/concepts/architecture.md`, `docs/nodes/*`.
   - Commands include `canvas.*`, `camera.*`, `screen.record`, `location.get`. See `docs/nodes/*` and gateway protocol schema.
   - Pairing is device-based; device approval issues a token for later connects. See `docs/gateway/pairing.md`.
+  - Node requests can be delivered via silent push (APNs/FCM) and may require explicit device permission (e.g., location). See `docs/nodes/location-command.md`.
   - Docs links: `https://docs.openclaw.ai/nodes`, `https://docs.openclaw.ai/architecture`, `https://docs.openclaw.ai/pairing`.
 - Design notes:
   - Service layer: store device capabilities alongside tokens; add a "device action" tool.
@@ -227,6 +232,7 @@ Structure per item:
   - Sessions persist as JSONL logs on disk, separate from config/credentials. See `docs/reference/session-management-compaction.md`.
   - Cron jobs and run history persist across restarts. See `docs/automation/cron-jobs.md`.
   - Gateway is the single control plane for stateful operations. See `docs/concepts/architecture.md`.
+  - Session store (`sessions.json`) tracks counters/toggles; transcripts are append-only JSONL with compaction entries. See `docs/reference/session-management-compaction.md`.
   - Docs links: `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/automation/cron-jobs`, `https://docs.openclaw.ai/architecture`.
 - Design notes:
   - Service layer: introduce a shared operation log schema or helper utilities to reduce duplicated sync logic.
@@ -246,6 +252,7 @@ Structure per item:
   - Reply normalization strips silent replies unless media/attachments are present. See `src/auto-reply/reply/normalize-reply.ts`.
   - Typing indicators suppress silent-only replies (`message` mode ignores `NO_REPLY`). See `docs/concepts/typing-indicators.md`.
   - Heartbeat runs disable typing indicators entirely. See `docs/concepts/typing-indicators.md`.
+  - Group activation modes use silent replies when the agent should not respond (e.g., mention-only groups). See `docs/concepts/group-messages.md`.
   - Docs links: `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/agent-loop`, `https://docs.openclaw.ai/concepts/typing-indicators`.
 - Design notes:
   - Service layer: add a "silent" flag to tool-driven runs (or detect a silent token in assistant output) and suppress UI delivery while still persisting side effects.
