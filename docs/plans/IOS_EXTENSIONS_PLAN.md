@@ -210,7 +210,7 @@ None - all planned intents implemented.
 1. Add interactive widgets (iOS 17) for scratchpad refresh and quick actions.
 2. ✅ Add lock screen widgets (accessory families) - Complete for all content types.
 3. Add Focus Filters for widget data filtering.
-4. Add Spotlight indexing for conversations and notes.
+4. ✅ Add Spotlight indexing for notes, files, and websites - Complete.
 5. ✅ Add background refresh to keep widget data current - Complete.
 6. (Optional) Control Center widget for iOS 18+.
 
@@ -222,10 +222,36 @@ Widget data is refreshed through multiple mechanisms:
 - **Timeline refresh**: Widgets request new timelines every 15 minutes
 - **Task due date boundaries**: Task widgets create timeline entries at due date boundaries
 
+### Spotlight Indexing Implementation ✅
+CoreSpotlight integration enables system-wide search for notes, files, and websites:
+
+**Files:**
+- `ios/sideBar/sideBar/Services/Spotlight/SpotlightIndexer.swift` - Main indexer with protocol for testability
+
+**Indexed Content:**
+- **Notes**: Title, content (full text search), path components as keywords
+- **Files**: Filename, category, file metadata
+- **Websites**: Title, URL, domain
+
+**Features:**
+- Bulk indexing on list/tree load
+- Individual indexing on item view/edit
+- Automatic removal on delete
+- Index cleared on sign out (privacy)
+- Deep links: `sidebar://notes/{path}`, `sidebar://files/{id}`, `sidebar://websites/{id}`
+
+**Integration Points:**
+- `NotesStore.applyTreeUpdate()` - Bulk indexes notes from tree
+- `NotesStore.applyNoteUpdate()` - Indexes individual note with full content
+- `IngestionStore.applyListUpdate()` - Bulk indexes files
+- `WebsitesStore.applyListUpdate()` - Bulk indexes websites
+- `AppSceneDelegate.scene(_:continue:)` - Handles Spotlight tap deep links
+- `AppEnvironment+Auth.refreshAuthState()` - Clears index on sign out
+
 ### Verification
 - Interactive widget buttons work without opening the app.
 - ✅ Lock screen widgets display correctly.
-- Spotlight results open the app to the right location.
+- ✅ Spotlight results open the app to the right location.
 - ✅ Background refresh keeps widgets fresh.
 
 ---
@@ -244,6 +270,9 @@ Widget data is refreshed through multiple mechanisms:
 - `ios/sideBar/sideBar/Utilities/AppGroupConfiguration.swift` - App Group ID configuration
 - `ios/sideBar/sideBar/Utilities/ExtensionEventStore.swift` - IPC between extension and main app
 - `ios/sideBar/sideBar/Services/Auth/KeychainAuthStateStore.swift` - Shared keychain access
+
+### Spotlight Indexing
+- `ios/sideBar/sideBar/Services/Spotlight/SpotlightIndexer.swift` - CoreSpotlight indexer with protocol
 
 ### Widget Storage Architecture (Main App)
 - `ios/sideBar/sideBar/Utilities/WidgetStorable.swift` - Protocols for widget models
@@ -309,8 +338,8 @@ ios/sideBar/sideBarWidgets/
 5. ✅ ~~Add background refresh for widget data (BGAppRefreshTask + push notifications).~~
 6. ✅ ~~Add lock screen widgets for Files.~~
 7. ✅ ~~Add App Intents for all content types (notes, websites, files, chat, scratchpad).~~
-8. **Next:** Implement Live Activities with upload progress (Phase 2).
-9. Add Spotlight indexing for notes and files.
+8. ✅ ~~Add Spotlight indexing for notes, files, and websites.~~
+9. **Next:** Implement Live Activities with upload progress (Phase 2).
 10. Add interactive widgets (iOS 17) for quick actions.
 
 ### Adding a New Widget Type
