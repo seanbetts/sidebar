@@ -44,7 +44,12 @@ extension AppEnvironment {
             : PersistenceController.shared
         let draftStorage = DraftStorage(container: persistenceController.container)
         let offlineStore = OfflineStore(container: persistenceController.container)
-        let chatStore = ChatStore(conversationsAPI: container.conversationsAPI, cache: container.cacheClient)
+        let chatStore = ChatStore(
+            conversationsAPI: container.conversationsAPI,
+            cache: container.cacheClient,
+            offlineStore: offlineStore,
+            networkStatus: connectivityMonitor
+        )
         let websitesStore = WebsitesStore(
             api: container.websitesAPI,
             cache: container.cacheClient,

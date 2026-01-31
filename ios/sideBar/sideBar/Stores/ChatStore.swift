@@ -18,10 +18,19 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     @Published public private(set) var conversationDetails: [String: ConversationWithMessages] = [:]
 
     private let conversationsAPI: ConversationsProviding
+    private let offlineStore: OfflineStore?
+    private let networkStatus: (any NetworkStatusProviding)?
     private var isRefreshingList = false
 
-    public init(conversationsAPI: ConversationsProviding, cache: CacheClient) {
+    public init(
+        conversationsAPI: ConversationsProviding,
+        cache: CacheClient,
+        offlineStore: OfflineStore? = nil,
+        networkStatus: (any NetworkStatusProviding)? = nil
+    ) {
         self.conversationsAPI = conversationsAPI
+        self.offlineStore = offlineStore
+        self.networkStatus = networkStatus
         super.init(cache: cache)
     }
 
@@ -46,7 +55,35 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     // MARK: - Public API
 
     public func loadConversations(force: Bool = false) async throws {
-        try await loadWithCache(force: force)
+        if !force {
+            let cached: [Conversation]? = cache.get(key: cacheKey)
+            if let cached {
+                applyConversationListUpdate(cached, persist: false)
+                Task { [weak self] in
+                    await self?.refreshConversationsList()
+                }
+                return
+            }
+            if let offline = offlineStore?.get(key: cacheKey, as: [Conversation].self) {
+                applyConversationListUpdate(offline, persist: false)
+                if !(networkStatus?.isOffline ?? false) {
+                    Task { [weak self] in
+                        await self?.refreshConversationsList()
+                    }
+                }
+                return
+            }
+        }
+        if networkStatus?.isOffline ?? false {
+            if let offline = offlineStore?.get(key: cacheKey, as: [Conversation].self) {
+                applyConversationListUpdate(offline, persist: false)
+                return
+            }
+            throw ChatOfflineError(message: "Conversations aren't available offline yet.")
+        }
+        let remote = try await fetchFromAPI()
+        applyConversationListUpdate(remote, persist: true)
+        cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
     }
 
     public func loadConversation(id: String, force: Bool = false) async throws {
@@ -71,11 +108,19 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             }
             return
         }
+        if !force, let offline = offlineStore?.get(key: cacheKey, as: ConversationWithMessages.self) {
+            conversationDetails[id] = offline
+            return
+        }
+        if networkStatus?.isOffline ?? false {
+            throw ChatOfflineError(message: "This chat isn't available offline yet.")
+        }
 
         let response = try await conversationsAPI.get(id: id)
         if shouldApplyConversationUpdate(response, cached: conversationDetails[id]) {
             conversationDetails[id] = response
             cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
+            persistConversationDetailSnapshot(response)
         }
     }
 
@@ -90,7 +135,14 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         }
         let messagesCacheKey = CacheKeys.conversationMessages(id: id)
         let cachedMessages: [Message]? = cache.get(key: messagesCacheKey)
-        return cachedMessages != nil && !(cachedMessages?.isEmpty ?? true)
+        if cachedMessages != nil && !(cachedMessages?.isEmpty ?? true) {
+            return true
+        }
+        let offline: ConversationWithMessages? = offlineStore?.get(
+            key: CacheKeys.conversation(id: id),
+            as: ConversationWithMessages.self
+        )
+        return offline != nil
     }
 
     public func reset() {
@@ -109,6 +161,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
                 value: updated,
                 ttlSeconds: CachePolicy.conversationsList
             )
+            persistConversationListSnapshot(updated)
         }
     }
 
@@ -119,6 +172,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
             let messagesCacheKey = CacheKeys.conversationMessages(id: detail.id)
             cache.set(key: messagesCacheKey, value: detail.messages, ttlSeconds: CachePolicy.conversationMessages)
+            persistConversationDetailSnapshot(detail)
         }
     }
 
@@ -149,9 +203,11 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
                 value: updated,
                 ttlSeconds: CachePolicy.conversationsList
             )
+            persistConversationListSnapshot(updated)
             if let detail = conversationDetails[conversation.id] {
                 let cacheKey = CacheKeys.conversation(id: conversation.id)
                 cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+                persistConversationDetailSnapshot(detail)
             }
         }
     }
@@ -194,9 +250,11 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
                 value: conversations,
                 ttlSeconds: CachePolicy.conversationsList
             )
+            persistConversationListSnapshot(conversations)
             if let detail = conversationDetails[id] {
                 let cacheKey = CacheKeys.conversation(id: id)
                 cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+                persistConversationDetailSnapshot(detail)
             }
         }
     }
@@ -226,6 +284,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             cache.set(key: cacheKey, value: updated, ttlSeconds: CachePolicy.conversationDetail)
             let messagesCacheKey = CacheKeys.conversationMessages(id: id)
             cache.set(key: messagesCacheKey, value: messages, ttlSeconds: CachePolicy.conversationMessages)
+            persistConversationDetailSnapshot(updated)
         }
     }
 
@@ -240,6 +299,21 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             )
             let cacheKey = CacheKeys.conversation(id: id)
             cache.remove(key: cacheKey)
+            persistConversationListSnapshot(conversations)
+            offlineStore?.remove(key: cacheKey)
+            offlineStore?.remove(key: CacheKeys.conversationMessages(id: id))
+        }
+    }
+
+    public func loadFromOffline() async {
+        guard let offline = offlineStore?.get(key: cacheKey, as: [Conversation].self) else { return }
+        applyConversationListUpdate(offline, persist: false)
+    }
+
+    public func saveOfflineSnapshot() async {
+        persistConversationListSnapshot(conversations)
+        for detail in conversationDetails.values {
+            persistConversationDetailSnapshot(detail)
         }
     }
 
@@ -280,7 +354,56 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         conversations = incoming
         if persist {
             cache.set(key: CacheKeys.conversationsList, value: incoming, ttlSeconds: CachePolicy.conversationsList)
+            persistConversationListSnapshot(incoming)
         }
+    }
+
+    private func persistConversationListSnapshot(_ list: [Conversation]) {
+        guard let offlineStore else { return }
+        let lastSyncAt = Date()
+        offlineStore.set(
+            key: cacheKey,
+            entityType: "conversationsList",
+            value: list,
+            lastSyncAt: lastSyncAt
+        )
+    }
+
+    private func persistConversationDetailSnapshot(_ detail: ConversationWithMessages) {
+        guard let offlineStore else { return }
+        let trimmed = trimMessages(detail.messages)
+        let snapshot = ConversationWithMessages(
+            id: detail.id,
+            title: detail.title,
+            titleGenerated: detail.titleGenerated,
+            createdAt: detail.createdAt,
+            updatedAt: detail.updatedAt,
+            messageCount: detail.messageCount,
+            firstMessage: detail.firstMessage,
+            isArchived: detail.isArchived,
+            messages: trimmed
+        )
+        let lastSyncAt = Date()
+        offlineStore.set(
+            key: CacheKeys.conversation(id: detail.id),
+            entityType: "conversation",
+            value: snapshot,
+            lastSyncAt: lastSyncAt
+        )
+    }
+
+    private func trimMessages(_ messages: [Message]) -> [Message] {
+        let maxMessages = 1000
+        let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date())
+        let filtered = messages.filter { message in
+            guard let cutoff else { return true }
+            guard let timestamp = DateParsing.parseISO8601(message.timestamp) else { return true }
+            return timestamp >= cutoff
+        }
+        if filtered.count <= maxMessages {
+            return filtered
+        }
+        return Array(filtered.suffix(maxMessages))
     }
 
     private func shouldUpdateConversationList(_ incoming: [Conversation]) -> Bool {
@@ -302,4 +425,10 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         }
         return false
     }
+}
+
+private struct ChatOfflineError: LocalizedError {
+    let message: String
+
+    var errorDescription: String? { message }
 }
