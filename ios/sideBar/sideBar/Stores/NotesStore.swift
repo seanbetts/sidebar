@@ -26,6 +26,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     weak var writeQueue: WriteQueue?
     private var isRefreshingTree = false
     private var refreshingNotes = Set<String>()
+    private let archivedNoteRetentionDays = 7
 
     public init(
         api: any NotesProviding,
@@ -216,13 +217,11 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         }
         activeNote = incoming
         if persist {
-            let idKey = CacheKeys.note(id: incoming.id)
-            let pathKey = CacheKeys.note(id: incoming.path)
-            cache.set(key: idKey, value: incoming, ttlSeconds: CachePolicy.noteContent)
-            cache.set(key: pathKey, value: incoming, ttlSeconds: CachePolicy.noteContent)
-            let lastSyncAt = Date()
-            offlineStore?.set(key: idKey, entityType: "note", value: incoming, lastSyncAt: lastSyncAt)
-            offlineStore?.set(key: pathKey, entityType: "note", value: incoming, lastSyncAt: lastSyncAt)
+            if shouldPersistNote(incoming) {
+                persistNote(incoming)
+            } else {
+                clearCachedNote(incoming)
+            }
         }
     }
 
@@ -234,6 +233,61 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             current.content != incoming.content ||
             current.name != incoming.name ||
             current.path != incoming.path
+    }
+
+    func shouldPersistNote(_ note: NotePayload) -> Bool {
+        guard isArchived(note) else {
+            return true
+        }
+        guard let modified = note.modified else {
+            return false
+        }
+        guard let cutoff = Calendar.current.date(
+            byAdding: .day,
+            value: -archivedNoteRetentionDays,
+            to: Date()
+        ) else {
+            return false
+        }
+        return Date(timeIntervalSince1970: modified) >= cutoff
+    }
+
+    private func persistNote(_ note: NotePayload) {
+        let idKey = CacheKeys.note(id: note.id)
+        let pathKey = CacheKeys.note(id: note.path)
+        cache.set(key: idKey, value: note, ttlSeconds: CachePolicy.noteContent)
+        cache.set(key: pathKey, value: note, ttlSeconds: CachePolicy.noteContent)
+        let lastSyncAt = Date()
+        offlineStore?.set(key: idKey, entityType: "note", value: note, lastSyncAt: lastSyncAt)
+        offlineStore?.set(key: pathKey, entityType: "note", value: note, lastSyncAt: lastSyncAt)
+    }
+
+    private func clearCachedNote(_ note: NotePayload) {
+        let idKey = CacheKeys.note(id: note.id)
+        let pathKey = CacheKeys.note(id: note.path)
+        cache.remove(key: idKey)
+        cache.remove(key: pathKey)
+        offlineStore?.remove(key: idKey)
+        offlineStore?.remove(key: pathKey)
+    }
+
+    private func isArchived(_ note: NotePayload) -> Bool {
+        guard let tree else {
+            return false
+        }
+        return findNode(path: note.path, in: tree.children)?.archived == true
+    }
+
+    private func findNode(path: String, in nodes: [FileNode]) -> FileNode? {
+        for node in nodes {
+            if node.path == path {
+                return node
+            }
+            if let children = node.children, let found = findNode(path: path, in: children) {
+                return found
+            }
+        }
+        return nil
     }
 
     // MARK: - Widget Data

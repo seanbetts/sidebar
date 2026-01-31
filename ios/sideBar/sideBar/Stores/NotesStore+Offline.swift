@@ -20,11 +20,20 @@ extension NotesStore {
             offlineStore?.set(key: cacheKey, entityType: "notesTree", value: tree, lastSyncAt: lastSyncAt)
         }
         if let activeNote {
-            let idKey = CacheKeys.note(id: activeNote.id)
-            let pathKey = CacheKeys.note(id: activeNote.path)
-            let lastSyncAt = offlineStore?.lastSyncAt(for: pathKey)
-            offlineStore?.set(key: idKey, entityType: "note", value: activeNote, lastSyncAt: lastSyncAt)
-            offlineStore?.set(key: pathKey, entityType: "note", value: activeNote, lastSyncAt: lastSyncAt)
+            if shouldPersistNote(activeNote) {
+                let idKey = CacheKeys.note(id: activeNote.id)
+                let pathKey = CacheKeys.note(id: activeNote.path)
+                let lastSyncAt = offlineStore?.lastSyncAt(for: pathKey)
+                offlineStore?.set(key: idKey, entityType: "note", value: activeNote, lastSyncAt: lastSyncAt)
+                offlineStore?.set(key: pathKey, entityType: "note", value: activeNote, lastSyncAt: lastSyncAt)
+            } else {
+                let idKey = CacheKeys.note(id: activeNote.id)
+                let pathKey = CacheKeys.note(id: activeNote.path)
+                cache.remove(key: idKey)
+                cache.remove(key: pathKey)
+                offlineStore?.remove(key: idKey)
+                offlineStore?.remove(key: pathKey)
+            }
         }
     }
 
