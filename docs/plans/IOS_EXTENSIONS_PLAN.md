@@ -1,7 +1,7 @@
 # iOS Extensions, Widgets, App Intents, and Siri Plan
 **Project:** sideBar iOS App
 **Document Version:** 1.2
-**Date:** 2026-01-28
+**Date:** 2026-01-31
 **Estimated Total Effort:** 4-5 weeks (phased, shippable milestones)
 
 ---
@@ -13,8 +13,8 @@ This plan consolidates the iOS Share Extension, Live Activities, Widgets, App In
 **Phases:**
 1. ✅ Share Extension (URLs, images, files) - **COMPLETE**
 2. Live Activities for upload progress
-3. ✅ Widgets + App Intents + Siri (core) - **PARTIAL** (Tasks widgets complete)
-4. Widgets polish: interactive widgets, lock screen, Spotlight, background refresh
+3. ✅ Widgets + App Intents + Siri (core) - **COMPLETE** (All content types)
+4. ✅ Widgets polish - **PARTIAL** (Lock screen complete, background refresh complete)
 
 ---
 
@@ -90,10 +90,10 @@ These should be used as templates for Widgets and Intents.
 
 ---
 
-## Phase 3: Widgets + App Intents + Siri (Week 3) - PARTIAL ✅
+## Phase 3: Widgets + App Intents + Siri (Week 3) ✅ COMPLETE
 
 **Goal:** Core widgets and App Intents (Siri + Shortcuts)
-**Status:** Tasks widgets complete (2026-01-28), other content types ready for implementation
+**Status:** All content type widgets complete (2026-01-31)
 
 ### Widget Foundation ✅ COMPLETE
 - ✅ Created `sideBarWidgets` target with App Group and Keychain sharing.
@@ -127,17 +127,32 @@ WidgetDataManager.shared.recordPendingOperation(op, for: .tasks)
 ```
 
 ### Widgets Implemented ✅
+
+**Tasks:**
 1. ✅ **TodayTasksWidget** - Shows today's tasks with completion buttons
 2. ✅ **TaskCountWidget** - Compact task count display
 3. ✅ **LockScreenTaskCountWidget** - Circular lock screen widget
 4. ✅ **LockScreenTaskPreviewWidget** - Rectangular lock screen widget
 5. ✅ **LockScreenInlineWidget** - Inline text lock screen widget
 
+**Notes:**
+6. ✅ **PinnedNotesWidget** - Shows pinned notes (small/medium/large)
+7. ✅ **LockScreenNoteCountWidget** - Circular lock screen widget
+8. ✅ **LockScreenNotePreviewWidget** - Rectangular lock screen widget
+9. ✅ **LockScreenNotesInlineWidget** - Inline text lock screen widget
+
+**Websites:**
+10. ✅ **SavedSitesWidget** - Shows pinned websites (small/medium/large)
+11. ✅ **LockScreenSiteCountWidget** - Circular lock screen widget
+12. ✅ **LockScreenSitePreviewWidget** - Rectangular lock screen widget
+13. ✅ **LockScreenSitesInlineWidget** - Inline text lock screen widget
+
+**Files:**
+14. ✅ **PinnedFilesWidget** - Shows pinned files with file type icons (small/medium/large)
+
 ### Widgets Remaining
-1. Recent Notes widget (use `WidgetNoteData`)
-2. Saved Websites widget (use `WidgetWebsiteData`)
-3. Recent Files widget (use `WidgetFileData`)
-4. Recent Conversations widget
+1. Recent Conversations widget
+2. Lock screen widgets for Files
 
 ### App Intents Implemented ✅
 1. ✅ `CompleteTaskIntent` - Marks task complete from widget
@@ -163,23 +178,32 @@ WidgetDataManager.shared.recordPendingOperation(op, for: .tasks)
 
 ---
 
-## Phase 4: Widgets Polish and System Integrations (Week 4)
+## Phase 4: Widgets Polish and System Integrations (Week 4) - PARTIAL ✅
 
 **Goal:** Interactive widgets, lock screen, Spotlight, background refresh
 
 ### Tasks
 1. Add interactive widgets (iOS 17) for scratchpad refresh and quick actions.
-2. Add lock screen widgets (accessory families).
+2. ✅ Add lock screen widgets (accessory families) - Complete for Tasks, Notes, Websites.
 3. Add Focus Filters for widget data filtering.
 4. Add Spotlight indexing for conversations and notes.
-5. Add background refresh to keep widget data current.
+5. ✅ Add background refresh to keep widget data current - Complete.
 6. (Optional) Control Center widget for iOS 18+.
+7. Add lock screen widgets for Files.
+
+### Background Refresh Implementation ✅
+Widget data is refreshed through multiple mechanisms:
+- **Mutation triggers**: Widget data updates immediately when items are pinned/unpinned/modified
+- **Push notifications**: All widget data refreshes when push notification received
+- **Background task**: `BGAppRefreshTask` refreshes all widget data every 30 minutes
+- **Timeline refresh**: Widgets request new timelines every 15 minutes
+- **Task due date boundaries**: Task widgets create timeline entries at due date boundaries
 
 ### Verification
 - Interactive widget buttons work without opening the app.
-- Lock screen widgets display correctly.
+- ✅ Lock screen widgets display correctly.
 - Spotlight results open the app to the right location.
-- Background refresh keeps widgets fresh.
+- ✅ Background refresh keeps widgets fresh.
 
 ---
 
@@ -215,11 +239,19 @@ ios/sideBar/sideBarWidgets/
 ├── WidgetDataManager.swift             # Lightweight read/record operations
 ├── WidgetModels.swift                  # All widget models (Task, Note, Website, File)
 ├── Providers/
-│   └── TodayTasksProvider.swift        # Timeline provider for task widgets
+│   ├── TodayTasksProvider.swift        # Timeline provider for task widgets
+│   ├── PinnedNotesProvider.swift       # Timeline provider for notes widgets
+│   ├── SavedSitesProvider.swift        # Timeline provider for website widgets
+│   └── PinnedFilesProvider.swift       # Timeline provider for files widgets
 ├── Widgets/
-│   ├── TodayTasksWidget.swift          # Main tasks widget
+│   ├── TodayTasksWidget.swift          # Main tasks widget (small/medium/large)
 │   ├── TaskCountWidget.swift           # Compact task count
-│   └── LockScreenWidgets.swift         # Lock screen variants
+│   ├── LockScreenWidgets.swift         # Task lock screen variants
+│   ├── PinnedNotesWidget.swift         # Notes widget (small/medium/large)
+│   ├── LockScreenNotesWidgets.swift    # Notes lock screen variants
+│   ├── SavedSitesWidget.swift          # Websites widget (small/medium/large)
+│   ├── LockScreenSitesWidgets.swift    # Websites lock screen variants
+│   └── PinnedFilesWidget.swift         # Files widget (small/medium/large)
 └── Intents/
     └── TaskIntents.swift               # Task-related App Intents
 ```
@@ -249,11 +281,14 @@ ios/sideBar/sideBarWidgets/
 
 1. ✅ ~~Confirm App Group IDs and entitlements for all targets.~~
 2. ✅ ~~Verify Share Extension completeness.~~
-3. ✅ ~~Build Tasks widgets with generic storage architecture (Phase 3 partial).~~
-4. **Next:** Add Notes/Websites/Files widgets using existing generic architecture.
-5. Implement Live Activities with upload progress (Phase 2).
-6. Add remaining App Intents (chat, notes, scratchpad).
-7. Polish with Spotlight indexing and background refresh (Phase 4).
+3. ✅ ~~Build Tasks widgets with generic storage architecture.~~
+4. ✅ ~~Add Notes/Websites/Files widgets using existing generic architecture.~~
+5. ✅ ~~Add background refresh for widget data (BGAppRefreshTask + push notifications).~~
+6. **Next:** Implement Live Activities with upload progress (Phase 2).
+7. **Next:** Add remaining App Intents (chat, notes, scratchpad).
+8. **Next:** Add lock screen widgets for Files.
+9. Add Spotlight indexing for conversations and notes.
+10. Add interactive widgets (iOS 17) for quick actions.
 
 ### Adding a New Widget Type
 
