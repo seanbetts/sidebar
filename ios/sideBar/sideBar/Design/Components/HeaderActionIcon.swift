@@ -42,3 +42,23 @@ struct HeaderActionRow<Content: View>: View {
         }
     }
 }
+
+#if os(iOS)
+struct HeaderActionMenuButton: View {
+    let systemImage: String
+    let accessibilityLabel: String
+    let items: [MenuActionItem]
+    let isCompact: Bool
+
+    var body: some View {
+        UIKitMenuButton(
+            systemImage: systemImage,
+            accessibilityLabel: accessibilityLabel,
+            items: items
+        )
+        .frame(width: 28, height: isCompact ? 20 : 28)
+        .fixedSize()
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+#endif

@@ -13,12 +13,28 @@ public struct WebsitesView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
     @Environment(\.scenePhase) private var scenePhase
+    @State private var exportDocument: MarkdownFileDocument?
+    @State private var exportFilename: String = "website.md"
+    @State private var isExporting = false
+    @State private var isRenameDialogPresented = false
+    @State private var renameValue: String = ""
+    @State private var isDeleteAlertPresented = false
+    @State private var isArchiveAlertPresented = false
 
     public init() {
     }
 
     public var body: some View {
-        WebsitesDetailView(viewModel: environment.websitesViewModel)
+        WebsitesDetailView(
+            viewModel: environment.websitesViewModel,
+            exportDocument: $exportDocument,
+            exportFilename: $exportFilename,
+            isExporting: $isExporting,
+            isRenameDialogPresented: $isRenameDialogPresented,
+            renameValue: $renameValue,
+            isDeleteAlertPresented: $isDeleteAlertPresented,
+            isArchiveAlertPresented: $isArchiveAlertPresented
+        )
             .task {
                 await environment.websitesViewModel.load(force: true)
             }
@@ -35,12 +51,59 @@ public struct WebsitesView: View {
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if isCompact {
-                    ToolbarItem(placement: .navigationBarLeading) {
+                if isCompact, environment.websitesViewModel.active != nil, !isPhone {
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        websiteToolbarMenu
                     }
                 }
             }
             #endif
+            .fileExporter(
+                isPresented: $isExporting,
+                document: exportDocument,
+                contentType: .sideBarMarkdown,
+                defaultFilename: exportFilename
+            ) { _ in
+                exportDocument = nil
+            }
+            .alert(renameDialogTitle, isPresented: $isRenameDialogPresented) {
+                TextField(renameDialogPlaceholder, text: $renameValue)
+                    .submitLabel(.done)
+                    .onSubmit {
+                        commitRename()
+                    }
+                Button("Rename") {
+                    commitRename()
+                }
+                .keyboardShortcut(.defaultAction)
+                Button("Cancel", role: .cancel) {
+                    renameValue = ""
+                }
+            }
+            .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
+                Button("Delete", role: .destructive) {
+                    guard let websiteId = environment.websitesViewModel.active?.id else { return }
+                    Task {
+                        await environment.websitesViewModel.deleteWebsite(id: websiteId)
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will remove the website and cannot be undone.")
+            }
+            .alert(archiveAlertTitle, isPresented: $isArchiveAlertPresented) {
+                Button(archiveActionTitle, role: .destructive) {
+                    guard let websiteId = environment.websitesViewModel.active?.id else { return }
+                    Task {
+                        await environment.websitesViewModel.setArchived(id: websiteId, archived: !isArchived)
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text(archiveAlertMessage)
+            }
     }
 
     private var websiteTitle: String {
@@ -64,19 +127,157 @@ public struct WebsitesView: View {
         return horizontalSizeClass == .compact
         #endif
     }
+
+    #if os(iOS)
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+    #endif
+
+    #if os(iOS)
+    private var websiteToolbarMenu: some View {
+        HeaderActionMenuButton(
+            systemImage: "ellipsis.circle",
+            accessibilityLabel: "Website options",
+            items: [
+                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    guard let websiteId = environment.websitesViewModel.active?.id else { return }
+                    Task {
+                        await environment.websitesViewModel.setPinned(id: websiteId, pinned: !isPinned)
+                    }
+                },
+                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    renameValue = environment.websitesViewModel.active?.title ?? ""
+                    isRenameDialogPresented = true
+                },
+                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyWebsiteContent()
+                },
+                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    exportWebsite()
+                },
+                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    isArchiveAlertPresented = true
+                },
+                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ],
+            isCompact: isCompact
+        )
+        .disabled(environment.websitesViewModel.active == nil)
+    }
+    #endif
+
+    private var isPinned: Bool {
+        environment.websitesViewModel.active?.pinned == true
+    }
+
+    private var isArchived: Bool {
+        environment.websitesViewModel.active?.archived == true
+    }
+
+    private var pinActionTitle: String {
+        isPinned ? "Unpin" : "Pin"
+    }
+
+    private var pinIconName: String {
+        isPinned ? "pin.slash" : "pin"
+    }
+
+    private var archiveMenuTitle: String {
+        isArchived ? "Unarchive" : "Archive"
+    }
+
+    private var archiveIconName: String {
+        isArchived ? "archivebox.fill" : "archivebox"
+    }
+
+    private var archiveActionTitle: String {
+        isArchived ? "Unarchive" : "Archive"
+    }
+
+    private var archiveAlertTitle: String {
+        isArchived ? "Unarchive website" : "Archive website"
+    }
+
+    private var archiveAlertMessage: String {
+        isArchived
+            ? "This will move the website back to your main list."
+            : "This will move the website into your archive."
+    }
+
+    private var renameDialogTitle: String {
+        "Rename website"
+    }
+
+    private var renameDialogPlaceholder: String {
+        "Website title"
+    }
+
+    private var deleteDialogTitle: String {
+        "Delete website"
+    }
+
+    private func commitRename() {
+        guard let websiteId = environment.websitesViewModel.active?.id else { return }
+        let updatedName = renameValue
+        isRenameDialogPresented = false
+        renameValue = ""
+        Task {
+            await environment.websitesViewModel.renameWebsite(id: websiteId, title: updatedName)
+        }
+    }
+
+    private func copyWebsiteContent() {
+        guard let content = environment.websitesViewModel.active?.content, !content.isEmpty else { return }
+        let stripped = MarkdownRendering.stripFrontmatter(content)
+        guard !stripped.isEmpty else { return }
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = stripped
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(stripped, forType: .string)
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == stripped {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == stripped {
+                pasteboard.string = ""
+            }
+            #endif
+        }
+    }
+
+    private func exportWebsite() {
+        guard let website = environment.websitesViewModel.active else { return }
+        let fallbackName = website.title.isEmpty ? "website" : website.title
+        let stripped = MarkdownRendering.stripFrontmatter(website.content)
+        guard !stripped.isEmpty else { return }
+        exportFilename = "\(fallbackName).md"
+        exportDocument = MarkdownFileDocument(text: stripped)
+        isExporting = true
+    }
 }
 
 private struct WebsitesDetailView: View {
     @ObservedObject var viewModel: WebsitesViewModel
     @Environment(\.openURL) private var openURL
     @State private var safariURL: URL?
-    @State private var exportDocument: MarkdownFileDocument?
-    @State private var exportFilename: String = "website.md"
-    @State private var isExporting = false
-    @State private var isRenameDialogPresented = false
-    @State private var renameValue: String = ""
-    @State private var isDeleteAlertPresented = false
-    @State private var isArchiveAlertPresented = false
+    @Binding var exportDocument: MarkdownFileDocument?
+    @Binding var exportFilename: String
+    @Binding var isExporting: Bool
+    @Binding var isRenameDialogPresented: Bool
+    @Binding var renameValue: String
+    @Binding var isDeleteAlertPresented: Bool
+    @Binding var isArchiveAlertPresented: Bool
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -91,62 +292,6 @@ private struct WebsitesDetailView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        #if !os(macOS)
-        .toolbar {
-            if isCompact {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    websiteActionsMenu
-                    closeButton
-                }
-            }
-        }
-        #endif
-        .fileExporter(
-            isPresented: $isExporting,
-            document: exportDocument,
-            contentType: .sideBarMarkdown,
-            defaultFilename: exportFilename
-        ) { _ in
-            exportDocument = nil
-        }
-        .alert(renameDialogTitle, isPresented: $isRenameDialogPresented) {
-            TextField(renameDialogPlaceholder, text: $renameValue)
-                .submitLabel(.done)
-                .onSubmit {
-                    commitRename()
-                }
-            Button("Rename") {
-                commitRename()
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) {
-                renameValue = ""
-            }
-        }
-        .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
-            Button("Delete", role: .destructive) {
-                guard let websiteId = viewModel.active?.id else { return }
-                Task {
-                    await viewModel.deleteWebsite(id: websiteId)
-                }
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will remove the website and cannot be undone.")
-        }
-        .alert(archiveAlertTitle, isPresented: $isArchiveAlertPresented) {
-            Button(archiveActionTitle, role: .destructive) {
-                guard let websiteId = viewModel.active?.id else { return }
-                Task {
-                    await viewModel.setArchived(id: websiteId, archived: !isArchived)
-                }
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text(archiveAlertMessage)
-        }
         .onReceive(environment.$shortcutActionEvent) { event in
             guard let event, event.section == .websites else { return }
             switch event.action {
@@ -166,6 +311,15 @@ private struct WebsitesDetailView: View {
                 break
             }
         }
+        #if os(iOS)
+        .toolbar {
+            if isCompact, viewModel.active != nil, isPhone {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    websiteToolbarMenu
+                }
+            }
+        }
+        #endif
         #if os(iOS) && canImport(SafariServices)
         .sheet(isPresented: safariBinding) {
             if let safariURL {
@@ -326,7 +480,7 @@ extension WebsitesDetailView {
         .accessibilityLabel("Website options")
         .disabled(viewModel.active == nil)
         #else
-        UIKitMenuButton(
+        HeaderActionMenuButton(
             systemImage: "ellipsis.circle",
             accessibilityLabel: "Website options",
             items: [
@@ -352,14 +506,51 @@ extension WebsitesDetailView {
                 MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
                 }
-            ]
+            ],
+            isCompact: isCompact
         )
-        .frame(width: 28, height: isCompact ? 20 : 28)
-        .fixedSize()
-        .accessibilityLabel("Website options")
         .disabled(viewModel.active == nil)
         #endif
     }
+
+    #if os(iOS)
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+
+    private var websiteToolbarMenu: some View {
+        HeaderActionMenuButton(
+            systemImage: "ellipsis.circle",
+            accessibilityLabel: "Website options",
+            items: [
+                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    guard let websiteId = viewModel.active?.id else { return }
+                    Task {
+                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                    }
+                },
+                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    renameValue = viewModel.active?.title ?? ""
+                    isRenameDialogPresented = true
+                },
+                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyWebsiteContent()
+                },
+                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    exportWebsite()
+                },
+                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    isArchiveAlertPresented = true
+                },
+                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ],
+            isCompact: isCompact
+        )
+        .disabled(viewModel.active == nil)
+    }
+    #endif
 
     private var closeButton: some View {
         HeaderActionButton(
@@ -398,28 +589,6 @@ extension WebsitesDetailView {
         isArchived ? "Unarchive" : "Archive"
     }
 
-    private var archiveAlertTitle: String {
-        isArchived ? "Unarchive website" : "Archive website"
-    }
-
-    private var archiveAlertMessage: String {
-        isArchived
-            ? "This will move the website back to your main list."
-            : "This will move the website into your archive."
-    }
-
-    private var renameDialogTitle: String {
-        "Rename website"
-    }
-
-    private var renameDialogPlaceholder: String {
-        "Website title"
-    }
-
-    private var deleteDialogTitle: String {
-        "Delete website"
-    }
-
     private var isCompact: Bool {
         #if os(macOS)
         return false
@@ -435,16 +604,6 @@ extension WebsitesDetailView {
         #else
         openURL(url)
         #endif
-    }
-
-    private func commitRename() {
-        guard let websiteId = viewModel.active?.id else { return }
-        let updatedName = renameValue
-        isRenameDialogPresented = false
-        renameValue = ""
-        Task {
-            await viewModel.renameWebsite(id: websiteId, title: updatedName)
-        }
     }
 
     private func copyWebsiteContent() {
