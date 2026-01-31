@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import sideBarShared
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -178,7 +179,7 @@ private struct WebsitesDetailView: View {
 extension WebsitesDetailView {
     private var header: some View {
         ContentHeaderRow(
-            iconName: "globe",
+            iconView: headerIcon,
             title: displayTitle,
             subtitle: subtitleText,
             titleLineLimit: 1,
@@ -249,6 +250,36 @@ extension WebsitesDetailView {
             parts.append(Self.publishedDateFormatter.string(from: date))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " | ")
+    }
+
+    private var headerIcon: AnyView {
+        guard let website = viewModel.active else {
+            return AnyView(
+                Image(systemName: "globe")
+                    .font(DesignTokens.Typography.titleLg)
+                    .foregroundStyle(.primary)
+            )
+        }
+
+        let hasFavicon = (website.faviconR2Key?.isEmpty == false)
+            || (website.faviconUrl?.isEmpty == false)
+        if hasFavicon {
+            let faviconView = FaviconImageView(
+                faviconUrl: website.faviconUrl,
+                faviconR2Key: website.faviconR2Key,
+                r2Endpoint: environment.container.config.r2Endpoint,
+                r2FaviconBucket: environment.container.config.r2FaviconBucket,
+                r2FaviconPublicBaseUrl: environment.container.config.r2FaviconPublicBaseUrl,
+                size: 24,
+                placeholderTint: DesignTokens.Colors.textPrimary
+            )
+            return AnyView(faviconView)
+        }
+        return AnyView(
+            Image(systemName: "globe")
+                .font(DesignTokens.Typography.titleLg)
+                .foregroundStyle(.primary)
+        )
     }
 
     private var websiteActionsMenu: some View {

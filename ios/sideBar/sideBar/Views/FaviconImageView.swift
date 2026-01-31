@@ -41,9 +41,11 @@ struct FaviconImageView: View {
                 }
             }
             .frame(width: size, height: size)
+            .clipShape(Circle())
         } else {
             placeholderIcon
                 .frame(width: size, height: size)
+                .clipShape(Circle())
         }
     }
 
