@@ -139,6 +139,7 @@ class Settings(BaseSettings):
     storage_backend: str = "local"  # local or r2
     r2_endpoint: str = ""
     r2_bucket: str = ""
+    r2_favicon_bucket: str = os.getenv("R2_FAVICON_BUCKET", "")
     r2_access_key_id: str = ""
     r2_access_key: str = ""
     r2_secret_access_key: str = ""

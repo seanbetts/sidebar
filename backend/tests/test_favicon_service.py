@@ -58,7 +58,7 @@ def test_fetch_and_store_favicon(monkeypatch):
     )
     monkeypatch.setattr(
         favicon_service,
-        "get_storage_backend",
+        "get_favicon_storage_backend",
         lambda: storage,
     )
 
