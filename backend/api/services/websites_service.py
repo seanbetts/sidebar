@@ -513,6 +513,7 @@ class WebsitesService:
                     Website.saved_at,
                     Website.published_at,
                     Website.metadata_,
+                    Website.is_archived,
                     Website.updated_at,
                     Website.last_opened_at,
                 )
@@ -532,10 +533,7 @@ class WebsitesService:
             )
 
         if filters.archived is not None:
-            archived_value = func.coalesce(
-                Website.metadata_["archived"].astext, "false"
-            )
-            query = query.filter(archived_value == str(filters.archived).lower())
+            query = query.filter(Website.is_archived.is_(filters.archived))
 
         if filters.created_after is not None:
             query = query.filter(Website.created_at >= filters.created_after)
@@ -570,13 +568,12 @@ class WebsitesService:
     @staticmethod
     def archived_summary(db: Session, user_id: str) -> dict[str, object]:
         """Return archived website count and last updated timestamp."""
-        archived_value = func.coalesce(Website.metadata_["archived"].astext, "false")
         count, last_updated = (
             db.query(func.count(Website.id), func.max(Website.updated_at))
             .filter(
                 Website.user_id == user_id,
                 Website.deleted_at.is_(None),
-                archived_value == "true",
+                Website.is_archived.is_(True),
             )
             .one()
         )

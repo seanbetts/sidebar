@@ -35,7 +35,7 @@ def website_sync_payload(website: Website) -> dict[str, object]:
         else None,
         "pinned": metadata.get("pinned", False),
         "pinned_order": metadata.get("pinned_order"),
-        "archived": metadata.get("archived", False),
+        "archived": bool(website.is_archived),
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "deleted_at": website.deleted_at.isoformat() if website.deleted_at else None,
     }
