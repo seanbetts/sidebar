@@ -186,9 +186,11 @@ extension WebsitesDetailView {
             titleLayoutPriority: 0,
             subtitleLayoutPriority: 1
         ) {
-            HeaderActionRow {
-                websiteActionsMenu
-                closeButton
+            if viewModel.active != nil {
+                HeaderActionRow {
+                    websiteActionsMenu
+                    closeButton
+                }
             }
         }
         .padding(DesignTokens.Spacing.md)
@@ -321,7 +323,8 @@ extension WebsitesDetailView {
                 }
             ]
         )
-        .frame(width: 28, height: 20)
+        .frame(width: 28, height: isCompact ? 20 : 28)
+        .fixedSize()
         .accessibilityLabel("Website options")
         .disabled(viewModel.active == nil)
         #endif
