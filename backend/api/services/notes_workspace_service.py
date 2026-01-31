@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import ObjectDeletedError
@@ -54,9 +54,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             query = query.filter(Note.deleted_at.is_(None))
         if not include_archived:
             archived_filter = or_(
-                Note.metadata_["archived"].astext == "true",
-                Note.metadata_["folder"].astext.like("Archive/%"),
-                Note.metadata_["folder"].astext == "Archive",
+                func.coalesce(Note.metadata_["archived"].astext, "false") == "true",
+                func.coalesce(Note.metadata_["folder"].astext, "").like("Archive/%"),
+                func.coalesce(Note.metadata_["folder"].astext, "") == "Archive",
             )
             query = query.filter(~archived_filter)
         return query.order_by(Note.updated_at.desc()).all()

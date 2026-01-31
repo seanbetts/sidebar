@@ -7,7 +7,7 @@ import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -543,9 +543,9 @@ class NotesService:
 
         if filters.archived is not None:
             archived_filter = or_(
-                Note.metadata_["archived"].astext == str(filters.archived).lower(),
-                Note.metadata_["folder"].astext.like("Archive/%"),
-                Note.metadata_["folder"].astext == "Archive",
+                func.coalesce(Note.metadata_["archived"].astext, "false") == "true",
+                func.coalesce(Note.metadata_["folder"].astext, "").like("Archive/%"),
+                func.coalesce(Note.metadata_["folder"].astext, "") == "Archive",
             )
             query = query.filter(
                 archived_filter if filters.archived else ~archived_filter
