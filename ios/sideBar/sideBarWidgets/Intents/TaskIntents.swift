@@ -177,7 +177,7 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
             phrases: [
                 "Start a chat in \(.applicationName)",
                 "New conversation in \(.applicationName)",
-                "Chat with AI in \(.applicationName)"
+                "Chat with \(.applicationName)"
             ],
             shortTitle: "Start Chat",
             systemImageName: "bubble.left.and.bubble.right"
