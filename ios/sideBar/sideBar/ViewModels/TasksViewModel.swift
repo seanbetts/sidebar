@@ -108,7 +108,7 @@ public final class TasksViewModel: ObservableObject {
         }
     }
 
-    /// Updates widget data with current today tasks
+    /// Updates widget data with current today tasks (when already on Today view)
     private func updateWidgetData() {
         let projectTitleById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.title) })
         let todayTasks = TasksUtils.sortByDueDate(
@@ -119,6 +119,24 @@ public final class TasksViewModel: ObservableObject {
         }
         let data = WidgetTaskData(tasks: Array(widgetTasks), totalCount: todayTasks.count)
         WidgetDataManager.shared.store(data, for: .tasks)
+    }
+
+    /// Fetches today's tasks and updates widget data (works from any view)
+    func refreshWidgetData() async {
+        do {
+            let response = try await api.list(scope: "today")
+            let projectTitleById = Dictionary(uniqueKeysWithValues: response.projects?.map { ($0.id, $0.title) } ?? [])
+            let todayTasks = TasksUtils.sortByDueDate(
+                response.tasks.filter { $0.status != "completed" && $0.status != "project" }
+            )
+            let widgetTasks = todayTasks.prefix(10).map { task in
+                WidgetTask(from: task, projectName: task.projectId.flatMap { projectTitleById[$0] })
+            }
+            let data = WidgetTaskData(tasks: Array(widgetTasks), totalCount: todayTasks.count)
+            WidgetDataManager.shared.store(data, for: .tasks)
+        } catch {
+            // Silently fail - widget will use cached data
+        }
     }
 
     public func loadCounts(force: Bool = false) async {
@@ -334,6 +352,7 @@ extension TasksViewModel {
             newTaskDraft = nil
             await load(selection: selection, force: true)
             await loadCounts(force: true)
+            await refreshWidgetData()
         } catch {
             newTaskError = ErrorMapping.message(for: error)
         }

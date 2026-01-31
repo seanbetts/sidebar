@@ -42,6 +42,7 @@ extension TasksViewModel {
             Task {
                 await load(selection: selection, force: true)
                 await loadCounts(force: true)
+                await refreshWidgetData()
             }
         } catch {
             // Restore the task if the API call failed
@@ -168,6 +169,7 @@ extension TasksViewModel {
             }
             await load(selection: selection, force: true)
             await loadCounts(force: true)
+            await refreshWidgetData()
         } catch {
             errorMessage = ErrorMapping.message(for: error)
         }

@@ -28,5 +28,5 @@ INFOPLIST_KEY_KEYCHAIN_ACCESS_GROUP = $(KEYCHAIN_ACCESS_GROUP)
 INFOPLIST_KEY_KEYCHAIN_SERVICE = $(KEYCHAIN_SERVICE)
 INFOPLIST_KEY_NSFaceIDUsageDescription = We use Face ID to securely unlock sideBar and protect your data.
 
-// Background task for token refresh
-INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = $(inherited) ai.sidebar.sidebar.tokenrefresh
+// Background tasks for token refresh and widget data sync
+INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = $(inherited) ai.sidebar.sidebar.tokenrefresh ai.sidebar.sidebar.widgetrefresh

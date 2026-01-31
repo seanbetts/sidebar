@@ -36,6 +36,8 @@ extension AppEnvironment {
             if selection != .none {
                 await tasksViewModel.load(selection: selection, force: true)
             }
+            // Always refresh widget data on push, regardless of current view
+            await tasksViewModel.refreshWidgetData()
         }
     }
 

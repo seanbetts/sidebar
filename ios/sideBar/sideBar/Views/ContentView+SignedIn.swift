@@ -42,9 +42,10 @@ extension ContentView {
                     backgroundedAt = Date()
                 }
                 #if os(iOS)
-                // Schedule background token refresh
+                // Schedule background tasks for token and widget refresh
                 if environment.isAuthenticated {
                     AppLaunchDelegate.scheduleTokenRefresh()
+                    AppLaunchDelegate.scheduleWidgetRefresh()
                 }
                 #endif
             }
