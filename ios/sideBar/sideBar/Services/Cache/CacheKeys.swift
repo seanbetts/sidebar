@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CryptoKit
 
 /// Defines CacheKeys.
 public enum CacheKeys {
@@ -20,6 +21,7 @@ public enum CacheKeys {
     public nonisolated static let profileImage = "settings.profile-image"
     public nonisolated static let tasksCounts = "tasks.counts"
     public nonisolated static let tasksSync = "tasks.sync"
+    public nonisolated static let faviconPrefix = "favicon"
 
     public nonisolated static func note(id: String) -> String {
         "notes.note.\(id)"
@@ -51,5 +53,15 @@ public enum CacheKeys {
 
     public nonisolated static func tasksList(selectionKey: String) -> String {
         "tasks.list.\(selectionKey)"
+    }
+
+    public nonisolated static func favicon(url: String) -> String {
+        "\(faviconPrefix).\(sha256Digest(url))"
+    }
+
+    private nonisolated static func sha256Digest(_ value: String) -> String {
+        let data = Data(value.utf8)
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
