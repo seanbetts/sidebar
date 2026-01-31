@@ -168,7 +168,7 @@ public final class WebsitesViewModel: ObservableObject {
             if PendingShareStore.shared.enqueueWebsite(url: normalized.absoluteString) != nil {
                 pendingWebsite = makePendingWebsite(from: normalized)
                 saveErrorMessage = nil
-                toastCenter.show(message: "Saved for later", style: .error)
+                toastCenter.show(message: "Saved for later", style: .success)
                 return true
             }
             saveErrorMessage = "Could not save for later."
