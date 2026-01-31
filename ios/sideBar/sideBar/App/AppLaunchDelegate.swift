@@ -147,6 +147,9 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
                   environment.isAuthenticated else {
                 return false
             }
+            // Apply widget task completions and refresh counts so badge stays in sync.
+            await environment.consumeWidgetCompletions()
+            await environment.tasksViewModel.loadCounts(force: true)
             // Refresh all widget data in parallel
             async let tasks: () = environment.tasksViewModel.refreshWidgetData()
             async let notes: () = environment.notesViewModel.refreshWidgetData()
