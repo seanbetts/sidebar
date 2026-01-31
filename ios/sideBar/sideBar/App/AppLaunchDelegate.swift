@@ -147,8 +147,11 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
                   environment.isAuthenticated else {
                 return false
             }
-            // Fetch today's tasks and update widget data
-            await environment.tasksViewModel.refreshWidgetData()
+            // Refresh all widget data in parallel
+            async let tasks: () = environment.tasksViewModel.refreshWidgetData()
+            async let notes: () = environment.notesViewModel.refreshWidgetData()
+            async let websites: () = environment.websitesViewModel.refreshWidgetData()
+            _ = await (tasks, notes, websites)
             return true
         }
 

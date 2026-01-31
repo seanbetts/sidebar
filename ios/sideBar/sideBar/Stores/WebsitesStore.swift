@@ -140,6 +140,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         if persist {
             persistListCache()
         }
+        updateWidgetData(from: items)
     }
 
     public func insertItemAtTop(_ item: WebsiteItem, persist: Bool = true) {
@@ -159,6 +160,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         if persist {
             persistListCache()
         }
+        updateWidgetData(from: items)
     }
 
     public func removeItem(id: String, persist: Bool = true) {
@@ -170,6 +172,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             persistListCache()
         }
         offlineStore?.remove(key: CacheKeys.websiteDetail(id: id))
+        updateWidgetData(from: items)
     }
 
     public func invalidateList() {
