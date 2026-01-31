@@ -199,7 +199,7 @@ extension IngestionViewModel {
     func startUpload(url: URL) {
         let filename = url.lastPathComponent
         let mimeType = mimeTypeFor(url: url)
-        if networkStatus?.isOffline ?? store.isOffline {
+        if isOfflineForIngestion() {
             let access = url.startAccessingSecurityScopedResource()
             defer {
                 if access {
@@ -271,6 +271,15 @@ extension IngestionViewModel {
                 }
             }
         )
+    }
+
+    func isOfflineForIngestion() -> Bool {
+        if let networkStatus {
+            if networkStatus.isOffline || !networkStatus.isNetworkAvailable {
+                return true
+            }
+        }
+        return store.isOffline
     }
 
     func resumeUpload(_ record: LocalUploadResumeItem) {

@@ -71,7 +71,7 @@ extension IngestionViewModel {
             }
             return nil
         }()
-        if networkStatus?.isOffline ?? store.isOffline {
+        if isOfflineForIngestion() {
             do {
                 try await store.enqueuePin(fileId: fileId, pinned: pinned)
             } catch WriteQueueError.queueFull {
@@ -126,7 +126,7 @@ extension IngestionViewModel {
     }
 
     public func deleteFile(fileId: String) async -> Bool {
-        if networkStatus?.isOffline ?? store.isOffline {
+        if isOfflineForIngestion() {
             do {
                 try await store.enqueueDelete(fileId: fileId)
                 if selectedFileId == fileId {
@@ -155,7 +155,7 @@ extension IngestionViewModel {
     }
 
     public func renameFile(fileId: String, filename: String) async -> Bool {
-        if networkStatus?.isOffline ?? store.isOffline {
+        if isOfflineForIngestion() {
             do {
                 try await store.enqueueRename(fileId: fileId, filename: filename)
                 return true
@@ -198,7 +198,7 @@ extension IngestionViewModel {
         guard let normalized = normalizeYouTubeUrlCandidate(trimmed) else {
             return "Invalid YouTube URL"
         }
-        if networkStatus?.isOffline ?? store.isOffline {
+        if isOfflineForIngestion() {
             if pendingShareStore.enqueueYouTube(url: normalized) != nil {
                 toastCenter.show(message: "Saved for later", style: .success)
                 return nil
