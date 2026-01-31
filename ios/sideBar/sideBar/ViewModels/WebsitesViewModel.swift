@@ -156,6 +156,15 @@ public final class WebsitesViewModel: ObservableObject {
             saveErrorMessage = "Enter a valid URL."
             return false
         }
+        if networkStatus.isOffline {
+            if PendingShareStore.shared.enqueueWebsite(url: normalized.absoluteString) != nil {
+                pendingWebsite = makePendingWebsite(from: normalized)
+                saveErrorMessage = nil
+                return true
+            }
+            saveErrorMessage = "Could not save for later."
+            return false
+        }
         let previousSelectedId = selectedWebsiteId
         let pending = makePendingWebsite(from: normalized)
         pendingWebsite = pending
