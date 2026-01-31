@@ -10,39 +10,41 @@
   "colors": {
     "primary": "#111111"
   },
-  "navigation": [
-    {
-      "group": "Getting Started",
-      "pages": [
-        "LOCAL_DEVELOPMENT",
-        "ARCHITECTURE",
-        "DEPLOYMENT"
-      ]
-    },
-    {
-      "group": "Reference",
-      "pages": [
-        "API"
-      ]
-    },
-    {
-      "group": "Guides",
-      "pages": [
-        "MARKDOWN_STYLES"
-      ]
-    },
-    {
-      "group": "Quality",
-      "pages": [
-        "QUALITY_ENFORCEMENT",
-        "TESTING"
-      ]
-    },
-    {
-      "group": "iOS",
-      "pages": [
-        "IOS_ARCHITECTURE"
-      ]
-    }
-  ]
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "LOCAL_DEVELOPMENT",
+          "ARCHITECTURE",
+          "DEPLOYMENT"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "API"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "MARKDOWN_STYLES"
+        ]
+      },
+      {
+        "group": "Quality",
+        "pages": [
+          "QUALITY_ENFORCEMENT",
+          "TESTING"
+        ]
+      },
+      {
+        "group": "iOS",
+        "pages": [
+          "IOS_ARCHITECTURE"
+        ]
+      }
+    ]
+  }
 }
