@@ -80,9 +80,9 @@ extension ContentView {
         didSetInitialSelection = true
 #if os(iOS)
         if horizontalSizeClass == .compact {
-            phoneSelection = .chat
-            sidebarSelection = .chat
-            primarySection = .chat
+            phoneSelection = .tasks
+            sidebarSelection = .tasks
+            primarySection = .tasks
         } else {
             primarySection = nil
             secondarySection = .chat

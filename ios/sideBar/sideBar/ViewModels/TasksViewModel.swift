@@ -111,11 +111,16 @@ public final class TasksViewModel: ObservableObject {
     /// Updates widget data with current today tasks (when already on Today view)
     private func updateWidgetData() {
         let projectTitleById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.title) })
+        let groupTitleById = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0.title) })
         let todayTasks = TasksUtils.sortByDueDate(
             tasks.filter { $0.status != "completed" && $0.status != "project" }
         )
         let widgetTasks = todayTasks.prefix(10).map { task in
-            WidgetTask(from: task, projectName: task.projectId.flatMap { projectTitleById[$0] })
+            WidgetTask(
+                from: task,
+                projectName: task.projectId.flatMap { projectTitleById[$0] },
+                groupName: task.groupId.flatMap { groupTitleById[$0] }
+            )
         }
         let data = WidgetTaskData(tasks: Array(widgetTasks), totalCount: todayTasks.count)
         WidgetDataManager.shared.store(data, for: .tasks)
@@ -126,11 +131,16 @@ public final class TasksViewModel: ObservableObject {
         do {
             let response = try await api.list(scope: "today")
             let projectTitleById = Dictionary(uniqueKeysWithValues: response.projects?.map { ($0.id, $0.title) } ?? [])
+            let groupTitleById = Dictionary(uniqueKeysWithValues: response.groups?.map { ($0.id, $0.title) } ?? [])
             let todayTasks = TasksUtils.sortByDueDate(
                 response.tasks.filter { $0.status != "completed" && $0.status != "project" }
             )
             let widgetTasks = todayTasks.prefix(10).map { task in
-                WidgetTask(from: task, projectName: task.projectId.flatMap { projectTitleById[$0] })
+                WidgetTask(
+                    from: task,
+                    projectName: task.projectId.flatMap { projectTitleById[$0] },
+                    groupName: task.groupId.flatMap { groupTitleById[$0] }
+                )
             }
             let data = WidgetTaskData(tasks: Array(widgetTasks), totalCount: todayTasks.count)
             WidgetDataManager.shared.store(data, for: .tasks)

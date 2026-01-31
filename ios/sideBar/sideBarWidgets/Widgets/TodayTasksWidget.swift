@@ -252,8 +252,8 @@ struct TaskRowView: View {
                     .strikethrough(task.isCompleted)
                     .foregroundStyle(task.isCompleted ? .secondary : .primary)
 
-                if showSubtitle, let projectName = task.projectName {
-                    Text(projectName)
+                if showSubtitle, let subtitle = task.projectName ?? task.groupName {
+                    Text(subtitle)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
