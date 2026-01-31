@@ -90,6 +90,12 @@ private final class MockWebsitesAPI: WebsitesProviding {
         try listResult.get()
     }
 
+    func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse {
+        _ = limit
+        _ = offset
+        return try listResult.get()
+    }
+
     func get(id: String) async throws -> WebsiteDetail {
         _ = id
         return try getResult.get()

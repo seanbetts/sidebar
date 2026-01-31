@@ -4,6 +4,7 @@ import sideBarShared
 /// Defines the requirements for WebsitesProviding.
 public protocol WebsitesProviding {
     func list() async throws -> WebsitesResponse
+    func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse
     func get(id: String) async throws -> WebsiteDetail
     func save(url: String) async throws -> WebsiteSaveResponse
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem
@@ -14,6 +15,10 @@ public protocol WebsitesProviding {
 }
 
 public extension WebsitesProviding {
+    func listArchived() async throws -> WebsitesResponse {
+        try await listArchived(limit: 200, offset: 0)
+    }
+
     func pin(id: String, pinned: Bool) async throws -> WebsiteItem {
         try await pin(id: id, pinned: pinned, clientUpdatedAt: nil)
     }
@@ -147,6 +152,18 @@ public struct WebsitesAPI {
 
     public func list() async throws -> WebsitesResponse {
         try await client.request("websites")
+    }
+
+    public func listArchived(limit: Int = 200, offset: Int = 0) async throws -> WebsitesResponse {
+        var queryItems: [String] = []
+        if limit > 0 {
+            queryItems.append("limit=\(limit)")
+        }
+        if offset > 0 {
+            queryItems.append("offset=\(offset)")
+        }
+        let suffix = queryItems.isEmpty ? "" : "?\(queryItems.joined(separator: "&"))"
+        return try await client.request("websites/archived\(suffix)")
     }
 
     public func search(query: String, limit: Int = 50) async throws -> WebsitesResponse {

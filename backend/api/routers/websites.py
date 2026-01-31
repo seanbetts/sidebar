@@ -24,6 +24,7 @@ from api.utils.validation import parse_uuid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/websites", tags=["websites"])
+ARCHIVED_LIST_MAX_LIMIT = 500
 
 
 @router.get("")
@@ -46,6 +47,27 @@ def list_websites(
         db,
         user_id,
         WebsiteFilters(archived=False),
+    )
+    return {"items": [website_summary(site) for site in websites]}
+
+
+@router.get("/archived")
+def list_archived_websites(
+    limit: int = 200,
+    offset: int = 0,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """List archived websites for the current user."""
+    limit = max(1, min(limit, ARCHIVED_LIST_MAX_LIMIT))
+    offset = max(0, offset)
+    websites = WebsitesService.list_websites(
+        db,
+        user_id,
+        WebsiteFilters(archived=True),
+        limit=limit,
+        offset=offset,
     )
     return {"items": [website_summary(site) for site in websites]}
 
