@@ -19,6 +19,7 @@ extension NotesStore {
             let lastSyncAt = offlineStore?.lastSyncAt(for: cacheKey)
             offlineStore?.set(key: cacheKey, entityType: "notesTree", value: tree, lastSyncAt: lastSyncAt)
         }
+        pruneArchivedNoteCache()
         if let activeNote {
             if shouldPersistNote(activeNote) {
                 let idKey = CacheKeys.note(id: activeNote.id)
@@ -34,6 +35,20 @@ extension NotesStore {
                 offlineStore?.remove(key: idKey)
                 offlineStore?.remove(key: pathKey)
             }
+        }
+    }
+
+    private func pruneArchivedNoteCache() {
+        guard let offlineStore else { return }
+        let prefix = CacheKeys.note(id: "")
+        let cached: [NotePayload] = offlineStore.getAll(keyPrefix: prefix, as: NotePayload.self)
+        for note in cached where !shouldPersistNote(note) {
+            let idKey = CacheKeys.note(id: note.id)
+            let pathKey = CacheKeys.note(id: note.path)
+            cache.remove(key: idKey)
+            cache.remove(key: pathKey)
+            offlineStore.remove(key: idKey)
+            offlineStore.remove(key: pathKey)
         }
     }
 
