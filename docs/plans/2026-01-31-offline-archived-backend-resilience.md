@@ -31,7 +31,7 @@ Recent offline-sync work revealed that the `/websites` list (including archived 
 - ✅ Phase 2 core complete (archived endpoints + offline header caching + recent-content retention window).
 - ✅ Phase 2 metadata complete (archived_count + archived_last_updated).
 - ✅ Phase 3 minimal polish complete (clearer archived empty states without badges).
-- ⏳ Phase 4 validation in progress (backend stress checks done; offline + DB-down simulation pending).
+- ✅ Phase 4 validation complete (offline archived content + DB outage checks verified).
 
 ### Phase 1 — Backend resilience (highest priority)
 - [x] Convert DB-heavy endpoints to sync (`def`) or `run_in_threadpool`.
@@ -64,12 +64,14 @@ Recent offline-sync work revealed that the `/websites` list (including archived 
 
 ### Phase 4 — Validation
 - [x] Stress test: load large archive and verify no API hangs (archived list slow but non-blocking; concurrent calls still fast).
-- [ ] Offline test: archived headers visible; recent archived content available; older content shows placeholder.
-- [ ] Verify logs show slow queries and 503s during DB outage simulation.
+- [x] Offline test: archived headers visible; recent archived content available; older content shows placeholder.
+- [x] Verify logs show slow queries and 503s during DB outage simulation.
 
 ### Validation notes (2026-01-31)
 - `/websites/archived?limit=500` can take ~22–23s on large archives (non-blocking for other requests).
 - Concurrent `/notes/tree` requests remain sub-second while archived requests run.
+- Offline validation: archived headers load; recent archived content is cached; older archived items show placeholder.
+- DB outage simulation returns fast 503s and logs slow queries/timeouts.
 
 ## Risks & Mitigations
 - **Risk:** Threadpool saturation if too many heavy queries.
