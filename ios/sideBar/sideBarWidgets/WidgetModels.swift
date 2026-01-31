@@ -183,6 +183,8 @@ public struct WidgetFile: WidgetStorable {
   public let sizeBytes: Int
   public let pinned: Bool
   public let category: String?
+  public let mimeType: String?
+  public let recommendedViewer: String?
 
   public init(
     id: String,
@@ -190,7 +192,9 @@ public struct WidgetFile: WidgetStorable {
     path: String? = nil,
     sizeBytes: Int,
     pinned: Bool = false,
-    category: String? = nil
+    category: String? = nil,
+    mimeType: String? = nil,
+    recommendedViewer: String? = nil
   ) {
     self.id = id
     self.filename = filename
@@ -198,6 +202,8 @@ public struct WidgetFile: WidgetStorable {
     self.sizeBytes = sizeBytes
     self.pinned = pinned
     self.category = category
+    self.mimeType = mimeType
+    self.recommendedViewer = recommendedViewer
   }
 }
 
