@@ -100,7 +100,7 @@ struct WebsiteRow: View, Equatable {
                 FaviconImageView(
                     faviconUrl: item.faviconUrl,
                     faviconR2Key: item.faviconR2Key,
-                    r2PublicBaseUrl: faviconBaseUrl,
+                    r2Endpoint: faviconBaseUrl,
                     size: 16,
                     placeholderTint: isSelected ? selectedTextColor : secondaryTextColor
                 )

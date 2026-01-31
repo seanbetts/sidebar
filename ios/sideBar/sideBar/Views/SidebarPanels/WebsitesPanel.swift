@@ -393,7 +393,7 @@ extension WebsitesPanelView {
             item: item,
             isSelected: selection == item.id,
             useListStyling: useListStyling,
-            faviconBaseUrl: appEnvironment.container.config.r2PublicBaseUrl
+            faviconBaseUrl: appEnvironment.container.config.r2Endpoint
         )
         .staggeredAppear(index: index, isActive: listAppeared)
         .onTapGesture { open(item: item) }
