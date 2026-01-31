@@ -54,7 +54,7 @@ def build_notes_tree(notes: Iterable[Note]) -> dict[str, Any]:
             current_node["folderMarker"] = True
             continue
 
-        is_archived = is_archived_folder(folder)
+        is_archived = bool(note.is_archived)
         current_node["children"].append(
             {
                 "name": f"{note.title}.md",
@@ -96,7 +96,7 @@ def note_sync_payload(note: Note) -> dict[str, object]:
         "folder": folder,
         "pinned": bool(metadata.get("pinned")),
         "pinned_order": metadata.get("pinned_order"),
-        "archived": is_archived_folder(folder),
+        "archived": bool(note.is_archived),
         "deleted_at": note.deleted_at.isoformat() if note.deleted_at else None,
     }
 

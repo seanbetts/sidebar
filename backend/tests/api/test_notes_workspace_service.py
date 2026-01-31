@@ -47,6 +47,7 @@ class FakeDB:
 
 
 def _note(title="Title", content="Body", folder="", pinned=False):
+    is_archived = folder == "Archive" or folder.startswith("Archive/")
     return SimpleNamespace(
         id="note-1",
         title=title,
@@ -54,16 +55,13 @@ def _note(title="Title", content="Body", folder="", pinned=False):
         metadata_={"folder": folder, "pinned": pinned},
         updated_at=datetime(2024, 1, 1, tzinfo=UTC),
         deleted_at=None,
+        is_archived=is_archived,
     )
 
 
 def test_list_tree_uses_notes_service(monkeypatch):
     db = FakeDB([_note()])
-    monkeypatch.setattr(
-        service_module.NotesService,
-        "build_notes_tree",
-        lambda notes: {"children": notes},
-    )
+    monkeypatch.setattr(service_module, "build_notes_tree", lambda notes: {"children": notes})
 
     result = NotesWorkspaceService.list_tree(db, "user-1")
     assert result["children"]
