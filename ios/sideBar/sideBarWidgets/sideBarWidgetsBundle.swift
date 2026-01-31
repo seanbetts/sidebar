@@ -38,5 +38,10 @@ struct SideBarWidgetsBundle: WidgetBundle {
         LockScreenSiteCountWidget()
         LockScreenSitePreviewWidget()
         LockScreenSitesInlineWidget()
+
+        // Lock screen widgets - Files
+        LockScreenFileCountWidget()
+        LockScreenFilePreviewWidget()
+        LockScreenFilesInlineWidget()
     }
 }
