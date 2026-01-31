@@ -19,6 +19,7 @@ import WidgetKit
 public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     @Published public private(set) var items: [WebsiteItem] = []
     @Published public private(set) var active: WebsiteDetail?
+    @Published public private(set) var archivedSummary: ArchivedSummary?
 
     private let api: any WebsitesProviding
     private let offlineStore: OfflineStore?
@@ -28,7 +29,6 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     private var isRefreshingArchived = false
     private let archivedDetailRetentionDays = 7
     private let archivedListLimit = 500
-    private var archivedSummary: ArchivedSummary?
     private var archivedListSyncedAt: String?
     private var archivedSyncLoaded = false
 
