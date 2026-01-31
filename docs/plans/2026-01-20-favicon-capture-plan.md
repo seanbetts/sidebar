@@ -213,7 +213,7 @@ https://{R2_PUBLIC_DOMAIN}/favicons/{user_id}/{domain_hash}.png
 - Average favicon size: ~5-20KB
 - Per user (100 saved sites): ~1-2MB
 - R2 cost: ~$0.015/GB/month
-- **Estimated cost: <$0.01/user/month**
+- **Estimated cost: less than $0.01/user/month**
 
 ---
 
@@ -221,7 +221,7 @@ https://{R2_PUBLIC_DOMAIN}/favicons/{user_id}/{domain_hash}.png
 
 - [ ] 85%+ of newly saved websites have favicon extracted
 - [ ] iOS loads favicon within 100ms (from R2 cache)
-- [ ] Page save latency unchanged (<5ms impact)
+- [ ] Page save latency unchanged (under 5ms impact)
 - [ ] Graceful fallback to globe icon when unavailable
 
 ---

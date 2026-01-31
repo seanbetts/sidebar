@@ -1292,9 +1292,9 @@ async def execute_search_local_knowledge(
 
 | Level | Triggers | Measures |
 |-------|----------|----------|
-| **TRUSTED** | Local content only | • No validation<br>• Minimal logging<br>• No overhead |
-| **BASIC** | Future: Web search in basic mode | • Rate limiting (100 req/hour)<br>• Standard logging |
-| **STRICT** | Future: Web + deep research | • Query validation (regex)<br>• Rate limiting (10 deep research/hour)<br>• Detailed database logging<br>• Phased execution |
+| **TRUSTED** | Local content only | • No validation<br />• Minimal logging<br />• No overhead |
+| **BASIC** | Future: Web search in basic mode | • Rate limiting (100 req/hour)<br />• Standard logging |
+| **STRICT** | Future: Web + deep research | • Query validation (regex)<br />• Rate limiting (10 deep research/hour)<br />• Detailed database logging<br />• Phased execution |
 
 ### Query Validation (Strict Mode Only)
 
