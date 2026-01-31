@@ -4,6 +4,7 @@ struct IngestionCenterView: View {
     let activeItems: [IngestionListItem]
     let failedItems: [IngestionListItem]
     let onCancel: (IngestionListItem) -> Void
+    let onClearFailure: (IngestionListItem) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -18,10 +19,10 @@ struct IngestionCenterView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         if !activeItems.isEmpty {
-                            section(title: "Active", items: activeItems, showCancel: true)
+                            section(title: "Active", items: activeItems, showCancel: true, showClear: false)
                         }
                         if !failedItems.isEmpty {
-                            section(title: "Failed", items: failedItems, showCancel: false)
+                            section(title: "Failed", items: failedItems, showCancel: false, showClear: true)
                         }
                     }
                 }
@@ -32,13 +33,19 @@ struct IngestionCenterView: View {
     }
 
     @ViewBuilder
-    private func section(title: String, items: [IngestionListItem], showCancel: Bool) -> some View {
+    private func section(title: String, items: [IngestionListItem], showCancel: Bool, showClear: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(DesignTokens.Typography.captionSemibold)
                 .foregroundStyle(.secondary)
             ForEach(items, id: \.file.id) { item in
-                IngestionCenterRow(item: item, showCancel: showCancel, onCancel: onCancel)
+                IngestionCenterRow(
+                    item: item,
+                    showCancel: showCancel,
+                    showClear: showClear,
+                    onCancel: onCancel,
+                    onClear: onClearFailure
+                )
             }
         }
     }
@@ -47,7 +54,9 @@ struct IngestionCenterView: View {
 private struct IngestionCenterRow: View {
     let item: IngestionListItem
     let showCancel: Bool
+    let showClear: Bool
     let onCancel: (IngestionListItem) -> Void
+    let onClear: (IngestionListItem) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -70,6 +79,16 @@ private struct IngestionCenterRow: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Cancel upload")
+                }
+                if showClear && isFailed {
+                    Button {
+                        onClear(item)
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(DesignTokens.Typography.captionSemibold)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear failed upload")
                 }
             }
 
