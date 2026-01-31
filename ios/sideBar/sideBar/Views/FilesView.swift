@@ -325,6 +325,9 @@ private struct FilesHeaderView: View {
 private struct FilesHeaderActions: View {
     @ObservedObject var viewModel: IngestionViewModel
     @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @State private var isRenameSheetPresented = false
     @State private var renameValue: String = ""
     @State private var isDeleteAlertPresented = false
@@ -435,9 +438,18 @@ private struct FilesHeaderActions: View {
                 }
             ]
         )
-        .frame(width: 28, height: 20)
+        .frame(width: 28, height: isCompact ? 20 : 28)
+        .fixedSize()
         .accessibilityLabel("File options")
         .disabled(viewModel.selectedFileId == nil)
+        #endif
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
         #endif
     }
 

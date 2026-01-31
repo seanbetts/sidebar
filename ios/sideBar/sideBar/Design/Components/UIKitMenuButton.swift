@@ -16,8 +16,10 @@ struct UIKitMenuButton: UIViewRepresentable {
 
     func makeUIView(context: Context) -> UIButton {
         let button = UIButton(type: .system)
-        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
-        button.setImage(UIImage(systemName: systemImage, withConfiguration: config), for: .normal)
+        var config = UIButton.Configuration.plain()
+        config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
+        button.configuration = config
+        button.setImage(UIImage(systemName: systemImage), for: .normal)
         button.showsMenuAsPrimaryAction = true
         button.menu = makeMenu()
         button.accessibilityLabel = accessibilityLabel
