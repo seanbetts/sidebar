@@ -17,6 +17,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Add generated is_archived column for websites."""
+    op.execute("SET statement_timeout TO '10min'")
     op.execute(
         "ALTER TABLE websites "
         "ADD COLUMN IF NOT EXISTS is_archived boolean "
@@ -29,9 +30,12 @@ def upgrade() -> None:
         "ON websites (user_id, is_archived, updated_at DESC) "
         "WHERE deleted_at IS NULL"
     )
+    op.execute("SET statement_timeout TO DEFAULT")
 
 
 def downgrade() -> None:
     """Remove generated is_archived column for websites."""
+    op.execute("SET statement_timeout TO '10min'")
     op.execute("DROP INDEX IF EXISTS idx_websites_user_archived_updated")
     op.execute("ALTER TABLE websites DROP COLUMN IF EXISTS is_archived")
+    op.execute("SET statement_timeout TO DEFAULT")
