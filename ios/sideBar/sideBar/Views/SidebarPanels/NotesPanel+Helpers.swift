@@ -360,7 +360,7 @@ extension NotesPanelView {
                     isExpanded: $isArchiveExpanded,
                     content: {
                         if archivedNodes.isEmpty {
-                            Text("No archived notes")
+                            Text(archivedEmptyStateText)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -440,7 +440,7 @@ extension NotesPanelView {
                 isExpanded: $isArchiveExpanded,
                 content: {
                     if archivedNodes.isEmpty {
-                        Text("No archived notes")
+                        Text(archivedEmptyStateText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
@@ -502,6 +502,22 @@ extension NotesPanelView {
     var archivedNodes: [FileNode] {
         let nodes = viewModel.archivedTree?.children ?? []
         return normalizeArchivedNodes(nodes)
+    }
+
+    var archivedEmptyStateText: String {
+        if let count = viewModel.tree?.archivedCount {
+            if count == 0 {
+                return "No archived notes"
+            }
+            if environment.isOffline || !environment.isNetworkAvailable {
+                return "Archived notes are available when you're online."
+            }
+            return "Loading archived notes..."
+        }
+        if environment.isOffline || !environment.isNetworkAvailable {
+            return "Archived notes are available when you're online."
+        }
+        return "No archived notes"
     }
 
     func normalizeArchivedNodes(_ nodes: [FileNode]) -> [FileNode] {

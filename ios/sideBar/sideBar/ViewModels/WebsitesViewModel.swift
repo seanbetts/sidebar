@@ -51,6 +51,7 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var isSavingWebsite: Bool = false
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var pendingWebsite: PendingWebsiteItem?
+    @Published public private(set) var archivedSummary: ArchivedSummary?
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore
@@ -76,6 +77,12 @@ public final class WebsitesViewModel: ObservableObject {
         store.$active
             .sink { [weak self] active in
                 self?.active = active
+            }
+            .store(in: &cancellables)
+
+        store.$archivedSummary
+            .sink { [weak self] summary in
+                self?.archivedSummary = summary
             }
             .store(in: &cancellables)
     }

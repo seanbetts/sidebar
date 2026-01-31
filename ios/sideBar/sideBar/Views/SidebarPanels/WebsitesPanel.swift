@@ -210,11 +210,11 @@ extension WebsitesPanelView {
                     DisclosureGroup(
                         isExpanded: $isArchiveExpanded,
                         content: {
-                            if archivedItems.isEmpty {
-                                Text("No archived websites")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            } else {
+                        if archivedItems.isEmpty {
+                            Text(archivedEmptyStateText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
                                 ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
                                     websiteListRow(item: item, index: index, allowArchive: false)
                                 }
@@ -423,6 +423,22 @@ extension WebsitesPanelView {
         viewModel.items.filter { $0.archived }
     }
 
+    private var archivedEmptyStateText: String {
+        if let count = viewModel.archivedSummary?.count {
+            if count == 0 {
+                return "No archived websites"
+            }
+            if environment.isOffline || !environment.isNetworkAvailable {
+                return "Archived websites are available when you're online."
+            }
+            return "Loading archived websites..."
+        }
+        if environment.isOffline || !environment.isNetworkAvailable {
+            return "Archived websites are available when you're online."
+        }
+        return "No archived websites"
+    }
+
     private var filteredItems: [WebsiteItem] {
         let needle = searchQuery.trimmed.lowercased()
         guard !needle.isEmpty else { return viewModel.items }
@@ -454,7 +470,7 @@ extension WebsitesPanelView {
                 isExpanded: $isArchiveExpanded,
                 content: {
                     if archivedItems.isEmpty {
-                        Text("No archived websites")
+                        Text(archivedEmptyStateText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
