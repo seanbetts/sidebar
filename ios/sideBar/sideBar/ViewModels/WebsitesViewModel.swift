@@ -336,4 +336,14 @@ public final class WebsitesViewModel: ObservableObject {
             self.pendingWebsite = nil
         }
     }
+
+    /// Refreshes widget data by fetching the latest websites list
+    /// Called by background refresh task to keep widgets up-to-date
+    func refreshWidgetData() async {
+        do {
+            try await store.loadList(force: true)
+        } catch {
+            // Silently fail - widget will use cached data
+        }
+    }
 }

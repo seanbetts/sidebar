@@ -35,6 +35,7 @@ import Combine
 /// ```
 public final class NotesViewModel: ObservableObject {
     @Published public private(set) var tree: FileTree?
+    @Published public private(set) var archivedTree: FileTree?
     @Published public private(set) var activeNote: NotePayload?
     @Published public private(set) var selectedNoteId: String?
     @Published public var searchQuery: String = ""
@@ -67,6 +68,12 @@ public final class NotesViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        store.$archivedTree
+            .sink { [weak self] tree in
+                self?.archivedTree = tree
+            }
+            .store(in: &cancellables)
+
         store.$activeNote
             .sink { [weak self] note in
                 self?.activeNote = note
@@ -90,6 +97,14 @@ public final class NotesViewModel: ObservableObject {
             try await store.loadTree(force: force)
         } catch {
             toastCenter.show(message: "Failed to refresh notes")
+        }
+    }
+
+    public func loadArchivedTree(force: Bool = false) async {
+        do {
+            try await store.loadArchivedTree(force: force)
+        } catch {
+            toastCenter.show(message: "Failed to load archived notes")
         }
     }
 
@@ -460,6 +475,16 @@ public final class NotesViewModel: ObservableObject {
             toastCenter.show(message: "Sync queue full. Review pending changes.")
         } catch {
             toastCenter.show(message: "Failed to queue rename")
+        }
+    }
+
+    /// Refreshes widget data by fetching the latest notes tree
+    /// Called by background refresh task to keep widgets up-to-date
+    func refreshWidgetData() async {
+        do {
+            try await store.loadTree(force: true)
+        } catch {
+            // Silently fail - widget will use cached data
         }
     }
 }
