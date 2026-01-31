@@ -24,10 +24,10 @@ public protocol SpotlightIndexing: AnyObject {
 public struct SpotlightNote {
   public let path: String
   public let name: String
-  public let content: String
+  public let content: String?
   public let modified: Date?
 
-  public init(path: String, name: String, content: String, modified: Date?) {
+  public init(path: String, name: String, content: String?, modified: Date?) {
     self.path = path
     self.name = name
     self.content = content
@@ -196,12 +196,12 @@ public final class SpotlightIndexer: SpotlightIndexing {
       : note.name
     attributes.title = displayName
 
-    // Content preview (first N chars) for display
-    let preview = String(note.content.prefix(contentPreviewLength))
-    attributes.contentDescription = preview
-
-    // Full content for search
-    attributes.textContent = note.content
+    // Content preview (first N chars) for display, if content available
+    if let content = note.content {
+      let preview = String(content.prefix(contentPreviewLength))
+      attributes.contentDescription = preview
+      attributes.textContent = content
+    }
 
     // Modification date
     attributes.contentModificationDate = note.modified
