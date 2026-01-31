@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 final class ShareViewController: UIViewController {
     private var environment: ShareExtensionEnvironment?
     private var progressView: ShareProgressView?
+    private let pendingShareStore = PendingShareStore.shared
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -111,6 +112,13 @@ final class ShareViewController: UIViewController {
             return
         }
 
+        if !(await ShareNetworkMonitor.isOnline()) {
+            await MainActor.run {
+                self.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: true)
+            }
+            return
+        }
+
         await uploadFile(data: data, filename: filename, mimeType: mimeType, isImage: true)
     }
 
@@ -133,6 +141,16 @@ final class ShareViewController: UIViewController {
 
         // Try to get file URL first (for larger files)
         if let fileURL = await loadFileURL(from: itemProvider, typeIdentifier: typeIdentifier) {
+            let suggestedName = itemProvider.suggestedName ?? fileURL.lastPathComponent
+            let filename = suggestedName.isEmpty ? fileURL.lastPathComponent : suggestedName
+            let mimeType = mimeTypeForFilename(filename)
+            if !(await ShareNetworkMonitor.isOnline()) {
+                await MainActor.run { [weak self] in
+                    self?.queuePendingFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: false)
+                }
+                try? FileManager.default.removeItem(at: fileURL)
+                return
+            }
             await uploadFileFromURL(fileURL, itemProvider: itemProvider)
             return
         }
@@ -154,6 +172,13 @@ final class ShareViewController: UIViewController {
             filename = "\(suggestedName).\(ext)"
         }
         let mimeType = mimeTypeForFilename(filename)
+
+        if !(await ShareNetworkMonitor.isOnline()) {
+            await MainActor.run { [weak self] in
+                self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: false)
+            }
+            return
+        }
 
         await uploadFile(data: data, filename: filename, mimeType: mimeType, isImage: false)
     }
@@ -228,6 +253,10 @@ final class ShareViewController: UIViewController {
             }
         } catch {
             await MainActor.run { [weak self] in
+                if self?.isOfflineError(error) == true {
+                    self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)
+                    return
+                }
                 self?.showError("Upload failed: \(error.localizedDescription)")
             }
         }
@@ -264,13 +293,60 @@ final class ShareViewController: UIViewController {
         }
         setContentView(ShareLoadingView(message: "Saving website..."))
         Task { @MainActor in
+            if !(await ShareNetworkMonitor.isOnline()) {
+                queuePendingWebsite(url)
+                return
+            }
             do {
                 _ = try await environment.websitesAPI.quickSave(url: url.absoluteString, title: nil)
                 ExtensionEventStore.shared.recordWebsiteSaved(url: url.absoluteString)
                 showSuccess(message: "Website saved")
             } catch {
-                showError(error.localizedDescription)
+                if isOfflineError(error) {
+                    queuePendingWebsite(url)
+                } else {
+                    showError(error.localizedDescription)
+                }
             }
+        }
+    }
+
+    @MainActor
+    private func queuePendingWebsite(_ url: URL) {
+        if pendingShareStore.enqueueWebsite(url: url.absoluteString) != nil {
+            showSuccess(message: "Saved for later")
+        } else {
+            showError("Could not save for later.")
+        }
+    }
+
+    @MainActor
+    private func queuePendingFile(data: Data, filename: String, mimeType: String, isImage: Bool) {
+        let kind: PendingShareKind = isImage ? .image : .file
+        if pendingShareStore.enqueueFile(
+            data: data,
+            filename: filename,
+            mimeType: mimeType,
+            kind: kind
+        ) != nil {
+            showSuccess(message: "Saved for later")
+        } else {
+            showError("Could not save for later.")
+        }
+    }
+
+    @MainActor
+    private func queuePendingFile(at url: URL, filename: String, mimeType: String, isImage: Bool) {
+        let kind: PendingShareKind = isImage ? .image : .file
+        if pendingShareStore.enqueueFile(
+            at: url,
+            filename: filename,
+            mimeType: mimeType,
+            kind: kind
+        ) != nil {
+            showSuccess(message: "Saved for later")
+        } else {
+            showError("Could not save for later.")
         }
     }
 
@@ -300,6 +376,22 @@ final class ShareViewController: UIViewController {
             content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             content.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
+    }
+
+    private func isOfflineError(_ error: Error) -> Bool {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet,
+                 .networkConnectionLost,
+                 .cannotFindHost,
+                 .cannotConnectToHost,
+                 .timedOut:
+                return true
+            default:
+                return false
+            }
+        }
+        return false
     }
 
     // MARK: - URL Parsing Helpers

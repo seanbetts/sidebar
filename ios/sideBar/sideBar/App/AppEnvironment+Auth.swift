@@ -22,6 +22,9 @@ extension AppEnvironment {
             #if os(iOS) || os(macOS)
             registerDeviceTokenIfNeeded()
             #endif
+            Task { [weak self] in
+                await self?.consumePendingShares()
+            }
         } else {
             biometricMonitor.stopMonitoring()
         }
@@ -42,6 +45,7 @@ extension AppEnvironment {
     }
 
     public func consumeExtensionEvents() async {
+        await consumePendingShares()
         let events = ExtensionEventStore.shared.consumeEvents()
         guard !events.isEmpty else { return }
         guard isAuthenticated else { return }

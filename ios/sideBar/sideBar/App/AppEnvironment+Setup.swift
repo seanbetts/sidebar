@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import sideBarShared
 #if os(iOS)
 import UIKit
 import UserNotifications
@@ -29,6 +30,7 @@ extension AppEnvironment {
             guard let self else { return }
             try? self.draftStorage.cleanupSyncedDrafts(olderThan: 7)
             await self.offlineStore.cleanupSnapshots()
+            PendingShareStore.shared.cleanup(olderThan: 7)
         }
     }
 
@@ -118,6 +120,11 @@ extension AppEnvironment {
             .removeDuplicates()
             .sink { [weak self] isOffline in
                 self?.isOffline = isOffline
+                if !isOffline {
+                    Task { [weak self] in
+                        await self?.consumePendingShares()
+                    }
+                }
             }
             .store(in: &cancellables)
 
