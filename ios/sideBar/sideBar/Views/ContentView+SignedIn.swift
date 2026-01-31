@@ -72,6 +72,7 @@ extension ContentView {
                 Task {
                     await environment.consumeExtensionEvents()
                     await environment.consumeWidgetCompletions()
+                    await environment.consumeWidgetQuickSave()
                     environment.consumeWidgetAddTask()
                     environment.consumeWidgetAddNote()
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -87,6 +88,7 @@ extension ContentView {
             Task {
                 await environment.consumeExtensionEvents()
                 await environment.consumeWidgetCompletions()
+                await environment.consumeWidgetQuickSave()
                 environment.consumeWidgetAddTask()
                 environment.consumeWidgetAddNote()
             }

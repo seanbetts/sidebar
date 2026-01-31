@@ -143,3 +143,121 @@ struct OpenTodayIntent: AppIntent {
         return .result(opensIntent: OpenURLIntent(url))
     }
 }
+
+struct OpenNotesIntent: AppIntent {
+    static var title: LocalizedStringResource = "Open Notes"
+    static var description = IntentDescription("Opens sideBar to your notes")
+    static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://notes") else {
+            logger.error("OpenNotesIntent failed: invalid deep link URL")
+            return .result()
+        }
+        logger.info("OpenNotesIntent opening deep link (app process)")
+        return .result(opensIntent: OpenURLIntent(url))
+    }
+}
+
+struct CreateNoteIntent: AppIntent {
+    static var title: LocalizedStringResource = "Create Note"
+    static var description = IntentDescription("Opens sideBar to create a new note")
+    static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://notes/new") else {
+            logger.error("CreateNoteIntent failed: invalid deep link URL")
+            return .result()
+        }
+        logger.info("CreateNoteIntent opening deep link (app process)")
+        return .result(opensIntent: OpenURLIntent(url))
+    }
+}
+
+struct OpenWebsitesIntent: AppIntent {
+    static var title: LocalizedStringResource = "Open Saved Websites"
+    static var description = IntentDescription("Opens sideBar to your saved websites")
+    static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://websites") else {
+            logger.error("OpenWebsitesIntent failed: invalid deep link URL")
+            return .result()
+        }
+        logger.info("OpenWebsitesIntent opening deep link (app process)")
+        return .result(opensIntent: OpenURLIntent(url))
+    }
+}
+
+struct QuickSaveIntent: AppIntent {
+    static var title: LocalizedStringResource = "Save Website"
+    static var description = IntentDescription("Saves a website URL to sideBar")
+    static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
+
+    @Parameter(title: "URL", description: "The website URL to save")
+    var url: URL?
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        if let url {
+            logger.info("QuickSaveIntent recording pending save for URL: \(url.absoluteString)")
+            WidgetDataManager.shared.recordPendingQuickSave(url: url)
+        }
+        guard let deepLink = URL(string: "sidebar://websites") else {
+            logger.error("QuickSaveIntent failed: invalid deep link URL")
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(deepLink))
+    }
+}
+
+struct OpenFilesIntent: AppIntent {
+    static var title: LocalizedStringResource = "Open Files"
+    static var description = IntentDescription("Opens sideBar to your files")
+    static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://files") else {
+            logger.error("OpenFilesIntent failed: invalid deep link URL")
+            return .result()
+        }
+        logger.info("OpenFilesIntent opening deep link (app process)")
+        return .result(opensIntent: OpenURLIntent(url))
+    }
+}
+
+struct OpenScratchpadIntent: AppIntent {
+    static var title: LocalizedStringResource = "Open Scratchpad"
+    static var description = IntentDescription("Opens sideBar scratchpad for quick notes")
+    static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://scratchpad") else {
+            logger.error("OpenScratchpadIntent failed: invalid deep link URL")
+            return .result()
+        }
+        logger.info("OpenScratchpadIntent opening deep link (app process)")
+        return .result(opensIntent: OpenURLIntent(url))
+    }
+}
+
+struct StartChatIntent: AppIntent {
+    static var title: LocalizedStringResource = "Start Chat"
+    static var description = IntentDescription("Opens sideBar to start a new AI chat")
+    static var openAppWhenRun: Bool = true
+    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://chat/new") else {
+            logger.error("StartChatIntent failed: invalid deep link URL")
+            return .result()
+        }
+        logger.info("StartChatIntent opening deep link (app process)")
+        return .result(opensIntent: OpenURLIntent(url))
+    }
+}

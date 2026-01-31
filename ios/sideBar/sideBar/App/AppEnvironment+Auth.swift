@@ -116,4 +116,15 @@ extension AppEnvironment {
         commandSelection = .notes
         pendingNewNoteDeepLink = true
     }
+
+    /// Consumes pending quick save URL from widget and saves the website
+    @MainActor
+    public func consumeWidgetQuickSave() async {
+        guard let url = WidgetDataManager.shared.consumePendingQuickSave(),
+              isAuthenticated else { return }
+
+        // Navigate to websites and save the URL
+        commandSelection = .websites
+        await websitesViewModel.addWebsite(url: url.absoluteString)
+    }
 }

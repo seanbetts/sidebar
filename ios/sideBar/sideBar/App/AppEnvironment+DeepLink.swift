@@ -15,10 +15,14 @@ extension AppEnvironment {
             handleTasksDeepLink(url: url, logger: logger)
         case "notes":
             handleNotesDeepLink(url: url, logger: logger)
+        case "websites":
+            handleWebsitesDeepLink(url: url, logger: logger)
         case "files":
-            commandSelection = .files
+            handleFilesDeepLink(url: url, logger: logger)
         case "chat":
-            commandSelection = .chat
+            handleChatDeepLink(url: url, logger: logger)
+        case "scratchpad":
+            handleScratchpadDeepLink(logger: logger)
         default:
             logger.info("Unhandled deep link host: \(url.host ?? "", privacy: .public)")
         }
@@ -60,5 +64,52 @@ extension AppEnvironment {
                 await notesViewModel.loadNote(id: noteId)
             }
         }
+    }
+
+    private func handleWebsitesDeepLink(url: URL, logger: Logger) {
+        commandSelection = .websites
+        let path = url.path
+        if !path.isEmpty && path != "/" {
+            // Path format: /{websiteId}
+            let websiteId = String(path.dropFirst())
+            logger.info("Deep link to website: \(websiteId, privacy: .public)")
+            Task {
+                await websitesViewModel.selectWebsite(id: websiteId)
+            }
+        }
+    }
+
+    private func handleFilesDeepLink(url: URL, logger: Logger) {
+        commandSelection = .files
+        let path = url.path
+        if !path.isEmpty && path != "/" {
+            // Path format: /{fileId}
+            let fileId = String(path.dropFirst())
+            logger.info("Deep link to file: \(fileId, privacy: .public)")
+            Task {
+                await ingestionViewModel.selectFile(fileId: fileId)
+            }
+        }
+    }
+
+    private func handleChatDeepLink(url: URL, logger: Logger) {
+        commandSelection = .chat
+        let path = url.path
+        if path == "/new" {
+            logger.info("Deep link to new chat")
+            chatViewModel.startNewConversation()
+        } else if !path.isEmpty && path != "/" {
+            // Path format: /{chatId}
+            let chatId = String(path.dropFirst())
+            logger.info("Deep link to chat: \(chatId, privacy: .public)")
+            Task {
+                await chatViewModel.loadConversation(id: chatId)
+            }
+        }
+    }
+
+    private func handleScratchpadDeepLink(logger: Logger) {
+        logger.info("Deep link to scratchpad")
+        commandSelection = .scratchpad
     }
 }
