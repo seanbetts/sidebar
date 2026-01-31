@@ -29,7 +29,9 @@ Recent offline-sync work revealed that the `/websites` list (including archived 
 ## Status (as of 2026-01-31)
 - ✅ Phase 1 complete (DB-heavy endpoints running sync/threadpool, fast-fail timeouts, slow-query logging).
 - ✅ Phase 2 core complete (archived endpoints + offline header caching + recent-content retention window).
-- ⏳ Phase 2 optional metadata, Phase 3 UX polish, Phase 4 validation still pending.
+- ✅ Phase 2 metadata complete (archived_count + archived_last_updated).
+- ✅ Phase 3 minimal polish complete (clearer archived empty states without badges).
+- ⏳ Phase 4 validation in progress (backend stress checks done; offline + DB-down simulation pending).
 
 ### Phase 1 — Backend resilience (highest priority)
 - [x] Convert DB-heavy endpoints to sync (`def`) or `run_in_threadpool`.
@@ -46,23 +48,28 @@ Recent offline-sync work revealed that the `/websites` list (including archived 
   - Add `GET /websites/archived` (summaries only, paginated).
   - Add `GET /notes/archived` (summaries only, paginated).
   - Fix archived pagination ordering (order before limit/offset).
-- [ ] Add optional `archived_count` or `archived_last_updated` to main list response.
+- [x] Add optional `archived_count` + `archived_last_updated` to main list response.
 - [x] iOS/macOS:
   - Cache **archived headers** in offline store.
   - Cache **full content only for recent archived** items (7-day retention window).
   - Offline behavior for older archived content: show a native placeholder and allow refresh when online.
 
 ### Phase 3 — UI/UX polish + native feel
-- [ ] Archived list UI:
+- [x] Archived list UI:
   - Separate section with native list styling.
-  - Clear offline badges for content availability.
+  - Clearer empty-state copy for online/offline/loaded states.
+- [ ] Clear offline badges for content availability (deferred).
 - [ ] Settings toggle (optional):
   - “Keep archived content offline for the last X days.”
 
 ### Phase 4 — Validation
-- [ ] Stress test: load large archive and verify no API hangs.
+- [x] Stress test: load large archive and verify no API hangs (archived list slow but non-blocking; concurrent calls still fast).
 - [ ] Offline test: archived headers visible; recent archived content available; older content shows placeholder.
 - [ ] Verify logs show slow queries and 503s during DB outage simulation.
+
+### Validation notes (2026-01-31)
+- `/websites/archived?limit=500` can take ~22–23s on large archives (non-blocking for other requests).
+- Concurrent `/notes/tree` requests remain sub-second while archived requests run.
 
 ## Risks & Mitigations
 - **Risk:** Threadpool saturation if too many heavy queries.
