@@ -29,6 +29,11 @@ class _FakeResponse:
 class _FakeStorage:
     def __init__(self) -> None:
         self.calls: list[tuple[str, bytes, str | None]] = []
+        self.exists_calls: list[str] = []
+
+    def object_exists(self, key: str) -> bool:
+        self.exists_calls.append(key)
+        return False
 
     def put_object(self, key: str, data: bytes, content_type: str | None = None):
         self.calls.append((key, data, content_type))
@@ -58,10 +63,10 @@ def test_fetch_and_store_favicon(monkeypatch):
     )
 
     key = favicon_service.FaviconService.fetch_and_store_favicon(
-        "user-1", "example.com", "https://example.com/favicon.png"
+        "sub.example.com", "https://example.com/favicon.png"
     )
 
-    assert key == favicon_service.FaviconService.build_storage_key("user-1", "example.com")
+    assert key == favicon_service.FaviconService.build_storage_key("example.com")
     assert storage.calls
     stored_key, data, content_type = storage.calls[0]
     assert stored_key == key

@@ -14,6 +14,7 @@ from PIL import Image  # type: ignore[import-untyped]
 
 from api.services.storage.service import get_storage_backend
 from api.services.web_save_constants import USER_AGENT
+from api.utils.domain_utils import extract_effective_domain
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +27,14 @@ class FaviconService:
     """Service for downloading and storing favicons."""
 
     @staticmethod
-    def build_storage_key(user_id: str, domain: str) -> str:
+    def build_storage_key(domain: str) -> str:
         """Build a deterministic storage key for a favicon."""
-        normalized = domain.strip().lower()
+        normalized = extract_effective_domain(domain)
         digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
-        return f"{FAVICON_BUCKET_PREFIX}{user_id}/{digest}.png"
+        return f"{FAVICON_BUCKET_PREFIX}{digest}.png"
 
     @staticmethod
     def fetch_and_store_favicon(
-        user_id: str,
         domain: str,
         favicon_url: str,
         *,
@@ -46,6 +46,10 @@ class FaviconService:
             return None
 
         try:
+            storage_key = FaviconService.build_storage_key(domain)
+            storage = get_storage_backend()
+            if storage.object_exists(storage_key):
+                return storage_key
             raw_bytes, content_type = FaviconService._download_favicon(
                 favicon_url, timeout=timeout
             )
@@ -54,8 +58,6 @@ class FaviconService:
             normalized = FaviconService._normalize_favicon(raw_bytes, content_type)
             if normalized is None:
                 return None
-            storage_key = FaviconService.build_storage_key(user_id, domain)
-            storage = get_storage_backend()
             storage.put_object(storage_key, normalized, content_type="image/png")
             return storage_key
         except Exception as exc:
@@ -63,6 +65,15 @@ class FaviconService:
                 "favicon fetch/store failed url=%s error=%s", favicon_url, exc
             )
             return None
+
+    @staticmethod
+    def existing_storage_key(domain: str) -> str | None:
+        """Return shared storage key if a favicon already exists."""
+        storage_key = FaviconService.build_storage_key(domain)
+        storage = get_storage_backend()
+        if storage.object_exists(storage_key):
+            return storage_key
+        return None
 
     @staticmethod
     def metadata_payload(

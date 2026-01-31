@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -629,6 +629,42 @@ class WebsitesService:
             "archived_count": int(count or 0),
             "archived_last_updated": last_updated.isoformat() if last_updated else None,
         }
+
+    @staticmethod
+    def list_websites_for_favicon_backfill(
+        db: Session,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
+        only_missing: bool = True,
+    ) -> list[Website]:
+        """List websites for favicon backfill."""
+        query = (
+            db.query(Website)
+            .options(
+                load_only(
+                    Website.id,
+                    Website.user_id,
+                    Website.url,
+                    Website.source,
+                    Website.domain,
+                    Website.metadata_,
+                )
+            )
+            .filter(Website.deleted_at.is_(None))
+            .order_by(Website.created_at.desc())
+        )
+        if only_missing:
+            missing_key = or_(
+                Website.metadata_["favicon_r2_key"].astext.is_(None),
+                Website.metadata_["favicon_r2_key"].astext == "",
+            )
+            query = query.filter(missing_key)
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
+        return query.all()
 
     @staticmethod
     def search_websites(
