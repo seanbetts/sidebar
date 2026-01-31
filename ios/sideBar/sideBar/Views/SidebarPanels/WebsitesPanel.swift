@@ -5,19 +5,19 @@ import SwiftUI
 // MARK: - WebsitesPanel
 
 public struct WebsitesPanel: View {
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var appEnvironment: AppEnvironment
 
     public init() {
     }
 
     public var body: some View {
-        WebsitesPanelView(viewModel: environment.websitesViewModel)
+        WebsitesPanelView(viewModel: appEnvironment.websitesViewModel)
     }
 }
 
-private struct WebsitesPanelView: View {
+struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var appEnvironment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -31,11 +31,17 @@ private struct WebsitesPanelView: View {
     @State private var newWebsiteUrl: String = ""
     @State private var saveErrorMessage: String?
     @State private var archiveHeight: CGFloat = 0
-    @State private var deleteTarget: WebsiteItem?
+    @State var deleteTarget: WebsiteItem?
+    @State var renameTarget: WebsiteItem?
+    @State var renameValue: String = ""
+    @State var isRenameDialogPresented = false
+    @State var exportDocument: MarkdownFileDocument?
+    @State var isExporting = false
+    @State var exportFilename: String = "website"
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
+        let base = VStack(spacing: 0) {
             header
             #if os(macOS)
             websitesPanelContentWithArchive
@@ -60,6 +66,7 @@ private struct WebsitesPanelView: View {
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading
         }
+        return base
         .alert("Save a website", isPresented: $isNewWebsitePresented) {
             TextField("example.com", text: $newWebsiteUrl)
                 #if os(iOS)
@@ -101,7 +108,30 @@ private struct WebsitesPanelView: View {
         } message: {
             Text("This will remove the website and cannot be undone.")
         }
-        .onReceive(environment.$shortcutActionEvent) { event in
+        .alert("Rename website", isPresented: $isRenameDialogPresented) {
+            TextField("Website name", text: $renameValue)
+                .submitLabel(.done)
+                .onSubmit {
+                    commitRename()
+                }
+            Button("Rename") {
+                commitRename()
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                renameTarget = nil
+                renameValue = ""
+            }
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .sideBarMarkdown,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
+        }
+        .onReceive(appEnvironment.$shortcutActionEvent) { event in
             guard let event, event.section == .websites else { return }
             switch event.action {
             case .focusSearch:
@@ -366,6 +396,9 @@ extension WebsitesPanelView {
         )
         .staggeredAppear(index: index, isActive: listAppeared)
         .onTapGesture { open(item: item) }
+        .contextMenu {
+            websiteContextMenuItems(for: item)
+        }
 
         #if os(macOS)
         row
@@ -428,12 +461,12 @@ extension WebsitesPanelView {
             if count == 0 {
                 return "No archived websites"
             }
-            if environment.isOffline || !environment.isNetworkAvailable {
+            if appEnvironment.isOffline || !appEnvironment.isNetworkAvailable {
                 return "Archived websites are available when you're online."
             }
             return "Loading archived websites..."
         }
-        if environment.isOffline || !environment.isNetworkAvailable {
+        if appEnvironment.isOffline || !appEnvironment.isNetworkAvailable {
             return "Archived websites are available when you're online."
         }
         return "No archived websites"
@@ -546,8 +579,8 @@ extension WebsitesPanelView {
         Task {
             let saved = await viewModel.saveWebsite(url: normalized.absoluteString)
             if saved {
-                environment.notesViewModel.clearSelection()
-                environment.ingestionViewModel.clearSelection()
+                appEnvironment.notesViewModel.clearSelection()
+                appEnvironment.ingestionViewModel.clearSelection()
             } else {
                 saveErrorMessage = viewModel.saveErrorMessage ?? "Failed to save website. Please try again."
             }

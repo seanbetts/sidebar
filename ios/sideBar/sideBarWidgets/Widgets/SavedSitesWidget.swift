@@ -40,12 +40,10 @@ struct SavedSitesWidgetView: View {
     private var siteListView: some View {
         VStack(alignment: .leading, spacing: 12) {
             Link(destination: URL(string: "sidebar://websites")!) {
-                VStack(alignment: .leading, spacing: 12) {
-                    headerView
-                    sitesList
-                }
+                headerView
             }
             .buttonStyle(.plain)
+            sitesList
             if family == .systemLarge {
                 Spacer(minLength: 0)
             }
@@ -172,8 +170,12 @@ struct SiteRowView: View {
     let compact: Bool
     let showSubtitle: Bool
 
+    private var siteURL: URL {
+        URL(string: "sidebar://websites/\(site.id)") ?? URL(string: "sidebar://websites")!
+    }
+
     var body: some View {
-        Link(destination: URL(string: site.url)!) {
+        Link(destination: siteURL) {
             HStack(spacing: 8) {
                 Image(systemName: "globe")
                     .font(.system(size: compact ? 14 : 16))

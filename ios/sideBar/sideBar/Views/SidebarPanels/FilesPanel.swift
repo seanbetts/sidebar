@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 // MARK: - FilesPanel
 
 public struct FilesPanel: View {
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var environment: AppEnvironment
 
     public init() {
     }
@@ -16,8 +16,8 @@ public struct FilesPanel: View {
     }
 }
 
-private struct FilesPanelView: View {
-    @EnvironmentObject private var environment: AppEnvironment
+struct FilesPanelView: View {
+    @EnvironmentObject var appEnvironment: AppEnvironment
     @ObservedObject var viewModel: IngestionViewModel
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -27,13 +27,16 @@ private struct FilesPanelView: View {
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
     @State private var listAppeared = false
-    @State private var isDeleteAlertPresented = false
-    @State private var deleteTarget: IngestionListItem?
+    @State var isDeleteAlertPresented = false
+    @State var deleteTarget: IngestionListItem?
     @State private var pinTarget: IngestionListItem?
     @State private var isFileImporterPresented = false
     @State private var isYouTubeAlertPresented = false
     @State private var newYouTubeUrl: String = ""
     @State private var knownFileIds: Set<String> = []
+    @State var renameTarget: IngestionListItem?
+    @State var renameValue: String = ""
+    @State var isRenameSheetPresented = false
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
@@ -43,7 +46,7 @@ private struct FilesPanelView: View {
 
 extension FilesPanelView {
     private var content: some View {
-        mainContent
+        let base = mainContent
             .frame(maxHeight: .infinity)
             .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
                 Button("Delete", role: .destructive) {
@@ -55,6 +58,12 @@ extension FilesPanelView {
             } message: {
                 Text("This will remove the file and cannot be undone.")
             }
+            .sheet(
+                isPresented: $isRenameSheetPresented,
+                onDismiss: clearRenameTarget,
+                content: renameSheet
+            )
+        return base
             .fileImporter(
                 isPresented: $isFileImporterPresented,
                 allowedContentTypes: [.item],
@@ -108,7 +117,7 @@ extension FilesPanelView {
                 }
                 knownFileIds = newIdSet
             }
-            .onReceive(environment.$shortcutActionEvent) { event in
+            .onReceive(appEnvironment.$shortcutActionEvent) { event in
                 guard let event, event.section == .files else { return }
                 switch event.action {
                 case .focusSearch:
@@ -202,6 +211,9 @@ extension FilesPanelView {
                         onPinToggle: pinAction(for: item),
                         onDelete: deleteAction(for: item)
                     )
+                    .contextMenu {
+                        fileContextMenuItems(for: item)
+                    }
                     if isFolder(item) {
                         row
                             .staggeredAppear(index: index, isActive: listAppeared)
@@ -221,6 +233,9 @@ extension FilesPanelView {
                                 onPinToggle: pinAction(for: item),
                                 onDelete: deleteAction(for: item)
                             )
+                            .contextMenu {
+                                fileContextMenuItems(for: item)
+                            }
                             if isFolder(item) {
                                 row
                                     .staggeredAppear(index: index, isActive: listAppeared)
@@ -247,6 +262,9 @@ extension FilesPanelView {
                                             onPinToggle: pinAction(for: item),
                                             onDelete: deleteAction(for: item)
                                         )
+                                        .contextMenu {
+                                            fileContextMenuItems(for: item)
+                                        }
                                         if isFolder(item) {
                                             row
                                                 .staggeredAppear(
@@ -295,6 +313,16 @@ extension FilesPanelView {
 }
 
 extension FilesPanelView {
+    private func renameSheet() -> some View {
+        RenameItemSheet(
+            title: "Rename File",
+            placeholder: "File name",
+            text: $renameValue
+        ) { newName in
+            Task { await commitRename(to: newName) }
+        }
+    }
+
     private func open(item: IngestionListItem) {
         open(fileId: item.file.id)
     }
@@ -340,7 +368,7 @@ extension FilesPanelView {
         Task {
             let success = await viewModel.deleteFile(fileId: item.file.id)
             if !success {
-                environment.toastCenter.show(message: "Failed to delete file")
+                appEnvironment.toastCenter.show(message: "Failed to delete file")
             }
         }
         clearDeleteTarget()
@@ -383,7 +411,7 @@ extension FilesPanelView {
         case .success(let urls):
             viewModel.addUploads(urls: urls)
         case .failure:
-            environment.toastCenter.show(message: "Failed to add files")
+            appEnvironment.toastCenter.show(message: "Failed to add files")
         }
     }
 
@@ -394,7 +422,7 @@ extension FilesPanelView {
         isYouTubeAlertPresented = false
         Task {
             if let message = await viewModel.ingestYouTube(url: url) {
-                environment.toastCenter.show(message: message)
+                appEnvironment.toastCenter.show(message: message)
             }
         }
     }

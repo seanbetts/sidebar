@@ -40,12 +40,10 @@ struct PinnedNotesWidgetView: View {
     private var noteListView: some View {
         VStack(alignment: .leading, spacing: 12) {
             Link(destination: URL(string: "sidebar://notes")!) {
-                VStack(alignment: .leading, spacing: 12) {
-                    headerView
-                    notesList
-                }
+                headerView
             }
             .buttonStyle(.plain)
+            notesList
             if family == .systemLarge {
                 Spacer(minLength: 0)
             }

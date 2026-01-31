@@ -213,6 +213,24 @@ struct FileNodeItem: Identifiable {
     let name: String
     let type: FileNodeType
     let children: [FileNodeItem]?
+    let pinned: Bool
+    let archived: Bool
+
+    init(
+        id: String,
+        name: String,
+        type: FileNodeType,
+        children: [FileNodeItem]? = nil,
+        pinned: Bool = false,
+        archived: Bool = false
+    ) {
+        self.id = id
+        self.name = name
+        self.type = type
+        self.children = children
+        self.pinned = pinned
+        self.archived = archived
+    }
 
     var isFile: Bool { type == .file }
 

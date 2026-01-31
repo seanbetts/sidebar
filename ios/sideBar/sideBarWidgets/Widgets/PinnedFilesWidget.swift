@@ -40,12 +40,10 @@ struct PinnedFilesWidgetView: View {
     private var fileListView: some View {
         VStack(alignment: .leading, spacing: 12) {
             Link(destination: URL(string: "sidebar://files")!) {
-                VStack(alignment: .leading, spacing: 12) {
-                    headerView
-                    filesList
-                }
+                headerView
             }
             .buttonStyle(.plain)
+            filesList
             if family == .systemLarge {
                 Spacer(minLength: 0)
             }
