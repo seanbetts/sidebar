@@ -135,6 +135,7 @@ extension AppEnvironment {
         let websitesViewModel = WebsitesViewModel(
             api: container.websitesAPI,
             store: websitesStore,
+            toastCenter: toastCenter,
             networkStatus: connectivityMonitor
         )
         let tasksViewModel = TasksViewModel(
