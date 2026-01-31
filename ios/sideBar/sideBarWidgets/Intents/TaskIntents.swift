@@ -129,5 +129,58 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
             shortTitle: "Create Note",
             systemImageName: "doc.badge.plus"
         )
+        // Website shortcuts
+        AppShortcut(
+            intent: OpenWebsitesIntent(),
+            phrases: [
+                "Show my saved websites in \(.applicationName)",
+                "Open websites in \(.applicationName)",
+                "View my bookmarks in \(.applicationName)"
+            ],
+            shortTitle: "Saved Websites",
+            systemImageName: "globe"
+        )
+        AppShortcut(
+            intent: QuickSaveIntent(),
+            phrases: [
+                "Save this website in \(.applicationName)",
+                "Bookmark this page in \(.applicationName)",
+                "Save URL in \(.applicationName)"
+            ],
+            shortTitle: "Save Website",
+            systemImageName: "bookmark.fill"
+        )
+        // File shortcuts
+        AppShortcut(
+            intent: OpenFilesIntent(),
+            phrases: [
+                "Show my files in \(.applicationName)",
+                "Open files in \(.applicationName)",
+                "View my documents in \(.applicationName)"
+            ],
+            shortTitle: "My Files",
+            systemImageName: "doc"
+        )
+        // General shortcuts
+        AppShortcut(
+            intent: OpenScratchpadIntent(),
+            phrases: [
+                "Open scratchpad in \(.applicationName)",
+                "Quick note in \(.applicationName)",
+                "Scratch pad in \(.applicationName)"
+            ],
+            shortTitle: "Scratchpad",
+            systemImageName: "note.text"
+        )
+        AppShortcut(
+            intent: StartChatIntent(),
+            phrases: [
+                "Start a chat in \(.applicationName)",
+                "New conversation in \(.applicationName)",
+                "Chat with AI in \(.applicationName)"
+            ],
+            shortTitle: "Start Chat",
+            systemImageName: "bubble.left.and.bubble.right"
+        )
     }
 }
