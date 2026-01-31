@@ -35,11 +35,14 @@ public struct ToastMessage: Identifiable, Equatable {
 
 public enum ToastStyle {
     case error
+    case success
 
     public var background: Color {
         switch self {
         case .error:
             return DesignTokens.Colors.errorSurface
+        case .success:
+            return DesignTokens.Colors.successBackground
         }
     }
 
@@ -47,6 +50,26 @@ public enum ToastStyle {
         switch self {
         case .error:
             return DesignTokens.Colors.error
+        case .success:
+            return DesignTokens.Colors.success
+        }
+    }
+
+    public var border: Color {
+        switch self {
+        case .error:
+            return DesignTokens.Colors.errorBorder
+        case .success:
+            return DesignTokens.Colors.success.opacity(0.3)
+        }
+    }
+
+    public var iconName: String {
+        switch self {
+        case .error:
+            return "exclamationmark.triangle.fill"
+        case .success:
+            return "checkmark.circle.fill"
         }
     }
 }
@@ -60,7 +83,7 @@ public struct ToastBanner: View {
 
     public var body: some View {
         HStack(spacing: DesignTokens.Spacing.xsPlus) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(systemName: toast.style.iconName)
                 .font(DesignTokens.Typography.labelMd)
             Text(toast.message)
                 .font(DesignTokens.Typography.subheadlineSemibold)
@@ -73,7 +96,7 @@ public struct ToastBanner: View {
         .clipShape(Capsule())
         .overlay(
             Capsule()
-                .stroke(DesignTokens.Colors.errorBorder, lineWidth: 1)
+                .stroke(toast.style.border, lineWidth: 1)
         )
         .appShadow(color: Color.black.opacity(0.08), radius: DesignTokens.Spacing.xs, y: DesignTokens.Spacing.xxs)
         .accessibilityLabel(toast.message)
