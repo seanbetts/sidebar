@@ -5,6 +5,7 @@ import Combine
 public enum CacheKeys {
     public nonisolated static let conversationsList = "conversations.list"
     public nonisolated static let notesTree = "notes.tree"
+    public nonisolated static let notesArchivedTree = "notes.archived.tree"
     public nonisolated static let websitesList = "websites.list"
     public nonisolated static let memoriesList = "memories.list"
     public nonisolated static let ingestionList = "ingestion.list"

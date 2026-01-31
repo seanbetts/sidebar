@@ -4,6 +4,7 @@ import sideBarShared
 /// Defines the requirements for NotesProviding.
 public protocol NotesProviding {
     func listTree() async throws -> FileTree
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree
     func getNote(id: String) async throws -> NotePayload
     func search(query: String, limit: Int) async throws -> [FileNode]
     func updateNote(id: String, content: String) async throws -> NotePayload
@@ -30,6 +31,18 @@ public struct NotesAPI {
 
     public func listTree() async throws -> FileTree {
         try await client.request("notes/tree")
+    }
+
+    public func listArchivedTree(limit: Int = 200, offset: Int = 0) async throws -> FileTree {
+        var queryItems: [String] = []
+        if limit > 0 {
+            queryItems.append("limit=\(limit)")
+        }
+        if offset > 0 {
+            queryItems.append("offset=\(offset)")
+        }
+        let suffix = queryItems.isEmpty ? "" : "?\(queryItems.joined(separator: "&"))"
+        return try await client.request("notes/archived\(suffix)")
     }
 
     public func search(query: String, limit: Int = 50) async throws -> [FileNode] {

@@ -59,6 +59,11 @@ struct NotesPanelView: View {
         .onChange(of: viewModel.searchQuery) { _, newValue in
             viewModel.updateSearch(query: newValue)
         }
+        .onChange(of: isArchiveExpanded) { _, expanded in
+            if expanded {
+                Task { await viewModel.loadArchivedTree() }
+            }
+        }
         .alert("New Note", isPresented: $isNewNotePresented) {
             TextField("Note title", text: $newNoteName)
                 .submitLabel(.done)

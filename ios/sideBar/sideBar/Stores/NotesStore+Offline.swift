@@ -19,6 +19,15 @@ extension NotesStore {
             let lastSyncAt = offlineStore?.lastSyncAt(for: cacheKey)
             offlineStore?.set(key: cacheKey, entityType: "notesTree", value: tree, lastSyncAt: lastSyncAt)
         }
+        if let archivedTree {
+            let lastSyncAt = offlineStore?.lastSyncAt(for: CacheKeys.notesArchivedTree)
+            offlineStore?.set(
+                key: CacheKeys.notesArchivedTree,
+                entityType: "notesArchivedTree",
+                value: archivedTree,
+                lastSyncAt: lastSyncAt
+            )
+        }
         pruneArchivedNoteCache()
         if let activeNote {
             if shouldPersistNote(activeNote) {

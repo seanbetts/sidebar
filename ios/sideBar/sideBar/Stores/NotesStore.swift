@@ -18,6 +18,7 @@ import WidgetKit
 /// - Handle real-time note events (insert, update, delete)
 public final class NotesStore: CachedStoreBase<FileTree> {
     @Published public internal(set) var tree: FileTree?
+    @Published public internal(set) var archivedTree: FileTree?
     @Published public internal(set) var activeNote: NotePayload?
 
     private let api: any NotesProviding
@@ -25,8 +26,10 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
     private var isRefreshingTree = false
+    private var isRefreshingArchivedTree = false
     private var refreshingNotes = Set<String>()
     private let archivedNoteRetentionDays = 7
+    private let archivedTreeLimit = 500
 
     public init(
         api: any NotesProviding,
@@ -82,6 +85,36 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         let remote = try await fetchFromAPI()
         applyTreeUpdate(remote, persist: true)
         cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
+    }
+
+    public func loadArchivedTree(force: Bool = false) async throws {
+        if !force {
+            let cached: FileTree? = cache.get(key: CacheKeys.notesArchivedTree)
+            if let cached {
+                applyArchivedTreeUpdate(cached, persist: false)
+                if networkStatus?.isNetworkAvailable ?? true {
+                    Task { [weak self] in
+                        await self?.refreshArchivedTree()
+                    }
+                }
+                return
+            }
+            if let offline = offlineStore?.get(key: CacheKeys.notesArchivedTree, as: FileTree.self) {
+                applyArchivedTreeUpdate(offline, persist: false)
+                if networkStatus?.isNetworkAvailable ?? true {
+                    Task { [weak self] in
+                        await self?.refreshArchivedTree()
+                    }
+                }
+                return
+            }
+        }
+        guard networkStatus?.isNetworkAvailable ?? true else {
+            return
+        }
+        let remote = try await api.listArchivedTree(limit: archivedTreeLimit, offset: 0)
+        applyArchivedTreeUpdate(remote, persist: true)
+        cache.set(key: CacheKeys.notesArchivedTree, value: remote, ttlSeconds: cacheTTL)
     }
 
     public func loadNote(id: String, force: Bool = false) async throws {
@@ -158,6 +191,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
 
     public func reset() {
         tree = nil
+        archivedTree = nil
         activeNote = nil
     }
 
@@ -172,6 +206,20 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         do {
             let response = try await api.listTree()
             applyTreeUpdate(response, persist: true)
+        } catch {
+            // Ignore background refresh failures; cache remains source of truth.
+        }
+    }
+
+    private func refreshArchivedTree() async {
+        guard !isRefreshingArchivedTree else {
+            return
+        }
+        isRefreshingArchivedTree = true
+        defer { isRefreshingArchivedTree = false }
+        do {
+            let response = try await api.listArchivedTree(limit: archivedTreeLimit, offset: 0)
+            applyArchivedTreeUpdate(response, persist: true)
         } catch {
             // Ignore background refresh failures; cache remains source of truth.
         }
@@ -202,6 +250,15 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             offlineStore?.set(key: cacheKey, entityType: "notesTree", value: incoming, lastSyncAt: lastSyncAt)
         }
         updateWidgetData(from: incoming)
+    }
+
+    func applyArchivedTreeUpdate(_ incoming: FileTree, persist: Bool) {
+        archivedTree = incoming
+        if persist {
+            cache.set(key: CacheKeys.notesArchivedTree, value: incoming, ttlSeconds: cacheTTL)
+            let lastSyncAt = Date()
+            offlineStore?.set(key: CacheKeys.notesArchivedTree, entityType: "notesArchivedTree", value: incoming, lastSyncAt: lastSyncAt)
+        }
     }
 
     private func shouldUpdateTree(_ incoming: FileTree) -> Bool {
@@ -272,10 +329,13 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     }
 
     private func isArchived(_ note: NotePayload) -> Bool {
-        guard let tree else {
-            return false
+        if let tree, findNode(path: note.path, in: tree.children)?.archived == true {
+            return true
         }
-        return findNode(path: note.path, in: tree.children)?.archived == true
+        if let archivedTree, findNode(path: note.path, in: archivedTree.children)?.archived == true {
+            return true
+        }
+        return false
     }
 
     private func findNode(path: String, in nodes: [FileNode]) -> FileNode? {

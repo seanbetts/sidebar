@@ -511,6 +511,9 @@ class NotesService:
         db: Session,
         user_id: str,
         filters: NoteFilters | None = None,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> Iterable[Note]:
         """List notes using optional filters.
 
@@ -518,6 +521,8 @@ class NotesService:
             db: Database session.
             user_id: Current user ID.
             filters: Optional filters object.
+            limit: Max results to return when provided.
+            offset: Offset for pagination when provided.
 
         Returns:
             List of matching notes ordered by updated_at desc.
@@ -561,5 +566,10 @@ class NotesService:
 
         if filters.title_search:
             query = query.filter(Note.title.ilike(f"%{filters.title_search}%"))
+
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
 
         return query.order_by(Note.updated_at.desc()).all()
