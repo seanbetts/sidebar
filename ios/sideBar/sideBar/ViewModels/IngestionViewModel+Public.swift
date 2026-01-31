@@ -154,6 +154,21 @@ extension IngestionViewModel {
         }
     }
 
+    public func clearFailedUpload(fileId: String) {
+        guard let item = items.first(where: { $0.file.id == fileId }) else { return }
+        guard (item.job.status ?? "") == "failed" else { return }
+        if fileId.hasPrefix("local-") || fileId.hasPrefix("youtube-") {
+            store.removeLocalUpload(fileId: fileId)
+            if selectedFileId == fileId {
+                clearSelection()
+            }
+            return
+        }
+        Task {
+            _ = await deleteFile(fileId: fileId)
+        }
+    }
+
     public func renameFile(fileId: String, filename: String) async -> Bool {
         if isOfflineForIngestion() {
             do {

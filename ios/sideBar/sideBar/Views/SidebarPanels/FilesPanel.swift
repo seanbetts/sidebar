@@ -460,8 +460,9 @@ extension FilesPanelView {
 
     private var filteredItems: [IngestionListItem] {
         let needle = searchQuery.trimmed.lowercased()
-        guard !needle.isEmpty else { return viewModel.items }
-        return viewModel.items.filter { item in
+        let baseItems = viewModel.items.filter { $0.statusValue != "failed" }
+        guard !needle.isEmpty else { return baseItems }
+        return baseItems.filter { item in
             item.file.filenameOriginal.lowercased().contains(needle)
         }
     }

@@ -120,7 +120,8 @@ public struct SiteHeaderBar: View {
                     IngestionCenterView(
                         activeItems: environment.ingestionViewModel.activeUploadItems,
                         failedItems: environment.ingestionViewModel.failedUploadItems,
-                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) }
+                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) },
+                        onClearFailure: { environment.ingestionViewModel.clearFailedUpload(fileId: $0.file.id) }
                     )
                 }
                 #else
@@ -128,7 +129,8 @@ public struct SiteHeaderBar: View {
                     IngestionCenterView(
                         activeItems: environment.ingestionViewModel.activeUploadItems,
                         failedItems: environment.ingestionViewModel.failedUploadItems,
-                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) }
+                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) },
+                        onClearFailure: { environment.ingestionViewModel.clearFailedUpload(fileId: $0.file.id) }
                     )
                 }
                 #endif
