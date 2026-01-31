@@ -276,35 +276,64 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
 
         if FaviconService is not None and favicon_url:
             try:
-                shared_key = FaviconService.existing_storage_key(website.domain)
-                if shared_key:
-                    WebsitesService.update_metadata(
-                        db,
-                        user_id,
-                        website.id,
-                        metadata_updates={"favicon_r2_key": shared_key},
-                    )
-                else:
-                    metadata_payload = FaviconService.metadata_payload(
-                        favicon_url=favicon_url
-                    )
-                    if metadata_payload:
+                metadata_payload = FaviconService.metadata_payload(
+                    favicon_url=favicon_url
+                )
+                if metadata_payload:
+                    try:
                         WebsitesService.update_metadata(
                             db,
                             user_id,
                             website.id,
                             metadata_updates=metadata_payload,
                         )
-                    favicon_key = FaviconService.fetch_and_store_favicon(
-                        website.domain,
-                        favicon_url,
+                    except Exception as exc:
+                        logger.warning(
+                            "favicon metadata update failed url=%s error=%s",
+                            url,
+                            exc,
+                        )
+
+                shared_key = None
+                try:
+                    shared_key = FaviconService.existing_storage_key(website.domain)
+                except Exception as exc:
+                    logger.warning(
+                        "favicon shared key check failed url=%s error=%s",
+                        url,
+                        exc,
                     )
-                    if favicon_key:
+
+                if shared_key:
+                    try:
                         WebsitesService.update_metadata(
                             db,
                             user_id,
                             website.id,
-                            metadata_updates={"favicon_r2_key": favicon_key},
+                            metadata_updates={"favicon_r2_key": shared_key},
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "favicon shared key update failed url=%s error=%s",
+                            url,
+                            exc,
+                        )
+                else:
+                    try:
+                        favicon_key = FaviconService.fetch_and_store_favicon(
+                            website.domain,
+                            favicon_url,
+                        )
+                        if favicon_key:
+                            WebsitesService.update_metadata(
+                                db,
+                                user_id,
+                                website.id,
+                                metadata_updates={"favicon_r2_key": favicon_key},
+                            )
+                    except Exception as exc:
+                        logger.warning(
+                            "favicon upload failed url=%s error=%s", url, exc
                         )
             except Exception as exc:
                 logger.warning("favicon handling failed url=%s error=%s", url, exc)
