@@ -28,6 +28,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     private var isRefreshingList = false
     private var isRefreshingArchived = false
     private let archivedDetailRetentionDays = 7
+    private let archivedDetailPrefetchLimit = 50
     private let archivedListLimit = 500
     private var archivedListSyncedAt: String?
     private var archivedSyncLoaded = false
@@ -114,6 +115,9 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
                 }
             }
             return
+        }
+        if networkStatus?.isOffline ?? false {
+            throw offlineDetailError(for: id)
         }
         let response = try await api.get(id: id)
         applyDetailUpdate(response, persist: true)
@@ -272,6 +276,9 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             applyArchivedUpdate(response.items, persist: true)
             archivedListSyncedAt = archivedSummary?.lastUpdated
             persistArchivedSyncToken()
+            Task { [weak self] in
+                await self?.prefetchArchivedDetails(from: response.items)
+            }
         } catch {
             // Ignore background refresh failures; cache remains source of truth.
         }
@@ -459,6 +466,96 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             return false
         }
         return updatedAt >= cutoff
+    }
+
+    private func offlineDetailError(for id: String) -> Error {
+        let message: String
+        if let item = itemForDetail(id: id) {
+            if item.archived {
+                if isWithinArchivedRetention(updatedAt: item.updatedAt) {
+                    message = "This archived website hasn't been cached yet. Go online to load it."
+                } else {
+                    message = "Archived content isn't available offline."
+                }
+            } else {
+                message = "This website isn't available offline."
+            }
+        } else {
+            message = "This website isn't available offline."
+        }
+        return WebsiteDetailOfflineError(message: message)
+    }
+
+    private func itemForDetail(id: String) -> WebsiteItem? {
+        if let item = items.first(where: { $0.id == id }) {
+            return item
+        }
+        if let active, active.id == id {
+            return WebsiteItem(
+                id: active.id,
+                title: active.title,
+                url: active.url,
+                domain: active.domain,
+                savedAt: active.savedAt,
+                publishedAt: active.publishedAt,
+                pinned: active.pinned,
+                pinnedOrder: active.pinnedOrder,
+                archived: active.archived,
+                youtubeTranscripts: active.youtubeTranscripts,
+                updatedAt: active.updatedAt,
+                lastOpenedAt: active.lastOpenedAt,
+                deletedAt: nil
+            )
+        }
+        return nil
+    }
+
+    private func isWithinArchivedRetention(updatedAt: String?) -> Bool {
+        guard let updatedAt = DateParsing.parseISO8601(updatedAt) else {
+            return false
+        }
+        guard let cutoff = Calendar.current.date(
+            byAdding: .day,
+            value: -archivedDetailRetentionDays,
+            to: Date()
+        ) else {
+            return false
+        }
+        return updatedAt >= cutoff
+    }
+
+    private func hasCachedDetail(id: String) -> Bool {
+        let cacheKey = CacheKeys.websiteDetail(id: id)
+        let cached: WebsiteDetail? = cache.get(key: cacheKey)
+        if cached != nil {
+            return true
+        }
+        if let offlineStore, offlineStore.get(key: cacheKey, as: WebsiteDetail.self) != nil {
+            return true
+        }
+        return false
+    }
+
+    private func prefetchArchivedDetails(from items: [WebsiteItem]) async {
+        guard archivedDetailPrefetchLimit > 0 else { return }
+        guard !(networkStatus?.isOffline ?? false) else { return }
+        let candidates = items.filter {
+            $0.archived && isWithinArchivedRetention(updatedAt: $0.updatedAt)
+        }
+        let pending = candidates.filter { !hasCachedDetail(id: $0.id) }
+        guard !pending.isEmpty else { return }
+        for item in pending.prefix(archivedDetailPrefetchLimit) {
+            do {
+                let detail = try await api.get(id: item.id)
+                if shouldPersistDetail(detail) {
+                    persistDetail(detail)
+                } else {
+                    clearPersistedDetail(id: detail.id)
+                }
+            } catch {
+                continue
+            }
+        }
     }
 
     private func persistDetail(_ detail: WebsiteDetail) {
@@ -707,4 +804,10 @@ extension WebsitesStore {
             payload: .website(snapshot)
         )
     }
+}
+
+private struct WebsiteDetailOfflineError: LocalizedError {
+    let message: String
+
+    var errorDescription: String? { message }
 }
