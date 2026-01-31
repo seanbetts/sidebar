@@ -6,6 +6,7 @@ import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -531,9 +532,10 @@ class WebsitesService:
             )
 
         if filters.archived is not None:
-            query = query.filter(
-                Website.metadata_["archived"].astext == str(filters.archived).lower()
+            archived_value = func.coalesce(
+                Website.metadata_["archived"].astext, "false"
             )
+            query = query.filter(archived_value == str(filters.archived).lower())
 
         if filters.created_after is not None:
             query = query.filter(Website.created_at >= filters.created_after)
@@ -555,14 +557,15 @@ class WebsitesService:
         if filters.title_search:
             query = query.filter(Website.title.ilike(f"%{filters.title_search}%"))
 
+        query = query.order_by(
+            Website.saved_at.desc().nullslast(), Website.created_at.desc()
+        )
         if offset:
             query = query.offset(offset)
         if limit:
             query = query.limit(limit)
 
-        return query.order_by(
-            Website.saved_at.desc().nullslast(), Website.created_at.desc()
-        ).all()
+        return query.all()
 
     @staticmethod
     def search_websites(

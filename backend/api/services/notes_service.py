@@ -567,9 +567,10 @@ class NotesService:
         if filters.title_search:
             query = query.filter(Note.title.ilike(f"%{filters.title_search}%"))
 
+        query = query.order_by(Note.updated_at.desc())
         if offset:
             query = query.offset(offset)
         if limit:
             query = query.limit(limit)
 
-        return query.order_by(Note.updated_at.desc()).all()
+        return query.all()

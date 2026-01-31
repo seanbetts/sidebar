@@ -83,7 +83,7 @@ struct PinnedFilesWidgetView: View {
     private var filesList: some View {
         VStack(alignment: .leading, spacing: fileSpacing) {
             ForEach(displayedFiles) { file in
-                FileRowView(file: file, compact: isCompact, showSubtitle: showSubtitle)
+                FileRowView(file: file, compact: isCompact)
             }
         }
     }
@@ -112,10 +112,6 @@ struct PinnedFilesWidgetView: View {
 
     private var isCompact: Bool {
         family == .systemSmall
-    }
-
-    private var showSubtitle: Bool {
-        family == .systemLarge
     }
 
     private var showMoreIndicator: Bool {
@@ -170,34 +166,29 @@ struct PinnedFilesWidgetView: View {
 struct FileRowView: View {
     let file: WidgetFile
     let compact: Bool
-    let showSubtitle: Bool
 
     private var fileURL: URL {
         URL(string: "sidebar://files/\(file.id)") ?? URL(string: "sidebar://files")!
     }
 
     private var iconName: String {
-        guard let category = file.category else { return "doc" }
+        guard let category = file.category else { return "folder" }
         switch category.lowercased() {
         case "documents": return "doc.text"
         case "images": return "photo"
         case "audio": return "waveform"
-        case "video": return "film"
+        case "video": return "video"
         case "spreadsheets": return "tablecells"
-        case "presentations": return "rectangle.on.rectangle"
-        default: return "doc"
+        case "reports": return "chart.line.text.clipboard"
+        case "presentations": return "rectangle.on.rectangle.angled"
+        default: return "folder"
         }
     }
 
-    private var formattedSize: String {
-        let bytes = file.sizeBytes
-        if bytes < 1024 {
-            return "\(bytes) B"
-        } else if bytes < 1024 * 1024 {
-            return String(format: "%.1f KB", Double(bytes) / 1024)
-        } else {
-            return String(format: "%.1f MB", Double(bytes) / (1024 * 1024))
-        }
+    private var displayName: String {
+        let name = file.filename
+        guard let dotIndex = name.lastIndex(of: ".") else { return name }
+        return String(name[..<dotIndex])
     }
 
     var body: some View {
@@ -207,19 +198,10 @@ struct FileRowView: View {
                     .font(.system(size: compact ? 14 : 16))
                     .foregroundStyle(.secondary)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(file.filename)
-                        .font(compact ? .caption : .subheadline)
-                        .lineLimit(1)
-                        .foregroundStyle(.primary)
-
-                    if showSubtitle {
-                        Text(formattedSize)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
+                Text(displayName)
+                    .font(compact ? .caption : .subheadline)
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
 
                 Spacer(minLength: 0)
             }
