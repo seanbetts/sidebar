@@ -84,7 +84,7 @@ struct TodayTasksWidgetView: View {
     private var tasksList: some View {
         VStack(alignment: .leading, spacing: taskSpacing) {
             ForEach(displayedTasks) { task in
-                TaskRowView(task: task, compact: isCompact)
+                TaskRowView(task: task, compact: isCompact, showSubtitle: showSubtitle)
             }
         }
     }
@@ -113,6 +113,10 @@ struct TodayTasksWidgetView: View {
 
     private var isCompact: Bool {
         family == .systemSmall
+    }
+
+    private var showSubtitle: Bool {
+        family == .systemLarge
     }
 
     private var showMoreIndicator: Bool {
@@ -229,6 +233,7 @@ struct TodayTasksWidgetView: View {
 struct TaskRowView: View {
     let task: WidgetTask
     let compact: Bool
+    let showSubtitle: Bool
 
     var body: some View {
         HStack(spacing: 8) {
@@ -247,7 +252,7 @@ struct TaskRowView: View {
                     .strikethrough(task.isCompleted)
                     .foregroundStyle(task.isCompleted ? .secondary : .primary)
 
-                if !compact, let projectName = task.projectName {
+                if showSubtitle, let projectName = task.projectName {
                     Text(projectName)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
