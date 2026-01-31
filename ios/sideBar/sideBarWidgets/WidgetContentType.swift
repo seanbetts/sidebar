@@ -46,8 +46,10 @@ public enum WidgetContentType: String, CaseIterable {
       ]
     case .files:
       return [
-        "RecentFilesWidget",
-        "PinnedFilesWidget"
+        "PinnedFilesWidget",
+        "LockScreenFileCount",
+        "LockScreenFilePreview",
+        "LockScreenFilesInline"
       ]
     }
   }
