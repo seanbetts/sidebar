@@ -105,35 +105,41 @@ public final class AppEnvironment: ObservableObject {
         self.writeQueue = dependencies.writeQueue
         self.draftStorage = dependencies.draftStorage
         self.configError = configError
+        let chatViewModel = dependencies.chatViewModel
+        let notesViewModel = dependencies.notesViewModel
+        let websitesViewModel = dependencies.websitesViewModel
+        let ingestionViewModel = dependencies.ingestionViewModel
+        let tasksViewModel = dependencies.tasksViewModel
+        let authSession = container.authSession
         self.syncCoordinator = SyncCoordinator(
             connectivityMonitor: dependencies.connectivityMonitor,
             writeQueue: dependencies.writeQueue,
             stores: [
-                SyncableStoreAdapter { [weak self] in
-                    guard let self else { return }
-                    await self.chatViewModel.refreshConversations(silent: true)
-                    await self.chatViewModel.refreshActiveConversation(silent: true)
+                SyncableStoreAdapter { [weak chatViewModel] in
+                    guard let chatViewModel else { return }
+                    await chatViewModel.refreshConversations(silent: true)
+                    await chatViewModel.refreshActiveConversation(silent: true)
                 },
-                SyncableStoreAdapter { [weak self] in
-                    guard let self else { return }
-                    await self.notesViewModel.loadTree()
-                    await self.notesViewModel.refreshSelectedNoteIfNeeded()
+                SyncableStoreAdapter { [weak notesViewModel] in
+                    guard let notesViewModel else { return }
+                    await notesViewModel.loadTree()
+                    await notesViewModel.refreshSelectedNoteIfNeeded()
                 },
-                SyncableStoreAdapter { [weak self] in
-                    await self?.websitesViewModel.load(force: true)
+                SyncableStoreAdapter { [weak websitesViewModel] in
+                    await websitesViewModel?.load(force: true)
                 },
-                SyncableStoreAdapter { [weak self] in
-                    await self?.ingestionViewModel.load(force: true)
+                SyncableStoreAdapter { [weak ingestionViewModel] in
+                    await ingestionViewModel?.load(force: true)
                 },
-                SyncableStoreAdapter { [weak self] in
-                    guard let self else { return }
-                    await self.tasksViewModel.load(selection: self.tasksViewModel.selection, force: true)
-                    await self.tasksViewModel.loadCounts(force: true)
-                    await self.tasksViewModel.refreshWidgetData()
+                SyncableStoreAdapter { [weak tasksViewModel] in
+                    guard let tasksViewModel else { return }
+                    await tasksViewModel.load(selection: tasksViewModel.selection, force: true)
+                    await tasksViewModel.loadCounts(force: true)
+                    await tasksViewModel.refreshWidgetData()
                 }
             ],
-            isSyncAllowed: { [weak self] in
-                self?.isAuthenticated ?? false
+            isSyncAllowed: {
+                authSession.accessToken != nil
             }
         )
         self.isAuthenticated = container.authSession.accessToken != nil

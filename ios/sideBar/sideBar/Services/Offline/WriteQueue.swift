@@ -198,6 +198,34 @@ public final class WriteQueue: ObservableObject {
         }
     }
 
+    func fetchNextConflict() async -> PendingWriteSummary? {
+        do {
+            return try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.fetchLimit = 1
+                request.predicate = NSPredicate(format: "conflictReason != nil")
+                request.sortDescriptors = [
+                    NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
+                ]
+                guard let write = try context.fetch(request).first else { return nil }
+                return PendingWriteSummary(
+                    id: write.id,
+                    operationType: write.operationType,
+                    entityType: write.entityType,
+                    entityId: write.entityId,
+                    status: write.status,
+                    attempts: write.attempts,
+                    lastError: write.lastError,
+                    conflictReason: write.conflictReason,
+                    createdAt: write.createdAt,
+                    lastAttemptAt: write.lastAttemptAt
+                )
+            }
+        } catch {
+            return nil
+        }
+    }
+
     func deleteWrites(ids: [UUID]) async {
         guard !ids.isEmpty else { return }
         do {

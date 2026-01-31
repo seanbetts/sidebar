@@ -24,6 +24,14 @@ extension ContentView {
             KeyboardShortcutsView()
         })
         #endif
+        content = AnyView(content.sheet(item: $pendingWriteConflict) { conflict in
+            WriteConflictResolutionSheet(conflict: conflict) { resolution in
+                Task {
+                    await environment.writeQueue.resolveConflict(id: conflict.id, resolution: resolution)
+                    await refreshPendingWriteConflict()
+                }
+            }
+        })
         content = AnyView(content.overlay(alignment: .top) {
             if let toast = environment.toastCenter.toast {
                 ToastBanner(toast: toast)
@@ -178,6 +186,15 @@ extension ContentView {
                 #endif
                 environment.commandSelection = nil
             updateActiveSection()
+        })
+        content = AnyView(content.onReceive(environment.writeQueue.$isPausedForConflict) { isPaused in
+            if isPaused {
+                Task {
+                    await refreshPendingWriteConflict()
+                }
+            } else {
+                pendingWriteConflict = nil
+            }
         })
         content = AnyView(content.onChange(of: environment.isAuthenticated) { oldValue, isAuthenticated in
             activeAlert = nil
@@ -406,6 +423,15 @@ extension ContentView {
             return "Unlock sideBar quickly and securely with Touch ID."
         default:
             return "Unlock sideBar quickly and securely with Face ID."
+        }
+    }
+
+    @MainActor
+    private func refreshPendingWriteConflict() async {
+        if environment.writeQueue.isPausedForConflict {
+            pendingWriteConflict = await environment.writeQueue.fetchNextConflict()
+        } else {
+            pendingWriteConflict = nil
         }
     }
 }
