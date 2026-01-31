@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentHeaderRow<Trailing: View>: View {
-    let iconName: String
+    let icon: AnyView
     let title: String
     let subtitle: String?
     let titleLineLimit: Int
@@ -32,7 +32,43 @@ struct ContentHeaderRow<Trailing: View>: View {
         titleSubtitleAlignment: VerticalAlignment = .center,
         @ViewBuilder trailing: () -> Trailing = { EmptyView() }
     ) {
-        self.iconName = iconName
+        self.icon = AnyView(
+            Image(systemName: iconName)
+                .font(DesignTokens.Typography.titleLg)
+                .foregroundStyle(.primary)
+        )
+        self.title = title
+        self.subtitle = subtitle
+        self.titleLineLimit = titleLineLimit
+        self.subtitleLineLimit = subtitleLineLimit
+        self.titleLayoutPriority = titleLayoutPriority
+        self.subtitleLayoutPriority = subtitleLayoutPriority
+        self.subtitleShowsDivider = subtitleShowsDivider
+        self.subtitleDividerWidth = subtitleDividerWidth
+        self.subtitleDividerHeight = subtitleDividerHeight
+        self.subtitleTracking = subtitleTracking
+        self.alignment = alignment
+        self.titleSubtitleAlignment = titleSubtitleAlignment
+        self.trailing = trailing()
+    }
+
+    init(
+        iconView: AnyView,
+        title: String,
+        subtitle: String? = nil,
+        titleLineLimit: Int = 2,
+        subtitleLineLimit: Int = 2,
+        titleLayoutPriority: Double = 1,
+        subtitleLayoutPriority: Double = 0,
+        subtitleShowsDivider: Bool = false,
+        subtitleDividerWidth: CGFloat = 2,
+        subtitleDividerHeight: CGFloat = 20,
+        subtitleTracking: CGFloat = 0,
+        alignment: VerticalAlignment = .center,
+        titleSubtitleAlignment: VerticalAlignment = .center,
+        @ViewBuilder trailing: () -> Trailing = { EmptyView() }
+    ) {
+        self.icon = iconView
         self.title = title
         self.subtitle = subtitle
         self.titleLineLimit = titleLineLimit
@@ -50,9 +86,7 @@ struct ContentHeaderRow<Trailing: View>: View {
 
     var body: some View {
         HStack(alignment: alignment, spacing: 12) {
-            Image(systemName: iconName)
-                .font(DesignTokens.Typography.titleLg)
-                .foregroundStyle(.primary)
+            icon
             HStack(alignment: titleSubtitleAlignment, spacing: 12) {
                 Text(title)
                     .font(.headline)

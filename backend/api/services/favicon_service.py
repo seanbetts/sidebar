@@ -18,7 +18,7 @@ from api.utils.domain_utils import extract_effective_domain
 
 logger = logging.getLogger(__name__)
 
-FAVICON_BUCKET_PREFIX = "favicons/"
+FAVICON_BUCKET_PREFIX = ""
 MAX_FAVICON_BYTES = 1_000_000
 MAX_FAVICON_DIMENSION = 256
 
