@@ -23,6 +23,8 @@ Structure per item:
   - Skills list is metadata only; model is instructed to read SKILL.md on demand. See `docs/tools/skills.md`, `src/agents/skills.ts`.
   - Context reporting: `/context list|detail` reports prompt/skills/tool sizes without dumping the full prompt. See `docs/concepts/context.md`.
   - Tool overhead has two costs: the tool list text in the system prompt plus JSON tool schemas; `/context detail` reports the largest schemas. See `docs/concepts/context.md`.
+  - Bootstrap truncation: per-file max defaults to 20,000 chars; missing files inject a marker; large files are truncated with a marker. See `docs/concepts/system-prompt.md`, `docs/concepts/context.md`.
+  - Skills prompt is compact XML metadata with name/description/location; the model is told to read a single SKILL.md only when relevant. See `docs/tools/skills.md`, `src/agents/system-prompt.ts`.
   - Docs links: `https://docs.openclaw.ai/concepts/system-prompt`, `https://docs.openclaw.ai/context`, `https://docs.openclaw.ai/tools/skills`, `https://docs.openclaw.ai/date-time`, `https://docs.openclaw.ai/token-use`.
 - Design notes:
   - Service layer: extend `PromptContextService.build_prompts()` to return a structured prompt (sections + metadata) and a flattened string.
@@ -44,6 +46,7 @@ Structure per item:
   - Silent memory flush can run before compaction to persist durable notes. See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
   - Compaction config uses `agents.defaults.compaction` and reserve-token floors to keep headroom; flush is tracked in `sessions.json`. See `docs/reference/session-management-compaction.md`.
   - Docs links: `https://docs.openclaw.ai/concepts/compaction`, `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/concepts/session-pruning`, `https://docs.openclaw.ai/tools/slash-commands`.
+  - Reserve headroom: auto-compaction thresholds use model context window minus reserved tokens (default floor 20k); a pre-threshold memory flush can run once per compaction cycle. See `docs/reference/session-management-compaction.md`, `src/agents/pi-settings.ts`.
 - Design notes:
   - Service layer: add a `ConversationCompactionService` that summarizes older messages into a compact summary entry and trims history.
   - Data model: store `compaction_count`, `compaction_summary`, or inject a synthetic "summary" message into `messages`.
@@ -80,6 +83,7 @@ Structure per item:
   - SOUL.md (persona), IDENTITY.md (assistant name/vibe), USER.md (user details) are injected each run. See `docs/concepts/agent-workspace.md`, `src/agents/workspace.ts`.
   - Hooks can swap injected soul content before prompt assembly (no file mutation). See `docs/hooks/soul-evil.md`, `docs/hooks/bundled/soul-evil/HOOK.md`.
   - Docs links: `https://docs.openclaw.ai/agent-workspace`, `https://docs.openclaw.ai/cli/agents`, `https://docs.openclaw.ai/hooks/soul-evil`.
+  - Identity guidance is separated from tools/skills; SOUL/IDENTITY focus on tone/values, while AGENTS/TOOLS focus on operating rules. See `docs/concepts/agent-workspace.md`.
 - Design notes:
   - Service layer: add `AssistantIdentity` model (name, tone, boundaries, values) with default values.
   - Prompt: inject identity block as a dedicated section in `build_system_prompt()`.
@@ -99,6 +103,7 @@ Structure per item:
   - `memory_search` returns scored snippets with file + line ranges (no full files), and `memory_get` fetches those ranges. See `docs/concepts/memory.md`.
   - Memory search builds a vector index over memory files, supports hybrid search (vector + BM25), and can include extra paths. See `docs/concepts/memory.md`.
   - Docs links: `https://docs.openclaw.ai/concepts/memory`, `https://docs.openclaw.ai/agent-workspace`, `https://docs.openclaw.ai/reference/session-management-compaction`.
+  - Memory is explicitly “not context”: it’s durable and must be re-injected via search; model is instructed to say it checked if uncertain. See `docs/concepts/memory.md`, `docs/concepts/context.md`.
 - Design notes:
   - Service layer: add memory categories (facts, preferences, projects) and recall hints; standardize path scheme (`/memories/{category}/{name}`).
   - Prompt: add a memory section that tells the assistant when to search or ask.
@@ -134,6 +139,7 @@ Structure per item:
   - Cron job payloads differentiate `systemEvent` vs `agentTurn`, and isolated runs post summaries back to main. See `docs/automation/cron-jobs.md`.
   - Cron vs heartbeat guidance: heartbeat is for batching periodic checks, cron for exact timing and isolated runs. See `docs/automation/cron-vs-heartbeat.md`.
   - Docs links: `https://docs.openclaw.ai/automation/cron-jobs`, `https://docs.openclaw.ai/cron-vs-heartbeat`.
+  - Cron jobs persist in a single JSON file and run history JSONL is pruned; main-session jobs can enqueue a system event without an isolated run. See `docs/automation/cron-jobs.md`.
 - Design notes:
   - Service layer: add a scheduler service (maybe via `backend/workers`) and a `cron_jobs` table (soft delete).
   - API: endpoints for create/list/run, plus SSE notifications via change bus.
