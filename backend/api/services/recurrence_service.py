@@ -18,7 +18,14 @@ class RecurrenceService:
         """Calculate the next instance date for a repeating task."""
         if not task.recurrence_rule or not task.repeating:
             return None
-        anchor = base_date or task.deadline or date.today()
+        if task.next_instance_date:
+            return task.next_instance_date
+        anchor = (
+            RecurrenceService._parse_anchor_date(task.recurrence_rule)
+            or base_date
+            or task.deadline
+            or date.today()
+        )
         return RecurrenceService.calculate_next_occurrence(task.recurrence_rule, anchor)
 
     @staticmethod
@@ -71,10 +78,17 @@ class RecurrenceService:
             return None
 
         completed_at = task.completed_at.date() if task.completed_at else date.today()
-        anchor_date = task.deadline or completed_at
-        next_date = RecurrenceService.calculate_next_occurrence(
-            task.recurrence_rule, anchor_date
-        )
+        if task.next_instance_date:
+            next_date = task.next_instance_date
+        else:
+            anchor_date = (
+                RecurrenceService._parse_anchor_date(task.recurrence_rule)
+                or task.deadline
+                or completed_at
+            )
+            next_date = RecurrenceService.calculate_next_occurrence(
+                task.recurrence_rule, anchor_date
+            )
         template_id = task.repeat_template_id or task.id
 
         existing = (
@@ -114,3 +128,15 @@ class RecurrenceService:
         db.add(next_instance)
         db.flush()
         return next_instance
+
+    @staticmethod
+    def _parse_anchor_date(rule: dict | None) -> date | None:
+        if not rule:
+            return None
+        raw = rule.get("anchor_date")
+        if not raw:
+            return None
+        try:
+            return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).date()
+        except ValueError:
+            return None

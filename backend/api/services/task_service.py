@@ -559,6 +559,15 @@ class TaskService:
         if notes is not None:
             task.notes = notes
         if deadline is not None:
+            if (
+                task.repeating
+                and task.recurrence_rule
+                and not task.recurrence_rule.get("anchor_date")
+                and task.deadline
+            ):
+                task.recurrence_rule = dict(task.recurrence_rule)
+                task.recurrence_rule["anchor_date"] = task.deadline.isoformat()
+                flag_modified(task, "recurrence_rule")
             task.deadline = deadline
         if recurrence_rule is not None:
             task.recurrence_rule = recurrence_rule
@@ -592,6 +601,8 @@ class TaskService:
             recurrence_rule["interval"] = max(
                 1, int(recurrence_rule.get("interval") or 1)
             )
+            if anchor_date and not recurrence_rule.get("anchor_date"):
+                recurrence_rule["anchor_date"] = anchor_date.isoformat()
         template_id = task.repeat_template_id or task.id
         template = (
             TaskService.get_task(db, user_id, str(template_id))
@@ -599,6 +610,11 @@ class TaskService:
             else task
         )
         now = datetime.now(UTC)
+        next_instance_date = None
+        if recurrence_rule and anchor_date:
+            next_instance_date = RecurrenceService.calculate_next_occurrence(
+                recurrence_rule, anchor_date
+            )
 
         def apply_rule(target: Task) -> None:
             target.recurrence_rule = recurrence_rule
@@ -607,9 +623,12 @@ class TaskService:
             if recurrence_rule:
                 if target.repeat_template_id is None:
                     target.repeat_template_id = template_id
+                if next_instance_date:
+                    target.next_instance_date = next_instance_date
             else:
                 target.repeat_template_id = None
                 target.repeat_template = False
+                target.next_instance_date = None
             target.updated_at = now
 
         apply_rule(template)

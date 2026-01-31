@@ -447,7 +447,7 @@ extension TasksDetailView {
             Divider()
             Button(task.repeating == true ? "Edit repeat..." : "Repeat...") { openRepeat(task) }
             Divider()
-            if task.repeating != true {
+            if !task.isPreview {
                 if selection != .today {
                     Button("Set due today") { Task { await viewModel.setDueDate(task: task, date: Date()) } }
                 }
