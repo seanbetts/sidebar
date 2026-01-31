@@ -36,6 +36,12 @@ struct NotesPanelView: View {
     @State var renameTarget: FileNodeItem?
     @State var renameValue: String = ""
     @State var deleteTarget: FileNodeItem?
+    @State var moveTargetId: String?
+    @State var moveSelection: String = ""
+    @State var isMoveSheetPresented = false
+    @State var exportDocument: MarkdownFileDocument?
+    @State var isExporting = false
+    @State var exportFilename: String = "note"
     @State var pendingNoteId: String?
     @State var isSaveChangesDialogPresented = false
     @FocusState var isSearchFocused: Bool
@@ -88,6 +94,19 @@ struct NotesPanelView: View {
                 onCreate: createFolder
             )
         }
+        .sheet(isPresented: $isMoveSheetPresented) {
+            NoteFolderPickerSheet(
+                title: "Move Note",
+                selection: $moveSelection,
+                options: moveFolderOptions,
+                onConfirm: { selection in
+                    guard let targetId = moveTargetId else { return }
+                    Task {
+                        await viewModel.moveNote(id: targetId, folder: selection)
+                    }
+                }
+            )
+        }
         .alert(renameDialogTitle, isPresented: isRenameDialogPresented) {
             TextField(renameDialogPlaceholder, text: $renameValue)
                 .submitLabel(.done)
@@ -127,6 +146,14 @@ struct NotesPanelView: View {
             }
         } message: {
             Text(deleteDialogMessage)
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .sideBarMarkdown,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
         }
         .confirmationDialog("Save changes?", isPresented: $isSaveChangesDialogPresented, titleVisibility: .visible) {
             Button("Save changes") {
