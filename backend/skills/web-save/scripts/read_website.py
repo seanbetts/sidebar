@@ -49,6 +49,9 @@ def read_website_database(user_id: str, website_id: str) -> dict:
             else None,
             "pinned": bool(metadata.get("pinned")),
             "archived": bool(metadata.get("archived")),
+            "favicon_url": metadata.get("favicon_url"),
+            "favicon_r2_key": metadata.get("favicon_r2_key"),
+            "favicon_extracted_at": metadata.get("favicon_extracted_at"),
             "created_at": website.created_at.isoformat()
             if website.created_at
             else None,

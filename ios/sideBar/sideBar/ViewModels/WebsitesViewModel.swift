@@ -189,6 +189,8 @@ public final class WebsitesViewModel: ObservableObject {
                     pinned: detail?.pinned ?? false,
                     pinnedOrder: detail?.pinnedOrder,
                     archived: detail?.archived ?? false,
+                    faviconUrl: detail?.faviconUrl,
+                    faviconR2Key: detail?.faviconR2Key,
                     youtubeTranscripts: detail?.youtubeTranscripts,
                     updatedAt: detail?.updatedAt,
                     lastOpenedAt: detail?.lastOpenedAt,

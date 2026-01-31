@@ -36,6 +36,9 @@ def website_sync_payload(website: Website) -> dict[str, object]:
         "pinned": metadata.get("pinned", False),
         "pinned_order": metadata.get("pinned_order"),
         "archived": bool(website.is_archived),
+        "favicon_url": metadata.get("favicon_url"),
+        "favicon_r2_key": metadata.get("favicon_r2_key"),
+        "favicon_extracted_at": metadata.get("favicon_extracted_at"),
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "deleted_at": website.deleted_at.isoformat() if website.deleted_at else None,
     }

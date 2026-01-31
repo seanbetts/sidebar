@@ -359,6 +359,8 @@ private func makeItem(id: String) -> WebsiteItem {
         pinned: false,
         pinnedOrder: nil,
         archived: false,
+        faviconUrl: nil,
+        faviconR2Key: nil,
         youtubeTranscripts: nil,
         updatedAt: nil,
         lastOpenedAt: nil,
@@ -380,6 +382,8 @@ private func makeDetail(id: String) -> WebsiteDetail {
         pinned: false,
         pinnedOrder: nil,
         archived: false,
+        faviconUrl: nil,
+        faviconR2Key: nil,
         youtubeTranscripts: nil,
         updatedAt: nil,
         lastOpenedAt: nil

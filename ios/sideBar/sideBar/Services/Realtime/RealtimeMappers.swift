@@ -28,6 +28,8 @@ public struct RealtimeMappers {
             pinned: (record.metadata?["pinned"]?.value as? Bool) ?? false,
             pinnedOrder: record.metadata?["pinned_order"]?.value as? Int,
             archived: (record.metadata?["archived"]?.value as? Bool) ?? false,
+            faviconUrl: record.metadata?["favicon_url"]?.value as? String,
+            faviconR2Key: record.metadata?["favicon_r2_key"]?.value as? String,
             youtubeTranscripts: nil,
             updatedAt: record.updatedAt,
             lastOpenedAt: record.lastOpenedAt,

@@ -57,13 +57,20 @@ struct WebsiteRow: View, Equatable {
     let item: WebsiteItem
     let isSelected: Bool
     let useListStyling: Bool
+    let faviconBaseUrl: URL?
     private let titleText: String
     private let domainText: String
 
-    init(item: WebsiteItem, isSelected: Bool, useListStyling: Bool = true) {
+    init(
+        item: WebsiteItem,
+        isSelected: Bool,
+        useListStyling: Bool = true,
+        faviconBaseUrl: URL? = nil
+    ) {
         self.item = item
         self.isSelected = isSelected
         self.useListStyling = useListStyling
+        self.faviconBaseUrl = faviconBaseUrl
         self.titleText = item.title.isEmpty ? item.url : item.title
         self.domainText = WebsiteRow.formatDomain(item.domain)
     }
@@ -78,7 +85,9 @@ struct WebsiteRow: View, Equatable {
         lhs.item.pinned == rhs.item.pinned &&
         lhs.item.pinnedOrder == rhs.item.pinnedOrder &&
         lhs.item.archived == rhs.item.archived &&
-        lhs.item.updatedAt == rhs.item.updatedAt
+        lhs.item.updatedAt == rhs.item.updatedAt &&
+        lhs.item.faviconUrl == rhs.item.faviconUrl &&
+        lhs.item.faviconR2Key == rhs.item.faviconR2Key
     }
 
     var body: some View {
@@ -88,8 +97,13 @@ struct WebsiteRow: View, Equatable {
             useListStyling: useListStyling
         ) {
             HStack(spacing: 8) {
-                Image(systemName: "globe")
-                    .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
+                FaviconImageView(
+                    faviconUrl: item.faviconUrl,
+                    faviconR2Key: item.faviconR2Key,
+                    r2PublicBaseUrl: faviconBaseUrl,
+                    size: 16,
+                    placeholderTint: isSelected ? selectedTextColor : secondaryTextColor
+                )
                 VStack(alignment: .leading, spacing: 4) {
                     Text(titleText)
                         .font(.subheadline)
