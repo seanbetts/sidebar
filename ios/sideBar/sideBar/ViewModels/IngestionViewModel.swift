@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import UniformTypeIdentifiers
+import sideBarShared
 
 // MARK: - IngestionViewModel
 
