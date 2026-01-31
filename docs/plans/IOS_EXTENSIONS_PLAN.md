@@ -149,10 +149,12 @@ WidgetDataManager.shared.recordPendingOperation(op, for: .tasks)
 
 **Files:**
 14. ✅ **PinnedFilesWidget** - Shows pinned files with file type icons (small/medium/large)
+15. ✅ **LockScreenFileCountWidget** - Circular lock screen widget
+16. ✅ **LockScreenFilePreviewWidget** - Rectangular lock screen widget
+17. ✅ **LockScreenFilesInlineWidget** - Inline text lock screen widget
 
 ### Widgets Remaining
-1. Recent Conversations widget
-2. Lock screen widgets for Files
+1. Recent Conversations widget (not planned)
 
 ### App Intents Implemented ✅
 1. ✅ `CompleteTaskIntent` - Marks task complete from widget
@@ -184,12 +186,11 @@ WidgetDataManager.shared.recordPendingOperation(op, for: .tasks)
 
 ### Tasks
 1. Add interactive widgets (iOS 17) for scratchpad refresh and quick actions.
-2. ✅ Add lock screen widgets (accessory families) - Complete for Tasks, Notes, Websites.
+2. ✅ Add lock screen widgets (accessory families) - Complete for all content types.
 3. Add Focus Filters for widget data filtering.
 4. Add Spotlight indexing for conversations and notes.
 5. ✅ Add background refresh to keep widget data current - Complete.
 6. (Optional) Control Center widget for iOS 18+.
-7. Add lock screen widgets for Files.
 
 ### Background Refresh Implementation ✅
 Widget data is refreshed through multiple mechanisms:
@@ -284,9 +285,9 @@ ios/sideBar/sideBarWidgets/
 3. ✅ ~~Build Tasks widgets with generic storage architecture.~~
 4. ✅ ~~Add Notes/Websites/Files widgets using existing generic architecture.~~
 5. ✅ ~~Add background refresh for widget data (BGAppRefreshTask + push notifications).~~
-6. **Next:** Implement Live Activities with upload progress (Phase 2).
-7. **Next:** Add remaining App Intents (chat, notes, scratchpad).
-8. **Next:** Add lock screen widgets for Files.
+6. ✅ ~~Add lock screen widgets for Files.~~
+7. **Next:** Implement Live Activities with upload progress (Phase 2).
+8. **Next:** Add remaining App Intents (chat, notes, scratchpad).
 9. Add Spotlight indexing for conversations and notes.
 10. Add interactive widgets (iOS 17) for quick actions.
 
