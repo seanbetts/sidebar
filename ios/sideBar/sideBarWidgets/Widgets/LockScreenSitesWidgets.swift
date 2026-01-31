@@ -11,8 +11,8 @@ struct LockScreenSiteCountWidget: Widget {
             LockScreenSiteCountView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Saved Sites Count")
-        .description("Shows your saved site count.")
+        .configurationDisplayName("Saved Websites Count")
+        .description("Shows your saved website count.")
         .supportedFamilies([.accessoryCircular])
     }
 }
@@ -53,8 +53,8 @@ struct LockScreenSitePreviewWidget: Widget {
             LockScreenSitePreviewView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Saved Sites")
-        .description("Shows your saved sites.")
+        .configurationDisplayName("Saved Websites")
+        .description("Shows your saved websites.")
         .supportedFamilies([.accessoryRectangular])
     }
 }
@@ -72,7 +72,7 @@ struct LockScreenSitePreviewView: View {
         } else if entry.data.websites.isEmpty {
             HStack {
                 Image(systemName: "globe")
-                Text("No saved sites")
+                Text("No saved websites")
                     .font(.caption)
             }
         } else {
@@ -108,8 +108,8 @@ struct LockScreenSitesInlineWidget: Widget {
             LockScreenSitesInlineView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Saved Sites Inline")
-        .description("Shows saved site count inline on lock screen.")
+        .configurationDisplayName("Saved Websites Inline")
+        .description("Shows saved website count inline on lock screen.")
         .supportedFamilies([.accessoryInline])
     }
 }
@@ -120,10 +120,10 @@ struct LockScreenSitesInlineView: View {
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label("No saved sites", systemImage: "globe")
+                Label("No saved websites", systemImage: "globe")
             } else {
                 Label(
-                    "\(entry.data.totalCount) saved site\(entry.data.totalCount == 1 ? "" : "s")",
+                    "\(entry.data.totalCount) saved website\(entry.data.totalCount == 1 ? "" : "s")",
                     systemImage: "globe"
                 )
             }
