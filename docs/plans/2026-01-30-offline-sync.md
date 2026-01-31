@@ -824,7 +824,7 @@ public func saveOfflineSnapshot() async
 - [x] Add `SyncCoordinator`
 - [x] Wire in `AppEnvironment+Setup`
 - [x] Update `OfflineBanner`
-- [x] Add `ConflictResolutionSheet` (notes-only, needs generalization)
+- [x] Add global write conflict resolution sheet (notes keep dedicated resolver)
 
 #### Phase 6 Detailed Task List (with file targets)
 1) Sync coordinator
@@ -844,9 +844,9 @@ final class SyncCoordinator {
 
 2) Global UI elements
    - Update `ios/sideBar/sideBar/Design/Components/OfflineBanner.swift` (and usages in `PanelHeader`/`SiteHeaderBar`)
-   - Add `ios/sideBar/sideBar/Views/Offline/ConflictResolutionSheet.swift`
+   - Add `ios/sideBar/sideBar/Views/Offline/WriteConflictResolutionSheet.swift`
    - Wire in common UI via `ContentView` / shared layout.
-   - Status: Offline banner done; conflict sheet needs generalization beyond notes.
+   - Status: done
 
 #### Phase 6 Acceptance Checklist
 - SyncCoordinator refreshes all stores on reconnect.

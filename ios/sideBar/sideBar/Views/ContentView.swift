@@ -44,6 +44,7 @@ public struct ContentView: View {
     @State var pendingBiometricUnavailableAlert = false
     @State var isSigningOut = false
     @State var pendingReadyFileNotification: ReadyFileNotification?
+    @State var pendingWriteConflict: PendingWriteSummary?
     #if os(iOS)
     @AppStorage(AppStorageKeys.hasShownBiometricHint) var hasShownBiometricHint = false
     #endif
