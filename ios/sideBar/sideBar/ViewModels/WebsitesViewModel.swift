@@ -28,7 +28,12 @@ import Combine
 ///
 /// ## Usage
 /// ```swift
-/// let viewModel = WebsitesViewModel(api: websitesAPI, store: websitesStore, networkStatus: connectivityMonitor)
+/// let viewModel = WebsitesViewModel(
+///     api: websitesAPI,
+///     store: websitesStore,
+///     toastCenter: toastCenter,
+///     networkStatus: connectivityMonitor
+/// )
 /// await viewModel.load()
 /// let success = await viewModel.saveWebsite(url: "https://example.com")
 /// await viewModel.selectWebsite(id: websiteId)
@@ -55,16 +60,19 @@ public final class WebsitesViewModel: ObservableObject {
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore
+    private let toastCenter: ToastCenter
     private let networkStatus: any NetworkStatusProviding
     private var cancellables = Set<AnyCancellable>()
 
     public init(
         api: any WebsitesProviding,
         store: WebsitesStore,
+        toastCenter: ToastCenter,
         networkStatus: any NetworkStatusProviding
     ) {
         self.api = api
         self.store = store
+        self.toastCenter = toastCenter
         self.networkStatus = networkStatus
 
         store.$items
@@ -160,6 +168,7 @@ public final class WebsitesViewModel: ObservableObject {
             if PendingShareStore.shared.enqueueWebsite(url: normalized.absoluteString) != nil {
                 pendingWebsite = makePendingWebsite(from: normalized)
                 saveErrorMessage = nil
+                toastCenter.show(message: "Saved for later")
                 return true
             }
             saveErrorMessage = "Could not save for later."

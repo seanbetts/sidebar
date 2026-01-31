@@ -10,7 +10,12 @@ final class WebsitesViewModelTests: XCTestCase {
         cache.set(key: CacheKeys.websitesList, value: cached, ttlSeconds: 60)
         let api = MockWebsitesAPI(listResult: .failure(MockError.forced))
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         await viewModel.load()
 
@@ -23,7 +28,12 @@ final class WebsitesViewModelTests: XCTestCase {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(getResult: .success(detail))
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         await viewModel.selectWebsite(id: "site-1")
 
@@ -40,7 +50,12 @@ final class WebsitesViewModelTests: XCTestCase {
             getResult: .success(detail)
         )
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         await viewModel.load()
         await viewModel.selectWebsite(id: "site-1")
@@ -75,7 +90,12 @@ final class WebsitesViewModelTests: XCTestCase {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         let payload = RealtimePayload(
             eventType: .update,
@@ -116,7 +136,12 @@ final class WebsitesViewModelTests: XCTestCase {
             ))
         )
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         let saved = await viewModel.saveWebsite(url: "https://example.com")
 
@@ -139,7 +164,12 @@ final class WebsitesViewModelTests: XCTestCase {
             ))
         )
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         let saved = await viewModel.saveWebsite(url: "example.com")
 
@@ -151,7 +181,12 @@ final class WebsitesViewModelTests: XCTestCase {
         let cache = InMemoryCacheClient()
         let api = ControlledWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         let saveTask = Task { await viewModel.saveWebsite(url: "https://example.com") }
         await Task.yield()
@@ -182,7 +217,12 @@ final class WebsitesViewModelTests: XCTestCase {
             deleteResult: .success(())
         )
         let store = WebsitesStore(api: api, cache: cache)
-        let viewModel = WebsitesViewModel(api: api, store: store, networkStatus: TestNetworkStatus(isNetworkAvailable: true))
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
 
         await viewModel.selectWebsite(id: "site-1")
         await viewModel.deleteWebsite(id: "site-1")
