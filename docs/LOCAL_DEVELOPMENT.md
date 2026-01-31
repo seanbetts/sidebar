@@ -1,3 +1,8 @@
+---
+title: "Local Development (Native)"
+description: "Set up native development with hot reload for backend and frontend."
+---
+
 # Local Development (Native)
 
 This guide sets up native (non-Docker) development with hot reload for backend and frontend. It uses production Supabase and R2, so read the safety notes carefully. Secrets are loaded from Doppler.
@@ -28,6 +33,23 @@ cd frontend && npm install && cd ..
 
 # 6. Start development
 ./dev.sh start
+```
+
+## Docs (Mintlify)
+
+Install the CLI once, then run the local preview from `docs/`:
+
+```bash
+npm i -g mint
+cd docs
+mint dev
+```
+
+If you prefer not to install globally:
+
+```bash
+cd docs
+npx mint dev
 ```
 
 ## Daily Workflow

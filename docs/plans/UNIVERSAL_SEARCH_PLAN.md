@@ -1,3 +1,8 @@
+---
+title: "Universal Search API Implementation Plan"
+description: "Plan for the universal search API."
+---
+
 # Universal Search API Implementation Plan
 
 ## Overview

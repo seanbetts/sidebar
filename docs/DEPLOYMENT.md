@@ -1,3 +1,8 @@
+---
+title: "Deployment Guide"
+description: "How to deploy the frontend and API containers with required services."
+---
+
 # Deployment Guide
 
 This project ships as two containers (frontend + API) and relies on external services:

@@ -1,3 +1,8 @@
+---
+title: "iOS Architecture Guide"
+description: "Architecture and component overview for the sideBar iOS app."
+---
+
 # iOS Architecture Guide
 
 **Last Updated:** January 2026

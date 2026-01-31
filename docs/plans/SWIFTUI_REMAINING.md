@@ -1,3 +1,8 @@
+---
+title: "SwiftUI Remaining Work Plan (Jan 2026)"
+description: "Remaining SwiftUI tasks and milestones."
+---
+
 # SwiftUI Remaining Work Plan (Jan 2026)
 
 ## Goal

@@ -1,3 +1,8 @@
+---
+title: "OpenClaw Concepts to Explore for sideBar"
+description: "Notes on OpenClaw concepts and how they might map to sideBar."
+---
+
 # OpenClaw Concepts to Explore for sideBar
 
 Purpose: capture OpenClaw concepts that may transfer well to sideBar, why they matter, and how they could map onto sideBar's current architecture.

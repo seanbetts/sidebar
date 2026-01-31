@@ -1,3 +1,8 @@
+---
+title: "Testing Philosophy"
+description: "Testing approach, tools, and expectations for sideBar."
+---
+
 # Testing Philosophy
 
 ## General Approach

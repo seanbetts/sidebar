@@ -1,3 +1,8 @@
+---
+title: "Plan: Passwords app integration (Apple ecosystem)"
+description: "Implementation plan for Apple Passwords app integration."
+---
+
 # Plan: Passwords app integration (Apple ecosystem)
 
 ## Goal

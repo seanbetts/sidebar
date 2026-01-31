@@ -1,3 +1,8 @@
+---
+title: "Favicon Capture Implementation Plan"
+description: "Plan for capturing and processing site favicons."
+---
+
 # Favicon Capture Implementation Plan
 
 **Created:** 2026-01-20

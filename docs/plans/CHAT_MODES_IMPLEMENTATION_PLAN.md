@@ -1,3 +1,8 @@
+---
+title: "Chat Modes Implementation Plan for sideBar"
+description: "Plan for chat modes feature scope and rollout."
+---
+
 # Chat Modes Implementation Plan for sideBar
 
 ## Executive Summary

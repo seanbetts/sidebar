@@ -1,3 +1,8 @@
+---
+title: "iOS Extensions, Widgets, App Intents, and Siri Plan"
+description: "Plan for iOS extensions, widgets, and Siri/App Intents."
+---
+
 # iOS Extensions, Widgets, App Intents, and Siri Plan
 **Project:** sideBar iOS App
 **Document Version:** 1.2

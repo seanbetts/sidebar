@@ -1,3 +1,8 @@
+---
+title: "Markdown Styling Guide"
+description: "How markdown styling works across sideBar editors and viewers."
+---
+
 # Markdown Styling Guide
 
 This document explains the markdown styling system used across sideBar's TipTap-based components.

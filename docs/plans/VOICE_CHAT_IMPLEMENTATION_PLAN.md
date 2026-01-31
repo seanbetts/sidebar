@@ -1,3 +1,8 @@
+---
+title: "Voice Chat Implementation Plan"
+description: "Plan for voice chat feature implementation."
+---
+
 # Voice Chat Implementation Plan
 
 **Date**: 2025-12-28
