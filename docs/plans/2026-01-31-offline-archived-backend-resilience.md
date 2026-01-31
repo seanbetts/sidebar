@@ -26,37 +26,43 @@ Recent offline-sync work revealed that the `/websites` list (including archived 
 
 ## Plan
 
+## Status (as of 2026-01-31)
+- ✅ Phase 1 complete (DB-heavy endpoints running sync/threadpool, fast-fail timeouts, slow-query logging).
+- ✅ Phase 2 core complete (archived endpoints + offline header caching + recent-content retention window).
+- ⏳ Phase 2 optional metadata, Phase 3 UX polish, Phase 4 validation still pending.
+
 ### Phase 1 — Backend resilience (highest priority)
-1. Convert DB-heavy endpoints to sync (`def`) or `run_in_threadpool`.
-   - Targets: `notes`, `websites`, `files`, `tasks`, `conversations`, `settings`.
-2. Add a fast-fail path for DB timeouts/unavailability:
-   - Configure statement timeout (per-connection or per-request).
-   - Return 503 for timeouts/OperationalError.
-3. Add slow query instrumentation:
-   - SQLAlchemy `before_cursor_execute` / `after_cursor_execute` logging.
-   - Emit warnings for queries > 2s (tunable).
+- [x] Convert DB-heavy endpoints to sync (`def`) or `run_in_threadpool`.
+  - Targets: `notes`, `websites`, `files`, `tasks`, `conversations`, `settings`.
+- [x] Add a fast-fail path for DB timeouts/unavailability:
+  - Configure statement timeout (per-connection or per-request).
+  - Return 503 for timeouts/OperationalError.
+- [x] Add slow query instrumentation:
+  - SQLAlchemy `before_cursor_execute` / `after_cursor_execute` logging.
+  - Emit warnings for queries > 2s (tunable).
 
 ### Phase 2 — Archived websites + notes strategy
-1. Backend API:
-   - Add `GET /websites/archived` (summaries only, paginated).
-   - Add `GET /notes/archived` (summaries only, paginated).
-   - Add optional `archived_count` or `archived_last_updated` to main list response.
-2. iOS/macOS:
-   - Cache **archived headers** in offline store.
-   - Cache **full content only for recent archived** items.
-   - Offline behavior for older archived content: show a native placeholder and allow refresh when online.
+- [x] Backend API:
+  - Add `GET /websites/archived` (summaries only, paginated).
+  - Add `GET /notes/archived` (summaries only, paginated).
+  - Fix archived pagination ordering (order before limit/offset).
+- [ ] Add optional `archived_count` or `archived_last_updated` to main list response.
+- [x] iOS/macOS:
+  - Cache **archived headers** in offline store.
+  - Cache **full content only for recent archived** items (7-day retention window).
+  - Offline behavior for older archived content: show a native placeholder and allow refresh when online.
 
 ### Phase 3 — UI/UX polish + native feel
-1. Archived list UI:
-   - Separate section with native list styling.
-   - Clear offline badges for content availability.
-2. Settings toggle (optional):
-   - “Keep archived content offline for the last X days.”
+- [ ] Archived list UI:
+  - Separate section with native list styling.
+  - Clear offline badges for content availability.
+- [ ] Settings toggle (optional):
+  - “Keep archived content offline for the last X days.”
 
 ### Phase 4 — Validation
-1. Stress test: load large archive and verify no API hangs.
-2. Offline test: archived headers visible; recent archived content available; older content shows placeholder.
-3. Verify logs show slow queries and 503s during DB outage simulation.
+- [ ] Stress test: load large archive and verify no API hangs.
+- [ ] Offline test: archived headers visible; recent archived content available; older content shows placeholder.
+- [ ] Verify logs show slow queries and 503s during DB outage simulation.
 
 ## Risks & Mitigations
 - **Risk:** Threadpool saturation if too many heavy queries.
