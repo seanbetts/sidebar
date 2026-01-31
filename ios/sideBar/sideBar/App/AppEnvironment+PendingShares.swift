@@ -8,29 +8,48 @@ extension AppEnvironment {
         let pending = PendingShareStore.shared.loadAll()
         guard !pending.isEmpty else { return }
 
-        var remaining: [PendingShareItem] = []
-
-        for item in pending {
-            switch item.kind {
-            case .website:
-                guard let url = item.url else {
-                    continue
-                }
-                let success = await websitesViewModel.saveWebsite(url: url)
-                if !success {
-                    remaining.append(item)
-                }
-            case .file, .image:
-                guard let fileURL = PendingShareStore.shared.resolveFileURL(for: item) else {
-                    remaining.append(item)
-                    continue
-                }
-                ingestionViewModel.startUpload(url: fileURL)
-            @unknown default:
-                remaining.append(item)
-            }
-        }
-
+        let remaining = await filterPendingShares(pending)
         PendingShareStore.shared.replaceAll(remaining)
+    }
+
+    private func filterPendingShares(_ items: [PendingShareItem]) async -> [PendingShareItem] {
+        var remaining: [PendingShareItem] = []
+        for item in items where await shouldKeepPendingShare(item) {
+            remaining.append(item)
+        }
+        return remaining
+    }
+
+    private func shouldKeepPendingShare(_ item: PendingShareItem) async -> Bool {
+        switch item.kind {
+        case .website:
+            return await handlePendingWebsite(item)
+        case .youtube:
+            return await handlePendingYouTube(item)
+        case .file, .image:
+            return handlePendingFile(item)
+        @unknown default:
+            return true
+        }
+    }
+
+    private func handlePendingWebsite(_ item: PendingShareItem) async -> Bool {
+        guard let url = item.url else { return false }
+        let success = await websitesViewModel.saveWebsite(url: url)
+        return !success
+    }
+
+    private func handlePendingYouTube(_ item: PendingShareItem) async -> Bool {
+        guard let url = item.url else { return true }
+        let error = await ingestionViewModel.ingestYouTube(url: url)
+        return error != nil
+    }
+
+    private func handlePendingFile(_ item: PendingShareItem) -> Bool {
+        guard let fileURL = PendingShareStore.shared.resolveFileURL(for: item) else {
+            return true
+        }
+        ingestionViewModel.startUpload(url: fileURL)
+        return false
     }
 }

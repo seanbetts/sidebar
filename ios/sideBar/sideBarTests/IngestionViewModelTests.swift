@@ -26,7 +26,8 @@ final class IngestionViewModelTests: XCTestCase {
             api: api,
             store: store,
             temporaryStore: .shared,
-            uploadManager: MockIngestionUploadManager()
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
         )
 
         await viewModel.load()
@@ -66,7 +67,8 @@ final class IngestionViewModelTests: XCTestCase {
             api: api,
             store: ingestionStore,
             temporaryStore: store,
-            uploadManager: MockIngestionUploadManager()
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
         )
 
         await viewModel.selectFile(fileId: file.id)
@@ -103,7 +105,8 @@ final class IngestionViewModelTests: XCTestCase {
             api: api,
             store: store,
             temporaryStore: .shared,
-            uploadManager: MockIngestionUploadManager()
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
         )
 
         await viewModel.loadMeta(fileId: file.id)
@@ -155,7 +158,8 @@ final class IngestionViewModelTests: XCTestCase {
             api: api,
             store: store,
             temporaryStore: .shared,
-            uploadManager: MockIngestionUploadManager()
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
         )
 
         let errorMessage = await viewModel.ingestYouTube(url: "https://www.youtube.com/watch?v=abc123")
@@ -163,6 +167,37 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNil(errorMessage)
         XCTAssertEqual(viewModel.selectedFileId, "yt-1")
         XCTAssertTrue(viewModel.items.contains(where: { $0.file.id == "yt-1" }))
+    }
+
+    func testIngestYouTubeQueuesWhenOffline() async throws {
+        let api = MockIngestionAPI(
+            listResult: .failure(MockError.forced),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .failure(MockError.forced),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let pendingStore = PendingShareStore(
+            baseDirectory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString),
+            userDefaults: defaults
+        )
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter(),
+            pendingShareStore: pendingStore,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+        )
+
+        let errorMessage = await viewModel.ingestYouTube(url: "https://www.youtube.com/watch?v=abc123")
+
+        XCTAssertNil(errorMessage)
+        let pending = pendingStore.loadAll()
+        XCTAssertEqual(pending.first?.kind, .youtube)
     }
 
     private func makeListItem(id: String) -> IngestionListItem {
@@ -214,6 +249,11 @@ private func makeDefaults() -> UserDefaults {
 
 private enum MockError: Error {
     case forced
+}
+
+private struct TestNetworkStatus: NetworkStatusProviding {
+    let isNetworkAvailable: Bool
+    let isOffline: Bool
 }
 
 private struct MockIngestionAPI: IngestionProviding {

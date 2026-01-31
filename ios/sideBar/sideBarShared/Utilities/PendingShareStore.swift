@@ -4,6 +4,7 @@ public enum PendingShareKind: String, Codable {
     case website
     case file
     case image
+    case youtube
 }
 
 public struct PendingShareItem: Codable, Equatable, Identifiable {
@@ -58,6 +59,18 @@ public final class PendingShareStore {
         let item = PendingShareItem(
             id: UUID(),
             kind: .website,
+            createdAt: Date(),
+            url: url
+        )
+        append(item)
+        return item
+    }
+
+    @discardableResult
+    public func enqueueYouTube(url: String) -> PendingShareItem? {
+        let item = PendingShareItem(
+            id: UUID(),
+            kind: .youtube,
             createdAt: Date(),
             url: url
         )

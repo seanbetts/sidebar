@@ -198,6 +198,13 @@ extension IngestionViewModel {
         guard let normalized = normalizeYouTubeUrlCandidate(trimmed) else {
             return "Invalid YouTube URL"
         }
+        if networkStatus?.isOffline ?? store.isOffline {
+            if pendingShareStore.enqueueYouTube(url: normalized) != nil {
+                toastCenter.show(message: "Saved for later", style: .success)
+                return nil
+            }
+            return "Could not save for later."
+        }
         isIngestingYouTube = true
         defer { isIngestingYouTube = false }
         let tempId = "youtube-\(UUID().uuidString)"

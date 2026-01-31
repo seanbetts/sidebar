@@ -35,7 +35,7 @@ import UniformTypeIdentifiers
 ///
 /// ## Usage
 /// ```swift
-/// let viewModel = IngestionViewModel(api: ingestionAPI, store: store, ...)
+/// let viewModel = IngestionViewModel(api: ingestionAPI, store: store, toastCenter: toast, ...)
 /// await viewModel.load()
 /// await viewModel.ingestFiles(urls: selectedURLs)
 /// await viewModel.selectFile(id: fileId)
@@ -58,6 +58,8 @@ public final class IngestionViewModel: ObservableObject {
     let api: any IngestionProviding
     let temporaryStore: TemporaryFileStore
     let store: IngestionStore
+    let toastCenter: ToastCenter
+    let pendingShareStore: PendingShareStore
     let uploadManager: IngestionUploadManaging
     let networkStatus: (any NetworkStatusProviding)?
     var cancellables = Set<AnyCancellable>()
@@ -72,11 +74,15 @@ public final class IngestionViewModel: ObservableObject {
         store: IngestionStore,
         temporaryStore: TemporaryFileStore,
         uploadManager: IngestionUploadManaging,
+        toastCenter: ToastCenter,
+        pendingShareStore: PendingShareStore = .shared,
         networkStatus: (any NetworkStatusProviding)? = nil
     ) {
         self.api = api
         self.temporaryStore = temporaryStore
         self.store = store
+        self.toastCenter = toastCenter
+        self.pendingShareStore = pendingShareStore
         self.uploadManager = uploadManager
         self.networkStatus = networkStatus
 
