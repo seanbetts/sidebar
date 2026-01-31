@@ -280,6 +280,31 @@ extension WidgetDataManager {
   }
 }
 
+// MARK: - Quick Save
+
+extension WidgetDataManager {
+  private static let pendingQuickSaveKey = "pendingQuickSaveURL"
+
+  /// Records a URL to be saved when the app opens
+  public func recordPendingQuickSave(url: URL) {
+    guard let defaults = userDefaults else { return }
+    defaults.set(url.absoluteString, forKey: Self.pendingQuickSaveKey)
+    defaults.synchronize()
+  }
+
+  /// Consumes the pending quick save URL (called by main app)
+  public func consumePendingQuickSave() -> URL? {
+    guard let defaults = userDefaults,
+          let urlString = defaults.string(forKey: Self.pendingQuickSaveKey),
+          let url = URL(string: urlString) else {
+      return nil
+    }
+    defaults.removeObject(forKey: Self.pendingQuickSaveKey)
+    defaults.synchronize()
+    return url
+  }
+}
+
 // MARK: - TaskItem to WidgetTask Conversion
 
 extension WidgetTask {
