@@ -199,6 +199,26 @@ extension IngestionViewModel {
     func startUpload(url: URL) {
         let filename = url.lastPathComponent
         let mimeType = mimeTypeFor(url: url)
+        if networkStatus?.isOffline ?? store.isOffline {
+            let access = url.startAccessingSecurityScopedResource()
+            defer {
+                if access {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            let queued = pendingShareStore.enqueueFile(
+                at: url,
+                filename: filename,
+                mimeType: mimeType,
+                kind: .file
+            )
+            if queued != nil {
+                toastCenter.show(message: "Saved for later", style: .success)
+            } else {
+                toastCenter.show(message: "Could not save for later")
+            }
+            return
+        }
         let tempId = "local-\(UUID().uuidString)"
         let access = url.startAccessingSecurityScopedResource()
         if access {

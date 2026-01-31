@@ -26,6 +26,7 @@ extension AppEnvironment {
         let biometricMonitor: BiometricMonitor
         let writeQueue: WriteQueue
         let draftStorage: DraftStorage
+        let spotlightIndexer: SpotlightIndexer
     }
 
     static func buildDependencies(
@@ -44,6 +45,7 @@ extension AppEnvironment {
             : PersistenceController.shared
         let draftStorage = DraftStorage(container: persistenceController.container)
         let offlineStore = OfflineStore(container: persistenceController.container)
+        let spotlightIndexer = SpotlightIndexer()
         let chatStore = ChatStore(
             conversationsAPI: container.conversationsAPI,
             cache: container.cacheClient,
@@ -62,6 +64,7 @@ extension AppEnvironment {
             offlineStore: offlineStore,
             networkStatus: connectivityMonitor
         )
+        ingestionStore.spotlightIndexer = spotlightIndexer
         let scratchpadStore = ScratchpadStore()
         let biometricMonitor = BiometricMonitor()
         let tasksStore = TasksStore(
@@ -76,6 +79,7 @@ extension AppEnvironment {
             offlineStore: offlineStore,
             networkStatus: connectivityMonitor
         )
+        notesStore.spotlightIndexer = spotlightIndexer
         let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
         let tasksExecutor = TasksWriteQueueExecutor(api: container.tasksAPI, store: tasksStore)
         let websitesExecutor = WebsitesWriteQueueExecutor(api: container.websitesAPI, store: websitesStore)
@@ -130,6 +134,7 @@ extension AppEnvironment {
             store: ingestionStore,
             temporaryStore: temporaryStore,
             uploadManager: IngestionUploadManager(config: container.apiClient.config),
+            toastCenter: toastCenter,
             networkStatus: connectivityMonitor
         )
         let websitesViewModel = WebsitesViewModel(
@@ -174,7 +179,8 @@ extension AppEnvironment {
             connectivityMonitor: connectivityMonitor,
             biometricMonitor: biometricMonitor,
             writeQueue: writeQueue,
-            draftStorage: draftStorage
+            draftStorage: draftStorage,
+            spotlightIndexer: spotlightIndexer
         )
     }
 }
