@@ -55,6 +55,7 @@ public final class AppEnvironment: ObservableObject {
     }
     @Published public var pendingNewTaskDeepLink: Bool = false
     @Published public var pendingNewNoteDeepLink: Bool = false
+    @Published public var pendingScratchpadDeepLink: Bool = false
     @Published public var shortcutActionEvent: ShortcutActionEvent?
     var cancellables = Set<AnyCancellable>()
     #if os(iOS) || os(macOS)
