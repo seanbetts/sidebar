@@ -83,7 +83,7 @@ struct SavedSitesWidgetView: View {
     private var sitesList: some View {
         VStack(alignment: .leading, spacing: siteSpacing) {
             ForEach(displayedSites) { site in
-                SiteRowView(site: site, compact: isCompact)
+                SiteRowView(site: site, compact: isCompact, showSubtitle: showSubtitle)
             }
         }
     }
@@ -112,6 +112,10 @@ struct SavedSitesWidgetView: View {
 
     private var isCompact: Bool {
         family == .systemSmall
+    }
+
+    private var showSubtitle: Bool {
+        family == .systemLarge
     }
 
     private var showMoreIndicator: Bool {
@@ -166,6 +170,7 @@ struct SavedSitesWidgetView: View {
 struct SiteRowView: View {
     let site: WidgetWebsite
     let compact: Bool
+    let showSubtitle: Bool
 
     var body: some View {
         Link(destination: URL(string: site.url)!) {
@@ -174,10 +179,19 @@ struct SiteRowView: View {
                     .font(.system(size: compact ? 14 : 16))
                     .foregroundStyle(.secondary)
 
-                Text(site.title)
-                    .font(compact ? .caption : .subheadline)
-                    .lineLimit(1)
-                    .foregroundStyle(.primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(site.title)
+                        .font(compact ? .caption : .subheadline)
+                        .lineLimit(1)
+                        .foregroundStyle(.primary)
+
+                    if showSubtitle {
+                        Text(site.domain)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
 
                 Spacer(minLength: 0)
             }
