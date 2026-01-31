@@ -268,28 +268,36 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         )
         if FaviconService is not None and parsed.favicon_url:
             try:
-                metadata_payload = FaviconService.metadata_payload(
-                    favicon_url=parsed.favicon_url
-                )
-                if metadata_payload:
+                shared_key = FaviconService.existing_storage_key(website.domain)
+                if shared_key:
                     WebsitesService.update_metadata(
                         db,
                         user_id,
                         website.id,
-                        metadata_updates=metadata_payload,
+                        metadata_updates={"favicon_r2_key": shared_key},
                     )
-                favicon_key = FaviconService.fetch_and_store_favicon(
-                    user_id,
-                    website.domain,
-                    parsed.favicon_url,
-                )
-                if favicon_key:
-                    WebsitesService.update_metadata(
-                        db,
-                        user_id,
-                        website.id,
-                        metadata_updates={"favicon_r2_key": favicon_key},
+                else:
+                    metadata_payload = FaviconService.metadata_payload(
+                        favicon_url=parsed.favicon_url
                     )
+                    if metadata_payload:
+                        WebsitesService.update_metadata(
+                            db,
+                            user_id,
+                            website.id,
+                            metadata_updates=metadata_payload,
+                        )
+                    favicon_key = FaviconService.fetch_and_store_favicon(
+                        website.domain,
+                        parsed.favicon_url,
+                    )
+                    if favicon_key:
+                        WebsitesService.update_metadata(
+                            db,
+                            user_id,
+                            website.id,
+                            metadata_updates={"favicon_r2_key": favicon_key},
+                        )
             except Exception as exc:
                 logger.warning("favicon handling failed url=%s error=%s", url, exc)
         return {
