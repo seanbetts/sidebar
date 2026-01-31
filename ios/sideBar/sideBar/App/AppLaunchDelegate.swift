@@ -10,6 +10,7 @@ import UIKit
 
 final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
     static let tokenRefreshTaskIdentifier = "ai.sidebar.sidebar.tokenrefresh"
+    static let widgetRefreshTaskIdentifier = "ai.sidebar.sidebar.widgetrefresh"
     enum ShortcutCommandKeys {
         static let type = "type"
         static let section = "section"
@@ -87,6 +88,15 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
             self?.handleTokenRefresh(task: refreshTask)
         }
 
+        // Register background task for widget data refresh
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: Self.widgetRefreshTaskIdentifier,
+            using: nil
+        ) { [weak self] task in
+            guard let refreshTask = task as? BGAppRefreshTask else { return }
+            self?.handleWidgetRefresh(task: refreshTask)
+        }
+
         return true
     }
 
@@ -123,6 +133,44 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         } catch {
             let logger = Logger(subsystem: "sideBar", category: "BackgroundTask")
             logger.error("Failed to schedule token refresh: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    // MARK: - Background Widget Refresh
+
+    private func handleWidgetRefresh(task: BGAppRefreshTask) {
+        // Schedule next refresh
+        Self.scheduleWidgetRefresh()
+
+        let widgetTask = Task {
+            guard let environment = AppEnvironment.shared,
+                  environment.isAuthenticated else {
+                return false
+            }
+            // Fetch today's tasks and update widget data
+            await environment.tasksViewModel.refreshWidgetData()
+            return true
+        }
+
+        task.expirationHandler = {
+            widgetTask.cancel()
+        }
+
+        Task {
+            let success = await widgetTask.value
+            task.setTaskCompleted(success: success)
+        }
+    }
+
+    static func scheduleWidgetRefresh() {
+        let request = BGAppRefreshTaskRequest(identifier: widgetRefreshTaskIdentifier)
+        // Schedule for 30 minutes - iOS may defer based on system conditions
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 30 * 60)
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            let logger = Logger(subsystem: "sideBar", category: "BackgroundTask")
+            logger.error("Failed to schedule widget refresh: \(error.localizedDescription, privacy: .public)")
         }
     }
 
