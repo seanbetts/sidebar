@@ -2339,6 +2339,15 @@ wheels = [
 ]
 
 [[package]]
+name = "publicsuffix2"
+version = "2.20191221"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/04/1759906c4c5b67b2903f546de234a824d4028ef24eb0b1122daa43376c20/publicsuffix2-2.20191221.tar.gz", hash = "sha256:00f8cc31aa8d0d5592a5ced19cccba7de428ebca985db26ac852d920ddd6fe7b", size = 99592 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/16/053c2945c5e3aebeefb4ccd5c5e7639e38bc30ad1bdc7ce86c6d01707726/publicsuffix2-2.20191221-py2.py3-none-any.whl", hash = "sha256:786b5e36205b88758bd3518725ec8cfe7a8173f5269354641f581c6b80a99893", size = 89033 },
+]
+
+[[package]]
 name = "py"
 version = "1.11.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3245,6 +3254,7 @@ dependencies = [
     { name = "pillow" },
     { name = "prometheus-client" },
     { name = "psycopg2-binary" },
+    { name = "publicsuffix2" },
     { name = "pydantic-settings" },
     { name = "pydub" },
     { name = "pyjwt", extra = ["crypto"] },
@@ -3302,6 +3312,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "prometheus-client", specifier = ">=0.20.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.0" },
+    { name = "publicsuffix2", specifier = ">=2.20191221" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "pydub", specifier = ">=0.25.1" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.8.0" },
