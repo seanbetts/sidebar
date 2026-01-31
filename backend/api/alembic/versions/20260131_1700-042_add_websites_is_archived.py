@@ -21,14 +21,13 @@ BATCH_SIZE = 10_000
 
 def upgrade() -> None:
     """Add is_archived column for websites."""
-    op.execute("SET lock_timeout TO '5s'")
+    op.execute("SET statement_timeout TO '20min'")
     op.execute(
         "ALTER TABLE websites "
         "ADD COLUMN IF NOT EXISTS is_archived boolean "
         "DEFAULT false"
     )
     op.execute("ALTER TABLE websites ALTER COLUMN is_archived SET NOT NULL")
-    op.execute("SET lock_timeout TO DEFAULT")
 
     with op.get_context().autocommit_block():
         conn = op.get_bind()
@@ -65,6 +64,7 @@ def upgrade() -> None:
             "ON websites (user_id, is_archived, updated_at DESC) "
             "WHERE deleted_at IS NULL"
         )
+    op.execute("SET statement_timeout TO DEFAULT")
 
 
 def downgrade() -> None:
