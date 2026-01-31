@@ -58,6 +58,7 @@ extension AppEnvironment {
             offlineStore: offlineStore,
             networkStatus: connectivityMonitor
         )
+        websitesStore.spotlightIndexer = spotlightIndexer
         let ingestionStore = IngestionStore(
             api: container.ingestionAPI,
             cache: container.cacheClient,

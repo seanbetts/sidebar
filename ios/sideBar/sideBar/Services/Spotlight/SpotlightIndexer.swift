@@ -11,10 +11,14 @@ public protocol SpotlightIndexing: AnyObject {
   func indexNotes(_ notes: [SpotlightNote]) async
   func indexFile(_ file: SpotlightFile) async
   func indexFiles(_ files: [SpotlightFile]) async
+  func indexWebsite(_ website: SpotlightWebsite) async
+  func indexWebsites(_ websites: [SpotlightWebsite]) async
   func removeNote(path: String) async
   func removeFile(id: String) async
+  func removeWebsite(id: String) async
   func clearNotesIndex() async
   func clearFilesIndex() async
+  func clearWebsitesIndex() async
   func clearAllIndexes() async
 }
 
@@ -61,6 +65,29 @@ public struct SpotlightFile {
   }
 }
 
+/// Lightweight model for website indexing.
+public struct SpotlightWebsite {
+  public let id: String
+  public let title: String
+  public let url: String
+  public let domain: String
+  public let savedAt: Date?
+
+  public init(
+    id: String,
+    title: String,
+    url: String,
+    domain: String,
+    savedAt: Date?
+  ) {
+    self.id = id
+    self.title = title
+    self.url = url
+    self.domain = domain
+    self.savedAt = savedAt
+  }
+}
+
 // MARK: - SpotlightIndexer
 
 /// CoreSpotlight indexer for notes and files.
@@ -73,6 +100,7 @@ public final class SpotlightIndexer: SpotlightIndexing {
 
   static let notesDomain = "com.sidebar.notes"
   static let filesDomain = "com.sidebar.files"
+  static let websitesDomain = "com.sidebar.websites"
   private let batchSize = 100
   private let contentPreviewLength = 200
 
@@ -170,11 +198,57 @@ public final class SpotlightIndexer: SpotlightIndexing {
     }
   }
 
+  // MARK: - Website Indexing
+
+  public func indexWebsite(_ website: SpotlightWebsite) async {
+    let item = makeWebsiteSearchableItem(website)
+    do {
+      try await index.indexSearchableItems([item])
+      logger.debug("Indexed website: \(website.id, privacy: .public)")
+    } catch {
+      logger.error("Failed to index website \(website.id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+    }
+  }
+
+  public func indexWebsites(_ websites: [SpotlightWebsite]) async {
+    guard !websites.isEmpty else { return }
+
+    for batch in websites.chunked(into: batchSize) {
+      let items = batch.map { makeWebsiteSearchableItem($0) }
+      do {
+        try await index.indexSearchableItems(items)
+        logger.debug("Indexed \(items.count) websites")
+      } catch {
+        logger.error("Failed to index websites batch: \(error.localizedDescription, privacy: .public)")
+      }
+    }
+  }
+
+  public func removeWebsite(id: String) async {
+    let identifier = websiteIdentifier(for: id)
+    do {
+      try await index.deleteSearchableItems(withIdentifiers: [identifier])
+      logger.debug("Removed website from index: \(id, privacy: .public)")
+    } catch {
+      logger.error("Failed to remove website \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+    }
+  }
+
+  public func clearWebsitesIndex() async {
+    do {
+      try await index.deleteSearchableItems(withDomainIdentifiers: [Self.websitesDomain])
+      logger.info("Cleared websites index")
+    } catch {
+      logger.error("Failed to clear websites index: \(error.localizedDescription, privacy: .public)")
+    }
+  }
+
   // MARK: - Clear All
 
   public func clearAllIndexes() async {
     await clearNotesIndex()
     await clearFilesIndex()
+    await clearWebsitesIndex()
   }
 
   // MARK: - Private Helpers
@@ -185,6 +259,10 @@ public final class SpotlightIndexer: SpotlightIndexing {
 
   private func fileIdentifier(for id: String) -> String {
     "file:\(id)"
+  }
+
+  private func websiteIdentifier(for id: String) -> String {
+    "website:\(id)"
   }
 
   private func makeNoteSearchableItem(_ note: SpotlightNote) -> CSSearchableItem {
@@ -259,6 +337,39 @@ public final class SpotlightIndexer: SpotlightIndexing {
       attributeSet: attributes
     )
   }
+
+  private func makeWebsiteSearchableItem(_ website: SpotlightWebsite) -> CSSearchableItem {
+    let attributes = CSSearchableItemAttributeSet(contentType: .url)
+
+    // Title
+    attributes.title = website.title
+
+    // URL and domain for display
+    attributes.contentDescription = website.domain
+    attributes.url = URL(string: website.url)
+
+    // Searchable text - title, domain, and URL
+    attributes.textContent = "\(website.title) \(website.domain) \(website.url)"
+
+    // Keywords: title words and domain
+    var keywords = website.title
+      .replacingOccurrences(of: "-", with: " ")
+      .replacingOccurrences(of: "_", with: " ")
+      .split(separator: " ")
+      .map(String.init)
+    keywords.append(website.domain)
+    attributes.keywords = keywords
+
+    // Saved date
+    attributes.contentCreationDate = website.savedAt
+
+    let identifier = websiteIdentifier(for: website.id)
+    return CSSearchableItem(
+      uniqueIdentifier: identifier,
+      domainIdentifier: Self.websitesDomain,
+      attributeSet: attributes
+    )
+  }
 }
 
 // MARK: - Array Extension
@@ -287,6 +398,10 @@ extension SpotlightIndexer {
       let id = String(identifier.dropFirst(5))
       guard !id.isEmpty else { return nil }
       return URL(string: "sidebar://files/\(id)")
+    } else if identifier.hasPrefix("website:") {
+      let id = String(identifier.dropFirst(8))
+      guard !id.isEmpty else { return nil }
+      return URL(string: "sidebar://websites/\(id)")
     }
     return nil
   }
