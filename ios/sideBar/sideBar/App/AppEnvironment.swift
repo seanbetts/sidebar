@@ -104,6 +104,7 @@ public final class AppEnvironment: ObservableObject {
         self.biometricMonitor = dependencies.biometricMonitor
         self.writeQueue = dependencies.writeQueue
         self.draftStorage = dependencies.draftStorage
+        self.configError = configError
         self.syncCoordinator = SyncCoordinator(
             connectivityMonitor: dependencies.connectivityMonitor,
             writeQueue: dependencies.writeQueue,
@@ -135,7 +136,6 @@ public final class AppEnvironment: ObservableObject {
                 self?.isAuthenticated ?? false
             }
         )
-        self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
