@@ -71,8 +71,13 @@ class FaviconService:
         """Return shared storage key if a favicon already exists."""
         storage_key = FaviconService.build_storage_key(domain)
         storage = get_favicon_storage_backend()
-        if storage.object_exists(storage_key):
-            return storage_key
+        try:
+            if storage.object_exists(storage_key):
+                return storage_key
+        except Exception as exc:
+            logger.warning(
+                "favicon existence check failed domain=%s error=%s", domain, exc
+            )
         return None
 
     @staticmethod
