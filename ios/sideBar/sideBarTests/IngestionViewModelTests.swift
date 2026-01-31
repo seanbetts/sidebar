@@ -193,7 +193,7 @@ final class IngestionViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
         )
 
-        let errorMessage = await viewModel.ingestYouTube(url: "https://www.youtube.com/watch?v=abc123")
+        let errorMessage = await viewModel.ingestYouTube(url: "https://www.youtube.com/watch?v=abc123", showQueuedToast: false)
 
         XCTAssertNil(errorMessage)
         let pending = pendingStore.loadAll()
@@ -224,7 +224,7 @@ final class IngestionViewModelTests: XCTestCase {
             networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: false)
         )
 
-        let errorMessage = await viewModel.ingestYouTube(url: "https://www.youtube.com/watch?v=abc123")
+        let errorMessage = await viewModel.ingestYouTube(url: "https://www.youtube.com/watch?v=abc123", showQueuedToast: false)
 
         XCTAssertNil(errorMessage)
         let pending = pendingStore.loadAll()

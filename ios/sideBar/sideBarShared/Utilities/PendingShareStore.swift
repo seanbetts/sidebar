@@ -68,13 +68,19 @@ public final class PendingShareStore {
 
     @discardableResult
     public func enqueueYouTube(url: String) -> PendingShareItem? {
+        let existingItems = loadAll()
+        if let existing = existingItems.first(where: { $0.kind == .youtube && $0.url == url }) {
+            return existing
+        }
         let item = PendingShareItem(
             id: UUID(),
             kind: .youtube,
             createdAt: Date(),
             url: url
         )
-        append(item)
+        var items = existingItems
+        items.append(item)
+        replaceAll(items)
         return item
     }
 

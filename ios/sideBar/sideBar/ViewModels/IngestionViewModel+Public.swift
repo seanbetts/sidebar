@@ -208,14 +208,16 @@ extension IngestionViewModel {
         }
     }
 
-    public func ingestYouTube(url: String) async -> String? {
+    public func ingestYouTube(url: String, showQueuedToast: Bool = true) async -> String? {
         let trimmed = url.trimmed
         guard let normalized = normalizeYouTubeUrlCandidate(trimmed) else {
             return "Invalid YouTube URL"
         }
         if isOfflineForIngestion() {
             if pendingShareStore.enqueueYouTube(url: normalized) != nil {
-                toastCenter.show(message: "Saved for later", style: .success)
+                if showQueuedToast {
+                    toastCenter.show(message: "Saved for later", style: .success)
+                }
                 return nil
             }
             return "Could not save for later."
