@@ -30,6 +30,9 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     private var refreshingNotes = Set<String>()
     private let archivedNoteRetentionDays = 7
     private let archivedTreeLimit = 500
+    private var archivedSummary: ArchivedSummary?
+    private var archivedTreeSyncedAt: String?
+    private var archivedSyncLoaded = false
 
     public init(
         api: any NotesProviding,
@@ -114,7 +117,8 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         }
         let remote = try await api.listArchivedTree(limit: archivedTreeLimit, offset: 0)
         applyArchivedTreeUpdate(remote, persist: true)
-        cache.set(key: CacheKeys.notesArchivedTree, value: remote, ttlSeconds: cacheTTL)
+        archivedTreeSyncedAt = archivedSummary?.lastUpdated
+        persistArchivedSyncToken()
     }
 
     public func loadNote(id: String, force: Bool = false) async throws {
@@ -211,8 +215,11 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         }
     }
 
-    private func refreshArchivedTree() async {
+    private func refreshArchivedTree(force: Bool = false) async {
         guard !isRefreshingArchivedTree else {
+            return
+        }
+        guard shouldRefreshArchivedTree(force: force) else {
             return
         }
         isRefreshingArchivedTree = true
@@ -220,6 +227,8 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         do {
             let response = try await api.listArchivedTree(limit: archivedTreeLimit, offset: 0)
             applyArchivedTreeUpdate(response, persist: true)
+            archivedTreeSyncedAt = archivedSummary?.lastUpdated
+            persistArchivedSyncToken()
         } catch {
             // Ignore background refresh failures; cache remains source of truth.
         }
@@ -243,26 +252,129 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         guard shouldUpdateTree(incoming) else {
             return
         }
-        tree = incoming
+        updateArchivedSummary(from: incoming, persist: persist)
+        let merged = mergeArchivedSummary(into: incoming)
+        tree = merged
         if persist {
-            cache.set(key: CacheKeys.notesTree, value: incoming, ttlSeconds: CachePolicy.notesTree)
+            cache.set(key: CacheKeys.notesTree, value: merged, ttlSeconds: CachePolicy.notesTree)
             let lastSyncAt = Date()
-            offlineStore?.set(key: cacheKey, entityType: "notesTree", value: incoming, lastSyncAt: lastSyncAt)
+            offlineStore?.set(
+                key: cacheKey,
+                entityType: "notesTree",
+                value: merged,
+                lastSyncAt: lastSyncAt
+            )
         }
-        updateWidgetData(from: incoming)
+        updateWidgetData(from: merged)
     }
 
     func applyArchivedTreeUpdate(_ incoming: FileTree, persist: Bool) {
-        archivedTree = incoming
+        let merged = mergeArchivedSummary(into: incoming)
+        updateArchivedSummary(from: merged, persist: false)
+        archivedTree = merged
         if persist {
-            cache.set(key: CacheKeys.notesArchivedTree, value: incoming, ttlSeconds: cacheTTL)
+            cache.set(key: CacheKeys.notesArchivedTree, value: merged, ttlSeconds: cacheTTL)
             let lastSyncAt = Date()
-            offlineStore?.set(key: CacheKeys.notesArchivedTree, entityType: "notesArchivedTree", value: incoming, lastSyncAt: lastSyncAt)
+            offlineStore?.set(
+                key: CacheKeys.notesArchivedTree,
+                entityType: "notesArchivedTree",
+                value: merged,
+                lastSyncAt: lastSyncAt
+            )
         }
+    }
+
+    func makeTree(children: [FileNode]) -> FileTree {
+        FileTree(
+            children: children,
+            archivedCount: archivedSummary?.count,
+            archivedLastUpdated: archivedSummary?.lastUpdated
+        )
+    }
+
+    private func updateArchivedSummary(from tree: FileTree, persist: Bool) {
+        let summary = ArchivedSummary(
+            count: tree.archivedCount,
+            lastUpdated: tree.archivedLastUpdated
+        )
+        guard !summary.isEmpty else {
+            return
+        }
+        archivedSummary = summary
+        if persist, summary.count == 0 {
+            let empty = FileTree(
+                children: [],
+                archivedCount: summary.count,
+                archivedLastUpdated: summary.lastUpdated
+            )
+            applyArchivedTreeUpdate(empty, persist: true)
+            archivedTreeSyncedAt = summary.lastUpdated
+            persistArchivedSyncToken()
+        }
+    }
+
+    private func mergeArchivedSummary(into tree: FileTree) -> FileTree {
+        FileTree(
+            children: tree.children,
+            archivedCount: tree.archivedCount ?? archivedSummary?.count,
+            archivedLastUpdated: tree.archivedLastUpdated ?? archivedSummary?.lastUpdated
+        )
+    }
+
+    private func shouldRefreshArchivedTree(force: Bool) -> Bool {
+        if force {
+            return true
+        }
+        loadArchivedSyncTokenIfNeeded()
+        if let summary = archivedSummary {
+            if summary.count == 0 {
+                return false
+            }
+            if archivedTree == nil {
+                return true
+            }
+            guard let serverUpdated = summary.lastUpdated else {
+                return archivedTree == nil
+            }
+            let syncedAt = archivedTreeSyncedAt ?? archivedTree?.archivedLastUpdated
+            if let syncedAt {
+                return syncedAt != serverUpdated
+            }
+            return true
+        }
+        return true
+    }
+
+    private func loadArchivedSyncTokenIfNeeded() {
+        guard !archivedSyncLoaded else {
+            return
+        }
+        archivedSyncLoaded = true
+        archivedTreeSyncedAt = offlineStore?.get(
+            key: CacheKeys.notesArchivedSync,
+            as: String.self
+        )
+    }
+
+    private func persistArchivedSyncToken() {
+        guard let archivedTreeSyncedAt else {
+            return
+        }
+        let lastSyncAt = Date()
+        offlineStore?.set(
+            key: CacheKeys.notesArchivedSync,
+            entityType: "notesArchivedSync",
+            value: archivedTreeSyncedAt,
+            lastSyncAt: lastSyncAt
+        )
     }
 
     private func shouldUpdateTree(_ incoming: FileTree) -> Bool {
         guard let current = tree else {
+            return true
+        }
+        if current.archivedCount != incoming.archivedCount ||
+            current.archivedLastUpdated != incoming.archivedLastUpdated {
             return true
         }
         return FileTreeSignature.make(current) != FileTreeSignature.make(incoming)
