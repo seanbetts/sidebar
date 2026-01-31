@@ -275,6 +275,18 @@ def resolve_favicon_url(raw_favicon: str | None, source_url: str) -> str | None:
     return None
 
 
+def extract_favicon_url(url: str, *, timeout: int = 15) -> str | None:
+    """Fetch HTML and resolve a favicon URL without full parsing."""
+    normalized = ensure_url(url)
+    try:
+        html, final_url, _ = fetch_html(normalized, timeout=timeout)
+    except requests.RequestException:
+        return None
+    html = strip_control_chars(html)
+    metadata = extract_metadata(html, final_url)
+    return resolve_favicon_url(metadata.get("favicon"), final_url)
+
+
 def fetch_substack_body_html(
     url: str, html: str, *, timeout: int = 30
 ) -> tuple[str, dict] | None:

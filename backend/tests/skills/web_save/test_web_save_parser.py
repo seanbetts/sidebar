@@ -70,6 +70,26 @@ def test_resolve_favicon_url_falls_back(monkeypatch):
     assert resolved == "https://example.com/favicon.ico"
 
 
+def test_extract_favicon_url_fetches_html(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <link rel="icon" href="/favicon.png"/>
+      </head>
+      <body></body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "_favicon_exists", lambda url, timeout=8: False)
+
+    resolved = web_save_parser.extract_favicon_url("https://example.com/article")
+    assert resolved == "https://example.com/favicon.png"
+
+
 def test_rule_engine_removes_elements():
     html = "<html><body><div class='ad'>Ad</div><article><p>Keep</p></article></body></html>"
     engine = web_save_parser.RuleEngine(

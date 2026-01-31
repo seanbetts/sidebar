@@ -11,7 +11,7 @@ from api.db.session import SessionLocal, set_session_user_id
 from api.models.website import Website
 from api.services.favicon_service import FaviconService
 from api.services.jina_service import JinaService
-from api.services.web_save_parser import parse_url_local
+from api.services.web_save_parser import extract_favicon_url, parse_url_local
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService
 
@@ -104,7 +104,16 @@ def run_quick_save(
                         resolved_title,
                         local_parsed.title,
                     )
+            favicon_url = None
             if local_parsed and local_parsed.favicon_url:
+                favicon_url = local_parsed.favicon_url
+            if favicon_url is None:
+                try:
+                    favicon_url = extract_favicon_url(url)
+                except Exception:
+                    favicon_url = None
+
+            if favicon_url:
                 try:
                     shared_key = FaviconService.existing_storage_key(website.domain)
                     if shared_key:
@@ -116,7 +125,7 @@ def run_quick_save(
                         )
                     else:
                         metadata_payload = FaviconService.metadata_payload(
-                            favicon_url=local_parsed.favicon_url
+                            favicon_url=favicon_url
                         )
                         if metadata_payload:
                             WebsitesService.update_metadata(
@@ -127,7 +136,7 @@ def run_quick_save(
                             )
                         favicon_key = FaviconService.fetch_and_store_favicon(
                             website.domain,
-                            local_parsed.favicon_url,
+                            favicon_url,
                         )
                         if favicon_key:
                             WebsitesService.update_metadata(

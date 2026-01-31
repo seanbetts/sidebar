@@ -26,6 +26,7 @@ try:
     from api.services.web_save_parser import (
         ParsedPage,
         build_frontmatter,
+        extract_favicon_url,
         parse_url_local,
     )
     from api.services.web_save_tagger import (
@@ -266,7 +267,14 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             pinned=False,
             archived=False,
         )
-        if FaviconService is not None and parsed.favicon_url:
+        favicon_url = parsed.favicon_url
+        if favicon_url is None:
+            try:
+                favicon_url = extract_favicon_url(url)
+            except Exception:
+                favicon_url = None
+
+        if FaviconService is not None and favicon_url:
             try:
                 shared_key = FaviconService.existing_storage_key(website.domain)
                 if shared_key:
@@ -278,7 +286,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                     )
                 else:
                     metadata_payload = FaviconService.metadata_payload(
-                        favicon_url=parsed.favicon_url
+                        favicon_url=favicon_url
                     )
                     if metadata_payload:
                         WebsitesService.update_metadata(
@@ -289,7 +297,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                         )
                     favicon_key = FaviconService.fetch_and_store_favicon(
                         website.domain,
-                        parsed.favicon_url,
+                        favicon_url,
                     )
                     if favicon_key:
                         WebsitesService.update_metadata(
