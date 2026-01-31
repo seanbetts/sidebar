@@ -25,6 +25,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     private let offlineStore: OfflineStore?
     private let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
+    weak var spotlightIndexer: (any SpotlightIndexing)?
     private var isRefreshingList = false
     private var isRefreshingArchived = false
     private let archivedDetailRetentionDays = 7
@@ -184,6 +185,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         }
         offlineStore?.remove(key: CacheKeys.websiteDetail(id: id))
         updateWidgetData(from: items)
+        removeWebsiteFromSpotlight(id: id)
     }
 
     public func invalidateList() {
@@ -302,8 +304,34 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         items = mergeItems(active: incoming, archived: archivedItems)
         if persist {
             persistListCache()
+            indexWebsitesInSpotlight(incoming)
         }
         updateWidgetData(from: incoming)
+    }
+
+    private func indexWebsitesInSpotlight(_ items: [WebsiteItem]) {
+        guard let indexer = spotlightIndexer else { return }
+        let websites = items
+            .filter { !$0.archived && $0.deletedAt == nil }
+            .map { item in
+                SpotlightWebsite(
+                    id: item.id,
+                    title: item.title,
+                    url: item.url,
+                    domain: item.domain,
+                    savedAt: DateParsing.parseISO8601(item.savedAt)
+                )
+            }
+        Task {
+            await indexer.indexWebsites(websites)
+        }
+    }
+
+    private func removeWebsiteFromSpotlight(id: String) {
+        guard let indexer = spotlightIndexer else { return }
+        Task {
+            await indexer.removeWebsite(id: id)
+        }
     }
 
     private func applyArchivedUpdate(_ incoming: [WebsiteItem], persist: Bool) {
