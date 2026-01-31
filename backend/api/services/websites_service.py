@@ -257,6 +257,48 @@ class WebsitesService:
         return website
 
     @staticmethod
+    def update_metadata(
+        db: Session,
+        user_id: str,
+        website_id: uuid.UUID,
+        *,
+        metadata_updates: dict[str, object],
+    ) -> Website:
+        """Update metadata for a website.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            website_id: Website UUID.
+            metadata_updates: Metadata fields to merge.
+
+        Returns:
+            Updated Website.
+
+        Raises:
+            WebsiteNotFoundError: If no matching website exists.
+        """
+        website = (
+            db.query(Website)
+            .filter(
+                Website.user_id == user_id,
+                Website.id == website_id,
+                Website.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not website:
+            raise WebsiteNotFoundError(f"Website not found: {website_id}")
+
+        metadata = {**(website.metadata_ or {}), **metadata_updates}
+        website.metadata_ = metadata
+        website.updated_at = datetime.now(UTC)
+        flag_modified(website, "metadata_")
+        db.commit()
+        db.refresh(website)
+        return website
+
+    @staticmethod
     def update_pinned(
         db: Session,
         user_id: str,

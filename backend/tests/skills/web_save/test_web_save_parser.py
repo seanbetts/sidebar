@@ -30,6 +30,9 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
         return html, "https://example.com/article?utm=ignored", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
 
     parsed = web_save_parser.parse_url_local("example.com/article")
 
@@ -46,6 +49,25 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
     assert data["domain"] == "example.com"
     assert data["reading_time"]
     assert "svelte" in data["tags"]
+
+
+def test_extract_metadata_finds_favicon():
+    html = """
+    <html>
+      <head>
+        <link rel="icon" href="/favicon.png"/>
+      </head>
+      <body></body>
+    </html>
+    """
+    metadata = web_save_parser.extract_metadata(html, "https://example.com/article")
+    assert metadata["favicon"] == "/favicon.png"
+
+
+def test_resolve_favicon_url_falls_back(monkeypatch):
+    monkeypatch.setattr(web_save_parser, "_favicon_exists", lambda url, timeout=8: True)
+    resolved = web_save_parser.resolve_favicon_url(None, "https://example.com/article")
+    assert resolved == "https://example.com/favicon.ico"
 
 
 def test_rule_engine_removes_elements():
@@ -173,6 +195,9 @@ def test_metadata_overrides_apply(monkeypatch):
     engine = web_save_parser.RuleEngine([rule])
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
     monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
 
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert parsed.title == "Override Title"

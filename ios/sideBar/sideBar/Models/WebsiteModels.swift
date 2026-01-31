@@ -11,6 +11,8 @@ public struct WebsiteItem: Codable, Identifiable {
     public let pinned: Bool
     public let pinnedOrder: Int?
     public let archived: Bool
+    public let faviconUrl: String?
+    public let faviconR2Key: String?
     public let youtubeTranscripts: [String: WebsiteTranscriptEntry]?
     public let updatedAt: String?
     public let lastOpenedAt: String?
@@ -48,6 +50,8 @@ public struct WebsiteDetail: Codable, Identifiable {
     public let pinned: Bool
     public let pinnedOrder: Int?
     public let archived: Bool
+    public let faviconUrl: String?
+    public let faviconR2Key: String?
     public let youtubeTranscripts: [String: WebsiteTranscriptEntry]?
     public let updatedAt: String?
     public let lastOpenedAt: String?

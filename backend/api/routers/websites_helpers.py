@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from api.config import settings
 from api.db.session import SessionLocal, set_session_user_id
 from api.models.website import Website
+from api.services.favicon_service import FaviconService
 from api.services.jina_service import JinaService
 from api.services.web_save_parser import parse_url_local
 from api.services.website_processing_service import WebsiteProcessingService
@@ -103,6 +104,35 @@ def run_quick_save(
                         resolved_title,
                         local_parsed.title,
                     )
+            if local_parsed and local_parsed.favicon_url:
+                try:
+                    metadata_payload = FaviconService.metadata_payload(
+                        favicon_url=local_parsed.favicon_url
+                    )
+                    if metadata_payload:
+                        WebsitesService.update_metadata(
+                            db,
+                            user_id,
+                            website.id,
+                            metadata_updates=metadata_payload,
+                        )
+                    favicon_key = FaviconService.fetch_and_store_favicon(
+                        user_id,
+                        website.domain,
+                        local_parsed.favicon_url,
+                    )
+                    if favicon_key:
+                        WebsitesService.update_metadata(
+                            db,
+                            user_id,
+                            website.id,
+                            metadata_updates={"favicon_r2_key": favicon_key},
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "favicon update skipped url=%s error=%s", url, str(exc)
+                    )
+
             WebsiteProcessingService.update_job(
                 db,
                 job_id,
@@ -133,6 +163,9 @@ def website_summary(website: Website) -> dict:
         "pinned": metadata.get("pinned", False),
         "pinned_order": metadata.get("pinned_order"),
         "archived": bool(website.is_archived),
+        "favicon_url": metadata.get("favicon_url"),
+        "favicon_r2_key": metadata.get("favicon_r2_key"),
+        "favicon_extracted_at": metadata.get("favicon_extracted_at"),
         "youtube_transcripts": metadata.get("youtube_transcripts", {}),
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "last_opened_at": website.last_opened_at.isoformat()

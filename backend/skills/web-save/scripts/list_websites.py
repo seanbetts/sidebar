@@ -72,6 +72,9 @@ def list_websites_database(args: argparse.Namespace) -> dict:
                     "domain": site.domain,
                     "pinned": bool(metadata.get("pinned")),
                     "archived": bool(metadata.get("archived")),
+                    "favicon_url": metadata.get("favicon_url"),
+                    "favicon_r2_key": metadata.get("favicon_r2_key"),
+                    "favicon_extracted_at": metadata.get("favicon_extracted_at"),
                     "saved_at": site.saved_at.isoformat() if site.saved_at else None,
                     "published_at": site.published_at.isoformat()
                     if site.published_at

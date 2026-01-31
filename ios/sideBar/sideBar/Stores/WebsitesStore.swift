@@ -414,7 +414,9 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
                 || current.archived != item.archived
                 || current.lastOpenedAt != item.lastOpenedAt
                 || current.title != item.title
-                || current.deletedAt != item.deletedAt {
+                || current.deletedAt != item.deletedAt
+                || current.faviconUrl != item.faviconUrl
+                || current.faviconR2Key != item.faviconR2Key {
                 return true
             }
         }
@@ -501,6 +503,8 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
                 pinned: active.pinned,
                 pinnedOrder: active.pinnedOrder,
                 archived: active.archived,
+                faviconUrl: active.faviconUrl,
+                faviconR2Key: active.faviconR2Key,
                 youtubeTranscripts: active.youtubeTranscripts,
                 updatedAt: active.updatedAt,
                 lastOpenedAt: active.lastOpenedAt,
@@ -604,6 +608,8 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             pinned: item.pinned,
             pinnedOrder: item.pinnedOrder,
             archived: item.archived,
+            faviconUrl: item.faviconUrl ?? detail.faviconUrl,
+            faviconR2Key: item.faviconR2Key ?? detail.faviconR2Key,
             youtubeTranscripts: detail.youtubeTranscripts ?? item.youtubeTranscripts,
             updatedAt: item.updatedAt ?? detail.updatedAt,
             lastOpenedAt: item.lastOpenedAt ?? detail.lastOpenedAt
@@ -645,6 +651,8 @@ extension WebsitesStore {
                 pinned: item.pinned,
                 pinnedOrder: item.pinnedOrder,
                 archived: item.archived,
+                faviconUrl: item.faviconUrl,
+                faviconR2Key: item.faviconR2Key,
                 youtubeTranscripts: item.youtubeTranscripts,
                 updatedAt: item.updatedAt,
                 lastOpenedAt: item.lastOpenedAt,
@@ -682,6 +690,8 @@ extension WebsitesStore {
                 pinned: pinned,
                 pinnedOrder: item.pinnedOrder,
                 archived: item.archived,
+                faviconUrl: item.faviconUrl,
+                faviconR2Key: item.faviconR2Key,
                 youtubeTranscripts: item.youtubeTranscripts,
                 updatedAt: item.updatedAt,
                 lastOpenedAt: item.lastOpenedAt,
@@ -719,6 +729,8 @@ extension WebsitesStore {
                 pinned: item.pinned,
                 pinnedOrder: item.pinnedOrder,
                 archived: archived,
+                faviconUrl: item.faviconUrl,
+                faviconR2Key: item.faviconR2Key,
                 youtubeTranscripts: item.youtubeTranscripts,
                 updatedAt: item.updatedAt,
                 lastOpenedAt: item.lastOpenedAt,
@@ -779,6 +791,8 @@ extension WebsitesStore {
                 pinned: active.pinned,
                 pinnedOrder: active.pinnedOrder,
                 archived: active.archived,
+                faviconUrl: active.faviconUrl,
+                faviconR2Key: active.faviconR2Key,
                 youtubeTranscripts: active.youtubeTranscripts,
                 updatedAt: active.updatedAt,
                 lastOpenedAt: active.lastOpenedAt,

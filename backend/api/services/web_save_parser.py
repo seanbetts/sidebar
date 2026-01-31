@@ -91,6 +91,7 @@ class ParsedPage:
     content: str
     source: str
     published_at: datetime | None
+    favicon_url: str | None = None
 
 
 def ensure_url(value: str) -> str:
@@ -126,6 +127,37 @@ def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str, bool]:
             )
             return html, final_url, True
         raise
+
+
+def _rel_matches(rel_value: str | list[str] | None, target: str) -> bool:
+    """Return True when rel_value includes all tokens from target."""
+    if not rel_value:
+        return False
+    if isinstance(rel_value, str):
+        rel_tokens = rel_value.lower().split()
+    else:
+        rel_tokens = [str(token).lower() for token in rel_value]
+    target_tokens = target.lower().split()
+    return all(token in rel_tokens for token in target_tokens)
+
+
+def _favicon_exists(url: str, *, timeout: int = 8) -> bool:
+    """Return True if a favicon URL responds successfully."""
+    headers = {"User-Agent": USER_AGENT}
+    try:
+        response = requests.head(
+            url, headers=headers, timeout=timeout, allow_redirects=True
+        )
+        if response.status_code == 405:
+            response.close()
+            response = requests.get(
+                url, headers=headers, timeout=timeout, allow_redirects=True, stream=True
+            )
+        ok = 200 <= response.status_code < 400
+        response.close()
+        return ok
+    except requests.RequestException:
+        return False
 
 
 def _discard_frontmatter(
@@ -202,13 +234,45 @@ def extract_metadata(html: str, url: str) -> dict:
     if canonical_tag and canonical_tag.get("href"):
         canonical = canonical_tag["href"].strip()
 
+    favicon = None
+    for rel in (
+        "icon",
+        "shortcut icon",
+        "apple-touch-icon",
+        "apple-touch-icon-precomposed",
+    ):
+        link = soup.find("link", rel=lambda value, rel=rel: _rel_matches(value, rel))
+        if link and link.get("href"):
+            favicon = link["href"].strip()
+            if favicon:
+                break
+
     return {
         "title": title,
         "author": author,
         "published": published,
         "canonical": canonical or url,
         "image": image,
+        "favicon": favicon,
     }
+
+
+def resolve_favicon_url(raw_favicon: str | None, source_url: str) -> str | None:
+    """Resolve a favicon URL relative to the source URL with fallbacks."""
+    if raw_favicon:
+        resolved = urljoin(source_url, raw_favicon)
+        parsed = urlparse(resolved)
+        if parsed.scheme in {"http", "https"}:
+            return resolved
+        return None
+
+    parsed_source = urlparse(source_url)
+    if not parsed_source.scheme or not parsed_source.netloc:
+        return None
+    fallback = f"{parsed_source.scheme}://{parsed_source.netloc}/favicon.ico"
+    if _favicon_exists(fallback):
+        return fallback
+    return None
 
 
 def fetch_substack_body_html(
@@ -348,6 +412,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     html = strip_control_chars(html)
     raw_html_original = html
     metadata = extract_metadata(html, final_url)
+    favicon_url = resolve_favicon_url(metadata.get("favicon"), final_url)
     if pre_rules:
         html = engine.apply_rules(html, pre_rules)
     discard_rule = next((rule for rule in pre_rules if rule.discard), None)
@@ -631,6 +696,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         content=content,
         source=metadata.get("canonical") or final_url,
         published_at=published_at,
+        favicon_url=favicon_url,
     )
 
 

@@ -26,6 +26,8 @@ extension AppEnvironment {
                     continue
                 }
                 ingestionViewModel.startUpload(url: fileURL)
+            @unknown default:
+                remaining.append(item)
             }
         }
 

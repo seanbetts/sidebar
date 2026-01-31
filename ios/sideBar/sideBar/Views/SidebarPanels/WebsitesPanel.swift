@@ -392,7 +392,8 @@ extension WebsitesPanelView {
         let row = WebsiteRow(
             item: item,
             isSelected: selection == item.id,
-            useListStyling: useListStyling
+            useListStyling: useListStyling,
+            faviconBaseUrl: appEnvironment.container.config.r2PublicBaseUrl
         )
         .staggeredAppear(index: index, isActive: listAppeared)
         .onTapGesture { open(item: item) }

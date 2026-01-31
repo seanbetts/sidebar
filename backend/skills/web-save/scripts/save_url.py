@@ -33,10 +33,12 @@ try:
         compute_word_count,
         extract_tags,
     )
+    from api.services.favicon_service import FaviconService
     from api.services.websites_service import WebsitesService
 except Exception:
     SessionLocal = None
     WebsitesService = None
+    FaviconService = None
 
 
 if not logging.getLogger().handlers:
@@ -264,6 +266,32 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             pinned=False,
             archived=False,
         )
+        if FaviconService is not None and parsed.favicon_url:
+            try:
+                metadata_payload = FaviconService.metadata_payload(
+                    favicon_url=parsed.favicon_url
+                )
+                if metadata_payload:
+                    WebsitesService.update_metadata(
+                        db,
+                        user_id,
+                        website.id,
+                        metadata_updates=metadata_payload,
+                    )
+                favicon_key = FaviconService.fetch_and_store_favicon(
+                    user_id,
+                    website.domain,
+                    parsed.favicon_url,
+                )
+                if favicon_key:
+                    WebsitesService.update_metadata(
+                        db,
+                        user_id,
+                        website.id,
+                        metadata_updates={"favicon_r2_key": favicon_key},
+                    )
+            except Exception as exc:
+                logger.warning("favicon handling failed url=%s error=%s", url, exc)
         return {
             "id": str(website.id),
             "title": website.title,

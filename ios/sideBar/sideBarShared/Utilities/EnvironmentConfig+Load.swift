@@ -19,6 +19,7 @@ public extension EnvironmentConfig {
         let apiBaseUrlString = defaultApiBaseUrlString()
         let supabaseUrlString = try loadString(key: "SUPABASE_URL")
         let supabaseAnonKey = try loadString(key: "SUPABASE_ANON_KEY")
+        let r2PublicBaseUrlString = loadOptionalString(key: "R2_PUBLIC_BASE_URL")
 
         guard let apiBaseUrl = URL(string: apiBaseUrlString) else {
             throw EnvironmentConfigLoadError.invalidUrl(key: "API_BASE_URL", value: apiBaseUrlString)
@@ -28,10 +29,22 @@ public extension EnvironmentConfig {
             throw EnvironmentConfigLoadError.invalidUrl(key: "SUPABASE_URL", value: supabaseUrlString)
         }
 
+        var r2PublicBaseUrl: URL?
+        if let r2PublicBaseUrlString {
+            guard let url = URL(string: r2PublicBaseUrlString) else {
+                throw EnvironmentConfigLoadError.invalidUrl(
+                    key: "R2_PUBLIC_BASE_URL",
+                    value: r2PublicBaseUrlString
+                )
+            }
+            r2PublicBaseUrl = url
+        }
+
         return EnvironmentConfig(
             apiBaseUrl: apiBaseUrl,
             supabaseUrl: supabaseUrl,
-            supabaseAnonKey: supabaseAnonKey
+            supabaseAnonKey: supabaseAnonKey,
+            r2PublicBaseUrl: r2PublicBaseUrl
         )
     }
 
