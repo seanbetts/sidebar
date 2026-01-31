@@ -34,7 +34,9 @@ def get_favicon_storage_backend() -> StorageBackend:
     backend = settings.storage_backend.lower()
     if backend == "r2":
         access_key_id = settings.r2_access_key_id or settings.r2_access_key
-        bucket = settings.r2_favicon_bucket or settings.r2_bucket
+        bucket = settings.r2_favicon_bucket
+        if not bucket:
+            raise ValueError("R2_FAVICON_BUCKET must be set when using R2 storage.")
         return R2Storage(
             endpoint=settings.r2_endpoint,
             bucket=bucket,
