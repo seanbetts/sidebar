@@ -97,7 +97,9 @@ extension AppEnvironment {
         let path = url.path
         if path == "/new" {
             logger.info("Deep link to new chat")
-            chatViewModel.startNewConversation()
+            Task {
+                await chatViewModel.startNewConversation()
+            }
         } else if !path.isEmpty && path != "/" {
             // Path format: /{chatId}
             let chatId = String(path.dropFirst())
@@ -110,6 +112,8 @@ extension AppEnvironment {
 
     private func handleScratchpadDeepLink(logger: Logger) {
         logger.info("Deep link to scratchpad")
-        commandSelection = .scratchpad
+        // Scratchpad is accessed via the chat section
+        commandSelection = .chat
+        pendingScratchpadDeepLink = true
     }
 }

@@ -162,6 +162,13 @@ extension ContentView {
             if newValue != .chat {
                 handleNonChatSelection(newValue)
             }
+            // Handle pending scratchpad deep link
+            if newValue == .chat && environment.pendingScratchpadDeepLink {
+                environment.pendingScratchpadDeepLink = false
+                #if !os(macOS)
+                isPhoneScratchpadPresented = true
+                #endif
+            }
             sidebarSelection = newValue
             if !isLeftPanelExpanded {
                 isLeftPanelExpanded = true
