@@ -45,10 +45,8 @@ struct ChatMessageListView: View {
                         .id("bottom")
                 }
                 .padding(DesignTokens.Spacing.md)
-                #if os(macOS)
                 .frame(maxWidth: maxContentWidth)
                 .frame(maxWidth: .infinity, alignment: .center)
-                #endif
             }
             .task(id: viewModel.selectedConversationId) {
                 guard viewModel.selectedConversationId != nil else {
