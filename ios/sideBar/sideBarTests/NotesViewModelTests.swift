@@ -232,6 +232,12 @@ private final class NotesAPISpy: NotesProviding {
         throw MockError.forced
     }
 
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        throw MockError.forced
+    }
+
     func getNote(id: String) async throws -> NotePayload {
         _ = id
         getNoteCallCount += 1
@@ -322,6 +328,12 @@ private struct MockNotesAPI: NotesProviding {
 
     func listTree() async throws -> FileTree {
         try listTreeResult.get()
+    }
+
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return try listTreeResult.get()
     }
 
     func getNote(id: String) async throws -> NotePayload {

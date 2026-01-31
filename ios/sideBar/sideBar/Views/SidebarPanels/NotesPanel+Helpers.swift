@@ -500,7 +500,7 @@ extension NotesPanelView {
     }
 
     var archivedNodes: [FileNode] {
-        let nodes = filterNodes(viewModel.tree?.children ?? [], includeArchived: true)
+        let nodes = viewModel.archivedTree?.children ?? []
         return normalizeArchivedNodes(nodes)
     }
 

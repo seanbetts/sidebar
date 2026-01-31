@@ -22,6 +22,7 @@ from api.services.notes_workspace_service import NotesWorkspaceService
 from api.utils.timestamps import parse_client_timestamp
 
 router = APIRouter(prefix="/notes", tags=["notes"])
+ARCHIVED_LIST_MAX_LIMIT = 500
 router.include_router(notes_folders_router, tags=["notes"])
 
 
@@ -48,7 +49,26 @@ def list_notes_tree(
     Returns:
         Tree structure of folders and notes.
     """
-    return NotesWorkspaceService.list_tree(db, user_id)
+    return NotesWorkspaceService.list_tree(db, user_id, include_archived=False)
+
+
+@router.get("/archived")
+def list_archived_tree(
+    limit: int = 200,
+    offset: int = 0,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Return the archived notes tree for the current user."""
+    limit = max(1, min(limit, ARCHIVED_LIST_MAX_LIMIT))
+    offset = max(0, offset)
+    return NotesWorkspaceService.list_archived_tree(
+        db,
+        user_id,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("/search")

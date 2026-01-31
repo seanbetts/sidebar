@@ -5,12 +5,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.exceptions import NoteNotFoundError
 from api.models.note import Note
+from api.schemas.filters import NoteFilters
 from api.services.notes_helpers import build_notes_tree, is_archived_folder
 from api.services.notes_service import NotesService
 from api.services.workspace_service import WorkspaceService
@@ -41,6 +43,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         user_id: str,
         *,
         include_deleted: bool = False,
+        include_archived: bool = True,
         **kwargs: object,
     ) -> list[Note]:
         query = db.query(Note).options(
@@ -49,7 +52,33 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         query = query.filter(Note.user_id == user_id)
         if not include_deleted:
             query = query.filter(Note.deleted_at.is_(None))
+        if not include_archived:
+            archived_filter = or_(
+                Note.metadata_["archived"].astext == "true",
+                Note.metadata_["folder"].astext.like("Archive/%"),
+                Note.metadata_["folder"].astext == "Archive",
+            )
+            query = query.filter(~archived_filter)
         return query.order_by(Note.updated_at.desc()).all()
+
+    @staticmethod
+    def list_archived_tree(
+        db: Session,
+        user_id: str,
+        *,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> dict[str, list[dict[str, object]]]:
+        """Return a tree payload for archived notes only."""
+        notes = NotesService.list_notes(
+            db,
+            user_id,
+            NoteFilters(archived=True),
+            limit=limit,
+            offset=offset,
+        )
+        tree = build_notes_tree(notes)
+        return {"children": tree.get("children", [])}
 
     @classmethod
     def _build_tree(cls, items: list[Note], **kwargs: object) -> dict:

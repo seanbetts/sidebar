@@ -215,6 +215,12 @@ private final class MockNotesAPI: NotesProviding {
         return try treeResult.get()
     }
 
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return try treeResult.get()
+    }
+
     func getNote(id: String) async throws -> NotePayload {
         _ = id
         return try noteResult.get()
