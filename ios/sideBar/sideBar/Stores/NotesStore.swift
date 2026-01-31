@@ -25,6 +25,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     let offlineStore: OfflineStore?
     let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
+    weak var spotlightIndexer: (any SpotlightIndexing)?
     private var isRefreshingTree = false
     private var isRefreshingArchivedTree = false
     private var refreshingNotes = Set<String>()
@@ -187,6 +188,10 @@ public final class NotesStore: CachedStoreBase<FileTree> {
                 activeNote = nil
             }
             if let noteId {
+                // Get the path before invalidating so we can remove from Spotlight
+                if let note = notePayload(forId: noteId) {
+                    removeNoteFromSpotlight(path: note.path)
+                }
                 invalidateNote(id: noteId)
             }
         } else if let record = payload.record, let mapped = RealtimeMappers.mapNote(record) {
@@ -393,9 +398,30 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         if persist {
             if shouldPersistNote(incoming) {
                 persistNote(incoming)
+                indexNoteInSpotlight(incoming)
             } else {
                 clearCachedNote(incoming)
             }
+        }
+    }
+
+    private func indexNoteInSpotlight(_ note: NotePayload) {
+        guard let indexer = spotlightIndexer else { return }
+        let spotlightNote = SpotlightNote(
+            path: note.path,
+            name: note.name,
+            content: note.content,
+            modified: note.modified.map { Date(timeIntervalSince1970: $0) }
+        )
+        Task {
+            await indexer.indexNote(spotlightNote)
+        }
+    }
+
+    private func removeNoteFromSpotlight(path: String) {
+        guard let indexer = spotlightIndexer else { return }
+        Task {
+            await indexer.removeNote(path: path)
         }
     }
 

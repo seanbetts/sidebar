@@ -38,6 +38,7 @@ public final class AppEnvironment: ObservableObject {
     public let biometricMonitor: BiometricMonitor
     public let writeQueue: WriteQueue
     let draftStorage: DraftStorage
+    let spotlightIndexer: SpotlightIndexer
     let syncCoordinator: SyncCoordinator
 
     @Published public internal(set) var isAuthenticated: Bool = false
@@ -104,6 +105,7 @@ public final class AppEnvironment: ObservableObject {
         self.biometricMonitor = dependencies.biometricMonitor
         self.writeQueue = dependencies.writeQueue
         self.draftStorage = dependencies.draftStorage
+        self.spotlightIndexer = dependencies.spotlightIndexer
         self.configError = configError
         let chatViewModel = dependencies.chatViewModel
         let notesViewModel = dependencies.notesViewModel
