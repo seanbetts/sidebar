@@ -17,6 +17,7 @@ primary_region = "lhr"
   SUPABASE_SSLMODE = "require"
   R2_ENDPOINT = "https://f16e1f68ea7097515b5ede661fc421d2.r2.cloudflarestorage.com/"
   R2_BUCKET = "sidebar"
+  R2_FAVICON_BUCKET = "sidebar-favicons"
   STORAGE_BACKEND = "r2"
 
 [http_service]
