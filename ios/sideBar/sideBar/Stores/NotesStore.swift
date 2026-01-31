@@ -274,8 +274,39 @@ public final class NotesStore: CachedStoreBase<FileTree> {
                 value: merged,
                 lastSyncAt: lastSyncAt
             )
+            indexNotesFromTree(merged)
         }
         updateWidgetData(from: merged)
+    }
+
+    private func indexNotesFromTree(_ tree: FileTree) {
+        guard let indexer = spotlightIndexer else { return }
+        let notes = flattenNoteNodes(from: tree.children)
+            .filter { $0.archived != true }
+            .map { node in
+                SpotlightNote(
+                    path: node.path,
+                    name: node.name,
+                    content: nil,
+                    modified: node.modified.map { Date(timeIntervalSince1970: $0) }
+                )
+            }
+        Task {
+            await indexer.indexNotes(notes)
+        }
+    }
+
+    private func flattenNoteNodes(from nodes: [FileNode]) -> [FileNode] {
+        var result: [FileNode] = []
+        for node in nodes {
+            if node.type == .file {
+                result.append(node)
+            }
+            if let children = node.children {
+                result.append(contentsOf: flattenNoteNodes(from: children))
+            }
+        }
+        return result
     }
 
     func applyArchivedTreeUpdate(_ incoming: FileTree, persist: Bool) {
