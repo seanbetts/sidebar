@@ -82,9 +82,7 @@ struct WidgetListLayout<Header: View, List: View, Footer: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             list
             if let footer {
-                if family != .systemSmall {
-                    Spacer(minLength: 0)
-                }
+                Spacer(minLength: 0)
                 footer
                     .padding(.top, listFooterSpacing)
             }
