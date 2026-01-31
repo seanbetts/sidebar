@@ -1,4 +1,5 @@
 """Conversations API router with JSONB message storage."""
+# ruff: noqa: B008, N815
 
 from uuid import UUID
 
@@ -73,7 +74,7 @@ def _conversation_response(conversation) -> ConversationResponse:
 
 @router.post("", response_model=ConversationResponse)
 @router.post("/", response_model=ConversationResponse)
-async def create_conversation(
+def create_conversation(
     data: ConversationCreate,
     user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
@@ -86,7 +87,7 @@ async def create_conversation(
 
 @router.get("", response_model=list[ConversationResponse])
 @router.get("/", response_model=list[ConversationResponse])
-async def list_conversations(
+def list_conversations(
     user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
 ):
     """List all conversations for the current user."""
@@ -96,7 +97,7 @@ async def list_conversations(
 
 
 @router.get("/{conversation_id}", response_model=ConversationWithMessages)
-async def get_conversation(
+def get_conversation(
     conversation_id: UUID,
     user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
@@ -117,7 +118,7 @@ async def get_conversation(
 
 
 @router.post("/{conversation_id}/messages", response_model=ConversationResponse)
-async def add_message(
+def add_message(
     conversation_id: UUID,
     message: MessageCreate,
     user_id: str = Depends(get_current_user_id),
@@ -135,7 +136,7 @@ async def add_message(
 
 
 @router.put("/{conversation_id}", response_model=ConversationResponse)
-async def update_conversation(
+def update_conversation(
     conversation_id: UUID,
     updates: ConversationUpdate,
     user_id: str = Depends(get_current_user_id),
@@ -155,7 +156,7 @@ async def update_conversation(
 
 
 @router.delete("/{conversation_id}", response_model=ConversationResponse)
-async def delete_conversation(
+def delete_conversation(
     conversation_id: UUID,
     user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
@@ -172,7 +173,7 @@ async def delete_conversation(
 
 
 @router.post("/search", response_model=list[ConversationResponse])
-async def search_conversations(
+def search_conversations(
     query: str,
     limit: int = 10,
     user_id: str = Depends(get_current_user_id),

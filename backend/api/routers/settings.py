@@ -1,4 +1,5 @@
 """User settings API router."""
+# ruff: noqa: B008
 
 from datetime import date
 
@@ -55,7 +56,7 @@ class ShortcutsPatResponse(BaseModel):
 
 
 @router.get("", response_model=SettingsResponse)
-async def get_settings(
+def get_settings(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -74,7 +75,7 @@ async def get_settings(
 
 
 @router.patch("", response_model=SettingsResponse)
-async def update_settings(
+def update_settings(
     payload: SettingsUpdate,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
@@ -142,7 +143,7 @@ async def upload_profile_image(
 
 
 @router.get("/profile-image")
-async def get_profile_image(
+def get_profile_image(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -162,7 +163,7 @@ async def get_profile_image(
 
 
 @router.delete("/profile-image")
-async def delete_profile_image(
+def delete_profile_image(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -181,7 +182,7 @@ async def delete_profile_image(
 
 
 @router.get("/shortcuts/pat", response_model=ShortcutsPatResponse)
-async def get_shortcuts_pat(
+def get_shortcuts_pat(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -192,7 +193,7 @@ async def get_shortcuts_pat(
 
 
 @router.post("/shortcuts/pat/rotate", response_model=ShortcutsPatResponse)
-async def rotate_shortcuts_pat(
+def rotate_shortcuts_pat(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),

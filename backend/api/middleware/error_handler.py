@@ -9,6 +9,7 @@ from api.exceptions import APIError
 from fastapi import HTTPException as FastAPIHTTPException
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import DBAPIError, OperationalError
 
 logger = logging.getLogger(__name__)
 
@@ -71,4 +72,47 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     return JSONResponse(
         status_code=500,
         content=_error_payload("INTERNAL_ERROR", "An internal error occurred"),
+    )
+
+
+def _is_db_timeout(exc: DBAPIError) -> bool:
+    orig = getattr(exc, "orig", None)
+    code = getattr(orig, "pgcode", None)
+    if code in {"57014", "55P03"}:
+        return True
+    message = str(orig or exc).lower()
+    return any(
+        token in message
+        for token in (
+            "statement timeout",
+            "canceling statement",
+            "lock timeout",
+            "timeout expired",
+        )
+    )
+
+
+async def db_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle database connectivity/timeouts with a fast 503."""
+    is_timeout = isinstance(exc, DBAPIError) and _is_db_timeout(exc)
+    is_operational = isinstance(exc, OperationalError)
+    if not (is_timeout or is_operational):
+        return await unhandled_exception_handler(request, exc)
+
+    message = "Service unavailable"
+    if is_timeout:
+        message = "Database request timed out"
+
+    logger.error(
+        "Database error",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "db_error_type": exc.__class__.__name__,
+        },
+    )
+
+    return JSONResponse(
+        status_code=503,
+        content=_error_payload("SERVICE_UNAVAILABLE", message),
     )

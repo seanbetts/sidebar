@@ -33,7 +33,7 @@ class NotesSearchRequest(BaseModel):
 
 
 @router.get("/tree")
-async def list_notes_tree(
+def list_notes_tree(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -52,7 +52,7 @@ async def list_notes_tree(
 
 
 @router.post("/search")
-async def search_notes(
+def search_notes(
     query: str | None = None,
     limit: int = 50,
     request: NotesSearchRequest | None = Body(default=None),
@@ -86,7 +86,7 @@ async def search_notes(
 
 
 @router.get("/{note_id}")
-async def get_note(
+def get_note(
     note_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -117,7 +117,7 @@ async def get_note(
 
 
 @router.post("")
-async def create_note(
+def create_note(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -158,7 +158,7 @@ async def create_note(
 
 
 @router.patch("/{note_id}/rename")
-async def rename_note(
+def rename_note(
     note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -204,7 +204,7 @@ async def rename_note(
 
 
 @router.delete("/{note_id}")
-async def delete_note(
+def delete_note(
     note_id: uuid.UUID,
     request: dict | None = Body(default=None),
     user_id: str = Depends(get_current_user_id),
@@ -247,7 +247,7 @@ async def delete_note(
 
 
 @router.post("/sync")
-async def sync_notes(
+def sync_notes(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -272,7 +272,7 @@ async def sync_notes(
 
 
 @router.get("/{note_id}/download")
-async def download_note(
+def download_note(
     note_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -305,7 +305,7 @@ async def download_note(
 
 
 @router.patch("/{note_id}/pin")
-async def update_pin(
+def update_pin(
     note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -347,7 +347,7 @@ async def update_pin(
 
 
 @router.patch("/{note_id}")
-async def update_note(
+def update_note(
     note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -393,7 +393,7 @@ async def update_note(
 
 
 @router.patch("/{note_id}/move")
-async def update_folder(
+def update_folder(
     note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -436,7 +436,7 @@ async def update_folder(
 
 
 @router.patch("/{note_id}/archive")
-async def update_archive(
+def update_archive(
     note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),

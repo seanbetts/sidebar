@@ -264,7 +264,7 @@ start_backend() {
   echo "Starting backend..."
   (cd backend && {
     if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run --preserve-env="SUPABASE_URL" -- uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
+      doppler run --preserve-env="SUPABASE_URL,LOG_REQUESTS" -- uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
     else
       uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
     fi
@@ -272,7 +272,7 @@ start_backend() {
     echo "uv run failed; falling back to pip install with trusted hosts..."
     install_backend_deps_fallback
     if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run --preserve-env="SUPABASE_URL" -- "${REPO_ROOT}/backend/.venv/bin/python" -m uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
+      doppler run --preserve-env="SUPABASE_URL,LOG_REQUESTS" -- "${REPO_ROOT}/backend/.venv/bin/python" -m uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
     else
       "${REPO_ROOT}/backend/.venv/bin/python" -m uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
     fi
@@ -332,7 +332,7 @@ start_ingestion_worker() {
   echo "Starting ingestion worker..."
   (cd backend && {
     if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run --preserve-env="SUPABASE_URL" -- env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py
+      doppler run --preserve-env="SUPABASE_URL,LOG_REQUESTS" -- env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py
     else
       env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py
     fi
@@ -340,7 +340,7 @@ start_ingestion_worker() {
     echo "uv run failed; falling back to venv for ingestion worker..."
     install_backend_deps_fallback
     if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run --preserve-env="SUPABASE_URL" -- env PYTHONPATH=. PYTHONUNBUFFERED=1 "${REPO_ROOT}/backend/.venv/bin/python" workers/ingestion_worker.py
+      doppler run --preserve-env="SUPABASE_URL,LOG_REQUESTS" -- env PYTHONPATH=. PYTHONUNBUFFERED=1 "${REPO_ROOT}/backend/.venv/bin/python" workers/ingestion_worker.py
     else
       env PYTHONPATH=. PYTHONUNBUFFERED=1 "${REPO_ROOT}/backend/.venv/bin/python" workers/ingestion_worker.py
     fi

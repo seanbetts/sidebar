@@ -25,7 +25,7 @@ def _token_payload(record) -> dict:
 
 
 @router.post("")
-async def register_device_token(
+def register_device_token(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -48,7 +48,7 @@ async def register_device_token(
 
 
 @router.delete("")
-async def disable_device_token(
+def disable_device_token(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
