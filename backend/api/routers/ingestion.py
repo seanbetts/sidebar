@@ -68,7 +68,7 @@ async def quick_upload_file(
 
 
 @router.post("/youtube")
-async def ingest_youtube(
+def ingest_youtube(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     token: str = Depends(verify_bearer_token),
@@ -98,7 +98,7 @@ async def ingest_youtube(
 
 
 @router.get("")
-async def list_ingestions(
+def list_ingestions(
     user_id: str = Depends(get_current_user_id),
     token: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -173,7 +173,7 @@ async def list_ingestions(
 
 
 @router.get("/{file_id}/meta")
-async def get_file_meta(
+def get_file_meta(
     file_id: UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -265,7 +265,7 @@ async def get_file_meta(
 
 
 @router.get("/{file_id}/content")
-async def get_derivative_content(
+def get_derivative_content(
     file_id: UUID,
     kind: str,
     request: Request,
@@ -314,7 +314,7 @@ async def get_derivative_content(
 
 
 @router.post("/{file_id}/pause")
-async def pause_processing(
+def pause_processing(
     file_id: UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -329,7 +329,7 @@ async def pause_processing(
 
 
 @router.post("/{file_id}/resume")
-async def resume_processing(
+def resume_processing(
     file_id: UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -344,7 +344,7 @@ async def resume_processing(
 
 
 @router.post("/{file_id}/cancel")
-async def cancel_processing(
+def cancel_processing(
     file_id: UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -366,7 +366,7 @@ async def cancel_processing(
 
 
 @router.patch("/{file_id}/pin")
-async def update_pin(
+def update_pin(
     file_id: UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -394,7 +394,7 @@ async def update_pin(
 
 
 @router.patch("/pinned-order")
-async def update_pinned_order(
+def update_pinned_order(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -413,7 +413,7 @@ async def update_pinned_order(
 
 
 @router.patch("/{file_id}/rename")
-async def rename_file(
+def rename_file(
     file_id: UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -444,7 +444,7 @@ async def rename_file(
 
 
 @router.delete("/{file_id}")
-async def delete_file(
+def delete_file(
     file_id: UUID,
     request: dict | None = Body(default=None),
     user_id: str = Depends(get_current_user_id),
@@ -471,7 +471,7 @@ async def delete_file(
 
 
 @router.post("/sync")
-async def sync_files(
+def sync_files(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),

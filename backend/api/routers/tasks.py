@@ -108,7 +108,7 @@ def _update_snapshot_background(user_id: str, today_payload: dict) -> None:
 
 
 @router.get("/lists/{scope}")
-async def get_tasks_list(
+def get_tasks_list(
     scope: str,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id),
@@ -131,7 +131,7 @@ async def get_tasks_list(
 
 
 @router.get("/search")
-async def search_tasks(
+def search_tasks(
     query: str,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -242,7 +242,7 @@ async def sync_tasks(
 
 
 @router.post("/groups")
-async def create_task_group(
+def create_task_group(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -259,7 +259,7 @@ async def create_task_group(
 
 
 @router.patch("/groups/{group_id}")
-async def rename_task_group(
+def rename_task_group(
     group_id: str,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -277,7 +277,7 @@ async def rename_task_group(
 
 
 @router.delete("/groups/{group_id}")
-async def delete_task_group(
+def delete_task_group(
     group_id: str,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -291,7 +291,7 @@ async def delete_task_group(
 
 
 @router.post("/projects")
-async def create_task_project(
+def create_task_project(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -309,7 +309,7 @@ async def create_task_project(
 
 
 @router.patch("/projects/{project_id}")
-async def rename_task_project(
+def rename_task_project(
     project_id: str,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -327,7 +327,7 @@ async def rename_task_project(
 
 
 @router.delete("/projects/{project_id}")
-async def delete_task_project(
+def delete_task_project(
     project_id: str,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -341,7 +341,7 @@ async def delete_task_project(
 
 
 @router.get("/projects/{project_id}/tasks")
-async def get_project_tasks(
+def get_project_tasks(
     project_id: str,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -362,7 +362,7 @@ async def get_project_tasks(
 
 
 @router.get("/groups/{group_id}/tasks")
-async def get_group_tasks(
+def get_group_tasks(
     group_id: str,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -383,7 +383,7 @@ async def get_group_tasks(
 
 
 @router.get("/counts")
-async def get_counts(
+def get_counts(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),

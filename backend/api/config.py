@@ -110,6 +110,8 @@ class Settings(BaseSettings):
     database_url: str = _build_database_url()
     db_pool_size: int = int(os.getenv("DB_POOL_SIZE", "15"))
     db_max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "5"))
+    db_statement_timeout_ms: int = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "8000"))
+    db_slow_query_ms: int = int(os.getenv("DB_SLOW_QUERY_MS", "2000"))
 
     # Claude API configuration
     anthropic_api_key: str  # Loaded from Doppler or environment

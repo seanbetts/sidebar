@@ -1,6 +1,8 @@
 """sideBar Skills API - FastAPI + MCP integration."""
 
 import logging
+import os
+import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from types import ModuleType
@@ -12,6 +14,7 @@ from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError, OperationalError
 
 from api.config import settings
 from api.exceptions import APIError
@@ -20,6 +23,7 @@ from api.mcp.tools import register_mcp_tools
 from api.middleware.deprecation import DeprecationMiddleware
 from api.middleware.error_handler import (
     api_error_handler,
+    db_exception_handler,
     http_exception_handler,
     unhandled_exception_handler,
 )
@@ -134,6 +138,14 @@ app.add_exception_handler(
     ),
 )
 app.add_exception_handler(
+    OperationalError,
+    cast(Callable[[Request, Exception], Awaitable[JSONResponse]], db_exception_handler),
+)
+app.add_exception_handler(
+    DBAPIError,
+    cast(Callable[[Request, Exception], Awaitable[JSONResponse]], db_exception_handler),
+)
+app.add_exception_handler(
     Exception,
     cast(
         Callable[[Request, Exception], Awaitable[JSONResponse]],
@@ -142,6 +154,41 @@ app.add_exception_handler(
 )
 app.add_middleware(DeprecationMiddleware)
 app.add_middleware(MetricsMiddleware)
+
+# Optional request tracing for debugging hangs/timeouts.
+_log_requests = os.getenv("LOG_REQUESTS", "").lower() in {"1", "true", "yes", "on"}
+
+if _log_requests:
+    request_logger = logging.getLogger("api.request")
+
+    @app.middleware("http")
+    async def request_log_middleware(request: Request, call_next):
+        """Log request start/end with latency for debugging."""
+        request_logger.info(
+            "Request start %s %s",
+            request.method,
+            request.url.path,
+        )
+        start = time.monotonic()
+        try:
+            response = await call_next(request)
+        except Exception:
+            request_logger.exception(
+                "Request failed %s %s",
+                request.method,
+                request.url.path,
+            )
+            raise
+        else:
+            elapsed_ms = int((time.monotonic() - start) * 1000)
+            request_logger.info(
+                "Request end %s %s %s %sms",
+                request.method,
+                request.url.path,
+                response.status_code,
+                elapsed_ms,
+            )
+            return response
 
 
 # Unified authentication middleware

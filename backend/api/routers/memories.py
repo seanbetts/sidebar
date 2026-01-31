@@ -1,4 +1,5 @@
 """Memories API router."""
+# ruff: noqa: B008
 
 from __future__ import annotations
 
@@ -41,7 +42,7 @@ class MemoryUpdate(BaseModel):
 
 
 @router.get("", response_model=list[MemoryResponse])
-async def list_memories(
+def list_memories(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -70,7 +71,7 @@ async def list_memories(
 
 
 @router.get("/{memory_id}", response_model=MemoryResponse)
-async def get_memory(
+def get_memory(
     memory_id: UUID,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
@@ -101,7 +102,7 @@ async def get_memory(
 
 
 @router.post("", response_model=MemoryResponse)
-async def create_memory(
+def create_memory(
     payload: MemoryCreate,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
@@ -133,7 +134,7 @@ async def create_memory(
 
 
 @router.patch("/{memory_id}", response_model=MemoryResponse)
-async def update_memory(
+def update_memory(
     memory_id: UUID,
     payload: MemoryUpdate,
     db: Session = Depends(get_db),
@@ -174,7 +175,7 @@ async def update_memory(
 
 
 @router.delete("/{memory_id}")
-async def delete_memory(
+def delete_memory(
     memory_id: UUID,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),

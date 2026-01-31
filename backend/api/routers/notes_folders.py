@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 @router.patch("/pinned-order")
-async def update_pinned_order(
+def update_pinned_order(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -39,7 +39,7 @@ async def update_pinned_order(
 
 
 @router.post("/folders")
-async def create_folder(
+def create_folder(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -54,7 +54,7 @@ async def create_folder(
 
 
 @router.patch("/folders/rename")
-async def rename_folder(
+def rename_folder(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -70,7 +70,7 @@ async def rename_folder(
 
 
 @router.patch("/folders/move")
-async def move_folder(
+def move_folder(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -89,7 +89,7 @@ async def move_folder(
 
 
 @router.delete("/folders")
-async def delete_folder(
+def delete_folder(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),

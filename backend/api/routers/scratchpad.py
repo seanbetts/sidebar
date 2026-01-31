@@ -1,4 +1,5 @@
 """Scratchpad router for the fixed scratchpad note."""
+# ruff: noqa: B008
 
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPAuthorizationCredentials
@@ -70,7 +71,7 @@ def merge_content(existing: str, incoming: str, mode: str) -> str:
 
 
 @router.get("")
-async def get_scratchpad(
+def get_scratchpad(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -106,7 +107,7 @@ async def get_scratchpad(
 
 
 @router.post("")
-async def update_scratchpad(
+def update_scratchpad(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -159,7 +160,7 @@ async def update_scratchpad(
 
 
 @router.delete("")
-async def clear_scratchpad(
+def clear_scratchpad(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
