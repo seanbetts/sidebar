@@ -1,3 +1,8 @@
+---
+title: "Architecture & Design Decisions"
+description: "Key architectural decisions, design patterns, and learnings for sideBar."
+---
+
 # Architecture & Design Decisions
 
 This document captures key architectural decisions, design patterns, and learnings from building sideBar.

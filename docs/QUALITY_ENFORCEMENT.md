@@ -1,3 +1,8 @@
+---
+title: "Quality Enforcement Setup"
+description: "Dev environment quality gates, tooling, and enforcement rules."
+---
+
 # Quality Enforcement Setup
 
 **For humans setting up the development environment. AI agents see AGENTS.md instead.**

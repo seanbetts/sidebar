@@ -1,3 +1,8 @@
+---
+title: "API Reference Notes"
+description: "Notes on API versioning and error payload conventions."
+---
+
 # API Reference Notes
 
 This document summarizes API versioning and error payload conventions for sideBar.
