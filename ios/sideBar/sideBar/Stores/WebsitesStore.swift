@@ -187,7 +187,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
 
     public func saveOfflineSnapshot() async {
         persistListCache()
-        if let active {
+        if let active, !active.archived {
             let key = CacheKeys.websiteDetail(id: active.id)
             let lastSyncAt = offlineStore?.lastSyncAt(for: key)
             offlineStore?.set(key: key, entityType: "website", value: active, lastSyncAt: lastSyncAt)
@@ -287,6 +287,11 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             return
         }
         active = incoming
+        if incoming.archived {
+            cache.remove(key: CacheKeys.websiteDetail(id: incoming.id))
+            offlineStore?.remove(key: CacheKeys.websiteDetail(id: incoming.id))
+            return
+        }
         if persist {
             cache.set(key: CacheKeys.websiteDetail(id: incoming.id), value: incoming, ttlSeconds: CachePolicy.websiteDetail)
             let lastSyncAt = Date()
@@ -307,7 +312,8 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     private func persistListCache() {
-        let response = WebsitesResponse(items: items)
+        let cachedItems = items.filter { !$0.archived }
+        let response = WebsitesResponse(items: cachedItems)
         cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: CachePolicy.websitesList)
         let lastSyncAt = Date()
         offlineStore?.set(
