@@ -256,6 +256,81 @@ final class WriteQueueTests: XCTestCase {
         let remaining = try persistence.container.viewContext.fetch(request)
         XCTAssertTrue(remaining.isEmpty)
     }
+
+    func testFetchNextConflictReturnsOldestConflict() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+
+        let context = persistence.container.viewContext
+        let firstId = UUID()
+        let first = PendingWrite(context: context)
+        first.id = firstId
+        first.operationType = WriteOperation.update.rawValue
+        first.entityType = WriteEntityType.note.rawValue
+        first.entityId = "note-1"
+        first.payload = Data()
+        first.createdAt = Date(timeIntervalSince1970: 1)
+        first.attempts = 1
+        first.status = WriteQueueStatus.failed.rawValue
+        first.conflictReason = "First conflict"
+
+        let second = PendingWrite(context: context)
+        second.id = UUID()
+        second.operationType = WriteOperation.update.rawValue
+        second.entityType = WriteEntityType.note.rawValue
+        second.entityId = "note-2"
+        second.payload = Data()
+        second.createdAt = Date(timeIntervalSince1970: 2)
+        second.attempts = 1
+        second.status = WriteQueueStatus.failed.rawValue
+        second.conflictReason = "Second conflict"
+
+        try context.save()
+
+        let next = await queue.fetchNextConflict()
+        XCTAssertEqual(next?.id, firstId)
+        XCTAssertEqual(next?.conflictReason, "First conflict")
+    }
+
+    func testProcessQueuePausesOnConflict() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let executor = ConflictWriteExecutor()
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .note,
+            entityId: "note-1",
+            payload: Payload(value: "Hi")
+        )
+
+        await queue.processQueue()
+
+        XCTAssertTrue(queue.isPausedForConflict)
+        let next = await queue.fetchNextConflict()
+        XCTAssertEqual(next?.conflictReason, executor.conflictReason)
+    }
 }
 
 private final class TestWriteExecutor: WriteQueueExecutor {
@@ -263,6 +338,14 @@ private final class TestWriteExecutor: WriteQueueExecutor {
 
     func execute(write: PendingWriteRecord) async throws {
         executedIds.append(write.id)
+    }
+}
+
+private final class ConflictWriteExecutor: WriteQueueExecutor {
+    let conflictReason = "Server has newer data"
+
+    func execute(write: PendingWriteRecord) async throws {
+        throw WriteQueueConflictError(reason: conflictReason, serverSnapshot: nil)
     }
 }
 

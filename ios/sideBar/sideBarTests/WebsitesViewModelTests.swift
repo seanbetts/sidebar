@@ -318,17 +318,17 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
 
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = clientUpdatedAt
-        makeItem(id: id)
+        return makeItem(id: id)
     }
 
     func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = clientUpdatedAt
-        makeItem(id: id)
+        return makeItem(id: id)
     }
 
     func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = clientUpdatedAt
-        makeItem(id: id)
+        return makeItem(id: id)
     }
 
     func delete(id: String, clientUpdatedAt: String?) async throws {
