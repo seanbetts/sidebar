@@ -38,6 +38,7 @@ public final class AppEnvironment: ObservableObject {
     public let biometricMonitor: BiometricMonitor
     public let writeQueue: WriteQueue
     let draftStorage: DraftStorage
+    let syncCoordinator: SyncCoordinator
 
     @Published public internal(set) var isAuthenticated: Bool = false
     @Published public internal(set) var isOffline: Bool = false
@@ -103,6 +104,37 @@ public final class AppEnvironment: ObservableObject {
         self.biometricMonitor = dependencies.biometricMonitor
         self.writeQueue = dependencies.writeQueue
         self.draftStorage = dependencies.draftStorage
+        self.syncCoordinator = SyncCoordinator(
+            connectivityMonitor: dependencies.connectivityMonitor,
+            writeQueue: dependencies.writeQueue,
+            stores: [
+                SyncableStoreAdapter { [weak self] in
+                    guard let self else { return }
+                    await self.chatViewModel.refreshConversations(silent: true)
+                    await self.chatViewModel.refreshActiveConversation(silent: true)
+                },
+                SyncableStoreAdapter { [weak self] in
+                    guard let self else { return }
+                    await self.notesViewModel.loadTree()
+                    await self.notesViewModel.refreshSelectedNoteIfNeeded()
+                },
+                SyncableStoreAdapter { [weak self] in
+                    await self?.websitesViewModel.load(force: true)
+                },
+                SyncableStoreAdapter { [weak self] in
+                    await self?.ingestionViewModel.load(force: true)
+                },
+                SyncableStoreAdapter { [weak self] in
+                    guard let self else { return }
+                    await self.tasksViewModel.load(selection: self.tasksViewModel.selection, force: true)
+                    await self.tasksViewModel.loadCounts(force: true)
+                    await self.tasksViewModel.refreshWidgetData()
+                }
+            ],
+            isSyncAllowed: { [weak self] in
+                self?.isAuthenticated ?? false
+            }
+        )
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
         #if os(iOS) || os(macOS)

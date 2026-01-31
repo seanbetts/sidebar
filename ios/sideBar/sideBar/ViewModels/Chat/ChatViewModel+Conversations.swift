@@ -326,7 +326,7 @@ extension ChatViewModel {
             errorMessage = nil
             isLoadingMessages = true
         }
-        if !networkStatus.isNetworkAvailable, !chatStore.hasCachedConversation(id: id) {
+        if networkStatus.isOffline, !chatStore.hasCachedConversation(id: id) {
             errorMessage = "This chat isn't available offline yet."
             if !silent {
                 isLoadingMessages = false

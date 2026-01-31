@@ -12,6 +12,7 @@ extension AppEnvironment {
         }
         forwardObjectWillChange()
         monitorNetwork()
+        syncCoordinator.start()
         setupTaskBadgeUpdates()
         ingestionViewModel.resumePendingUploads()
         runOfflineMaintenance()
@@ -117,9 +118,6 @@ extension AppEnvironment {
             .removeDuplicates()
             .sink { [weak self] isOffline in
                 self?.isOffline = isOffline
-                if isOffline == false {
-                    self?.refreshOnReconnect()
-                }
             }
             .store(in: &cancellables)
 
