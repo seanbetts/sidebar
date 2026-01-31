@@ -115,6 +115,70 @@ final class NotesStoreTests: XCTestCase {
 
         XCTAssertEqual(store.tree?.children.first?.name, "Offline")
     }
+
+    func testArchivedNoteOlderThanRetentionDoesNotPersist() {
+        let archivedNode = FileNode(
+            name: "Archived.md",
+            path: "n1",
+            type: .file,
+            size: nil,
+            modified: nil,
+            children: nil,
+            expanded: nil,
+            pinned: nil,
+            pinnedOrder: nil,
+            archived: true,
+            folderMarker: nil
+        )
+        let tree = FileTree(children: [archivedNode])
+        let cache = TestCacheClient()
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let store = NotesStore(api: api, cache: cache, offlineStore: offlineStore)
+        store.applyTreeUpdate(tree, persist: false)
+
+        let oldDate = Date().addingTimeInterval(-8 * 24 * 60 * 60).timeIntervalSince1970
+        let note = NotePayload(id: "n1", name: "Archived", content: "Body", path: "n1", modified: oldDate)
+        store.applyEditorUpdate(note)
+
+        let cached: NotePayload? = cache.get(key: CacheKeys.note(id: "n1"))
+        XCTAssertNil(cached)
+        let offlineCached: NotePayload? = offlineStore.get(key: CacheKeys.note(id: "n1"), as: NotePayload.self)
+        XCTAssertNil(offlineCached)
+    }
+
+    func testArchivedNoteRecentPersists() {
+        let archivedNode = FileNode(
+            name: "Archived.md",
+            path: "n2",
+            type: .file,
+            size: nil,
+            modified: nil,
+            children: nil,
+            expanded: nil,
+            pinned: nil,
+            pinnedOrder: nil,
+            archived: true,
+            folderMarker: nil
+        )
+        let tree = FileTree(children: [archivedNode])
+        let cache = TestCacheClient()
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let store = NotesStore(api: api, cache: cache, offlineStore: offlineStore)
+        store.applyTreeUpdate(tree, persist: false)
+
+        let recentDate = Date().addingTimeInterval(-2 * 24 * 60 * 60).timeIntervalSince1970
+        let note = NotePayload(id: "n2", name: "Archived", content: "Body", path: "n2", modified: recentDate)
+        store.applyEditorUpdate(note)
+
+        let cached: NotePayload? = cache.get(key: CacheKeys.note(id: "n2"))
+        XCTAssertNotNil(cached)
+        let offlineCached: NotePayload? = offlineStore.get(key: CacheKeys.note(id: "n2"), as: NotePayload.self)
+        XCTAssertNotNil(offlineCached)
+    }
 }
 
 private enum MockError: Error {
