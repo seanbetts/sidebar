@@ -28,6 +28,8 @@ dependencies = [
     "readability-lxml>=0.8.1",
     "markdownify>=0.11.6",
     "beautifulsoup4>=4.12.0",
+    # Domain parsing (favicon dedupe)
+    "publicsuffix2>=2.20191221",
     # YouTube downloading (youtube-download skill)
     "yt-dlp>=2024.0.0",
     # Audio transcription (audio-transcribe skill)
