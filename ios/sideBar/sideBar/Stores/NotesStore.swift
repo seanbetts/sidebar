@@ -29,10 +29,12 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     private var isRefreshingArchivedTree = false
     private var refreshingNotes = Set<String>()
     private let archivedNoteRetentionDays = 7
+    private let archivedNotePrefetchLimit = 50
     private let archivedTreeLimit = 500
     private var archivedSummary: ArchivedSummary?
     private var archivedTreeSyncedAt: String?
     private var archivedSyncLoaded = false
+    private var isPrefetchingArchivedNotes = false
 
     public init(
         api: any NotesProviding,
@@ -229,6 +231,9 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             applyArchivedTreeUpdate(response, persist: true)
             archivedTreeSyncedAt = archivedSummary?.lastUpdated
             persistArchivedSyncToken()
+            Task { [weak self] in
+                await self?.prefetchArchivedNotes(from: response)
+            }
         } catch {
             // Ignore background refresh failures; cache remains source of truth.
         }
@@ -448,6 +453,57 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             return true
         }
         return false
+    }
+
+    private func prefetchArchivedNotes(from tree: FileTree) async {
+        guard archivedNotePrefetchLimit > 0 else { return }
+        guard !(networkStatus?.isOffline ?? false) else { return }
+        guard !isPrefetchingArchivedNotes else { return }
+        isPrefetchingArchivedNotes = true
+        defer { isPrefetchingArchivedNotes = false }
+
+        let nodes = archivedNoteNodes(from: tree.children)
+        let candidates = nodes.filter { isWithinArchivedRetention(modified: $0.modified) }
+        let uncached = candidates.filter { !hasCachedNote(id: $0.path) }
+        guard !uncached.isEmpty else { return }
+        let sorted = uncached.sorted { ($0.modified ?? 0) > ($1.modified ?? 0) }
+        for node in sorted.prefix(archivedNotePrefetchLimit) {
+            do {
+                let note = try await api.getNote(id: node.path)
+                if shouldPersistNote(note) {
+                    persistNote(note)
+                } else {
+                    clearCachedNote(note)
+                }
+            } catch {
+                continue
+            }
+        }
+    }
+
+    private func archivedNoteNodes(from nodes: [FileNode]) -> [FileNode] {
+        var collected: [FileNode] = []
+        for node in nodes {
+            if node.type == .file {
+                collected.append(node)
+            }
+            if let children = node.children {
+                collected.append(contentsOf: archivedNoteNodes(from: children))
+            }
+        }
+        return collected
+    }
+
+    private func isWithinArchivedRetention(modified: Double?) -> Bool {
+        guard let modified else { return false }
+        guard let cutoff = Calendar.current.date(
+            byAdding: .day,
+            value: -archivedNoteRetentionDays,
+            to: Date()
+        ) else {
+            return false
+        }
+        return Date(timeIntervalSince1970: modified) >= cutoff
     }
 
     private func findNode(path: String, in nodes: [FileNode]) -> FileNode? {
