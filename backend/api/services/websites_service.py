@@ -484,6 +484,8 @@ class WebsitesService:
         filters: WebsiteFilters | None = None,
         *,
         include_deleted: bool = False,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> Iterable[Website]:
         """List websites using optional filters.
 
@@ -492,6 +494,8 @@ class WebsitesService:
             user_id: Current user ID.
             filters: Optional filters object.
             include_deleted: Whether to include soft-deleted records.
+            limit: Max results to return when provided.
+            offset: Offset for pagination when provided.
 
         Returns:
             List of matching websites ordered by saved_at/created_at.
@@ -550,6 +554,11 @@ class WebsitesService:
 
         if filters.title_search:
             query = query.filter(Website.title.ilike(f"%{filters.title_search}%"))
+
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
 
         return query.order_by(
             Website.saved_at.desc().nullslast(), Website.created_at.desc()

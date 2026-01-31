@@ -477,6 +477,11 @@ extension WebsitesPanelView {
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(panelBackground)
+        .onChange(of: isArchiveExpanded) { expanded in
+            if expanded {
+                Task { await viewModel.loadArchived() }
+            }
+        }
         .background(
             GeometryReader { proxy in
                 Color.clear.preference(key: ArchiveHeightKey.self, value: proxy.size.height)

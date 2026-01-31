@@ -106,6 +106,10 @@ public final class WebsitesViewModel: ObservableObject {
         }
     }
 
+    public func loadArchived(force: Bool = false) async {
+        await store.loadArchivedList(force: force)
+    }
+
     public func showPendingFromExtension(url: String) {
         guard let normalized = WebsiteURLValidator.normalizedCandidate(url) else {
             return
