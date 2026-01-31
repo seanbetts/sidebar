@@ -109,7 +109,7 @@ public final class TasksViewModel: ObservableObject {
     }
 
     /// Updates widget data with current today tasks (when already on Today view)
-    private func updateWidgetData() {
+    func updateWidgetData() {
         let projectTitleById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.title) })
         let groupTitleById = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0.title) })
         let todayTasks = TasksUtils.sortByDueDate(

@@ -132,6 +132,39 @@ public final class TasksStore: ObservableObject {
         errorMessage = nil
     }
 
+    /// Decrements today count optimistically for offline operations
+    public func decrementTodayCount() {
+        guard let currentCounts = counts else { return }
+        let newToday = max(0, currentCounts.counts.today - 1)
+        counts = TaskCountsResponse(
+            generatedAt: currentCounts.generatedAt,
+            counts: TaskCounts(
+                inbox: currentCounts.counts.inbox,
+                today: newToday,
+                upcoming: currentCounts.counts.upcoming,
+                completed: currentCounts.counts.completed
+            ),
+            projects: currentCounts.projects,
+            groups: currentCounts.groups
+        )
+    }
+
+    /// Increments today count optimistically for offline operations
+    public func incrementTodayCount() {
+        guard let currentCounts = counts else { return }
+        counts = TaskCountsResponse(
+            generatedAt: currentCounts.generatedAt,
+            counts: TaskCounts(
+                inbox: currentCounts.counts.inbox,
+                today: currentCounts.counts.today + 1,
+                upcoming: currentCounts.counts.upcoming,
+                completed: currentCounts.counts.completed
+            ),
+            projects: currentCounts.projects,
+            groups: currentCounts.groups
+        )
+    }
+
     /// Optimistically removes a task from the local list. Returns the task for restoration if needed.
     public func removeTask(id: String) -> TaskItem? {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return nil }
