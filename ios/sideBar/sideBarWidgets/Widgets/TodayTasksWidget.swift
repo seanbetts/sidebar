@@ -38,45 +38,23 @@ struct TodayTasksWidgetView: View {
     // MARK: - Task List View
 
     private var taskListView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Link(destination: URL(string: "sidebar://tasks/today")!) {
-                VStack(alignment: .leading, spacing: 12) {
-                    headerView
-                    tasksList
-                }
-            }
-            .buttonStyle(.plain)
-            if family == .systemLarge {
-                Spacer(minLength: 0)
-            }
+        WidgetListLayout(family: family) {
+            WidgetHeaderView(
+                title: "Tasks",
+                totalCount: entry.data.totalCount,
+                destination: URL(string: "sidebar://tasks/today")!,
+                reduceTitleForSmall: false,
+                family: family
+            )
+        } list: {
+            tasksList
+        } footer: {
             HStack {
                 if showMoreIndicator {
                     moreTasksIndicator
                 }
                 Spacer()
                 addTaskButton
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: family == .systemLarge ? .topLeading : .top)
-    }
-
-    private var headerView: some View {
-        HStack(spacing: 6) {
-            Image("AppLogo")
-                .resizable()
-                .widgetAccentedRenderingMode(.accentedDesaturated)
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 18, height: 18)
-            Text("Tasks")
-                .font(.headline)
-                .fontWeight(.semibold)
-            Spacer()
-            if entry.data.totalCount > 0 {
-                Text("\(entry.data.totalCount)")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .widgetAccentable()
             }
         }
     }
@@ -234,6 +212,9 @@ struct TaskRowView: View {
     let task: WidgetTask
     let compact: Bool
     let showSubtitle: Bool
+    private var taskURL: URL {
+        URL(string: "sidebar://tasks/\(task.id)") ?? URL(string: "sidebar://tasks")!
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -245,19 +226,22 @@ struct TaskRowView: View {
             }
             .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(task.title)
-                    .font(compact ? .caption : .subheadline)
-                    .lineLimit(1)
-                    .strikethrough(task.isCompleted)
-                    .foregroundStyle(task.isCompleted ? .secondary : .primary)
+            Link(destination: taskURL) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(task.title)
+                        .font(compact ? .caption : .subheadline)
+                        .lineLimit(1)
+                        .strikethrough(task.isCompleted)
+                        .foregroundStyle(task.isCompleted ? .secondary : .primary)
 
-                if showSubtitle, let subtitle = task.projectName ?? task.groupName {
-                    Text(subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    if showSubtitle, let subtitle = task.projectName ?? task.groupName {
+                        Text(subtitle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
+            .buttonStyle(.plain)
 
             Spacer(minLength: 0)
             if WidgetTasksUtils.isOverdue(task) {
