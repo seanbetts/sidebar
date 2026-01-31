@@ -232,6 +232,21 @@ public final class SpotlightIndexer: SpotlightIndexing {
       attributes.contentDescription = "File"
     }
 
+    // Searchable text - filename so Spotlight can find it
+    attributes.textContent = file.filename
+
+    // Keywords: filename parts and category for search
+    var keywords = file.filename
+      .replacingOccurrences(of: ".", with: " ")
+      .replacingOccurrences(of: "_", with: " ")
+      .replacingOccurrences(of: "-", with: " ")
+      .split(separator: " ")
+      .map(String.init)
+    if let category = file.category {
+      keywords.append(category)
+    }
+    attributes.keywords = keywords
+
     // File metadata
     attributes.fileSize = NSNumber(value: file.sizeBytes)
     attributes.contentCreationDate = file.createdAt
