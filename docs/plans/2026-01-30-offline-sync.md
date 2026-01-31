@@ -2,7 +2,7 @@
 
 Date: 2026-01-30
 Owner: Codex
-Status: Active (pivoted from 2026-01-22 plan)
+Status: Active (pivoted from 2026-01-22 plan; Phases 5–7 remaining)
 
 ## Goals
 - Full offline experience for Notes, Tasks, Websites, Files, and Chat history (read-only offline for chat).
@@ -108,6 +108,12 @@ Status: Active (pivoted from 2026-01-22 plan)
   - Chat message persistence to cache (default persist true)
   - Upload tracking persisted + resume on launch
   - Offline banner + pending writes view + conflict UI for notes
+- Additional progress (2026-01-31):
+  - Archived notes/websites list endpoints + summary metadata (`archived_count`, `archived_last_updated`).
+  - Offline archived headers cached; recent archived content retained + prefetched for notes/websites.
+  - Offline archived website detail shows placeholder when uncached (no hang).
+  - Backend resilience complete (threadpool/fast-fail/slow query logging) and archived list pagination fixes.
+  - `is_archived` columns added to notes/websites (websites uses backfilled boolean).
 - Gaps to fold into Phase 1:
   - Queue size cap
   - Auto-cleanup of synced drafts
@@ -627,6 +633,7 @@ public func saveOfflineSnapshot() async
    - Cache keys:
      - `notes/tree` -> `OfflineStore` snapshot
      - `notes/{id}` -> `OfflineStore` snapshot per note
+   - Prefetch recent archived note bodies after archived tree refresh (retention window).
    - Status: done
 
 2) Notes store queued writes
@@ -737,6 +744,8 @@ public func loadFromOffline() async
 public func saveOfflineSnapshot() async
 ```
    - Persist list + details in `OfflineStore`.
+   - Prefetch recent archived website details after archived list refresh.
+   - Show offline placeholder when an archived detail isn't cached yet.
 
 2) Websites queued writes (offline)
    - Add:
@@ -783,6 +792,7 @@ public func enqueueDelete(fileId: String) async
 - Pin/rename/archive/delete for websites queues offline and syncs.
 - Pin/rename/delete for files queues offline and syncs.
 - Conflicts prompt user.
+- Recent archived details are prefetched; uncached details show placeholder without hanging.
 
 
 ### Phase 5: Chat Offline History
