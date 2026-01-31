@@ -38,42 +38,22 @@ struct PinnedFilesWidgetView: View {
     // MARK: - File List View
 
     private var fileListView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Link(destination: URL(string: "sidebar://files")!) {
-                headerView
-            }
-            .buttonStyle(.plain)
+        WidgetListLayout(family: family) {
+            WidgetHeaderView(
+                title: "Files",
+                totalCount: entry.data.totalCount,
+                destination: URL(string: "sidebar://files")!,
+                reduceTitleForSmall: false,
+                family: family
+            )
+        } list: {
             filesList
-            if family == .systemLarge {
-                Spacer(minLength: 0)
-            }
+        } footer: {
             HStack {
                 if showMoreIndicator {
                     moreFilesIndicator
                 }
                 Spacer()
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: family == .systemLarge ? .topLeading : .top)
-    }
-
-    private var headerView: some View {
-        HStack(spacing: 6) {
-            Image("AppLogo")
-                .resizable()
-                .widgetAccentedRenderingMode(.accentedDesaturated)
-                .aspectRatio(contentMode: .fit)
-                .frame(width: family == .systemSmall ? 16 : 18, height: family == .systemSmall ? 16 : 18)
-            Text("Files")
-                .font(family == .systemSmall ? .subheadline : .headline)
-                .fontWeight(.semibold)
-            Spacer()
-            if entry.data.totalCount > 0 {
-                Text("\(entry.data.totalCount)")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .widgetAccentable()
             }
         }
     }

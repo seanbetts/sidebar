@@ -38,42 +38,22 @@ struct SavedSitesWidgetView: View {
     // MARK: - Site List View
 
     private var siteListView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Link(destination: URL(string: "sidebar://websites")!) {
-                headerView
-            }
-            .buttonStyle(.plain)
+        WidgetListLayout(family: family) {
+            WidgetHeaderView(
+                title: "Websites",
+                totalCount: entry.data.totalCount,
+                destination: URL(string: "sidebar://websites")!,
+                reduceTitleForSmall: true,
+                family: family
+            )
+        } list: {
             sitesList
-            if family == .systemLarge {
-                Spacer(minLength: 0)
-            }
+        } footer: {
             HStack {
                 if showMoreIndicator {
                     moreSitesIndicator
                 }
                 Spacer()
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: family == .systemLarge ? .topLeading : .top)
-    }
-
-    private var headerView: some View {
-        HStack(spacing: 6) {
-            Image("AppLogo")
-                .resizable()
-                .widgetAccentedRenderingMode(.accentedDesaturated)
-                .aspectRatio(contentMode: .fit)
-                .frame(width: family == .systemSmall ? 16 : 18, height: family == .systemSmall ? 16 : 18)
-            Text("Websites")
-                .font(family == .systemSmall ? .subheadline : .headline)
-                .fontWeight(.semibold)
-            Spacer()
-            if entry.data.totalCount > 0 {
-                Text("\(entry.data.totalCount)")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .widgetAccentable()
             }
         }
     }

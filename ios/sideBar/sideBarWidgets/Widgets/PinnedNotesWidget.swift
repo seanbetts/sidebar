@@ -38,43 +38,23 @@ struct PinnedNotesWidgetView: View {
     // MARK: - Note List View
 
     private var noteListView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Link(destination: URL(string: "sidebar://notes")!) {
-                headerView
-            }
-            .buttonStyle(.plain)
+        WidgetListLayout(family: family) {
+            WidgetHeaderView(
+                title: "Notes",
+                totalCount: entry.data.totalCount,
+                destination: URL(string: "sidebar://notes")!,
+                reduceTitleForSmall: false,
+                family: family
+            )
+        } list: {
             notesList
-            if family == .systemLarge {
-                Spacer(minLength: 0)
-            }
+        } footer: {
             HStack {
                 if showMoreIndicator {
                     moreNotesIndicator
                 }
                 Spacer()
                 createNoteButton
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: family == .systemLarge ? .topLeading : .top)
-    }
-
-    private var headerView: some View {
-        HStack(spacing: 6) {
-            Image("AppLogo")
-                .resizable()
-                .widgetAccentedRenderingMode(.accentedDesaturated)
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 18, height: 18)
-            Text("Notes")
-                .font(.headline)
-                .fontWeight(.semibold)
-            Spacer()
-            if entry.data.totalCount > 0 {
-                Text("\(entry.data.totalCount)")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .widgetAccentable()
             }
         }
     }
