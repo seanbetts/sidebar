@@ -225,8 +225,13 @@ struct NoteRowView: View {
     let note: WidgetNote
     let compact: Bool
 
+    private var noteURL: URL {
+        let encodedPath = note.path.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlPathAllowed) ?? note.path
+        return URL(string: "sidebar://notes/\(encodedPath)") ?? URL(string: "sidebar://notes")!
+    }
+
     var body: some View {
-        Link(destination: URL(string: "sidebar://notes/\(note.path)")!) {
+        Link(destination: noteURL) {
             HStack(spacing: 8) {
                 Image(systemName: "doc.text")
                     .font(.system(size: compact ? 14 : 16))
