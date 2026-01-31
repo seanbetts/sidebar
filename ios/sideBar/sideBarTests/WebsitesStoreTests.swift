@@ -1,9 +1,83 @@
+import Foundation
 import XCTest
 import sideBarShared
 @testable import sideBar
 
 @MainActor
 final class WebsitesStoreTests: XCTestCase {
+    func testLoadListUsesOfflineStoreWhenCacheMissing() async {
+        let item = WebsiteItem(
+            id: "w1",
+            title: "Offline",
+            url: "https://example.com",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            youtubeTranscripts: nil,
+            updatedAt: ISO8601DateFormatter().string(from: Date()),
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let response = WebsitesResponse(items: [item], archivedCount: nil, archivedLastUpdated: nil)
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        offlineStore.set(key: CacheKeys.websitesList, entityType: "websitesList", value: response, lastSyncAt: nil)
+        let cache = TestCacheClient()
+        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
+        let store = WebsitesStore(
+            api: api,
+            cache: cache,
+            offlineStore: offlineStore,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+        )
+
+        try? await store.loadList()
+
+        XCTAssertEqual(store.items.first?.id, "w1")
+    }
+
+    func testLoadDetailOfflineArchivedShowsError() async {
+        let item = WebsiteItem(
+            id: "w1",
+            title: "Archived",
+            url: "https://example.com",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: true,
+            youtubeTranscripts: nil,
+            updatedAt: ISO8601DateFormatter().string(from: Date()),
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let cache = TestCacheClient()
+        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let store = WebsitesStore(
+            api: api,
+            cache: cache,
+            offlineStore: offlineStore,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+        )
+        store.updateListItem(item, persist: false)
+
+        do {
+            try await store.loadDetail(id: "w1")
+            XCTFail("Expected offline detail error")
+        } catch {
+            XCTAssertEqual(
+                error.localizedDescription,
+                "This archived website hasn't been cached yet. Go online to load it."
+            )
+        }
+    }
+
     func testApplyRealtimeDeleteRemovesItemAndCache() async {
         let item = WebsiteItem(
             id: "w1",
@@ -75,6 +149,11 @@ final class WebsitesStoreTests: XCTestCase {
 
 private enum MockError: Error {
     case forced
+}
+
+private struct TestNetworkStatus: NetworkStatusProviding {
+    let isNetworkAvailable: Bool
+    let isOffline: Bool
 }
 
 private final class MockWebsitesAPI: WebsitesProviding {

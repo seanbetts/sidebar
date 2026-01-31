@@ -854,9 +854,9 @@ final class SyncCoordinator {
 
 
 ### Phase 7: Tests + Cleanup
-- [ ] Add store + executor tests
-- [ ] Add conflict resolution tests
-- [ ] Ensure no debug prints
+- [x] Add store + executor tests
+- [x] Add conflict resolution tests
+- [x] Ensure no debug prints
 
 #### Phase 7 Detailed Task List (with file targets)
 1) Tests
@@ -865,6 +865,10 @@ final class SyncCoordinator {
      - `WriteQueueExecutorTests.swift`
      - `StoreOfflineLoadTests.swift`
      - `ConflictResolutionTests.swift`
+   - Added:
+     - `SyncCoordinatorTests.swift`
+     - Updated `WriteQueueTests.swift` for conflict surfacing
+     - Updated `WebsitesStoreTests.swift` offline coverage
 
 2) Cleanup
    - Remove any temporary logging or debug flags.
