@@ -21,7 +21,8 @@ Structure per item:
   - Injects bootstrap files under "Project Context" (AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md, HEARTBEAT.md, BOOTSTRAP.md). See `docs/concepts/system-prompt.md`, `src/agents/workspace.ts`, `src/agents/bootstrap-files.ts`.
   - Time handling: prompt includes only timezone for cache stability; current time is fetched via `session_status` instead. See `docs/concepts/system-prompt.md`, `docs/date-time.md`.
   - Skills list is metadata only; model is instructed to read SKILL.md on demand. See `docs/tools/skills.md`, `src/agents/skills.ts`.
-  - Docs links: `https://docs.openclaw.ai/concepts/system-prompt`, `https://docs.openclaw.ai/context`, `https://docs.openclaw.ai/tools/skills`, `https://docs.openclaw.ai/date-time`.
+  - Context reporting: `/context list|detail` reports prompt/skills/tool sizes without dumping the full prompt. See `docs/concepts/context.md`.
+  - Docs links: `https://docs.openclaw.ai/concepts/system-prompt`, `https://docs.openclaw.ai/context`, `https://docs.openclaw.ai/tools/skills`, `https://docs.openclaw.ai/date-time`, `https://docs.openclaw.ai/token-use`.
 - Design notes:
   - Service layer: extend `PromptContextService.build_prompts()` to return a structured prompt (sections + metadata) and a flattened string.
   - Data model: optionally store a prompt report (sections, sizes, source) on the conversation or in a separate table for diagnostics.
@@ -40,6 +41,7 @@ Structure per item:
   - `/status` shows compaction count and verbose mode emits completion banners. See `docs/concepts/compaction.md`.
   - Compaction persists in transcript; pruning is in-memory and tool-result-only. See `docs/concepts/compaction.md`, `docs/concepts/session-pruning.md`.
   - Silent memory flush can run before compaction to persist durable notes. See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
+  - Compaction config uses `agents.defaults.compaction` and reserve-token floors to keep headroom; flush is tracked in `sessions.json`. See `docs/reference/session-management-compaction.md`.
   - Docs links: `https://docs.openclaw.ai/concepts/compaction`, `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/concepts/session-pruning`, `https://docs.openclaw.ai/tools/slash-commands`.
 - Design notes:
   - Service layer: add a `ConversationCompactionService` that summarizes older messages into a compact summary entry and trims history.
@@ -59,6 +61,7 @@ Structure per item:
   - Standard file set: AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md, HEARTBEAT.md, BOOTSTRAP.md, MEMORY.md plus daily `memory/YYYY-MM-DD.md`. See `docs/concepts/agent-workspace.md`.
   - Bootstrap files are auto-created from templates; git init is attempted for backups. See `src/agents/workspace.ts`, `docs/reference/templates/*`.
   - Subagents get a reduced bootstrap allowlist. See `src/agents/workspace.ts`.
+  - Bootstrap injection happens on first session turn; missing files inject a marker line and blank files are skipped. See `docs/concepts/agent.md`.
   - Docs links: `https://docs.openclaw.ai/agent-workspace`, `https://docs.openclaw.ai/concepts/agent`.
 - Design notes:
   - Service layer: define a logical workspace path per user (e.g., `/workspace/{user_id}/...`) stored in R2, and load key files during prompt assembly.
@@ -91,6 +94,7 @@ Structure per item:
   - Memory lives in `MEMORY.md` plus daily `memory/YYYY-MM-DD.md` logs; recommended to read today/yesterday on session start. See `docs/concepts/agent-workspace.md`, `docs/concepts/memory.md`.
   - System prompt includes a "Memory Recall" section that mandates search + targeted retrieval. See `docs/concepts/system-prompt.md`, `src/agents/system-prompt.ts`.
   - Memory flush can run before compaction to persist durable notes. See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
+  - Memory search builds a vector index over Markdown chunks with configurable providers (local/OpenAI/Gemini) and extra paths. See `docs/concepts/memory.md`.
   - Docs links: `https://docs.openclaw.ai/concepts/memory`, `https://docs.openclaw.ai/agent-workspace`, `https://docs.openclaw.ai/reference/session-management-compaction`.
 - Design notes:
   - Service layer: add memory categories (facts, preferences, projects) and recall hints; standardize path scheme (`/memories/{category}/{name}`).
@@ -124,6 +128,7 @@ Structure per item:
   - Supports schedule kinds: `at`, `every`, `cron` with timezone; uses croner. See `docs/automation/cron-jobs.md`.
   - Main-session jobs enqueue system events and can wake the next heartbeat; isolated jobs run in `cron:<jobId>` sessions and can deliver output. See `docs/automation/cron-jobs.md`, `docs/automation/cron-vs-heartbeat.md`.
   - Wake modes: `now` vs `next-heartbeat` for controlling when the agent runs. See `docs/automation/cron-jobs.md`.
+  - Cron job payloads differentiate `systemEvent` vs `agentTurn`, and isolated runs post summaries back to main. See `docs/automation/cron-jobs.md`.
   - Docs links: `https://docs.openclaw.ai/automation/cron-jobs`, `https://docs.openclaw.ai/cron-vs-heartbeat`.
 - Design notes:
   - Service layer: add a scheduler service (maybe via `backend/workers`) and a `cron_jobs` table (soft delete).
@@ -141,6 +146,7 @@ Structure per item:
   - Heartbeats can be restricted to active hours and sent to a target channel or "last" route. See `docs/gateway/heartbeat.md`, `src/infra/heartbeat-runner.ts`.
   - Heartbeat visibility is configurable per channel/account (showOk/showAlerts/useIndicator). See `docs/gateway/heartbeat.md`.
   - Heartbeat runs are separate from cron but can be triggered by cron or webhooks. See `docs/automation/cron-jobs.md`, `docs/automation/webhook.md`.
+  - Heartbeat replies do not extend session idle timers; delivery can be suppressed entirely when all visibility flags are false. See `docs/gateway/heartbeat.md`.
   - Docs links: `https://docs.openclaw.ai/gateway/heartbeat`, `https://docs.openclaw.ai/cron-vs-heartbeat`, `https://docs.openclaw.ai/automation/webhook`.
 - Design notes:
   - Service layer: add a heartbeat runner that can enqueue a system event and run the assistant at intervals.
@@ -157,7 +163,7 @@ Structure per item:
   - Session keys encode context (main, group, channel, cron); isolated jobs use `cron:<jobId>`. See `docs/concepts/session.md`, `docs/reference/session-management-compaction.md`.
   - Subagents get minimal prompts and restricted bootstrap files. See `docs/concepts/system-prompt.md`, `src/agents/workspace.ts`.
   - Compaction and pruning are session-scoped. See `docs/concepts/compaction.md`, `docs/concepts/session-pruning.md`.
-  - Docs links: `https://docs.openclaw.ai/concepts/session`, `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/concepts/session-pruning`.
+  - Session tools expose list/history/send/spawn with session-key conventions. See `docs/concepts/session-tool.md`.\n+  - Docs links: `https://docs.openclaw.ai/concepts/session`, `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/concepts/session-pruning`, `https://docs.openclaw.ai/concepts/session-tool`.
 - Design notes:
   - Data model: add `conversation_type` or `session_kind` to conversations (main, automation, background).
   - API/UI: filter conversations by type; hide background sessions by default.
@@ -221,6 +227,7 @@ Structure per item:
   - Streaming suppression: partial chunks that begin with `NO_REPLY` are withheld to avoid leaking silent output mid-turn. See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/streaming-directives.ts`.
   - Used for pre-compaction memory flush (a silent turn run before compaction to persist durable memory). See `docs/reference/session-management-compaction.md`, `src/auto-reply/reply/memory-flush.ts`.
   - Reply normalization strips silent replies unless media/attachments are present. See `src/auto-reply/reply/normalize-reply.ts`.
+  - Typing indicators suppress silent-only replies (`message` mode ignores `NO_REPLY`). See `docs/concepts/typing-indicators.md`.
   - Docs links: `https://docs.openclaw.ai/reference/session-management-compaction`, `https://docs.openclaw.ai/agent-loop`, `https://docs.openclaw.ai/concepts/typing-indicators`.
 - Design notes:
   - Service layer: add a "silent" flag to tool-driven runs (or detect a silent token in assistant output) and suppress UI delivery while still persisting side effects.
