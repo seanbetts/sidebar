@@ -796,8 +796,8 @@ public func enqueueDelete(fileId: String) async
 
 
 ### Phase 5: Chat Offline History
-- [ ] Add offline snapshot to `ChatStore`
-- [ ] Update `ChatViewModel` to load offline when offline
+- [x] Add offline snapshot to `ChatStore`
+- [x] Update `ChatViewModel` to load offline when offline
 
 #### Phase 5 Detailed Task List (with file targets)
 1) Chat offline snapshots
@@ -808,10 +808,12 @@ public func loadFromOffline() async
 public func saveOfflineSnapshot() async
 ```
    - Persist conversation list + messages in `OfflineStore`.
+   - Status: done
 
 2) Chat ViewModel wiring
    - Update `ios/sideBar/sideBar/ViewModels/Chat/ChatViewModel.swift`
    - Load offline messages when `ConnectivityMonitor.isOffline`.
+   - Status: done (store-level offline fallback + cached checks)
 
 #### Phase 5 Acceptance Checklist
 - Conversation list + messages available offline after restart.
