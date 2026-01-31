@@ -10,8 +10,8 @@ struct SavedSitesWidget: Widget {
             SavedSitesWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Sites")
-        .description("Quick access to your saved sites.")
+        .configurationDisplayName("Websites")
+        .description("Quick access to your saved websites.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
@@ -66,7 +66,7 @@ struct SavedSitesWidgetView: View {
                 .widgetAccentedRenderingMode(.accentedDesaturated)
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 18, height: 18)
-            Text("Sites")
+            Text("Websites")
                 .font(.headline)
                 .fontWeight(.semibold)
             Spacer()
@@ -111,7 +111,7 @@ struct SavedSitesWidgetView: View {
     }
 
     private var isCompact: Bool {
-        family == .systemSmall
+        family == .systemSmall || family == .systemMedium
     }
 
     private var showMoreIndicator: Bool {
@@ -153,7 +153,7 @@ struct SavedSitesWidgetView: View {
                 .foregroundStyle(.orange)
             Text("Sign in to sideBar")
                 .font(.headline)
-            Text("to see your sites")
+            Text("to see your websites")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
