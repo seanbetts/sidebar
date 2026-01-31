@@ -54,8 +54,10 @@ struct TodayTasksWidgetView: View {
                     moreTasksIndicator
                 }
                 Spacer()
-                addTaskButton
             }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            addTaskButton
         }
     }
 

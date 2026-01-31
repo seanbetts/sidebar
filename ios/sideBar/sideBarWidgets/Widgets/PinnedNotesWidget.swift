@@ -54,8 +54,10 @@ struct PinnedNotesWidgetView: View {
                     moreNotesIndicator
                 }
                 Spacer()
-                createNoteButton
             }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            createNoteButton
         }
     }
 
@@ -212,22 +214,13 @@ struct NoteRowView: View {
         Link(destination: noteURL) {
             HStack(spacing: 8) {
                 Image(systemName: "doc.text")
-                    .font(.system(size: compact ? 14 : 16))
+                    .font(.system(size: compact ? 16 : 18))
                     .foregroundStyle(.secondary)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(note.name)
-                        .font(compact ? .caption : .subheadline)
-                        .lineLimit(1)
-                        .foregroundStyle(.primary)
-
-                    if !compact, let preview = note.contentPreview, !preview.isEmpty {
-                        Text(preview)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
+                Text(note.name)
+                    .font(compact ? .caption : .subheadline)
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
 
                 Spacer(minLength: 0)
             }

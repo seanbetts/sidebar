@@ -53,9 +53,11 @@ struct WidgetListLayout<Header: View, List: View, Footer: View>: View {
     let list: List
     let footer: Footer?
     let family: WidgetFamily
+    let listFooterSpacing: CGFloat
 
     init(
         family: WidgetFamily,
+        listFooterSpacing: CGFloat = 0,
         @ViewBuilder header: () -> Header,
         @ViewBuilder list: () -> List,
         @ViewBuilder footer: () -> Footer? = { nil }
@@ -64,19 +66,28 @@ struct WidgetListLayout<Header: View, List: View, Footer: View>: View {
         self.header = header()
         self.list = list()
         self.footer = footer()
+        self.listFooterSpacing = listFooterSpacing
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
-            list
-            if family != .systemSmall {
-                Spacer(minLength: 0)
-            }
-            if let footer {
-                footer
-            }
+            contentGroup
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private var contentGroup: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            list
+            if let footer {
+                if family != .systemSmall {
+                    Spacer(minLength: 0)
+                }
+                footer
+                    .padding(.top, listFooterSpacing)
+            }
+        }
     }
 }
