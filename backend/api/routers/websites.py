@@ -48,7 +48,11 @@ def list_websites(
         user_id,
         WebsiteFilters(archived=False),
     )
-    return {"items": [website_summary(site) for site in websites]}
+    summary = WebsitesService.archived_summary(db, user_id)
+    return {
+        "items": [website_summary(site) for site in websites],
+        **summary,
+    }
 
 
 @router.get("/archived")

@@ -568,6 +568,24 @@ class WebsitesService:
         return query.all()
 
     @staticmethod
+    def archived_summary(db: Session, user_id: str) -> dict[str, object]:
+        """Return archived website count and last updated timestamp."""
+        archived_value = func.coalesce(Website.metadata_["archived"].astext, "false")
+        count, last_updated = (
+            db.query(func.count(Website.id), func.max(Website.updated_at))
+            .filter(
+                Website.user_id == user_id,
+                Website.deleted_at.is_(None),
+                archived_value == "true",
+            )
+            .one()
+        )
+        return {
+            "archived_count": int(count or 0),
+            "archived_last_updated": last_updated.isoformat() if last_updated else None,
+        }
+
+    @staticmethod
     def search_websites(
         db: Session,
         user_id: str,

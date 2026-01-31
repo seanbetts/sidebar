@@ -157,6 +157,37 @@ def test_list_websites_filters(db_session):
     assert title_filtered[0].id == site_a.id
 
 
+def test_archived_summary(db_session):
+    now = datetime.now(UTC)
+    archived_at = now - timedelta(hours=3)
+
+    archived_site = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/archived",
+        title="Archived",
+        content="Content",
+        source="https://example.com/archived",
+    )
+    WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/active",
+        title="Active",
+        content="Content",
+        source="https://example.com/active",
+    )
+
+    WebsitesService.update_archived(db_session, "test_user", archived_site.id, True)
+    archived_site.updated_at = archived_at
+    db_session.commit()
+
+    summary = WebsitesService.archived_summary(db_session, "test_user")
+
+    assert summary["archived_count"] == 1
+    assert summary["archived_last_updated"] == archived_at.isoformat()
+
+
 def test_update_website_conflict(db_session):
     website = WebsitesService.save_website(
         db_session,

@@ -49,7 +49,9 @@ def list_notes_tree(
     Returns:
         Tree structure of folders and notes.
     """
-    return NotesWorkspaceService.list_tree(db, user_id, include_archived=False)
+    tree = NotesWorkspaceService.list_tree(db, user_id, include_archived=False)
+    summary = NotesService.archived_summary(db, user_id)
+    return {**tree, **summary}
 
 
 @router.get("/archived")

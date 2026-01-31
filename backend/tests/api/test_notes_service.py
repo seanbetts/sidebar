@@ -116,6 +116,24 @@ def test_list_notes_filters(db_session):
     assert filtered[0].id == note_a.id
 
 
+def test_archived_summary(db_session):
+    now = datetime.now(UTC)
+    archived_at = now - timedelta(hours=2)
+
+    archived_note = NotesService.create_note(
+        db_session, "test_user", "# Archived\n\nBody", folder="Archive/Old"
+    )
+    NotesService.create_note(db_session, "test_user", "# Active\n\nBody", folder="Work")
+
+    archived_note.updated_at = archived_at
+    db_session.commit()
+
+    summary = NotesService.archived_summary(db_session, "test_user")
+
+    assert summary["archived_count"] == 1
+    assert summary["archived_last_updated"] == archived_at.isoformat()
+
+
 def test_update_note_conflict(db_session):
     note = NotesService.create_note(db_session, "test_user", "# Title\n\nBody")
     stale = note.updated_at - timedelta(seconds=10)
