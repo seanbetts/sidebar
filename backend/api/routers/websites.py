@@ -27,7 +27,7 @@ router = APIRouter(prefix="/websites", tags=["websites"])
 
 
 @router.get("")
-async def list_websites(
+def list_websites(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -42,12 +42,16 @@ async def list_websites(
     Returns:
         List of website summaries.
     """
-    websites = WebsitesService.list_websites(db, user_id, WebsiteFilters())
+    websites = WebsitesService.list_websites(
+        db,
+        user_id,
+        WebsiteFilters(archived=False),
+    )
     return {"items": [website_summary(site) for site in websites]}
 
 
 @router.patch("/pinned-order")
-async def update_pinned_order(
+def update_pinned_order(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -76,7 +80,7 @@ async def update_pinned_order(
 
 
 @router.post("/search")
-async def search_websites(
+def search_websites(
     query: str,
     limit: int = 50,
     user_id: str = Depends(get_current_user_id),
@@ -106,7 +110,7 @@ async def search_websites(
 
 
 @router.post("/quick-save")
-async def quick_save_website(
+def quick_save_website(
     request: dict,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id),
@@ -128,7 +132,7 @@ async def quick_save_website(
 
 
 @router.get("/quick-save/{job_id}")
-async def get_quick_save_job(
+def get_quick_save_job(
     job_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -192,7 +196,7 @@ async def save_website(
 
 
 @router.post("/{website_id}/youtube-transcript")
-async def append_youtube_transcript(
+def append_youtube_transcript(
     website_id: uuid.UUID,
     payload: dict,
     user_id: str = Depends(get_current_user_id),
@@ -241,7 +245,7 @@ async def append_youtube_transcript(
 
 
 @router.get("/{website_id}")
-async def get_website(
+def get_website(
     website_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -281,7 +285,7 @@ async def get_website(
 
 
 @router.patch("/{website_id}/pin")
-async def update_pin(
+def update_pin(
     website_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -323,7 +327,7 @@ async def update_pin(
 
 
 @router.patch("/{website_id}/rename")
-async def update_title(
+def update_title(
     website_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -368,7 +372,7 @@ async def update_title(
 
 
 @router.patch("/{website_id}/archive")
-async def update_archive(
+def update_archive(
     website_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
@@ -410,7 +414,7 @@ async def update_archive(
 
 
 @router.get("/{website_id}/download")
-async def download_website(
+def download_website(
     website_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -440,7 +444,7 @@ async def download_website(
 
 
 @router.delete("/{website_id}")
-async def delete_website(
+def delete_website(
     website_id: uuid.UUID,
     request: dict | None = Body(default=None),
     user_id: str = Depends(get_current_user_id),
@@ -483,7 +487,7 @@ async def delete_website(
 
 
 @router.post("/sync")
-async def sync_websites(
+def sync_websites(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
