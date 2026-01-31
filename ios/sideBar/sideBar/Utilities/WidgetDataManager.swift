@@ -426,6 +426,8 @@ public struct WidgetFile: WidgetStorable {
   public let sizeBytes: Int
   public let pinned: Bool
   public let category: String?
+  public let mimeType: String?
+  public let recommendedViewer: String?
 
   public init(
     id: String,
@@ -433,7 +435,9 @@ public struct WidgetFile: WidgetStorable {
     path: String? = nil,
     sizeBytes: Int,
     pinned: Bool = false,
-    category: String? = nil
+    category: String? = nil,
+    mimeType: String? = nil,
+    recommendedViewer: String? = nil
   ) {
     self.id = id
     self.filename = filename
@@ -441,6 +445,8 @@ public struct WidgetFile: WidgetStorable {
     self.sizeBytes = sizeBytes
     self.pinned = pinned
     self.category = category
+    self.mimeType = mimeType
+    self.recommendedViewer = recommendedViewer
   }
 }
 
@@ -501,16 +507,18 @@ extension WidgetWebsite {
   }
 }
 
-// MARK: - IngestedFileMeta to WidgetFile Conversion
+// MARK: - IngestionListItem to WidgetFile Conversion
 
 extension WidgetFile {
-  /// Creates a WidgetFile from an IngestedFileMeta
-  public init(from file: IngestedFileMeta) {
-    self.id = file.id
-    self.filename = file.filenameOriginal
-    self.path = file.path
-    self.sizeBytes = file.sizeBytes
-    self.pinned = file.pinned ?? false
-    self.category = file.category
+  /// Creates a WidgetFile from an IngestionListItem
+  public init(from item: IngestionListItem) {
+    self.id = item.file.id
+    self.filename = item.file.filenameOriginal
+    self.path = item.file.path
+    self.sizeBytes = item.file.sizeBytes
+    self.pinned = item.file.pinned ?? false
+    self.category = item.file.category
+    self.mimeType = item.file.mimeOriginal
+    self.recommendedViewer = item.recommendedViewer
   }
 }

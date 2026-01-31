@@ -172,16 +172,25 @@ struct FileRowView: View {
     }
 
     private var iconName: String {
-        guard let category = file.category else { return "folder" }
-        switch category.lowercased() {
-        case "documents": return "doc.text"
-        case "images": return "photo"
-        case "audio": return "waveform"
-        case "video": return "video"
-        case "spreadsheets": return "tablecells"
-        case "reports": return "chart.line.text.clipboard"
-        case "presentations": return "rectangle.on.rectangle.angled"
-        default: return "folder"
+        // Check for YouTube videos
+        if let mimeType = file.mimeType?.lowercased(), mimeType.contains("video/youtube") {
+            return "play.rectangle"
+        }
+        // Check category-specific icons
+        if let category = file.category?.lowercased() {
+            if category == "presentations" { return "rectangle.on.rectangle.angled" }
+            if category == "reports" { return "chart.line.text.clipboard" }
+        }
+        // Use recommendedViewer for specific file type icons
+        switch file.recommendedViewer {
+        case "viewer_pdf": return "doc.richtext"
+        case "viewer_json": return "tablecells"
+        case "viewer_video": return "video"
+        case "image_original": return "photo"
+        case "audio_original": return "waveform"
+        case "viewer_presentation": return "rectangle.on.rectangle.angled"
+        case "text_original", "ai_md": return "doc.text"
+        default: return "doc"
         }
     }
 

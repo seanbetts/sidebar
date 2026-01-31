@@ -52,7 +52,7 @@ extension IngestionStore {
         let pinnedFiles = items
             .filter { $0.file.pinned == true && $0.file.deletedAt == nil }
             .sorted { ($0.file.pinnedOrder ?? Int.max) < ($1.file.pinnedOrder ?? Int.max) }
-            .map { WidgetFile(from: $0.file) }
+            .map { WidgetFile(from: $0) }
         let displayFiles = Array(pinnedFiles.prefix(10))
         let data = WidgetFileData(files: displayFiles, totalCount: pinnedFiles.count)
         WidgetDataManager.shared.store(data, for: .files)
