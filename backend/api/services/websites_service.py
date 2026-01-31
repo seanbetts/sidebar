@@ -99,6 +99,7 @@ class WebsitesService:
             saved_at=saved_at,
             published_at=published_at,
             metadata_=metadata,
+            is_archived=archived,
             created_at=now,
             updated_at=now,
             last_opened_at=None,
@@ -161,6 +162,7 @@ class WebsitesService:
             if "pinned" not in metadata:
                 metadata["pinned"] = pinned
             website.metadata_ = metadata
+            website.is_archived = bool(metadata.get("archived", False))
             flag_modified(website, "metadata_")
             if website.deleted_at is not None:
                 website.deleted_at = None
@@ -181,6 +183,7 @@ class WebsitesService:
             saved_at=saved_at,
             published_at=published_at,
             metadata_=metadata,
+            is_archived=archived,
             created_at=now,
             updated_at=now,
             last_opened_at=None,
@@ -303,6 +306,7 @@ class WebsitesService:
         else:
             metadata.pop("pinned_order", None)
         website.metadata_ = metadata
+        website.is_archived = bool(metadata.get("archived", False))
         flag_modified(website, "metadata_")
         website.updated_at = datetime.now(UTC)
         db.commit()
@@ -333,6 +337,7 @@ class WebsitesService:
             metadata["pinned"] = True
             metadata["pinned_order"] = order_map.get(website.id)
             website.metadata_ = metadata
+            website.is_archived = bool(metadata.get("archived", False))
             flag_modified(website, "metadata_")
             website.updated_at = datetime.now(UTC)
         db.commit()
@@ -376,6 +381,7 @@ class WebsitesService:
         ensure_website_no_conflict(website, client_updated_at, op="archive")
 
         website.metadata_ = {**(website.metadata_ or {}), "archived": archived}
+        website.is_archived = archived
         flag_modified(website, "metadata_")
         website.updated_at = datetime.now(UTC)
         db.commit()
