@@ -151,7 +151,8 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
             async let tasks: () = environment.tasksViewModel.refreshWidgetData()
             async let notes: () = environment.notesViewModel.refreshWidgetData()
             async let websites: () = environment.websitesViewModel.refreshWidgetData()
-            _ = await (tasks, notes, websites)
+            async let files: () = environment.ingestionViewModel.refreshWidgetData()
+            _ = await (tasks, notes, websites, files)
             return true
         }
 

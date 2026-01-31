@@ -21,6 +21,9 @@ struct SideBarWidgetsBundle: WidgetBundle {
         // Home screen widgets - Sites
         SavedSitesWidget()
 
+        // Home screen widgets - Files
+        PinnedFilesWidget()
+
         // Lock screen widgets - Tasks
         LockScreenTaskCountWidget()
         LockScreenTaskPreviewWidget()

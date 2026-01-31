@@ -40,7 +40,8 @@ extension AppEnvironment {
             async let tasks: () = tasksViewModel.refreshWidgetData()
             async let notes: () = notesViewModel.refreshWidgetData()
             async let websites: () = websitesViewModel.refreshWidgetData()
-            _ = await (tasks, notes, websites)
+            async let files: () = ingestionViewModel.refreshWidgetData()
+            _ = await (tasks, notes, websites, files)
         }
     }
 
