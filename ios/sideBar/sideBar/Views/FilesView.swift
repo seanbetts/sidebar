@@ -417,7 +417,7 @@ private struct FilesHeaderActions: View {
         .accessibilityLabel("File options")
         .disabled(viewModel.selectedFileId == nil)
         #else
-        UIKitMenuButton(
+        HeaderActionMenuButton(
             systemImage: "ellipsis.circle",
             accessibilityLabel: "File options",
             items: [
@@ -436,11 +436,9 @@ private struct FilesHeaderActions: View {
                 MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
                 }
-            ]
+            ],
+            isCompact: isCompact
         )
-        .frame(width: 28, height: isCompact ? 20 : 28)
-        .fixedSize()
-        .accessibilityLabel("File options")
         .disabled(viewModel.selectedFileId == nil)
         #endif
     }

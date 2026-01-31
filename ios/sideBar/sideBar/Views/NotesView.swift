@@ -13,6 +13,16 @@ public struct NotesView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @State private var isRenameDialogPresented = false
+    @State private var renameValue: String = ""
+    @State private var isMoveSheetPresented = false
+    @State private var moveSelection: String = ""
+    @State private var isDeleteAlertPresented = false
+    @State private var isArchiveAlertPresented = false
+    @State private var isCloseConfirmPresented = false
+    @State private var isExporting = false
+    @State private var exportDocument: MarkdownFileDocument?
+    @State private var exportFilename: String = "note.md"
 
     public init() {
     }
@@ -20,12 +30,114 @@ public struct NotesView: View {
     public var body: some View {
         NotesDetailView(
             viewModel: environment.notesViewModel,
-            editorViewModel: environment.notesEditorViewModel
+            editorViewModel: environment.notesEditorViewModel,
+            isRenameDialogPresented: $isRenameDialogPresented,
+            renameValue: $renameValue,
+            isMoveSheetPresented: $isMoveSheetPresented,
+            moveSelection: $moveSelection,
+            isDeleteAlertPresented: $isDeleteAlertPresented,
+            isArchiveAlertPresented: $isArchiveAlertPresented,
+            isCloseConfirmPresented: $isCloseConfirmPresented,
+            isExporting: $isExporting,
+            exportDocument: $exportDocument,
+            exportFilename: $exportFilename
         )
             #if !os(macOS)
             .navigationTitle(noteTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if isCompact, environment.notesViewModel.activeNote != nil, !isPhone {
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        noteToolbarMenu
+                    }
+                }
+            }
             #endif
+            .fileExporter(
+                isPresented: $isExporting,
+                document: exportDocument,
+                contentType: .sideBarMarkdown,
+                defaultFilename: exportFilename
+            ) { _ in
+                exportDocument = nil
+            }
+            .sheet(isPresented: $isMoveSheetPresented) {
+                NoteFolderPickerSheet(
+                    title: "Move Note",
+                    selection: $moveSelection,
+                    options: folderOptions,
+                    onConfirm: { selection in
+                        guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                        Task {
+                            await environment.notesViewModel.moveNote(id: noteId, folder: selection)
+                        }
+                    }
+                )
+            }
+            .alert("Rename note", isPresented: $isRenameDialogPresented) {
+                TextField("Note name", text: $renameValue)
+                    .submitLabel(.done)
+                    .onSubmit {
+                        guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                        let updatedName = renameValue
+                        isRenameDialogPresented = false
+                        renameValue = ""
+                        Task {
+                            await environment.notesViewModel.renameNote(id: noteId, newName: updatedName)
+                        }
+                    }
+                Button("Rename") {
+                    guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                    let updatedName = renameValue
+                    isRenameDialogPresented = false
+                    renameValue = ""
+                    Task {
+                        await environment.notesViewModel.renameNote(id: noteId, newName: updatedName)
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                Button("Cancel", role: .cancel) {
+                    renameValue = ""
+                }
+            }
+            .alert("Delete note", isPresented: $isDeleteAlertPresented) {
+                Button("Delete", role: .destructive) {
+                    guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                    Task {
+                        await deleteNoteAfterDismissal(id: noteId)
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will remove the note and cannot be undone.")
+            }
+            .alert(archiveAlertTitle, isPresented: $isArchiveAlertPresented) {
+                Button(archiveActionTitle, role: .destructive) {
+                    guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                    Task {
+                        await environment.notesViewModel.setArchived(id: noteId, archived: !isArchived)
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text(archiveAlertMessage)
+            }
+            .confirmationDialog("Save changes?", isPresented: $isCloseConfirmPresented, titleVisibility: .visible) {
+                Button("Save changes") {
+                    Task {
+                        await environment.notesEditorViewModel.saveIfNeeded()
+                        environment.notesViewModel.clearSelection()
+                    }
+                }
+                Button("Don't save", role: .destructive) {
+                    environment.notesViewModel.clearSelection()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("You have unsaved changes. Save before closing the note?")
+            }
     }
 
     private var noteTitle: String {
@@ -52,6 +164,187 @@ public struct NotesView: View {
         return horizontalSizeClass == .compact
         #endif
     }
+
+    #if os(iOS)
+    private var noteToolbarMenu: some View {
+        HeaderActionMenuButton(
+            systemImage: "ellipsis.circle",
+            accessibilityLabel: "Note options",
+            items: [
+                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                    Task {
+                        await environment.notesViewModel.setPinned(id: noteId, pinned: !isPinned)
+                    }
+                },
+                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    renameValue = displayTitle
+                    isRenameDialogPresented = true
+                },
+                MenuActionItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                    moveSelection = currentFolderPath
+                    isMoveSheetPresented = true
+                },
+                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyMarkdown()
+                },
+                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    exportMarkdown()
+                },
+                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    isArchiveAlertPresented = true
+                },
+                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ],
+            isCompact: isCompact
+        )
+    }
+
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+    #endif
+
+    private var displayTitle: String {
+        guard let name = environment.notesViewModel.activeNote?.name else {
+            return "Notes"
+        }
+        if name.hasSuffix(".md") {
+            return String(name.dropLast(3))
+        }
+        return name
+    }
+
+    private var activeNode: FileNode? {
+        guard let noteId = environment.notesViewModel.activeNote?.path else { return nil }
+        return environment.notesViewModel.noteNode(id: noteId)
+    }
+
+    private var isPinned: Bool {
+        activeNode?.pinned == true
+    }
+
+    private var isArchived: Bool {
+        activeNode?.archived == true
+    }
+
+    private var pinActionTitle: String {
+        isPinned ? "Unpin" : "Pin"
+    }
+
+    private var pinIconName: String {
+        isPinned ? "pin.slash" : "pin"
+    }
+
+    private var archiveMenuTitle: String {
+        isArchived ? "Unarchive" : "Archive"
+    }
+
+    private var archiveIconName: String {
+        isArchived ? "archivebox.fill" : "archivebox"
+    }
+
+    private var archiveActionTitle: String {
+        isArchived ? "Unarchive" : "Archive"
+    }
+
+    private var archiveAlertTitle: String {
+        isArchived ? "Unarchive note" : "Archive note"
+    }
+
+    private var archiveAlertMessage: String {
+        isArchived
+            ? "This will move the note back to your main list."
+            : "This will move the note into your archive."
+    }
+
+    private var currentFolderPath: String {
+        guard let path = activeNode?.path else { return "" }
+        guard let lastSlash = path.lastIndex(of: "/") else { return "" }
+        return String(path[..<lastSlash])
+    }
+
+    private var folderOptions: [FolderOption] {
+        FolderOption.build(from: environment.notesViewModel.tree?.children ?? [])
+    }
+
+    private func copyMarkdown() {
+        let text = environment.notesEditorViewModel.content.isEmpty
+            ? environment.notesViewModel.activeNote?.content ?? ""
+            : environment.notesEditorViewModel.content
+        guard !text.isEmpty else { return }
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = text
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == text {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == text {
+                pasteboard.string = ""
+            }
+            #endif
+        }
+    }
+
+    private func exportMarkdown() {
+        let text = environment.notesEditorViewModel.content.isEmpty
+            ? environment.notesViewModel.activeNote?.content ?? ""
+            : environment.notesEditorViewModel.content
+        guard let name = environment.notesViewModel.activeNote?.name else { return }
+        let filename = name.hasSuffix(".md") ? name : "\(name).md"
+        exportFilename = filename
+        exportDocument = MarkdownFileDocument(text: text)
+        isExporting = true
+    }
+
+    private func deleteNoteAfterDismissal(id: String) async {
+        prepareForDestructiveAction()
+        await waitForKeyboardDismissal()
+        await environment.notesViewModel.deleteNote(id: id)
+    }
+
+    private func prepareForDestructiveAction() {
+        environment.notesEditorViewModel.setReadOnly(true)
+        #if os(iOS)
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        #endif
+    }
+
+    @MainActor
+    private func waitForKeyboardDismissal(timeout: UInt64 = 500_000_000) async {
+        #if os(iOS)
+        let notifications = NotificationCenter.default.notifications(named: UIResponder.keyboardDidHideNotification)
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                for await _ in notifications {
+                    break
+                }
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: timeout)
+            }
+            await group.next()
+            group.cancelAll()
+        }
+        #endif
+    }
 }
 
 private struct NotesDetailView: View {
@@ -59,17 +352,16 @@ private struct NotesDetailView: View {
     @ObservedObject var editorViewModel: NotesEditorViewModel
     private let contentMaxWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
     @EnvironmentObject private var environment: AppEnvironment
-    @State private var isRenameDialogPresented = false
-    @State private var renameValue: String = ""
-    @State private var isMoveSheetPresented = false
-    @State private var moveSelection: String = ""
-    @State private var isDeleteAlertPresented = false
-    @State private var isArchiveAlertPresented = false
-    @State private var isActionsDialogPresented = false
-    @State private var isCloseConfirmPresented = false
-    @State private var isExporting = false
-    @State private var exportDocument: MarkdownFileDocument?
-    @State private var exportFilename: String = "note.md"
+    @Binding var isRenameDialogPresented: Bool
+    @Binding var renameValue: String
+    @Binding var isMoveSheetPresented: Bool
+    @Binding var moveSelection: String
+    @Binding var isDeleteAlertPresented: Bool
+    @Binding var isArchiveAlertPresented: Bool
+    @Binding var isCloseConfirmPresented: Bool
+    @Binding var isExporting: Bool
+    @Binding var exportDocument: MarkdownFileDocument?
+    @Binding var exportFilename: String
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0
     @State private var savedIndicatorTask: Task<Void, Never>?
@@ -106,27 +398,6 @@ private struct NotesDetailView: View {
         .onDisappear {
             savedIndicatorTask?.cancel()
         }
-        .fileExporter(
-            isPresented: $isExporting,
-            document: exportDocument,
-            contentType: .sideBarMarkdown,
-            defaultFilename: exportFilename
-        ) { _ in
-            exportDocument = nil
-        }
-        .sheet(isPresented: $isMoveSheetPresented) {
-            NoteFolderPickerSheet(
-                title: "Move Note",
-                selection: $moveSelection,
-                options: folderOptions,
-                onConfirm: { selection in
-                    guard let noteId = viewModel.activeNote?.path else { return }
-                    Task {
-                        await viewModel.moveNote(id: noteId, folder: selection)
-                    }
-                }
-            )
-        }
         .sheet(item: conflictBinding) { conflict in
             ConflictResolutionSheet(conflict: conflict) { choice in
                 Task {
@@ -134,70 +405,6 @@ private struct NotesDetailView: View {
                 }
             }
             .interactiveDismissDisabled(true)
-        }
-        .alert("Rename note", isPresented: $isRenameDialogPresented) {
-            TextField("Note name", text: $renameValue)
-                .submitLabel(.done)
-                .onSubmit {
-                    guard let noteId = viewModel.activeNote?.path else { return }
-                    let updatedName = renameValue
-                    isRenameDialogPresented = false
-                    renameValue = ""
-                    Task {
-                        await viewModel.renameNote(id: noteId, newName: updatedName)
-                    }
-                }
-            Button("Rename") {
-                guard let noteId = viewModel.activeNote?.path else { return }
-                let updatedName = renameValue
-                isRenameDialogPresented = false
-                renameValue = ""
-                Task {
-                    await viewModel.renameNote(id: noteId, newName: updatedName)
-                }
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) {
-                renameValue = ""
-            }
-        }
-        .alert("Delete note", isPresented: $isDeleteAlertPresented) {
-            Button("Delete", role: .destructive) {
-                guard let noteId = viewModel.activeNote?.path else { return }
-                Task {
-                    await deleteNoteAfterDismissal(id: noteId)
-                }
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will remove the note and cannot be undone.")
-        }
-        .alert(archiveAlertTitle, isPresented: $isArchiveAlertPresented) {
-            Button(archiveActionTitle, role: .destructive) {
-                guard let noteId = viewModel.activeNote?.path else { return }
-                Task {
-                    await viewModel.setArchived(id: noteId, archived: !isArchived)
-                }
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text(archiveAlertMessage)
-        }
-        .confirmationDialog("Save changes?", isPresented: $isCloseConfirmPresented, titleVisibility: .visible) {
-            Button("Save changes") {
-                Task {
-                    await editorViewModel.saveIfNeeded()
-                    viewModel.clearSelection()
-                }
-            }
-            Button("Don't save", role: .destructive) {
-                viewModel.clearSelection()
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("You have unsaved changes. Save before closing the note?")
         }
         .onReceive(environment.$shortcutActionEvent) { event in
             guard let event, event.section == .notes else { return }
@@ -218,57 +425,13 @@ private struct NotesDetailView: View {
                 break
             }
         }
+        #if os(iOS)
         .toolbar {
-            if isCompact, viewModel.activeNote != nil {
-                #if os(iOS)
+            if isCompact, viewModel.activeNote != nil, isPhone {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    noteActionsMenu
-                    closeButton
-                }
-                #endif
-            }
-        }
-    }
-
-    private func prepareForDestructiveAction() {
-        editorViewModel.setReadOnly(true)
-        #if os(iOS)
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder),
-            to: nil,
-            from: nil,
-            for: nil
-        )
-        #endif
-    }
-
-    private func deleteNoteAfterDismissal(id: String) async {
-        prepareForDestructiveAction()
-        await waitForKeyboardDismissal()
-        await viewModel.deleteNote(id: id)
-    }
-
-    private func openActionsDialog() async {
-        prepareForDestructiveAction()
-        await waitForKeyboardDismissal()
-        isActionsDialogPresented = true
-    }
-
-    @MainActor
-    private func waitForKeyboardDismissal(timeout: UInt64 = 500_000_000) async {
-        #if os(iOS)
-        let notifications = NotificationCenter.default.notifications(named: UIResponder.keyboardDidHideNotification)
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                for await _ in notifications {
-                    break
+                    noteToolbarMenu
                 }
             }
-            group.addTask {
-                try? await Task.sleep(nanoseconds: timeout)
-            }
-            await group.next()
-            group.cancelAll()
         }
         #endif
     }
@@ -555,6 +718,49 @@ extension NotesDetailView {
         #endif
     }
 
+    #if os(iOS)
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+
+    private var noteToolbarMenu: some View {
+        HeaderActionMenuButton(
+            systemImage: "ellipsis.circle",
+            accessibilityLabel: "Note options",
+            items: [
+                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    guard let noteId = viewModel.activeNote?.path else { return }
+                    Task {
+                        await viewModel.setPinned(id: noteId, pinned: !isPinned)
+                    }
+                },
+                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    renameValue = displayTitle
+                    isRenameDialogPresented = true
+                },
+                MenuActionItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                    moveSelection = currentFolderPath
+                    isMoveSheetPresented = true
+                },
+                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyMarkdown()
+                },
+                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    exportMarkdown()
+                },
+                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    isArchiveAlertPresented = true
+                },
+                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ],
+            isCompact: isCompact
+        )
+        .disabled(viewModel.activeNote == nil)
+    }
+    #endif
+
     @ViewBuilder
     private var noteActionsMenu: some View {
         #if os(macOS)
@@ -568,18 +774,40 @@ extension NotesDetailView {
         .disabled(viewModel.activeNote == nil)
         #else
         if isCompact {
-            Button {
-                Task { await openActionsDialog() }
-            } label: {
-                HeaderActionIcon(systemName: "ellipsis.circle")
-            }
-            .buttonStyle(.plain)
-            .frame(width: 28, height: 20)
-            .accessibilityLabel("Note options")
+            HeaderActionMenuButton(
+                systemImage: "ellipsis.circle",
+                accessibilityLabel: "Note options",
+                items: [
+                    MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                        guard let noteId = viewModel.activeNote?.path else { return }
+                        Task {
+                            await viewModel.setPinned(id: noteId, pinned: !isPinned)
+                        }
+                    },
+                    MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                        renameValue = displayTitle
+                        isRenameDialogPresented = true
+                    },
+                    MenuActionItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                        moveSelection = currentFolderPath
+                        isMoveSheetPresented = true
+                    },
+                    MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                        copyMarkdown()
+                    },
+                    MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                        exportMarkdown()
+                    },
+                    MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                        isArchiveAlertPresented = true
+                    },
+                    MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                        isDeleteAlertPresented = true
+                    }
+                ],
+                isCompact: isCompact
+            )
             .disabled(viewModel.activeNote == nil)
-            .confirmationDialog("Note actions", isPresented: $isActionsDialogPresented, titleVisibility: .visible) {
-                noteActionsDialogItems
-            }
         } else {
             NoteActionsMenuButton(
                 title: "Note options",
@@ -663,37 +891,6 @@ extension NotesDetailView {
         } label: {
             Label("Delete", systemImage: "trash")
         }
-    }
-
-    @ViewBuilder
-    private var noteActionsDialogItems: some View {
-        Button(pinActionTitle) {
-            guard let noteId = viewModel.activeNote?.path else { return }
-            Task {
-                await viewModel.setPinned(id: noteId, pinned: !isPinned)
-            }
-        }
-        Button("Rename") {
-            renameValue = displayTitle
-            isRenameDialogPresented = true
-        }
-        Button("Move") {
-            moveSelection = currentFolderPath
-            isMoveSheetPresented = true
-        }
-        Button("Copy") {
-            copyMarkdown()
-        }
-        Button("Download") {
-            exportMarkdown()
-        }
-        Button(archiveMenuTitle) {
-            isArchiveAlertPresented = true
-        }
-        Button("Delete", role: .destructive) {
-            isDeleteAlertPresented = true
-        }
-        Button("Cancel", role: .cancel) { }
     }
 
     private var closeButton: some View {
