@@ -28,6 +28,9 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     private var isRefreshingArchived = false
     private let archivedDetailRetentionDays = 7
     private let archivedListLimit = 500
+    private var archivedSummary: ArchivedSummary?
+    private var archivedListSyncedAt: String?
+    private var archivedSyncLoaded = false
 
     public init(
         api: any WebsitesProviding,
@@ -51,6 +54,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     public override func applyData(_ data: WebsitesResponse, persist: Bool) {
+        updateArchivedSummary(from: data, persist: persist)
         applyListUpdate(data.items, persist: persist)
     }
 
@@ -65,6 +69,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         if !force {
             let cached: WebsitesResponse? = cache.get(key: cacheKey)
             if let cached {
+                updateArchivedSummary(from: cached, persist: false)
                 applyListUpdate(cached.items, persist: false)
                 Task { [weak self] in
                     await self?.refreshList()
@@ -73,6 +78,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
                 return
             }
             if let offline = offlineStore?.get(key: cacheKey, as: WebsitesResponse.self) {
+                updateArchivedSummary(from: offline, persist: false)
                 applyListUpdate(offline.items, persist: false)
                 if !(networkStatus?.isOffline ?? false) {
                     Task { [weak self] in
@@ -84,6 +90,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             }
         }
         let remote = try await fetchFromAPI()
+        updateArchivedSummary(from: remote, persist: true)
         applyListUpdate(remote.items, persist: true)
         cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
         if !(networkStatus?.isOffline ?? false) {
@@ -117,7 +124,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         if !force, isRefreshingArchived {
             return
         }
-        await refreshArchivedList()
+        await refreshArchivedList(force: force)
     }
 
     public func updateListItem(_ item: WebsiteItem, persist: Bool = true) {
@@ -190,6 +197,9 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     public func reset() {
         items = []
         active = nil
+        archivedSummary = nil
+        archivedListSyncedAt = nil
+        archivedSyncLoaded = false
     }
 
     public func attachWriteQueue(_ writeQueue: WriteQueue) {
@@ -198,6 +208,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
 
     public func loadFromOffline() async {
         guard let offline = offlineStore?.get(key: cacheKey, as: WebsitesResponse.self) else { return }
+        updateArchivedSummary(from: offline, persist: false)
         applyListUpdate(offline.items, persist: false)
     }
 
@@ -240,14 +251,18 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         defer { isRefreshingList = false }
         do {
             let response = try await api.list()
+            updateArchivedSummary(from: response, persist: true)
             applyListUpdate(response.items, persist: true)
         } catch {
             // Ignore background refresh failures; cache remains source of truth.
         }
     }
 
-    private func refreshArchivedList() async {
+    private func refreshArchivedList(force: Bool = false) async {
         guard !isRefreshingArchived else {
+            return
+        }
+        guard shouldRefreshArchivedList(force: force) else {
             return
         }
         isRefreshingArchived = true
@@ -255,6 +270,8 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         do {
             let response = try await api.listArchived(limit: archivedListLimit, offset: 0)
             applyArchivedUpdate(response.items, persist: true)
+            archivedListSyncedAt = archivedSummary?.lastUpdated
+            persistArchivedSyncToken()
         } catch {
             // Ignore background refresh failures; cache remains source of truth.
         }
@@ -292,6 +309,75 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         if persist {
             persistListCache()
         }
+    }
+
+    private func updateArchivedSummary(from response: WebsitesResponse, persist: Bool) {
+        let summary = ArchivedSummary(
+            count: response.archivedCount,
+            lastUpdated: response.archivedLastUpdated
+        )
+        guard !summary.isEmpty else {
+            return
+        }
+        archivedSummary = summary
+        if persist, summary.count == 0 {
+            removeArchivedItems()
+            archivedListSyncedAt = summary.lastUpdated
+            persistArchivedSyncToken()
+        }
+    }
+
+    private func shouldRefreshArchivedList(force: Bool) -> Bool {
+        if force {
+            return true
+        }
+        loadArchivedSyncTokenIfNeeded()
+        if let summary = archivedSummary {
+            if summary.count == 0 {
+                return false
+            }
+            let hasArchivedItems = items.contains { $0.archived }
+            guard let serverUpdated = summary.lastUpdated else {
+                return !hasArchivedItems
+            }
+            if let archivedListSyncedAt {
+                return archivedListSyncedAt != serverUpdated
+            }
+            return true
+        }
+        return true
+    }
+
+    private func loadArchivedSyncTokenIfNeeded() {
+        guard !archivedSyncLoaded else {
+            return
+        }
+        archivedSyncLoaded = true
+        archivedListSyncedAt = offlineStore?.get(
+            key: CacheKeys.websitesArchivedSync,
+            as: String.self
+        )
+    }
+
+    private func persistArchivedSyncToken() {
+        guard let archivedListSyncedAt else {
+            return
+        }
+        let lastSyncAt = Date()
+        offlineStore?.set(
+            key: CacheKeys.websitesArchivedSync,
+            entityType: "websitesArchivedSync",
+            value: archivedListSyncedAt,
+            lastSyncAt: lastSyncAt
+        )
+    }
+
+    private func removeArchivedItems() {
+        items = items.filter { !$0.archived }
+        if active?.archived == true {
+            active = nil
+        }
+        persistListCache()
     }
 
     // MARK: - Widget Data
@@ -392,7 +478,11 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     private func persistListCache() {
-        let response = WebsitesResponse(items: items)
+        let response = WebsitesResponse(
+            items: items,
+            archivedCount: archivedSummary?.count,
+            archivedLastUpdated: archivedSummary?.lastUpdated
+        )
         cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: CachePolicy.websitesList)
         let lastSyncAt = Date()
         offlineStore?.set(

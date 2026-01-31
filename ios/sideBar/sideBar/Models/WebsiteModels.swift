@@ -19,6 +19,20 @@ public struct WebsiteItem: Codable, Identifiable {
 
 public struct WebsitesResponse: Codable {
     public let items: [WebsiteItem]
+    public let archivedCount: Int?
+    public let archivedLastUpdated: String?
+
+    public init(items: [WebsiteItem], archivedCount: Int? = nil, archivedLastUpdated: String? = nil) {
+        self.items = items
+        self.archivedCount = archivedCount
+        self.archivedLastUpdated = archivedLastUpdated
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case items
+        case archivedCount = "archived_count"
+        case archivedLastUpdated = "archived_last_updated"
+    }
 }
 
 public struct WebsiteDetail: Codable, Identifiable {

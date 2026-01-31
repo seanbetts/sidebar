@@ -22,6 +22,34 @@ public struct FileNode: Codable {
 
 public struct FileTree: Codable {
     public let children: [FileNode]
+    public let archivedCount: Int?
+    public let archivedLastUpdated: String?
+
+    public init(children: [FileNode], archivedCount: Int? = nil, archivedLastUpdated: String? = nil) {
+        self.children = children
+        self.archivedCount = archivedCount
+        self.archivedLastUpdated = archivedLastUpdated
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case children
+        case archivedCount = "archived_count"
+        case archivedLastUpdated = "archived_last_updated"
+    }
+}
+
+public struct ArchivedSummary: Codable, Equatable {
+    public let count: Int?
+    public let lastUpdated: String?
+
+    public init(count: Int? = nil, lastUpdated: String? = nil) {
+        self.count = count
+        self.lastUpdated = lastUpdated
+    }
+
+    public var isEmpty: Bool {
+        count == nil && lastUpdated == nil
+    }
 }
 
 public struct FileContent: Codable {

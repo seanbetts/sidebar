@@ -188,7 +188,7 @@ extension NotesStore {
     private func applyLocalDelete(notePath: String) {
         guard let tree else { return }
         let updatedChildren = removingNode(in: tree.children, notePath: notePath)
-        let updatedTree = FileTree(children: updatedChildren)
+        let updatedTree = makeTree(children: updatedChildren)
         persistLocalTree(updatedTree)
         invalidateNote(id: notePath)
         if activeNote?.path == notePath {
@@ -228,7 +228,7 @@ extension NotesStore {
     private func updatedTree(notePath: String, transform: (FileNode) -> FileNode?) -> FileTree? {
         guard let tree else { return nil }
         let updatedChildren = updatingNodes(in: tree.children, notePath: notePath, transform: transform)
-        return FileTree(children: updatedChildren)
+        return makeTree(children: updatedChildren)
     }
 
     private func updatingNodes(
