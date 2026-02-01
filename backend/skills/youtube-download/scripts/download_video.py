@@ -378,14 +378,14 @@ def download_youtube(
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Referer": "https://www.youtube.com/",
         },
-        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "extractor_args": {"youtube": {"player_client": ["web"]}},
     }
 
     # Audio-only configuration
     if audio_only:
         ydl_opts.update(
             {
-                "format": "140-8/140/bestaudio[ext=m4a]/bestaudio",
+                "format": "bestaudio/best",
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
