@@ -8,7 +8,7 @@ import AppKit
 
 enum MarkdownHeadingMetrics {
     static let lineSpacingEm: CGFloat = 0.3
-    static let spacingBeforeRem: CGFloat = 1
+    static let spacingBeforeRem: CGFloat = 0.5
     static let spacingAfterRem: CGFloat = 0
 
     static func fontSize(for level: Int) -> CGFloat {

@@ -8,7 +8,7 @@ import AppKit
 
 enum MarkdownParagraphMetrics {
     static let bodyLineSpacingEm: CGFloat = 0.25
-    static let bodySpacingRem: CGFloat = 0.75
+    static let bodySpacingRem: CGFloat = 0.5
     static let listLineSpacingEm: CGFloat = 0.25
     static let listSpacingRem: CGFloat = 0
 
