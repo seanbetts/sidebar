@@ -103,33 +103,37 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     ) {
         self.stateStore = stateStore
 
-        let authOptions = SupabaseClientOptions.AuthOptions(
-            emitLocalSessionAsInitialSession: true
-        )
+        // Create Supabase storage adapter using our Keychain store.
+        // This eliminates the race condition between Supabase's internal storage
+        // and our separate Keychain storage by making them the same.
+        let authOptions: SupabaseClientOptions.AuthOptions
+        if let keychainStore = stateStore as? KeychainAuthStateStore {
+            authOptions = SupabaseClientOptions.AuthOptions(
+                storage: SupabaseKeychainStorage(stateStore: keychainStore),
+                emitLocalSessionAsInitialSession: true
+            )
+        } else {
+            authOptions = SupabaseClientOptions.AuthOptions(
+                emitLocalSessionAsInitialSession: true
+            )
+        }
+
         supabase = SupabaseClient(
             supabaseURL: config.supabaseUrl,
             supabaseKey: config.supabaseAnonKey,
             options: SupabaseClientOptions(auth: authOptions)
         )
 
+        // With unified storage, Supabase now loads sessions from our Keychain automatically.
+        // We just need to apply the session if one exists, or check offline window expiry.
         if let session = supabase.auth.currentSession {
-            applySession(session)
-        } else {
-            do {
-                let storedToken = try stateStore.loadAccessToken()
-                let storedUserId = try stateStore.loadUserId()
-                if storedToken != nil, storedUserId != nil, shouldAllowOfflineAccess(hasStoredToken: true) {
-                    accessToken = storedToken
-                    userId = storedUserId
-                } else {
-                    do {
-                        try stateStore.clear()
-                    } catch {
-                        logger.error("Failed to clear auth state: \(error.localizedDescription, privacy: .public)")
-                    }
+            if shouldAllowOfflineAccess(hasStoredToken: true) {
+                applySession(session)
+            } else {
+                // Offline window expired - attempt recovery before clearing
+                Task { [weak self] in
+                    await self?.attemptSessionRecovery()
                 }
-            } catch {
-                recordError("Unable to restore authentication state.")
             }
         }
 
@@ -196,7 +200,9 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     }
 
     public func refreshSession() async {
-        guard accessToken != nil, userId != nil, supabase.auth.currentSession != nil else {
+        // Only require our local state - with unified storage, supabase.auth.currentSession
+        // should be available, but we don't strictly require it for edge cases.
+        guard accessToken != nil, userId != nil else {
             sessionExpiryWarning = nil
             return
         }
@@ -447,6 +453,19 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         guard lastAuthTimestamp > 0 else { return false }
         let lastAuthDate = Date(timeIntervalSince1970: lastAuthTimestamp)
         return Date().timeIntervalSince(lastAuthDate) <= offlineAccessWindow
+    }
+
+    /// Attempts to recover a session when the offline access window has expired.
+    /// On success, applies the refreshed session. On failure, signs out.
+    private func attemptSessionRecovery() async {
+        do {
+            let session = try await supabase.auth.refreshSession()
+            applySession(session)
+            logger.notice("Session recovery succeeded after offline window expiry")
+        } catch {
+            logger.warning("Session recovery failed: \(error.localizedDescription, privacy: .public)")
+            await signOut()
+        }
     }
 
     private func updateLastAuthTimestamp(_ date: Date) {
