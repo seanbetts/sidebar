@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 
 public enum PendingShareKind: String, Codable {
     case website
@@ -38,6 +39,8 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
 public final class PendingShareStore {
     public static let shared = PendingShareStore()
 
+    private static let log = OSLog(subsystem: "ai.sidebar.sidebar", category: "PendingShareStore")
+
     private let itemsKey = "pendingShareItems"
     private let directoryName = "pending-shares"
     private let fileManager: FileManager
@@ -56,6 +59,7 @@ public final class PendingShareStore {
 
     @discardableResult
     public func enqueueWebsite(url: String) -> PendingShareItem? {
+        logMissingAppGroupIfNeeded(context: "enqueueWebsite")
         let item = PendingShareItem(
             id: UUID(),
             kind: .website,
@@ -63,13 +67,16 @@ public final class PendingShareStore {
             url: url
         )
         append(item)
+        os_log(.default, log: Self.log, "Queued website share %{public}@", url)
         return item
     }
 
     @discardableResult
     public func enqueueYouTube(url: String) -> PendingShareItem? {
+        logMissingAppGroupIfNeeded(context: "enqueueYouTube")
         let existingItems = loadAll()
         if let existing = existingItems.first(where: { $0.kind == .youtube && $0.url == url }) {
+            os_log(.default, log: Self.log, "YouTube share already queued %{public}@", url)
             return existing
         }
         let item = PendingShareItem(
@@ -81,6 +88,7 @@ public final class PendingShareStore {
         var items = existingItems
         items.append(item)
         replaceAll(items)
+        os_log(.default, log: Self.log, "Queued YouTube share %{public}@", url)
         return item
     }
 
@@ -283,6 +291,20 @@ public final class PendingShareStore {
         if let baseDirectory { return baseDirectory }
         guard let suiteName = AppGroupConfiguration.appGroupId else { return nil }
         return fileManager.containerURL(forSecurityApplicationGroupIdentifier: suiteName)
+    }
+
+    private func logMissingAppGroupIfNeeded(context: String) {
+        guard defaults == nil || rootDirectory == nil else { return }
+        let bundleId = Bundle.main.bundleIdentifier ?? "unknown"
+        let groupId = AppGroupConfiguration.appGroupId ?? "unset"
+        os_log(
+            .error,
+            log: Self.log,
+            "App group unavailable (%{public}@). bundleId=%{public}@ appGroupId=%{public}@",
+            context,
+            bundleId,
+            groupId
+        )
     }
 
     private static func makeEncoder() -> JSONEncoder {

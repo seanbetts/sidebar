@@ -34,6 +34,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         let action = payload?["action"] as? String
         let urlString = payload?["url"] as? String
         let responsePayload = handleMessage(action: action, urlString: urlString)
+        os_log(.default, "SafariWebExtensionHandler response=%@", String(describing: responsePayload))
 
         let response = NSExtensionItem()
         if #available(iOS 15.0, macOS 11.0, *) {
