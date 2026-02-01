@@ -365,6 +365,10 @@ private struct NotesDetailView: View {
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0
     @State private var savedIndicatorTask: Task<Void, Never>?
+    @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
+    #if os(iOS)
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
+    #endif
     @AppStorage(AppStorageKeys.useNativeMarkdownEditor) private var useNativeMarkdownEditor = true
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -518,6 +522,9 @@ extension NotesDetailView {
                             noteStatusText(status)
                         }
                         HeaderActionRow {
+                            if shouldShowExpandButton {
+                                expandButton
+                            }
                             noteActionsMenu
                             closeButton
                         }
@@ -721,6 +728,43 @@ extension NotesDetailView {
     #if os(iOS)
     private var isPhone: Bool {
         UIDevice.current.userInterfaceIdiom == .phone
+    }
+
+    private var shouldShowExpandButton: Bool {
+        #if os(iOS)
+        return !isPhone
+        #else
+        return true
+        #endif
+    }
+
+    private var expandButton: some View {
+        Button(action: expandNoteView) {
+            Image(systemName: expandButtonIconName)
+                .font(DesignTokens.Typography.labelMd)
+                .frame(width: 28, height: 20)
+                .imageScale(.medium)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(expandButtonLabel)
+        .disabled(viewModel.activeNote == nil)
+    }
+
+    private var expandButtonIconName: String {
+        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    }
+
+    private var expandButtonLabel: String {
+        isWorkspaceExpanded ? "Exit expanded mode" : "Expand note"
+    }
+
+    private func expandNoteView() {
+        #if os(iOS)
+        if !isPhone {
+            isWorkspaceExpandedByRotation = false
+        }
+        #endif
+        isWorkspaceExpanded.toggle()
     }
 
     private var noteToolbarMenu: some View {

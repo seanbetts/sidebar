@@ -476,7 +476,8 @@ extension ContentView {
             return
         }
         lastWorkspaceIsPortrait = isPortrait
-        guard environment.activeSection == .websites else { return }
+        guard let activeSection = environment.activeSection,
+              [.websites, .notes, .tasks, .files].contains(activeSection) else { return }
         if isPortrait {
             if !isWorkspaceExpanded {
                 isWorkspaceExpandedByRotation = true
