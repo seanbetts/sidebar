@@ -13,10 +13,12 @@ final class HorizontalRuleAttachment: NSTextAttachment {
 
     var lineColor: PlatformColor
     var lineHeight: CGFloat
+    var horizontalInset: CGFloat
 
-    init(lineColor: PlatformColor, lineHeight: CGFloat = 1) {
+    init(lineColor: PlatformColor, lineHeight: CGFloat = 1, horizontalInset: CGFloat = 0) {
         self.lineColor = lineColor
         self.lineHeight = max(1, lineHeight)
+        self.horizontalInset = max(0, horizontalInset)
         super.init(data: nil, ofType: Self.fileType)
         HorizontalRuleAttachment.registerViewProvider()
         allowsTextAttachmentView = true
@@ -26,6 +28,7 @@ final class HorizontalRuleAttachment: NSTextAttachment {
     required init?(coder: NSCoder) {
         self.lineColor = Self.platformColor(DesignTokens.Colors.border)
         self.lineHeight = 1
+        self.horizontalInset = 0
         super.init(coder: coder)
         HorizontalRuleAttachment.registerViewProvider()
         allowsTextAttachmentView = true
@@ -40,7 +43,11 @@ final class HorizontalRuleAttachment: NSTextAttachment {
         position: CGPoint
     ) -> CGRect {
         let height = max(1, lineHeight)
-        return CGRect(x: 0, y: 0, width: proposedLineFragment.width, height: height)
+        let width = proposedLineFragment.width + (horizontalInset * 2)
+        let scale = effectiveScale(textContainer: textContainer)
+        let alignedWidth = (width * scale).rounded() / scale
+        let alignedX = (-horizontalInset * scale).rounded() / scale
+        return CGRect(x: alignedX, y: 0, width: alignedWidth, height: height)
     }
 
     override func attachmentBounds(
@@ -50,7 +57,11 @@ final class HorizontalRuleAttachment: NSTextAttachment {
         characterIndex charIndex: Int
     ) -> CGRect {
         let height = max(1, lineHeight)
-        return CGRect(x: 0, y: 0, width: lineFrag.width, height: height)
+        let width = lineFrag.width + (horizontalInset * 2)
+        let scale = effectiveScale(textContainer: textContainer)
+        let alignedWidth = (width * scale).rounded() / scale
+        let alignedX = (-horizontalInset * scale).rounded() / scale
+        return CGRect(x: alignedX, y: 0, width: alignedWidth, height: height)
     }
 
     private static let didRegisterViewProvider: Void = {
@@ -71,6 +82,16 @@ final class HorizontalRuleAttachment: NSTextAttachment {
         NSColor(color)
 #endif
     }
+
+    private func effectiveScale(textContainer: NSTextContainer?) -> CGFloat {
+#if os(iOS)
+        return 1
+#else
+        return textContainer?.textView?.window?.backingScaleFactor
+            ?? NSScreen.main?.backingScaleFactor
+            ?? 2
+#endif
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -89,50 +110,29 @@ final class HorizontalRuleAttachmentViewProvider: NSTextAttachmentViewProvider {
 
 @available(iOS 26.0, macOS 26.0, *)
 final class HorizontalRuleView: PlatformView {
-    private let lineLayer = CALayer()
-    private let lineHeight: CGFloat
+    private let lineColor: PlatformColor
 
     init(lineColor: PlatformColor, lineHeight: CGFloat) {
-        self.lineHeight = max(1, lineHeight)
+        self.lineColor = lineColor
         super.init(frame: .zero)
 #if os(iOS)
-        backgroundColor = .clear
-        layer.addSublayer(lineLayer)
+        backgroundColor = lineColor
+        isOpaque = true
 #else
         wantsLayer = true
-        layer?.addSublayer(lineLayer)
+        layer?.backgroundColor = lineColor.cgColor
 #endif
-        lineLayer.backgroundColor = lineColor.cgColor
     }
 
     required init?(coder: NSCoder) {
-        self.lineHeight = 1
+        self.lineColor = PlatformColor.clear
         super.init(coder: coder)
 #if os(iOS)
-        backgroundColor = .clear
-        layer.addSublayer(lineLayer)
+        backgroundColor = lineColor
+        isOpaque = false
 #else
         wantsLayer = true
-        layer?.addSublayer(lineLayer)
+        layer?.backgroundColor = lineColor.cgColor
 #endif
-        lineLayer.backgroundColor = PlatformColor.clear.cgColor
-    }
-
-#if os(iOS)
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        updateLineFrame()
-    }
-#else
-    override func layout() {
-        super.layout()
-        updateLineFrame()
-    }
-#endif
-
-    private func updateLineFrame() {
-        let height = max(1, lineHeight)
-        let lineY = (bounds.height - height) / 2
-        lineLayer.frame = CGRect(x: 0, y: lineY, width: bounds.width, height: height)
     }
 }
