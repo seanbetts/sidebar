@@ -256,9 +256,7 @@ extension NotesPanelView {
         } onDelete: {
             confirmDelete(for: item)
         }
-        .contextMenu {
-            noteContextMenuItems(for: item)
-        }
+        .platformContextMenu(items: noteContextMenuItemsList(for: item))
     }
 
     var notesPanelContent: some View {
@@ -337,9 +335,7 @@ extension NotesPanelView {
                         } onDelete: {
                             confirmDelete(for: item)
                         }
-                        .contextMenu {
-                            noteContextMenuItems(for: item)
-                        }
+                        .platformContextMenu(items: noteContextMenuItemsList(for: item))
                     }
                 }
             }
@@ -370,9 +366,7 @@ extension NotesPanelView {
                                 } onDelete: {
                                     confirmDelete(for: item)
                                 }
-                                .contextMenu {
-                                    noteContextMenuItems(for: item)
-                                }
+                                .platformContextMenu(items: noteContextMenuItemsList(for: item))
                             }
                             .listRowBackground(rowBackground)
                         }
@@ -423,9 +417,7 @@ extension NotesPanelView {
             } onDelete: {
                 confirmDelete(for: item)
             }
-            .contextMenu {
-                noteContextMenuItems(for: item)
-            }
+            .platformContextMenu(items: noteContextMenuItemsList(for: item))
         }
         .listRowBackground(rowBackground)
     }
@@ -458,9 +450,7 @@ extension NotesPanelView {
                                 } onDelete: {
                                     confirmDelete(for: item)
                                 }
-                                .contextMenu {
-                                    noteContextMenuItems(for: item)
-                                }
+                                .platformContextMenu(items: noteContextMenuItemsList(for: item))
                             }
                         }
                         .frame(maxHeight: 650)

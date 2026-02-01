@@ -211,9 +211,7 @@ extension FilesPanelView {
                         onPinToggle: pinAction(for: item),
                         onDelete: deleteAction(for: item)
                     )
-                    .contextMenu {
-                        fileContextMenuItems(for: item)
-                    }
+                    .platformContextMenu(items: fileContextMenuItemsList(for: item))
                     if isFolder(item) {
                         row
                             .staggeredAppear(index: index, isActive: listAppeared)
@@ -233,9 +231,7 @@ extension FilesPanelView {
                                 onPinToggle: pinAction(for: item),
                                 onDelete: deleteAction(for: item)
                             )
-                            .contextMenu {
-                                fileContextMenuItems(for: item)
-                            }
+                            .platformContextMenu(items: fileContextMenuItemsList(for: item))
                             if isFolder(item) {
                                 row
                                     .staggeredAppear(index: index, isActive: listAppeared)
@@ -262,9 +258,7 @@ extension FilesPanelView {
                                             onPinToggle: pinAction(for: item),
                                             onDelete: deleteAction(for: item)
                                         )
-                                        .contextMenu {
-                                            fileContextMenuItems(for: item)
-                                        }
+                                        .platformContextMenu(items: fileContextMenuItemsList(for: item))
                                         if isFolder(item) {
                                             row
                                                 .staggeredAppear(

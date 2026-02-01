@@ -9,39 +9,36 @@ import AppKit
 extension FilesPanelView {
     @ViewBuilder
     func fileContextMenuItems(for item: IngestionListItem) -> some View {
-        Button {
-            Task {
-                await viewModel.togglePinned(fileId: item.file.id, pinned: !(item.file.pinned ?? false))
+        sidebarMenuItemsView(fileContextMenuItemsList(for: item))
+    }
+
+    func fileContextMenuItemsList(for item: IngestionListItem) -> [SidebarMenuItem] {
+        [
+            SidebarMenuItem(title: filePinTitle(for: item), systemImage: filePinIconName(for: item), role: nil) {
+                Task {
+                    await viewModel.togglePinned(fileId: item.file.id, pinned: !(item.file.pinned ?? false))
+                }
+            },
+            SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                beginRename(for: item)
+            },
+            SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                Task {
+                    await selectFileForAction(item)
+                    copySelectedFileContent()
+                }
+            },
+            SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                Task {
+                    await selectFileForAction(item)
+                    self.appEnvironment.emitShortcutAction(.openInDefaultApp)
+                }
+            },
+            SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                deleteTarget = item
+                isDeleteAlertPresented = true
             }
-        } label: {
-            Label(filePinTitle(for: item), systemImage: filePinIconName(for: item))
-        }
-        Button {
-            beginRename(for: item)
-        } label: {
-            Label("Rename", systemImage: "pencil")
-        }
-        Button {
-            Task {
-                await selectFileForAction(item)
-                copySelectedFileContent()
-            }
-        } label: {
-            Label("Copy", systemImage: "doc.on.doc")
-        }
-        Button {
-            Task {
-                await selectFileForAction(item)
-                self.appEnvironment.emitShortcutAction(.openInDefaultApp)
-            }
-        } label: {
-            Label("Download", systemImage: "square.and.arrow.down")
-        }
-        Button(role: .destructive) {
-            deleteTarget = item
-        } label: {
-            Label("Delete", systemImage: "trash")
-        }
+        ]
     }
 
     private func filePinTitle(for item: IngestionListItem) -> String {

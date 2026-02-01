@@ -16,7 +16,7 @@ extension NotesPanelView {
         sidebarMenuItemsView(noteContextMenuItemsList(for: item))
     }
 
-    private func noteContextMenuItemsList(for item: FileNodeItem) -> [SidebarMenuItem] {
+    func noteContextMenuItemsList(for item: FileNodeItem) -> [SidebarMenuItem] {
         if item.isFile {
             return [
                 SidebarMenuItem(title: notePinTitle(for: item), systemImage: notePinIconName(for: item), role: nil) {
