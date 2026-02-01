@@ -42,7 +42,8 @@ extension NotesPanelView {
                 type: node.type,
                 children: nil,
                 pinned: node.pinned ?? true,
-                archived: node.archived ?? false
+                archived: node.archived ?? false,
+                created: node.created
             )
         }
     }
@@ -107,6 +108,7 @@ extension NotesPanelView {
                     type: node.type,
                     size: node.size,
                     modified: node.modified,
+                    created: node.created,
                     children: children,
                     expanded: node.expanded,
                     pinned: node.pinned,
