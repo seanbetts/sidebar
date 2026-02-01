@@ -210,6 +210,7 @@ public final class WebsitesViewModel: ObservableObject {
                     faviconUrl: detail?.faviconUrl,
                     faviconR2Key: detail?.faviconR2Key,
                     youtubeTranscripts: detail?.youtubeTranscripts,
+                    readingTime: nil,
                     updatedAt: detail?.updatedAt,
                     lastOpenedAt: detail?.lastOpenedAt,
                     deletedAt: nil

@@ -187,6 +187,21 @@ def run_quick_save(
             )
 
 
+def _extract_reading_time(content: str) -> str | None:
+    """Extract reading_time from markdown frontmatter."""
+    if not content or not content.startswith("---"):
+        return None
+    end = content.find("\n---", 3)
+    if end == -1:
+        return None
+    frontmatter = content[4:end]
+    for line in frontmatter.split("\n"):
+        if line.startswith("reading_time:"):
+            value = line[13:].strip().strip("'\"")
+            return value if value else None
+    return None
+
+
 def website_summary(website: Website) -> dict:
     """Build a summary payload for a website record."""
     metadata = website.metadata_ or {}
@@ -206,6 +221,7 @@ def website_summary(website: Website) -> dict:
         "favicon_r2_key": metadata.get("favicon_r2_key"),
         "favicon_extracted_at": metadata.get("favicon_extracted_at"),
         "youtube_transcripts": metadata.get("youtube_transcripts", {}),
+        "reading_time": _extract_reading_time(website.content),
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "last_opened_at": website.last_opened_at.isoformat()
         if website.last_opened_at
