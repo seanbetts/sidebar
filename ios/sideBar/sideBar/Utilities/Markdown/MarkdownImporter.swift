@@ -45,6 +45,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private var listStack: [ListStackEntry] = []
     private var blockquoteDepth: Int = 0
     private var nextListId: Int = 1
+    private var lastBlockKind: BlockKind?
     private let baseFontSize: CGFloat = 16
     private let inlineCodeFontSize: CGFloat = 14
     private let bodyFont = Font.system(size: 16)
@@ -99,8 +100,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             )
         } else {
             applyBlockKind(.paragraph, to: &paragraphText)
-            paragraphText[fullRange(in: paragraphText)].paragraphStyle = MarkdownParagraphMetrics
-                .bodyParagraphStyle(baseFontSize: baseFontSize)
+            let paragraphStyle = MarkdownParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
+            paragraphText[fullRange(in: paragraphText)].paragraphStyle = adjustedSpacingBeforeIfNeeded(
+                paragraphStyle,
+                blockKind: .paragraph
+            )
         }
 
         paragraphText[fullRange(in: paragraphText)].font = bodyFont
@@ -282,11 +286,14 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             let listIndentUnit = em(1.5, fontSize: baseFontSize)
             let listIndent = listIndentUnit * CGFloat(max(1, context.depth))
             let quoteIndent = blockquoteDepth > 0 ? em(1, fontSize: baseFontSize) : 0
-            itemText[fullRange(in: itemText)].paragraphStyle = MarkdownParagraphMetrics
-                .listParagraphStyle(
-                    baseFontSize: baseFontSize,
-                    headIndent: listIndent + quoteIndent
-                )
+            let listStyle = MarkdownParagraphMetrics.listParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: listIndent + quoteIndent
+            )
+            itemText[fullRange(in: itemText)].paragraphStyle = adjustedSpacingBeforeIfNeeded(
+                listStyle,
+                blockKind: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph
+            )
             applyPresentationIntent(
                 for: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph,
                 listDepth: context.depth,
@@ -417,6 +424,37 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             result.append(AttributedString("\n"))
         }
         result.append(block)
+        lastBlockKind = block.blockKind(in: fullRange(in: block))
+    }
+
+    private func adjustedSpacingBeforeIfNeeded(
+        _ style: NSParagraphStyle,
+        blockKind: BlockKind
+    ) -> NSParagraphStyle {
+        guard lastBlockKind.map(isHeading) == true, isParagraphOrList(blockKind) else {
+            return style
+        }
+        let mutable = style.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+        mutable.paragraphSpacingBefore = 0
+        return mutable
+    }
+
+    private func isHeading(_ blockKind: BlockKind) -> Bool {
+        switch blockKind {
+        case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func isParagraphOrList(_ blockKind: BlockKind) -> Bool {
+        switch blockKind {
+        case .paragraph, .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            return true
+        default:
+            return false
+        }
     }
 
     private func prefixBlock(_ inner: AttributedString, with prefix: String) -> AttributedString {

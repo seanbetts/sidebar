@@ -854,18 +854,37 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         let lines = lineInfos(in: updated)
         applyCodeBlockSpacing(in: &updated, lines: lines)
         applyTableLayout(in: &updated, lines: lines)
-        for line in lines {
+        for (index, line) in lines.enumerated() {
             let lineStart = updated.index(updated.startIndex, offsetByCharacters: line.range.lowerBound)
             let lineEnd = updated.index(updated.startIndex, offsetByCharacters: line.range.upperBound)
             let lineRange = lineStart..<lineEnd
             let shouldShow = shouldShowPrefix(for: line.range, selection: adjustedSnapshot)
             let blockKind = updated.blockKind(in: lineRange) ?? inferredBlockKind(from: line.text)
+            let previousBlockKind: BlockKind? = {
+                guard index > 0 else { return nil }
+                let previous = lines[index - 1]
+                let prevStart = updated.index(updated.startIndex, offsetByCharacters: previous.range.lowerBound)
+                let prevEnd = updated.index(updated.startIndex, offsetByCharacters: previous.range.upperBound)
+                let prevRange = prevStart..<prevEnd
+                return updated.blockKind(in: prevRange) ?? inferredBlockKind(from: previous.text)
+            }()
             let prefixRange = markdownPrefixRange(
                 in: updated,
                 lineRange: lineRange,
                 lineText: line.text,
                 blockKind: blockKind
             )
+
+            if shouldRemoveSpacingBefore(blockKind: blockKind, previousBlockKind: previousBlockKind) {
+                let listDepth = updated[lineRange].listDepth
+                let baseStyle = updated[lineRange].paragraphStyle
+                    ?? paragraphStyle(for: blockKind ?? .paragraph, listDepth: listDepth)
+                if let baseStyle {
+                    let mutable = baseStyle.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+                    mutable.paragraphSpacingBefore = 0
+                    updated[lineRange].paragraphStyle = mutable
+                }
+            }
 
             applyInlineIntentStyling(in: &updated, lineRange: lineRange, blockKind: blockKind)
 
@@ -1623,6 +1642,19 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         default:
             return false
         }
+    }
+
+    private func shouldRemoveSpacingBefore(
+        blockKind: BlockKind?,
+        previousBlockKind: BlockKind?
+    ) -> Bool {
+        guard let previousBlockKind, isHeading(previousBlockKind) else { return false }
+        guard let blockKind else { return false }
+        return blockKind == .paragraph || isListBlockKind(blockKind)
+    }
+
+    private func isHeading(_ blockKind: BlockKind) -> Bool {
+        headingLevel(for: blockKind) != nil
     }
 
     private func orderedListOrdinals(
