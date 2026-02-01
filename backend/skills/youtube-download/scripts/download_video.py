@@ -5,6 +5,7 @@ Download YouTube videos or audio using yt-dlp with automatic format conversion.
 """
 
 import argparse
+import logging
 import json
 import os
 import shutil
@@ -29,16 +30,44 @@ except Exception:
 
 # Default output directory (files workspace)
 DEFAULT_R2_DIR = "files/videos"
+logger = logging.getLogger(__name__)
 
 
-def _resolve_js_runtimes() -> str | None:
-    value = os.getenv("YT_DLP_JS_RUNTIMES") or os.getenv("YT_DLP_JS_RUNTIME")
+def _resolve_js_runtimes() -> dict[str, dict[str, str]] | None:
+    value = (os.getenv("YT_DLP_JS_RUNTIMES") or os.getenv("YT_DLP_JS_RUNTIME") or "").strip()
     if value:
-        return value
+        runtimes: dict[str, dict[str, str]] = {}
+        for entry in [item.strip() for item in value.split(",") if item.strip()]:
+            if ":" in entry:
+                runtime, path = entry.split(":", 1)
+                runtime = runtime.strip().lower()
+                path = path.strip()
+                if runtime:
+                    runtimes[runtime] = {"path": path} if path else {}
+            else:
+                runtimes[entry.lower()] = {}
+        return runtimes or None
     for runtime in ("node", "deno", "bun"):
         if shutil.which(runtime):
-            return runtime
+            return {runtime: {}}
     return None
+
+
+def _resolve_cookiefile() -> str | None:
+    value = (os.getenv("YT_DLP_COOKIES") or os.getenv("YT_DLP_COOKIES_PATH") or "").strip()
+    if not value:
+        return None
+    cookie_path = Path(value).expanduser()
+    if not cookie_path.exists():
+        raise ValueError("YouTube cookies file not found")
+    return str(cookie_path)
+
+
+def _configure_logging(quiet: bool) -> None:
+    if quiet:
+        logging.basicConfig(level=logging.WARNING)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
 
 def _ensure_stdio() -> None:
@@ -280,6 +309,7 @@ def download_youtube(
         Exception: If download fails
     """
     _ensure_stdio()
+    _configure_logging(quiet)
 
     # Check ffmpeg
     if not check_ffmpeg():
@@ -363,6 +393,12 @@ def download_youtube(
     js_runtimes = _resolve_js_runtimes()
     if js_runtimes:
         ydl_opts["js_runtimes"] = js_runtimes
+    cookiefile = _resolve_cookiefile()
+    if cookiefile:
+        ydl_opts["cookiefile"] = cookiefile
+        logger.info("Using yt-dlp cookiefile at %s", cookiefile)
+    logger.info("yt-dlp js runtimes: %s", ",".join(js_runtimes.keys()) if js_runtimes else "none")
+    logger.info("yt-dlp audio_only=%s playlist=%s", audio_only, is_playlist)
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:

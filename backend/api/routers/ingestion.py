@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, File, Form, Request, UploadFile
@@ -33,6 +34,7 @@ from api.utils.timestamps import parse_client_timestamp
 from api.utils.validation import parse_uuid
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("")
@@ -78,8 +80,24 @@ def ingest_youtube(
     url = str(request.get("url", "")).strip()
     if not url:
         raise BadRequestError("YouTube URL is required")
-    normalized_url = _normalize_youtube_url(url)
-    video_id = _extract_youtube_id(normalized_url)
+    logger.info("YouTube ingestion request received url=%s user_id=%s", url, user_id)
+    try:
+        normalized_url = _normalize_youtube_url(url)
+        video_id = _extract_youtube_id(normalized_url)
+        logger.info(
+            "YouTube ingestion normalized url=%s video_id=%s user_id=%s",
+            normalized_url,
+            video_id,
+            user_id,
+        )
+    except Exception as exc:
+        logger.warning(
+            "YouTube ingestion normalization failed url=%s user_id=%s error=%s",
+            url,
+            user_id,
+            str(exc),
+        )
+        raise
     metadata = {
         "provider": "youtube",
         "video_id": video_id,

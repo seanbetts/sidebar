@@ -6,6 +6,7 @@ Combines youtube-download and audio-transcribe skills.
 """
 
 import argparse
+import logging
 import contextlib
 import importlib.util
 import io
@@ -35,6 +36,7 @@ except Exception:
 
 # Default directories (R2)
 DEFAULT_TRANSCRIPT_DIR = "files/videos/{video_id}/ai"
+logger = logging.getLogger(__name__)
 
 
 def _ensure_stdio() -> None:
@@ -46,6 +48,10 @@ def _ensure_stdio() -> None:
             devnull_fd = os.open(os.devnull, mode)
             os.dup2(devnull_fd, fd)
             os.close(devnull_fd)
+
+
+def _configure_logging() -> None:
+    logging.basicConfig(level=logging.INFO)
 
 
 # Script paths - dynamically locate based on this script's location
@@ -186,11 +192,19 @@ def transcribe_youtube(
         RuntimeError: If download or transcription fails
     """
     _ensure_stdio()
+    _configure_logging()
     start_time = time.time()
 
     if not user_id:
         raise ValueError("user_id is required for storage")
 
+    logger.info(
+        "YouTube transcript settings: model=%s language=%s keep_audio=%s upload=%s",
+        model,
+        language,
+        keep_audio,
+        upload_transcript,
+    )
     transcript_dir = output_dir
     if not transcript_dir:
         video_id = extract_video_id(url) or "unknown"
@@ -211,6 +225,7 @@ def transcribe_youtube(
         "youtube_download_skill",
         "download_youtube",
     )
+    logger.info("Starting YouTube transcription for url=%s user_id=%s", url, user_id)
     download_data = download_youtube(
         url=url,
         audio_only=True,

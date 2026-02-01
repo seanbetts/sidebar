@@ -600,13 +600,30 @@ def _transcribe_youtube(
             upload_transcript=upload_transcript,
         )
     except ValueError as exc:
+        message = str(exc)
+        lowered = message.lower()
         logger.warning(
             "YouTube transcription rejected file_id=%s url=%s error=%s",
             record.id,
             record.source_url,
-            str(exc),
+            message,
         )
-        raise IngestionError("INVALID_YOUTUBE_URL", str(exc), retryable=False) from exc
+        if ("url" in lowered and "youtube" in lowered) or "invalid url" in lowered:
+            raise IngestionError(
+                "INVALID_YOUTUBE_URL", message, retryable=False
+            ) from exc
+        if (
+            "ffmpeg" in lowered
+            or "js_runtime" in lowered
+            or "javascript runtime" in lowered
+            or "cookie" in lowered
+        ):
+            raise IngestionError(
+                "VIDEO_TRANSCRIPTION_UNAVAILABLE", message, retryable=False
+            ) from exc
+        raise IngestionError(
+            "VIDEO_TRANSCRIPTION_FAILED", message, retryable=False
+        ) from exc
     except RuntimeError as exc:
         message = str(exc)
         lowered = message.lower()
