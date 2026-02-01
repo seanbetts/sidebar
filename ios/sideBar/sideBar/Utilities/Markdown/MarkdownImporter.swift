@@ -275,58 +275,67 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         listStack[listStack.count - 1].itemIndex += 1
         let context = listStack[listStack.count - 1]
         var itemText = AttributedString()
+        var nestedBlocks: [Markup] = []
 
         for child in listItem.children {
             if let paragraph = child as? Paragraph {
                 for inline in paragraph.children {
                     itemText.append(inlineAttributedString(for: inline))
                 }
+            } else {
+                nestedBlocks.append(child)
             }
         }
 
-        if let checkbox = listItem.checkbox {
-            let isChecked = checkbox == .checked
-            applyBlockKind(isChecked ? .taskChecked : .taskUnchecked, to: &itemText)
-            if isChecked {
-                itemText[fullRange(in: itemText)].strikethroughStyle = .single
-                itemText[fullRange(in: itemText)].foregroundColor = DesignTokens.Colors.textSecondary
+        if !itemText.characters.isEmpty || listItem.checkbox != nil {
+            if let checkbox = listItem.checkbox {
+                let isChecked = checkbox == .checked
+                applyBlockKind(isChecked ? .taskChecked : .taskUnchecked, to: &itemText)
+                if isChecked {
+                    itemText[fullRange(in: itemText)].strikethroughStyle = .single
+                    itemText[fullRange(in: itemText)].foregroundColor = DesignTokens.Colors.textSecondary
+                }
+            } else {
+                applyBlockKind(context.ordered ? .orderedList : .bulletList, to: &itemText)
             }
-        } else {
-            applyBlockKind(context.ordered ? .orderedList : .bulletList, to: &itemText)
+
+            let indent = String(repeating: "  ", count: max(0, context.depth - 1))
+            let listPrefix: String
+            if let checkbox = listItem.checkbox {
+                let isChecked = checkbox == .checked
+                listPrefix = indent + "- [" + (isChecked ? "x" : " ") + "] "
+            } else if context.ordered {
+                listPrefix = indent + "\(context.itemIndex). "
+            } else {
+                listPrefix = indent + "- "
+            }
+            let quotePrefix = blockquoteDepth > 0 ? String(repeating: "> ", count: blockquoteDepth) : ""
+            itemText = prefixBlock(itemText, with: quotePrefix + listPrefix)
+
+            itemText[fullRange(in: itemText)].listDepth = context.depth
+            itemText[fullRange(in: itemText)].font = bodyFont
+            let listIndentUnit = em(1.5, fontSize: baseFontSize)
+            let listIndent = listIndentUnit * CGFloat(max(1, context.depth))
+            let quoteIndent = blockquoteDepth > 0 ? em(1, fontSize: baseFontSize) : 0
+            itemText[fullRange(in: itemText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.2, fontSize: baseFontSize),
+                spacingBefore: isFirst ? rem(0.5) : 0,
+                spacingAfter: isLast ? rem(0.5) : 0,
+                headIndent: listIndent + quoteIndent
+            )
+            applyPresentationIntent(
+                for: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph,
+                listDepth: context.depth,
+                listOrdinal: context.ordered ? context.itemIndex : nil,
+                listId: context.listId,
+                to: &itemText
+            )
+            appendBlock(itemText)
         }
 
-        let indent = String(repeating: "  ", count: max(0, context.depth - 1))
-        let listPrefix: String
-        if let checkbox = listItem.checkbox {
-            let isChecked = checkbox == .checked
-            listPrefix = indent + "- [" + (isChecked ? "x" : " ") + "] "
-        } else if context.ordered {
-            listPrefix = indent + "\(context.itemIndex). "
-        } else {
-            listPrefix = indent + "- "
+        for nested in nestedBlocks {
+            visit(nested)
         }
-        let quotePrefix = blockquoteDepth > 0 ? String(repeating: "> ", count: blockquoteDepth) : ""
-        itemText = prefixBlock(itemText, with: quotePrefix + listPrefix)
-
-        itemText[fullRange(in: itemText)].listDepth = context.depth
-        itemText[fullRange(in: itemText)].font = bodyFont
-        let listIndentUnit = em(1.5, fontSize: baseFontSize)
-        let listIndent = listIndentUnit * CGFloat(max(1, context.depth))
-        let quoteIndent = blockquoteDepth > 0 ? em(1, fontSize: baseFontSize) : 0
-        itemText[fullRange(in: itemText)].paragraphStyle = paragraphStyle(
-            lineSpacing: em(0.2, fontSize: baseFontSize),
-            spacingBefore: isFirst ? rem(0.5) : 0,
-            spacingAfter: isLast ? rem(0.5) : 0,
-            headIndent: listIndent + quoteIndent
-        )
-        applyPresentationIntent(
-            for: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph,
-            listDepth: context.depth,
-            listOrdinal: context.ordered ? context.itemIndex : nil,
-            listId: context.listId,
-            to: &itemText
-        )
-        appendBlock(itemText)
     }
 
     mutating func visitTable(_ table: Markdown.Table) {
