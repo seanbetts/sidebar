@@ -11,7 +11,8 @@ public struct RealtimeMappers {
             name: "\(record.title ?? "Untitled").md",
             content: record.content ?? "",
             path: id,
-            modified: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970
+            modified: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970,
+            created: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970
         )
     }
 
