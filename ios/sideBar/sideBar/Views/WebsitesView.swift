@@ -388,11 +388,11 @@ extension WebsitesDetailView {
         ContentHeaderRow(
             iconView: headerIcon,
             title: displayTitle,
-            subtitle: subtitleText,
+            subtitle: domainSubtitle,
+            titleFont: .subheadline.weight(.semibold),
             titleLineLimit: 1,
             subtitleLineLimit: 1,
-            titleLayoutPriority: 0,
-            subtitleLayoutPriority: 1,
+            titleSubtitleAxis: .vertical,
             onTitleTap: titleTapAction
         ) {
             if viewModel.active != nil {
@@ -449,6 +449,19 @@ extension WebsitesDetailView {
         return website.url
     }
 
+    private var domainSubtitle: String? {
+        guard let website = viewModel.active else {
+            return nil
+        }
+        let domain = website.domain.isEmpty ? website.url : website.domain
+        let baseDomain = extractBaseDomain(formatDomain(domain))
+        let item = viewModel.items.first { $0.id == website.id }
+        if let readingTime = item?.readingTime, !readingTime.isEmpty {
+            return "\(baseDomain) | \(readingTime)"
+        }
+        return baseDomain
+    }
+
     private var subtitleText: String? {
         guard let website = viewModel.active else {
             return nil
@@ -461,6 +474,22 @@ extension WebsitesDetailView {
             parts.append(Self.publishedDateFormatter.string(from: date))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " | ")
+    }
+
+    private func extractBaseDomain(_ domain: String) -> String {
+        let parts = domain.split(separator: ".").map(String.init)
+        guard parts.count > 2 else { return domain }
+        // Check for two-part TLDs like .co.uk, .org.uk, .com.au
+        let secondLevelPrefixes: Set<String> = ["co", "com", "org", "net", "gov", "edu", "ac", "or"]
+        if parts.count > 2 {
+            let last = parts[parts.count - 1]
+            let secondLast = parts[parts.count - 2]
+            // If second-to-last is a common prefix and last is a 2-letter country code
+            if secondLevelPrefixes.contains(secondLast.lowercased()) && last.count == 2 {
+                return parts.suffix(3).joined(separator: ".")
+            }
+        }
+        return parts.suffix(2).joined(separator: ".")
     }
 
     private var headerIcon: AnyView {
