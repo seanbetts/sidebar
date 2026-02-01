@@ -320,6 +320,7 @@ private struct FilesHeaderView: View {
 private struct FilesHeaderActions: View {
     @ObservedObject var viewModel: IngestionViewModel
     @EnvironmentObject private var environment: AppEnvironment
+    @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
     #if os(iOS)
     @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
@@ -446,6 +447,7 @@ private struct FilesHeaderActions: View {
     }
 
     private var shouldShowExpandButton: Bool {
+        guard workspaceColumn == .primary else { return false }
         #if os(iOS)
         return !isPhone
         #else
