@@ -42,7 +42,7 @@ enum CodeBlockAttachmentBuilder {
 
         while index < lineRanges.count {
             let lineRange = lineRanges[index]
-            if blockKind(at: lineRange.location, in: source) == .codeBlock {
+            if blockKind(in: lineRange, in: source) == .codeBlock {
                 var codeLines: [String] = []
                 let startIndex = index
                 var endIndex = index
@@ -182,11 +182,25 @@ enum CodeBlockAttachmentBuilder {
         return ranges
     }
 
-    private static func blockKind(at location: Int, in text: NSAttributedString) -> BlockKind? {
+    private static func blockKind(in lineRange: NSRange, in text: NSAttributedString) -> BlockKind? {
         guard text.length > 0 else { return nil }
-        let safeIndex = max(0, min(location, text.length - 1))
         let key = NSAttributedString.Key(BlockKindAttribute.name)
-        return text.attribute(key, at: safeIndex, effectiveRange: nil) as? BlockKind
+        let start = max(0, min(lineRange.location, text.length - 1))
+        if let kind = text.attribute(key, at: start, effectiveRange: nil) as? BlockKind {
+            return kind
+        }
+        let lastLocation = min(lineRange.location + max(0, lineRange.length - 1), text.length - 1)
+        if lastLocation != start,
+           let kind = text.attribute(key, at: lastLocation, effectiveRange: nil) as? BlockKind {
+            return kind
+        }
+        let afterLocation = min(lineRange.location + lineRange.length, text.length - 1)
+        if afterLocation != start,
+           afterLocation != lastLocation,
+           let kind = text.attribute(key, at: afterLocation, effectiveRange: nil) as? BlockKind {
+            return kind
+        }
+        return nil
     }
 
     private static func shouldIncludeInCodeBlock(
@@ -195,7 +209,7 @@ enum CodeBlockAttachmentBuilder {
         source: NSAttributedString
     ) -> Bool {
         let range = lineRanges[index]
-        if blockKind(at: range.location, in: source) == .codeBlock {
+        if blockKind(in: range, in: source) == .codeBlock {
             return true
         }
         guard range.length == 0 else { return false }
@@ -210,7 +224,7 @@ enum CodeBlockAttachmentBuilder {
     ) -> BlockKind? {
         guard index < lineRanges.count else { return nil }
         for lineIndex in index..<lineRanges.count where lineRanges[lineIndex].length > 0 {
-            return blockKind(at: lineRanges[lineIndex].location, in: source)
+            return blockKind(in: lineRanges[lineIndex], in: source)
         }
         return nil
     }
@@ -223,7 +237,7 @@ enum CodeBlockAttachmentBuilder {
         for index in range {
             let lineRange = lineRanges[index]
             if lineRange.length == 0 { continue }
-            if blockKind(at: lineRange.location, in: source) == .codeBlock {
+            if blockKind(in: lineRange, in: source) == .codeBlock {
                 return index
             }
         }
@@ -238,7 +252,7 @@ enum CodeBlockAttachmentBuilder {
         for index in range.reversed() {
             let lineRange = lineRanges[index]
             if lineRange.length == 0 { continue }
-            if blockKind(at: lineRange.location, in: source) == .codeBlock {
+            if blockKind(in: lineRange, in: source) == .codeBlock {
                 return index
             }
         }

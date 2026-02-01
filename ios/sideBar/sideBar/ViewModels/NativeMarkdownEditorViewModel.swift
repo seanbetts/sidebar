@@ -889,7 +889,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             let lineEnd = updated.index(updated.startIndex, offsetByCharacters: line.range.upperBound)
             let lineRange = lineStart..<lineEnd
             let shouldShow = shouldShowPrefix(for: line.range, selection: adjustedSnapshot)
-            let blockKind = updated.blockKind(in: lineRange) ?? inferredBlockKind(from: line.text)
+            let blockKind = resolvedBlockKind(in: &updated, lineRange: lineRange, lineText: line.text)
             let previousBlockKind: BlockKind? = {
                 guard index > 0 else { return nil }
                 let previous = lines[index - 1]
@@ -919,48 +919,22 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             applyInlineIntentStyling(in: &updated, lineRange: lineRange, blockKind: blockKind)
 
             if let prefixRange {
-                if shouldShow {
-                    setForegroundColor(DesignTokens.Colors.textSecondary, in: &updated, range: prefixRange)
-                    setBackgroundColor(baseBackgroundColor(for: blockKind), in: &updated, range: prefixRange)
-                    setFont(
-                        baseFont(for: blockKind),
-                        platformFont: platformBaseFont(for: blockKind),
-                        in: &updated,
-                        range: prefixRange
-                    )
-                } else {
-                    setForegroundColor(.clear, in: &updated, range: prefixRange)
-                    setBackgroundColor(nil, in: &updated, range: prefixRange)
-                    setFont(
-                        .system(size: 0.1),
-                        platformFont: platformSystemFont(size: 0.1, weight: .regular),
-                        in: &updated,
-                        range: prefixRange
-                    )
-                }
+                applyPrefixVisibility(
+                    in: &updated,
+                    range: prefixRange,
+                    blockKind: blockKind,
+                    shouldShow: shouldShow
+                )
             }
 
             let inlineRanges = ensureInlineMarkerRanges(in: &updated, lineRange: lineRange, lineText: line.text)
             for inlineRange in inlineRanges {
-                if shouldShow {
-                    setForegroundColor(DesignTokens.Colors.textSecondary, in: &updated, range: inlineRange)
-                    setBackgroundColor(nil, in: &updated, range: inlineRange)
-                    setFont(
-                        baseFont(for: blockKind),
-                        platformFont: platformBaseFont(for: blockKind),
-                        in: &updated,
-                        range: inlineRange
-                    )
-                } else {
-                    setForegroundColor(.clear, in: &updated, range: inlineRange)
-                    setBackgroundColor(nil, in: &updated, range: inlineRange)
-                    setFont(
-                        .system(size: 0.1),
-                        platformFont: platformSystemFont(size: 0.1, weight: .regular),
-                        in: &updated,
-                        range: inlineRange
-                    )
-                }
+                applyInlineMarkerVisibility(
+                    in: &updated,
+                    range: inlineRange,
+                    blockKind: blockKind,
+                    shouldShow: shouldShow
+                )
             }
         }
 
@@ -1020,6 +994,96 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             }
 
             index = endIndex + 1
+        }
+    }
+
+    private func resolvedBlockKind(
+        in text: inout AttributedString,
+        lineRange: Range<AttributedString.Index>,
+        lineText: String
+    ) -> BlockKind? {
+        let inferred = inferredBlockKind(from: lineText)
+        let blockKind = text.blockKind(in: lineRange) ?? inferred
+        if blockKind == .horizontalRule, text.blockKind(in: lineRange) == nil {
+            text[lineRange].blockKind = .horizontalRule
+            if let paragraphStyle = paragraphStyle(for: .horizontalRule) {
+                text[lineRange].paragraphStyle = paragraphStyle
+            }
+        }
+        return blockKind
+    }
+
+    private func applyPrefixVisibility(
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        blockKind: BlockKind?,
+        shouldShow: Bool
+    ) {
+        if shouldShow {
+            setForegroundColor(DesignTokens.Colors.textSecondary, in: &text, range: range)
+            setBackgroundColor(baseBackgroundColor(for: blockKind), in: &text, range: range)
+            setFont(
+                baseFont(for: blockKind),
+                platformFont: platformBaseFont(for: blockKind),
+                in: &text,
+                range: range
+            )
+            return
+        }
+
+        setForegroundColor(.clear, in: &text, range: range)
+        setBackgroundColor(nil, in: &text, range: range)
+        if blockKind == .horizontalRule {
+            setFont(
+                baseFont(for: blockKind),
+                platformFont: platformBaseFont(for: blockKind),
+                in: &text,
+                range: range
+            )
+        } else {
+            setFont(
+                .system(size: 0.1),
+                platformFont: platformSystemFont(size: 0.1, weight: .regular),
+                in: &text,
+                range: range
+            )
+        }
+    }
+
+    private func applyInlineMarkerVisibility(
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        blockKind: BlockKind?,
+        shouldShow: Bool
+    ) {
+        if shouldShow {
+            setForegroundColor(DesignTokens.Colors.textSecondary, in: &text, range: range)
+            setBackgroundColor(nil, in: &text, range: range)
+            setFont(
+                baseFont(for: blockKind),
+                platformFont: platformBaseFont(for: blockKind),
+                in: &text,
+                range: range
+            )
+            return
+        }
+
+        setForegroundColor(.clear, in: &text, range: range)
+        setBackgroundColor(nil, in: &text, range: range)
+        if blockKind == .horizontalRule {
+            setFont(
+                baseFont(for: blockKind),
+                platformFont: platformBaseFont(for: blockKind),
+                in: &text,
+                range: range
+            )
+        } else {
+            setFont(
+                .system(size: 0.1),
+                platformFont: platformSystemFont(size: 0.1, weight: .regular),
+                in: &text,
+                range: range
+            )
         }
     }
 
@@ -1491,6 +1555,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func inferredBlockKind(from lineText: String) -> BlockKind? {
+        if isThematicBreakLine(lineText) {
+            return .horizontalRule
+        }
         let range = NSRange(location: 0, length: lineText.utf16.count)
 
         if let regex = Self.taskRegex, let match = regex.firstMatch(in: lineText, range: range) {
@@ -1510,6 +1577,25 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             return .blockquote
         }
         return nil
+    }
+
+    private func isThematicBreakLine(_ lineText: String) -> Bool {
+        let trimmed = lineText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        var marker: Character?
+        var count = 0
+        for character in trimmed {
+            if character.isWhitespace {
+                continue
+            }
+            guard character == "-" || character == "*" || character == "_" else { return false }
+            if marker == nil {
+                marker = character
+            }
+            guard character == marker else { return false }
+            count += 1
+        }
+        return count >= 3
     }
 
     private func headingBlockKind(in lineText: String, range: NSRange) -> BlockKind? {
