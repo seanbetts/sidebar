@@ -14,6 +14,7 @@ public struct WebsiteItem: Codable, Identifiable {
     public let faviconUrl: String?
     public let faviconR2Key: String?
     public let youtubeTranscripts: [String: WebsiteTranscriptEntry]?
+    public let readingTime: String?
     public let updatedAt: String?
     public let lastOpenedAt: String?
     public let deletedAt: String?

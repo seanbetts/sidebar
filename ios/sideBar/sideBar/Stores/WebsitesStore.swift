@@ -534,6 +534,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
                 faviconUrl: active.faviconUrl,
                 faviconR2Key: active.faviconR2Key,
                 youtubeTranscripts: active.youtubeTranscripts,
+                readingTime: nil,
                 updatedAt: active.updatedAt,
                 lastOpenedAt: active.lastOpenedAt,
                 deletedAt: nil
@@ -682,6 +683,7 @@ extension WebsitesStore {
                 faviconUrl: item.faviconUrl,
                 faviconR2Key: item.faviconR2Key,
                 youtubeTranscripts: item.youtubeTranscripts,
+                readingTime: item.readingTime,
                 updatedAt: item.updatedAt,
                 lastOpenedAt: item.lastOpenedAt,
                 deletedAt: item.deletedAt
@@ -721,6 +723,7 @@ extension WebsitesStore {
                 faviconUrl: item.faviconUrl,
                 faviconR2Key: item.faviconR2Key,
                 youtubeTranscripts: item.youtubeTranscripts,
+                readingTime: item.readingTime,
                 updatedAt: item.updatedAt,
                 lastOpenedAt: item.lastOpenedAt,
                 deletedAt: item.deletedAt
@@ -760,6 +763,7 @@ extension WebsitesStore {
                 faviconUrl: item.faviconUrl,
                 faviconR2Key: item.faviconR2Key,
                 youtubeTranscripts: item.youtubeTranscripts,
+                readingTime: item.readingTime,
                 updatedAt: item.updatedAt,
                 lastOpenedAt: item.lastOpenedAt,
                 deletedAt: item.deletedAt
@@ -822,6 +826,7 @@ extension WebsitesStore {
                 faviconUrl: active.faviconUrl,
                 faviconR2Key: active.faviconR2Key,
                 youtubeTranscripts: active.youtubeTranscripts,
+                readingTime: nil,
                 updatedAt: active.updatedAt,
                 lastOpenedAt: active.lastOpenedAt,
                 deletedAt: nil

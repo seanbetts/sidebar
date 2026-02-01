@@ -61,7 +61,7 @@ struct WebsiteRow: View, Equatable {
     let r2FaviconBucket: String?
     let r2FaviconPublicBaseUrl: URL?
     private let titleText: String
-    private let domainText: String
+    private let subtitleText: String
 
     init(
         item: WebsiteItem,
@@ -78,7 +78,10 @@ struct WebsiteRow: View, Equatable {
         self.r2FaviconBucket = r2FaviconBucket
         self.r2FaviconPublicBaseUrl = r2FaviconPublicBaseUrl
         self.titleText = item.title.isEmpty ? item.url : item.title
-        self.domainText = WebsiteRow.formatDomain(item.domain)
+        self.subtitleText = WebsiteRow.formatSubtitle(
+            domain: item.domain,
+            readingTime: item.readingTime
+        )
     }
 
     static func == (lhs: WebsiteRow, rhs: WebsiteRow) -> Bool {
@@ -94,6 +97,7 @@ struct WebsiteRow: View, Equatable {
         lhs.item.updatedAt == rhs.item.updatedAt &&
         lhs.item.faviconUrl == rhs.item.faviconUrl &&
         lhs.item.faviconR2Key == rhs.item.faviconR2Key &&
+        lhs.item.readingTime == rhs.item.readingTime &&
         lhs.r2FaviconBucket == rhs.r2FaviconBucket &&
         lhs.r2FaviconPublicBaseUrl == rhs.r2FaviconPublicBaseUrl
     }
@@ -119,7 +123,7 @@ struct WebsiteRow: View, Equatable {
                         .font(.subheadline)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                         .lineLimit(1)
-                    Text(domainText)
+                    Text(subtitleText)
                         .font(.caption)
                         .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
                         .lineLimit(1)
@@ -129,8 +133,16 @@ struct WebsiteRow: View, Equatable {
         }
     }
 
-    private static func formatDomain(_ domain: String) -> String {
-        domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+    private static func formatSubtitle(domain: String, readingTime: String?) -> String {
+        let cleanDomain = domain.replacingOccurrences(
+            of: "^www\\.",
+            with: "",
+            options: .regularExpression
+        )
+        if let readingTime = readingTime, !readingTime.isEmpty {
+            return "\(cleanDomain) | \(readingTime)"
+        }
+        return cleanDomain
     }
 
     private var primaryTextColor: Color {
