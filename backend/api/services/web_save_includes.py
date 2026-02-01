@@ -54,6 +54,42 @@ def apply_include_reinsertion(
         filtered_candidates.append(node)
         included_ids.add(id(node))
 
+    def _get_direct_item_text(list_node: lxml_html.HtmlElement) -> list[str]:
+        """Get text of direct li children (not nested content)."""
+        items = []
+        for child in list_node:
+            if isinstance(child.tag, str) and child.tag == "li":
+                # Get only the direct text, not nested list content
+                text = (child.text or "").strip()
+                if text:
+                    items.append(text.lower())
+        return items
+
+    def _remove_stripped_version(
+        tree: lxml_html.HtmlElement, node: lxml_html.HtmlElement
+    ) -> None:
+        """Remove stripped version of a list if full version is being inserted."""
+        if node.tag not in {"ul", "ol"}:
+            return
+        node_items = _get_direct_item_text(node)
+        if len(node_items) < 2:
+            return
+        node_full_text = " ".join(node.text_content().split())
+        # Find matching stripped lists in tree
+        for elem in list(tree.iter()):
+            if not isinstance(elem.tag, str) or elem.tag != node.tag:
+                continue
+            elem_items = _get_direct_item_text(elem)
+            # Check if top-level items match
+            if elem_items == node_items:
+                elem_full_text = " ".join(elem.text_content().split())
+                # If extracted version is significantly shorter, it's stripped
+                if len(elem_full_text) < len(node_full_text) * 0.5:
+                    parent = elem.getparent()
+                    if parent is not None:
+                        parent.remove(elem)
+                    return
+
     def _content_already_exists(
         tree: lxml_html.HtmlElement, node: lxml_html.HtmlElement
     ) -> bool:
@@ -78,6 +114,18 @@ def apply_include_reinsertion(
         links = node.cssselect("a")
         if len(links) < 5:
             return False
+        # Check for category headers pattern (non-link text + nested list)
+        # This indicates a structured index, not pure navigation
+        direct_items = [
+            child for child in node if isinstance(child.tag, str) and child.tag == "li"
+        ]
+        for li in direct_items:
+            # Check if li has text content that's not inside a link
+            li_text = (li.text or "").strip()
+            nested_lists = li.cssselect("ul, ol")
+            # If top-level li has plain text label + nested list, it's an index
+            if li_text and nested_lists:
+                return False
         # Count list items
         items = node.cssselect("li")
         if not items:
@@ -100,6 +148,9 @@ def apply_include_reinsertion(
         # Skip navigation-heavy lists (TOC, site nav, etc.)
         if _is_navigation_list(node):
             continue
+
+        # Remove stripped/partial version if we're inserting full version
+        _remove_stripped_version(extracted_tree, node)
 
         cloned = deepcopy(node)
         for removal_selector in removal_rules:
