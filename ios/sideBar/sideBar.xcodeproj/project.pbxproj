@@ -1160,6 +1160,7 @@
 		146EA0742F2FE83C004AE7D1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APP_GROUP_ID = group.ai.sidebar.sidebar;
 				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension/sideBar Safari Extension.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -1196,6 +1197,7 @@
 		146EA0752F2FE83C004AE7D1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APP_GROUP_ID = group.ai.sidebar.sidebar;
 				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension/sideBar Safari Extension.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -1233,6 +1235,7 @@
 		146EA0B22F2FE878004AE7D1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APP_GROUP_ID = group.ai.sidebar.sidebar;
 				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS) Extension/sideBar Safari Extension (macOS) Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1268,6 +1271,7 @@
 		146EA0B32F2FE878004AE7D1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APP_GROUP_ID = group.ai.sidebar.sidebar;
 				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS) Extension/sideBar Safari Extension (macOS) Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
