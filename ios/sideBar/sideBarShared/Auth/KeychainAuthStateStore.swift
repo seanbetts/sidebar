@@ -65,6 +65,7 @@ public final class KeychainAuthStateStore: AuthStateStore {
     private let useInMemoryStore: Bool
     private let keychain: KeychainClient
     private var memoryStore: [String: String] = [:]
+    private var memoryDataStore: [String: Data] = [:]
     private var cachedEncryptionKey: SymmetricKey?
 
     public init(
@@ -99,6 +100,70 @@ public final class KeychainAuthStateStore: AuthStateStore {
     public func clear() throws {
         try deleteItem(account: accessTokenAccount)
         try deleteItem(account: userIdAccount)
+    }
+
+    // MARK: - Generic Key-Value Storage (for Supabase AuthLocalStorage)
+
+    /// Saves encrypted session data for a given key.
+    public func saveSessionData(_ data: Data, forKey key: String) throws {
+        if useInMemoryStore {
+            memoryDataStore[key] = data
+            return
+        }
+        let encryptedData = try encrypt(data)
+        let query = baseQuery(account: key)
+        var attributes: [String: Any] = [
+            kSecValueData as String: encryptedData
+        ]
+        #if os(iOS)
+        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        #endif
+        attributes[kSecAttrSynchronizable as String] = kCFBooleanFalse as Any
+
+        let status = keychain.update(query as CFDictionary, attributes: attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            var create = query
+            create[kSecValueData as String] = encryptedData
+            #if os(iOS)
+            create[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            #endif
+            create[kSecAttrSynchronizable as String] = kCFBooleanFalse as Any
+            let addStatus = keychain.add(create as CFDictionary, result: nil)
+            if addStatus != errSecSuccess {
+                throw mapStatus(addStatus)
+            }
+        } else if status != errSecSuccess {
+            throw mapStatus(status)
+        }
+    }
+
+    /// Loads encrypted session data for a given key.
+    public func loadSessionData(forKey key: String) throws -> Data? {
+        if useInMemoryStore {
+            return memoryDataStore[key]
+        }
+        var query = baseQuery(account: key)
+        query[kSecReturnData as String] = kCFBooleanTrue
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var item: AnyObject?
+        let status = keychain.copyMatching(query as CFDictionary, result: &item)
+        switch status {
+        case errSecSuccess:
+            guard let encryptedData = item as? Data else {
+                throw KeychainError.invalidData
+            }
+            return try decrypt(encryptedData)
+        case errSecItemNotFound:
+            return nil
+        default:
+            throw mapStatus(status)
+        }
+    }
+
+    /// Removes session data for a given key.
+    public func removeSessionData(forKey key: String) throws {
+        try deleteItem(account: key)
     }
 
     private func saveString(_ value: String?, account: String) throws {
