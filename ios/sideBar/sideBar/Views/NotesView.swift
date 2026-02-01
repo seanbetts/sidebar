@@ -526,9 +526,11 @@ extension NotesDetailView {
                             noteStatusText(status)
                         }
                         HeaderActionRow {
+                            #if os(iOS)
                             if shouldShowExpandButton {
                                 expandButton
                             }
+                            #endif
                             noteActionsMenu
                             closeButton
                         }

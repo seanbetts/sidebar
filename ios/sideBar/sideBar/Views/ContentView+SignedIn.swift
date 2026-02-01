@@ -321,7 +321,9 @@ extension ContentView {
         content = AnyView(content.onAppear {
             if isWorkspaceExpanded {
                 isWorkspaceExpanded = false
+                #if os(iOS)
                 isWorkspaceExpandedByRotation = false
+                #endif
             }
         })
         content = AnyView(content.onChange(of: environment.isAuthenticated) { _, isAuthenticated in
@@ -464,7 +466,9 @@ extension ContentView {
         } else if let previous = workspaceExpandedPreviousLeftPanelExpanded {
             isLeftPanelExpanded = previous
             workspaceExpandedPreviousLeftPanelExpanded = nil
+            #if os(iOS)
             isWorkspaceExpandedByRotation = false
+            #endif
         }
     }
 

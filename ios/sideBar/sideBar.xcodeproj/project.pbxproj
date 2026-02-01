@@ -17,7 +17,7 @@
 		1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6C92F27A6420066EE47 /* WidgetKit.framework */; };
 		1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6CB2F27A6420066EE47 /* SwiftUI.framework */; };
 		1448E6DD2F27A6430066EE47 /* sideBarWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		146EA0712F2FE83C004AE7D1 /* sideBar Safari Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 146EA0592F2FE83C004AE7D1 /* sideBar Safari Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		146EA0712F2FE83C004AE7D1 /* sideBar Safari Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 146EA0592F2FE83C004AE7D1 /* sideBar Safari Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		146EA0972F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 146EA0962F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
 		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
