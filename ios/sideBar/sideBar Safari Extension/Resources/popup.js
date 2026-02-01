@@ -10,20 +10,6 @@ const getActiveTab = async () => {
     return tabs && tabs[0] ? tabs[0] : null;
 };
 
-const showToast = async () => {
-    try {
-        const tab = await getActiveTab();
-        if (!tab || !tab.id)
-            return;
-        await browser.tabs.sendMessage(tab.id, {
-            action: "show_toast",
-            text: "Saved to sideBar"
-        });
-    } catch (error) {
-        // Ignore toast errors.
-    }
-};
-
 const saveUrl = async (url) => {
     const response = await browser.runtime.sendNativeMessage({
         action: "save_url",
@@ -31,7 +17,6 @@ const saveUrl = async (url) => {
     });
     if (response && response.ok) {
         setStatus("Saved for later.");
-        await showToast();
         return true;
     }
     setStatus(response?.error ?? "Save failed.");
@@ -65,16 +50,17 @@ const saveWithRetry = async (retries, delayMs) => {
         const url = tab?.url ?? null;
         if (url) {
             const ok = await saveUrl(url);
-            if (ok)
-                setTimeout(() => window.close(), 300);
+            setTimeout(() => window.close(), ok ? 500 : 1200);
             return;
         }
     } catch (error) {
         setStatus(error?.message ?? "Save failed.");
+        setTimeout(() => window.close(), 1200);
         return;
     }
     if (retries <= 0) {
         setStatus("No active tab URL.");
+        setTimeout(() => window.close(), 1200);
         return;
     }
     setStatus("Loading tab...");
@@ -86,8 +72,7 @@ const saveWithRetry = async (retries, delayMs) => {
 if (saveButton) {
     saveButton.addEventListener("click", async () => {
         const ok = await saveCurrentTab();
-        if (ok)
-            setTimeout(() => window.close(), 300);
+        setTimeout(() => window.close(), ok ? 500 : 1200);
     });
 }
 
