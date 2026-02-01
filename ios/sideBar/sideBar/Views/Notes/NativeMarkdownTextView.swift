@@ -127,7 +127,7 @@ private final class MarkdownTextView: UITextView {
         let lines = lineRanges(in: string).compactMap { lineRange -> LineData? in
             let lineText = string.substring(with: lineRange)
             guard lineRange.length > 0 || !lineText.isEmpty else { return nil }
-            let blockKind = blockKind(at: lineRange.location, in: textStorage)
+            let blockKind = blockKind(in: lineRange, in: textStorage)
             let listDepth = listDepth(at: lineRange.location, in: textStorage) ?? 1
             let tableInfo = tableRowInfo(in: textStorage, lineRange: lineRange)
             let rects = lineRects(for: lineRange, in: textContainer).map { rect in
@@ -276,7 +276,7 @@ private final class MarkdownTextView: UITextView {
 
     private func drawHorizontalRules(lines: [LineData]) {
         let strokeColor = UIColor(DesignTokens.Colors.border)
-        for line in lines where line.blockKind == .horizontalRule {
+        for line in lines where shouldDrawHorizontalRule(line) {
             guard let rect = unionRect(line.rects) else { continue }
             let midY = rect.midY
             let path = UIBezierPath()
@@ -286,6 +286,33 @@ private final class MarkdownTextView: UITextView {
             path.lineWidth = 1
             path.stroke()
         }
+    }
+
+    private func shouldDrawHorizontalRule(_ line: LineData) -> Bool {
+        if line.blockKind == .horizontalRule {
+            return true
+        }
+        guard line.blockKind == nil else { return false }
+        return isThematicBreakLine(line.text)
+    }
+
+    private func isThematicBreakLine(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        var marker: Character?
+        var count = 0
+        for character in trimmed {
+            if character.isWhitespace {
+                continue
+            }
+            guard character == "-" || character == "*" || character == "_" else { return false }
+            if marker == nil {
+                marker = character
+            }
+            guard character == marker else { return false }
+            count += 1
+        }
+        return count >= 3
     }
 
     private func lineRanges(in string: NSString) -> [NSRange] {
@@ -319,10 +346,25 @@ private final class MarkdownTextView: UITextView {
         return rects
     }
 
-    private func blockKind(at location: Int, in text: NSAttributedString) -> BlockKind? {
-        guard location < text.length else { return nil }
+    private func blockKind(in lineRange: NSRange, in text: NSAttributedString) -> BlockKind? {
+        guard text.length > 0 else { return nil }
         let key = NSAttributedString.Key(BlockKindAttribute.name)
-        return text.attribute(key, at: location, effectiveRange: nil) as? BlockKind
+        let start = max(0, min(lineRange.location, text.length - 1))
+        if let kind = text.attribute(key, at: start, effectiveRange: nil) as? BlockKind {
+            return kind
+        }
+        let lastLocation = min(lineRange.location + max(0, lineRange.length - 1), text.length - 1)
+        if lastLocation != start,
+           let kind = text.attribute(key, at: lastLocation, effectiveRange: nil) as? BlockKind {
+            return kind
+        }
+        let afterLocation = min(lineRange.location + lineRange.length, text.length - 1)
+        if afterLocation != start,
+           afterLocation != lastLocation,
+           let kind = text.attribute(key, at: afterLocation, effectiveRange: nil) as? BlockKind {
+            return kind
+        }
+        return nil
     }
 
     private func listDepth(at location: Int, in text: NSAttributedString) -> Int? {
@@ -512,7 +554,7 @@ private final class MarkdownTextView: NSTextView {
         let lines = lineRanges(in: string).compactMap { lineRange -> LineData? in
             let lineText = string.substring(with: lineRange)
             guard lineRange.length > 0 || !lineText.isEmpty else { return nil }
-            let blockKind = blockKind(at: lineRange.location, in: textStorage)
+            let blockKind = blockKind(in: lineRange, in: textStorage)
             let listDepth = listDepth(at: lineRange.location, in: textStorage) ?? 1
             let tableInfo = tableRowInfo(in: textStorage, lineRange: lineRange)
             let rects = lineRects(for: lineRange, in: textContainer).map { rect in
@@ -659,7 +701,7 @@ private final class MarkdownTextView: NSTextView {
 
     private func drawHorizontalRules(lines: [LineData]) {
         let strokeColor = NSColor(DesignTokens.Colors.border)
-        for line in lines where line.blockKind == .horizontalRule {
+        for line in lines where shouldDrawHorizontalRule(line) {
             guard let rect = unionRect(line.rects) else { continue }
             let midY = rect.midY
             let path = NSBezierPath()
@@ -669,6 +711,33 @@ private final class MarkdownTextView: NSTextView {
             path.lineWidth = 1
             path.stroke()
         }
+    }
+
+    private func shouldDrawHorizontalRule(_ line: LineData) -> Bool {
+        if line.blockKind == .horizontalRule {
+            return true
+        }
+        guard line.blockKind == nil else { return false }
+        return isThematicBreakLine(line.text)
+    }
+
+    private func isThematicBreakLine(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        var marker: Character?
+        var count = 0
+        for character in trimmed {
+            if character.isWhitespace {
+                continue
+            }
+            guard character == "-" || character == "*" || character == "_" else { return false }
+            if marker == nil {
+                marker = character
+            }
+            guard character == marker else { return false }
+            count += 1
+        }
+        return count >= 3
     }
 
     private func lineRanges(in string: NSString) -> [NSRange] {
@@ -703,10 +772,25 @@ private final class MarkdownTextView: NSTextView {
         return rects
     }
 
-    private func blockKind(at location: Int, in text: NSAttributedString) -> BlockKind? {
-        guard location < text.length else { return nil }
+    private func blockKind(in lineRange: NSRange, in text: NSAttributedString) -> BlockKind? {
+        guard text.length > 0 else { return nil }
         let key = NSAttributedString.Key(BlockKindAttribute.name)
-        return text.attribute(key, at: location, effectiveRange: nil) as? BlockKind
+        let start = max(0, min(lineRange.location, text.length - 1))
+        if let kind = text.attribute(key, at: start, effectiveRange: nil) as? BlockKind {
+            return kind
+        }
+        let lastLocation = min(lineRange.location + max(0, lineRange.length - 1), text.length - 1)
+        if lastLocation != start,
+           let kind = text.attribute(key, at: lastLocation, effectiveRange: nil) as? BlockKind {
+            return kind
+        }
+        let afterLocation = min(lineRange.location + lineRange.length, text.length - 1)
+        if afterLocation != start,
+           afterLocation != lastLocation,
+           let kind = text.attribute(key, at: afterLocation, effectiveRange: nil) as? BlockKind {
+            return kind
+        }
+        return nil
     }
 
     private func listDepth(at location: Int, in text: NSAttributedString) -> Int? {
