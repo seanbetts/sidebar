@@ -168,27 +168,6 @@
 			);
 			target = 1448E6C62F27A6420066EE47 /* sideBarWidgetsExtension */;
 		};
-		146EA0722F2FE83C004AE7D1 /* Exceptions for "sideBar Safari Extension" folder in "sideBar Safari Extension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 146EA0582F2FE83C004AE7D1 /* sideBar Safari Extension */;
-		};
-		146EA0B02F2FE878004AE7D1 /* Exceptions for "sideBar Safari Extension (macOS)" folder in "sideBar Safari Extension (macOS)" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 146EA0792F2FE877004AE7D1 /* sideBar Safari Extension (macOS) */;
-		};
-		146EA0B42F2FE878004AE7D1 /* Exceptions for "sideBar Safari Extension (macOS) Extension" folder in "sideBar Safari Extension (macOS) Extension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 146EA0952F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -215,9 +194,6 @@
 		};
 		146EA05A2F2FE83C004AE7D1 /* sideBar Safari Extension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				146EA0722F2FE83C004AE7D1 /* Exceptions for "sideBar Safari Extension" folder in "sideBar Safari Extension" target */,
-			);
 			explicitFolders = (
 				Resources/_locales,
 				Resources/images,
@@ -227,17 +203,11 @@
 		};
 		146EA07B2F2FE877004AE7D1 /* sideBar Safari Extension (macOS) */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				146EA0B02F2FE878004AE7D1 /* Exceptions for "sideBar Safari Extension (macOS)" folder in "sideBar Safari Extension (macOS)" target */,
-			);
 			path = "sideBar Safari Extension (macOS)";
 			sourceTree = "<group>";
 		};
 		146EA09A2F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				146EA0B42F2FE878004AE7D1 /* Exceptions for "sideBar Safari Extension (macOS) Extension" folder in "sideBar Safari Extension (macOS) Extension" target */,
-			);
 			explicitFolders = (
 				Resources/_locales,
 				Resources/images,
@@ -1156,6 +1126,7 @@
 		146EA0742F2FE83C004AE7D1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension/sideBar Safari Extension.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1191,6 +1162,7 @@
 		146EA0752F2FE83C004AE7D1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension/sideBar Safari Extension.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1227,6 +1199,7 @@
 		146EA0B22F2FE878004AE7D1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS) Extension/sideBar Safari Extension (macOS) Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = A7FXNR4C35;
@@ -1261,6 +1234,7 @@
 		146EA0B32F2FE878004AE7D1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS) Extension/sideBar Safari Extension (macOS) Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = A7FXNR4C35;
@@ -1298,6 +1272,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS)/sideBar Safari Extension (macOS).entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = A7FXNR4C35;
@@ -1339,6 +1314,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS)/sideBar Safari Extension (macOS).entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = A7FXNR4C35;
