@@ -1670,17 +1670,47 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         in text: AttributedString,
         lines: [LineInfo]
     ) -> [Int: Int] {
+        struct ListKey: Hashable {
+            let identity: Int?
+            let fallbackGroup: Int?
+        }
+
         var ordinals: [Int: Int] = [:]
-        var counters: [Int: Int] = [:]
+        var counters: [ListKey: Int] = [:]
+        var fallbackGroup = 0
+        var previousWasOrdered = false
+        var previousDepth: Int?
+        var previousIdentity: Int?
 
         for (index, line) in lines.enumerated() {
             let lineRange = attributedRange(for: line.range, in: text)
             let blockKind = text.blockKind(in: lineRange) ?? inferredBlockKind(from: line.text)
-            guard blockKind == .orderedList else { continue }
-            let listId = listIdentity(in: text, range: lineRange) ?? index
-            let next = (counters[listId] ?? 0) + 1
-            counters[listId] = next
+            guard blockKind == .orderedList else {
+                previousWasOrdered = false
+                previousDepth = nil
+                previousIdentity = nil
+                continue
+            }
+
+            let depth = max(1, text[lineRange].listDepth ?? 1)
+            let identity = listIdentity(in: text, range: lineRange)
+            let key: ListKey
+
+            if let identity {
+                key = ListKey(identity: identity, fallbackGroup: nil)
+            } else {
+                if !(previousWasOrdered && previousIdentity == nil && previousDepth == depth) {
+                    fallbackGroup += 1
+                }
+                key = ListKey(identity: nil, fallbackGroup: fallbackGroup)
+            }
+
+            let next = (counters[key] ?? 0) + 1
+            counters[key] = next
             ordinals[index] = next
+            previousWasOrdered = true
+            previousDepth = depth
+            previousIdentity = identity
         }
 
         return ordinals
