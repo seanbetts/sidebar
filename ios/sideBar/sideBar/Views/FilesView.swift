@@ -329,8 +329,6 @@ private struct FilesHeaderActions: View {
     @State private var exportDocument: BinaryFileDocument?
     @State private var isExporting = false
     @State private var exportFilename: String = "file"
-    @State private var menuItems: [SidebarMenuItem] = []
-    @State private var menuSignature: String = ""
 
     var body: some View {
         HeaderActionRow {
@@ -377,15 +375,6 @@ private struct FilesHeaderActions: View {
                 break
             }
         }
-        .onChange(of: viewModel.selectedFileId) { _, _ in
-            refreshMenuItems()
-        }
-        .onChange(of: isPinned) { _, _ in
-            refreshMenuItems()
-        }
-        .onAppear {
-            refreshMenuItems()
-        }
     }
 
     private var fileActionsMenu: some View {
@@ -426,11 +415,26 @@ private struct FilesHeaderActions: View {
         HeaderActionMenuButton(
             systemImage: "ellipsis",
             accessibilityLabel: "File options",
-            items: menuItems,
+            items: [
+                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    Task { await togglePin() }
+                },
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    beginRename()
+                },
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyFileContent()
+                },
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    Task { await downloadFile() }
+                },
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ],
             isCompact: isCompact
         )
         .disabled(viewModel.selectedFileId == nil)
-        .id(menuSignature)
         #endif
     }
 
@@ -596,39 +600,4 @@ private struct FilesHeaderActions: View {
         return newName + ext
     }
 
-    private func refreshMenuItems() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            menuItems = [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                    Task { await togglePin() }
-                },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
-                    beginRename()
-                },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                    copyFileContent()
-                },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                    Task { await downloadFile() }
-                },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                    isDeleteAlertPresented = true
-                }
-            ]
-            menuSignature = menuItems
-                .map { "\($0.title)|\($0.systemImage ?? "")|\(roleSignature($0.role))" }
-                .joined(separator: ";")
-        }
-    }
-
-    private func roleSignature(_ role: ButtonRole?) -> String {
-        switch role {
-        case .destructive:
-            return "destructive"
-        case .cancel:
-            return "cancel"
-        default:
-            return "default"
-        }
-    }
 }
