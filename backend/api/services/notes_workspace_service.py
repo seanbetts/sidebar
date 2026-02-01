@@ -30,6 +30,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             "name": f"{note.title}.md",
             "path": str(note.id),
             "modified": note.updated_at.timestamp() if note.updated_at else None,
+            "created": note.created_at.timestamp() if note.created_at else None,
         }
         if include_content:
             payload["content"] = note.content
@@ -47,7 +48,12 @@ class NotesWorkspaceService(WorkspaceService[Note]):
     ) -> list[Note]:
         query = db.query(Note).options(
             load_only(
-                Note.id, Note.title, Note.metadata_, Note.updated_at, Note.is_archived
+                Note.id,
+                Note.title,
+                Note.metadata_,
+                Note.updated_at,
+                Note.created_at,
+                Note.is_archived,
             )
         )
         query = query.filter(Note.user_id == user_id)
@@ -113,6 +119,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             "path": str(item.id),
             "type": "file",
             "modified": item.updated_at.timestamp() if item.updated_at else None,
+            "created": item.created_at.timestamp() if item.created_at else None,
             "pinned": bool(metadata.get("pinned")),
             "pinned_order": metadata.get("pinned_order"),
             "archived": bool(item.is_archived),

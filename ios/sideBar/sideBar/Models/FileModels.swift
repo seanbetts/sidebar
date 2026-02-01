@@ -12,6 +12,7 @@ public struct FileNode: Codable {
     public let type: FileNodeType
     public let size: Int?
     public let modified: Double?
+    public let created: Double?
     public let children: [FileNode]?
     public let expanded: Bool?
     public let pinned: Bool?

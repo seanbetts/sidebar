@@ -128,10 +128,25 @@ struct NotesTreeRow: View {
             HStack(spacing: 8) {
                 Image(systemName: item.isFile ? "doc.text" : "folder")
                     .foregroundStyle(isSelected ? selectedTextColor : (item.isFile ? secondaryTextColor : primaryTextColor))
-                Text(item.displayName)
-                    .font(.subheadline)
-                    .lineLimit(1)
-                    .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                if item.isFile {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.displayName)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                        if let dateText = item.formattedCreatedDate {
+                            Text(dateText)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
+                        }
+                    }
+                } else {
+                    Text(item.displayName)
+                        .font(.subheadline)
+                        .lineLimit(1)
+                        .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                }
             }
         }
 
@@ -176,6 +191,10 @@ struct NotesTreeRow: View {
         DesignTokens.Colors.textPrimary
     }
 
+    private var selectedSecondaryText: Color {
+        DesignTokens.Colors.textSecondary
+    }
+
     private var rowBackground: Color {
         #if os(macOS)
         return DesignTokens.Colors.sidebar
@@ -215,6 +234,7 @@ struct FileNodeItem: Identifiable {
     let children: [FileNodeItem]?
     let pinned: Bool
     let archived: Bool
+    let created: Double?
 
     init(
         id: String,
@@ -222,7 +242,8 @@ struct FileNodeItem: Identifiable {
         type: FileNodeType,
         children: [FileNodeItem]? = nil,
         pinned: Bool = false,
-        archived: Bool = false
+        archived: Bool = false,
+        created: Double? = nil
     ) {
         self.id = id
         self.name = name
@@ -230,6 +251,7 @@ struct FileNodeItem: Identifiable {
         self.children = children
         self.pinned = pinned
         self.archived = archived
+        self.created = created
     }
 
     var isFile: Bool { type == .file }
@@ -240,4 +262,17 @@ struct FileNodeItem: Identifiable {
         }
         return name
     }
+
+    var formattedCreatedDate: String? {
+        guard let created else { return nil }
+        let date = Date(timeIntervalSince1970: created)
+        return Self.dateFormatter.string(from: date)
+    }
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
 }

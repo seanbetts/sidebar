@@ -129,6 +129,7 @@ public struct NotePayload: Codable, Equatable {
     public let content: String
     public let path: String
     public let modified: Double?
+    public let created: Double?
 }
 
 /// Request body for creating a note.

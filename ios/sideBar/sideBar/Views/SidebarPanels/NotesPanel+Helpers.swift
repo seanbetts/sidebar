@@ -244,7 +244,8 @@ extension NotesPanelView {
             type: node.type,
             children: nil,
             pinned: node.pinned ?? false,
-            archived: node.archived ?? false
+            archived: node.archived ?? false,
+            created: node.created
         )
         NotesTreeRow(
             item: item,
@@ -311,7 +312,8 @@ extension NotesPanelView {
                 type: node.type,
                 children: children,
                 pinned: node.pinned ?? false,
-                archived: node.archived ?? false
+                archived: node.archived ?? false,
+                created: node.created
             )
         }
     }

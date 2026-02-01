@@ -515,7 +515,10 @@ extension NotesDetailView {
         ZStack(alignment: .bottomLeading) {
             ContentHeaderRow(
                 iconName: "text.document",
-                title: displayTitle
+                title: displayTitle,
+                subtitle: createdDateSubtitle,
+                titleFont: .subheadline.weight(.semibold),
+                titleSubtitleAxis: .vertical
             , trailing: {
                 if viewModel.activeNote != nil {
                     HStack(spacing: DesignTokens.Spacing.md) {
@@ -537,6 +540,21 @@ extension NotesDetailView {
         .frame(maxWidth: .infinity)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
+
+    private var createdDateSubtitle: String? {
+        guard let created = viewModel.activeNote?.created else {
+            return nil
+        }
+        let date = Date(timeIntervalSince1970: created)
+        return Self.createdDateFormatter.string(from: date)
+    }
+
+    private static let createdDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
 
     @ViewBuilder
     private var content: some View {
