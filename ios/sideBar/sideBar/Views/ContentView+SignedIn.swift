@@ -477,7 +477,7 @@ extension ContentView {
         }
         lastWorkspaceIsPortrait = isPortrait
         guard let section = primaryWorkspaceSectionForRotation,
-              [.websites, .notes, .tasks, .files].contains(section) else { return }
+              [.chat, .websites, .notes, .tasks, .files].contains(section) else { return }
         if isPortrait {
             if !isWorkspaceExpanded {
                 isWorkspaceExpandedByRotation = true
