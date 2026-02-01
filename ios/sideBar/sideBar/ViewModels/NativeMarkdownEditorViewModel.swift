@@ -1701,8 +1701,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         case .horizontalRule:
             return paragraphStyle(
                 lineSpacing: 0,
-                spacingBefore: rem(1.5),
-                spacingAfter: rem(1.5)
+                spacingBefore: rem(0.75),
+                spacingAfter: rem(0.75)
             )
         case .imageCaption:
             return paragraphStyle(

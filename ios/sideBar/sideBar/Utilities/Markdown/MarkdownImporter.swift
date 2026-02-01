@@ -188,8 +188,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         rule[fullRange(in: rule)].foregroundColor = DesignTokens.Colors.border
         rule[fullRange(in: rule)].paragraphStyle = paragraphStyle(
             lineSpacing: 0,
-            spacingBefore: rem(1.5),
-            spacingAfter: rem(1.5)
+            spacingBefore: rem(0.75),
+            spacingAfter: rem(0.75)
         )
         applyPresentationIntent(for: .horizontalRule, to: &rule)
         appendBlock(rule)
