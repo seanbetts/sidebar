@@ -444,7 +444,8 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
                 || current.title != item.title
                 || current.deletedAt != item.deletedAt
                 || current.faviconUrl != item.faviconUrl
-                || current.faviconR2Key != item.faviconR2Key {
+                || current.faviconR2Key != item.faviconR2Key
+                || current.readingTime != item.readingTime {
                 return true
             }
         }
