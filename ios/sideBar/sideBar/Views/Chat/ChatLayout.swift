@@ -1,5 +1,5 @@
 import Foundation
 
 enum ChatLayout {
-    static let maxContentWidth: CGFloat = 860
+    static let maxContentWidth: CGFloat = ContentLayout.maxContentWidth
 }
