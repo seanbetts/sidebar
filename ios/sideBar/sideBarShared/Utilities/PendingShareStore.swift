@@ -154,6 +154,13 @@ public final class PendingShareStore {
         }
     }
 
+    public func consumeAll() -> [PendingShareItem] {
+        let items = loadAll()
+        guard !items.isEmpty else { return [] }
+        replaceAll([])
+        return items
+    }
+
     public func remove(ids: [UUID]) {
         guard !ids.isEmpty else { return }
         var items = loadAll()
