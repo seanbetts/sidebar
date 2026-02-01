@@ -55,10 +55,16 @@ extension ContentView {
                 )
             },
             mainContent: {
-                detailView(for: primarySection)
+                AnyView(
+                    detailView(for: primarySection)
+                        .environment(\.workspaceColumn, .primary)
+                )
             },
             rightSidebar: {
-                detailView(for: secondarySection)
+                AnyView(
+                    detailView(for: secondarySection)
+                        .environment(\.workspaceColumn, .secondary)
+                )
             }
         )
     }

@@ -365,6 +365,7 @@ private struct NotesDetailView: View {
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0
     @State private var savedIndicatorTask: Task<Void, Never>?
+    @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
     #if os(iOS)
     @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
@@ -731,6 +732,7 @@ extension NotesDetailView {
     }
 
     private var shouldShowExpandButton: Bool {
+        guard workspaceColumn == .primary else { return false }
         #if os(iOS)
         return !isPhone
         #else

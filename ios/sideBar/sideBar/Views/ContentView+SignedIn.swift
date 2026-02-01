@@ -476,8 +476,8 @@ extension ContentView {
             return
         }
         lastWorkspaceIsPortrait = isPortrait
-        guard let activeSection = environment.activeSection,
-              [.websites, .notes, .tasks, .files].contains(activeSection) else { return }
+        guard let section = primaryWorkspaceSectionForRotation,
+              [.websites, .notes, .tasks, .files].contains(section) else { return }
         if isPortrait {
             if !isWorkspaceExpanded {
                 isWorkspaceExpandedByRotation = true
@@ -487,6 +487,17 @@ extension ContentView {
             isWorkspaceExpandedByRotation = false
             isWorkspaceExpanded = false
         }
+    }
+
+    private var primaryWorkspaceSectionForRotation: AppSection? {
+        #if os(macOS)
+        return primarySection ?? sidebarSelection
+        #else
+        if horizontalSizeClass == .compact {
+            return nil
+        }
+        return primarySection ?? sidebarSelection
+        #endif
     }
     #endif
 }
