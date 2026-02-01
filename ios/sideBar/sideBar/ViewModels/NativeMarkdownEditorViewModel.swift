@@ -1416,7 +1416,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         let baseForeground = baseForegroundColor(for: blockKind)
         let basePlatformFont = platformBaseFont(for: blockKind)
         for run in text[lineRange].runs {
-            guard run.inlineMarker != true else { continue }
+            guard run.inlineMarker != true, run.listMarker != true else { continue }
             let intents = run.inlinePresentationIntent ?? []
             let range = run.range
             let tableInfo = tableRowInfo(from: run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
@@ -1567,14 +1567,19 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             )
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
             let depth = max(1, listDepth ?? 1)
-            let listIndentUnit = em(1.5, fontSize: baseFontSize)
+            let listIndentUnit = em(0.0, fontSize: baseFontSize)
             let listIndent = listIndentUnit * CGFloat(depth)
-            return paragraphStyle(
-                lineSpacing: em(0.2, fontSize: baseFontSize),
+            let style = paragraphStyle(
+                lineSpacing: 0,
                 spacingBefore: 0,
                 spacingAfter: 0,
                 headIndent: listIndent
             )
+            let mutable = style.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+            let lineHeight = platformLineHeight(for: platformBaseFont(for: blockKind))
+            mutable.minimumLineHeight = lineHeight
+            mutable.maximumLineHeight = lineHeight
+            return mutable
         case .codeBlock:
             return paragraphStyle(
                 lineSpacing: em(0.5, fontSize: inlineCodeFontSize),
@@ -1879,6 +1884,10 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             insert[insertRange].blockKind = context.blockKind
             insert[insertRange].listDepth = context.depth
             insert[insertRange].listMarker = true
+            let (markerFont, markerPlatformFont) = listMarkerFont(for: context.blockKind)
+            setFont(markerFont, platformFont: markerPlatformFont, in: &insert, range: insertRange)
+            setForegroundColor(baseForegroundColor(for: context.blockKind), in: &insert, range: insertRange)
+            setBackgroundColor(baseBackgroundColor(for: context.blockKind), in: &insert, range: insertRange)
             if let style = context.lineStyle {
                 insert[insertRange].paragraphStyle = style
             }
@@ -1909,7 +1918,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func listMarkerString(depth: Int, blockKind: BlockKind, ordinal: Int) -> String {
-        let markdownPrefix = listPrefixString(depth: depth, blockKind: blockKind)
         let markerBody: String
         switch blockKind {
         case .orderedList:
@@ -1921,10 +1929,46 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         default:
             markerBody = "•"
         }
-        let indent = String(repeating: "  ", count: max(0, depth - 1))
-        let markerPrefix = indent + markerBody
-        let paddingCount = max(1, markdownPrefix.count - markerPrefix.count)
-        return markerPrefix + String(repeating: " ", count: paddingCount)
+        switch blockKind {
+        case .orderedList, .bulletList:
+            return markerBody + "  "
+        case .taskChecked, .taskUnchecked:
+            return markerBody + " "
+        default:
+            return markerBody
+        }
+    }
+
+    private func listMarkerFont(for blockKind: BlockKind) -> (Font, PlatformFont) {
+        switch blockKind {
+        case .bulletList:
+            let size = baseFontSize * 1.2
+            return (
+                .system(size: size, weight: .bold),
+                platformSystemFont(size: size, weight: .bold)
+            )
+        case .orderedList:
+            let size = baseFontSize
+            #if os(iOS)
+            let platformFont = UIFont.monospacedDigitSystemFont(ofSize: size, weight: .regular)
+            #else
+            let platformFont = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .regular)
+            #endif
+            return (
+                .system(size: size, weight: .regular).monospacedDigit(),
+                platformFont
+            )
+        default:
+            return (baseFont(for: blockKind), platformBaseFont(for: blockKind))
+        }
+    }
+
+    private func platformLineHeight(for font: PlatformFont) -> CGFloat {
+#if os(iOS)
+        font.lineHeight
+#elseif os(macOS)
+        font.ascender - font.descender + font.leading
+#endif
     }
 
     private struct ListPrefixInfo {
