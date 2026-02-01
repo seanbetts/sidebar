@@ -21,6 +21,7 @@ enum FileTreeSignature {
     private static func signature(for node: FileNode) -> String {
         let size = node.size.map { String($0) } ?? "nil"
         let modified = node.modified.map { String($0) } ?? "nil"
+        let created = node.created.map { String($0) } ?? "nil"
         let pinned = node.pinned.map { String($0) } ?? "nil"
         let pinnedOrder = node.pinnedOrder.map { String($0) } ?? "nil"
         let archived = node.archived.map { String($0) } ?? "nil"
@@ -31,6 +32,7 @@ enum FileTreeSignature {
             node.type.rawValue,
             size,
             modified,
+            created,
             pinned,
             pinnedOrder,
             archived,
