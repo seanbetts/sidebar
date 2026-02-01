@@ -9,36 +9,30 @@ import AppKit
 extension WebsitesPanelView {
     @ViewBuilder
     func websiteContextMenuItems(for item: WebsiteItem) -> some View {
-        Button {
-            Task { await viewModel.setPinned(id: item.id, pinned: !item.pinned) }
-        } label: {
-            Label(websitePinTitle(for: item), systemImage: websitePinIconName(for: item))
-        }
-        Button {
-            beginRename(for: item)
-        } label: {
-            Label("Rename", systemImage: "pencil")
-        }
-        Button {
-            Task { await copyWebsiteContent(for: item) }
-        } label: {
-            Label("Copy", systemImage: "doc.on.doc")
-        }
-        Button {
-            Task { await exportWebsiteContent(for: item) }
-        } label: {
-            Label("Download", systemImage: "square.and.arrow.down")
-        }
-        Button {
-            Task { await viewModel.setArchived(id: item.id, archived: !item.archived) }
-        } label: {
-            Label(websiteArchiveTitle(for: item), systemImage: websiteArchiveIconName(for: item))
-        }
-        Button(role: .destructive) {
-            deleteTarget = item
-        } label: {
-            Label("Delete", systemImage: "trash")
-        }
+        sidebarMenuItemsView(websiteContextMenuItemsList(for: item))
+    }
+
+    func websiteContextMenuItemsList(for item: WebsiteItem) -> [SidebarMenuItem] {
+        [
+            SidebarMenuItem(title: websitePinTitle(for: item), systemImage: websitePinIconName(for: item), role: nil) {
+                Task { await viewModel.setPinned(id: item.id, pinned: !item.pinned) }
+            },
+            SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                beginRename(for: item)
+            },
+            SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                Task { await copyWebsiteContent(for: item) }
+            },
+            SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                Task { await exportWebsiteContent(for: item) }
+            },
+            SidebarMenuItem(title: websiteArchiveTitle(for: item), systemImage: websiteArchiveIconName(for: item), role: nil) {
+                Task { await viewModel.setArchived(id: item.id, archived: !item.archived) }
+            },
+            SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                deleteTarget = item
+            }
+        ]
     }
 
     private func websitePinTitle(for item: WebsiteItem) -> String {

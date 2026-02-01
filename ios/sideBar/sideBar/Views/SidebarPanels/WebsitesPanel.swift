@@ -399,9 +399,7 @@ extension WebsitesPanelView {
         )
         .staggeredAppear(index: index, isActive: listAppeared)
         .onTapGesture { open(item: item) }
-        .contextMenu {
-            websiteContextMenuItems(for: item)
-        }
+        .platformContextMenu(items: websiteContextMenuItemsList(for: item))
 
         #if os(macOS)
         row
