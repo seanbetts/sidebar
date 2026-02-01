@@ -66,6 +66,7 @@ from api.services.web_save_rules import Rule, RuleEngine, extract_metadata_overr
 from api.services.web_save_tagger import (
     calculate_reading_time,
     compute_word_count,
+    count_images,
     extract_tags,
 )
 
@@ -626,6 +627,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
 
     published_at = parse_datetime(metadata.get("published"))
     word_count = compute_word_count(markdown)
+    image_count = count_images(markdown)
     domain = urlparse(final_url).netloc
     tags = extract_tags(markdown, domain, title)
     source_url = metadata.get("canonical") or final_url
@@ -695,7 +697,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         "published_date": published_at.isoformat() if published_at else None,
         "domain": domain,
         "word_count": word_count,
-        "reading_time": calculate_reading_time(word_count),
+        "reading_time": calculate_reading_time(word_count, image_count=image_count),
         "tags": tags,
         "used_js_rendering": used_js_rendering,
         "saved_at": datetime.now(UTC).isoformat(),
