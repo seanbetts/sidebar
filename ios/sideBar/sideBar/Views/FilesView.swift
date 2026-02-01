@@ -129,7 +129,7 @@ private struct FilesHeaderView: View {
             subtitleDividerWidth: 2,
             subtitleDividerHeight: 28,
             subtitleTracking: 0.8
-        ) {
+        , trailing: {
             if viewModel.selectedFileId != nil {
                 HeaderActionRow {
                     if isPdf {
@@ -138,7 +138,7 @@ private struct FilesHeaderView: View {
                     FilesHeaderActions(viewModel: viewModel)
                 }
             }
-        }
+        })
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }

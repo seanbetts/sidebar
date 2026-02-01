@@ -211,7 +211,7 @@ extension TasksDetailView {
             subtitleLineLimit: 1,
             titleLayoutPriority: 1,
             subtitleLayoutPriority: 0
-        ) {
+        , trailing: {
             if state.totalCount == 0 {
                 Image(systemName: "checkmark")
                     .font(.caption)
@@ -222,7 +222,7 @@ extension TasksDetailView {
                     .font(.caption)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
             }
-        }
+        })
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }

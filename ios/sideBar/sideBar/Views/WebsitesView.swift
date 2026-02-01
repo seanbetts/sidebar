@@ -153,6 +153,9 @@ public struct WebsitesView: View {
                 SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyWebsiteContent()
                 },
+                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+                    copyWebsiteURL()
+                },
                 SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                     exportWebsite()
                 },
@@ -256,6 +259,31 @@ public struct WebsitesView: View {
         }
     }
 
+    private func copyWebsiteURL() {
+        guard let urlString = websiteSourceURL?.absoluteString, !urlString.isEmpty else { return }
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = urlString
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(urlString, forType: .string)
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == urlString {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == urlString {
+                pasteboard.string = ""
+            }
+            #endif
+        }
+    }
+
     private func exportWebsite() {
         guard let website = environment.websitesViewModel.active else { return }
         let fallbackName = website.title.isEmpty ? "website" : website.title
@@ -264,6 +292,13 @@ public struct WebsitesView: View {
         exportFilename = "\(fallbackName).md"
         exportDocument = MarkdownFileDocument(text: stripped)
         isExporting = true
+    }
+
+    private var websiteSourceURL: URL? {
+        guard let website = environment.websitesViewModel.active else { return nil }
+        let urlString = (website.urlFull?.isEmpty == false) ? website.urlFull : website.url
+        guard let urlString else { return nil }
+        return URL(string: urlString)
     }
 }
 
@@ -313,6 +348,16 @@ private struct WebsitesDetailView: View {
         }
         #if os(iOS)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                if isCompact, sourceURL != nil {
+                    Button(action: openInDefaultBrowser) {
+                        Text(displayTitle)
+                            .font(.headline)
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
             if isCompact, viewModel.active != nil, isPhone {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     websiteToolbarMenu
@@ -339,7 +384,8 @@ extension WebsitesDetailView {
             titleLineLimit: 1,
             subtitleLineLimit: 1,
             titleLayoutPriority: 0,
-            subtitleLayoutPriority: 1
+            subtitleLayoutPriority: 1,
+            onTitleTap: titleTapAction
         ) {
             if viewModel.active != nil {
                 HeaderActionRow {
@@ -459,6 +505,11 @@ extension WebsitesDetailView {
                 Label("Copy", systemImage: "doc.on.doc")
             }
             Button {
+                copyWebsiteURL()
+            } label: {
+                Label("Copy URL", systemImage: "link")
+            }
+            Button {
                 exportWebsite()
             } label: {
                 Label("Download", systemImage: "square.and.arrow.down")
@@ -496,6 +547,9 @@ extension WebsitesDetailView {
                 },
                 SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyWebsiteContent()
+                },
+                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+                    copyWebsiteURL()
                 },
                 SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                     exportWebsite()
@@ -535,6 +589,9 @@ extension WebsitesDetailView {
                 },
                 SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyWebsiteContent()
+                },
+                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+                    copyWebsiteURL()
                 },
                 SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                     exportWebsite()
@@ -606,6 +663,16 @@ extension WebsitesDetailView {
         #endif
     }
 
+    private func openInDefaultBrowser() {
+        guard let url = sourceURL else { return }
+        openURL(url)
+    }
+
+    private var titleTapAction: (() -> Void)? {
+        guard sourceURL != nil else { return nil }
+        return { openInDefaultBrowser() }
+    }
+
     private func copyWebsiteContent() {
         guard let content = viewModel.active?.content, !content.isEmpty else { return }
         let stripped = MarkdownRendering.stripFrontmatter(content)
@@ -627,6 +694,31 @@ extension WebsitesDetailView {
             #else
             let pasteboard = UIPasteboard.general
             if pasteboard.string == stripped {
+                pasteboard.string = ""
+            }
+            #endif
+        }
+    }
+
+    private func copyWebsiteURL() {
+        guard let urlString = sourceURL?.absoluteString, !urlString.isEmpty else { return }
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = urlString
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(urlString, forType: .string)
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == urlString {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == urlString {
                 pasteboard.string = ""
             }
             #endif

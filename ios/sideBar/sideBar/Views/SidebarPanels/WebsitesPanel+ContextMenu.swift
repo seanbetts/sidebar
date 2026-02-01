@@ -23,6 +23,9 @@ extension WebsitesPanelView {
             SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                 Task { await copyWebsiteContent(for: item) }
             },
+            SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+                copyWebsiteURL(for: item)
+            },
             SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                 Task { await exportWebsiteContent(for: item) }
             },
@@ -124,5 +127,34 @@ extension WebsitesPanelView {
         exportFilename = "\(fallbackName).md"
         exportDocument = MarkdownFileDocument(text: stripped)
         isExporting = true
+    }
+
+    private func copyWebsiteURL(for item: WebsiteItem) {
+        let urlString = item.url
+        guard !urlString.isEmpty else {
+            self.appEnvironment.toastCenter.show(message: "Copy unavailable")
+            return
+        }
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = urlString
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(urlString, forType: .string)
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == urlString {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == urlString {
+                pasteboard.string = ""
+            }
+            #endif
+        }
     }
 }
