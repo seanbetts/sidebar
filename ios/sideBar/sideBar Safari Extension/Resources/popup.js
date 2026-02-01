@@ -15,7 +15,7 @@ const saveUrl = async (url) => {
         url
     });
     if (response && response.ok) {
-        setStatus("Saved for later.");
+        setStatus("✓ Saved for later.");
         return true;
     }
     setStatus(response?.error ?? "Save failed.");
@@ -44,17 +44,17 @@ const saveWithRetry = async (retries, delayMs) => {
         const url = tab?.url ?? null;
         if (url) {
             const ok = await saveUrl(url);
-            setTimeout(() => window.close(), ok ? 500 : 1200);
+            setTimeout(() => window.close(), ok ? 1800 : 2600);
             return;
         }
     } catch (error) {
         setStatus(error?.message ?? "Save failed.");
-        setTimeout(() => window.close(), 1200);
+        setTimeout(() => window.close(), 2600);
         return;
     }
     if (retries <= 0) {
         setStatus("No active tab URL.");
-        setTimeout(() => window.close(), 1200);
+        setTimeout(() => window.close(), 2600);
         return;
     }
     setStatus("Loading tab...");
