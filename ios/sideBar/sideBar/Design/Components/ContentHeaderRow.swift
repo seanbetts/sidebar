@@ -4,6 +4,7 @@ struct ContentHeaderRow<Trailing: View>: View {
     let icon: AnyView
     let title: String
     let subtitle: String?
+    let titleFont: Font
     let titleLineLimit: Int
     let subtitleLineLimit: Int
     let titleLayoutPriority: Double
@@ -14,6 +15,7 @@ struct ContentHeaderRow<Trailing: View>: View {
     let subtitleTracking: CGFloat
     let alignment: VerticalAlignment
     let titleSubtitleAlignment: VerticalAlignment
+    let titleSubtitleAxis: Axis
     let onTitleTap: (() -> Void)?
     let trailing: Trailing
 
@@ -21,6 +23,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         iconName: String,
         title: String,
         subtitle: String? = nil,
+        titleFont: Font = .headline,
         titleLineLimit: Int = 2,
         subtitleLineLimit: Int = 2,
         titleLayoutPriority: Double = 1,
@@ -31,6 +34,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         subtitleTracking: CGFloat = 0,
         alignment: VerticalAlignment = .center,
         titleSubtitleAlignment: VerticalAlignment = .center,
+        titleSubtitleAxis: Axis = .horizontal,
         onTitleTap: (() -> Void)? = nil,
         @ViewBuilder trailing: () -> Trailing = { EmptyView() }
     ) {
@@ -41,6 +45,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         )
         self.title = title
         self.subtitle = subtitle
+        self.titleFont = titleFont
         self.titleLineLimit = titleLineLimit
         self.subtitleLineLimit = subtitleLineLimit
         self.titleLayoutPriority = titleLayoutPriority
@@ -51,6 +56,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         self.subtitleTracking = subtitleTracking
         self.alignment = alignment
         self.titleSubtitleAlignment = titleSubtitleAlignment
+        self.titleSubtitleAxis = titleSubtitleAxis
         self.onTitleTap = onTitleTap
         self.trailing = trailing()
     }
@@ -59,6 +65,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         iconView: AnyView,
         title: String,
         subtitle: String? = nil,
+        titleFont: Font = .headline,
         titleLineLimit: Int = 2,
         subtitleLineLimit: Int = 2,
         titleLayoutPriority: Double = 1,
@@ -69,12 +76,14 @@ struct ContentHeaderRow<Trailing: View>: View {
         subtitleTracking: CGFloat = 0,
         alignment: VerticalAlignment = .center,
         titleSubtitleAlignment: VerticalAlignment = .center,
+        titleSubtitleAxis: Axis = .horizontal,
         onTitleTap: (() -> Void)? = nil,
         @ViewBuilder trailing: () -> Trailing = { EmptyView() }
     ) {
         self.icon = iconView
         self.title = title
         self.subtitle = subtitle
+        self.titleFont = titleFont
         self.titleLineLimit = titleLineLimit
         self.subtitleLineLimit = subtitleLineLimit
         self.titleLayoutPriority = titleLayoutPriority
@@ -85,6 +94,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         self.subtitleTracking = subtitleTracking
         self.alignment = alignment
         self.titleSubtitleAlignment = titleSubtitleAlignment
+        self.titleSubtitleAxis = titleSubtitleAxis
         self.onTitleTap = onTitleTap
         self.trailing = trailing()
     }
@@ -92,43 +102,65 @@ struct ContentHeaderRow<Trailing: View>: View {
     var body: some View {
         HStack(alignment: alignment, spacing: 12) {
             icon
-            HStack(alignment: titleSubtitleAlignment, spacing: 12) {
-                if let onTitleTap {
-                    Button(action: onTitleTap) {
-                        Text(title)
-                            .font(.headline)
-                            .lineLimit(titleLineLimit)
-                            .multilineTextAlignment(.leading)
-                            .layoutPriority(titleLayoutPriority)
-                            .truncationMode(.tail)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Text(title)
-                        .font(.headline)
-                        .lineLimit(titleLineLimit)
-                        .multilineTextAlignment(.leading)
-                        .layoutPriority(titleLayoutPriority)
-                        .truncationMode(.tail)
-                }
-                if let subtitle, !subtitle.isEmpty {
-                    if subtitleShowsDivider {
-                        Rectangle()
-                            .fill(DesignTokens.Colors.border)
-                            .frame(width: subtitleDividerWidth, height: subtitleDividerHeight)
-                            .fixedSize()
-                    }
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(subtitleLineLimit)
-                        .multilineTextAlignment(.leading)
-                        .layoutPriority(subtitleLayoutPriority)
-                        .tracking(subtitleTracking)
-                }
-            }
+            titleSubtitleContent
             Spacer()
             trailing
+        }
+    }
+
+    @ViewBuilder
+    private var titleSubtitleContent: some View {
+        if titleSubtitleAxis == .vertical {
+            VStack(alignment: .leading, spacing: 2) {
+                titleView
+                subtitleView
+            }
+        } else {
+            HStack(alignment: titleSubtitleAlignment, spacing: 12) {
+                titleView
+                if let subtitle, !subtitle.isEmpty, subtitleShowsDivider {
+                    Rectangle()
+                        .fill(DesignTokens.Colors.border)
+                        .frame(width: subtitleDividerWidth, height: subtitleDividerHeight)
+                        .fixedSize()
+                }
+                subtitleView
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var titleView: some View {
+        if let onTitleTap {
+            Button(action: onTitleTap) {
+                Text(title)
+                    .font(titleFont)
+                    .lineLimit(titleLineLimit)
+                    .multilineTextAlignment(.leading)
+                    .layoutPriority(titleLayoutPriority)
+                    .truncationMode(.tail)
+            }
+            .buttonStyle(.plain)
+        } else {
+            Text(title)
+                .font(titleFont)
+                .lineLimit(titleLineLimit)
+                .multilineTextAlignment(.leading)
+                .layoutPriority(titleLayoutPriority)
+                .truncationMode(.tail)
+        }
+    }
+
+    @ViewBuilder
+    private var subtitleView: some View {
+        if let subtitle, !subtitle.isEmpty {
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(subtitleLineLimit)
+                .multilineTextAlignment(.leading)
+                .layoutPriority(subtitleLayoutPriority)
+                .tracking(subtitleTracking)
         }
     }
 }

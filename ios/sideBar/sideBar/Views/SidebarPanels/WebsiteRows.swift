@@ -143,17 +143,23 @@ struct WebsiteRow: View, Equatable {
 
     private static func extractBaseDomain(_ domain: String) -> String {
         // Remove www. prefix first
-        var cleaned = domain.replacingOccurrences(
+        let cleaned = domain.replacingOccurrences(
             of: "^www\\.",
             with: "",
             options: .regularExpression
         )
-        // Split by dots and keep last two parts (e.g., "docs.example.com" -> "example.com")
-        let parts = cleaned.split(separator: ".")
-        if parts.count > 2 {
-            cleaned = parts.suffix(2).joined(separator: ".")
+        // Split by dots and extract base domain
+        let parts = cleaned.split(separator: ".").map(String.init)
+        guard parts.count > 2 else { return cleaned }
+        // Check for two-part TLDs like .co.uk, .org.uk, .com.au
+        let secondLevelPrefixes: Set<String> = ["co", "com", "org", "net", "gov", "edu", "ac", "or"]
+        let last = parts[parts.count - 1]
+        let secondLast = parts[parts.count - 2]
+        // If second-to-last is a common prefix and last is a 2-letter country code
+        if secondLevelPrefixes.contains(secondLast.lowercased()) && last.count == 2 {
+            return parts.suffix(3).joined(separator: ".")
         }
-        return cleaned
+        return parts.suffix(2).joined(separator: ".")
     }
 
     private var primaryTextColor: Color {
