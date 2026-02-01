@@ -49,6 +49,7 @@ public struct ContentView: View {
     @State var workspaceExpandedPreviousLeftPanelExpanded: Bool?
     #if os(iOS)
     @State var lastWorkspaceIsPortrait: Bool?
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) var isWorkspaceExpandedByRotation: Bool = false
     #endif
     #if os(iOS)
     @AppStorage(AppStorageKeys.hasShownBiometricHint) var hasShownBiometricHint = false

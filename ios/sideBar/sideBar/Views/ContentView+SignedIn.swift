@@ -458,6 +458,7 @@ extension ContentView {
         } else if let previous = workspaceExpandedPreviousLeftPanelExpanded {
             isLeftPanelExpanded = previous
             workspaceExpandedPreviousLeftPanelExpanded = nil
+            isWorkspaceExpandedByRotation = false
         }
     }
 
@@ -470,7 +471,13 @@ extension ContentView {
         }
         lastWorkspaceIsPortrait = isPortrait
         if isPortrait {
-            isWorkspaceExpanded = true
+            if !isWorkspaceExpanded {
+                isWorkspaceExpandedByRotation = true
+                isWorkspaceExpanded = true
+            }
+        } else if isWorkspaceExpandedByRotation {
+            isWorkspaceExpandedByRotation = false
+            isWorkspaceExpanded = false
         }
     }
     #endif

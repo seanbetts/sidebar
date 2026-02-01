@@ -315,6 +315,9 @@ private struct WebsitesDetailView: View {
     @Binding var isArchiveAlertPresented: Bool
     @EnvironmentObject private var environment: AppEnvironment
     @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
+    #if os(iOS)
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
+    #endif
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -627,14 +630,13 @@ extension WebsitesDetailView {
 
     private var expandButton: some View {
         Button(action: expandWebsiteView) {
-            Image(systemName: "arrow.up.left.and.arrow.down.right")
+            Image(systemName: expandButtonIconName)
                 .font(DesignTokens.Typography.labelMd)
                 .frame(width: 28, height: 20)
                 .imageScale(.medium)
-                .rotationEffect(.degrees(90))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Expand website")
+        .accessibilityLabel(expandButtonLabel)
         .disabled(viewModel.active == nil)
     }
 
@@ -697,7 +699,20 @@ extension WebsitesDetailView {
     }
 
     private func expandWebsiteView() {
+        #if os(iOS)
+        if !isPhone {
+            isWorkspaceExpandedByRotation = false
+        }
+        #endif
         isWorkspaceExpanded.toggle()
+    }
+
+    private var expandButtonIconName: String {
+        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    }
+
+    private var expandButtonLabel: String {
+        isWorkspaceExpanded ? "Exit expanded mode" : "Expand website"
     }
 
     private var titleTapAction: (() -> Void)? {
