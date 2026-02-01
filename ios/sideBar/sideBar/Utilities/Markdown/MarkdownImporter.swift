@@ -82,6 +82,10 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             appendBlock(captionText)
             return
         }
+        if isThematicBreakLine(plainText) {
+            appendHorizontalRule()
+            return
+        }
 
         var paragraphText = AttributedString()
         for child in paragraph.children {
@@ -183,16 +187,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     }
 
     mutating func visitThematicBreak(_ thematicBreak: ThematicBreak) {
-        var rule = AttributedString("---")
-        applyBlockKind(.horizontalRule, to: &rule)
-        rule[fullRange(in: rule)].foregroundColor = DesignTokens.Colors.border
-        rule[fullRange(in: rule)].paragraphStyle = paragraphStyle(
-            lineSpacing: 0,
-            spacingBefore: rem(1.5),
-            spacingAfter: rem(1.5)
-        )
-        applyPresentationIntent(for: .horizontalRule, to: &rule)
-        appendBlock(rule)
+        appendHorizontalRule()
     }
 
     mutating func visitCodeBlock(_ codeBlock: CodeBlock) {
@@ -439,6 +434,38 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private func applyStrikethrough(to text: inout AttributedString) {
         let range = fullRange(in: text)
         text[range].strikethroughStyle = .single
+    }
+
+    private func isThematicBreakLine(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        var marker: Character?
+        var count = 0
+        for character in trimmed {
+            if character.isWhitespace {
+                continue
+            }
+            guard character == "-" || character == "*" || character == "_" else { return false }
+            if marker == nil {
+                marker = character
+            }
+            guard character == marker else { return false }
+            count += 1
+        }
+        return count >= 3
+    }
+
+    private mutating func appendHorizontalRule() {
+        var rule = AttributedString("---")
+        applyBlockKind(.horizontalRule, to: &rule)
+        rule[fullRange(in: rule)].foregroundColor = DesignTokens.Colors.border
+        rule[fullRange(in: rule)].paragraphStyle = paragraphStyle(
+            lineSpacing: 0,
+            spacingBefore: rem(1.5),
+            spacingAfter: rem(1.5)
+        )
+        applyPresentationIntent(for: .horizontalRule, to: &rule)
+        appendBlock(rule)
     }
 
     private func adjustedSpacingBeforeIfNeeded(

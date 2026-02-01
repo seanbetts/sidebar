@@ -42,6 +42,25 @@ public struct MarkdownShortcutProcessor {
         BlockPattern(prefix: "- [X] ", blockKind: .taskChecked, listDepth: 1)
     ]
 
+    private static func isThematicBreakLine(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        var marker: Character?
+        var count = 0
+        for character in trimmed {
+            if character.isWhitespace {
+                continue
+            }
+            guard character == "-" || character == "*" || character == "_" else { return false }
+            if marker == nil {
+                marker = character
+            }
+            guard character == marker else { return false }
+            count += 1
+        }
+        return count >= 3
+    }
+
     public static func processShortcuts(
         in text: inout AttributedString,
         selection: AttributedTextSelection,
@@ -86,6 +105,24 @@ public struct MarkdownShortcutProcessor {
         let lineRange = lineStart..<previousIndex
         let lineText = String(text[lineRange].characters)
 
+        if let selection = applyBlockPattern(in: &text, lineStart: lineStart, lineText: lineText) {
+            return selection
+        }
+        if let selection = applyOrderedListPattern(in: &text, lineStart: lineStart, lineText: lineText) {
+            return selection
+        }
+        if let selection = applyThematicBreakPattern(in: &text, lineStart: lineStart, lineText: lineText) {
+            return selection
+        }
+
+        return nil
+    }
+
+    private static func applyBlockPattern(
+        in text: inout AttributedString,
+        lineStart: AttributedString.Index,
+        lineText: String
+    ) -> AttributedTextSelection? {
         for pattern in blockPatterns where lineText.hasPrefix(pattern.prefix) {
             let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
             if lineStart < updatedLineEnd {
@@ -109,29 +146,61 @@ public struct MarkdownShortcutProcessor {
             return selectionAfterLine(in: text, lineStart: lineStart)
         }
 
-        if let match = lineText.wholeMatch(of: /^(\d+)\.\s/) {
-            _ = match
-            let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
-            if lineStart < updatedLineEnd {
-                text[lineStart..<updatedLineEnd].blockKind = .orderedList
-                text[lineStart..<updatedLineEnd].listDepth = 1
-                applyPresentationIntent(
-                    to: &text,
-                    range: lineStart..<updatedLineEnd,
-                    blockKind: .orderedList,
-                    listDepth: 1
-                )
-                applyBlockStyle(
-                    to: &text,
-                    range: lineStart..<updatedLineEnd,
-                    blockKind: .orderedList
-                )
-            }
+        return nil
+    }
 
-            return selectionAfterLine(in: text, lineStart: lineStart)
+    private static func applyOrderedListPattern(
+        in text: inout AttributedString,
+        lineStart: AttributedString.Index,
+        lineText: String
+    ) -> AttributedTextSelection? {
+        guard lineText.wholeMatch(of: /^(\d+)\.\s/) != nil else { return nil }
+        let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
+        if lineStart < updatedLineEnd {
+            text[lineStart..<updatedLineEnd].blockKind = .orderedList
+            text[lineStart..<updatedLineEnd].listDepth = 1
+            applyPresentationIntent(
+                to: &text,
+                range: lineStart..<updatedLineEnd,
+                blockKind: .orderedList,
+                listDepth: 1
+            )
+            applyBlockStyle(
+                to: &text,
+                range: lineStart..<updatedLineEnd,
+                blockKind: .orderedList
+            )
         }
 
-        return nil
+        return selectionAfterLine(in: text, lineStart: lineStart)
+    }
+
+    private static func applyThematicBreakPattern(
+        in text: inout AttributedString,
+        lineStart: AttributedString.Index,
+        lineText: String
+    ) -> AttributedTextSelection? {
+        guard isThematicBreakLine(lineText) else { return nil }
+        let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
+        if lineStart < updatedLineEnd {
+            let replacement = AttributedString("---")
+            text.replaceSubrange(lineStart..<updatedLineEnd, with: replacement)
+            let endIndex = text.index(lineStart, offsetByCharacters: replacement.characters.count)
+            let hrRange = lineStart..<endIndex
+            text[hrRange].blockKind = .horizontalRule
+            applyPresentationIntent(
+                to: &text,
+                range: hrRange,
+                blockKind: .horizontalRule,
+                listDepth: nil
+            )
+            applyBlockStyle(
+                to: &text,
+                range: hrRange,
+                blockKind: .horizontalRule
+            )
+        }
+        return selectionAfterLine(in: text, lineStart: lineStart)
     }
 
     private static func processInlineShortcuts(
