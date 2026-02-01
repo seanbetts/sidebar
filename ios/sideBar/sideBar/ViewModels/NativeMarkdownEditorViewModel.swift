@@ -37,12 +37,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private let exporter = MarkdownExporter()
     private let baseFontSize: CGFloat = 16
     private let inlineCodeFontSize: CGFloat = 14
-    private let heading1FontSize: CGFloat = 32
-    private let heading2FontSize: CGFloat = 24
-    private let heading3FontSize: CGFloat = 20
-    private let heading4FontSize: CGFloat = 18
-    private let heading5FontSize: CGFloat = 17
-    private let heading6FontSize: CGFloat = 16
     private let bodyFont = Font.system(size: 16)
     private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
@@ -336,19 +330,12 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func baseFont(for blockKind: BlockKind?) -> Font {
+        if let blockKind, let level = headingLevel(for: blockKind) {
+            let size = MarkdownHeadingMetrics.fontSize(for: level)
+            let weight: Font.Weight = MarkdownHeadingMetrics.isBold(level: level) ? .bold : .semibold
+            return .system(size: size, weight: weight)
+        }
         switch blockKind {
-        case .heading1:
-            return .system(size: heading1FontSize, weight: .bold)
-        case .heading2:
-            return .system(size: heading2FontSize, weight: .semibold)
-        case .heading3:
-            return .system(size: heading3FontSize, weight: .semibold)
-        case .heading4:
-            return .system(size: heading4FontSize, weight: .semibold)
-        case .heading5:
-            return .system(size: heading5FontSize, weight: .semibold)
-        case .heading6:
-            return .system(size: heading6FontSize, weight: .semibold)
         case .codeBlock:
             return blockCodeFont
         case .imageCaption:
@@ -359,19 +346,12 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func platformBaseFont(for blockKind: BlockKind?) -> PlatformFont {
+        if let blockKind, let level = headingLevel(for: blockKind) {
+            let size = MarkdownHeadingMetrics.fontSize(for: level)
+            let weight: PlatformFontWeight = MarkdownHeadingMetrics.isBold(level: level) ? .bold : .semibold
+            return platformSystemFont(size: size, weight: weight)
+        }
         switch blockKind {
-        case .heading1:
-            return platformSystemFont(size: heading1FontSize, weight: .bold)
-        case .heading2:
-            return platformSystemFont(size: heading2FontSize, weight: .semibold)
-        case .heading3:
-            return platformSystemFont(size: heading3FontSize, weight: .semibold)
-        case .heading4:
-            return platformSystemFont(size: heading4FontSize, weight: .semibold)
-        case .heading5:
-            return platformSystemFont(size: heading5FontSize, weight: .semibold)
-        case .heading6:
-            return platformSystemFont(size: heading6FontSize, weight: .semibold)
         case .codeBlock:
             return platformSystemFont(size: inlineCodeFontSize, weight: .regular, monospaced: true)
         case .imageCaption:
@@ -1606,27 +1586,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func paragraphStyleForHeading(level: Int) -> NSParagraphStyle {
-        let fontSize: CGFloat
-        switch level {
-        case 1:
-            fontSize = heading1FontSize
-        case 2:
-            fontSize = heading2FontSize
-        case 3:
-            fontSize = heading3FontSize
-        case 4:
-            fontSize = heading4FontSize
-        case 5:
-            fontSize = heading5FontSize
-        default:
-            fontSize = heading6FontSize
-        }
-        let spacingBefore = level == 1 ? 0 : rem(1)
-        return paragraphStyle(
-            lineSpacing: em(0.3, fontSize: fontSize),
-            spacingBefore: spacingBefore,
-            spacingAfter: rem(0.3)
-        )
+        MarkdownHeadingMetrics.paragraphStyle(level: level, baseFontSize: baseFontSize)
     }
 
     private func rem(_ value: CGFloat) -> CGFloat {

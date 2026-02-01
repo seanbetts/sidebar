@@ -47,12 +47,6 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private var nextListId: Int = 1
     private let baseFontSize: CGFloat = 16
     private let inlineCodeFontSize: CGFloat = 14
-    private let heading1FontSize: CGFloat = 32
-    private let heading2FontSize: CGFloat = 24
-    private let heading3FontSize: CGFloat = 20
-    private let heading4FontSize: CGFloat = 18
-    private let heading5FontSize: CGFloat = 17
-    private let heading6FontSize: CGFloat = 16
     private let bodyFont = Font.system(size: 16)
     private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
@@ -122,56 +116,30 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let prefix = String(repeating: "#", count: heading.level) + " "
         headingText = prefixBlock(headingText, with: prefix)
 
+        let fontSize = MarkdownHeadingMetrics.fontSize(for: heading.level)
+        let weight: Font.Weight = MarkdownHeadingMetrics.isBold(level: heading.level) ? .bold : .semibold
+        let paragraphStyle = MarkdownHeadingMetrics.paragraphStyle(
+            level: heading.level,
+            baseFontSize: baseFontSize
+        )
+
         switch heading.level {
         case 1:
             applyBlockKind(.heading1, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: heading1FontSize, weight: .bold)
-            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading1FontSize),
-                spacingBefore: 0,
-                spacingAfter: rem(0.3)
-            )
         case 2:
             applyBlockKind(.heading2, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: heading2FontSize, weight: .semibold)
-            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading2FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
         case 3:
             applyBlockKind(.heading3, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: heading3FontSize, weight: .semibold)
-            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading3FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
         case 4:
             applyBlockKind(.heading4, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: heading4FontSize, weight: .semibold)
-            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading4FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
         case 5:
             applyBlockKind(.heading5, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: heading5FontSize, weight: .semibold)
-            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading5FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
         default:
             applyBlockKind(.heading6, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: heading6FontSize, weight: .semibold)
-            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
-                lineSpacing: em(0.3, fontSize: heading6FontSize),
-                spacingBefore: rem(1),
-                spacingAfter: rem(0.3)
-            )
         }
+
+        headingText[fullRange(in: headingText)].font = .system(size: fontSize, weight: weight)
+        headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle
 
         headingText[fullRange(in: headingText)].foregroundColor = DesignTokens.Colors.textPrimary
         applyPresentationIntent(for: blockKindForHeading(level: heading.level), to: &headingText)

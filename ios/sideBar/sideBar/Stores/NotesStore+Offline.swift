@@ -211,7 +211,8 @@ extension NotesStore {
             name: newName ?? note.name,
             content: note.content,
             path: newPath,
-            modified: note.modified
+            modified: note.modified,
+            created: note.created
         )
         let lastSyncAt = offlineStore?.lastSyncAt(for: CacheKeys.note(id: oldPath))
         cache.remove(key: CacheKeys.note(id: oldPath))
@@ -277,6 +278,7 @@ extension NotesStore {
             type: node.type,
             size: node.size,
             modified: node.modified,
+            created: node.created,
             children: children ?? node.children,
             expanded: node.expanded,
             pinned: pinned ?? node.pinned,
