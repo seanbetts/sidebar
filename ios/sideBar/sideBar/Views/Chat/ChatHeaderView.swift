@@ -2,6 +2,11 @@ import SwiftUI
 
 struct ChatHeaderView: View {
     @ObservedObject var viewModel: ChatViewModel
+    @Environment(\.workspaceColumn) private var workspaceColumn
+    @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
+    #if os(iOS)
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
+    #endif
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -53,6 +58,9 @@ struct ChatHeaderView: View {
                 }
                 if showNewChatButton || showCloseButton {
                     HeaderActionRow {
+                        if shouldShowExpandButton {
+                            expandButton
+                        }
                         if showNewChatButton {
                             HeaderActionButton(
                                 systemName: "plus",
@@ -111,4 +119,47 @@ struct ChatHeaderView: View {
         return horizontalSizeClass == .compact
         #endif
     }
+
+    private var shouldShowExpandButton: Bool {
+        guard workspaceColumn == .primary else { return false }
+        #if os(iOS)
+        return !isPhone
+        #else
+        return true
+        #endif
+    }
+
+    private var expandButton: some View {
+        Button(action: expandChatView) {
+            Image(systemName: expandButtonIconName)
+                .font(DesignTokens.Typography.labelMd)
+                .frame(width: 28, height: 20)
+                .imageScale(.medium)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(expandButtonLabel)
+    }
+
+    private var expandButtonIconName: String {
+        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    }
+
+    private var expandButtonLabel: String {
+        isWorkspaceExpanded ? "Exit expanded mode" : "Expand chat"
+    }
+
+    private func expandChatView() {
+        #if os(iOS)
+        if !isPhone {
+            isWorkspaceExpandedByRotation = false
+        }
+        #endif
+        isWorkspaceExpanded.toggle()
+    }
+
+    #if os(iOS)
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+    #endif
 }
