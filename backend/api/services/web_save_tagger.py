@@ -112,12 +112,29 @@ def compute_word_count(markdown_text: str) -> int:
     return len(words)
 
 
+def format_reading_time(total_minutes: int) -> str:
+    """Format minutes into a readable string with proper pluralization."""
+    if total_minutes <= 0:
+        total_minutes = 1
+    if total_minutes >= 60:
+        hours = total_minutes // 60
+        remaining = total_minutes % 60
+        hr_label = "hr" if hours == 1 else "hrs"
+        if remaining == 0:
+            return f"{hours} {hr_label}"
+        min_label = "min" if remaining == 1 else "mins"
+        return f"{hours} {hr_label} {remaining} {min_label}"
+    min_label = "min" if total_minutes == 1 else "mins"
+    return f"{total_minutes} {min_label}"
+
+
 def calculate_reading_time(
     word_count: int, *, image_count: int = 0, wpm: int = 200
 ) -> str:
     """Calculate reading time string.
 
     Uses 200 WPM for prose and adds ~12 seconds per image.
+    Returns "X hrs Y mins" for times over 60 minutes.
     """
     if word_count <= 0 and image_count <= 0:
         return "1 min"
@@ -125,7 +142,7 @@ def calculate_reading_time(
     minutes = word_count / wpm
     # Add time for images (~12 seconds each, following Medium's approach)
     minutes += image_count * 0.2
-    return f"{max(1, round(minutes))} min"
+    return format_reading_time(max(1, round(minutes)))
 
 
 def extract_tags(

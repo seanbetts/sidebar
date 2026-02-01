@@ -134,15 +134,26 @@ struct WebsiteRow: View, Equatable {
     }
 
     private static func formatSubtitle(domain: String, readingTime: String?) -> String {
-        let cleanDomain = domain.replacingOccurrences(
-            of: "^www\\.",
-            with: "",
-            options: .regularExpression
-        )
+        let cleanDomain = extractBaseDomain(domain)
         if let readingTime = readingTime, !readingTime.isEmpty {
             return "\(cleanDomain) | \(readingTime)"
         }
         return cleanDomain
+    }
+
+    private static func extractBaseDomain(_ domain: String) -> String {
+        // Remove www. prefix first
+        var cleaned = domain.replacingOccurrences(
+            of: "^www\\.",
+            with: "",
+            options: .regularExpression
+        )
+        // Split by dots and keep last two parts (e.g., "docs.example.com" -> "example.com")
+        let parts = cleaned.split(separator: ".")
+        if parts.count > 2 {
+            cleaned = parts.suffix(2).joined(separator: ".")
+        }
+        return cleaned
     }
 
     private var primaryTextColor: Color {
