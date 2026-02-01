@@ -41,6 +41,9 @@ ERROR_MESSAGES = {
     "TRANSCRIPTION_FAILED": "We couldn't transcribe this audio file.",
     "VIDEO_TRANSCRIPTION_FAILED": "We couldn't transcribe this video.",
     "VIDEO_TRANSCRIPTION_UNAVAILABLE": "Video transcription is unavailable right now.",
+    "VIDEO_DOWNLOAD_FORBIDDEN": (
+        "YouTube blocked the download. Try a different video or try again later."
+    ),
     "INVALID_YOUTUBE_URL": "That doesn't look like a valid YouTube URL.",
     "WORKER_STALLED": "Processing took too long. We're retrying.",
     "UNKNOWN_ERROR": "Something went wrong while processing this file.",

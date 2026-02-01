@@ -446,6 +446,8 @@ def download_youtube(
             ) from e
         elif "Invalid URL" in error_msg:
             raise ValueError("Invalid YouTube URL") from e
+        elif "HTTP Error 403" in error_msg or "403" in error_msg:
+            raise RuntimeError("HTTP 403 Forbidden while downloading YouTube media") from e
         else:
             raise Exception(f"Download failed: {error_msg}") from e
 
