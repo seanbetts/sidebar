@@ -565,9 +565,22 @@ def _srcset_contains(srcset: str, candidate: str) -> bool:
     return any(candidate in part.strip() for part in srcset.split(","))
 
 
+def _is_auto_generated_og_image(url: str) -> bool:
+    """Check if URL is an auto-generated OG/social preview image."""
+    if not url:
+        return False
+    # Mintlify auto-generated OG images
+    if "mintlify" in url and "/api/og" in url:
+        return True
+    return "mintlify.app" in url and "_mintlify" in url and "og" in url
+
+
 def prepend_hero_image(html_text: str, image_url: str, title: str) -> str:
     """Ensure hero image is present near the top of the extracted HTML."""
     if not image_url:
+        return html_text
+    # Skip auto-generated OG/social preview images
+    if _is_auto_generated_og_image(image_url):
         return html_text
     canonical_image = _canonical_image_url(image_url)
     if image_url in html_text or canonical_image in unquote(html_text):
