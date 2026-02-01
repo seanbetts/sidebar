@@ -25,6 +25,9 @@ Downloads YouTube videos (as MP4) or audio (as MP3) with automatic quality selec
 - **ffmpeg** system package (required for format conversion)
   - macOS: `brew install ffmpeg`
   - Ubuntu/Debian: `sudo apt-get install ffmpeg`
+- **JavaScript runtime** for modern YouTube extraction (required by yt-dlp)
+  - Recommended: `node` (or `deno`, `bun`)
+  - Configure with `YT_DLP_JS_RUNTIMES=node` if needed
 
 ## Scripts
 

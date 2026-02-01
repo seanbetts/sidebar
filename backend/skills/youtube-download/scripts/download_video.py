@@ -7,6 +7,7 @@ Download YouTube videos or audio using yt-dlp with automatic format conversion.
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -28,6 +29,16 @@ except Exception:
 
 # Default output directory (files workspace)
 DEFAULT_R2_DIR = "files/videos"
+
+
+def _resolve_js_runtimes() -> str | None:
+    value = os.getenv("YT_DLP_JS_RUNTIMES") or os.getenv("YT_DLP_JS_RUNTIME")
+    if value:
+        return value
+    for runtime in ("node", "deno", "bun"):
+        if shutil.which(runtime):
+            return runtime
+    return None
 
 
 def _ensure_stdio() -> None:
@@ -348,6 +359,10 @@ def download_youtube(
         ydl_opts["playlist_items"] = "1"
 
     start_time = time.time()
+
+    js_runtimes = _resolve_js_runtimes()
+    if js_runtimes:
+        ydl_opts["js_runtimes"] = js_runtimes
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:

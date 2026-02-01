@@ -19,6 +19,7 @@ primary_region = "lhr"
   R2_BUCKET = "sidebar"
   R2_FAVICON_BUCKET = "sidebar-favicons"
   STORAGE_BACKEND = "r2"
+  YT_DLP_JS_RUNTIMES = "node"
 
 [http_service]
   internal_port = 8001
