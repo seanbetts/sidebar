@@ -1437,9 +1437,12 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             if tableInfo?.isHeader == true {
                 font = font.weight(.semibold)
             }
+            let shouldBold = intents.contains(.stronglyEmphasized)
+                || tableInfo?.isHeader == true
+                || (blockKind.map(isHeading) ?? false)
             let platformFont = platformFontApplyingTraits(
                 basePlatformFont,
-                bold: intents.contains(.stronglyEmphasized) || tableInfo?.isHeader == true,
+                bold: shouldBold,
                 italic: intents.contains(.emphasized)
             )
             setFont(font, platformFont: platformFont, in: &text, range: range)
