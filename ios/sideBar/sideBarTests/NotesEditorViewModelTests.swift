@@ -33,7 +33,7 @@ final class NotesEditorViewModelTests: XCTestCase {
             writeQueue: writeQueue,
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
-        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
+        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
         await Task.yield()
@@ -70,7 +70,7 @@ final class NotesEditorViewModelTests: XCTestCase {
             writeQueue: writeQueue,
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
-        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
+        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
         await Task.yield()
@@ -85,7 +85,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
-        let updated = NotePayload(id: "n1", name: "Note", content: "Updated", path: "/note.md", modified: 100)
+        let updated = NotePayload(id: "n1", name: "Note", content: "Updated", path: "/note.md", modified: 100, created: nil)
         let api = MockNotesAPI(updateResult: .success(updated))
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
@@ -113,7 +113,7 @@ final class NotesEditorViewModelTests: XCTestCase {
             writeQueue: writeQueue,
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
-        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
+        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
         await Task.yield()
@@ -159,7 +159,7 @@ final class NotesEditorViewModelTests: XCTestCase {
             writeQueue: writeQueue,
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
-        let note = NotePayload(id: "n1", name: "Note", content: "Server", path: "/note.md", modified: nil)
+        let note = NotePayload(id: "n1", name: "Note", content: "Server", path: "/note.md", modified: nil, created: nil)
 
         try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
         store.applyEditorUpdate(note)
@@ -203,8 +203,8 @@ final class NotesEditorViewModelTests: XCTestCase {
             name: "Note",
             content: "Server",
             path: "/note.md",
-            modified: serverDate.timeIntervalSince1970
-        )
+            modified: serverDate.timeIntervalSince1970,
+            created: nil)
 
         try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
         store.applyEditorUpdate(note)
@@ -242,7 +242,7 @@ final class NotesEditorViewModelTests: XCTestCase {
             writeQueue: writeQueue,
             networkStatus: TestNetworkStatus(isNetworkAvailable: false)
         )
-        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
+        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
         await Task.yield()

@@ -85,7 +85,7 @@ final class ChatViewModelTests: XCTestCase {
 
     func testNoteUpdateClearsCache() {
         let cache = TestCacheClient()
-        let note = NotePayload(id: "note-1", name: "Test.md", content: "Hello", path: "note-1", modified: nil)
+        let note = NotePayload(id: "note-1", name: "Test.md", content: "Hello", path: "note-1", modified: nil, created: nil)
         cache.set(key: CacheKeys.notesTree, value: FileTree(children: []), ttlSeconds: 60)
         cache.set(key: CacheKeys.note(id: "note-1"), value: note, ttlSeconds: 60)
         let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
