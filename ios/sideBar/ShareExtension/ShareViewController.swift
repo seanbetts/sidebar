@@ -291,6 +291,13 @@ final class ShareViewController: UIViewController {
             showError(ShareExtensionError.notAuthenticated.localizedDescription)
             return
         }
+        if isYouTubeURL(url) {
+            setContentView(ShareLoadingView(message: "Saving YouTube video..."))
+            Task { @MainActor in
+                queuePendingYouTube(url)
+            }
+            return
+        }
         setContentView(ShareLoadingView(message: "Saving website..."))
         Task { @MainActor in
             if !(await ShareNetworkMonitor.isOnline()) {
@@ -314,6 +321,15 @@ final class ShareViewController: UIViewController {
     @MainActor
     private func queuePendingWebsite(_ url: URL) {
         if pendingShareStore.enqueueWebsite(url: url.absoluteString) != nil {
+            showSuccess(message: "Saved for later")
+        } else {
+            showError("Could not save for later.")
+        }
+    }
+
+    @MainActor
+    private func queuePendingYouTube(_ url: URL) {
+        if pendingShareStore.enqueueYouTube(url: url.absoluteString) != nil {
             showSuccess(message: "Saved for later")
         } else {
             showError("Could not save for later.")
@@ -464,6 +480,11 @@ final class ShareViewController: UIViewController {
     private func extractURLFromFile(_ url: URL) -> URL? {
         guard let string = readTextFile(url) else { return nil }
         return extractFirstURL(from: string)
+    }
+
+    private func isYouTubeURL(_ url: URL) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        return host.contains("youtube.com") || host.contains("youtu.be")
     }
 
     private func readTextFile(_ url: URL) -> String? {
