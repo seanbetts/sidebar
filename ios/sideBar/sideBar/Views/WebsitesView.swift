@@ -360,6 +360,9 @@ private struct WebsitesDetailView: View {
             }
             if isCompact, viewModel.active != nil, isPhone {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if shouldShowExpandButton {
+                        expandButton
+                    }
                     websiteToolbarMenu
                 }
             }
@@ -389,6 +392,9 @@ extension WebsitesDetailView {
         ) {
             if viewModel.active != nil {
                 HeaderActionRow {
+                    if shouldShowExpandButton {
+                        expandButton
+                    }
                     websiteActionsMenu
                     closeButton
                 }
@@ -618,6 +624,27 @@ extension WebsitesDetailView {
         )
     }
 
+    private var expandButton: some View {
+        Button(action: expandWebsiteView) {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(DesignTokens.Typography.labelMd)
+                .frame(width: 28, height: 20)
+                .imageScale(.medium)
+                .rotationEffect(.degrees(90))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Expand website")
+        .disabled(viewModel.active == nil)
+    }
+
+    private var shouldShowExpandButton: Bool {
+        #if os(iOS)
+        return !isPhone
+        #else
+        return true
+        #endif
+    }
+
     private var isPinned: Bool {
         viewModel.active?.pinned == true
     }
@@ -666,6 +693,9 @@ extension WebsitesDetailView {
     private func openInDefaultBrowser() {
         guard let url = sourceURL else { return }
         openURL(url)
+    }
+
+    private func expandWebsiteView() {
     }
 
     private var titleTapAction: (() -> Void)? {
