@@ -72,6 +72,17 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(remaining.first?.url, second?.url)
     }
 
+    func testConsumeAllClearsItems() {
+        let store = makeStore()
+        _ = store.enqueueWebsite(url: "https://example.com")
+        _ = store.enqueueYouTube(url: "https://youtube.com/watch?v=abc123")
+
+        let consumed = store.consumeAll()
+
+        XCTAssertEqual(consumed.count, 2)
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
     private func makeStore() -> PendingShareStore {
         let defaults = UserDefaults(suiteName: suiteName)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
