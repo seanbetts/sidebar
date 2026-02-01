@@ -70,6 +70,10 @@ def _configure_logging(quiet: bool) -> None:
         logging.basicConfig(level=logging.INFO)
 
 
+def _default_remote_components() -> set[str]:
+    return {"ejs:github"}
+
+
 def _ensure_stdio() -> None:
     for fd in (0, 1, 2):
         try:
@@ -399,6 +403,9 @@ def download_youtube(
         logger.info("Using yt-dlp cookiefile at %s", cookiefile)
     logger.info("yt-dlp js runtimes: %s", ",".join(js_runtimes.keys()) if js_runtimes else "none")
     logger.info("yt-dlp audio_only=%s playlist=%s", audio_only, is_playlist)
+    remote_components = _default_remote_components()
+    ydl_opts["remote_components"] = remote_components
+    logger.info("yt-dlp remote components: %s", ",".join(sorted(remote_components)))
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
