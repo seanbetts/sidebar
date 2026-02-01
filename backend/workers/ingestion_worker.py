@@ -609,7 +609,12 @@ def _transcribe_youtube(
         raise IngestionError("INVALID_YOUTUBE_URL", str(exc), retryable=False) from exc
     except RuntimeError as exc:
         message = str(exc)
-        retryable = "rate" in message.lower() or "timeout" in message.lower()
+        lowered = message.lower()
+        if "403" in lowered or "forbidden" in lowered:
+            raise IngestionError(
+                "VIDEO_DOWNLOAD_FORBIDDEN", message, retryable=False
+            ) from exc
+        retryable = "rate" in lowered or "timeout" in lowered
         logger.error(
             "YouTube transcription runtime error file_id=%s url=%s retryable=%s error=%s",
             record.id,
