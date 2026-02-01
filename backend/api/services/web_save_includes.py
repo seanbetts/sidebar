@@ -54,8 +54,29 @@ def apply_include_reinsertion(
         filtered_candidates.append(node)
         included_ids.add(id(node))
 
+    def _content_already_exists(
+        tree: lxml_html.HtmlElement, node: lxml_html.HtmlElement
+    ) -> bool:
+        """Check if node's content already exists in the extracted tree."""
+        node_text = " ".join(node.text_content().split())
+        if len(node_text) < 20:
+            return False
+        for elem in tree.iter():
+            if not isinstance(elem.tag, str):
+                continue
+            if elem.tag != node.tag:
+                continue
+            elem_text = " ".join(elem.text_content().split())
+            if node_text == elem_text:
+                return True
+        return False
+
     last_inserted: lxml_html.HtmlElement | None = None
     for node in filtered_candidates:
+        # Skip if this content already exists in extracted tree
+        if _content_already_exists(extracted_tree, node):
+            continue
+
         cloned = deepcopy(node)
         for removal_selector in removal_rules:
             for elem in cloned.cssselect(removal_selector):
@@ -88,9 +109,18 @@ def find_insertion_point(
     original_node: lxml_html.HtmlElement,
 ) -> tuple[lxml_html.HtmlElement, int] | None:
     """Find an insertion point for included elements."""
+    # For lists, prefer heading-based positioning (more accurate for section content)
+    if original_node.tag in {"ul", "ol"}:
+        heading_match = _find_by_preceding_heading(
+            extracted_tree, original_dom, original_node
+        )
+        if heading_match:
+            return heading_match
+
     position_match = _find_by_position(extracted_tree, original_dom, original_node)
     if position_match:
         return position_match
+
     node_text = cloned_node.text_content().strip()[:200]
     if node_text:
         best_match = None
@@ -120,6 +150,70 @@ def find_insertion_point(
         parent = last_heading.getparent()
         if parent is not None:
             return parent, parent.index(last_heading) + 1
+
+    return None
+
+
+def _find_by_preceding_heading(
+    extracted_tree: lxml_html.HtmlElement,
+    original_dom: lxml_html.HtmlElement,
+    original_node: lxml_html.HtmlElement,
+) -> tuple[lxml_html.HtmlElement, int] | None:
+    """Find insertion point by matching the preceding heading."""
+    import re
+
+    def _normalize_text(value: str) -> str:
+        # Strip zero-width spaces and other invisible characters
+        cleaned = re.sub(r"[\u200b\u200c\u200d\ufeff\u00ad]", "", value)
+        return " ".join(cleaned.lower().split())
+
+    # Find the closest preceding heading in the original DOM
+    heading_tags = {"h1", "h2", "h3", "h4", "h5", "h6"}
+    preceding_heading = None
+    preceding_heading_text = None
+
+    # Walk backwards through preceding siblings and ancestors
+    current = original_node
+    while current is not None:
+        prev = current.getprevious()
+        while prev is not None:
+            if isinstance(prev.tag, str) and prev.tag in heading_tags:
+                preceding_heading = prev
+                preceding_heading_text = _normalize_text(prev.text_content())
+                break
+            # Check inside the element for headings (e.g., in a div wrapper)
+            inner_headings = prev.cssselect("h1, h2, h3, h4, h5, h6")
+            if inner_headings:
+                preceding_heading = inner_headings[-1]
+                preceding_heading_text = _normalize_text(
+                    preceding_heading.text_content()
+                )
+                break
+            prev = prev.getprevious()
+        if preceding_heading is not None:
+            break
+        current = current.getparent()
+
+    if not preceding_heading_text:
+        return None
+
+    # Find the matching heading in the extracted tree
+    extracted_headings = extracted_tree.cssselect("h1, h2, h3, h4, h5, h6")
+    for heading in extracted_headings:
+        if _normalize_text(heading.text_content()) == preceding_heading_text:
+            # Found matching heading - insert after it (or after following content)
+            parent = heading.getparent()
+            if parent is None:
+                continue
+            heading_index = parent.index(heading)
+            # Look for the last element before the next heading
+            best_index = heading_index + 1
+            for i in range(heading_index + 1, len(parent)):
+                sibling = parent[i]
+                if isinstance(sibling.tag, str) and sibling.tag in heading_tags:
+                    break
+                best_index = i + 1
+            return parent, best_index
 
     return None
 
