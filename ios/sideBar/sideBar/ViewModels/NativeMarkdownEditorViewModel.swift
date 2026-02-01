@@ -394,17 +394,36 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         italic: Bool
     ) -> PlatformFont {
 #if os(iOS)
+        guard bold || italic else { return font }
         var traits = font.fontDescriptor.symbolicTraits
         if bold { traits.insert(.traitBold) } else { traits.remove(.traitBold) }
         if italic { traits.insert(.traitItalic) } else { traits.remove(.traitItalic) }
-        guard let descriptor = font.fontDescriptor.withSymbolicTraits(traits) else { return font }
-        return UIFont(descriptor: descriptor, size: font.pointSize)
+        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+            return UIFont(descriptor: descriptor, size: font.pointSize)
+        }
+        if bold {
+            let boldFont = UIFont.systemFont(ofSize: font.pointSize, weight: .bold)
+            if italic,
+               let descriptor = boldFont.fontDescriptor.withSymbolicTraits([.traitBold, .traitItalic]) {
+                return UIFont(descriptor: descriptor, size: font.pointSize)
+            }
+            return boldFont
+        }
+        if italic, let descriptor = font.fontDescriptor.withSymbolicTraits([.traitItalic]) {
+            return UIFont(descriptor: descriptor, size: font.pointSize)
+        }
+        return font
 #else
-        var traits = font.fontDescriptor.symbolicTraits
-        if bold { traits.insert(.bold) } else { traits.remove(.bold) }
-        if italic { traits.insert(.italic) } else { traits.remove(.italic) }
-        let descriptor = font.fontDescriptor.withSymbolicTraits(traits)
-        return NSFont(descriptor: descriptor, size: font.pointSize) ?? font
+        guard bold || italic else { return font }
+        let manager = NSFontManager.shared
+        var result = font
+        if bold {
+            result = manager.convert(result, toHaveTrait: .boldFontMask)
+        }
+        if italic {
+            result = manager.convert(result, toHaveTrait: .italicFontMask)
+        }
+        return result
 #endif
     }
 
@@ -1438,23 +1457,21 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 continue
             }
 
-            var font = baseFont
-            if intents.contains(.emphasized) {
-                font = font.italic()
-            }
-            if intents.contains(.stronglyEmphasized) {
-                font = font.weight(.bold)
-            }
-            if tableInfo?.isHeader == true {
-                font = font.weight(.semibold)
-            }
-            let shouldBold = intents.contains(.stronglyEmphasized)
+            let isItalic = intents.contains(.emphasized)
+            let isBold = intents.contains(.stronglyEmphasized)
                 || tableInfo?.isHeader == true
                 || (blockKind.map(isHeading) ?? false)
+            var font = baseFont
+            if isBold {
+                font = font.weight(.bold)
+            }
+            if isItalic {
+                font = font.italic()
+            }
             let platformFont = platformFontApplyingTraits(
                 basePlatformFont,
-                bold: shouldBold,
-                italic: intents.contains(.emphasized)
+                bold: isBold,
+                italic: isItalic
             )
             setFont(font, platformFont: platformFont, in: &text, range: range)
             let tableBackground = tableRowBackground(from: tableInfo)
