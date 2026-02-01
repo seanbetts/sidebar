@@ -188,3 +188,121 @@
       any: [".swiper-slide-duplicate"]
   remove:
     - ".swiper-slide-duplicate"
+
+# Mintlify Documentation Platform
+# Detection: mintcdn.com assets, .mintlify.app subdomain, or generator meta tag
+- id: mintlify-detect-cdn
+  phase: pre
+  priority: 80
+  trigger:
+    dom:
+      any:
+        - 'img[src*="mintcdn.com"]'
+        - 'link[href*="mintcdn.com"]'
+        - 'meta[name="generator"][content*="Mintlify"]'
+  selector_overrides:
+    article: "article, main, [role='main']"
+  remove:
+    # Navigation
+    - "nav"
+    - "header"
+    - "footer"
+    - "aside"
+    # Sidebar navigation (left)
+    - "[class*='sidebar']"
+    - "[class*='Sidebar']"
+    - "[id*='sidebar']"
+    # Table of contents (right)
+    - "[class*='toc']"
+    - "[class*='TableOfContents']"
+    - "[class*='on-this-page']"
+    # Breadcrumbs
+    - "[class*='breadcrumb']"
+    - "[class*='Breadcrumb']"
+    # Pagination
+    - "[class*='pagination']"
+    - "[class*='Pagination']"
+    - "[class*='prev-next']"
+    - "[class*='PrevNext']"
+    # Search
+    - "[class*='search']"
+    - "[class*='Search']"
+    - "[id*='search']"
+    # Feedback widgets
+    - "[class*='feedback']"
+    - "[class*='Feedback']"
+    - "[class*='helpful']"
+    - "[class*='Helpful']"
+    # Theme toggle
+    - "[class*='theme-toggle']"
+    - "[class*='ThemeToggle']"
+    - "[class*='dark-mode']"
+    - "[class*='DarkMode']"
+
+- id: mintlify-detect-subdomain
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: ".mintlify.app"
+  selector_overrides:
+    article: "article, main, [role='main']"
+  remove:
+    - "nav"
+    - "header"
+    - "footer"
+    - "aside"
+    - "[class*='sidebar']"
+    - "[class*='Sidebar']"
+    - "[class*='toc']"
+    - "[class*='TableOfContents']"
+    - "[class*='breadcrumb']"
+    - "[class*='Breadcrumb']"
+    - "[class*='pagination']"
+    - "[class*='Pagination']"
+    - "[class*='search']"
+    - "[class*='Search']"
+    - "[class*='feedback']"
+    - "[class*='Feedback']"
+
+- id: mintlify-cleanup
+  phase: post
+  trigger:
+    dom:
+      any:
+        - 'img[src*="mintcdn.com"]'
+        - 'meta[name="generator"][content*="Mintlify"]'
+  remove:
+    # Any remaining chrome
+    - "[class*='edit-page']"
+    - "[class*='EditPage']"
+    - "[class*='page-navigation']"
+    - "[class*='PageNavigation']"
+    - "[class*='copy-button']"
+    - "[class*='CopyButton']"
+    # Social/share
+    - "[class*='share']"
+    - "[class*='Share']"
+    - "[class*='social']"
+    - "[class*='Social']"
+    # Newsletter/CTA
+    - "[class*='newsletter']"
+    - "[class*='Newsletter']"
+    - "[class*='subscribe']"
+    - "[class*='Subscribe']"
+    - "[class*='cta']"
+    - "[class*='Cta']"
+
+- id: mintlify-include-images
+  phase: pre
+  trigger:
+    dom:
+      any:
+        - 'img[src*="mintcdn.com"]'
+        - 'meta[name="generator"][content*="Mintlify"]'
+  include:
+    - "article img"
+    - "main img"
+    - "[role='main'] img"
+    - "figure img"
+    - 'img[src*="mintcdn.com"]'
