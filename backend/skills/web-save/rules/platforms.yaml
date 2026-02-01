@@ -201,7 +201,8 @@
         - 'link[href*="mintcdn.com"]'
         - 'meta[name="generator"][content*="Mintlify"]'
   selector_overrides:
-    article: "article, main, [role='main']"
+    # Mintlify uses .mdx-content.prose as the main content wrapper
+    article: ".mdx-content, .prose, article, main, [role='main']"
   remove:
     # Navigation
     - "nav"
@@ -246,7 +247,8 @@
     host:
       ends_with: ".mintlify.app"
   selector_overrides:
-    article: "article, main, [role='main']"
+    # Mintlify uses .mdx-content.prose as the main content wrapper
+    article: ".mdx-content, .prose, article, main, [role='main']"
   remove:
     - "nav"
     - "header"
@@ -293,7 +295,7 @@
     - "[class*='cta']"
     - "[class*='Cta']"
 
-- id: mintlify-include-images
+- id: mintlify-include-content
   phase: pre
   trigger:
     dom:
@@ -301,8 +303,17 @@
         - 'img[src*="mintcdn.com"]'
         - 'meta[name="generator"][content*="Mintlify"]'
   include:
+    # Images (Mintlify uses .mdx-content.prose as content wrapper)
+    - ".mdx-content img"
+    - ".prose img"
     - "article img"
     - "main img"
-    - "[role='main'] img"
     - "figure img"
     - 'img[src*="mintcdn.com"]'
+    # Lists (Readability often strips link-heavy lists as "navigation")
+    - ".mdx-content ul"
+    - ".mdx-content ol"
+    - ".prose ul"
+    - ".prose ol"
+    - "article ul"
+    - "article ol"
