@@ -809,17 +809,23 @@ def filter_non_content_images(html_text: str, *, domain: str | None = None) -> s
         ):
             img.decompose()
             continue
+        # Check class, id, and alt for decorative markers (not URL - content images
+        # may have "logo" in filename but still be actual content, e.g. hero images)
         attr_text = " ".join(
             value
             for value in (
                 " ".join(img.get("class", [])),
                 img.get("id", ""),
                 img.get("alt", ""),
-                img.get("src", ""),
             )
             if value
         ).lower()
-        if any(token in attr_text for token in decorative_tokens):
+        # For URLs, only check CDN patterns that are always decorative
+        src_lower = (img.get("src") or "").lower()
+        is_decorative_cdn = any(
+            token in src_lower for token in ("shields.io", "gravatar.com", "emoji")
+        )
+        if is_decorative_cdn or any(token in attr_text for token in decorative_tokens):
             img.decompose()
             continue
         src = img.get("src") or ""
