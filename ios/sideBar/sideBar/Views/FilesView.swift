@@ -32,11 +32,6 @@ public struct FilesView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if isCompact {
-                ToolbarItemGroup(placement: .navigationBarLeading) {
-                    if shouldShowPdfControls {
-                        PdfHeaderControls(controller: pdfController, isCompact: true)
-                    }
-                }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     if hasActiveSelection {
                         FilesHeaderActions(viewModel: environment.ingestionViewModel)
@@ -334,6 +329,8 @@ private struct FilesHeaderActions: View {
     @State private var exportDocument: BinaryFileDocument?
     @State private var isExporting = false
     @State private var exportFilename: String = "file"
+    @State private var menuItems: [SidebarMenuItem] = []
+    @State private var menuSignature: String = ""
 
     var body: some View {
         HeaderActionRow {
@@ -380,6 +377,15 @@ private struct FilesHeaderActions: View {
                 break
             }
         }
+        .onChange(of: viewModel.selectedFileId) { _, _ in
+            refreshMenuItems()
+        }
+        .onChange(of: isPinned) { _, _ in
+            refreshMenuItems()
+        }
+        .onAppear {
+            refreshMenuItems()
+        }
     }
 
     private var fileActionsMenu: some View {
@@ -411,35 +417,20 @@ private struct FilesHeaderActions: View {
                 Label("Delete", systemImage: "trash")
             }
         } label: {
-            HeaderActionIcon(systemName: "ellipsis.circle")
+            HeaderActionIcon(systemName: "ellipsis")
         }
         .buttonStyle(.plain)
         .accessibilityLabel("File options")
         .disabled(viewModel.selectedFileId == nil)
         #else
         HeaderActionMenuButton(
-            systemImage: "ellipsis.circle",
+            systemImage: "ellipsis",
             accessibilityLabel: "File options",
-            items: [
-                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                    Task { await togglePin() }
-                },
-                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
-                    beginRename()
-                },
-                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                    copyFileContent()
-                },
-                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                    Task { await downloadFile() }
-                },
-                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                    isDeleteAlertPresented = true
-                }
-            ],
+            items: menuItems,
             isCompact: isCompact
         )
         .disabled(viewModel.selectedFileId == nil)
+        .id(menuSignature)
         #endif
     }
 
@@ -451,7 +442,22 @@ private struct FilesHeaderActions: View {
         #endif
     }
 
+    @ViewBuilder
     private var closeButton: some View {
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            EmptyView()
+        } else {
+            HeaderActionButton(
+                systemName: "xmark",
+                accessibilityLabel: "Close file",
+                action: {
+                    viewModel.clearSelection()
+                },
+                isDisabled: viewModel.selectedFileId == nil
+            )
+        }
+        #else
         HeaderActionButton(
             systemName: "xmark",
             accessibilityLabel: "Close file",
@@ -460,6 +466,7 @@ private struct FilesHeaderActions: View {
             },
             isDisabled: viewModel.selectedFileId == nil
         )
+        #endif
     }
 
     private var pinActionTitle: String {
@@ -587,5 +594,41 @@ private struct FilesHeaderActions: View {
             return newName
         }
         return newName + ext
+    }
+
+    private func refreshMenuItems() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            menuItems = [
+                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    Task { await togglePin() }
+                },
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    beginRename()
+                },
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyFileContent()
+                },
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    Task { await downloadFile() }
+                },
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ]
+            menuSignature = menuItems
+                .map { "\($0.title)|\($0.systemImage ?? "")|\(roleSignature($0.role))" }
+                .joined(separator: ";")
+        }
+    }
+
+    private func roleSignature(_ role: ButtonRole?) -> String {
+        switch role {
+        case .destructive:
+            return "destructive"
+        case .cancel:
+            return "cancel"
+        default:
+            return "default"
+        }
     }
 }
