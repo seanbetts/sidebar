@@ -14,6 +14,7 @@ struct ContentHeaderRow<Trailing: View>: View {
     let subtitleTracking: CGFloat
     let alignment: VerticalAlignment
     let titleSubtitleAlignment: VerticalAlignment
+    let onTitleTap: (() -> Void)?
     let trailing: Trailing
 
     init(
@@ -30,6 +31,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         subtitleTracking: CGFloat = 0,
         alignment: VerticalAlignment = .center,
         titleSubtitleAlignment: VerticalAlignment = .center,
+        onTitleTap: (() -> Void)? = nil,
         @ViewBuilder trailing: () -> Trailing = { EmptyView() }
     ) {
         self.icon = AnyView(
@@ -49,6 +51,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         self.subtitleTracking = subtitleTracking
         self.alignment = alignment
         self.titleSubtitleAlignment = titleSubtitleAlignment
+        self.onTitleTap = onTitleTap
         self.trailing = trailing()
     }
 
@@ -66,6 +69,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         subtitleTracking: CGFloat = 0,
         alignment: VerticalAlignment = .center,
         titleSubtitleAlignment: VerticalAlignment = .center,
+        onTitleTap: (() -> Void)? = nil,
         @ViewBuilder trailing: () -> Trailing = { EmptyView() }
     ) {
         self.icon = iconView
@@ -81,6 +85,7 @@ struct ContentHeaderRow<Trailing: View>: View {
         self.subtitleTracking = subtitleTracking
         self.alignment = alignment
         self.titleSubtitleAlignment = titleSubtitleAlignment
+        self.onTitleTap = onTitleTap
         self.trailing = trailing()
     }
 
@@ -88,12 +93,24 @@ struct ContentHeaderRow<Trailing: View>: View {
         HStack(alignment: alignment, spacing: 12) {
             icon
             HStack(alignment: titleSubtitleAlignment, spacing: 12) {
-                Text(title)
-                    .font(.headline)
-                    .lineLimit(titleLineLimit)
-                    .multilineTextAlignment(.leading)
-                    .layoutPriority(titleLayoutPriority)
-                    .truncationMode(.tail)
+                if let onTitleTap {
+                    Button(action: onTitleTap) {
+                        Text(title)
+                            .font(.headline)
+                            .lineLimit(titleLineLimit)
+                            .multilineTextAlignment(.leading)
+                            .layoutPriority(titleLayoutPriority)
+                            .truncationMode(.tail)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text(title)
+                        .font(.headline)
+                        .lineLimit(titleLineLimit)
+                        .multilineTextAlignment(.leading)
+                        .layoutPriority(titleLayoutPriority)
+                        .truncationMode(.tail)
+                }
                 if let subtitle, !subtitle.isEmpty {
                     if subtitleShowsDivider {
                         Rectangle()

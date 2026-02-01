@@ -43,7 +43,7 @@ struct ChatHeaderView: View {
             iconName: "bubble",
             title: selectedTitle,
             titleLineLimit: 1
-        ) {
+        , trailing: {
             HStack(spacing: 12) {
                 if viewModel.isStreaming {
                     Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
@@ -78,7 +78,7 @@ struct ChatHeaderView: View {
                     }
                 }
             }
-        }
+        })
     }
 
     private var selectedTitle: String {

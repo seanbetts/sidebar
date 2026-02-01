@@ -511,7 +511,7 @@ extension NotesDetailView {
             ContentHeaderRow(
                 iconName: "text.document",
                 title: displayTitle
-            ) {
+            , trailing: {
                 if viewModel.activeNote != nil {
                     HStack(spacing: DesignTokens.Spacing.md) {
                         if let status = noteStatus {
@@ -523,7 +523,7 @@ extension NotesDetailView {
                         }
                     }
                 }
-            }
+            })
             .padding(DesignTokens.Spacing.md)
         }
         .frame(maxWidth: .infinity)
