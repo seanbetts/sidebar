@@ -116,12 +116,6 @@ private final class MarkdownTextView: UITextView {
         let rects: [CGRect]
     }
 
-    private enum ListMarker {
-        case bullet
-        case ordered(Int)
-        case task(Bool)
-    }
-
     private func drawBackgroundDecorations(in rect: CGRect) {
         let textContainer = self.textContainer
         let textStorage = self.textStorage
@@ -157,68 +151,6 @@ private final class MarkdownTextView: UITextView {
     }
 
     private func drawForegroundDecorations(in rect: CGRect) {
-        let textContainer = self.textContainer
-        let textStorage = self.textStorage
-        let string = textStorage.string as NSString
-        let origin = CGPoint(
-            x: textContainerInset.left - contentOffset.x,
-            y: textContainerInset.top - contentOffset.y
-        )
-        let markerColor = UIColor(DesignTokens.Colors.textSecondary)
-        let baseFontSize: CGFloat = 16
-        let markerWidth = baseFontSize * 1.5
-        let lines = lineRanges(in: string)
-
-        for lineRange in lines {
-            let blockKind = blockKind(at: lineRange.location, in: textStorage)
-            guard let marker = listMarker(for: string.substring(with: lineRange), blockKind: blockKind) else { continue }
-            guard isPrefixHidden(in: lineRange, text: textStorage) else { continue }
-            let rects = lineRects(for: lineRange, in: textContainer)
-            guard let lineRect = rects.first else { continue }
-            let adjusted = lineRect.offsetBy(dx: origin.x, dy: origin.y)
-            let glyphIndex = layoutManager.glyphIndexForCharacter(at: lineRange.location)
-            let glyphLocation = layoutManager.location(forGlyphAt: glyphIndex)
-            let markerX = origin.x + glyphLocation.x - markerWidth
-            let markerRect = CGRect(x: markerX, y: adjusted.minY, width: markerWidth, height: adjusted.height)
-
-            switch marker {
-            case .bullet:
-                let radius: CGFloat = 3
-                let center = CGPoint(x: markerRect.maxX - radius - 2, y: markerRect.midY)
-                let path = UIBezierPath(ovalIn: CGRect(
-                    x: center.x - radius,
-                    y: center.y - radius,
-                    width: radius * 2,
-                    height: radius * 2
-                ))
-                markerColor.setFill()
-                path.fill()
-            case .ordered(let ordinal):
-                let text = "\(ordinal)."
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: UIFont.systemFont(ofSize: baseFontSize),
-                    .foregroundColor: markerColor
-                ]
-                let size = text.size(withAttributes: attributes)
-                let textPoint = CGPoint(
-                    x: markerRect.maxX - size.width - 2,
-                    y: markerRect.midY - size.height / 2
-                )
-                text.draw(at: textPoint, withAttributes: attributes)
-            case .task(let isChecked):
-                let name = isChecked ? "checkmark.square.fill" : "square"
-                if let image = UIImage(systemName: name)?.withTintColor(markerColor, renderingMode: .alwaysOriginal) {
-                    let size = CGSize(width: baseFontSize * 0.9, height: baseFontSize * 0.9)
-                    let imageRect = CGRect(
-                        x: markerRect.maxX - size.width - 2,
-                        y: markerRect.midY - size.height / 2,
-                        width: size.width,
-                        height: size.height
-                    )
-                    image.draw(in: imageRect)
-                }
-            }
-        }
     }
 
     private func drawBlockquoteBars(lines: [LineData]) {
@@ -399,35 +331,6 @@ private final class MarkdownTextView: UITextView {
         return text.attribute(key, at: location, effectiveRange: nil) as? Int
     }
 
-    private func isPrefixHidden(in lineRange: NSRange, text: NSAttributedString) -> Bool {
-        guard lineRange.location < text.length else { return true }
-        if let color = text.attribute(.foregroundColor, at: lineRange.location, effectiveRange: nil) as? UIColor {
-            return color.cgColor.alpha == 0
-        }
-        return false
-    }
-
-    private func listMarker(for lineText: String, blockKind: BlockKind?) -> ListMarker? {
-        switch blockKind {
-        case .taskChecked:
-            return .task(true)
-        case .taskUnchecked:
-            return .task(false)
-        case .orderedList:
-            if let match = lineText.range(of: #"^\s*(\d+)\."#, options: .regularExpression) {
-                let numberText = lineText[match].replacingOccurrences(of: ".", with: "")
-                let digits = numberText.trimmingCharacters(in: .whitespaces)
-                let value = Int(digits) ?? 1
-                return .ordered(value)
-            }
-            return .ordered(1)
-        case .bulletList:
-            return .bullet
-        default:
-            return nil
-        }
-    }
-
     private func tableRowInfo(in text: NSAttributedString, lineRange: NSRange) -> (isHeader: Bool, rowIndex: Int?)? {
         var isHeader = false
         var rowIndex: Int?
@@ -598,12 +501,6 @@ private final class MarkdownTextView: NSTextView {
         let rects: [CGRect]
     }
 
-    private enum ListMarker {
-        case bullet
-        case ordered(Int)
-        case task(Bool)
-    }
-
     private func drawBackgroundDecorations(in rect: CGRect) {
         guard let textContainer else { return }
         let textStorage = self.textStorage ?? NSTextStorage()
@@ -639,71 +536,6 @@ private final class MarkdownTextView: NSTextView {
     }
 
     private func drawForegroundDecorations(in rect: CGRect) {
-        guard let textContainer else { return }
-        let textStorage = self.textStorage ?? NSTextStorage()
-        let string = textStorage.string as NSString
-        let origin = CGPoint(
-            x: textContainerOrigin.x - bounds.origin.x,
-            y: textContainerOrigin.y - bounds.origin.y
-        )
-        let markerColor = NSColor(DesignTokens.Colors.textSecondary)
-        let baseFontSize: CGFloat = 16
-        let markerWidth = baseFontSize * 1.5
-        let lines = lineRanges(in: string)
-
-        for lineRange in lines {
-            let blockKind = blockKind(at: lineRange.location, in: textStorage)
-            guard let marker = listMarker(for: string.substring(with: lineRange), blockKind: blockKind) else { continue }
-            guard isPrefixHidden(in: lineRange, text: textStorage) else { continue }
-            let rects = lineRects(for: lineRange, in: textContainer)
-            guard let lineRect = rects.first else { continue }
-            let adjusted = lineRect.offsetBy(dx: origin.x, dy: origin.y)
-            guard let layoutManager else { continue }
-            let glyphIndex = layoutManager.glyphIndexForCharacter(at: lineRange.location)
-            let glyphLocation = layoutManager.location(forGlyphAt: glyphIndex)
-            let markerX = origin.x + glyphLocation.x - markerWidth
-            let markerRect = CGRect(x: markerX, y: adjusted.minY, width: markerWidth, height: adjusted.height)
-
-            switch marker {
-            case .bullet:
-                let radius: CGFloat = 3
-                let center = CGPoint(x: markerRect.maxX - radius - 2, y: markerRect.midY)
-                let path = NSBezierPath(ovalIn: CGRect(
-                    x: center.x - radius,
-                    y: center.y - radius,
-                    width: radius * 2,
-                    height: radius * 2
-                ))
-                markerColor.setFill()
-                path.fill()
-            case .ordered(let ordinal):
-                let text = "\(ordinal)."
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: NSFont.systemFont(ofSize: baseFontSize),
-                    .foregroundColor: markerColor
-                ]
-                let size = text.size(withAttributes: attributes)
-                let textPoint = CGPoint(
-                    x: markerRect.maxX - size.width - 2,
-                    y: markerRect.midY - size.height / 2
-                )
-                text.draw(at: textPoint, withAttributes: attributes)
-            case .task(let isChecked):
-                let name = isChecked ? "checkmark.square.fill" : "square"
-                if let image = NSImage(systemSymbolName: name, accessibilityDescription: nil) {
-                    image.isTemplate = true
-                    let size = CGSize(width: baseFontSize * 0.9, height: baseFontSize * 0.9)
-                    let imageRect = CGRect(
-                        x: markerRect.maxX - size.width - 2,
-                        y: markerRect.midY - size.height / 2,
-                        width: size.width,
-                        height: size.height
-                    )
-                    markerColor.set()
-                    image.draw(in: imageRect)
-                }
-            }
-        }
     }
 
     private func drawBlockquoteBars(lines: [LineData]) {
@@ -881,35 +713,6 @@ private final class MarkdownTextView: NSTextView {
         guard location < text.length else { return nil }
         let key = NSAttributedString.Key(ListDepthAttribute.name)
         return text.attribute(key, at: location, effectiveRange: nil) as? Int
-    }
-
-    private func isPrefixHidden(in lineRange: NSRange, text: NSAttributedString) -> Bool {
-        guard lineRange.location < text.length else { return true }
-        if let color = text.attribute(.foregroundColor, at: lineRange.location, effectiveRange: nil) as? NSColor {
-            return color.alphaComponent == 0
-        }
-        return false
-    }
-
-    private func listMarker(for lineText: String, blockKind: BlockKind?) -> ListMarker? {
-        switch blockKind {
-        case .taskChecked:
-            return .task(true)
-        case .taskUnchecked:
-            return .task(false)
-        case .orderedList:
-            if let match = lineText.range(of: #"^\s*(\d+)\."#, options: .regularExpression) {
-                let numberText = lineText[match].replacingOccurrences(of: ".", with: "")
-                let digits = numberText.trimmingCharacters(in: .whitespaces)
-                let value = Int(digits) ?? 1
-                return .ordered(value)
-            }
-            return .ordered(1)
-        case .bulletList:
-            return .bullet
-        default:
-            return nil
-        }
     }
 
     private func tableRowInfo(in text: NSAttributedString, lineRange: NSRange) -> (isHeader: Bool, rowIndex: Int?)? {

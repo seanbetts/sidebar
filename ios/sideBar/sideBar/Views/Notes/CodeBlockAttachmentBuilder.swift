@@ -127,6 +127,7 @@ enum CodeBlockAttachmentBuilder {
         result[NSAttributedString.Key(ListDepthAttribute.name)] = nil
         result[NSAttributedString.Key(CodeLanguageAttribute.name)] = nil
         result[NSAttributedString.Key(InlineMarkerAttribute.name)] = nil
+        result[NSAttributedString.Key(ListMarkerAttribute.name)] = nil
         result[.backgroundColor] = nil
         result[.foregroundColor] = nil
         result[.paragraphStyle] = paragraphStyle

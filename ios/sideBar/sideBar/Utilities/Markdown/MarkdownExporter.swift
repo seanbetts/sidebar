@@ -113,7 +113,7 @@ private func exportStandardLine(
     previousContext: ExportLineContext?
 ) -> ExportLineResult {
     var output: [String] = []
-    let lineText = String(attributedString[lineRange].characters)
+    let lineText = filteredText(from: attributedString[lineRange])
     let blockKind = attributedString.blockKind(in: lineRange) ?? .paragraph
 
     if isInCodeBlock && blockKind != .codeBlock {
@@ -402,10 +402,13 @@ private func prefix(for blockKind: BlockKind, listDepth: Int?) -> String {
 
 @available(iOS 26.0, macOS 26.0, *)
 private func serializeInline(_ attributed: AttributedSubstring) -> String {
-    let lineText = String(attributed.characters)
+    let lineText = filteredText(from: attributed)
     let hasInlineMarkers = lineHasInlineMarkers(lineText)
     var output = ""
     for run in attributed.runs {
+        if run.listMarker == true {
+            continue
+        }
         // Handle images first
         if let imageInfo = run.imageInfo {
             output += "![\(imageInfo.altText)](\(imageInfo.url.absoluteString))"
@@ -467,6 +470,18 @@ private func lineHasInlineMarkers(_ lineText: String) -> Bool {
     }
 
     return false
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func filteredText(from attributed: AttributedSubstring) -> String {
+    var result = ""
+    for run in attributed.runs {
+        if run.listMarker == true {
+            continue
+        }
+        result += String(attributed[run.range].characters)
+    }
+    return result
 }
 
 @available(iOS 26.0, macOS 26.0, *)
