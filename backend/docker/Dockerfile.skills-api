@@ -45,8 +45,12 @@ COPY --chown=appuser:appuser scripts/ ./scripts/
 RUN mkdir -p /workspace /tmp && \
     chown -R appuser:appuser /workspace /tmp /app/api /app/skills /app/scripts
 
-# Switch to non-root user
-USER appuser
+# Copy entrypoint
+COPY docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Switch to root for entrypoint to manage volumes, then drop privileges
+USER root
 
 # Configure yt-dlp JS runtime for YouTube downloads
 ENV YT_DLP_JS_RUNTIMES=node
@@ -59,4 +63,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8001/health || exit 1
 
 # Start FastAPI server
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8001}"]
