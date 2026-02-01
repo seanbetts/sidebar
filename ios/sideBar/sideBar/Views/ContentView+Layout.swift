@@ -43,6 +43,7 @@ extension ContentView {
         WorkspaceLayout(
             selection: $sidebarSelection,
             isLeftPanelExpanded: $isLeftPanelExpanded,
+            isRightSidebarCollapsed: $isWorkspaceExpanded,
             shouldAnimateSidebar: hasCompletedInitialSetup,
             onShowSettings: { isSettingsPresented = true },
             header: {
