@@ -187,6 +187,16 @@ extension ContentView {
                 environment.commandSelection = nil
             updateActiveSection()
         })
+        content = AnyView(content.onChange(of: isWorkspaceExpanded) { _, newValue in
+            handleWorkspaceExpandedChange(isExpanded: newValue)
+        })
+        #if os(iOS)
+        content = AnyView(content.background(GeometryReader { proxy in
+            Color.clear.onChange(of: proxy.size) { _, newValue in
+                handleRootSizeChange(newValue)
+            }
+        }))
+        #endif
         content = AnyView(content.onReceive(environment.writeQueue.$isPausedForConflict) { isPaused in
             if isPaused {
                 Task {
@@ -434,4 +444,34 @@ extension ContentView {
             pendingWriteConflict = nil
         }
     }
+}
+
+extension ContentView {
+    private func handleWorkspaceExpandedChange(isExpanded: Bool) {
+        if isExpanded {
+            if workspaceExpandedPreviousLeftPanelExpanded == nil {
+                workspaceExpandedPreviousLeftPanelExpanded = isLeftPanelExpanded
+            }
+            if isLeftPanelExpanded {
+                isLeftPanelExpanded = false
+            }
+        } else if let previous = workspaceExpandedPreviousLeftPanelExpanded {
+            isLeftPanelExpanded = previous
+            workspaceExpandedPreviousLeftPanelExpanded = nil
+        }
+    }
+
+    #if os(iOS)
+    private func handleRootSizeChange(_ size: CGSize) {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
+        let isPortrait = size.height >= size.width
+        if lastWorkspaceIsPortrait == isPortrait {
+            return
+        }
+        lastWorkspaceIsPortrait = isPortrait
+        if isPortrait {
+            isWorkspaceExpanded = true
+        }
+    }
+    #endif
 }

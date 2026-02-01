@@ -31,6 +31,7 @@ public struct ContentView: View {
     @State var secondarySection: AppSection? = .chat
     @State var lastNonChatSection: AppSection?
     @AppStorage(AppStorageKeys.leftPanelExpanded) var isLeftPanelExpanded: Bool = true
+    @AppStorage(AppStorageKeys.workspaceExpanded) var isWorkspaceExpanded: Bool = false
     @AppStorage(AppStorageKeys.biometricUnlockEnabled) var biometricUnlockEnabled: Bool = false
     @State var isSettingsPresented = false
     @State var phoneSelection: AppSection = .tasks
@@ -45,6 +46,10 @@ public struct ContentView: View {
     @State var isSigningOut = false
     @State var pendingReadyFileNotification: ReadyFileNotification?
     @State var pendingWriteConflict: PendingWriteSummary?
+    @State var workspaceExpandedPreviousLeftPanelExpanded: Bool?
+    #if os(iOS)
+    @State var lastWorkspaceIsPortrait: Bool?
+    #endif
     #if os(iOS)
     @AppStorage(AppStorageKeys.hasShownBiometricHint) var hasShownBiometricHint = false
     #endif

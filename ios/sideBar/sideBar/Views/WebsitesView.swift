@@ -314,6 +314,7 @@ private struct WebsitesDetailView: View {
     @Binding var isDeleteAlertPresented: Bool
     @Binding var isArchiveAlertPresented: Bool
     @EnvironmentObject private var environment: AppEnvironment
+    @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -696,6 +697,7 @@ extension WebsitesDetailView {
     }
 
     private func expandWebsiteView() {
+        isWorkspaceExpanded.toggle()
     }
 
     private var titleTapAction: (() -> Void)? {

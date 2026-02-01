@@ -5,6 +5,7 @@ import SwiftUI
 public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     @Binding private var selection: AppSection?
     @Binding private var isLeftPanelExpanded: Bool
+    @Binding private var isRightSidebarCollapsed: Bool
     private let shouldAnimateSidebar: Bool
     private let onShowSettings: (() -> Void)?
     @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
@@ -30,6 +31,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     public init(
         selection: Binding<AppSection?>,
         isLeftPanelExpanded: Binding<Bool>,
+        isRightSidebarCollapsed: Binding<Bool>,
         shouldAnimateSidebar: Bool = true,
         onShowSettings: (() -> Void)? = nil,
         @ViewBuilder header: @escaping () -> Header,
@@ -38,6 +40,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     ) {
         self._selection = selection
         self._isLeftPanelExpanded = isLeftPanelExpanded
+        self._isRightSidebarCollapsed = isRightSidebarCollapsed
         self.shouldAnimateSidebar = shouldAnimateSidebar
         self.onShowSettings = onShowSettings
         self.header = header
@@ -84,31 +87,33 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                             .frame(maxHeight: .infinity)
                             .ignoresSafeArea(.all, edges: .bottom)
 
-                        resizeHandle(
-                            width: dividerWidth,
-                            onChanged: { delta in
-                                let proposed = (draggingRightWidth ?? rightSidebarWidth) - delta
-                                draggingRightWidth = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
-                            },
-                            onEnded: {
-                                let proposed = draggingRightWidth ?? rightSidebarWidth
-                                let clamped = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
-                                #if os(macOS)
-                                rightSidebarWidth = snappedRightWidth(clamped, proxy: proxy, leftPanelWidth: widths.leftPanel)
-                                #else
-                                rightSidebarWidth = clamped
-                                #endif
-                                draggingRightWidth = nil
-                            },
-                            onDoubleTap: {
-                                toggleRightSidebarWidth(proxy: proxy, leftPanelWidth: widths.leftPanel)
-                            }
-                        )
+                        if !isRightSidebarCollapsed {
+                            resizeHandle(
+                                width: dividerWidth,
+                                onChanged: { delta in
+                                    let proposed = (draggingRightWidth ?? rightSidebarWidth) - delta
+                                    draggingRightWidth = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
+                                },
+                                onEnded: {
+                                    let proposed = draggingRightWidth ?? rightSidebarWidth
+                                    let clamped = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
+                                    #if os(macOS)
+                                    rightSidebarWidth = snappedRightWidth(clamped, proxy: proxy, leftPanelWidth: widths.leftPanel)
+                                    #else
+                                    rightSidebarWidth = clamped
+                                    #endif
+                                    draggingRightWidth = nil
+                                },
+                                onDoubleTap: {
+                                    toggleRightSidebarWidth(proxy: proxy, leftPanelWidth: widths.leftPanel)
+                                }
+                            )
 
-                        rightSidebar()
-                            .frame(width: widths.right)
-                            .frame(maxHeight: .infinity)
-                            .ignoresSafeArea(.all, edges: .bottom)
+                            rightSidebar()
+                                .frame(width: widths.right)
+                                .frame(maxHeight: .infinity)
+                                .ignoresSafeArea(.all, edges: .bottom)
+                        }
                     }
                 }
             }
@@ -120,10 +125,13 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     private func layoutWidths(for proxy: GeometryProxy) -> LayoutWidths {
         let total = proxy.size.width
         let leftPanel = isLeftPanelExpanded ? leftPanelWidth : 0
-        let right = clampedRightWidth(draggingRightWidth ?? rightSidebarWidth, proxy: proxy, leftPanelWidth: leftPanel)
+        let divider = isRightSidebarCollapsed ? 0 : dividerWidth
+        let right = isRightSidebarCollapsed
+            ? 0
+            : clampedRightWidth(draggingRightWidth ?? rightSidebarWidth, proxy: proxy, leftPanelWidth: leftPanel)
         let main = max(
             minMainWidth,
-            total - railWidth - leftPanel - right - dividerWidth
+            total - railWidth - leftPanel - right - divider
         )
         return LayoutWidths(leftPanel: leftPanel, main: main, right: right)
     }
