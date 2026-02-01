@@ -318,6 +318,12 @@ extension ContentView {
                 isSigningOut = true
             }
         })
+        content = AnyView(content.onAppear {
+            if isWorkspaceExpanded {
+                isWorkspaceExpanded = false
+                isWorkspaceExpandedByRotation = false
+            }
+        })
         content = AnyView(content.onChange(of: environment.isAuthenticated) { _, isAuthenticated in
             guard !isAuthenticated else { return }
             enqueueAlertAction {
@@ -470,6 +476,7 @@ extension ContentView {
             return
         }
         lastWorkspaceIsPortrait = isPortrait
+        guard environment.activeSection == .websites else { return }
         if isPortrait {
             if !isWorkspaceExpanded {
                 isWorkspaceExpandedByRotation = true
