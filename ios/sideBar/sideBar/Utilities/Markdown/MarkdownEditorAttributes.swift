@@ -63,6 +63,14 @@ public enum InlineMarkerAttribute: CodableAttributedStringKey {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+public enum ListMarkerAttribute: CodableAttributedStringKey {
+    public typealias Value = Bool
+    public static let name = "sideBar.listMarker"
+
+    public static var inheritedByAddedText: Bool { false }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 public struct ImageInfo: Codable, Hashable, Sendable {
     public let url: URL
     public let altText: String
@@ -90,6 +98,7 @@ public extension AttributeScopes {
         public let listDepth: ListDepthAttribute
         public let codeLanguage: CodeLanguageAttribute
         public let inlineMarker: InlineMarkerAttribute
+        public let listMarker: ListMarkerAttribute
         public let imageInfo: ImageInfoAttribute
         public let presentationIntent: AttributeScopes.FoundationAttributes.PresentationIntentAttribute
         public let listItemDelimiter: AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute
