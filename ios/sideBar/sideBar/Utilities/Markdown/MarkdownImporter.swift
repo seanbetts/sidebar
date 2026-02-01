@@ -261,7 +261,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
                 let isChecked = checkbox == .checked
                 applyBlockKind(isChecked ? .taskChecked : .taskUnchecked, to: &itemText)
                 if isChecked {
-                    itemText[fullRange(in: itemText)].strikethroughStyle = .single
+                    applyStrikethrough(to: &itemText)
                     itemText[fullRange(in: itemText)].foregroundColor = DesignTokens.Colors.textSecondary
                 }
             } else {
@@ -372,8 +372,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             for child in strike.children {
                 inner.append(inlineAttributedString(for: child))
             }
-            inner[fullRange(in: inner)].strikethroughStyle = .single
-            inner[fullRange(in: inner)].foregroundColor = DesignTokens.Colors.textSecondary
+            applyStrikethrough(to: &inner)
             return wrapInlineMarkers(inner, prefix: "~~", suffix: "~~")
         case let code as InlineCode:
             var inner = AttributedString(code.code)
@@ -425,6 +424,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
         result.append(block)
         lastBlockKind = block.blockKind(in: fullRange(in: block))
+    }
+
+    private func applyStrikethrough(to text: inout AttributedString) {
+        let range = fullRange(in: text)
+        text[range].strikethroughStyle = .single
     }
 
     private func adjustedSpacingBeforeIfNeeded(

@@ -4,7 +4,7 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 private func displayText(for text: AttributedString, isEditable: Bool) -> NSAttributedString {
     if isEditable {
-        return NSAttributedString(text)
+        return CodeBlockAttachmentBuilder.applyStrikethroughAttributes(from: text, to: NSAttributedString(text))
     }
     return CodeBlockAttachmentBuilder.displayText(from: text)
 }
