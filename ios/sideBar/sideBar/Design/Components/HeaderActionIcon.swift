@@ -51,31 +51,18 @@ struct HeaderActionMenuButton: View {
     let isCompact: Bool
 
     var body: some View {
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            let menuSignature = items
-                .map { "\($0.title)|\($0.systemImage ?? "")|\(roleSignature($0.role))" }
-                .joined(separator: ";")
-            UIKitMenuButton(
-                systemImage: systemImage,
-                accessibilityLabel: accessibilityLabel,
-                items: items
-            )
-            .frame(width: 28, height: isCompact ? 20 : 28)
-            .fixedSize()
-            .accessibilityLabel(accessibilityLabel)
-            .id(menuSignature)
-        } else {
-            Menu {
-                sidebarMenuItemsView(items)
-            } label: {
-                HeaderActionIcon(systemName: systemImage)
-                    .frame(width: 28, height: isCompact ? 20 : 28)
-            }
-            .buttonStyle(.plain)
-            .menuStyle(.button)
-            .accessibilityLabel(accessibilityLabel)
-            .fixedSize()
-        }
+        let menuSignature = items
+            .map { "\($0.title)|\($0.systemImage ?? "")|\(roleSignature($0.role))" }
+            .joined(separator: ";")
+        UIKitMenuButton(
+            systemImage: systemImage,
+            accessibilityLabel: accessibilityLabel,
+            items: items
+        )
+        .frame(width: 28, height: isCompact ? 20 : 28)
+        .fixedSize()
+        .accessibilityLabel(accessibilityLabel)
+        .id(menuSignature)
     }
 
     private func roleSignature(_ role: ButtonRole?) -> String {
