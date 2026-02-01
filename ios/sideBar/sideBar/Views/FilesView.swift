@@ -320,6 +320,10 @@ private struct FilesHeaderView: View {
 private struct FilesHeaderActions: View {
     @ObservedObject var viewModel: IngestionViewModel
     @EnvironmentObject private var environment: AppEnvironment
+    @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
+    #if os(iOS)
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
+    #endif
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -332,6 +336,9 @@ private struct FilesHeaderActions: View {
 
     var body: some View {
         HeaderActionRow {
+            if shouldShowExpandButton {
+                expandButton
+            }
             fileActionsMenu
             closeButton
         }
@@ -437,6 +444,48 @@ private struct FilesHeaderActions: View {
         .disabled(viewModel.selectedFileId == nil)
         #endif
     }
+
+    private var shouldShowExpandButton: Bool {
+        #if os(iOS)
+        return !isPhone
+        #else
+        return true
+        #endif
+    }
+
+    private var expandButton: some View {
+        Button(action: expandFilesView) {
+            Image(systemName: expandButtonIconName)
+                .font(DesignTokens.Typography.labelMd)
+                .frame(width: 28, height: 20)
+                .imageScale(.medium)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(expandButtonLabel)
+    }
+
+    private var expandButtonIconName: String {
+        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    }
+
+    private var expandButtonLabel: String {
+        isWorkspaceExpanded ? "Exit expanded mode" : "Expand files"
+    }
+
+    private func expandFilesView() {
+        #if os(iOS)
+        if !isPhone {
+            isWorkspaceExpandedByRotation = false
+        }
+        #endif
+        isWorkspaceExpanded.toggle()
+    }
+
+    #if os(iOS)
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+    #endif
 
     private var isCompact: Bool {
         #if os(macOS)

@@ -62,6 +62,10 @@ public struct TasksView: View {
 struct TasksDetailView: View {
     @ObservedObject var viewModel: TasksViewModel
     @EnvironmentObject private var environment: AppEnvironment
+    @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
+    #if os(iOS)
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
+    #endif
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
@@ -212,15 +216,20 @@ extension TasksDetailView {
             titleLayoutPriority: 1,
             subtitleLayoutPriority: 0
         , trailing: {
-            if state.totalCount == 0 {
-                Image(systemName: "checkmark")
-                    .font(.caption)
-                    .foregroundStyle(DesignTokens.Colors.textSecondary)
-                    .accessibilityLabel("No tasks")
-            } else if let label = tasksCountLabel(for: state) {
-                Text(label)
-                    .font(.caption)
-                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                if shouldShowExpandButton {
+                    expandButton
+                }
+                if state.totalCount == 0 {
+                    Image(systemName: "checkmark")
+                        .font(.caption)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        .accessibilityLabel("No tasks")
+                } else if let label = tasksCountLabel(for: state) {
+                    Text(label)
+                        .font(.caption)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                }
             }
         })
         .padding(DesignTokens.Spacing.md)
@@ -237,6 +246,9 @@ extension TasksDetailView {
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
                 .lineLimit(1)
             Spacer()
+            if shouldShowExpandButton {
+                expandButton
+            }
             if state.selection != .completed {
                 Button {
                     viewModel.startNewTask()
@@ -253,6 +265,48 @@ extension TasksDetailView {
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
+
+    private var shouldShowExpandButton: Bool {
+        #if os(iOS)
+        return !isPhone
+        #else
+        return true
+        #endif
+    }
+
+    private var expandButton: some View {
+        Button(action: expandTasksView) {
+            Image(systemName: expandButtonIconName)
+                .font(DesignTokens.Typography.labelMd)
+                .frame(width: 28, height: 20)
+                .imageScale(.medium)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(expandButtonLabel)
+    }
+
+    private var expandButtonIconName: String {
+        isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
+    }
+
+    private var expandButtonLabel: String {
+        isWorkspaceExpanded ? "Exit expanded mode" : "Expand tasks"
+    }
+
+    private func expandTasksView() {
+        #if os(iOS)
+        if !isPhone {
+            isWorkspaceExpandedByRotation = false
+        }
+        #endif
+        isWorkspaceExpanded.toggle()
+    }
+
+    #if os(iOS)
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+    #endif
 
     @ViewBuilder
     private func content(state: TasksViewState) -> some View {
