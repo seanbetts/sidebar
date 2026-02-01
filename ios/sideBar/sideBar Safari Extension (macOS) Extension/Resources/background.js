@@ -1,6 +1,23 @@
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("Received request: ", request);
+const getActiveTabUrl = async () => {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs && tabs[0];
+    return tab && tab.url ? tab.url : null;
+};
 
-    if (request.greeting === "hello")
-        return Promise.resolve({ farewell: "goodbye" });
+const saveUrl = async (url) => {
+    if (!url)
+        return;
+    try {
+        await browser.runtime.sendNativeMessage({
+            action: "save_url",
+            url
+        });
+    } catch (error) {
+        // Ignore errors to avoid interrupting the user.
+    }
+};
+
+browser.action.onClicked.addListener(async (tab) => {
+    const url = (tab && tab.url) ? tab.url : await getActiveTabUrl();
+    await saveUrl(url);
 });
