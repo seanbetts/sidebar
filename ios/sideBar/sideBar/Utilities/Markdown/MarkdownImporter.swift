@@ -341,51 +341,61 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     }
 
     // swiftlint:disable cyclomatic_complexity
-    private func inlineAttributedString(for markup: Markup) -> AttributedString {
+    private func inlineAttributedString(
+        for markup: Markup,
+        intents: InlinePresentationIntent = [],
+        isStrikethrough: Bool = false
+    ) -> AttributedString {
         switch markup {
         case let text as Markdown.Text:
-            return AttributedString(text.string)
+            var result = AttributedString(text.string)
+            let range = fullRange(in: result)
+            if !intents.isEmpty {
+                result[range].inlinePresentationIntent = intents
+            }
+            if isStrikethrough {
+                applyStrikethrough(to: &result)
+            }
+            return result
         case is SoftBreak:
             return AttributedString("\n")
         case is LineBreak:
             return AttributedString("\n")
         case let emphasis as Emphasis:
             var inner = AttributedString()
+            let mergedIntents = intents.union(.emphasized)
             for child in emphasis.children {
-                inner.append(inlineAttributedString(for: child))
+                inner.append(inlineAttributedString(for: child, intents: mergedIntents, isStrikethrough: isStrikethrough))
             }
-            let range = fullRange(in: inner)
-            let current = inner[range].inlinePresentationIntent ?? []
-            inner[range].inlinePresentationIntent = current.union(.emphasized)
             return wrapInlineMarkers(inner, prefix: "*", suffix: "*")
         case let strong as Strong:
             var inner = AttributedString()
+            let mergedIntents = intents.union(.stronglyEmphasized)
             for child in strong.children {
-                inner.append(inlineAttributedString(for: child))
+                inner.append(inlineAttributedString(for: child, intents: mergedIntents, isStrikethrough: isStrikethrough))
             }
-            let range = fullRange(in: inner)
-            let current = inner[range].inlinePresentationIntent ?? []
-            inner[range].inlinePresentationIntent = current.union(.stronglyEmphasized)
             return wrapInlineMarkers(inner, prefix: "**", suffix: "**")
         case let strike as Strikethrough:
             var inner = AttributedString()
             for child in strike.children {
-                inner.append(inlineAttributedString(for: child))
+                inner.append(inlineAttributedString(for: child, intents: intents, isStrikethrough: true))
             }
-            applyStrikethrough(to: &inner)
             return wrapInlineMarkers(inner, prefix: "~~", suffix: "~~")
         case let code as InlineCode:
             var inner = AttributedString(code.code)
             let range = fullRange(in: inner)
             let current = inner[range].inlinePresentationIntent ?? []
-            inner[range].inlinePresentationIntent = current.union(.code)
+            inner[range].inlinePresentationIntent = current.union(.code).union(intents)
             inner[range].font = inlineCodeFont
             inner[range].backgroundColor = style.codeBackground
+            if isStrikethrough {
+                applyStrikethrough(to: &inner)
+            }
             return wrapInlineMarkers(inner, prefix: "`", suffix: "`")
         case let link as Markdown.Link:
             var inner = AttributedString()
             for child in link.children {
-                inner.append(inlineAttributedString(for: child))
+                inner.append(inlineAttributedString(for: child, intents: intents, isStrikethrough: isStrikethrough))
             }
             if let destination = link.destination,
                let url = URL(string: destination) {
@@ -411,7 +421,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         default:
             var fallback = AttributedString()
             for child in markup.children {
-                fallback.append(inlineAttributedString(for: child))
+                fallback.append(inlineAttributedString(for: child, intents: intents, isStrikethrough: isStrikethrough))
             }
             return fallback
         }
