@@ -12,6 +12,7 @@
 		1413DE4F2F2B514C002495EE /* sideBarShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1413DE702F2B53B3002495EE /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
+		9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		142516B72F1EB96B0072E4F9 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6C92F27A6420066EE47 /* WidgetKit.framework */; };
 		1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6CB2F27A6420066EE47 /* SwiftUI.framework */; };
@@ -310,6 +311,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1165,7 +1167,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "sideBar Safari Extension";
+					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1201,7 +1203,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "sideBar Safari Extension";
+					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1237,7 +1239,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS) Extension/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "sideBar Safari Extension (macOS) Extension";
+					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1272,7 +1274,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS) Extension/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "sideBar Safari Extension (macOS) Extension";
+					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1310,7 +1312,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS)/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "sideBar Safari Extension (macOS)";
+					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -1352,7 +1354,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS)/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "sideBar Safari Extension (macOS)";
+					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
