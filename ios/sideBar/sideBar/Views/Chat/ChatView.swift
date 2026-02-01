@@ -63,6 +63,7 @@ private struct ChatDetailView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var draftMessage: String = ""
     private let inputBarHeight: CGFloat = 60
+    private let contentMaxWidth: CGFloat = ChatLayout.maxContentWidth
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
@@ -133,12 +134,10 @@ private struct ChatDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .padding(.horizontal, DesignTokens.Spacing.xl)
+            .padding(.horizontal, DesignTokens.Spacing.md)
             .padding(.bottom, DesignTokens.Spacing.md)
-            #if os(macOS)
-            .frame(maxWidth: 860)
+            .frame(maxWidth: contentMaxWidth)
             .frame(maxWidth: .infinity, alignment: .center)
-            #endif
         }
         .fileImporter(
             isPresented: $isFileImporterPresented,

@@ -7,7 +7,6 @@ struct ChatMessageListView: View {
     @State private var visibleMessageCount: Int = 40
     @State private var isAutoLoadingMore = false
     private let pageSize: Int = 40
-    private let maxContentWidth: CGFloat = 860
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -45,7 +44,7 @@ struct ChatMessageListView: View {
                         .id("bottom")
                 }
                 .padding(DesignTokens.Spacing.md)
-                .frame(maxWidth: maxContentWidth)
+                .frame(maxWidth: ChatLayout.maxContentWidth)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
             .task(id: viewModel.selectedConversationId) {
