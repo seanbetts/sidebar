@@ -152,6 +152,27 @@
 			);
 			target = 142516AC2F1EB96B0072E4F9 /* ShareExtension */;
 		};
+		9A8B7C6D5E4F3A2B1C0D0E01 /* Exceptions for "sideBar Safari Extension" folder in "sideBar Safari Extension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 146EA0582F2FE83C004AE7D1 /* sideBar Safari Extension */;
+		};
+		9A8B7C6D5E4F3A2B1C0D0E02 /* Exceptions for "sideBar Safari Extension (macOS)" folder in "sideBar Safari Extension (macOS)" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 146EA0792F2FE877004AE7D1 /* sideBar Safari Extension (macOS) */;
+		};
+		9A8B7C6D5E4F3A2B1C0D0E03 /* Exceptions for "sideBar Safari Extension (macOS) Extension" folder in "sideBar Safari Extension (macOS) Extension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 146EA0952F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */;
+		};
 		142516C62F1EBECC0072E4F9 /* Exceptions for "sideBar" folder in "ShareExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -194,6 +215,9 @@
 		};
 		146EA05A2F2FE83C004AE7D1 /* sideBar Safari Extension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9A8B7C6D5E4F3A2B1C0D0E01 /* Exceptions for "sideBar Safari Extension" folder in "sideBar Safari Extension" target */,
+			);
 			explicitFolders = (
 				Resources/_locales,
 				Resources/images,
@@ -203,11 +227,17 @@
 		};
 		146EA07B2F2FE877004AE7D1 /* sideBar Safari Extension (macOS) */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9A8B7C6D5E4F3A2B1C0D0E02 /* Exceptions for "sideBar Safari Extension (macOS)" folder in "sideBar Safari Extension (macOS)" target */,
+			);
 			path = "sideBar Safari Extension (macOS)";
 			sourceTree = "<group>";
 		};
 		146EA09A2F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9A8B7C6D5E4F3A2B1C0D0E03 /* Exceptions for "sideBar Safari Extension (macOS) Extension" folder in "sideBar Safari Extension (macOS) Extension" target */,
+			);
 			explicitFolders = (
 				Resources/_locales,
 				Resources/images,
