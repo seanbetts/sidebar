@@ -9,9 +9,17 @@ import AppKit
 
 @available(iOS 26.0, macOS 26.0, *)
 enum CodeBlockAttachmentBuilder {
-    static func displayText(from text: AttributedString) -> NSAttributedString {
+    static func displayText(
+        from text: AttributedString,
+        renderCodeBlocks: Bool = true,
+        renderHorizontalRules: Bool = true
+    ) -> NSAttributedString {
         let source = applyStrikethroughAttributes(from: text, to: NSAttributedString(text))
-        return buildDisplayText(from: source)
+        return buildDisplayText(
+            from: source,
+            renderCodeBlocks: renderCodeBlocks,
+            renderHorizontalRules: renderHorizontalRules
+        )
     }
 
     static func applyStrikethroughAttributes(
@@ -34,7 +42,11 @@ enum CodeBlockAttachmentBuilder {
         return mutable
     }
 
-    private static func buildDisplayText(from source: NSAttributedString) -> NSAttributedString {
+    private static func buildDisplayText(
+        from source: NSAttributedString,
+        renderCodeBlocks: Bool,
+        renderHorizontalRules: Bool
+    ) -> NSAttributedString {
         let string = source.string as NSString
         let lineRanges = lineRanges(in: string)
         let result = NSMutableAttributedString()
@@ -42,7 +54,8 @@ enum CodeBlockAttachmentBuilder {
 
         while index < lineRanges.count {
             let lineRange = lineRanges[index]
-            if blockKind(in: lineRange, in: source) == .codeBlock {
+            let kind = blockKind(in: lineRange, in: source)
+            if renderCodeBlocks, kind == .codeBlock {
                 var codeLines: [String] = []
                 let startIndex = index
                 var endIndex = index
@@ -78,6 +91,24 @@ enum CodeBlockAttachmentBuilder {
                 }
 
                 index = endIndex
+                continue
+            }
+
+            if renderHorizontalRules,
+               kind != .codeBlock,
+               isThematicBreakLine(lineRange, blockKind: kind, string: string) {
+                let attrs = safeAttributes(at: lineRange.location, in: source)
+                let paragraphStyle = (attrs[.paragraphStyle] as? NSParagraphStyle) ?? NSMutableParagraphStyle()
+                let attachment = makeHorizontalRuleAttachment(
+                    paragraphStyle: paragraphStyle,
+                    attrs: attrs
+                )
+                result.append(attachment)
+                if index < lineRanges.count - 1 {
+                    let newlineAttrs = safeAttributes(at: min(lineRange.location, max(0, source.length - 1)), in: source)
+                    result.append(NSAttributedString(string: "\n", attributes: newlineAttrs))
+                }
+                index += 1
                 continue
             }
 
@@ -127,6 +158,22 @@ enum CodeBlockAttachmentBuilder {
         return attachmentString
     }
 
+    private static func makeHorizontalRuleAttachment(
+        paragraphStyle: NSParagraphStyle,
+        attrs: [NSAttributedString.Key: Any]
+    ) -> NSAttributedString {
+        let attachment = HorizontalRuleAttachment(
+            lineColor: platformColor(DesignTokens.Colors.border),
+            lineHeight: 1
+        )
+        let attachmentString = NSMutableAttributedString(
+            attributedString: NSAttributedString(attachment: attachment)
+        )
+        let hrAttrs = horizontalRuleAttributes(from: attrs, paragraphStyle: paragraphStyle)
+        attachmentString.addAttributes(hrAttrs, range: NSRange(location: 0, length: attachmentString.length))
+        return attachmentString
+    }
+
     private static func mergedParagraphStyle(first: NSParagraphStyle?, last: NSParagraphStyle?) -> NSParagraphStyle {
         let base = (first?.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
         base.paragraphSpacingBefore = first?.paragraphSpacingBefore ?? 0
@@ -144,6 +191,22 @@ enum CodeBlockAttachmentBuilder {
     ) -> [NSAttributedString.Key: Any] {
         var result = attrs
         result[NSAttributedString.Key(BlockKindAttribute.name)] = nil
+        result[NSAttributedString.Key(ListDepthAttribute.name)] = nil
+        result[NSAttributedString.Key(CodeLanguageAttribute.name)] = nil
+        result[NSAttributedString.Key(InlineMarkerAttribute.name)] = nil
+        result[NSAttributedString.Key(ListMarkerAttribute.name)] = nil
+        result[.backgroundColor] = nil
+        result[.foregroundColor] = nil
+        result[.paragraphStyle] = paragraphStyle
+        return result
+    }
+
+    private static func horizontalRuleAttributes(
+        from attrs: [NSAttributedString.Key: Any],
+        paragraphStyle: NSParagraphStyle
+    ) -> [NSAttributedString.Key: Any] {
+        var result = attrs
+        result[NSAttributedString.Key(BlockKindAttribute.name)] = BlockKind.horizontalRule
         result[NSAttributedString.Key(ListDepthAttribute.name)] = nil
         result[NSAttributedString.Key(CodeLanguageAttribute.name)] = nil
         result[NSAttributedString.Key(InlineMarkerAttribute.name)] = nil
@@ -201,6 +264,19 @@ enum CodeBlockAttachmentBuilder {
             return kind
         }
         return nil
+    }
+
+    private static func isThematicBreakLine(
+        _ lineRange: NSRange,
+        blockKind: BlockKind?,
+        string: NSString
+    ) -> Bool {
+        if blockKind == .horizontalRule {
+            return true
+        }
+        let trimmed = string.substring(with: lineRange)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed == "---" || trimmed == "***" || trimmed == "___"
     }
 
     private static func shouldIncludeInCodeBlock(

@@ -3,10 +3,11 @@ import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
 private func displayText(for text: AttributedString, isEditable: Bool) -> NSAttributedString {
-    if isEditable {
-        return CodeBlockAttachmentBuilder.applyStrikethroughAttributes(from: text, to: NSAttributedString(text))
-    }
-    return CodeBlockAttachmentBuilder.displayText(from: text)
+    CodeBlockAttachmentBuilder.displayText(
+        from: text,
+        renderCodeBlocks: !isEditable,
+        renderHorizontalRules: true
+    )
 }
 
 #if os(iOS)
@@ -146,7 +147,6 @@ private final class MarkdownTextView: UITextView {
         drawTableBackgrounds(lines: lines)
         drawCodeBlockContainers(lines: lines)
         drawBlockquoteBars(lines: lines)
-        drawHorizontalRules(lines: lines)
         drawTableBorders(lines: lines)
     }
 
@@ -272,47 +272,6 @@ private final class MarkdownTextView: UITextView {
 
             index = endIndex + 1
         }
-    }
-
-    private func drawHorizontalRules(lines: [LineData]) {
-        let strokeColor = UIColor(DesignTokens.Colors.border)
-        for line in lines where shouldDrawHorizontalRule(line) {
-            guard let rect = unionRect(line.rects) else { continue }
-            let midY = rect.midY
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: rect.minX, y: midY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: midY))
-            strokeColor.setStroke()
-            path.lineWidth = 1
-            path.stroke()
-        }
-    }
-
-    private func shouldDrawHorizontalRule(_ line: LineData) -> Bool {
-        if line.blockKind == .horizontalRule {
-            return true
-        }
-        guard line.blockKind == nil else { return false }
-        return isThematicBreakLine(line.text)
-    }
-
-    private func isThematicBreakLine(_ text: String) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
-        var marker: Character?
-        var count = 0
-        for character in trimmed {
-            if character.isWhitespace {
-                continue
-            }
-            guard character == "-" || character == "*" || character == "_" else { return false }
-            if marker == nil {
-                marker = character
-            }
-            guard character == marker else { return false }
-            count += 1
-        }
-        return count >= 3
     }
 
     private func lineRanges(in string: NSString) -> [NSRange] {
@@ -573,7 +532,6 @@ private final class MarkdownTextView: NSTextView {
         drawTableBackgrounds(lines: lines)
         drawCodeBlockContainers(lines: lines)
         drawBlockquoteBars(lines: lines)
-        drawHorizontalRules(lines: lines)
         drawTableBorders(lines: lines)
     }
 
@@ -697,47 +655,6 @@ private final class MarkdownTextView: NSTextView {
 
             index = endIndex + 1
         }
-    }
-
-    private func drawHorizontalRules(lines: [LineData]) {
-        let strokeColor = NSColor(DesignTokens.Colors.border)
-        for line in lines where shouldDrawHorizontalRule(line) {
-            guard let rect = unionRect(line.rects) else { continue }
-            let midY = rect.midY
-            let path = NSBezierPath()
-            path.move(to: CGPoint(x: rect.minX, y: midY))
-            path.line(to: CGPoint(x: rect.maxX, y: midY))
-            strokeColor.setStroke()
-            path.lineWidth = 1
-            path.stroke()
-        }
-    }
-
-    private func shouldDrawHorizontalRule(_ line: LineData) -> Bool {
-        if line.blockKind == .horizontalRule {
-            return true
-        }
-        guard line.blockKind == nil else { return false }
-        return isThematicBreakLine(line.text)
-    }
-
-    private func isThematicBreakLine(_ text: String) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
-        var marker: Character?
-        var count = 0
-        for character in trimmed {
-            if character.isWhitespace {
-                continue
-            }
-            guard character == "-" || character == "*" || character == "_" else { return false }
-            if marker == nil {
-                marker = character
-            }
-            guard character == marker else { return false }
-            count += 1
-        }
-        return count >= 3
     }
 
     private func lineRanges(in string: NSString) -> [NSRange] {
