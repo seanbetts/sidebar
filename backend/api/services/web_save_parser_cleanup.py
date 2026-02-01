@@ -802,6 +802,13 @@ def filter_non_content_images(html_text: str, *, domain: str | None = None) -> s
         if img.get("role") == "presentation" or img.get("aria-hidden") == "true":
             img.decompose()
             continue
+        # Filter dark-mode-only images (hidden in light mode, shown in dark mode)
+        classes = img.get("class", [])
+        if isinstance(classes, str):
+            classes = classes.split()
+        if "hidden" in classes and "dark:block" in classes:
+            img.decompose()
+            continue
         if any(
             parent.name in {"nav", "header", "footer", "aside"}
             for parent in img.parents

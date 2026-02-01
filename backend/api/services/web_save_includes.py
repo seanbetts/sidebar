@@ -71,10 +71,34 @@ def apply_include_reinsertion(
                 return True
         return False
 
+    def _is_navigation_list(node: lxml_html.HtmlElement) -> bool:
+        """Check if a list is primarily navigation (mostly links)."""
+        if node.tag not in {"ul", "ol"}:
+            return False
+        links = node.cssselect("a")
+        if len(links) < 5:
+            return False
+        # Count list items
+        items = node.cssselect("li")
+        if not items:
+            return False
+        # If most items contain links, it's likely navigation
+        items_with_links = sum(1 for li in items if li.cssselect("a"))
+        link_ratio = items_with_links / len(items)
+        # Also check if links dominate the text content
+        total_text = node.text_content().strip()
+        link_text = " ".join(a.text_content().strip() for a in links)
+        text_ratio = len(link_text) / len(total_text) if total_text else 0
+        # Navigation: >80% items have links, >70% text is link text
+        return link_ratio > 0.8 and text_ratio > 0.7
+
     last_inserted: lxml_html.HtmlElement | None = None
     for node in filtered_candidates:
         # Skip if this content already exists in extracted tree
         if _content_already_exists(extracted_tree, node):
+            continue
+        # Skip navigation-heavy lists (TOC, site nav, etc.)
+        if _is_navigation_list(node):
             continue
 
         cloned = deepcopy(node)
@@ -109,8 +133,8 @@ def find_insertion_point(
     original_node: lxml_html.HtmlElement,
 ) -> tuple[lxml_html.HtmlElement, int] | None:
     """Find an insertion point for included elements."""
-    # For lists, prefer heading-based positioning (more accurate for section content)
-    if original_node.tag in {"ul", "ol"}:
+    # For lists and images, prefer heading-based positioning
+    if original_node.tag in {"ul", "ol", "img", "figure", "picture"}:
         heading_match = _find_by_preceding_heading(
             extracted_tree, original_dom, original_node
         )
