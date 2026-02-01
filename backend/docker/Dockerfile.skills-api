@@ -6,7 +6,9 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     libreoffice \
-    poppler-utils && \
+    poppler-utils \
+    nodejs \
+    npm && \
     rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
@@ -45,6 +47,9 @@ RUN mkdir -p /workspace /tmp && \
 
 # Switch to non-root user
 USER appuser
+
+# Configure yt-dlp JS runtime for YouTube downloads
+ENV YT_DLP_JS_RUNTIMES=node
 
 # Expose API port
 EXPOSE 8001
