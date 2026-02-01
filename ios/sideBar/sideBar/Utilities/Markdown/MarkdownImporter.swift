@@ -105,11 +105,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             )
         } else {
             applyBlockKind(.paragraph, to: &paragraphText)
-            paragraphText[fullRange(in: paragraphText)].paragraphStyle = paragraphStyle(
-                lineSpacing: em(0.2, fontSize: baseFontSize),
-                spacingBefore: rem(0.5),
-                spacingAfter: rem(0.5)
-            )
+            paragraphText[fullRange(in: paragraphText)].paragraphStyle = MarkdownParagraphMetrics
+                .bodyParagraphStyle(baseFontSize: baseFontSize)
         }
 
         paragraphText[fullRange(in: paragraphText)].font = bodyFont
@@ -317,12 +314,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             let listIndentUnit = em(1.5, fontSize: baseFontSize)
             let listIndent = listIndentUnit * CGFloat(max(1, context.depth))
             let quoteIndent = blockquoteDepth > 0 ? em(1, fontSize: baseFontSize) : 0
-            itemText[fullRange(in: itemText)].paragraphStyle = paragraphStyle(
-                lineSpacing: em(0.2, fontSize: baseFontSize),
-                spacingBefore: isFirst ? rem(0.5) : 0,
-                spacingAfter: isLast ? rem(0.5) : 0,
-                headIndent: listIndent + quoteIndent
-            )
+            itemText[fullRange(in: itemText)].paragraphStyle = MarkdownParagraphMetrics
+                .listParagraphStyle(
+                    baseFontSize: baseFontSize,
+                    headIndent: listIndent + quoteIndent
+                )
             applyPresentationIntent(
                 for: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph,
                 listDepth: context.depth,

@@ -1553,11 +1553,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
             return paragraphStyleForHeading(level: headingLevel(for: blockKind) ?? 1)
         case .paragraph:
-            return paragraphStyle(
-                lineSpacing: em(0.2, fontSize: baseFontSize),
-                spacingBefore: rem(0.5),
-                spacingAfter: rem(0.5)
-            )
+            return MarkdownParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
         case .blockquote:
             return paragraphStyle(
                 lineSpacing: em(0.7, fontSize: baseFontSize),
@@ -1567,12 +1563,10 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             )
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
             let depth = max(1, listDepth ?? 1)
-            let listIndentUnit = em(0.0, fontSize: baseFontSize)
-            let listIndent = listIndentUnit * CGFloat(depth)
-            let style = paragraphStyle(
-                lineSpacing: 0,
-                spacingBefore: 0,
-                spacingAfter: 0,
+            let listIndentUnit = em(0.75, fontSize: baseFontSize)
+            let listIndent = listIndentUnit * CGFloat(max(0, depth - 1))
+            let style = MarkdownParagraphMetrics.listParagraphStyle(
+                baseFontSize: baseFontSize,
                 headIndent: listIndent
             )
             let mutable = style.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
