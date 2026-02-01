@@ -311,6 +311,8 @@
     - "figure img"
     - 'img[src*="mintcdn.com"]'
     # Lists (Readability often strips link-heavy lists as "navigation")
+    # Note: Some short lists may be misplaced, but this preserves important
+    # documentation indexes that would otherwise be stripped.
     - ".mdx-content ul"
     - ".mdx-content ol"
     - ".prose ul"
