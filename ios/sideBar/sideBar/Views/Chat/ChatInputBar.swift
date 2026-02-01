@@ -9,7 +9,6 @@ struct ChatInputBar: View {
     let onAttach: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
-    private let maxInputWidth: CGFloat = 860
 
     var body: some View {
         ChatInputContainer {
@@ -26,7 +25,7 @@ struct ChatInputBar: View {
             .frame(height: computedHeight)
             .modifier(GlassEffectModifier())
         }
-        .frame(maxWidth: maxInputWidth)
+        .frame(maxWidth: ChatLayout.maxContentWidth)
         .frame(maxWidth: .infinity, alignment: .center)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.mdPlus, style: .continuous)
