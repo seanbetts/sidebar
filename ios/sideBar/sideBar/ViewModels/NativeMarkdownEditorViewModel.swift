@@ -205,10 +205,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         let ranges = selectionRanges()
         for range in ranges.ranges where !range.isEmpty {
             if attributedContent[range].strikethroughStyle == nil {
-                attributedContent[range].strikethroughStyle = .single
-                setForegroundColor(DesignTokens.Colors.textSecondary, range: range)
+                setStrikethrough(true, in: &attributedContent, range: range)
             } else {
-                attributedContent[range].strikethroughStyle = nil
+                setStrikethrough(false, in: &attributedContent, range: range)
                 let blockKind = attributedContent.blockKind(in: range)
                 setForegroundColor(baseForegroundColor(for: blockKind), range: range)
             }
@@ -498,6 +497,18 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         setPlatformBackgroundColor(platformColor(color), in: &attrs)
     }
 
+    private func setStrikethrough(
+        _ enabled: Bool,
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+        if enabled {
+            text[range].strikethroughStyle = .single
+        } else {
+            text[range].strikethroughStyle = nil
+        }
+    }
+
     private func setFont(
         _ font: Font,
         platformFont: PlatformFont,
@@ -675,7 +686,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             attributedContent[range].paragraphStyle = paragraphStyle
         }
         if blockKind == .taskChecked {
-            attributedContent[range].strikethroughStyle = .single
+            setStrikethrough(true, in: &attributedContent, range: range)
             setForegroundColor(DesignTokens.Colors.textSecondary, in: &attributedContent, range: range)
         }
     }
@@ -1454,7 +1465,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             }
             if run.link != nil {
                 setForegroundColor(.accentColor, in: &text, range: range)
-            } else if run.strikethroughStyle != nil || run.imageInfo != nil {
+            } else if run.imageInfo != nil {
                 setForegroundColor(DesignTokens.Colors.textSecondary, in: &text, range: range)
             } else {
                 setForegroundColor(baseForeground, in: &text, range: range)

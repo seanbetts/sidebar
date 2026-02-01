@@ -164,7 +164,6 @@ public struct MarkdownShortcutProcessor {
         let applyStrike: (inout AttributedString, Range<AttributedString.Index>) -> Void = { text, range in
             var slice = text[range]
             slice.strikethroughStyle = .single
-            slice.foregroundColor = DesignTokens.Colors.textSecondary
             text.replaceSubrange(range, with: slice)
         }
         if let result = consumeInlinePattern(

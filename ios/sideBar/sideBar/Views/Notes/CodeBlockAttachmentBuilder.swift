@@ -10,8 +10,28 @@ import AppKit
 @available(iOS 26.0, macOS 26.0, *)
 enum CodeBlockAttachmentBuilder {
     static func displayText(from text: AttributedString) -> NSAttributedString {
-        let source = NSAttributedString(text)
+        let source = applyStrikethroughAttributes(from: text, to: NSAttributedString(text))
         return buildDisplayText(from: source)
+    }
+
+    static func applyStrikethroughAttributes(
+        from text: AttributedString,
+        to source: NSAttributedString
+    ) -> NSAttributedString {
+        guard !text.characters.isEmpty else { return source }
+        let mutable = NSMutableAttributedString(attributedString: source)
+        let string = source.string
+        for run in text.runs {
+            guard run.strikethroughStyle != nil else { continue }
+            let startOffset = text.characters.distance(from: text.startIndex, to: run.range.lowerBound)
+            let endOffset = text.characters.distance(from: text.startIndex, to: run.range.upperBound)
+            guard startOffset < endOffset else { continue }
+            let startIndex = string.index(string.startIndex, offsetBy: startOffset)
+            let endIndex = string.index(string.startIndex, offsetBy: endOffset)
+            let range = NSRange(startIndex..<endIndex, in: string)
+            mutable.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: range)
+        }
+        return mutable
     }
 
     private static func buildDisplayText(from source: NSAttributedString) -> NSAttributedString {
