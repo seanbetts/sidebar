@@ -463,7 +463,8 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         return current.modified != incoming.modified ||
             current.content != incoming.content ||
             current.name != incoming.name ||
-            current.path != incoming.path
+            current.path != incoming.path ||
+            current.created != incoming.created
     }
 
     func shouldPersistNote(_ note: NotePayload) -> Bool {
