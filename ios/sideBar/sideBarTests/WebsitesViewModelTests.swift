@@ -402,6 +402,7 @@ private func makeItem(id: String) -> WebsiteItem {
         faviconUrl: nil,
         faviconR2Key: nil,
         youtubeTranscripts: nil,
+        readingTime: nil,
         updatedAt: nil,
         lastOpenedAt: nil,
         deletedAt: nil

@@ -71,9 +71,9 @@ final class OfflineStoreTests: XCTestCase {
         let store = OfflineStore(container: persistence.container)
 
         let notes = [
-            NotePayload(id: "note-1", name: "One", content: "A", path: "/one.md", modified: 1),
-            NotePayload(id: "note-2", name: "Two", content: "B", path: "/two.md", modified: 2),
-            NotePayload(id: "note-3", name: "Three", content: "C", path: "/three.md", modified: 3)
+            NotePayload(id: "note-1", name: "One", content: "A", path: "/one.md", modified: 1, created: nil),
+            NotePayload(id: "note-2", name: "Two", content: "B", path: "/two.md", modified: 2, created: nil),
+            NotePayload(id: "note-3", name: "Three", content: "C", path: "/three.md", modified: 3, created: nil)
         ]
 
         for note in notes {

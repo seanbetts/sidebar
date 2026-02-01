@@ -12,6 +12,7 @@ final class NotesViewModelTests: XCTestCase {
                 type: .file,
                 size: nil,
                 modified: nil,
+                created: nil,
                 children: nil,
                 expanded: nil,
                 pinned: nil,
@@ -47,6 +48,7 @@ final class NotesViewModelTests: XCTestCase {
                 type: .file,
                 size: nil,
                 modified: nil,
+                created: nil,
                 children: nil,
                 expanded: nil,
                 pinned: nil,
@@ -80,6 +82,7 @@ final class NotesViewModelTests: XCTestCase {
                 type: .file,
                 size: nil,
                 modified: nil,
+                created: nil,
                 children: nil,
                 expanded: nil,
                 pinned: nil,
@@ -95,6 +98,7 @@ final class NotesViewModelTests: XCTestCase {
                 type: .file,
                 size: nil,
                 modified: nil,
+                created: nil,
                 children: nil,
                 expanded: nil,
                 pinned: nil,
@@ -136,6 +140,7 @@ final class NotesViewModelTests: XCTestCase {
                 type: .file,
                 size: nil,
                 modified: nil,
+                created: nil,
                 children: nil,
                 expanded: nil,
                 pinned: nil,
@@ -149,8 +154,8 @@ final class NotesViewModelTests: XCTestCase {
             name: "Note.md",
             content: "Hello",
             path: "note-id",
-            modified: nil
-        )
+            modified: nil,
+            created: nil)
         let cache = InMemoryCacheClient()
         let api = MockNotesAPI(
             listTreeResult: .success(tree),

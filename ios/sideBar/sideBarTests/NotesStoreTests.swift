@@ -13,6 +13,7 @@ final class NotesStoreTests: XCTestCase {
                 type: .file,
                 size: 1,
                 modified: 1,
+                created: nil,
                 children: nil,
                 expanded: nil,
                 pinned: nil,
@@ -28,6 +29,7 @@ final class NotesStoreTests: XCTestCase {
                 type: .file,
                 size: 2,
                 modified: 2,
+                created: nil,
                 children: nil,
                 expanded: nil,
                 pinned: nil,
@@ -54,7 +56,7 @@ final class NotesStoreTests: XCTestCase {
     }
 
     func testApplyRealtimeDeleteClearsActiveAndCache() async {
-        let note = NotePayload(id: "n1", name: "Note", content: "Body", path: "/note.md", modified: 1)
+        let note = NotePayload(id: "n1", name: "Note", content: "Body", path: "/note.md", modified: 1, created: nil)
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.note(id: "n1"), value: note, ttlSeconds: 60)
         let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
@@ -91,6 +93,7 @@ final class NotesStoreTests: XCTestCase {
                 type: .file,
                 size: nil,
                 modified: nil,
+                created: nil,
                 children: nil,
                 expanded: nil,
                 pinned: nil,
@@ -123,6 +126,7 @@ final class NotesStoreTests: XCTestCase {
             type: .file,
             size: nil,
             modified: nil,
+                created: nil,
             children: nil,
             expanded: nil,
             pinned: nil,
@@ -139,7 +143,7 @@ final class NotesStoreTests: XCTestCase {
         store.applyTreeUpdate(tree, persist: false)
 
         let oldDate = Date().addingTimeInterval(-8 * 24 * 60 * 60).timeIntervalSince1970
-        let note = NotePayload(id: "n1", name: "Archived", content: "Body", path: "n1", modified: oldDate)
+        let note = NotePayload(id: "n1", name: "Archived", content: "Body", path: "n1", modified: oldDate, created: nil)
         store.applyEditorUpdate(note)
 
         let cached: NotePayload? = cache.get(key: CacheKeys.note(id: "n1"))
@@ -155,6 +159,7 @@ final class NotesStoreTests: XCTestCase {
             type: .file,
             size: nil,
             modified: nil,
+                created: nil,
             children: nil,
             expanded: nil,
             pinned: nil,
@@ -171,7 +176,7 @@ final class NotesStoreTests: XCTestCase {
         store.applyTreeUpdate(tree, persist: false)
 
         let recentDate = Date().addingTimeInterval(-2 * 24 * 60 * 60).timeIntervalSince1970
-        let note = NotePayload(id: "n2", name: "Archived", content: "Body", path: "n2", modified: recentDate)
+        let note = NotePayload(id: "n2", name: "Archived", content: "Body", path: "n2", modified: recentDate, created: nil)
         store.applyEditorUpdate(note)
 
         let cached: NotePayload? = cache.get(key: CacheKeys.note(id: "n2"))

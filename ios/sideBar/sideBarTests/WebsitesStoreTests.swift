@@ -19,6 +19,7 @@ final class WebsitesStoreTests: XCTestCase {
             faviconUrl: nil,
             faviconR2Key: nil,
             youtubeTranscripts: nil,
+            readingTime: nil,
             updatedAt: ISO8601DateFormatter().string(from: Date()),
             lastOpenedAt: nil,
             deletedAt: nil
@@ -55,6 +56,7 @@ final class WebsitesStoreTests: XCTestCase {
             faviconUrl: nil,
             faviconR2Key: nil,
             youtubeTranscripts: nil,
+            readingTime: nil,
             updatedAt: ISO8601DateFormatter().string(from: Date()),
             lastOpenedAt: nil,
             deletedAt: nil
@@ -96,6 +98,7 @@ final class WebsitesStoreTests: XCTestCase {
             faviconUrl: nil,
             faviconR2Key: nil,
             youtubeTranscripts: nil,
+            readingTime: nil,
             updatedAt: "2024-01-01",
             lastOpenedAt: nil,
             deletedAt: nil
