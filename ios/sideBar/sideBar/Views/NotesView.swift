@@ -168,33 +168,33 @@ public struct NotesView: View {
     #if os(iOS)
     private var noteToolbarMenu: some View {
         HeaderActionMenuButton(
-            systemImage: "ellipsis.circle",
+            systemImage: "ellipsis",
             accessibilityLabel: "Note options",
             items: [
-                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
                     guard let noteId = environment.notesViewModel.activeNote?.path else { return }
                     Task {
                         await environment.notesViewModel.setPinned(id: noteId, pinned: !isPinned)
                     }
                 },
-                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
                     renameValue = displayTitle
                     isRenameDialogPresented = true
                 },
-                MenuActionItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
                     moveSelection = currentFolderPath
                     isMoveSheetPresented = true
                 },
-                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyMarkdown()
                 },
-                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                     exportMarkdown()
                 },
-                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
                     isArchiveAlertPresented = true
                 },
-                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
                 }
             ],
@@ -458,7 +458,7 @@ private struct NoteActionsMenuButton: UIViewRepresentable {
         var config = UIButton.Configuration.plain()
         config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
         button.configuration = config
-        button.setImage(UIImage(systemName: "ellipsis.circle"), for: .normal)
+        button.setImage(UIImage(systemName: "ellipsis"), for: .normal)
         button.showsMenuAsPrimaryAction = true
         button.accessibilityLabel = title
         button.frame = CGRect(x: 0, y: 0, width: 28, height: 28)
@@ -725,33 +725,33 @@ extension NotesDetailView {
 
     private var noteToolbarMenu: some View {
         HeaderActionMenuButton(
-            systemImage: "ellipsis.circle",
+            systemImage: "ellipsis",
             accessibilityLabel: "Note options",
             items: [
-                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
                     guard let noteId = viewModel.activeNote?.path else { return }
                     Task {
                         await viewModel.setPinned(id: noteId, pinned: !isPinned)
                     }
                 },
-                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
                     renameValue = displayTitle
                     isRenameDialogPresented = true
                 },
-                MenuActionItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
                     moveSelection = currentFolderPath
                     isMoveSheetPresented = true
                 },
-                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyMarkdown()
                 },
-                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                     exportMarkdown()
                 },
-                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
                     isArchiveAlertPresented = true
                 },
-                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
                 }
             ],
@@ -767,7 +767,7 @@ extension NotesDetailView {
         Menu {
             noteActionsMenuItems
         } label: {
-            HeaderActionIcon(systemName: "ellipsis.circle")
+            HeaderActionIcon(systemName: "ellipsis")
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Note options")
@@ -775,33 +775,33 @@ extension NotesDetailView {
         #else
         if isCompact {
             HeaderActionMenuButton(
-                systemImage: "ellipsis.circle",
+                systemImage: "ellipsis",
                 accessibilityLabel: "Note options",
                 items: [
-                    MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
                         guard let noteId = viewModel.activeNote?.path else { return }
                         Task {
                             await viewModel.setPinned(id: noteId, pinned: !isPinned)
                         }
                     },
-                    MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
                         renameValue = displayTitle
                         isRenameDialogPresented = true
                     },
-                    MenuActionItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                    SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
                         moveSelection = currentFolderPath
                         isMoveSheetPresented = true
                     },
-                    MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                         copyMarkdown()
                     },
-                    MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                         exportMarkdown()
                     },
-                    MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
                         isArchiveAlertPresented = true
                     },
-                    MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                         isDeleteAlertPresented = true
                     }
                 ],

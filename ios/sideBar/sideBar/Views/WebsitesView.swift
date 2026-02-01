@@ -137,29 +137,29 @@ public struct WebsitesView: View {
     #if os(iOS)
     private var websiteToolbarMenu: some View {
         HeaderActionMenuButton(
-            systemImage: "ellipsis.circle",
+            systemImage: "ellipsis",
             accessibilityLabel: "Website options",
             items: [
-                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
                     guard let websiteId = environment.websitesViewModel.active?.id else { return }
                     Task {
                         await environment.websitesViewModel.setPinned(id: websiteId, pinned: !isPinned)
                     }
                 },
-                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
                     renameValue = environment.websitesViewModel.active?.title ?? ""
                     isRenameDialogPresented = true
                 },
-                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyWebsiteContent()
                 },
-                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                     exportWebsite()
                 },
-                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
                     isArchiveAlertPresented = true
                 },
-                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
                 }
             ],
@@ -474,36 +474,36 @@ extension WebsitesDetailView {
                 Label("Delete", systemImage: "trash")
             }
         } label: {
-            HeaderActionIcon(systemName: "ellipsis.circle")
+            HeaderActionIcon(systemName: "ellipsis")
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Website options")
         .disabled(viewModel.active == nil)
         #else
         HeaderActionMenuButton(
-            systemImage: "ellipsis.circle",
+            systemImage: "ellipsis",
             accessibilityLabel: "Website options",
             items: [
-                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
                     guard let websiteId = viewModel.active?.id else { return }
                     Task {
                         await viewModel.setPinned(id: websiteId, pinned: !isPinned)
                     }
                 },
-                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
                     renameValue = viewModel.active?.title ?? ""
                     isRenameDialogPresented = true
                 },
-                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyWebsiteContent()
                 },
-                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                     exportWebsite()
                 },
-                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
                     isArchiveAlertPresented = true
                 },
-                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
                 }
             ],
@@ -520,29 +520,29 @@ extension WebsitesDetailView {
 
     private var websiteToolbarMenu: some View {
         HeaderActionMenuButton(
-            systemImage: "ellipsis.circle",
+            systemImage: "ellipsis",
             accessibilityLabel: "Website options",
             items: [
-                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
                     guard let websiteId = viewModel.active?.id else { return }
                     Task {
                         await viewModel.setPinned(id: websiteId, pinned: !isPinned)
                     }
                 },
-                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
                     renameValue = viewModel.active?.title ?? ""
                     isRenameDialogPresented = true
                 },
-                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyWebsiteContent()
                 },
-                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
                     exportWebsite()
                 },
-                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
                     isArchiveAlertPresented = true
                 },
-                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
                 }
             ],

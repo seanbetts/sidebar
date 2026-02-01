@@ -13,54 +13,44 @@ extension NotesPanelView {
 
     @ViewBuilder
     func noteContextMenuItems(for item: FileNodeItem) -> some View {
+        sidebarMenuItemsView(noteContextMenuItemsList(for: item))
+    }
+
+    private func noteContextMenuItemsList(for item: FileNodeItem) -> [SidebarMenuItem] {
         if item.isFile {
-            Button {
-                togglePin(for: item)
-            } label: {
-                Label(notePinTitle(for: item), systemImage: notePinIconName(for: item))
-            }
-            Button {
-                beginRename(for: item)
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
-            Button {
-                beginMove(for: item)
-            } label: {
-                Label("Move", systemImage: "arrow.forward.folder")
-            }
-            Button {
-                Task { await copyNoteContent(for: item) }
-            } label: {
-                Label("Copy", systemImage: "doc.on.doc")
-            }
-            Button {
-                Task { await exportNoteContent(for: item) }
-            } label: {
-                Label("Download", systemImage: "square.and.arrow.down")
-            }
-            Button {
-                toggleArchive(for: item)
-            } label: {
-                Label(noteArchiveTitle(for: item), systemImage: noteArchiveIconName(for: item))
-            }
-            Button(role: .destructive) {
-                confirmDelete(for: item)
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        } else {
-            Button {
-                beginRename(for: item)
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
-            Button(role: .destructive) {
-                confirmDelete(for: item)
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
+            return [
+                SidebarMenuItem(title: notePinTitle(for: item), systemImage: notePinIconName(for: item), role: nil) {
+                    togglePin(for: item)
+                },
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    beginRename(for: item)
+                },
+                SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                    beginMove(for: item)
+                },
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    Task { await copyNoteContent(for: item) }
+                },
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    Task { await exportNoteContent(for: item) }
+                },
+                SidebarMenuItem(title: noteArchiveTitle(for: item), systemImage: noteArchiveIconName(for: item), role: nil) {
+                    toggleArchive(for: item)
+                },
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    confirmDelete(for: item)
+                }
+            ]
         }
+
+        return [
+            SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                beginRename(for: item)
+            },
+            SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                confirmDelete(for: item)
+            }
+        ]
     }
 
     private func notePinTitle(for item: FileNodeItem) -> String {

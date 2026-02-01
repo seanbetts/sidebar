@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import sideBarShared
 
 struct PdfHeaderControls: View {
     @ObservedObject var controller: PDFViewerController
@@ -109,10 +110,21 @@ struct BinaryFileDocument: FileDocument {
 struct FilesDetailContainer: View {
     @ObservedObject var viewModel: IngestionViewModel
     @ObservedObject var pdfController: PDFViewerController
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         if let meta = viewModel.activeMeta {
-            IngestionDetailView(viewModel: viewModel, meta: meta, pdfController: pdfController)
+            VStack(spacing: 0) {
+                if shouldShowPdfHeader {
+                    PdfHeaderControls(controller: pdfController, isCompact: true)
+                        .padding(.horizontal, DesignTokens.Spacing.md)
+                        .padding(.vertical, DesignTokens.Spacing.sm)
+                    Divider()
+                }
+                IngestionDetailView(viewModel: viewModel, meta: meta, pdfController: pdfController)
+            }
         } else if let selectedItem = viewModel.selectedItem,
                   viewModel.selectedFileId != nil,
                   viewModel.errorMessage == nil,
@@ -147,6 +159,16 @@ struct FilesDetailContainer: View {
     private func shouldShowProcessingState(for item: IngestionListItem) -> Bool {
         let status = item.statusValue
         return ![IngestionListItem].terminalStatuses.contains(status)
+    }
+
+    private var shouldShowPdfHeader: Bool {
+        #if os(macOS)
+        return false
+        #else
+        guard horizontalSizeClass == .compact else { return false }
+        guard let mime = viewModel.activeMeta?.file.mimeOriginal else { return false }
+        return mime.split(separator: ";").first?.trimmed.lowercased() == "application/pdf"
+        #endif
     }
 }
 

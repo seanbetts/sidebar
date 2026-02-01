@@ -47,18 +47,46 @@ struct HeaderActionRow<Content: View>: View {
 struct HeaderActionMenuButton: View {
     let systemImage: String
     let accessibilityLabel: String
-    let items: [MenuActionItem]
+    let items: [SidebarMenuItem]
     let isCompact: Bool
 
     var body: some View {
-        UIKitMenuButton(
-            systemImage: systemImage,
-            accessibilityLabel: accessibilityLabel,
-            items: items
-        )
-        .frame(width: 28, height: isCompact ? 20 : 28)
-        .fixedSize()
-        .accessibilityLabel(accessibilityLabel)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let menuSignature = items
+                .map { "\($0.title)|\($0.systemImage ?? "")|\(roleSignature($0.role))" }
+                .joined(separator: ";")
+            UIKitMenuButton(
+                systemImage: systemImage,
+                accessibilityLabel: accessibilityLabel,
+                items: items
+            )
+            .frame(width: 28, height: isCompact ? 20 : 28)
+            .fixedSize()
+            .accessibilityLabel(accessibilityLabel)
+            .id(menuSignature)
+        } else {
+            Menu {
+                sidebarMenuItemsView(items)
+            } label: {
+                HeaderActionIcon(systemName: systemImage)
+                    .frame(width: 28, height: isCompact ? 20 : 28)
+            }
+            .buttonStyle(.plain)
+            .menuStyle(.button)
+            .accessibilityLabel(accessibilityLabel)
+            .fixedSize()
+        }
+    }
+
+    private func roleSignature(_ role: ButtonRole?) -> String {
+        switch role {
+        case .destructive:
+            return "destructive"
+        case .cancel:
+            return "cancel"
+        default:
+            return "default"
+        }
     }
 }
 #endif
