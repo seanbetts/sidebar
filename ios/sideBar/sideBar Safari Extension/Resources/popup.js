@@ -1,4 +1,3 @@
-const saveButton = document.getElementById("saveButton");
 const status = document.getElementById("status");
 
 const setStatus = (text) => {
@@ -24,8 +23,6 @@ const saveUrl = async (url) => {
 };
 
 const saveCurrentTab = async () => {
-    if (saveButton)
-        saveButton.disabled = true;
     setStatus("Saving...");
     try {
         const tab = await getActiveTab();
@@ -38,9 +35,6 @@ const saveCurrentTab = async () => {
     } catch (error) {
         setStatus(error?.message ?? "Save failed.");
         return false;
-    } finally {
-        if (saveButton)
-            saveButton.disabled = false;
     }
 };
 
@@ -68,13 +62,6 @@ const saveWithRetry = async (retries, delayMs) => {
         saveWithRetry(retries - 1, delayMs);
     }, delayMs);
 };
-
-if (saveButton) {
-    saveButton.addEventListener("click", async () => {
-        const ok = await saveCurrentTab();
-        setTimeout(() => window.close(), ok ? 500 : 1200);
-    });
-}
 
 document.addEventListener("DOMContentLoaded", () => {
     saveWithRetry(12, 150);
