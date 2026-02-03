@@ -50,20 +50,6 @@ final class HorizontalRuleAttachment: NSTextAttachment {
         return CGRect(x: alignedX, y: 0, width: alignedWidth, height: height)
     }
 
-    override func attachmentBounds(
-        for textContainer: NSTextContainer?,
-        proposedLineFragment lineFrag: CGRect,
-        glyphPosition position: CGPoint,
-        characterIndex charIndex: Int
-    ) -> CGRect {
-        let height = max(1, lineHeight)
-        let width = lineFrag.width + (horizontalInset * 2)
-        let scale = effectiveScale(textContainer: textContainer)
-        let alignedWidth = (width * scale).rounded() / scale
-        let alignedX = (-horizontalInset * scale).rounded() / scale
-        return CGRect(x: alignedX, y: 0, width: alignedWidth, height: height)
-    }
-
     private static let didRegisterViewProvider: Void = {
         NSTextAttachment.registerViewProviderClass(
             HorizontalRuleAttachmentViewProvider.self,
