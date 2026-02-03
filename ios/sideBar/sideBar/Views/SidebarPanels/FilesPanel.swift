@@ -205,13 +205,15 @@ extension FilesPanelView {
         List {
             if !searchQuery.trimmed.isEmpty {
                 ForEach(Array(searchResults.enumerated()), id: \.element.file.id) { index, item in
+                    let isSelected = viewModel.selectedFileId == item.file.id
                     let row = FilesIngestionRow(
                         item: item,
-                        isSelected: viewModel.selectedFileId == item.file.id,
+                        isSelected: isSelected,
                         onPinToggle: pinAction(for: item),
                         onDelete: deleteAction(for: item)
                     )
                     .platformContextMenu(items: fileContextMenuItemsList(for: item))
+                    .listRowBackground(isSelected ? DesignTokens.Colors.selection : rowBackground)
                     if isFolder(item) {
                         row
                             .staggeredAppear(index: index, isActive: listAppeared)
@@ -225,13 +227,15 @@ extension FilesPanelView {
                 if !pinnedItems.isEmpty {
                     Section("Pinned") {
                         ForEach(Array(pinnedItems.enumerated()), id: \.element.file.id) { index, item in
+                            let isSelected = viewModel.selectedFileId == item.file.id
                             let row = FilesIngestionRow(
                                 item: item,
-                                isSelected: viewModel.selectedFileId == item.file.id,
+                                isSelected: isSelected,
                                 onPinToggle: pinAction(for: item),
                                 onDelete: deleteAction(for: item)
                             )
                             .platformContextMenu(items: fileContextMenuItemsList(for: item))
+                            .listRowBackground(isSelected ? DesignTokens.Colors.selection : rowBackground)
                             if isFolder(item) {
                                 row
                                     .staggeredAppear(index: index, isActive: listAppeared)

@@ -389,9 +389,10 @@ extension WebsitesPanelView {
         useListStyling: Bool = true,
         allowArchive: Bool = true
     ) -> some View {
+        let isSelected = selection == item.id
         let row = WebsiteRow(
             item: item,
-            isSelected: selection == item.id,
+            isSelected: isSelected,
             useListStyling: useListStyling,
             faviconBaseUrl: appEnvironment.container.config.r2Endpoint,
             r2FaviconBucket: appEnvironment.container.config.r2FaviconBucket,
@@ -400,6 +401,7 @@ extension WebsitesPanelView {
         .staggeredAppear(index: index, isActive: listAppeared)
         .onTapGesture { open(item: item) }
         .platformContextMenu(items: websiteContextMenuItemsList(for: item))
+        .listRowBackground(isSelected ? DesignTokens.Colors.selection : rowBackground)
 
         #if os(macOS)
         row
