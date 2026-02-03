@@ -6,7 +6,7 @@ private func displayText(for text: AttributedString, isEditable: Bool) -> NSAttr
     CodeBlockAttachmentBuilder.displayText(
         from: text,
         renderCodeBlocks: !isEditable,
-        renderHorizontalRules: false
+        renderHorizontalRules: true
     )
 }
 
@@ -148,42 +148,9 @@ private final class MarkdownTextView: UITextView {
 	        drawCodeBlockContainers(lines: lines)
 	        drawBlockquoteBars(lines: lines)
 	        drawTableBorders(lines: lines)
-	        drawHorizontalRules(lines: lines)
 	    }
 
 	    private func drawForegroundDecorations(in rect: CGRect) {
-	    }
-
-	    private func drawHorizontalRules(lines: [LineData]) {
-	        let ruleHeight: CGFloat = 2
-	        let ruleColor = UIColor.black
-	        let inset: CGFloat = 0
-	        let scale = window?.windowScene?.screen.scale ?? traitCollection.displayScale
-
-	        for line in lines {
-	            let trimmed = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
-	            let isHorizontalRule = line.blockKind == .horizontalRule || trimmed == "---" || trimmed == "***" || trimmed == "___"
-	            guard isHorizontalRule, let union = unionRect(line.rects) else { continue }
-
-	            if isEditable {
-	                let caret = selectedRange.location
-	                let start = line.range.location
-	                let end = line.range.location + line.range.length
-	                if caret >= start, caret <= end { continue }
-	            }
-
-	            let rawX = union.minX - inset
-	            let rawWidth = union.width + inset * 2
-	            let rawY = union.midY - (ruleHeight / 2)
-
-	            let alignedX = (rawX * scale).rounded() / scale
-	            let alignedWidth = (rawWidth * scale).rounded() / scale
-	            let alignedY = (rawY * scale).rounded() / scale
-
-	            let rect = CGRect(x: alignedX, y: alignedY, width: alignedWidth, height: ruleHeight)
-	            ruleColor.setFill()
-	            UIBezierPath(rect: rect).fill()
-	        }
 	    }
 
 	    private func drawBlockquoteBars(lines: [LineData]) {
@@ -566,42 +533,9 @@ private final class MarkdownTextView: NSTextView {
 	        drawCodeBlockContainers(lines: lines)
 	        drawBlockquoteBars(lines: lines)
 	        drawTableBorders(lines: lines)
-	        drawHorizontalRules(lines: lines)
 	    }
 
 	    private func drawForegroundDecorations(in rect: CGRect) {
-	    }
-
-	    private func drawHorizontalRules(lines: [LineData]) {
-	        let ruleHeight: CGFloat = 2
-	        let ruleColor = NSColor.black
-	        let inset: CGFloat = 0
-	        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
-
-	        for line in lines {
-	            let trimmed = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
-	            let isHorizontalRule = line.blockKind == .horizontalRule || trimmed == "---" || trimmed == "***" || trimmed == "___"
-	            guard isHorizontalRule, let union = unionRect(line.rects) else { continue }
-
-	            if isEditable {
-	                let caret = selectedRange().location
-	                let start = line.range.location
-	                let end = line.range.location + line.range.length
-	                if caret >= start, caret <= end { continue }
-	            }
-
-	            let rawX = union.minX - inset
-	            let rawWidth = union.width + inset * 2
-	            let rawY = union.midY - (ruleHeight / 2)
-
-	            let alignedX = (rawX * scale).rounded() / scale
-	            let alignedWidth = (rawWidth * scale).rounded() / scale
-	            let alignedY = (rawY * scale).rounded() / scale
-
-	            let rect = CGRect(x: alignedX, y: alignedY, width: alignedWidth, height: ruleHeight)
-	            ruleColor.setFill()
-	            NSBezierPath(rect: rect).fill()
-	        }
 	    }
 
 	    private func drawBlockquoteBars(lines: [LineData]) {
