@@ -207,6 +207,9 @@ enum CodeBlockAttachmentBuilder {
         paragraphStyle: NSParagraphStyle
     ) -> [NSAttributedString.Key: Any] {
         var result = attrs
+        result[NSAttributedString.Key("NSPresentationIntent")] = nil
+        result[NSAttributedString.Key("SwiftUI.ForegroundColor")] = nil
+        result[NSAttributedString.Key("SwiftUI.Font")] = nil
         result[NSAttributedString.Key(BlockKindAttribute.name)] = BlockKind.horizontalRule
         result[NSAttributedString.Key(ListDepthAttribute.name)] = nil
         result[NSAttributedString.Key(CodeLanguageAttribute.name)] = nil
