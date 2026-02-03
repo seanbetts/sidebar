@@ -6,7 +6,7 @@ private func displayText(for text: AttributedString, isEditable: Bool) -> NSAttr
     CodeBlockAttachmentBuilder.displayText(
         from: text,
         renderCodeBlocks: !isEditable,
-        renderHorizontalRules: true
+        renderHorizontalRules: false
     )
 }
 
@@ -144,18 +144,49 @@ private final class MarkdownTextView: UITextView {
             )
         }
 
-        drawTableBackgrounds(lines: lines)
-        drawCodeBlockContainers(lines: lines)
-        drawBlockquoteBars(lines: lines)
-        drawTableBorders(lines: lines)
-    }
+	        drawTableBackgrounds(lines: lines)
+	        drawCodeBlockContainers(lines: lines)
+	        drawBlockquoteBars(lines: lines)
+	        drawTableBorders(lines: lines)
+	        drawHorizontalRules(lines: lines)
+	    }
 
-    private func drawForegroundDecorations(in rect: CGRect) {
-    }
+	    private func drawForegroundDecorations(in rect: CGRect) {
+	    }
 
-    private func drawBlockquoteBars(lines: [LineData]) {
-        let barWidth: CGFloat = 3
-        let barColor = UIColor(DesignTokens.Colors.border)
+	    private func drawHorizontalRules(lines: [LineData]) {
+	        let ruleHeight: CGFloat = 2
+	        let ruleColor = UIColor.black
+	        let inset: CGFloat = 0
+	        let scale = window?.windowScene?.screen.scale ?? traitCollection.displayScale
+
+	        for line in lines {
+	            guard line.blockKind == .horizontalRule, let union = unionRect(line.rects) else { continue }
+
+	            if isEditable {
+	                let caret = selectedRange.location
+	                let start = line.range.location
+	                let end = line.range.location + line.range.length
+	                if caret >= start, caret <= end { continue }
+	            }
+
+	            let rawX = union.minX - inset
+	            let rawWidth = union.width + inset * 2
+	            let rawY = union.midY - (ruleHeight / 2)
+
+	            let alignedX = (rawX * scale).rounded() / scale
+	            let alignedWidth = (rawWidth * scale).rounded() / scale
+	            let alignedY = (rawY * scale).rounded() / scale
+
+	            let rect = CGRect(x: alignedX, y: alignedY, width: alignedWidth, height: ruleHeight)
+	            ruleColor.setFill()
+	            UIBezierPath(rect: rect).fill()
+	        }
+	    }
+
+	    private func drawBlockquoteBars(lines: [LineData]) {
+	        let barWidth: CGFloat = 3
+	        let barColor = UIColor(DesignTokens.Colors.border)
         var index = 0
         while index < lines.count {
             guard lines[index].blockKind == .blockquote else {
@@ -529,18 +560,49 @@ private final class MarkdownTextView: NSTextView {
             )
         }
 
-        drawTableBackgrounds(lines: lines)
-        drawCodeBlockContainers(lines: lines)
-        drawBlockquoteBars(lines: lines)
-        drawTableBorders(lines: lines)
-    }
+	        drawTableBackgrounds(lines: lines)
+	        drawCodeBlockContainers(lines: lines)
+	        drawBlockquoteBars(lines: lines)
+	        drawTableBorders(lines: lines)
+	        drawHorizontalRules(lines: lines)
+	    }
 
-    private func drawForegroundDecorations(in rect: CGRect) {
-    }
+	    private func drawForegroundDecorations(in rect: CGRect) {
+	    }
 
-    private func drawBlockquoteBars(lines: [LineData]) {
-        let barWidth: CGFloat = 3
-        let barColor = NSColor(DesignTokens.Colors.border)
+	    private func drawHorizontalRules(lines: [LineData]) {
+	        let ruleHeight: CGFloat = 2
+	        let ruleColor = NSColor.black
+	        let inset: CGFloat = 0
+	        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+
+	        for line in lines {
+	            guard line.blockKind == .horizontalRule, let union = unionRect(line.rects) else { continue }
+
+	            if isEditable {
+	                let caret = selectedRange().location
+	                let start = line.range.location
+	                let end = line.range.location + line.range.length
+	                if caret >= start, caret <= end { continue }
+	            }
+
+	            let rawX = union.minX - inset
+	            let rawWidth = union.width + inset * 2
+	            let rawY = union.midY - (ruleHeight / 2)
+
+	            let alignedX = (rawX * scale).rounded() / scale
+	            let alignedWidth = (rawWidth * scale).rounded() / scale
+	            let alignedY = (rawY * scale).rounded() / scale
+
+	            let rect = CGRect(x: alignedX, y: alignedY, width: alignedWidth, height: ruleHeight)
+	            ruleColor.setFill()
+	            NSBezierPath(rect: rect).fill()
+	        }
+	    }
+
+	    private func drawBlockquoteBars(lines: [LineData]) {
+	        let barWidth: CGFloat = 3
+	        let barColor = NSColor(DesignTokens.Colors.border)
         var index = 0
         while index < lines.count {
             guard lines[index].blockKind == .blockquote else {
