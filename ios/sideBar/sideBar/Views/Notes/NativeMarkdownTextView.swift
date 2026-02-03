@@ -161,7 +161,9 @@ private final class MarkdownTextView: UITextView {
 	        let scale = window?.windowScene?.screen.scale ?? traitCollection.displayScale
 
 	        for line in lines {
-	            guard line.blockKind == .horizontalRule, let union = unionRect(line.rects) else { continue }
+	            let trimmed = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
+	            let isHorizontalRule = line.blockKind == .horizontalRule || trimmed == "---" || trimmed == "***" || trimmed == "___"
+	            guard isHorizontalRule, let union = unionRect(line.rects) else { continue }
 
 	            if isEditable {
 	                let caret = selectedRange.location
@@ -577,7 +579,9 @@ private final class MarkdownTextView: NSTextView {
 	        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
 
 	        for line in lines {
-	            guard line.blockKind == .horizontalRule, let union = unionRect(line.rects) else { continue }
+	            let trimmed = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
+	            let isHorizontalRule = line.blockKind == .horizontalRule || trimmed == "---" || trimmed == "***" || trimmed == "___"
+	            guard isHorizontalRule, let union = unionRect(line.rects) else { continue }
 
 	            if isEditable {
 	                let caret = selectedRange().location
