@@ -60,13 +60,20 @@ public final class PendingShareStore {
     @discardableResult
     public func enqueueWebsite(url: String) -> PendingShareItem? {
         logMissingAppGroupIfNeeded(context: "enqueueWebsite")
+        let existingItems = loadAll()
+        if let existing = existingItems.first(where: { $0.kind == .website && $0.url == url }) {
+            os_log(.default, log: Self.log, "Website share already queued %{public}@", url)
+            return existing
+        }
         let item = PendingShareItem(
             id: UUID(),
             kind: .website,
             createdAt: Date(),
             url: url
         )
-        append(item)
+        var items = existingItems
+        items.append(item)
+        replaceAll(items)
         os_log(.default, log: Self.log, "Queued website share %{public}@", url)
         return item
     }

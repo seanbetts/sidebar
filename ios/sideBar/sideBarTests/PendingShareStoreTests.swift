@@ -23,6 +23,16 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(loaded.first?.url, "https://example.com")
     }
 
+    func testEnqueueWebsiteDeduplicates() {
+        let store = makeStore()
+
+        let first = store.enqueueWebsite(url: "https://example.com")
+        let second = store.enqueueWebsite(url: "https://example.com")
+
+        XCTAssertEqual(first?.id, second?.id)
+        XCTAssertEqual(store.loadAll().count, 1)
+    }
+
     func testEnqueueYouTubeStoresItem() {
         let store = makeStore()
 
