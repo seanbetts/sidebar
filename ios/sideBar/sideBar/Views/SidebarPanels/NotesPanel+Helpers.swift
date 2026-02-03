@@ -325,11 +325,13 @@ extension NotesPanelView {
                     Text("No pinned notes")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .listRowBackground(rowBackground)
                 } else {
                     ForEach(pinnedItems) { item in
+                        let isSelected = viewModel.selectedNoteId == item.id
                         NotesTreeRow(
                             item: item,
-                            isSelected: viewModel.selectedNoteId == item.id
+                            isSelected: isSelected
                         ) {
                             requestNoteSelection(id: item.id)
                         } onRename: {
@@ -338,9 +340,11 @@ extension NotesPanelView {
                             confirmDelete(for: item)
                         }
                         .platformContextMenu(items: noteContextMenuItemsList(for: item))
+                        .listRowBackground(isSelected ? DesignTokens.Colors.selection : rowBackground)
                     }
                 }
             }
+            .listRowBackground(rowBackground)
 
             Section("Notes") {
                 mainOutlineGroup
