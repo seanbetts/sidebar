@@ -49,6 +49,16 @@ repos:
         language: system
         files: ^frontend/.*\.(ts|js|svelte|json|md|yml|yaml)$
 
+  # iOS - Plist validation
+  - repo: local
+    hooks:
+      - id: plist-lint
+        name: plist-lint
+        entry: plutil -lint
+        language: system
+        files: \.plist$
+        types: [file]
+
   # iOS - Xcode tests (manual only)
   - repo: local
     hooks:
@@ -86,6 +96,22 @@ repos:
           - svelte-eslint-parser@1.4.1
           - '@typescript-eslint/eslint-plugin@8.50.1'
           - '@typescript-eslint/parser@8.50.1'
+
+  # Docker - Dockerfile linting
+  - repo: https://github.com/AleksaC/hadolint-py
+    rev: v2.12.1-beta
+    hooks:
+      - id: hadolint
+        files: ^backend/docker/Dockerfile.*$
+        args: [--config, backend/docker/.hadolint.yaml]
+
+  # Shell - Script validation
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        files: \.(sh|bash)$
+        args: [--severity=warning]  # Skip info-level (SC1091 for .env sourcing)
 
   # General - File hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks
