@@ -15,15 +15,15 @@ final class HorizontalRuleAttachment: NSTextAttachment {
     var lineHeight: CGFloat
     var horizontalInset: CGFloat
 
-    init(lineColor: PlatformColor, lineHeight: CGFloat = 1, horizontalInset: CGFloat = 0) {
-        self.lineColor = lineColor
-        self.lineHeight = max(1, lineHeight)
-        self.horizontalInset = max(0, horizontalInset)
-        super.init(data: nil, ofType: Self.fileType)
-        HorizontalRuleAttachment.registerViewProvider()
-        allowsTextAttachmentView = true
-        lineLayoutPadding = 0
-    }
+	    init(lineColor: PlatformColor, lineHeight: CGFloat = 1, horizontalInset: CGFloat = 0) {
+	        self.lineColor = lineColor
+	        self.lineHeight = max(1, lineHeight)
+	        self.horizontalInset = max(0, horizontalInset)
+	        super.init(data: Data(), ofType: Self.fileType)
+	        HorizontalRuleAttachment.registerViewProvider()
+	        allowsTextAttachmentView = true
+	        lineLayoutPadding = 0
+	    }
 
     required init?(coder: NSCoder) {
         self.lineColor = Self.platformColor(DesignTokens.Colors.border)
