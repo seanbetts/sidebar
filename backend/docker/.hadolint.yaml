@@ -1,0 +1,9 @@
+ignored:
+  # We need root in entrypoint to chown volumes before dropping privileges
+  - DL3002
+  # Pin apt versions is too strict - we want latest security patches
+  - DL3008
+  # We use requirements.txt for pinning, not inline
+  - DL3013
+  # Multiple RUN consolidation is informational
+  - DL3059
