@@ -158,17 +158,17 @@ enum CodeBlockAttachmentBuilder {
         return attachmentString
     }
 
-    private static func makeHorizontalRuleAttachment(
-        paragraphStyle: NSParagraphStyle,
-        attrs: [NSAttributedString.Key: Any]
-    ) -> NSAttributedString {
-        let attachment = HorizontalRuleAttachment(
-            lineColor: PlatformColor.black,
-            lineHeight: 1,
-            horizontalInset: 0
-        )
-        let attachmentString = NSMutableAttributedString(
-            attributedString: NSAttributedString(attachment: attachment)
+	    private static func makeHorizontalRuleAttachment(
+	        paragraphStyle: NSParagraphStyle,
+	        attrs: [NSAttributedString.Key: Any]
+	    ) -> NSAttributedString {
+	        let attachment = HorizontalRuleAttachment(
+	            lineColor: platformColor(DesignTokens.Colors.border),
+	            lineHeight: 1,
+	            horizontalInset: 0
+	        )
+	        let attachmentString = NSMutableAttributedString(
+	            attributedString: NSAttributedString(attachment: attachment)
         )
         let hrAttrs = horizontalRuleAttributes(from: attrs, paragraphStyle: paragraphStyle)
         attachmentString.addAttributes(hrAttrs, range: NSRange(location: 0, length: attachmentString.length))
