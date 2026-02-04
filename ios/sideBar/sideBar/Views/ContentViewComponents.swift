@@ -37,7 +37,6 @@ public struct ConfigErrorView: View {
 enum ActiveAlert: Identifiable, Equatable {
     case biometricUnavailable
     case biometricHint
-    case sessionExpiry
     case fileReady(ReadyFileNotification)
 
     var id: String {
@@ -46,8 +45,6 @@ enum ActiveAlert: Identifiable, Equatable {
             return "biometricUnavailable"
         case .biometricHint:
             return "biometricHint"
-        case .sessionExpiry:
-            return "sessionExpiry"
         case .fileReady(let notification):
             return "fileReady-\(notification.id)"
         }

@@ -12,10 +12,19 @@ public extension Notification.Name {
 public struct APIClientConfig {
     public let baseUrl: URL
     public let accessTokenProvider: () -> String?
+    /// Optional hook to refresh auth state when a request fails with 401.
+    ///
+    /// Should return true only if auth is now available for new requests.
+    public let refreshAuthIfNeeded: (() async -> Bool)?
 
-    public init(baseUrl: URL, accessTokenProvider: @escaping () -> String?) {
+    public init(
+        baseUrl: URL,
+        accessTokenProvider: @escaping () -> String?,
+        refreshAuthIfNeeded: (() async -> Bool)? = nil
+    ) {
         self.baseUrl = baseUrl
         self.accessTokenProvider = accessTokenProvider
+        self.refreshAuthIfNeeded = refreshAuthIfNeeded
     }
 }
 
@@ -34,6 +43,9 @@ public final class APIClient {
     public let config: APIClientConfig
     private let session: URLSession
     private let logger = Logger(subsystem: "sideBar", category: "APIClient")
+    private let authRefreshMinimumInterval: TimeInterval = 45
+    private var lastAuthRefreshAttempt: Date?
+    private var authRefreshTask: Task<Bool, Never>?
 
     public init(config: APIClientConfig, session: URLSession = APIClient.makeDefaultSession()) {
         self.config = config
@@ -158,6 +170,18 @@ public final class APIClient {
         }
         logger.debug("Response \(http.statusCode) in \(elapsedMs)ms")
         guard (200...299).contains(http.statusCode) else {
+            if http.statusCode == 401,
+               shouldAttemptAuthRefresh(for: request),
+               await attemptAuthRefreshIfNeeded() {
+                var retry = request
+                if let token = config.accessTokenProvider() {
+                    retry.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                } else {
+                    retry.setValue(nil, forHTTPHeaderField: "Authorization")
+                }
+                return try await performRequestWithoutAuthRetry(retry)
+            }
+
             if let body = String(data: data, encoding: .utf8), !body.isEmpty {
                 let preview = body.prefix(2000)
                 logger.error("Response body: \(preview, privacy: .private)")
@@ -178,29 +202,90 @@ public final class APIClient {
         return (data, http)
     }
 
+    private func performRequestWithoutAuthRetry(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let start = Date()
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            NotificationCenter.default.post(
+                name: .apiClientRequestFailed,
+                object: nil,
+                userInfo: ["error": error]
+            )
+            throw error
+        }
+        let elapsedMs = Int(Date().timeIntervalSince(start) * 1000)
+        guard let http = response as? HTTPURLResponse else {
+            logger.error("Response failed: non-HTTP response")
+            NotificationCenter.default.post(name: .apiClientRequestFailed, object: nil)
+            throw APIClientError.unknown
+        }
+        logger.debug("Response(retry) \(http.statusCode) in \(elapsedMs)ms")
+        guard (200...299).contains(http.statusCode) else {
+            NotificationCenter.default.post(
+                name: .apiClientRequestFailed,
+                object: nil,
+                userInfo: ["statusCode": http.statusCode]
+            )
+            let decoder = Self.makeDecoder()
+            let message = Self.decodeErrorMessage(data: data, decoder: decoder)
+            if let message {
+                throw APIClientError.apiError(message)
+            }
+            throw APIClientError.requestFailed(http.statusCode)
+        }
+        NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
+        return (data, http)
+    }
+
+    private func shouldAttemptAuthRefresh(for request: URLRequest) -> Bool {
+        guard config.refreshAuthIfNeeded != nil else { return false }
+        guard request.httpMethod?.uppercased() == "GET" else { return false }
+        return request.value(forHTTPHeaderField: "Authorization") != nil
+    }
+
+    private func attemptAuthRefreshIfNeeded() async -> Bool {
+        guard let refresh = config.refreshAuthIfNeeded else { return false }
+
+        if let authRefreshTask {
+            return await authRefreshTask.value
+        }
+
+        if let lastAuthRefreshAttempt,
+           Date().timeIntervalSince(lastAuthRefreshAttempt) < authRefreshMinimumInterval {
+            return false
+        }
+
+        lastAuthRefreshAttempt = Date()
+        let task = Task { await refresh() }
+        authRefreshTask = task
+        defer { authRefreshTask = nil }
+        return await task.value
+    }
+
     private func logDecodingError<T>(_ error: Error, data: Data, type: T.Type) {
-        print("[APIClient] ❌ Failed to decode \(String(describing: type))")
-        print("[APIClient] Error: \(error)")
+        logger.error("Failed to decode \(String(describing: type), privacy: .public): \(error.localizedDescription, privacy: .public)")
         if let decodingError = error as? DecodingError {
             switch decodingError {
             case .keyNotFound(let key, let context):
                 let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
-                print("[APIClient] Missing key '\(key.stringValue)' at path: \(path.isEmpty ? "(root)" : path)")
+                logger.error("Missing key '\(key.stringValue, privacy: .public)' at path: \(path.isEmpty ? "(root)" : path, privacy: .public)")
             case .typeMismatch(let expectedType, let context):
                 let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
-                print("[APIClient] Type mismatch - expected \(expectedType) at path: \(path.isEmpty ? "(root)" : path)")
+                logger.error("Type mismatch expected \(String(describing: expectedType), privacy: .public) at path: \(path.isEmpty ? "(root)" : path, privacy: .public)")
             case .valueNotFound(let type, let context):
                 let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
-                print("[APIClient] Null value for non-optional \(type) at path: \(path.isEmpty ? "(root)" : path)")
+                logger.error("Null value for non-optional \(String(describing: type), privacy: .public) at path: \(path.isEmpty ? "(root)" : path, privacy: .public)")
             case .dataCorrupted(let context):
                 let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
-                print("[APIClient] Data corrupted at path: \(path.isEmpty ? "(root)" : path) - \(context.debugDescription)")
+                logger.error("Data corrupted at path: \(path.isEmpty ? "(root)" : path, privacy: .public) - \(context.debugDescription, privacy: .public)")
             @unknown default:
-                print("[APIClient] Unknown decoding error")
+                logger.error("Unknown decoding error")
             }
         }
-        if let responseBody = String(data: data.prefix(3000), encoding: .utf8) {
-            print("[APIClient] Response body:\n\(responseBody)")
+        if let responseBody = String(data: data.prefix(3000), encoding: .utf8), !responseBody.isEmpty {
+            logger.error("Decode response body: \(responseBody, privacy: .private)")
         }
     }
 

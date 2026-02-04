@@ -41,11 +41,11 @@ public final class AppEnvironment: ObservableObject {
     let spotlightIndexer: SpotlightIndexer
     let syncCoordinator: SyncCoordinator
 
+    @Published public internal(set) var authState: AuthState = .signedOut
     @Published public internal(set) var isAuthenticated: Bool = false
     @Published public internal(set) var isOffline: Bool = false
     @Published public internal(set) var isNetworkAvailable: Bool = true
     @Published public var commandSelection: AppSection?
-    @Published public var sessionExpiryWarning: Date?
     @Published public internal(set) var signOutEvent: UUID?
     @Published public var activeSection: AppSection?
     @Published public var isTasksFocused: Bool = false {
@@ -141,10 +141,11 @@ public final class AppEnvironment: ObservableObject {
                 }
             ],
             isSyncAllowed: {
-                authSession.accessToken != nil
+                authSession.authState == .active
             }
         )
-        self.isAuthenticated = container.authSession.accessToken != nil
+        self.authState = container.authSession.authState
+        self.isAuthenticated = self.authState != .signedOut
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
         #endif

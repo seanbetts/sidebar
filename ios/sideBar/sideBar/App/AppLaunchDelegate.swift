@@ -108,7 +108,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
 
         let refreshTask = Task {
             guard let environment = AppEnvironment.shared,
-                  environment.isAuthenticated else {
+                  environment.authState == .active else {
                 return false
             }
             await environment.container.authSession.refreshSession()
@@ -144,7 +144,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
 
         let widgetTask = Task {
             guard let environment = AppEnvironment.shared,
-                  environment.isAuthenticated else {
+                  environment.authState == .active else {
                 return false
             }
             // Apply widget task completions and refresh counts so badge stays in sync.

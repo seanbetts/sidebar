@@ -50,14 +50,12 @@ extension ContentView {
                     backgroundedAt = Date()
                 }
                 #if os(iOS)
-                // Schedule background tasks for token and widget refresh
+                // Schedule background task for widget refresh (auth refresh is foreground-only)
                 if environment.isAuthenticated {
-                    AppLaunchDelegate.scheduleTokenRefresh()
                     AppLaunchDelegate.scheduleWidgetRefresh()
                 }
                 #endif
             }
-            #if os(iOS)
             if newValue == .active {
                 // Check if we need to require biometric based on grace period
                 if biometricUnlockEnabled && isBiometricUnlocked {
@@ -70,33 +68,44 @@ extension ContentView {
                 }
                 backgroundedAt = nil
 
-                // Refresh session if close to expiry (silent, no alert unless it fails)
-                if environment.isAuthenticated {
+                // Refresh session on activation for both iOS and macOS.
+                if environment.authState != .signedOut {
                     Task {
-                        await environment.container.authSession.refreshSessionIfStale()
+                        if environment.authState == .stale {
+                            await environment.container.authSession.refreshSession()
+                        } else {
+                            await environment.container.authSession.refreshSessionIfStale()
+                        }
                     }
                 }
 
+                #if os(iOS)
                 Task {
-                    await environment.consumeExtensionEvents()
-                    await environment.consumeWidgetCompletions()
-                    await environment.consumeWidgetQuickSave()
+                    if environment.authState == .active {
+                        await environment.consumeExtensionEvents()
+                        await environment.consumeWidgetCompletions()
+                        await environment.consumeWidgetQuickSave()
+                    }
                     environment.consumeWidgetAddTask()
                     environment.consumeWidgetAddNote()
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    await environment.consumeExtensionEvents()
-                    await environment.websitesViewModel.load(force: true)
+                    if environment.authState == .active {
+                        await environment.consumeExtensionEvents()
+                        await environment.websitesViewModel.load(force: true)
+                    }
                 }
                 environment.runOfflineMaintenance()
+                #endif
             }
-            #endif
         })
         #if os(iOS)
         content = AnyView(content.onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             Task {
-                await environment.consumeExtensionEvents()
-                await environment.consumeWidgetCompletions()
-                await environment.consumeWidgetQuickSave()
+                if environment.authState == .active {
+                    await environment.consumeExtensionEvents()
+                    await environment.consumeWidgetCompletions()
+                    await environment.consumeWidgetQuickSave()
+                }
                 environment.consumeWidgetAddTask()
                 environment.consumeWidgetAddNote()
             }
@@ -206,23 +215,25 @@ extension ContentView {
                 pendingWriteConflict = nil
             }
         })
-        content = AnyView(content.onChange(of: environment.isAuthenticated) { oldValue, isAuthenticated in
+        content = AnyView(content.onChange(of: environment.authState) { oldValue, newValue in
+            let oldSignedIn = oldValue != .signedOut
+            let isAuthenticated = newValue != .signedOut
             activeAlert = nil
-            pendingSessionExpiryAlert = false
             pendingBiometricUnavailableAlert = false
-            environment.sessionExpiryWarning = nil
             isSigningOut = false
             if isAuthenticated {
                 #if os(iOS)
                 Task {
-                    await environment.consumeExtensionEvents()
-                    await environment.consumeWidgetCompletions()
+                    if environment.authState == .active {
+                        await environment.consumeExtensionEvents()
+                        await environment.consumeWidgetCompletions()
+                    }
                 }
                 #endif
                 // When user just signed in (transitioned from not authenticated to authenticated),
                 // consider them already unlocked since they authenticated with password.
                 // Biometric lock should only apply when returning from background.
-                let justSignedIn = !oldValue
+                let justSignedIn = !oldSignedIn
                 if justSignedIn {
                     isBiometricUnlocked = true
                 } else if biometricUnlockEnabled {
@@ -245,6 +256,7 @@ extension ContentView {
                 if !didLoadSettings {
                     didLoadSettings = true
                     Task {
+                        guard environment.authState == .active else { return }
                         await environment.settingsViewModel.load()
                         await environment.settingsViewModel.loadProfileImage()
                         await refreshWeatherIfPossible()
@@ -284,7 +296,7 @@ extension ContentView {
         #endif
         content = AnyView(content.task {
             applyInitialSelectionIfNeeded()
-            if environment.isAuthenticated && !didLoadSettings {
+            if environment.authState == .active && !didLoadSettings {
                 didLoadSettings = true
                 isBiometricUnlocked = !biometricUnlockEnabled
                 Task {
@@ -300,19 +312,8 @@ extension ContentView {
                 .environmentObject(environment)
         })
         #endif
-        content = AnyView(content.onChange(of: environment.sessionExpiryWarning) { _, newValue in
-            enqueueAlertAction {
-                guard environment.isAuthenticated, !isSigningOut else { return }
-                if newValue != nil {
-                    presentAlert(.sessionExpiry)
-                } else {
-                    pendingSessionExpiryAlert = false
-                }
-            }
-        })
         content = AnyView(content.onChange(of: environment.signOutEvent) { _, _ in
             enqueueAlertAction {
-                pendingSessionExpiryAlert = false
                 pendingBiometricUnavailableAlert = false
                 activeAlert = nil
                 isSigningOut = true
@@ -326,10 +327,9 @@ extension ContentView {
                 #endif
             }
         })
-        content = AnyView(content.onChange(of: environment.isAuthenticated) { _, isAuthenticated in
-            guard !isAuthenticated else { return }
+        content = AnyView(content.onChange(of: environment.authState) { _, newValue in
+            guard newValue == .signedOut else { return }
             enqueueAlertAction {
-                pendingSessionExpiryAlert = false
                 pendingBiometricUnavailableAlert = false
                 activeAlert = nil
                 isSigningOut = false
@@ -343,15 +343,6 @@ extension ContentView {
                     activeAlert = .biometricUnavailable
                     return
                 }
-                if pendingSessionExpiryAlert,
-                   environment.isAuthenticated,
-                   !isSigningOut,
-                   environment.sessionExpiryWarning != nil {
-                    pendingSessionExpiryAlert = false
-                    activeAlert = .sessionExpiry
-                    return
-                }
-                pendingSessionExpiryAlert = false
                 if let notification = pendingReadyFileNotification {
                     pendingReadyFileNotification = nil
                     handleReadyFileNotification(notification)
@@ -379,25 +370,6 @@ extension ContentView {
                         }
                     }),
                     secondaryButton: .cancel()
-                )
-            case .sessionExpiry:
-                return Alert(
-                    title: Text("Session Expiring Soon"),
-                    message: Text("Your session will expire soon. Would you like to stay signed in?"),
-                    primaryButton: .default(Text("Stay Signed In"), action: {
-                        enqueueAlertAction {
-                            Task { await environment.container.authSession.refreshSession() }
-                            environment.sessionExpiryWarning = nil
-                        }
-                    }),
-                    secondaryButton: .destructive(Text("Sign Out"), action: {
-                        enqueueAlertAction {
-                            pendingSessionExpiryAlert = false
-                            Task {
-                                await environment.beginSignOut()
-                            }
-                        }
-                    })
                 )
             case .fileReady(let notification):
                 return Alert(

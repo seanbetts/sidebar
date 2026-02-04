@@ -3,7 +3,7 @@ import sideBarShared
 
 extension AppEnvironment {
     public func consumePendingShares() async {
-        guard isAuthenticated else { return }
+        guard authState == .active else { return }
         guard !connectivityMonitor.isOffline else { return }
         let pending = PendingShareStore.shared.consumeAll()
         guard !pending.isEmpty else { return }

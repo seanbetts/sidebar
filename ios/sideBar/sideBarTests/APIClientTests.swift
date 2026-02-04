@@ -77,6 +77,95 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(cache?.diskCapacity, 0)
     }
 
+    func test401TriggersRefreshAndRetriesGetOnce() async throws {
+        final class TokenBox: @unchecked Sendable {
+            var token: String
+            init(_ token: String) { self.token = token }
+        }
+        final class Counter: @unchecked Sendable {
+            var value: Int = 0
+        }
+
+        let tokenBox = TokenBox("token-1")
+        let refreshCalls = Counter()
+        let requestCount = Counter()
+
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { tokenBox.token },
+            refreshAuthIfNeeded: {
+                refreshCalls.value += 1
+                tokenBox.token = "token-2"
+                return true
+            }
+        )
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolMock.self]
+        let session = URLSession(configuration: configuration)
+        let client = APIClient(config: config, session: session)
+
+        URLProtocolMock.requestHandler = { request in
+            requestCount.value += 1
+            if requestCount.value == 1 {
+                XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-1")
+                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+                return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
+            }
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-2")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{}".utf8))
+        }
+
+        let _: EmptyResponse = try await client.request("ping", method: "GET")
+        XCTAssertEqual(refreshCalls.value, 1)
+        XCTAssertEqual(requestCount.value, 2)
+    }
+
+    func test401DoesNotRetryForPost() async {
+        final class TokenBox: @unchecked Sendable {
+            var token: String
+            init(_ token: String) { self.token = token }
+        }
+        final class Counter: @unchecked Sendable {
+            var value: Int = 0
+        }
+
+        let tokenBox = TokenBox("token-1")
+        let refreshCalls = Counter()
+        let requestCount = Counter()
+
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { tokenBox.token },
+            refreshAuthIfNeeded: {
+                refreshCalls.value += 1
+                tokenBox.token = "token-2"
+                return true
+            }
+        )
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolMock.self]
+        let session = URLSession(configuration: configuration)
+        let client = APIClient(config: config, session: session)
+
+        URLProtocolMock.requestHandler = { request in
+            requestCount.value += 1
+            let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
+        }
+
+        do {
+            try await client.requestVoid("ping", method: "POST")
+            XCTFail("Expected error")
+        } catch {
+            // Expected
+        }
+        XCTAssertEqual(refreshCalls.value, 0)
+        XCTAssertEqual(requestCount.value, 1)
+    }
+
     private func makeClient(token: String) -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

@@ -28,7 +28,11 @@ public final class ServiceContainer {
         self.cacheClient = cacheClient
         self.apiClient = APIClient(config: APIClientConfig(
             baseUrl: config.apiBaseUrl,
-            accessTokenProvider: { authSession.accessToken }
+            accessTokenProvider: { authSession.authorizationToken },
+            refreshAuthIfNeeded: {
+                await authSession.refreshSession()
+                return authSession.authorizationToken != nil
+            }
         ))
 
         self.chatAPI = ChatAPI(client: apiClient)
@@ -50,7 +54,7 @@ public final class ServiceContainer {
     public func makeChatStreamClient(handler: ChatStreamEventHandler?) -> ChatStreamClient {
         URLSessionChatStreamClient(
             baseUrl: config.apiBaseUrl,
-            accessTokenProvider: { [authSession] in authSession.accessToken },
+            accessTokenProvider: { [authSession] in authSession.authorizationToken },
             handler: handler
         )
     }

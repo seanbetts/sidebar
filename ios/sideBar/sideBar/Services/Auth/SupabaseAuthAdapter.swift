@@ -51,25 +51,21 @@ public enum AuthAdapterError: LocalizedError, Equatable {
 public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     @Published public private(set) var accessToken: String?
     @Published public private(set) var userId: String?
+    @Published public private(set) var authState: AuthState = .signedOut
     @Published public private(set) var authError: AuthErrorEvent?
-    @Published public private(set) var sessionExpiryWarning: Date?
 
     private let stateStore: AuthStateStore
-    private let supabase: SupabaseClient
+    private let authClient: SupabaseAuthClientProtocol
     private var authStateTask: Task<Void, Never>?
-    private var refreshScheduleTask: Task<Void, Never>?
     private var refreshInFlightTask: Task<Void, Never>?
-    private var warningTask: Task<Void, Never>?
     private var signInTask: Task<Void, Error>?
     private let logger = Logger(subsystem: "sideBar", category: "Auth")
     private let sessionRefreshLeadTime: TimeInterval = 600  // 10 min before expiry
-    private let sessionWarningLeadTime: TimeInterval = 120  // 2 min before expiry
     private let refreshCooldown: TimeInterval = 60
     private let offlineAccessWindow: TimeInterval = 60 * 60 * 24
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
     private var lastSessionExpiryDate: Date?
     private var lastRefreshAttempt: Date?
-    private var sessionWarningToken = UUID()
 
     // Rate limiting for login attempts
     private var failedLoginAttempts: Int = 0
@@ -96,13 +92,15 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         return remaining > 0 ? remaining : nil
     }
 
+    public var authorizationToken: String? {
+        authState == .active ? accessToken : nil
+    }
+
     public init(
         config: EnvironmentConfig,
         stateStore: AuthStateStore,
         startAuthStateTask: Bool = true
     ) {
-        self.stateStore = stateStore
-
         // Create Supabase storage adapter using our Keychain store.
         // This eliminates the race condition between Supabase's internal storage
         // and our separate Keychain storage by making them the same.
@@ -118,15 +116,30 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             )
         }
 
-        supabase = SupabaseClient(
+        let supabase = SupabaseClient(
             supabaseURL: config.supabaseUrl,
             supabaseKey: config.supabaseAnonKey,
             options: SupabaseClientOptions(auth: authOptions)
         )
+        self.stateStore = stateStore
+        self.authClient = SupabaseAuthClient(supabase: supabase)
+        commonInit(startAuthStateTask: startAuthStateTask)
+    }
 
+    init(
+        authClient: SupabaseAuthClientProtocol,
+        stateStore: AuthStateStore,
+        startAuthStateTask: Bool = true
+    ) {
+        self.stateStore = stateStore
+        self.authClient = authClient
+        commonInit(startAuthStateTask: startAuthStateTask)
+    }
+
+    private func commonInit(startAuthStateTask: Bool) {
         // With unified storage, Supabase now loads sessions from our Keychain automatically.
         // We just need to apply the session if one exists, or check offline window expiry.
-        if let session = supabase.auth.currentSession {
+        if let session = authClient.currentSession {
             if shouldAllowOfflineAccess(hasStoredToken: true) {
                 applySession(session)
             } else {
@@ -138,10 +151,10 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         }
 
         if startAuthStateTask {
-            authStateTask = Task { [supabase, weak self] in
-                for await (_, session) in supabase.auth.authStateChanges {
+            authStateTask = Task { [authClient, weak self] in
+                for await (event, session) in authClient.authStateChanges {
                     guard let self else { return }
-                    self.applySession(session)
+                    await self.handleAuthStateChange(event: event, session: session)
                 }
             }
         }
@@ -149,9 +162,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
 
     deinit {
         authStateTask?.cancel()
-        refreshScheduleTask?.cancel()
         refreshInFlightTask?.cancel()
-        warningTask?.cancel()
     }
 
     public func signIn(email: String, password: String) async throws {
@@ -166,8 +177,8 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         let task = Task { [weak self] in
             guard let self else { return }
             do {
-                try await self.supabase.auth.signIn(email: email, password: password)
-                if let session = self.supabase.auth.currentSession {
+                try await self.authClient.signIn(email: email, password: password)
+                if let session = self.authClient.currentSession {
                     self.applySession(session)
                 }
                 // Reset rate limiting on successful login
@@ -200,10 +211,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     }
 
     public func refreshSession() async {
-        // Only require our local state - with unified storage, supabase.auth.currentSession
-        // should be available, but we don't strictly require it for edge cases.
-        guard accessToken != nil, userId != nil else {
-            sessionExpiryWarning = nil
+        guard authClient.currentSession != nil else {
             return
         }
         if let task = refreshInFlightTask {
@@ -218,16 +226,17 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         let task = Task { [weak self] in
             guard let self else { return }
             do {
-                let session = try await self.supabase.auth.refreshSession()
+                let session = try await self.authClient.refreshSession()
                 self.applySession(session)
                 self.logger.notice("Session refresh succeeded")
             } catch {
                 self.logger.error("Session refresh failed: \(error.localizedDescription, privacy: .public)")
-                if let expiryDate = self.lastSessionExpiryDate,
-                   expiryDate.timeIntervalSinceNow <= self.sessionWarningLeadTime {
-                    self.sessionExpiryWarning = expiryDate
+                if self.isAuthInvalid(error) {
+                    await self.transitionToSignedOut(clearPersistedState: true)
+                    self.recordError(AuthAdapterError.sessionRefreshFailed.errorDescription ?? "Session refresh failed.")
+                } else {
+                    self.transitionToStale()
                 }
-                self.recordError(AuthAdapterError.sessionRefreshFailed.errorDescription ?? "Session refresh failed.")
             }
         }
         refreshInFlightTask = task
@@ -237,24 +246,11 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
 
     public func signOut() async {
         do {
-            try await supabase.auth.signOut()
+            try await authClient.signOut()
         } catch {
             // Best effort: clear local auth even if server sign-out fails.
         }
-        accessToken = nil
-        userId = nil
-        do {
-            try stateStore.clear()
-        } catch {
-            logger.error("Failed to clear auth state: \(error.localizedDescription, privacy: .public)")
-        }
-        sessionExpiryWarning = nil
-        lastSessionExpiryDate = nil
-        warningTask?.cancel()
-        refreshScheduleTask?.cancel()
-        refreshInFlightTask?.cancel()
-        sessionWarningToken = UUID()
-        logger.notice("Signed out")
+        await transitionToSignedOut(clearPersistedState: true)
     }
 
     public func restoreSession(accessToken: String?, userId: String?) {
@@ -287,84 +283,29 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             guard let storedToken, let storedUserId else { return false }
             guard shouldAllowOfflineAccess(hasStoredToken: true) else { return false }
             restoreSession(accessToken: storedToken, userId: storedUserId)
+            transitionToStale()
             return true
         } catch {
             return false
         }
     }
 
-    private func applySession(_ session: Session?) {
-        guard let session else {
-            restoreSession(accessToken: nil, userId: nil)
-            sessionExpiryWarning = nil
-            lastSessionExpiryDate = nil
-            warningTask?.cancel()
-            refreshScheduleTask?.cancel()
-            refreshInFlightTask?.cancel()
-            return
-        }
-
+    private func applySession(_ session: SupabaseSessionInfo?) {
+        guard let session else { return }
         let resolvedExpiry = Self.sessionExpiryDate(from: session)
         if resolvedExpiry <= Date() {
+            // Keep the user "signed in" locally while we attempt a silent refresh.
+            restoreSession(accessToken: session.accessToken, userId: session.userId)
+            lastSessionExpiryDate = resolvedExpiry
+            transitionToStale()
             Task { await refreshSession() }
             return
         }
 
-        restoreSession(accessToken: session.accessToken, userId: session.user.id.uuidString)
+        restoreSession(accessToken: session.accessToken, userId: session.userId)
         updateLastAuthTimestamp(Date())
-        scheduleSessionManagement(for: session, expiresAt: resolvedExpiry)
-    }
-
-    private func scheduleSessionManagement(for session: Session, expiresAt: Date) {
-        warningTask?.cancel()
-        refreshScheduleTask?.cancel()
-        sessionExpiryWarning = nil
-        sessionWarningToken = UUID()
-        let warningToken = sessionWarningToken
-
-        let now = Date()
-        if expiresAt <= now {
-            Task { await refreshSession() }
-            return
-        }
-        lastSessionExpiryDate = expiresAt
-
-        // Schedule warning 2 min before expiry (only shows if refresh fails)
-        let warningDelay = expiresAt.addingTimeInterval(-sessionWarningLeadTime).timeIntervalSinceNow
-        if warningDelay > 5 {
-            warningTask = Task { [weak self] in
-                do {
-                    try await Task.sleep(for: .seconds(warningDelay))
-                } catch {
-                    if !Task.isCancelled {
-                        self?.logger.error("Session warning sleep failed: \(error.localizedDescription, privacy: .public)")
-                    }
-                    return
-                }
-                await MainActor.run {
-                    guard let self, self.sessionWarningToken == warningToken else { return }
-                    self.sessionExpiryWarning = expiresAt
-                }
-            }
-        }
-
-        // Schedule refresh 10 min before expiry (separate from warning)
-        let refreshDelay = expiresAt.addingTimeInterval(-sessionRefreshLeadTime).timeIntervalSinceNow
-        if refreshDelay > 0 {
-            refreshScheduleTask = Task { [weak self] in
-                do {
-                    try await Task.sleep(for: .seconds(refreshDelay))
-                } catch {
-                    if !Task.isCancelled {
-                        self?.logger.error("Session refresh sleep failed: \(error.localizedDescription, privacy: .public)")
-                    }
-                    return
-                }
-                await self?.refreshSession()
-            }
-        } else {
-            Task { await refreshSession() }
-        }
+        lastSessionExpiryDate = resolvedExpiry
+        authState = .active
     }
 
     private func mapAuthError(_ error: Error) -> AuthAdapterError {
@@ -391,7 +332,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         return .unknown(error.localizedDescription)
     }
 
-    static func sessionExpiryDate(from session: Session) -> Date {
+    static func sessionExpiryDate(from session: SupabaseSessionInfo) -> Date {
         if let jwtExpiry = jwtExpiryDate(from: session.accessToken) {
             return jwtExpiry
         }
@@ -459,12 +400,20 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     /// On success, applies the refreshed session. On failure, signs out.
     private func attemptSessionRecovery() async {
         do {
-            let session = try await supabase.auth.refreshSession()
+            guard authClient.currentSession != nil else {
+                await transitionToSignedOut(clearPersistedState: true)
+                return
+            }
+            let session = try await authClient.refreshSession()
             applySession(session)
             logger.notice("Session recovery succeeded after offline window expiry")
         } catch {
             logger.warning("Session recovery failed: \(error.localizedDescription, privacy: .public)")
-            await signOut()
+            if isAuthInvalid(error) {
+                await transitionToSignedOut(clearPersistedState: true)
+            } else {
+                transitionToStale()
+            }
         }
     }
 
@@ -479,5 +428,71 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
 
     public func clearAuthError() {
         authError = nil
+    }
+
+    private func transitionToStale() {
+        if authState != .stale {
+            logger.notice("Auth state transitioned to stale")
+        }
+        authState = .stale
+    }
+
+    private func transitionToSignedOut(clearPersistedState: Bool) async {
+        accessToken = nil
+        userId = nil
+        lastSessionExpiryDate = nil
+        refreshInFlightTask?.cancel()
+        if clearPersistedState {
+            do {
+                try stateStore.clear()
+            } catch {
+                logger.error("Failed to clear auth state: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        authState = .signedOut
+        logger.notice("Signed out")
+    }
+
+    private func handleAuthStateChange(event: SupabaseAuthEvent, session: SupabaseSessionInfo?) async {
+        switch event {
+        case .signedOut:
+            await transitionToSignedOut(clearPersistedState: true)
+        case .initialSession:
+            if let session {
+                applySession(session)
+            } else {
+                // INITIAL_SESSION can legitimately be nil; attempt recovery only if we were previously signed in.
+                if authState != .signedOut {
+                    await attemptSessionRecovery()
+                }
+            }
+        case .other:
+            if let session {
+                applySession(session)
+                return
+            }
+            // Treat nil as "unknown" and attempt recovery once, then decide.
+            await attemptSessionRecovery()
+        }
+    }
+
+    private func isAuthInvalid(_ error: Error) -> Bool {
+        if error is URLError {
+            return false
+        }
+        let description = error.localizedDescription.lowercased()
+        if description.contains("invalid") && description.contains("refresh") {
+            return true
+        }
+        if description.contains("refresh token") && description.contains("expired") {
+            return true
+        }
+        if description.contains("jwt") && description.contains("expired") && description.contains("refresh") {
+            return true
+        }
+        if description.contains("unauthorized") || description.contains("forbidden") {
+            return true
+        }
+        return false
     }
 }

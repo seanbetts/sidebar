@@ -3,11 +3,13 @@ import Foundation
 
 extension AppEnvironment {
     func realtimeClientStopStart() {
-        guard let userId = container.authSession.userId, isAuthenticated else {
+        guard authState == .active,
+              let userId = container.authSession.userId,
+              let token = container.authSession.authorizationToken
+        else {
             realtimeClient.stop()
             return
         }
-        let token = container.authSession.accessToken
         Task {
             await realtimeClient.start(userId: userId, accessToken: token)
         }
@@ -55,7 +57,7 @@ extension AppEnvironment {
     }
 
     func refreshOnReconnect() {
-        guard isAuthenticated else {
+        guard authState == .active else {
             return
         }
         Task {

@@ -24,8 +24,6 @@ extension ContentView {
         switch alert {
         case .biometricUnavailable:
             pendingBiometricUnavailableAlert = true
-        case .sessionExpiry:
-            pendingSessionExpiryAlert = true
         case .biometricHint:
             break
         case .fileReady(let notification):
