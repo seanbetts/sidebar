@@ -96,20 +96,19 @@ final class HorizontalRuleAttachment: NSTextAttachment {
 	        forBounds imageBounds: CGRect,
 	        textContainer: NSTextContainer?,
 	        characterIndex charIndex: Int
-	    ) -> UIImage? {
-	        let height = max(1, lineHeight)
-	        let width = max(1, imageBounds.width)
-	        let size = CGSize(width: width, height: height)
-	        let format = UIGraphicsImageRendererFormat.default()
-	        format.opaque = true
-	        let renderer = UIGraphicsImageRenderer(size: size, format: format)
-	        let traitCollection = textContainer?.layoutManager?.textView?.traitCollection ?? UITraitCollection.current
-	        let color = lineColor.resolvedColor(with: traitCollection)
-	        return renderer.image { context in
-	            color.setFill()
-	            context.fill(CGRect(origin: .zero, size: size))
-	        }
-	    }
+		    ) -> UIImage? {
+		        let height = max(1, lineHeight)
+		        let width = max(1, imageBounds.width)
+		        let size = CGSize(width: width, height: height)
+		        let format = UIGraphicsImageRendererFormat.default()
+		        format.opaque = true
+		        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+		        let color = lineColor
+		        return renderer.image { context in
+		            color.setFill()
+		            context.fill(CGRect(origin: .zero, size: size))
+		        }
+		    }
 #else
 	    override func image(
 	        forBounds imageBounds: CGRect,
