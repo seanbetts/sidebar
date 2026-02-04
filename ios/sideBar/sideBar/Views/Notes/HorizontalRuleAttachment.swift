@@ -103,7 +103,8 @@ final class HorizontalRuleAttachment: NSTextAttachment {
 	        let format = UIGraphicsImageRendererFormat.default()
 	        format.opaque = true
 	        let renderer = UIGraphicsImageRenderer(size: size, format: format)
-	        let color = lineColor
+	        let traitCollection = textContainer?.layoutManager?.textView?.traitCollection ?? UITraitCollection.current
+	        let color = lineColor.resolvedColor(with: traitCollection)
 	        return renderer.image { context in
 	            color.setFill()
 	            context.fill(CGRect(origin: .zero, size: size))
@@ -118,7 +119,8 @@ final class HorizontalRuleAttachment: NSTextAttachment {
 	        let height = max(1, lineHeight)
 	        let width = max(1, imageBounds.width)
 	        let size = NSSize(width: width, height: height)
-	        let color = lineColor
+	        let appearance = textContainer?.layoutManager?.textView?.effectiveAppearance ?? NSAppearance.current
+	        let color = lineColor.resolvedColor(with: appearance)
 	        return NSImage(size: size, flipped: false) { rect in
 	            color.setFill()
 	            rect.fill()
