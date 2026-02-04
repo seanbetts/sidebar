@@ -29,7 +29,7 @@ extension AppEnvironment {
     }
 
     func handleRemoteNotification(_ userInfo: [AnyHashable: Any]) {
-        guard isAuthenticated else { return }
+        guard authState == .active else { return }
         Task { @MainActor in
             await tasksViewModel.loadCounts(force: true)
             let selection = tasksStore.selection
@@ -46,7 +46,7 @@ extension AppEnvironment {
     }
 
     func registerDeviceTokenIfNeeded() {
-        guard isAuthenticated else { return }
+        guard authState == .active else { return }
         guard let token = deviceToken else { return }
         guard let userId = container.authSession.userId else { return }
         if lastRegisteredDeviceToken == token, lastRegisteredUserId == userId {

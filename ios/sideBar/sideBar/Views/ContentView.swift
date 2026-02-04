@@ -41,7 +41,6 @@ public struct ContentView: View {
     @State var didLoadSettings = false
     @State var isBiometricUnlocked = false
     @State var activeAlert: ActiveAlert?
-    @State var pendingSessionExpiryAlert = false
     @State var pendingBiometricUnavailableAlert = false
     @State var isSigningOut = false
     @State var pendingReadyFileNotification: ReadyFileNotification?
@@ -68,7 +67,7 @@ public struct ContentView: View {
             if let configError = environment.configError {
                 ConfigErrorView(error: configError)
                     .onAppear { logStartup("ConfigErrorView appeared") }
-            } else if !environment.isAuthenticated {
+            } else if environment.authState == .signedOut {
                 LoginView()
                     .onAppear { logStartup("LoginView appeared") }
             } else {

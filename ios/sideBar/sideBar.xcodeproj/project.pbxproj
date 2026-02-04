@@ -11,8 +11,6 @@
 		1413DE4E2F2B514C002495EE /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		1413DE4F2F2B514C002495EE /* sideBarShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1413DE702F2B53B3002495EE /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
-		9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
-		9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		142516B72F1EB96B0072E4F9 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6C92F27A6420066EE47 /* WidgetKit.framework */; };
 		1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6CB2F27A6420066EE47 /* SwiftUI.framework */; };
@@ -27,6 +25,8 @@
 		14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
 		14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		14F1A0B82F31000000BEEF03 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0B92F31000000BEEF03 /* Markdown */; };
+		9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
+		9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -154,6 +154,22 @@
 			);
 			target = 142516AC2F1EB96B0072E4F9 /* ShareExtension */;
 		};
+		142516C62F1EBECC0072E4F9 /* Exceptions for "sideBar" folder in "ShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+				Models/WebsiteModels.swift,
+				Services/Network/WebsitesAPI.swift,
+			);
+			target = 142516AC2F1EB96B0072E4F9 /* ShareExtension */;
+		};
+		1448E6DE2F27A6430066EE47 /* Exceptions for "sideBarWidgets" folder in "sideBarWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 1448E6C62F27A6420066EE47 /* sideBarWidgetsExtension */;
+		};
 		9A8B7C6D5E4F3A2B1C0D0E01 /* Exceptions for "sideBar Safari Extension" folder in "sideBar Safari Extension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -174,22 +190,6 @@
 				Info.plist,
 			);
 			target = 146EA0952F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */;
-		};
-		142516C62F1EBECC0072E4F9 /* Exceptions for "sideBar" folder in "ShareExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Assets.xcassets,
-				Models/WebsiteModels.swift,
-				Services/Network/WebsitesAPI.swift,
-			);
-			target = 142516AC2F1EB96B0072E4F9 /* ShareExtension */;
-		};
-		1448E6DE2F27A6430066EE47 /* Exceptions for "sideBarWidgets" folder in "sideBarWidgetsExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 1448E6C62F27A6420066EE47 /* sideBarWidgetsExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -952,7 +952,7 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-					MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				PRODUCT_BUNDLE_IDENTIFIER = seanbetts.sideBarShared;
@@ -995,7 +995,7 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-					MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				PRODUCT_BUNDLE_IDENTIFIER = seanbetts.sideBarShared;
@@ -1168,7 +1168,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension/Info.plist";
-					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
+				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1176,7 +1176,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-					MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,
@@ -1205,7 +1205,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension/Info.plist";
-					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
+				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1213,7 +1213,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-					MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,
@@ -1242,7 +1242,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS) Extension/Info.plist";
-					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
+				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1250,7 +1250,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-					MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,
@@ -1278,7 +1278,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS) Extension/Info.plist";
-					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
+				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1286,7 +1286,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-					MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,
@@ -1316,7 +1316,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS)/Info.plist";
-					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
+				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -1327,7 +1327,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-					MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,
@@ -1358,7 +1358,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS)/Info.plist";
-					INFOPLIST_KEY_CFBundleDisplayName = sideBar;
+				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -1369,7 +1369,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-					MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
 					SafariServices,

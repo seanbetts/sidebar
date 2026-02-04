@@ -6,7 +6,7 @@ import UIKit
 
 extension ContentView {
     func refreshWeatherIfPossible() async {
-        guard environment.isAuthenticated else { return }
+        guard environment.authState == .active else { return }
         let location = environment.settingsViewModel.settings?.location?.trimmed ?? ""
         guard !location.isEmpty else { return }
         await environment.weatherViewModel.load(location: location)

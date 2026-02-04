@@ -48,19 +48,18 @@ extension AppEnvironment {
             }
             .store(in: &cancellables)
 
+        authAdapter.$authState
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.refreshAuthState()
+            }
+            .store(in: &cancellables)
+
         authAdapter.$authError
             .compactMap { $0 }
             .sink { [weak self, weak authAdapter] event in
                 self?.toastCenter.show(message: event.message)
                 authAdapter?.clearAuthError()
-            }
-            .store(in: &cancellables)
-
-        authAdapter.$sessionExpiryWarning
-            .sink { [weak self] warning in
-                DispatchQueue.main.async {
-                    self?.sessionExpiryWarning = warning
-                }
             }
             .store(in: &cancellables)
     }

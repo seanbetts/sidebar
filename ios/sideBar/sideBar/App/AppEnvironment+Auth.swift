@@ -3,9 +3,14 @@ import sideBarShared
 
 extension AppEnvironment {
     public func refreshAuthState() {
+        let previousAuthState = authState
+        authState = container.authSession.authState
         let wasAuthenticated = isAuthenticated
-        isAuthenticated = container.authSession.accessToken != nil
-        if wasAuthenticated && !isAuthenticated {
+        isAuthenticated = authState != .signedOut
+
+        let becameSignedOut = previousAuthState != .signedOut && authState == .signedOut
+        let becameStale = previousAuthState != .stale && authState == .stale
+        if becameSignedOut {
             container.cacheClient.clear()
             chatStore.reset()
             notesStore.reset()
@@ -15,18 +20,24 @@ extension AppEnvironment {
             notesViewModel.clearSelection()
             websitesViewModel.clearSelection()
             ingestionViewModel.clearSelection()
-            sessionExpiryWarning = nil
             Task {
                 await spotlightIndexer.clearAllIndexes()
             }
         }
+        if becameStale && wasAuthenticated {
+            toastCenter.show(message: "Sync paused — trying to refresh your session.")
+        }
         if isAuthenticated {
             biometricMonitor.startMonitoring()
             #if os(iOS) || os(macOS)
-            registerDeviceTokenIfNeeded()
+            if authState == .active {
+                registerDeviceTokenIfNeeded()
+            }
             #endif
             Task { [weak self] in
-                await self?.consumePendingShares()
+                if self?.authState == .active {
+                    await self?.consumePendingShares()
+                }
             }
         } else {
             biometricMonitor.stopMonitoring()
@@ -39,7 +50,6 @@ extension AppEnvironment {
 
     public func beginSignOut() async {
         signOutEvent = UUID()
-        sessionExpiryWarning = nil
         #if os(iOS) || os(macOS)
         await disableDeviceTokenIfNeeded()
         #endif
@@ -51,7 +61,7 @@ extension AppEnvironment {
         await consumePendingShares()
         let events = ExtensionEventStore.shared.consumeEvents()
         guard !events.isEmpty else { return }
-        guard isAuthenticated else { return }
+        guard authState == .active else { return }
         let websiteEvents = events.filter { $0.type == .websiteSaved }
         guard !websiteEvents.isEmpty else { return }
         for event in websiteEvents {
@@ -70,7 +80,7 @@ extension AppEnvironment {
         let taskIds = operations
             .filter { $0.action == .complete }
             .map { $0.itemId }
-        guard !taskIds.isEmpty, isAuthenticated else { return }
+        guard !taskIds.isEmpty, authState == .active else { return }
 
         // Complete each task that was marked done in the widget
         for taskId in taskIds {
@@ -128,7 +138,7 @@ extension AppEnvironment {
     @MainActor
     public func consumeWidgetQuickSave() async {
         guard let url = WidgetDataManager.shared.consumePendingQuickSave(),
-              isAuthenticated else { return }
+              authState == .active else { return }
 
         // Navigate to websites and save the URL
         commandSelection = .websites
