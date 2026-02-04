@@ -12,8 +12,8 @@ final class HorizontalRuleAttachment: NSTextAttachment {
     static let fileType = "com.ai.sidebar.horizontalrule"
 
     var lineColor: PlatformColor
-    var lineHeight: CGFloat
-    var horizontalInset: CGFloat
+	    var lineHeight: CGFloat
+	    var horizontalInset: CGFloat
 
 	    init(lineColor: PlatformColor, lineHeight: CGFloat = 1, horizontalInset: CGFloat = 0) {
 	        self.lineColor = lineColor
@@ -26,7 +26,7 @@ final class HorizontalRuleAttachment: NSTextAttachment {
 	    }
 
     required init?(coder: NSCoder) {
-        self.lineColor = Self.platformColor(DesignTokens.Colors.border)
+	        self.lineColor = Self.platformColor(DesignTokens.Colors.border)
 	        self.lineHeight = 1
 	        self.horizontalInset = 0
 	        super.init(coder: coder)
@@ -35,20 +35,32 @@ final class HorizontalRuleAttachment: NSTextAttachment {
 	        lineLayoutPadding = 0
 	    }
 
-    override func attachmentBounds(
-        for attributes: [NSAttributedString.Key: Any],
-        location: NSTextLocation,
-        textContainer: NSTextContainer?,
-        proposedLineFragment: CGRect,
-        position: CGPoint
-    ) -> CGRect {
-        let height = max(1, lineHeight)
-        let availableWidth = textContainer?.size.width ?? proposedLineFragment.width
-        let width = max(1, availableWidth)
-        let scale = effectiveScale(textContainer: textContainer)
-        let alignedWidth = (width * scale).rounded() / scale
-        return CGRect(x: 0, y: 0, width: alignedWidth, height: height)
-    }
+	    override func attachmentBounds(
+	        for attributes: [NSAttributedString.Key: Any],
+	        location: NSTextLocation,
+	        textContainer: NSTextContainer?,
+	        proposedLineFragment: CGRect,
+	        position: CGPoint
+	    ) -> CGRect {
+	        let height = max(1, lineHeight)
+	        let width = max(1, proposedLineFragment.width)
+	        let scale = effectiveScale(textContainer: textContainer)
+	        let alignedWidth = (width * scale).rounded() / scale
+	        return CGRect(x: 0, y: 0, width: alignedWidth, height: height)
+	    }
+
+	    override func attachmentBounds(
+	        for textContainer: NSTextContainer?,
+	        proposedLineFragment lineFrag: CGRect,
+	        glyphPosition position: CGPoint,
+	        characterIndex charIndex: Int
+	    ) -> CGRect {
+	        let height = max(1, lineHeight)
+	        let width = max(1, lineFrag.width)
+	        let scale = effectiveScale(textContainer: textContainer)
+	        let alignedWidth = (width * scale).rounded() / scale
+	        return CGRect(x: 0, y: 0, width: alignedWidth, height: height)
+	    }
 
     private static let didRegisterViewProvider: Void = {
         NSTextAttachment.registerViewProviderClass(
