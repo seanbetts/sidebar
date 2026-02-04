@@ -43,11 +43,11 @@ final class HorizontalRuleAttachment: NSTextAttachment {
         position: CGPoint
     ) -> CGRect {
         let height = max(1, lineHeight)
-        let width = proposedLineFragment.width + (horizontalInset * 2)
+        let availableWidth = textContainer?.size.width ?? proposedLineFragment.width
+        let width = max(1, availableWidth)
         let scale = effectiveScale(textContainer: textContainer)
         let alignedWidth = (width * scale).rounded() / scale
-        let alignedX = (-horizontalInset * scale).rounded() / scale
-        return CGRect(x: alignedX, y: 0, width: alignedWidth, height: height)
+        return CGRect(x: 0, y: 0, width: alignedWidth, height: height)
     }
 
     private static let didRegisterViewProvider: Void = {

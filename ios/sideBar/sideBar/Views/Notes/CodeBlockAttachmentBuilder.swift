@@ -164,8 +164,8 @@ enum CodeBlockAttachmentBuilder {
     ) -> NSAttributedString {
         let attachment = HorizontalRuleAttachment(
             lineColor: PlatformColor.black,
-            lineHeight: 2,
-            horizontalInset: DesignTokens.Spacing.md
+            lineHeight: 1,
+            horizontalInset: 0
         )
         let attachmentString = NSMutableAttributedString(
             attributedString: NSAttributedString(attachment: attachment)
