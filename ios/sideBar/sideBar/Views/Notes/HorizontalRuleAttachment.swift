@@ -119,7 +119,7 @@ final class HorizontalRuleAttachment: NSTextAttachment {
 	        let height = max(1, lineHeight)
 	        let width = max(1, imageBounds.width)
 	        let size = NSSize(width: width, height: height)
-	        let appearance = textContainer?.layoutManager?.textView?.effectiveAppearance ?? NSAppearance.current
+	        let appearance = textContainer?.textView?.effectiveAppearance ?? NSAppearance.current
 	        let color = lineColor.resolvedColor(with: appearance)
 	        return NSImage(size: size, flipped: false) { rect in
 	            color.setFill()
