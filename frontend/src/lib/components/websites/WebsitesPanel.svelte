@@ -10,6 +10,9 @@
 	import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
 	import WebsiteRow from '$lib/components/websites/WebsiteRow.svelte';
 	import { useWebsiteActions } from '$lib/hooks/useWebsiteActions';
+	import { toast } from 'svelte-sonner';
+	import { logError } from '$lib/utils/errorHandling';
+	import { stripWebsiteFrontmatter } from '$lib/utils/websites';
 
 	const ARCHIVED_FLAG = 'archived';
 
@@ -18,10 +21,6 @@
 
 	function isArchived(site: WebsiteItem) {
 		return Boolean((site as WebsiteItem & Record<string, unknown>)[ARCHIVED_FLAG]);
-	}
-
-	function formatDomain(domain: string) {
-		return domain.replace(/^www\./i, '');
 	}
 
 	$: searchQuery = $websitesStore.searchQuery;
@@ -47,6 +46,7 @@
 	const PINNED_DROP_END = '__end__';
 	let draggingPinnedId: string | null = null;
 	let dragOverPinnedId: string | null = null;
+	let isArchiveExpanded = false;
 	const {
 		openWebsite: openWebsiteById,
 		renameWebsite,
@@ -94,6 +94,10 @@
 			clearTimeout(menuTimeout);
 			menuTimeout = null;
 		}
+	}
+
+	$: if (isArchiveExpanded) {
+		void websitesStore.loadArchived();
 	}
 
 	onDestroy(() => {
@@ -203,6 +207,45 @@
 		closeMenu();
 	}
 
+	async function handleCopy(site: WebsiteItem) {
+		try {
+			const detail = await websitesStore.refreshItem(site.id);
+			const content = stripWebsiteFrontmatter(detail?.content || '');
+			if (!content.trim()) {
+				toast.error('Copy unavailable');
+				return;
+			}
+			await navigator.clipboard.writeText(content);
+			toast.success('Website copied');
+			closeMenu();
+		} catch (error) {
+			logError('Failed to copy website content', error, {
+				scope: 'websitesPanel.copy',
+				websiteId: site.id
+			});
+			toast.error('Copy unavailable');
+		}
+	}
+
+	async function handleCopyUrl(site: WebsiteItem) {
+		const url = (site.url || '').trim();
+		if (!url) {
+			toast.error('Copy unavailable');
+			return;
+		}
+		try {
+			await navigator.clipboard.writeText(url);
+			toast.success('URL copied');
+			closeMenu();
+		} catch (error) {
+			logError('Failed to copy website URL', error, {
+				scope: 'websitesPanel.copyUrl',
+				websiteId: site.id
+			});
+			toast.error('Copy unavailable');
+		}
+	}
+
 	function openDeleteDialog(site: WebsiteItem) {
 		selectedSite = site;
 		deleteDialog?.openDialog(site.title || 'website');
@@ -292,11 +335,12 @@
 								{site}
 								archived={isArchived(site)}
 								isMenuOpen={activeMenuId === site.id}
-								{formatDomain}
 								onOpen={openWebsite}
 								onOpenMenu={openMenu}
 								onPin={handlePin}
 								onRename={openRenameDialog}
+								onCopy={handleCopy}
+								onCopyUrl={handleCopyUrl}
 								onDownload={handleDownload}
 								onArchive={handleArchive}
 								onDelete={openDeleteDialog}
@@ -318,11 +362,12 @@
 							{site}
 							archived={isArchived(site)}
 							isMenuOpen={activeMenuId === site.id}
-							{formatDomain}
 							onOpen={openWebsite}
 							onOpenMenu={openMenu}
 							onPin={handlePin}
 							onRename={openRenameDialog}
+							onCopy={handleCopy}
+							onCopyUrl={handleCopyUrl}
 							onDownload={handleDownload}
 							onArchive={handleArchive}
 							onDelete={openDeleteDialog}
@@ -357,11 +402,12 @@
 							{site}
 							archived={isArchived(site)}
 							isMenuOpen={activeMenuId === site.id}
-							{formatDomain}
 							onOpen={openWebsite}
 							onOpenMenu={openMenu}
 							onPin={handlePin}
 							onRename={openRenameDialog}
+							onCopy={handleCopy}
+							onCopyUrl={handleCopyUrl}
 							onDownload={handleDownload}
 							onArchive={handleArchive}
 							onDelete={openDeleteDialog}
@@ -372,7 +418,11 @@
 		</div>
 
 		<div class="websites-block websites-archive">
-			<Collapsible.Root class="group/collapsible" data-collapsible-root>
+			<Collapsible.Root
+				bind:open={isArchiveExpanded}
+				class="group/collapsible"
+				data-collapsible-root
+			>
 				<div
 					data-slot="sidebar-group"
 					data-sidebar="group"
@@ -408,11 +458,12 @@
 											{site}
 											archived={isArchived(site)}
 											isMenuOpen={activeMenuId === site.id}
-											{formatDomain}
 											onOpen={openWebsite}
 											onOpenMenu={openMenu}
 											onPin={handlePin}
 											onRename={openRenameDialog}
+											onCopy={handleCopy}
+											onCopyUrl={handleCopyUrl}
 											onDownload={handleDownload}
 											onArchive={handleArchive}
 											onDelete={openDeleteDialog}

@@ -8,7 +8,8 @@ const { websitesAPI } = vi.hoisted(() => ({
 	websitesAPI: {
 		list: vi.fn(),
 		get: vi.fn(),
-		search: vi.fn()
+		search: vi.fn(),
+		listArchived: vi.fn()
 	}
 }));
 
@@ -187,6 +188,44 @@ describe('websitesStore', () => {
 		await websitesStore.search('query');
 
 		expect(get(websitesStore).items[0].id).toBe('5');
+	});
+
+	it('loads archived websites and merges with active items', async () => {
+		websitesStore.upsertFromRealtime({
+			id: 'active-1',
+			title: 'Active',
+			url: 'https://active.example.com',
+			domain: 'active.example.com',
+			saved_at: null,
+			published_at: null,
+			pinned: false,
+			archived: false,
+			updated_at: null,
+			last_opened_at: null
+		});
+		websitesAPI.listArchived.mockResolvedValue({
+			items: [
+				{
+					id: 'archived-1',
+					title: 'Archived',
+					url: 'https://archived.example.com',
+					domain: 'archived.example.com',
+					saved_at: null,
+					published_at: null,
+					pinned: false,
+					archived: true,
+					updated_at: null,
+					last_opened_at: null
+				}
+			]
+		});
+
+		await websitesStore.loadArchived();
+
+		const state = get(websitesStore);
+		expect(state.items).toHaveLength(2);
+		expect(state.items.find((item) => item.id === 'active-1')?.archived).toBe(false);
+		expect(state.items.find((item) => item.id === 'archived-1')?.archived).toBe(true);
 	});
 
 	it('removes items locally', () => {

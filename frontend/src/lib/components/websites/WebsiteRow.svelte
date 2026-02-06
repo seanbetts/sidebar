@@ -1,10 +1,11 @@
 <script lang="ts">
 	import {
-		Globe,
 		MoreHorizontal,
 		Pin,
 		PinOff,
 		Pencil,
+		Copy,
+		Link,
 		Download,
 		Archive,
 		ArchiveRestore,
@@ -12,6 +13,8 @@
 		GripVertical
 	} from 'lucide-svelte';
 	import type { WebsiteItem } from '$lib/stores/websites';
+	import WebsiteFavicon from '$lib/components/websites/WebsiteFavicon.svelte';
+	import { formatWebsiteSubtitle, getWebsiteDisplayTitle } from '$lib/utils/websites';
 
 	export let site: WebsiteItem;
 	export let isMenuOpen = false;
@@ -20,10 +23,11 @@
 	export let onOpenMenu: (event: MouseEvent, site: WebsiteItem) => void;
 	export let onPin: (site: WebsiteItem) => void;
 	export let onRename: (site: WebsiteItem) => void;
+	export let onCopy: (site: WebsiteItem) => void;
+	export let onCopyUrl: (site: WebsiteItem) => void;
 	export let onDownload: (site: WebsiteItem) => void;
 	export let onArchive: (site: WebsiteItem) => void;
 	export let onDelete: (site: WebsiteItem) => void;
-	export let formatDomain: (domain: string) => string;
 	export let showGrabHandle: boolean = false;
 	export let isDragOver: boolean = false;
 	export let onGrabStart: ((event: DragEvent) => void) | undefined = undefined;
@@ -46,17 +50,17 @@
 	class="website-item"
 	class:drag-over={isDragOver}
 	role="listitem"
-	aria-label={`Pinned website ${site.title}`}
+	aria-label={`Website ${getWebsiteDisplayTitle(site)}`}
 	ondragover={handleDragOver}
 	ondrop={handleDrop}
 >
 	<button class="website-main" onclick={() => onOpen(site)}>
 		<span class="website-icon">
-			<Globe />
+			<WebsiteFavicon faviconUrl={site.favicon_url} size={16} />
 		</span>
 		<div class="website-text">
-			<span class="website-title">{site.title}</span>
-			<span class="website-domain">{formatDomain(site.domain)}</span>
+			<span class="website-title">{getWebsiteDisplayTitle(site)}</span>
+			<span class="website-domain">{formatWebsiteSubtitle(site.domain, site.reading_time)}</span>
 		</div>
 	</button>
 	{#if showGrabHandle}
@@ -92,6 +96,14 @@
 			<button class="menu-item" onclick={() => onRename(site)}>
 				<Pencil size={16} />
 				<span>Rename</span>
+			</button>
+			<button class="menu-item" onclick={() => onCopy(site)}>
+				<Copy size={16} />
+				<span>Copy</span>
+			</button>
+			<button class="menu-item" onclick={() => onCopyUrl(site)}>
+				<Link size={16} />
+				<span>Copy URL</span>
 			</button>
 			<button class="menu-item" onclick={() => onDownload(site)}>
 				<Download size={16} />
