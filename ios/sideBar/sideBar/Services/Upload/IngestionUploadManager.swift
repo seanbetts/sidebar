@@ -73,7 +73,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     }
 
     deinit {
-        session.invalidateAndCancelTasks()
+        session.invalidateAndCancel()
     }
 
     public func startUpload(

@@ -133,6 +133,13 @@ extension AppEnvironment {
                 self?.isNetworkAvailable = isAvailable
             }
             .store(in: &cancellables)
+
+        connectivityMonitor.$isServerReachable
+            .removeDuplicates()
+            .sink { [weak self] isReachable in
+                self?.isServerReachable = isReachable
+            }
+            .store(in: &cancellables)
     }
 
     private func setupTaskBadgeUpdates() {
