@@ -119,6 +119,7 @@ final class WebsitesStoreTests: XCTestCase {
             faviconUrl: nil,
             faviconR2Key: nil,
             youtubeTranscripts: nil,
+            readingTime: nil,
             updatedAt: "2024-01-01",
             lastOpenedAt: nil
         )
@@ -143,6 +144,7 @@ final class WebsitesStoreTests: XCTestCase {
                 metadata: nil,
                 savedAt: nil,
                 publishedAt: nil,
+                readingTime: nil,
                 updatedAt: nil,
                 lastOpenedAt: nil,
                 deletedAt: nil

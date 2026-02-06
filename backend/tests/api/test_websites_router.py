@@ -139,7 +139,7 @@ def test_websites_youtube_transcript_enqueues_job(test_client, test_db):
     assert job is not None
 
 
-def test_archived_list_returns_metadata_reading_time(test_client, test_db):
+def test_archived_list_returns_field_reading_time(test_client, test_db):
     website_id = uuid.uuid4()
     website = Website(
         id=website_id,
@@ -149,7 +149,8 @@ def test_archived_list_returns_metadata_reading_time(test_client, test_db):
         domain="example.com",
         title="Metadata Reading Time",
         content="Example content",
-        metadata_={"pinned": False, "archived": True, "reading_time": "104 min"},
+        reading_time="104 min",
+        metadata_={"pinned": False, "archived": True},
         is_archived=True,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
@@ -203,6 +204,8 @@ def test_website_summary_does_not_lazy_load_deferred_content(test_db):
     )
 
     assert inspect(listed).attrs.content.loaded_value is NO_VALUE
+    assert inspect(listed).attrs.reading_time.loaded_value is NO_VALUE
     summary = website_summary(listed)
     assert summary["reading_time"] is None
     assert inspect(listed).attrs.content.loaded_value is NO_VALUE
+    assert inspect(listed).attrs.reading_time.loaded_value is NO_VALUE

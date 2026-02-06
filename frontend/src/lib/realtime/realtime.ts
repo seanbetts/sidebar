@@ -74,7 +74,7 @@ function mapWebsiteRow(row: any): WebsiteItem {
 		favicon_url: metadata.favicon_url ?? null,
 		favicon_r2_key: metadata.favicon_r2_key ?? null,
 		favicon_extracted_at: metadata.favicon_extracted_at ?? null,
-		reading_time: null,
+		reading_time: row.reading_time ?? metadata.reading_time ?? null,
 		updated_at: row.updated_at,
 		last_opened_at: row.last_opened_at,
 		deleted_at: row.deleted_at

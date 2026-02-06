@@ -73,6 +73,7 @@ final class WebsitesViewModelTests: XCTestCase {
                 metadata: nil,
                 savedAt: nil,
                 publishedAt: nil,
+                readingTime: nil,
                 updatedAt: nil,
                 lastOpenedAt: nil,
                 deletedAt: nil
@@ -109,6 +110,7 @@ final class WebsitesViewModelTests: XCTestCase {
                 metadata: nil,
                 savedAt: nil,
                 publishedAt: nil,
+                readingTime: nil,
                 updatedAt: "2026-01-10T10:00:00Z",
                 lastOpenedAt: nil,
                 deletedAt: nil
@@ -507,6 +509,7 @@ private func makeDetail(id: String) -> WebsiteDetail {
         faviconUrl: nil,
         faviconR2Key: nil,
         youtubeTranscripts: nil,
+        readingTime: nil,
         updatedAt: nil,
         lastOpenedAt: nil
     )

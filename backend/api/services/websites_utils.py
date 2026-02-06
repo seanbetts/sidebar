@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from api.exceptions import ConflictError
 from api.models.website import Website
+from api.services.website_reading_time import normalize_reading_time
 
 
 def normalize_url(value: str) -> str:
@@ -24,6 +25,9 @@ def extract_domain(value: str) -> str:
 def website_sync_payload(website: Website) -> dict[str, object]:
     """Build a sync payload for a website."""
     metadata = website.metadata_ or {}
+    reading_time = website.reading_time
+    if not reading_time and isinstance(metadata.get("reading_time"), str):
+        reading_time = metadata.get("reading_time")
     return {
         "id": str(website.id),
         "title": website.title,
@@ -39,6 +43,7 @@ def website_sync_payload(website: Website) -> dict[str, object]:
         "favicon_url": metadata.get("favicon_url"),
         "favicon_r2_key": metadata.get("favicon_r2_key"),
         "favicon_extracted_at": metadata.get("favicon_extracted_at"),
+        "reading_time": normalize_reading_time(reading_time) if reading_time else None,
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "deleted_at": website.deleted_at.isoformat() if website.deleted_at else None,
     }

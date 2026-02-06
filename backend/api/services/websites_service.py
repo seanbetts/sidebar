@@ -13,6 +13,10 @@ from sqlalchemy.orm.attributes import flag_modified
 from api.exceptions import WebsiteNotFoundError
 from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
+from api.services.website_reading_time import (
+    derive_reading_time,
+    normalize_reading_time,
+)
 from api.services.websites_utils import (
     ensure_website_no_conflict,
     extract_domain,
@@ -62,6 +66,7 @@ class WebsitesService:
         url_full: str | None = None,
         saved_at: datetime | None = None,
         published_at: datetime | None = None,
+        reading_time: str | None = None,
         pinned: bool = False,
         archived: bool = False,
     ) -> Website:
@@ -77,6 +82,7 @@ class WebsitesService:
             url_full: Optional full URL.
             saved_at: Optional saved timestamp.
             published_at: Optional published timestamp.
+            reading_time: Optional reading-time label.
             pinned: Initial pinned state. Defaults to False.
             archived: Initial archived state. Defaults to False.
 
@@ -86,7 +92,12 @@ class WebsitesService:
         now = datetime.now(UTC)
         normalized_url = normalize_url(url)
         domain = extract_domain(normalized_url)
-        metadata = {"pinned": pinned, "archived": archived}
+        normalized_reading_time = (
+            normalize_reading_time(reading_time) if reading_time else None
+        ) or derive_reading_time(content)
+        create_metadata: dict[str, object] = {"pinned": pinned, "archived": archived}
+        if normalized_reading_time:
+            create_metadata["reading_time"] = normalized_reading_time
 
         website = Website(
             user_id=user_id,
@@ -98,7 +109,8 @@ class WebsitesService:
             source=source,
             saved_at=saved_at,
             published_at=published_at,
-            metadata_=metadata,
+            reading_time=normalized_reading_time,
+            metadata_=create_metadata,
             is_archived=archived,
             created_at=now,
             updated_at=now,
@@ -122,6 +134,7 @@ class WebsitesService:
         url_full: str | None = None,
         saved_at: datetime | None = None,
         published_at: datetime | None = None,
+        reading_time: str | None = None,
         pinned: bool = False,
         archived: bool = False,
     ) -> Website:
@@ -137,6 +150,7 @@ class WebsitesService:
             url_full: Optional full URL.
             saved_at: Optional saved timestamp.
             published_at: Optional published timestamp.
+            reading_time: Optional reading-time label.
             pinned: Initial pinned state if new.
             archived: Initial archived state if new.
 
@@ -146,6 +160,9 @@ class WebsitesService:
         now = datetime.now(UTC)
         normalized_url = normalize_url(url)
         domain = extract_domain(normalized_url)
+        normalized_reading_time = (
+            normalize_reading_time(reading_time) if reading_time else None
+        ) or derive_reading_time(content)
 
         website = WebsitesService.get_by_url(
             db, user_id, normalized_url, include_deleted=True
@@ -158,9 +175,14 @@ class WebsitesService:
             website.source = source
             website.saved_at = saved_at
             website.published_at = published_at
+            website.reading_time = normalized_reading_time
             metadata = {**(website.metadata_ or {}), "archived": False}
             if "pinned" not in metadata:
                 metadata["pinned"] = pinned
+            if normalized_reading_time:
+                metadata["reading_time"] = normalized_reading_time
+            else:
+                metadata.pop("reading_time", None)
             website.metadata_ = metadata
             website.is_archived = bool(metadata.get("archived", False))
             flag_modified(website, "metadata_")
@@ -171,7 +193,9 @@ class WebsitesService:
             db.refresh(website)
             return website
 
-        metadata = {"pinned": pinned, "archived": archived}
+        upsert_metadata: dict[str, object] = {"pinned": pinned, "archived": archived}
+        if normalized_reading_time:
+            upsert_metadata["reading_time"] = normalized_reading_time
         website = Website(
             user_id=user_id,
             url=normalized_url,
@@ -182,7 +206,8 @@ class WebsitesService:
             source=source,
             saved_at=saved_at,
             published_at=published_at,
-            metadata_=metadata,
+            reading_time=normalized_reading_time,
+            metadata_=upsert_metadata,
             is_archived=archived,
             created_at=now,
             updated_at=now,
@@ -205,6 +230,7 @@ class WebsitesService:
         source: str | None = None,
         saved_at: datetime | None = None,
         published_at: datetime | None = None,
+        reading_time: str | None = None,
         client_updated_at: datetime | None = None,
     ) -> Website:
         """Update a website record by ID.
@@ -218,6 +244,7 @@ class WebsitesService:
             source: Optional new source label.
             saved_at: Optional new saved timestamp.
             published_at: Optional new published timestamp.
+            reading_time: Optional new reading-time label.
             client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
@@ -250,6 +277,20 @@ class WebsitesService:
             website.saved_at = saved_at
         if published_at is not None:
             website.published_at = published_at
+        if content is not None or reading_time is not None:
+            normalized_reading_time = (
+                (normalize_reading_time(reading_time) if reading_time else None)
+                if reading_time is not None
+                else derive_reading_time(content)
+            )
+            website.reading_time = normalized_reading_time
+            metadata = dict(website.metadata_ or {})
+            if normalized_reading_time:
+                metadata["reading_time"] = normalized_reading_time
+            else:
+                metadata.pop("reading_time", None)
+            website.metadata_ = metadata
+            flag_modified(website, "metadata_")
 
         website.updated_at = datetime.now(UTC)
         db.commit()
@@ -291,6 +332,18 @@ class WebsitesService:
             raise WebsiteNotFoundError(f"Website not found: {website_id}")
 
         metadata = {**(website.metadata_ or {}), **metadata_updates}
+        if "reading_time" in metadata_updates:
+            reading_time = metadata_updates.get("reading_time")
+            if isinstance(reading_time, str):
+                normalized = normalize_reading_time(reading_time)
+                website.reading_time = normalized or None
+                if normalized:
+                    metadata["reading_time"] = normalized
+                else:
+                    metadata.pop("reading_time", None)
+            else:
+                website.reading_time = None
+                metadata.pop("reading_time", None)
         website.metadata_ = metadata
         website.updated_at = datetime.now(UTC)
         flag_modified(website, "metadata_")
@@ -560,6 +613,7 @@ class WebsitesService:
                     Website.domain,
                     Website.saved_at,
                     Website.published_at,
+                    Website.reading_time,
                     Website.metadata_,
                     Website.is_archived,
                     Website.updated_at,
