@@ -403,11 +403,9 @@
 			</div>
 		{/if}
 
-		<div class="websites-block websites-scroll-area">
-			<div class="websites-block-title">Websites</div>
-			{#if mainItems.length === 0}
-				<div class="websites-empty">No websites saved</div>
-			{:else}
+		{#if mainItems.length > 0}
+			<div class="websites-block websites-scroll-area">
+				<div class="websites-block-title">Websites</div>
 				<div class="websites-list">
 					{#each mainItems as site (site.id)}
 						<WebsiteRow
@@ -426,8 +424,8 @@
 						/>
 					{/each}
 				</div>
-			{/if}
-		</div>
+			</div>
+		{/if}
 
 		<div class="websites-block websites-archive">
 			<Collapsible.Root
