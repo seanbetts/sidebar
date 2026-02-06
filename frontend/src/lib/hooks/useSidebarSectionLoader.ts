@@ -5,7 +5,7 @@ import { websitesStore } from '$lib/stores/websites';
 import { ingestionStore } from '$lib/stores/ingestion';
 import { tasksStore } from '$lib/stores/tasks';
 
-export type SidebarSection = 'history' | 'notes' | 'websites' | 'workspace' | 'tasks';
+export type SidebarSection = 'chat' | 'notes' | 'websites' | 'files' | 'tasks';
 
 /**
  * Lazily load sidebar section data on first open.
@@ -22,8 +22,8 @@ export function useSidebarSectionLoader() {
 		const hasData = {
 			notes: treeState.trees?.['notes']?.loaded ?? false,
 			websites: websitesState.loaded ?? false,
-			workspace: ingestionState.loaded ?? false,
-			history: conversationsState.loaded ?? false,
+			files: ingestionState.loaded ?? false,
+			chat: conversationsState.loaded ?? false,
 			tasks: false
 		}[section];
 
@@ -38,10 +38,10 @@ export function useSidebarSectionLoader() {
 			case 'websites':
 				websitesStore.load();
 				break;
-			case 'workspace':
+			case 'files':
 				ingestionStore.load();
 				break;
-			case 'history':
+			case 'chat':
 				conversationListStore.load();
 				break;
 			case 'tasks':
