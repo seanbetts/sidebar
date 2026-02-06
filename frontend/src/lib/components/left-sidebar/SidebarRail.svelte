@@ -108,10 +108,10 @@
 						{...props}
 						onclick={(event) => {
 							props.onclick?.(event);
-							onOpenSection?.('workspace');
+							onOpenSection?.('files');
 						}}
 						class="rail-btn"
-						class:active={activeSection === 'workspace'}
+						class:active={activeSection === 'files'}
 						aria-label="Files"
 					>
 						<FolderOpen size={18} />
@@ -127,10 +127,10 @@
 						{...props}
 						onclick={(event) => {
 							props.onclick?.(event);
-							onOpenSection?.('history');
+							onOpenSection?.('chat');
 						}}
 						class="rail-btn"
-						class:active={activeSection === 'history'}
+						class:active={activeSection === 'chat'}
 						aria-label="Chat"
 					>
 						<MessageSquare size={18} />

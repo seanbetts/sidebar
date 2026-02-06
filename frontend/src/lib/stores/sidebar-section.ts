@@ -4,7 +4,13 @@ import type { SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
 
 const STORAGE_KEY = 'sideBar.lastSelectedSection';
 const DEFAULT_SECTION: SidebarSection = 'notes';
-const VALID_SECTIONS: SidebarSection[] = ['history', 'notes', 'websites', 'workspace', 'tasks'];
+const VALID_SECTIONS: SidebarSection[] = ['chat', 'notes', 'websites', 'files', 'tasks'];
+
+function migrateLegacySection(value: string | null): string | null {
+	if (value === 'history') return 'chat';
+	if (value === 'workspace') return 'files';
+	return value;
+}
 
 function isSidebarSection(value: unknown): value is SidebarSection {
 	return typeof value === 'string' && VALID_SECTIONS.includes(value as SidebarSection);
@@ -13,7 +19,7 @@ function isSidebarSection(value: unknown): value is SidebarSection {
 function readStoredSection(): SidebarSection {
 	if (!browser) return DEFAULT_SECTION;
 	try {
-		const stored = localStorage.getItem(STORAGE_KEY);
+		const stored = migrateLegacySection(localStorage.getItem(STORAGE_KEY));
 		return isSidebarSection(stored) ? stored : DEFAULT_SECTION;
 	} catch {
 		return DEFAULT_SECTION;

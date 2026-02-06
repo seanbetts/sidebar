@@ -15,9 +15,20 @@ describe('sidebarSectionStore', () => {
 	});
 
 	it('hydrates stored section', async () => {
-		localStorage.setItem('sideBar.lastSelectedSection', 'history');
+		localStorage.setItem('sideBar.lastSelectedSection', 'chat');
 		const { sidebarSectionStore } = await import('$lib/stores/sidebar-section');
-		expect(get(sidebarSectionStore)).toBe('history');
+		expect(get(sidebarSectionStore)).toBe('chat');
+	});
+
+	it('migrates legacy stored sections', async () => {
+		localStorage.setItem('sideBar.lastSelectedSection', 'workspace');
+		const { sidebarSectionStore } = await import('$lib/stores/sidebar-section');
+		expect(get(sidebarSectionStore)).toBe('files');
+
+		localStorage.setItem('sideBar.lastSelectedSection', 'history');
+		vi.resetModules();
+		const { sidebarSectionStore: reloadedStore } = await import('$lib/stores/sidebar-section');
+		expect(get(reloadedStore)).toBe('chat');
 	});
 
 	it('persists section changes', async () => {

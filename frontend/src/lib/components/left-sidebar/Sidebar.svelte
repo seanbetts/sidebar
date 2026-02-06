@@ -118,8 +118,8 @@
 			lastConversationId = $chatStore.conversationId;
 			lastMessageCount = $chatStore.messages.length;
 		} else if ($chatStore.messages.length !== lastMessageCount) {
-			if (lastMessageCount === 0 && $chatStore.messages.length > 0 && activeSection !== 'history') {
-				openSection('history');
+			if (lastMessageCount === 0 && $chatStore.messages.length > 0 && activeSection !== 'chat') {
+				openSection('chat');
 			}
 			lastMessageCount = $chatStore.messages.length;
 		}
@@ -160,10 +160,10 @@
 			openSection('websites');
 		} else if (event.key === '4') {
 			event.preventDefault();
-			openSection('workspace');
+			openSection('files');
 		} else if (event.key === '5') {
 			event.preventDefault();
-			openSection('history');
+			openSection('chat');
 		}
 	}
 
@@ -582,8 +582,8 @@
 				</div>
 			</div>
 
-			<!-- Workspace Section -->
-			<div class="panel-section" class:hidden={activeSection !== 'workspace'}>
+			<!-- Files Section -->
+			<div class="panel-section" class:hidden={activeSection !== 'files'}>
 				<SidebarSectionHeader
 					title="Files"
 					searchPlaceholder="Search files..."
@@ -646,8 +646,8 @@
 				</div>
 			</div>
 
-			<!-- History Section -->
-			<div class="panel-section" class:hidden={activeSection !== 'history'}>
+			<!-- Chat Section -->
+			<div class="panel-section" class:hidden={activeSection !== 'chat'}>
 				<SidebarSectionHeader
 					title="Chat"
 					searchPlaceholder="Search conversations..."
@@ -679,7 +679,7 @@
 						{/if}
 					</svelte:fragment>
 				</SidebarSectionHeader>
-				<div class="history-content">
+				<div class="chat-content">
 					<ConversationList />
 				</div>
 			</div>
@@ -735,7 +735,7 @@
 		display: none;
 	}
 
-	:global(.history-content) {
+	:global(.chat-content) {
 		display: flex;
 		flex-direction: column;
 		flex: 1;

@@ -365,11 +365,9 @@
 			</div>
 		{/if}
 
-		<div class="websites-block">
-			<div class="websites-block-title">Pinned</div>
-			{#if pinnedItemsSorted.length === 0}
-				<div class="websites-empty">No pinned websites</div>
-			{:else}
+		{#if pinnedItemsSorted.length > 0}
+			<div class="websites-block">
+				<div class="websites-block-title">Pinned</div>
 				<div class="websites-list">
 					{#each pinnedItemsSorted as site (site.id)}
 						<WebsiteRow
@@ -402,8 +400,8 @@
 						ondrop={handlePinnedDropEnd}
 					></div>
 				</div>
-			{/if}
-		</div>
+			</div>
+		{/if}
 
 		<div class="websites-block websites-scroll-area">
 			<div class="websites-block-title">Websites</div>

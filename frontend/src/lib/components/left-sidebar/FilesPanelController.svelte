@@ -69,7 +69,7 @@
 		{}
 	);
 
-	$: showPinnedSection = !searchQuery || pinnedItems.length > 0;
+	$: showPinnedSection = normalizedQuery.length === 0 && pinnedItems.length > 0;
 	let expandedCategories = new Set<string>();
 	let openMenuKey: string | null = null;
 	let isRenameOpen = false;
