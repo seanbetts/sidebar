@@ -72,6 +72,10 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         super.init()
     }
 
+    deinit {
+        session.invalidateAndCancelTasks()
+    }
+
     public func startUpload(
         request: UploadRequest,
         onProgress: @escaping (Double) -> Void,
