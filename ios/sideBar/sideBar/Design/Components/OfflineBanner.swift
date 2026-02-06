@@ -2,7 +2,6 @@ import SwiftUI
 
 struct OfflineBanner: View {
     @EnvironmentObject private var environment: AppEnvironment
-    @Environment(\.colorScheme) private var colorScheme
     @State private var isPendingWritesPresented = false
 
     var body: some View {
@@ -10,12 +9,9 @@ struct OfflineBanner: View {
             Button {
                 isPendingWritesPresented = true
             } label: {
-                HStack(spacing: 6) {
-                    statusIcon
-                    Text(statusText)
-                        .font(DesignTokens.Typography.captionSemibold)
-                }
-                .foregroundStyle(foregroundColor)
+                statusIcon
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
                 .padding(.horizontal, DesignTokens.Spacing.xs)
                 .padding(.vertical, DesignTokens.Spacing.xxs)
                 .background(backgroundColor)
@@ -25,7 +21,7 @@ struct OfflineBanner: View {
                 #endif
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(statusText)
+            .accessibilityLabel(accessibilityLabel)
             .sheet(isPresented: $isPendingWritesPresented) {
                 NavigationStack {
                     PendingWritesView()
@@ -34,41 +30,28 @@ struct OfflineBanner: View {
         }
     }
 
-    private var pendingCount: Int {
-        environment.writeQueue.pendingCount
-    }
-
     private var shouldShow: Bool {
-        environment.isOffline || environment.writeQueue.isProcessing || pendingCount > 0
+        environment.isOffline || !environment.isServerReachable
     }
 
-    private var statusText: String {
+    private var accessibilityLabel: String {
         if environment.isOffline {
             return "Offline"
         }
-        if environment.writeQueue.isProcessing {
-            return "Syncing \(pendingCount) changes"
-        }
-        return "\(pendingCount) pending changes"
+        return "Server unreachable"
     }
 
     private var backgroundColor: Color {
-        colorScheme == .dark ? .white : .black
+        if environment.isOffline {
+            return .red
+        }
+        return .orange
     }
 
-    private var foregroundColor: Color {
-        colorScheme == .dark ? .black : .white
-    }
-
-    @ViewBuilder
     private var statusIcon: some View {
         if environment.isOffline {
-            Image(systemName: "wifi.slash")
-        } else if environment.writeQueue.isProcessing {
-            ProgressView()
-                .scaleEffect(0.75)
-        } else {
-            Image(systemName: "arrow.triangle.2.circlepath")
+            return Image(systemName: "wifi.slash")
         }
+        return Image(systemName: "wifi.exclamationmark")
     }
 }

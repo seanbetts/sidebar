@@ -45,6 +45,7 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var isAuthenticated: Bool = false
     @Published public internal(set) var isOffline: Bool = false
     @Published public internal(set) var isNetworkAvailable: Bool = true
+    @Published public internal(set) var isServerReachable: Bool = true
     @Published public var commandSelection: AppSection?
     @Published public internal(set) var signOutEvent: UUID?
     @Published public var activeSection: AppSection?
