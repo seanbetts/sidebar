@@ -31,4 +31,4 @@
 
 ## Follow-ups
 - [x] Websites now hide the empty `Websites` block when only archived items exist.
-- [ ] Decide whether to rename CSS classes containing `workspace` to `files` for consistency (purely cosmetic, no behavior impact).
+- [x] Rename CSS classes containing `workspace` to `files` for consistency.

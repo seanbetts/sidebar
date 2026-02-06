@@ -22,14 +22,14 @@
 </script>
 
 {#if processingItems.length > 0}
-	<div class="workspace-uploads uploads-block">
+	<div class="files-uploads uploads-block">
 		<IngestionQueue items={processingItems} />
 	</div>
 {/if}
 
 {#if failedItems.length > 0}
-	<div class="workspace-uploads uploads-block">
-		<div class="workspace-results-label">Failed uploads</div>
+	<div class="files-uploads uploads-block">
+		<div class="files-results-label">Failed uploads</div>
 		{#each failedItems as item (item.file.id)}
 			<div class="failed-item">
 				<div class="failed-header">
@@ -55,7 +55,7 @@
 {/if}
 
 {#if readyItems.length > 0}
-	<div class="workspace-uploads uploads-block">
+	<div class="files-uploads uploads-block">
 		<Collapsible.Root class="group/collapsible" data-collapsible-root>
 			<div
 				data-slot="sidebar-group"
@@ -103,7 +103,7 @@
 {/if}
 
 <style>
-	.workspace-uploads {
+	.files-uploads {
 		margin-top: auto;
 		border-top: 1px solid var(--color-sidebar-border);
 		padding-top: 0;
@@ -113,7 +113,7 @@
 		margin-top: auto;
 	}
 
-	.workspace-results-label {
+	.files-results-label {
 		font-size: 0.7rem;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
