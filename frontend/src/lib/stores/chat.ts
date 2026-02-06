@@ -26,6 +26,10 @@ export interface ChatState {
 	isStreaming: boolean;
 	currentMessageId: string | null;
 	conversationId: string | null;
+	promptPreview: {
+		systemPrompt: string | null;
+		firstMessagePrompt: string | null;
+	} | null;
 	activeTool: {
 		messageId: string;
 		name: string;
@@ -40,6 +44,7 @@ function createChatStore() {
 		isStreaming: false,
 		currentMessageId: null,
 		conversationId: null,
+		promptPreview: null,
 		activeTool: null
 	});
 	const getState = () => get({ subscribe });
@@ -97,6 +102,7 @@ function createChatStore() {
 				})),
 				isStreaming: false,
 				currentMessageId: null,
+				promptPreview: null,
 				activeTool: null
 			});
 		},
@@ -116,6 +122,7 @@ function createChatStore() {
 				messages: [],
 				isStreaming: false,
 				currentMessageId: null,
+				promptPreview: null,
 				activeTool: null
 			});
 
@@ -173,6 +180,7 @@ function createChatStore() {
 				],
 				isStreaming: true,
 				currentMessageId: assistantMessageId,
+				promptPreview: null,
 				activeTool: null
 			}));
 
@@ -381,6 +389,7 @@ function createChatStore() {
 				),
 				isStreaming: false,
 				currentMessageId: null,
+				promptPreview: null,
 				activeTool: null
 			}));
 		},
@@ -396,6 +405,7 @@ function createChatStore() {
 				messages: [],
 				isStreaming: false,
 				currentMessageId: null,
+				promptPreview: null,
 				activeTool: null
 			});
 			clearLastConversation();
@@ -415,6 +425,46 @@ function createChatStore() {
 			} catch {
 				return null;
 			}
+		},
+
+		async restoreLastConversation(availableConversationIds?: string[]): Promise<boolean> {
+			const conversationId = this.getLastConversationId();
+			if (!conversationId) return false;
+
+			if (
+				Array.isArray(availableConversationIds) &&
+				availableConversationIds.length > 0 &&
+				!availableConversationIds.includes(conversationId)
+			) {
+				clearLastConversation();
+				return false;
+			}
+
+			try {
+				await this.loadConversation(conversationId);
+				return true;
+			} catch (error) {
+				logError('Failed to restore last conversation', error, {
+					scope: 'chatStore.restoreLastConversation',
+					conversationId
+				});
+				clearLastConversation();
+				return false;
+			}
+		},
+
+		setPromptPreview(systemPrompt: string | null, firstMessagePrompt: string | null) {
+			update((state) => ({
+				...state,
+				promptPreview: {
+					systemPrompt: systemPrompt?.trim() || null,
+					firstMessagePrompt: firstMessagePrompt?.trim() || null
+				}
+			}));
+		},
+
+		clearPromptPreview() {
+			update((state) => ({ ...state, promptPreview: null }));
 		},
 
 		clearLastConversation,

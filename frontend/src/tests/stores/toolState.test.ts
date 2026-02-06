@@ -38,6 +38,19 @@ describe('toolState handlers', () => {
 		vi.useRealTimers();
 	});
 
+	it('finalizes successful tool status and clears indicator', () => {
+		vi.useFakeTimers();
+		const handlers = createToolStateHandlers(update, getState);
+		handlers.setActiveTool('msg-1', 'tool', 'running');
+
+		handlers.finalizeActiveTool('msg-1', 'tool', 'success', 0, 10);
+		vi.runAllTimers();
+
+		expect(state.messages[0].needsNewline).toBe(false);
+		expect(state.activeTool).toBeNull();
+		vi.useRealTimers();
+	});
+
 	it('marks newline explicitly', () => {
 		const handlers = createToolStateHandlers(update, getState);
 		handlers.markNeedsNewline('msg-1');

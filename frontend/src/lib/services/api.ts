@@ -400,6 +400,23 @@ class WebsitesAPI {
 	}
 
 	/**
+	 * Save a website URL.
+	 *
+	 * @param url - Website URL to save.
+	 * @returns Save response payload.
+	 * @throws Error when the request fails.
+	 */
+	async save(url: string): Promise<unknown> {
+		const response = await fetch(`${this.baseUrl}/save`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ url })
+		});
+		if (!response.ok) throw new Error('Failed to save website');
+		return response.json();
+	}
+
+	/**
 	 * Fetch a website by ID.
 	 *
 	 * @param id - Website ID.

@@ -13,7 +13,16 @@
 	import { ingestionStore } from '$lib/stores/ingestion';
 	import { conversationListStore } from '$lib/stores/conversations';
 	import { ingestionAPI } from '$lib/services/api';
-	import { MessageSquare, Plus, RotateCcw, Trash2, X } from 'lucide-svelte';
+	import {
+		AlertTriangle,
+		CheckCircle2,
+		Loader2,
+		MessageSquare,
+		Plus,
+		RotateCcw,
+		Trash2,
+		X
+	} from 'lucide-svelte';
 	import { getCachedData } from '$lib/utils/cache';
 	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 	import { getUserFriendlyError, useChatSSE } from '$lib/composables/useChatSSE';
@@ -38,6 +47,7 @@
 
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
+		void restoreLastConversation();
 	});
 
 	onDestroy(() => {
@@ -48,6 +58,21 @@
 		chatSse.disconnect();
 		chatStore.cleanup?.();
 	});
+
+	async function restoreLastConversation() {
+		if (get(chatStore).conversationId) return;
+		try {
+			await conversationListStore.load();
+			const availableIds = get(conversationListStore).conversations.map(
+				(conversation) => conversation.id
+			);
+			await chatStore.restoreLastConversation(availableIds);
+		} catch (error) {
+			logError('Failed to restore last conversation', error, {
+				scope: 'ChatWindow.restoreLastConversation'
+			});
+		}
+	}
 
 	async function handleSend(message: string) {
 		const pendingAttachments = attachments.filter((item) => item.status !== 'ready');
@@ -181,6 +206,7 @@
 	$: readyAttachments = attachments.filter((item) => item.status === 'ready');
 	$: pendingAttachments = attachments.filter((item) => item.status !== 'ready');
 	$: isSendDisabled = $chatStore.isStreaming || (attachments.length > 0 && hasPendingAttachments);
+	$: hasExtendedHeader = Boolean($chatStore.activeTool || $chatStore.promptPreview);
 	async function handleAttach(files: FileList) {
 		const fileArray = Array.from(files);
 		for (const file of fileArray) {
@@ -301,51 +327,92 @@
 </script>
 
 <div class="chat-window">
-	<div class="chat-header">
-		<div class="header-left">
-			<MessageSquare size={20} />
-			<h2 class="chat-title">{conversationTitle}</h2>
+	<div class="chat-header" class:expanded={hasExtendedHeader}>
+		<div class="chat-header-row">
+			<div class="header-left">
+				<MessageSquare size={20} />
+				<h2 class="chat-title">{conversationTitle}</h2>
+			</div>
+			{#if $chatStore.conversationId}
+				<div class="header-right">
+					{#if $chatStore.isStreaming}
+						<span class="streaming-label">Streaming</span>
+					{/if}
+					<Tooltip disabled={!tooltipsEnabled}>
+						<TooltipTrigger>
+							{#snippet child({ props })}
+								<Button
+									size="icon"
+									variant="ghost"
+									{...props}
+									onclick={(event) => {
+										props.onclick?.(event);
+										handleNewChat(event);
+									}}
+									aria-label="New chat"
+								>
+									<Plus size={16} />
+								</Button>
+							{/snippet}
+						</TooltipTrigger>
+						<TooltipContent side="bottom">{TOOLTIP_COPY.newChat}</TooltipContent>
+					</Tooltip>
+					<Tooltip disabled={!tooltipsEnabled}>
+						<TooltipTrigger>
+							{#snippet child({ props })}
+								<Button
+									size="icon"
+									variant="ghost"
+									{...props}
+									onclick={(event) => {
+										props.onclick?.(event);
+										handleCloseChat(event);
+									}}
+									aria-label="Close chat"
+								>
+									<X size={16} />
+								</Button>
+							{/snippet}
+						</TooltipTrigger>
+						<TooltipContent side="bottom">{TOOLTIP_COPY.closeChat}</TooltipContent>
+					</Tooltip>
+				</div>
+			{/if}
 		</div>
-		{#if $chatStore.conversationId}
-			<div class="header-right">
-				<Tooltip disabled={!tooltipsEnabled}>
-					<TooltipTrigger>
-						{#snippet child({ props })}
-							<Button
-								size="icon"
-								variant="ghost"
-								{...props}
-								onclick={(event) => {
-									props.onclick?.(event);
-									handleNewChat(event);
-								}}
-								aria-label="New chat"
-							>
-								<Plus size={16} />
-							</Button>
-						{/snippet}
-					</TooltipTrigger>
-					<TooltipContent side="bottom">{TOOLTIP_COPY.newChat}</TooltipContent>
-				</Tooltip>
-				<Tooltip disabled={!tooltipsEnabled}>
-					<TooltipTrigger>
-						{#snippet child({ props })}
-							<Button
-								size="icon"
-								variant="ghost"
-								{...props}
-								onclick={(event) => {
-									props.onclick?.(event);
-									handleCloseChat(event);
-								}}
-								aria-label="Close chat"
-							>
-								<X size={16} />
-							</Button>
-						{/snippet}
-					</TooltipTrigger>
-					<TooltipContent side="bottom">{TOOLTIP_COPY.closeChat}</TooltipContent>
-				</Tooltip>
+		{#if hasExtendedHeader}
+			<div class="chat-header-extra">
+				{#if $chatStore.activeTool}
+					<div class="chat-status-banner" data-status={$chatStore.activeTool.status}>
+						{#if $chatStore.activeTool.status === 'running'}
+							<Loader2 size={14} class="spin" />
+						{:else if $chatStore.activeTool.status === 'success'}
+							<CheckCircle2 size={14} />
+						{:else}
+							<AlertTriangle size={14} />
+						{/if}
+						<div class="chat-status-text">
+							<span class="chat-status-title">{$chatStore.activeTool.name}</span>
+							<span class="chat-status-subtitle">
+								{$chatStore.activeTool.status === 'running'
+									? 'Running'
+									: $chatStore.activeTool.status === 'success'
+										? 'Success'
+										: 'Failed'}
+							</span>
+						</div>
+					</div>
+				{/if}
+				{#if $chatStore.promptPreview}
+					<div class="chat-preview-banner">
+						<div class="chat-preview-label">Prompt Preview</div>
+						{#if $chatStore.promptPreview.systemPrompt}
+							<p class="chat-preview-text">{$chatStore.promptPreview.systemPrompt}</p>
+						{/if}
+						{#if $chatStore.promptPreview.firstMessagePrompt}
+							<p class="chat-preview-text">{$chatStore.promptPreview.firstMessagePrompt}</p>
+						{/if}
+					</div>
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -431,13 +498,33 @@
 
 	.chat-header {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
+		flex-direction: column;
+		align-items: stretch;
+		justify-content: center;
+		gap: 0.45rem;
 		padding: 0.5rem 1.5rem;
 		min-height: 57px;
 		flex-shrink: 0;
 		border-bottom: 1px solid var(--color-border);
 		background-color: var(--color-card);
+	}
+
+	.chat-header-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.chat-header.expanded {
+		padding-top: 0.45rem;
+		padding-bottom: 0.55rem;
+	}
+
+	.chat-header-extra {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
 	}
 
 	:global(.dark) .chat-header {
@@ -456,6 +543,14 @@
 		gap: 0.25rem;
 	}
 
+	.streaming-label {
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-muted-foreground);
+		padding-right: 0.25rem;
+	}
+
 	.chat-title {
 		font-size: 1rem;
 		font-weight: 600;
@@ -464,6 +559,74 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		max-width: 300px;
+	}
+
+	.chat-status-banner {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.35rem 0.55rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.6rem;
+		background: color-mix(in oklab, var(--color-card) 82%, transparent);
+		width: fit-content;
+		max-width: 100%;
+	}
+
+	.chat-status-banner[data-status='success'] :global(svg) {
+		color: #2f8a4d;
+	}
+
+	.chat-status-banner[data-status='error'] :global(svg) {
+		color: #d55b5b;
+	}
+
+	.chat-status-text {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.chat-status-title {
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--color-foreground);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.chat-status-subtitle {
+		font-size: 0.72rem;
+		color: var(--color-muted-foreground);
+	}
+
+	.chat-preview-banner {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		padding: 0.4rem 0.55rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.6rem;
+		background: color-mix(in oklab, var(--color-card) 82%, transparent);
+	}
+
+	.chat-preview-label {
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-muted-foreground);
+	}
+
+	.chat-preview-text {
+		font-size: 0.76rem;
+		color: var(--color-foreground);
+		white-space: pre-wrap;
+		margin: 0;
+	}
+
+	.spin {
+		animation: chat-spin 1s linear infinite;
 	}
 
 	.chat-attachments {
@@ -528,6 +691,12 @@
 	}
 
 	@keyframes attachment-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	@keyframes chat-spin {
 		to {
 			transform: rotate(360deg);
 		}

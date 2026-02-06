@@ -9,7 +9,8 @@ const { websitesAPI } = vi.hoisted(() => ({
 		list: vi.fn(),
 		get: vi.fn(),
 		search: vi.fn(),
-		listArchived: vi.fn()
+		listArchived: vi.fn(),
+		save: vi.fn()
 	}
 }));
 
@@ -244,5 +245,23 @@ describe('websitesStore', () => {
 		websitesStore.removeLocal('6');
 
 		expect(get(websitesStore).items).toHaveLength(0);
+	});
+
+	it('tracks pending website while saving and returns the saved id', async () => {
+		websitesAPI.save.mockResolvedValue({
+			success: true,
+			data: { id: 'saved-1' }
+		});
+
+		const savePromise = websitesStore.saveWebsite('example.com');
+		const pendingState = get(websitesStore);
+		expect(pendingState.isSavingWebsite).toBe(true);
+		expect(pendingState.pendingWebsite?.id.startsWith('pending-')).toBe(true);
+
+		const result = await savePromise;
+		const finalState = get(websitesStore);
+		expect(result).toEqual({ success: true, id: 'saved-1' });
+		expect(finalState.isSavingWebsite).toBe(false);
+		expect(finalState.pendingWebsite).toBeNull();
 	});
 });

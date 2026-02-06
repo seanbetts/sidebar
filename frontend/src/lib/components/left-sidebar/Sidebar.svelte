@@ -128,7 +128,6 @@
 	onMount(() => {
 		// Mark as mounted to enable reactive data loading
 		isMounted = true;
-		sidebarSectionStore.set(activeSection);
 		tooltipsEnabled = canShowTooltips();
 
 		if (typeof window !== 'undefined') {
@@ -177,9 +176,9 @@
 	}
 
 	let activeSection: SidebarSection = 'notes';
+	$: activeSection = $sidebarSectionStore;
 
 	function openSection(section: SidebarSection) {
-		activeSection = section;
 		sidebarSectionStore.set(section);
 		isCollapsed = false;
 	}
@@ -250,6 +249,7 @@
 
 	function handleNewWebsite() {
 		newWebsiteUrl = '';
+		websitesStore.clearSaveError?.();
 		isNewWebsiteDialogOpen = true;
 	}
 
@@ -259,28 +259,17 @@
 
 		isSavingWebsite = true;
 		try {
-			const response = await fetch('/api/v1/websites/save', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ url })
-			});
-
-			const data = await response.json();
-			if (!response.ok) {
-				const detail = data?.error;
-				const message = typeof detail === 'string' ? detail : detail?.message;
-				throw new Error(message || 'Failed to save website');
+			const result = await websitesStore.saveWebsite(url);
+			if (!result.success || !result.id) {
+				throw new Error(result.error || 'Failed to save website');
 			}
-
-			const websiteId = data?.data?.id;
+			const websiteId = result.id;
 
 			dispatchCacheEvent('website.saved');
-			if (websiteId) {
-				ingestionViewerStore.clearActive();
-				editorStore.reset();
-				currentNoteId.set(null);
-				await websitesStore.loadById(websiteId);
-			}
+			ingestionViewerStore.clearActive();
+			editorStore.reset();
+			currentNoteId.set(null);
+			await websitesStore.loadById(websiteId);
 			isNewWebsiteDialogOpen = false;
 		} catch (error) {
 			logError('Failed to save website', error, { scope: 'Sidebar' });

@@ -77,18 +77,19 @@ export function createToolStateHandlers(update: UpdateFn, getState: GetStateFn) 
 			}));
 			toolUpdateTimeout = null;
 
-			if (status === 'error') {
-				toolClearTimeout = setTimeout(() => {
-					update((state) => ({
-						...state,
-						messages: state.messages.map((msg) =>
-							msg.id === messageId ? { ...msg, needsNewline: true } : msg
-						),
-						activeTool: state.activeTool?.messageId === messageId ? null : state.activeTool
-					}));
-					toolClearTimeout = null;
-				}, displayMs);
-			}
+			toolClearTimeout = setTimeout(() => {
+				update((state) => ({
+					...state,
+					messages:
+						status === 'error'
+							? state.messages.map((msg) =>
+									msg.id === messageId ? { ...msg, needsNewline: true } : msg
+								)
+							: state.messages,
+					activeTool: state.activeTool?.messageId === messageId ? null : state.activeTool
+				}));
+				toolClearTimeout = null;
+			}, displayMs);
 		}, updateDelay);
 	};
 

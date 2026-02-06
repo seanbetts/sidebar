@@ -50,20 +50,6 @@ export function getUserFriendlyError(error: string): string {
 	return 'An error occurred while processing your request. Please try again.';
 }
 
-function buildPromptPreviewMarkdown(systemPrompt?: string, firstMessagePrompt?: string): string {
-	const sections: string[] = [];
-	if (systemPrompt) {
-		sections.push(`## System Prompt\n\n\`\`\`\n${systemPrompt}\n\`\`\``);
-	}
-	if (firstMessagePrompt) {
-		sections.push(`## First Message Prompt\n\n\`\`\`\n${firstMessagePrompt}\n\`\`\``);
-	}
-	if (!sections.length) {
-		return 'No prompt content was returned.';
-	}
-	return sections.join('\n\n');
-}
-
 /**
  * Provide SSE connection helpers for chat streaming.
  *
@@ -232,10 +218,7 @@ export function useChatSSE() {
 			},
 
 			onPromptPreview: (data) => {
-				const content = buildPromptPreviewMarkdown(data?.system_prompt, data?.first_message_prompt);
-				websitesStore.clearActive();
-				ingestionViewerStore.clearActive();
-				editorStore.openPreview('Prompt Preview', content);
+				chatStore.setPromptPreview(data?.system_prompt ?? null, data?.first_message_prompt ?? null);
 			},
 
 			onMemoryCreated: async () => {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, tick } from 'svelte';
-	import { ChevronRight, Globe, Search } from 'lucide-svelte';
+	import { ChevronRight, Globe, Loader2, Search } from 'lucide-svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
 	import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
@@ -34,6 +34,7 @@
 	$: mainItems = $websitesStore.items.filter((site) => !site.pinned && !isArchived(site));
 	$: archivedItems = $websitesStore.items.filter((site) => isArchived(site));
 	$: totalItems = $websitesStore.items.length;
+	$: pendingWebsite = $websitesStore.pendingWebsite;
 
 	let activeMenuId: string | null = null;
 	let menuTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -351,6 +352,19 @@
 			{/if}
 		</div>
 	{:else}
+		{#if pendingWebsite}
+			<div class="websites-block">
+				<div class="websites-block-title">Saving</div>
+				<div class="website-pending" role="status" aria-live="polite">
+					<Loader2 size={14} class="spin" />
+					<div class="website-pending-text">
+						<span class="website-pending-title">{pendingWebsite.title}</span>
+						<span class="website-pending-domain">{pendingWebsite.domain}</span>
+					</div>
+				</div>
+			</div>
+		{/if}
+
 		<div class="websites-block">
 			<div class="websites-block-title">Pinned</div>
 			{#if pinnedItemsSorted.length === 0}
@@ -552,6 +566,52 @@
 		font-size: 0.8rem;
 		color: var(--color-muted-foreground);
 		padding: 0.5rem 0.25rem;
+	}
+
+	.website-pending {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		padding: 0.45rem 0.5rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.5rem;
+		background: color-mix(in oklab, var(--color-card) 85%, transparent);
+	}
+
+	.website-pending-text {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.website-pending-title {
+		font-size: 0.82rem;
+		font-weight: 600;
+		color: var(--color-foreground);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.website-pending-domain {
+		font-size: 0.72rem;
+		color: var(--color-muted-foreground);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.spin {
+		animation: websites-spin 1s linear infinite;
+	}
+
+	@keyframes websites-spin {
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	:global(.archive-trigger) {
