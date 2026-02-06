@@ -119,15 +119,17 @@ final class HorizontalRuleAttachment: NSTextAttachment {
 	        let width = max(1, imageBounds.width)
 	        let size = NSSize(width: width, height: height)
 	        let appearance = textContainer?.textView?.effectiveAppearance ?? NSAppearance.current
-	        let color = lineColor.resolvedColor(with: appearance)
+	        let color = lineColor
 	        return NSImage(size: size, flipped: false) { rect in
-	            color.setFill()
-	            rect.fill()
+	            appearance.performAsCurrentDrawingAppearance {
+	                color.setFill()
+	                rect.fill()
+	            }
 	            return true
 	        }
 	    }
 #endif
-	}
+		}
 
 @available(iOS 26.0, macOS 26.0, *)
 final class HorizontalRuleAttachmentViewProvider: NSTextAttachmentViewProvider {
