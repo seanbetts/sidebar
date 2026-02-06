@@ -30,3 +30,11 @@ export function buildIngestionStatusMessage(job?: IngestionJobLike): string {
 	const label = formatStage(stage);
 	return `${label.charAt(0).toUpperCase() + label.slice(1)}…`;
 }
+
+/**
+ * Detect whether a file has transitioned into the ready state.
+ * Mirrors native behavior by requiring a known prior status.
+ */
+export function hasReadyTransition(previousStatus: string | undefined, status: string): boolean {
+	return previousStatus !== undefined && previousStatus !== status && status === 'ready';
+}

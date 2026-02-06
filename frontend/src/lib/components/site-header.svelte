@@ -5,20 +5,36 @@
 	import { get } from 'svelte/store';
 	import { websitesStore, type WebsiteTranscriptEntry } from '$lib/stores/websites';
 	import { transcriptStatusStore } from '$lib/stores/transcript-status';
+	import { ingestionStore } from '$lib/stores/ingestion';
 	import ModeToggle from '$lib/components/mode-toggle.svelte';
 	import ScratchpadPopover from '$lib/components/scratchpad-popover.svelte';
+	import IngestionStatusCenter from '$lib/components/site-header/IngestionStatusCenter.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import * as Popover from '$lib/components/ui/popover/index.js';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import { layoutStore } from '$lib/stores/layout';
 	import { canShowTooltips } from '$lib/utils/tooltip';
 	import { resolveWeatherIcon } from '$lib/utils/weatherIcons';
-	import { ArrowLeftRight } from 'lucide-svelte';
+	import { buildIngestionStatusMessage, hasReadyTransition } from '$lib/utils/ingestionStatus';
+	import { ingestionAPI } from '$lib/services/api';
+	import { logError } from '$lib/utils/errorHandling';
+	import { AlertTriangle, ArrowLeftRight, CheckCircle2, Loader2 } from 'lucide-svelte';
 
 	const siteHeaderData = useSiteHeaderData();
+	const INGESTION_READY_WINDOW_MS = 6_000;
+
+	type HeaderIngestionStatus = 'processing' | 'failed' | 'ready' | null;
+
 	let liveLocation = '';
 	let weatherTemp = '';
 	let weatherCode: number | null = null;
 	let weatherIsDay: number | null = null;
+	let ingestionStatus: HeaderIngestionStatus = null;
+	let ingestionLabel = '';
+	let lastIngestionReadyAt: number | null = null;
+	let ingestionReadyTimeout: ReturnType<typeof setTimeout> | null = null;
+	let previousIngestionStatuses = new Map<string, string>();
+	let hasIngestionSnapshot = false;
 	let transcriptStatus: 'processing' | null = null;
 	let transcriptLabel = '';
 	let transcriptPollingId: ReturnType<typeof setInterval> | null = null;
@@ -34,11 +50,30 @@
 	$: ({ liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
+		void ingestionStore.load();
 	});
 	const isTranscriptPending = (status?: string) =>
 		status === 'queued' || status === 'processing' || status === 'retrying';
 
-	const isTranscriptFailed = (status?: string) => status === 'failed' || status === 'canceled';
+	const isInProgressIngestion = (status?: string | null) =>
+		Boolean(status) && !['ready', 'failed', 'canceled'].includes(status || '');
+
+	const normalizeIngestionLabel = (value: string): string =>
+		value
+			.replace(/\u2026/g, '')
+			.replace(/\.\.\./g, '')
+			.trim();
+
+	function markIngestionReady() {
+		lastIngestionReadyAt = Date.now();
+		if (ingestionReadyTimeout) {
+			clearTimeout(ingestionReadyTimeout);
+		}
+		ingestionReadyTimeout = setTimeout(() => {
+			lastIngestionReadyAt = null;
+			ingestionReadyTimeout = null;
+		}, INGESTION_READY_WINDOW_MS);
+	}
 
 	const getTranscriptCandidates = () => {
 		const active = $websitesStore.active;
@@ -188,9 +223,93 @@
 		stopTranscriptPolling();
 	}
 
+	$: ingestionItems = $ingestionStore.items || [];
+	$: activeIngestionItems = ingestionItems.filter((item) => isInProgressIngestion(item.job.status));
+	$: failedIngestionItems = ingestionItems.filter((item) => item.job.status === 'failed');
+
+	$: {
+		const nextStatuses = new Map<string, string>();
+		for (const item of ingestionItems) {
+			const status = item.job.status || '';
+			nextStatuses.set(item.file.id, status);
+			if (hasIngestionSnapshot) {
+				const previousStatus = previousIngestionStatuses.get(item.file.id);
+				if (hasReadyTransition(previousStatus, status)) {
+					markIngestionReady();
+				}
+			}
+		}
+		previousIngestionStatuses = nextStatuses;
+		hasIngestionSnapshot = true;
+	}
+
+	$: {
+		const activeLabel = activeIngestionItems
+			.map((item) => normalizeIngestionLabel(buildIngestionStatusMessage(item.job)))
+			.find((label) => label && label.toLowerCase() !== 'processing');
+		if (activeIngestionItems.length > 0) {
+			ingestionStatus = 'processing';
+			ingestionLabel = activeLabel || 'Processing';
+		} else if (failedIngestionItems.length > 0) {
+			ingestionStatus = 'failed';
+			ingestionLabel =
+				failedIngestionItems.length === 1 ? '1 Failed' : `${failedIngestionItems.length} Failed`;
+		} else if (lastIngestionReadyAt) {
+			ingestionStatus = 'ready';
+			ingestionLabel = 'Ready';
+		} else {
+			ingestionStatus = null;
+			ingestionLabel = '';
+		}
+	}
+
+	$: if (activeIngestionItems.length > 0) {
+		ingestionStore.startPolling();
+	} else {
+		ingestionStore.stopPolling();
+	}
+
 	onDestroy(() => {
 		stopTranscriptPolling();
+		ingestionStore.stopPolling();
+		if (ingestionReadyTimeout) {
+			clearTimeout(ingestionReadyTimeout);
+		}
 	});
+
+	async function handleCancelUpload(fileId: string) {
+		try {
+			await ingestionAPI.cancel(fileId);
+			const meta = await ingestionAPI.get(fileId);
+			ingestionStore.upsertItem({
+				file: meta.file,
+				job: meta.job,
+				recommended_viewer: meta.recommended_viewer
+			});
+		} catch (error) {
+			logError('Failed to cancel upload', error, { scope: 'siteHeader.cancelUpload', fileId });
+		}
+	}
+
+	async function handleClearFailure(fileId: string) {
+		try {
+			if (
+				fileId.startsWith('upload-') ||
+				fileId.startsWith('youtube-') ||
+				fileId.startsWith('local-')
+			) {
+				ingestionStore.removeLocalUpload(fileId);
+				return;
+			}
+			await ingestionAPI.delete(fileId);
+			ingestionStore.removeItem(fileId);
+		} catch (error) {
+			logError('Failed to clear failed upload', error, {
+				scope: 'siteHeader.clearFailedUpload',
+				fileId
+			});
+		}
+	}
 
 	function handleLayoutSwap() {
 		layoutStore.toggleMode();
@@ -206,6 +325,38 @@
 			<div class="subtitle">Workspace</div>
 		</div>
 		<div class="status-stack">
+			{#if ingestionStatus}
+				<Popover.Root>
+					<Popover.Trigger>
+						{#snippet child({ props })}
+							<button
+								type="button"
+								class="tasks-status ingestion-status"
+								data-status={ingestionStatus}
+								{...props}
+								aria-label="Show upload status"
+							>
+								{#if ingestionStatus === 'processing'}
+									<Loader2 size={12} class="spin" />
+								{:else if ingestionStatus === 'ready'}
+									<CheckCircle2 size={12} />
+								{:else}
+									<AlertTriangle size={12} />
+								{/if}
+								<span class="label">{ingestionLabel}</span>
+							</button>
+						{/snippet}
+					</Popover.Trigger>
+					<Popover.Content align="start" sideOffset={8}>
+						<IngestionStatusCenter
+							activeItems={activeIngestionItems}
+							failedItems={failedIngestionItems}
+							onCancel={handleCancelUpload}
+							onClearFailure={handleClearFailure}
+						/>
+					</Popover.Content>
+				</Popover.Root>
+			{/if}
 			{#if transcriptStatus}
 				<div class="tasks-status transcript-status" data-status={transcriptStatus}>
 					<span class="label">{transcriptLabel}</span>
@@ -310,6 +461,28 @@
 		animation: transcript-pulse 1.4s ease-in-out infinite;
 	}
 
+	.ingestion-status {
+		background: transparent;
+		cursor: pointer;
+	}
+
+	.ingestion-status[data-status='processing'] :global(svg) {
+		color: #d99a2b;
+	}
+
+	.ingestion-status[data-status='ready'] :global(svg) {
+		color: #2f8a4d;
+	}
+
+	.ingestion-status[data-status='failed'] :global(svg) {
+		color: #d55b5b;
+	}
+
+	.ingestion-status:focus-visible {
+		outline: 2px solid var(--color-ring);
+		outline-offset: 2px;
+	}
+
 	@keyframes transcript-pulse {
 		0% {
 			transform: scale(1);
@@ -371,6 +544,16 @@
 		height: 6px;
 		border-radius: 999px;
 		background: var(--color-muted-foreground);
+	}
+
+	.spin {
+		animation: site-header-spin 1s linear infinite;
+	}
+
+	@keyframes site-header-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	.location {

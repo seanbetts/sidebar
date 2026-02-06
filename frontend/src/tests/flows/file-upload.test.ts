@@ -127,9 +127,14 @@ const {
 			load: vi.fn()
 		},
 		currentNoteId: createStore<string | null>(null),
-		sidebarSectionStore: {
-			set: vi.fn()
-		}
+		sidebarSectionStore: (() => {
+			const sectionState = createStore('notes');
+			return {
+				subscribe: sectionState.subscribe,
+				set: vi.fn((next: string) => sectionState.set(next)),
+				reset: vi.fn(() => sectionState.set('notes'))
+			};
+		})()
 	};
 });
 
