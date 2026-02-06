@@ -1,5 +1,7 @@
 import { onDestroy, onMount } from 'svelte';
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
+import { weatherPreferencesStore } from '$lib/stores/weatherPreferences';
+import { formatTemperature } from '$lib/utils/weatherTemperature';
 import { setThemeMode } from '$lib/utils/theme';
 import {
 	getCachedData,
@@ -45,6 +47,9 @@ export function useSiteHeaderData() {
 
 	let timeInterval: ReturnType<typeof setInterval> | null = null;
 	let coordsPromise: Promise<Coords | null> | null = null;
+	let latestTemperatureC: number | null = null;
+	let weatherUnit = get(weatherPreferencesStore);
+	let unsubscribeWeatherPreferences: (() => void) | null = null;
 
 	const setState = (patch: Partial<SiteHeaderState>) => {
 		state.update((current) => ({ ...current, ...patch }));
@@ -67,6 +72,12 @@ export function useSiteHeaderData() {
 	};
 
 	onMount(() => {
+		unsubscribeWeatherPreferences = weatherPreferencesStore.subscribe((nextUnit) => {
+			weatherUnit = nextUnit;
+			if (latestTemperatureC !== null) {
+				setState({ weatherTemp: formatTemperature(latestTemperatureC, weatherUnit) });
+			}
+		});
 		updateDateTime();
 		timeInterval = setInterval(updateDateTime, 60_000);
 		migrateLegacyWeatherCache();
@@ -76,6 +87,7 @@ export function useSiteHeaderData() {
 
 	onDestroy(() => {
 		if (timeInterval) clearInterval(timeInterval);
+		if (unsubscribeWeatherPreferences) unsubscribeWeatherPreferences();
 	});
 
 	async function loadLocation() {
@@ -242,7 +254,8 @@ export function useSiteHeaderData() {
 
 	function applyWeather(data: { temperature_c?: number; weather_code?: number; is_day?: number }) {
 		if (typeof data.temperature_c === 'number') {
-			setState({ weatherTemp: `${Math.round(data.temperature_c)}°C` });
+			latestTemperatureC = data.temperature_c;
+			setState({ weatherTemp: formatTemperature(data.temperature_c, weatherUnit) });
 		}
 
 		const weatherCode = typeof data.weather_code === 'number' ? data.weather_code : null;

@@ -9,6 +9,7 @@
 	import SettingsShortcutsSection from '$lib/components/left-sidebar/panels/settings/SettingsShortcutsSection.svelte';
 	import SettingsStorageSection from '$lib/components/left-sidebar/panels/settings/SettingsStorageSection.svelte';
 	import { clearCaches, clearInFlight, clearMemoryCache } from '$lib/utils/cache';
+	import type { WeatherUnit } from '$lib/stores/weatherPreferences';
 
 	export let open = false;
 	export let isLoadingSettings = false;
@@ -40,6 +41,8 @@
 	export let settingsError = '';
 	export let communicationStyle = '';
 	export let workingRelationship = '';
+	export let weatherUnit: WeatherUnit = 'celsius';
+	export let setWeatherUnit: (unit: WeatherUnit) => void;
 	export let isLoadingSkills = false;
 	export let skillsError = '';
 	export let skills: Array<{ id: string; name: string; description: string; category?: string }> =
@@ -120,6 +123,8 @@
 					<SettingsSystemSection
 						bind:communicationStyle
 						bind:workingRelationship
+						bind:weatherUnit
+						{setWeatherUnit}
 						{isLoadingSettings}
 						{settingsError}
 					/>

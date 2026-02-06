@@ -17,6 +17,7 @@
 		groupSkills,
 		normalizeSkillList
 	} from '$lib/components/left-sidebar/panels/settingsUtils';
+	import { weatherPreferencesStore, type WeatherUnit } from '$lib/stores/weatherPreferences';
 	import { logError } from '$lib/utils/errorHandling';
 
 	export let open = false;
@@ -57,8 +58,10 @@
 	let activeLocationIndex = -1;
 	let lastSelectedLocation = '';
 	let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+	let weatherPreferenceUnsubscribe: (() => void) | null = null;
 	let wasSettingsOpen = false;
 	let settingsDirty = false;
+	let weatherUnit: WeatherUnit = 'celsius';
 	let profileImageUrl = '';
 	let profileImageVersion = 0;
 	let isUploadingProfileImage = false;
@@ -75,6 +78,10 @@
 	let activeSettingsSection = 'account';
 
 	onMount(() => {
+		weatherPreferenceUnsubscribe = weatherPreferencesStore.subscribe((value) => {
+			weatherUnit = value;
+		});
+		weatherPreferencesStore.refreshFromStorage();
 		loadSettings(true);
 		loadSkills();
 	});
@@ -82,7 +89,12 @@
 	onDestroy(() => {
 		if (locationLookupTimer) clearTimeout(locationLookupTimer);
 		if (autosaveTimer) clearTimeout(autosaveTimer);
+		if (weatherPreferenceUnsubscribe) weatherPreferenceUnsubscribe();
 	});
+
+	function setWeatherUnit(value: WeatherUnit) {
+		weatherPreferencesStore.setWeatherUnit(value);
+	}
 
 	async function loadSkills() {
 		if (isLoadingSkills) return;
@@ -425,6 +437,8 @@
 	{settingsError}
 	bind:communicationStyle
 	bind:workingRelationship
+	bind:weatherUnit
+	{setWeatherUnit}
 	{isLoadingSkills}
 	{skillsError}
 	{skills}
