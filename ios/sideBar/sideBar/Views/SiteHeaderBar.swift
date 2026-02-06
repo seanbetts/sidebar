@@ -150,10 +150,9 @@ public struct SiteHeaderBar: View {
     private var trailingControls: some View {
         HStack(alignment: .center, spacing: 12) {
             if !isCompact {
-                if environment.isOffline
-                    || environment.writeQueue.isProcessing
-                    || environment.writeQueue.pendingCount > 0 {
+                if environment.isOffline || !environment.isServerReachable {
                     OfflineBanner()
+                        .offset(x: -8)
                 }
                 VStack(alignment: .trailing, spacing: 4) {
                     HeaderInfoItem(icon: "cloud.sun", text: weatherText)

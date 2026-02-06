@@ -10,10 +10,10 @@ struct OfflineBanner: View {
                 isPendingWritesPresented = true
             } label: {
                 statusIcon
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white)
-                .padding(.horizontal, DesignTokens.Spacing.xs)
-                .padding(.vertical, DesignTokens.Spacing.xxs)
+                .padding(.horizontal, DesignTokens.Spacing.sm)
+                .padding(.vertical, DesignTokens.Spacing.xs)
                 .background(backgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 #if !os(macOS)
