@@ -66,6 +66,11 @@ struct WebsitesPanelView: View {
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading
         }
+        .onChange(of: isArchiveExpanded) { _, expanded in
+            if expanded {
+                Task { await viewModel.loadArchived() }
+            }
+        }
         return base
         .alert("Save a website", isPresented: $isNewWebsitePresented) {
             TextField("example.com", text: $newWebsiteUrl)
@@ -240,11 +245,13 @@ extension WebsitesPanelView {
                     DisclosureGroup(
                         isExpanded: $isArchiveExpanded,
                         content: {
-                        if archivedItems.isEmpty {
-                            Text(archivedEmptyStateText)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
+                            if isArchiveLoading {
+                                archiveLoadingRow(message: "Loading archived websites...")
+                            } else if archivedItems.isEmpty {
+                                Text(archivedEmptyStateText)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
                                 ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
                                     websiteListRow(item: item, index: index, allowArchive: false)
                                 }
@@ -464,10 +471,6 @@ extension WebsitesPanelView {
             if count == 0 {
                 return "No archived websites"
             }
-            if appEnvironment.isOffline || !appEnvironment.isNetworkAvailable {
-                return "Archived websites are available when you're online."
-            }
-            return "Loading archived websites..."
         }
         if appEnvironment.isOffline || !appEnvironment.isNetworkAvailable {
             return "Archived websites are available when you're online."
@@ -505,7 +508,9 @@ extension WebsitesPanelView {
             DisclosureGroup(
                 isExpanded: $isArchiveExpanded,
                 content: {
-                    if archivedItems.isEmpty {
+                    if isArchiveLoading {
+                        archiveLoadingRow(message: "Loading archived websites...")
+                    } else if archivedItems.isEmpty {
                         Text(archivedEmptyStateText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -529,16 +534,26 @@ extension WebsitesPanelView {
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(panelBackground)
-        .onChange(of: isArchiveExpanded) { _, expanded in
-            if expanded {
-                Task { await viewModel.loadArchived() }
-            }
-        }
         .background(
             GeometryReader { proxy in
                 Color.clear.preference(key: ArchiveHeightKey.self, value: proxy.size.height)
             }
         )
+    }
+
+    private var isArchiveLoading: Bool {
+        isArchiveExpanded && viewModel.isLoadingArchived && archivedItems.isEmpty
+    }
+
+    @ViewBuilder
+    private func archiveLoadingRow(message: String) -> some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            ProgressView()
+                .controlSize(.small)
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private var isCompact: Bool {

@@ -62,15 +62,15 @@ extension NotesPanelView {
             if count == 0 {
                 return "No archived notes"
             }
-            if environment.isOffline || !environment.isNetworkAvailable {
-                return "Archived notes are available when you're online."
-            }
-            return "Loading archived notes..."
         }
         if environment.isOffline || !environment.isNetworkAvailable {
             return "Archived notes are available when you're online."
         }
         return "No archived notes"
+    }
+
+    var isArchiveLoading: Bool {
+        isArchiveExpanded && viewModel.isLoadingArchived && archivedNodes.isEmpty
     }
 
     func normalizeArchivedNodes(_ nodes: [FileNode]) -> [FileNode] {

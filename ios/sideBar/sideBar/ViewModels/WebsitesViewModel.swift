@@ -52,6 +52,7 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var selectedWebsiteId: String?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var isLoadingDetail: Bool = false
+    @Published public private(set) var isLoadingArchived: Bool = false
     @Published public private(set) var errorMessage: String?
     @Published public private(set) var isSavingWebsite: Bool = false
     @Published public private(set) var saveErrorMessage: String?
@@ -122,6 +123,9 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func loadArchived(force: Bool = false) async {
+        guard !isLoadingArchived else { return }
+        isLoadingArchived = true
+        defer { isLoadingArchived = false }
         await store.loadArchivedList(force: force)
     }
 

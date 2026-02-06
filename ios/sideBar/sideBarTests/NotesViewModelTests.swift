@@ -212,6 +212,29 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.activeNote)
         XCTAssertEqual(api.getNoteCallCount, 0)
     }
+
+    func testLoadArchivedTreeTracksLoadingState() async {
+        let api = ControlledArchivedNotesAPI()
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let loadTask = Task { await viewModel.loadArchivedTree() }
+        await Task.yield()
+
+        XCTAssertTrue(viewModel.isLoadingArchived)
+
+        api.resumeArchivedList(result: .success(FileTree(children: [])))
+        await loadTask.value
+
+        XCTAssertFalse(viewModel.isLoadingArchived)
+    }
 }
 
 private enum MockError: Error {
@@ -412,5 +435,101 @@ private struct MockNotesAPI: NotesProviding {
 
     func deleteFolder(path: String) async throws {
         _ = path
+    }
+}
+
+@MainActor
+private final class ControlledArchivedNotesAPI: NotesProviding {
+    private var archivedContinuation: CheckedContinuation<FileTree, Error>?
+
+    func listTree() async throws -> FileTree {
+        FileTree(children: [])
+    }
+
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return try await withCheckedThrowingContinuation { continuation in
+            archivedContinuation = continuation
+        }
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        throw MockError.forced
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw MockError.forced
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
+    }
+
+    func resumeArchivedList(result: Result<FileTree, Error>) {
+        guard let continuation = archivedContinuation else { return }
+        archivedContinuation = nil
+        continuation.resume(with: result)
     }
 }
