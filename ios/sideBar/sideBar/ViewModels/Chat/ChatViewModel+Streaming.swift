@@ -261,22 +261,18 @@ extension ChatViewModel {
                     default:
                         resolvedStatus = .queued
                     }
-                    await MainActor.run {
-                        self.updateAttachment(id: id) { item in
-                            var updated = item
-                            updated.status = resolvedStatus
-                            updated.stage = stage ?? status
-                            return updated
-                        }
+                    self.updateAttachment(id: id) { item in
+                        var updated = item
+                        updated.status = resolvedStatus
+                        updated.stage = stage ?? status
+                        return updated
                     }
                     if resolvedStatus == .ready || resolvedStatus == .failed || resolvedStatus == .canceled {
                         return
                     }
                     try? await Task.sleep(nanoseconds: 5_000_000_000)
                 } catch {
-                    await MainActor.run {
-                        self?.toastCenter?.show(message: "Attachment status failed")
-                    }
+                    self?.toastCenter?.show(message: "Attachment status failed")
                     return
                 }
             }

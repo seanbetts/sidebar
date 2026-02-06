@@ -11,8 +11,9 @@ import Foundation
 /// - Various APIs: Chat, Conversations, and Ingestion endpoints
 ///
 /// ## Threading
-/// All published properties are updated on the main actor. Stream events are processed
-/// asynchronously and dispatched to the main thread for UI updates.
+/// The class is `@MainActor`-isolated. All published properties and mutable state are
+/// accessed exclusively on the main actor. Stream events are dispatched to the main actor
+/// by the stream client before delivery.
 ///
 /// ## Architecture
 /// The ViewModel is split across multiple files for maintainability:
@@ -37,7 +38,7 @@ import Foundation
 /// await viewModel.selectConversation(id: conversationId)
 /// await viewModel.sendMessage(text: "Hello")
 /// ```
-public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
+@MainActor public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public var conversations: [Conversation] = []
     @Published public var selectedConversationId: String?
     @Published public var messages: [Message] = []

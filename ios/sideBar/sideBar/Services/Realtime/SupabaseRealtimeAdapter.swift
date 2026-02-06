@@ -15,7 +15,10 @@ public protocol RealtimeEventHandler: AnyObject {
 }
 
 /// Bridges Supabase realtime events into app payloads.
-public final class SupabaseRealtimeAdapter: RealtimeClient {
+///
+/// All mutable channel and subscription state is accessed on the main actor
+/// to prevent data races between `start()` and `stop()`.
+@MainActor public final class SupabaseRealtimeAdapter: RealtimeClient {
     public weak var handler: RealtimeEventHandler?
     private let tokenStore: AccessTokenStore
     private let client: SupabaseClient

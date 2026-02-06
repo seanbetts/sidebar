@@ -145,10 +145,8 @@ extension ChatViewModel {
         clearActiveToolTask?.cancel()
         clearActiveToolTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 4_500_000_000)
-            await MainActor.run {
-                if self?.activeTool?.name == name {
-                    self?.activeTool = nil
-                }
+            if self?.activeTool?.name == name {
+                self?.activeTool = nil
             }
         }
     }
@@ -245,13 +243,9 @@ extension ChatViewModel {
                     error: message.error
                 )
             )
-            await MainActor.run { [chatStore] in
-                chatStore.upsertConversation(updated)
-            }
+            chatStore.upsertConversation(updated)
         } catch {
-            await MainActor.run {
-                errorMessage = error.localizedDescription
-            }
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -282,17 +276,13 @@ extension ChatViewModel {
         defer { generatingTitleIds.remove(conversationId) }
         do {
             let response = try await chatAPI.generateTitle(conversationId: conversationId)
-            await MainActor.run { [chatStore] in
-                chatStore.updateConversationTitle(
-                    id: conversationId,
-                    title: response.title,
-                    titleGenerated: response.fallback == false
-                )
-            }
+            chatStore.updateConversationTitle(
+                id: conversationId,
+                title: response.title,
+                titleGenerated: response.fallback == false
+            )
         } catch {
-            await MainActor.run {
-                errorMessage = error.localizedDescription
-            }
+            errorMessage = error.localizedDescription
         }
     }
 

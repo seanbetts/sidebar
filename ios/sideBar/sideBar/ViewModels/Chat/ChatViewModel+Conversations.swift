@@ -220,9 +220,7 @@ extension ChatViewModel {
                 do {
                     try await self?.ingestionAPI.delete(fileId: fileId)
                 } catch {
-                    await MainActor.run {
-                        self?.toastCenter?.show(message: "Failed to delete attachment")
-                    }
+                    self?.toastCenter?.show(message: "Failed to delete attachment")
                 }
             }
         }

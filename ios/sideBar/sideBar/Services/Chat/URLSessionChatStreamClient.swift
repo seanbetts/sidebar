@@ -68,8 +68,11 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
 
     private func emitEvents(from data: Data) {
         let events = parser.ingest(data)
-        for event in events {
-            handler?.handle(event: event)
+        guard !events.isEmpty else { return }
+        Task { @MainActor [handler = self.handler] in
+            for event in events {
+                handler?.handle(event: event)
+            }
         }
     }
 }
