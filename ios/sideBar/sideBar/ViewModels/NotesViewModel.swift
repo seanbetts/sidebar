@@ -41,6 +41,7 @@ public final class NotesViewModel: ObservableObject {
     @Published public var searchQuery: String = ""
     @Published public private(set) var searchResults: [FileNode] = []
     @Published public private(set) var isSearching: Bool = false
+    @Published public private(set) var isLoadingArchived: Bool = false
     @Published public private(set) var errorMessage: String?
 
     private let api: any NotesProviding
@@ -101,6 +102,9 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func loadArchivedTree(force: Bool = false) async {
+        guard !isLoadingArchived else { return }
+        isLoadingArchived = true
+        defer { isLoadingArchived = false }
         do {
             try await store.loadArchivedTree(force: force)
         } catch {

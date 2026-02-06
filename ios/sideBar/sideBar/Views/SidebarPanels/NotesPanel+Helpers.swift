@@ -354,7 +354,9 @@ extension NotesPanelView {
                 DisclosureGroup(
                     isExpanded: $isArchiveExpanded,
                     content: {
-                        if archivedNodes.isEmpty {
+                        if isArchiveLoading {
+                            archiveLoadingRow(message: "Loading archived notes...")
+                        } else if archivedNodes.isEmpty {
                             Text(archivedEmptyStateText)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -436,7 +438,9 @@ extension NotesPanelView {
             DisclosureGroup(
                 isExpanded: $isArchiveExpanded,
                 content: {
-                    if archivedNodes.isEmpty {
+                    if isArchiveLoading {
+                        archiveLoadingRow(message: "Loading archived notes...")
+                    } else if archivedNodes.isEmpty {
                         Text(archivedEmptyStateText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -471,6 +475,17 @@ extension NotesPanelView {
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(panelBackground)
+    }
+
+    @ViewBuilder
+    private func archiveLoadingRow(message: String) -> some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            ProgressView()
+                .controlSize(.small)
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
 }

@@ -206,6 +206,28 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.pendingWebsite)
     }
 
+    func testLoadArchivedTracksLoadingState() async {
+        let cache = InMemoryCacheClient()
+        let api = ControlledArchivedWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let loadTask = Task { await viewModel.loadArchived() }
+        await Task.yield()
+
+        XCTAssertTrue(viewModel.isLoadingArchived)
+
+        api.resumeListArchived(result: .success(WebsitesResponse(items: [])))
+        await loadTask.value
+
+        XCTAssertFalse(viewModel.isLoadingArchived)
+    }
+
     func testDeleteWebsiteClearsSelection() async {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
@@ -384,6 +406,65 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
     func resumeSave(result: Result<WebsiteSaveResponse, Error>) {
         guard let continuation = saveContinuation else { return }
         saveContinuation = nil
+        continuation.resume(with: result)
+    }
+}
+
+private final class ControlledArchivedWebsitesAPI: WebsitesProviding {
+    private var listArchivedContinuation: CheckedContinuation<WebsitesResponse, Error>?
+
+    func list() async throws -> WebsitesResponse {
+        WebsitesResponse(items: [])
+    }
+
+    func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse {
+        _ = limit
+        _ = offset
+        return try await withCheckedThrowingContinuation { continuation in
+            listArchivedContinuation = continuation
+        }
+    }
+
+    func get(id: String) async throws -> WebsiteDetail {
+        makeDetail(id: id)
+    }
+
+    func save(url: String) async throws -> WebsiteSaveResponse {
+        _ = url
+        throw MockError.forced
+    }
+
+    func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
+        _ = pinned
+        _ = clientUpdatedAt
+        return makeItem(id: id)
+    }
+
+    func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem {
+        _ = title
+        _ = clientUpdatedAt
+        return makeItem(id: id)
+    }
+
+    func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
+        _ = archived
+        _ = clientUpdatedAt
+        return makeItem(id: id)
+    }
+
+    func delete(id: String, clientUpdatedAt: String?) async throws {
+        _ = id
+        _ = clientUpdatedAt
+    }
+
+    func sync(_ payload: WebsiteSyncRequest) async throws -> WebsiteSyncResponse {
+        _ = payload
+        return WebsiteSyncResponse(applied: [], websites: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+    }
+
+    func resumeListArchived(result: Result<WebsitesResponse, Error>) {
+        guard let continuation = listArchivedContinuation else { return }
+        listArchivedContinuation = nil
         continuation.resume(with: result)
     }
 }
