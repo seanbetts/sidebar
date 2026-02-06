@@ -463,7 +463,12 @@
 							data-sidebar="group-content"
 							class="w-full text-sm"
 						>
-							{#if archivedItems.length === 0}
+							{#if $websitesStore.archivedLoading}
+								<div class="websites-empty websites-loading" role="status" aria-live="polite">
+									<Loader2 size={14} class="spin" />
+									<span>Loading archived websites...</span>
+								</div>
+							{:else if archivedItems.length === 0}
 								<div class="websites-empty">No archived websites</div>
 							{:else}
 								<div class="websites-list">
@@ -566,6 +571,12 @@
 		font-size: 0.8rem;
 		color: var(--color-muted-foreground);
 		padding: 0.5rem 0.25rem;
+	}
+
+	.websites-loading {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 	}
 
 	.website-pending {

@@ -155,6 +155,7 @@ function createWebsitesStore() {
 		searchQuery: string;
 		loaded: boolean;
 		archivedLoaded: boolean;
+		archivedLoading: boolean;
 		isSavingWebsite: boolean;
 		pendingWebsite: PendingWebsiteItem | null;
 		saveError: string | null;
@@ -167,6 +168,7 @@ function createWebsitesStore() {
 		searchQuery: '',
 		loaded: false,
 		archivedLoaded: false,
+		archivedLoading: false,
 		isSavingWebsite: false,
 		pendingWebsite: null,
 		saveError: null
@@ -235,6 +237,7 @@ function createWebsitesStore() {
 			if (!force && currentState.archivedLoaded) {
 				return;
 			}
+			update((state) => ({ ...state, archivedLoading: true }));
 			try {
 				const data = await websitesAPI.listArchived();
 				const archivedItems = extractWebsiteItems(data).map((item) => ({
@@ -248,13 +251,15 @@ function createWebsitesStore() {
 					return {
 						...state,
 						items: mergedItems,
-						archivedLoaded: true
+						archivedLoaded: true,
+						archivedLoading: false
 					};
 				});
 			} catch (error) {
 				logError('Failed to load archived websites', error, {
 					scope: 'websitesStore.loadArchived'
 				});
+				update((state) => ({ ...state, archivedLoading: false }));
 			}
 		},
 
@@ -382,6 +387,7 @@ function createWebsitesStore() {
 				searchQuery: '',
 				loaded: false,
 				archivedLoaded: false,
+				archivedLoading: false,
 				isSavingWebsite: false,
 				pendingWebsite: null,
 				saveError: null

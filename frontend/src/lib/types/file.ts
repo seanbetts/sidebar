@@ -25,6 +25,8 @@ export interface SingleFileTree {
 	error?: string | null;
 	searchQuery?: string;
 	loaded?: boolean;
+	archivedLoading?: boolean;
+	archivedLoaded?: boolean;
 }
 
 export interface FileTreeState {
