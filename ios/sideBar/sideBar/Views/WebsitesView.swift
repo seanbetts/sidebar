@@ -19,7 +19,6 @@ public struct WebsitesView: View {
     @State private var isRenameDialogPresented = false
     @State private var renameValue: String = ""
     @State private var isDeleteAlertPresented = false
-    @State private var isArchiveAlertPresented = false
 
     public init() {
     }
@@ -32,8 +31,7 @@ public struct WebsitesView: View {
             isExporting: $isExporting,
             isRenameDialogPresented: $isRenameDialogPresented,
             renameValue: $renameValue,
-            isDeleteAlertPresented: $isDeleteAlertPresented,
-            isArchiveAlertPresented: $isArchiveAlertPresented
+            isDeleteAlertPresented: $isDeleteAlertPresented
         )
             .task {
                 await environment.websitesViewModel.load(force: true)
@@ -92,18 +90,6 @@ public struct WebsitesView: View {
             } message: {
                 Text("This will remove the website and cannot be undone.")
             }
-            .alert(archiveAlertTitle, isPresented: $isArchiveAlertPresented) {
-                Button(archiveActionTitle, role: .destructive) {
-                    guard let websiteId = environment.websitesViewModel.active?.id else { return }
-                    Task {
-                        await environment.websitesViewModel.setArchived(id: websiteId, archived: !isArchived)
-                    }
-                }
-                .keyboardShortcut(.defaultAction)
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text(archiveAlertMessage)
-            }
     }
 
     private var websiteTitle: String {
@@ -160,7 +146,7 @@ public struct WebsitesView: View {
                     exportWebsite()
                 },
                 SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    isArchiveAlertPresented = true
+                    archiveActiveWebsite()
                 },
                 SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
@@ -196,20 +182,6 @@ public struct WebsitesView: View {
         isArchived ? "archivebox.fill" : "archivebox"
     }
 
-    private var archiveActionTitle: String {
-        isArchived ? "Unarchive" : "Archive"
-    }
-
-    private var archiveAlertTitle: String {
-        isArchived ? "Unarchive website" : "Archive website"
-    }
-
-    private var archiveAlertMessage: String {
-        isArchived
-            ? "This will move the website back to your main list."
-            : "This will move the website into your archive."
-    }
-
     private var renameDialogTitle: String {
         "Rename website"
     }
@@ -229,6 +201,13 @@ public struct WebsitesView: View {
         renameValue = ""
         Task {
             await environment.websitesViewModel.renameWebsite(id: websiteId, title: updatedName)
+        }
+    }
+
+    private func archiveActiveWebsite() {
+        guard let websiteId = environment.websitesViewModel.active?.id else { return }
+        Task {
+            await environment.websitesViewModel.setArchived(id: websiteId, archived: !isArchived)
         }
     }
 
@@ -312,7 +291,6 @@ private struct WebsitesDetailView: View {
     @Binding var isRenameDialogPresented: Bool
     @Binding var renameValue: String
     @Binding var isDeleteAlertPresented: Bool
-    @Binding var isArchiveAlertPresented: Bool
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
@@ -343,8 +321,7 @@ private struct WebsitesDetailView: View {
                 guard viewModel.active != nil else { return }
                 isDeleteAlertPresented = true
             case .archiveItem:
-                guard viewModel.active != nil else { return }
-                isArchiveAlertPresented = true
+                archiveActiveWebsite()
             case .openInBrowser:
                 openSource()
             default:
@@ -555,7 +532,7 @@ extension WebsitesDetailView {
                 Label("Download", systemImage: "square.and.arrow.down")
             }
             Button {
-                isArchiveAlertPresented = true
+                archiveActiveWebsite()
             } label: {
                 Label(archiveMenuTitle, systemImage: archiveIconName)
             }
@@ -595,7 +572,7 @@ extension WebsitesDetailView {
                     exportWebsite()
                 },
                 SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    isArchiveAlertPresented = true
+                    archiveActiveWebsite()
                 },
                 SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
@@ -637,7 +614,7 @@ extension WebsitesDetailView {
                     exportWebsite()
                 },
                 SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    isArchiveAlertPresented = true
+                    archiveActiveWebsite()
                 },
                 SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
@@ -703,10 +680,6 @@ extension WebsitesDetailView {
         isArchived ? "archivebox.fill" : "archivebox"
     }
 
-    private var archiveActionTitle: String {
-        isArchived ? "Unarchive" : "Archive"
-    }
-
     private var isCompact: Bool {
         #if os(macOS)
         return false
@@ -727,6 +700,13 @@ extension WebsitesDetailView {
     private func openInDefaultBrowser() {
         guard let url = sourceURL else { return }
         openURL(url)
+    }
+
+    private func archiveActiveWebsite() {
+        guard let websiteId = viewModel.active?.id else { return }
+        Task {
+            await viewModel.setArchived(id: websiteId, archived: !isArchived)
+        }
     }
 
     private func expandWebsiteView() {
