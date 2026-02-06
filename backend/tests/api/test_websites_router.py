@@ -5,6 +5,10 @@ from api.config import settings
 from api.db.dependencies import DEFAULT_USER_ID
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.website import Website
+from api.routers.websites_helpers import website_summary
+from sqlalchemy import inspect
+from sqlalchemy.orm import load_only
+from sqlalchemy.orm.attributes import NO_VALUE
 
 from tests.helpers import error_message
 
@@ -133,3 +137,72 @@ def test_websites_youtube_transcript_enqueues_job(test_client, test_db):
         .first()
     )
     assert job is not None
+
+
+def test_archived_list_returns_metadata_reading_time(test_client, test_db):
+    website_id = uuid.uuid4()
+    website = Website(
+        id=website_id,
+        user_id=DEFAULT_USER_ID,
+        url="https://example.com/metadata-reading-time",
+        url_full="https://example.com/metadata-reading-time",
+        domain="example.com",
+        title="Metadata Reading Time",
+        content="Example content",
+        metadata_={"pinned": False, "archived": True, "reading_time": "104 min"},
+        is_archived=True,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(website)
+    test_db.commit()
+
+    response = test_client.get("/api/websites/archived", headers=_auth_headers())
+    assert response.status_code == 200
+    payload = response.json()
+    item = next(site for site in payload["items"] if site["id"] == str(website_id))
+    assert item["reading_time"] == "1 hr 44 mins"
+
+
+def test_website_summary_does_not_lazy_load_deferred_content(test_db):
+    website_id = uuid.uuid4()
+    website = Website(
+        id=website_id,
+        user_id=DEFAULT_USER_ID,
+        url="https://example.com/deferred-content",
+        url_full="https://example.com/deferred-content",
+        domain="example.com",
+        title="Deferred Content",
+        content="---\nreading_time: '14 min'\n---\n\nBody",
+        metadata_={"pinned": False, "archived": True},
+        is_archived=True,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(website)
+    test_db.commit()
+
+    listed = (
+        test_db.query(Website)
+        .options(
+            load_only(
+                Website.id,
+                Website.title,
+                Website.url,
+                Website.domain,
+                Website.saved_at,
+                Website.published_at,
+                Website.metadata_,
+                Website.is_archived,
+                Website.updated_at,
+                Website.last_opened_at,
+            )
+        )
+        .filter(Website.id == website_id)
+        .one()
+    )
+
+    assert inspect(listed).attrs.content.loaded_value is NO_VALUE
+    summary = website_summary(listed)
+    assert summary["reading_time"] is None
+    assert inspect(listed).attrs.content.loaded_value is NO_VALUE

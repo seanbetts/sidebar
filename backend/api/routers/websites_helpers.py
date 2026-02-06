@@ -6,6 +6,9 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
+from sqlalchemy import inspect
+from sqlalchemy.orm.attributes import NO_VALUE
+
 from api.config import settings
 from api.db.session import SessionLocal, set_session_user_id
 from api.models.website import Website
@@ -239,6 +242,18 @@ def _normalize_reading_time(value: str) -> str:
 def website_summary(website: Website) -> dict:
     """Build a summary payload for a website record."""
     metadata = website.metadata_ or {}
+    reading_time_value: str | None
+    reading_time = metadata.get("reading_time")
+    if isinstance(reading_time, str) and reading_time.strip():
+        reading_time_value = _normalize_reading_time(reading_time.strip())
+    else:
+        content_value = inspect(website).attrs.content.loaded_value
+        reading_time_value = (
+            _extract_reading_time(content_value)
+            if content_value is not NO_VALUE
+            else None
+        )
+
     return {
         "id": str(website.id),
         "title": website.title,
@@ -255,7 +270,7 @@ def website_summary(website: Website) -> dict:
         "favicon_r2_key": metadata.get("favicon_r2_key"),
         "favicon_extracted_at": metadata.get("favicon_extracted_at"),
         "youtube_transcripts": metadata.get("youtube_transcripts", {}),
-        "reading_time": _extract_reading_time(website.content),
+        "reading_time": reading_time_value,
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "last_opened_at": website.last_opened_at.isoformat()
         if website.last_opened_at
