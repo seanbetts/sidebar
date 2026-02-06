@@ -48,8 +48,10 @@
 	{#if website}
 		<div class="website-meta">
 			<div class="title-row">
-				<span class="subtitle">
+				<span class="favicon-slot">
 					<WebsiteFavicon faviconUrl={website.favicon_url} size={20} />
+				</span>
+				<div class="title-stack">
 					<a
 						class="title-text source-title"
 						href={getWebsiteSourceUrl(website)}
@@ -58,10 +60,10 @@
 					>
 						{getWebsiteDisplayTitle(website)}
 					</a>
-				</span>
-				<span class="subtitle">
-					{formatWebsiteSubtitle(website.domain, website.reading_time)}
-				</span>
+					<span class="subtitle">
+						{formatWebsiteSubtitle(website.domain, website.reading_time)}
+					</span>
+				</div>
 			</div>
 			<div class="website-meta-row">
 				<div class="website-actions">
@@ -320,7 +322,7 @@
 		align-items: center;
 		justify-content: flex-start;
 		gap: 1rem;
-		padding: 0.5rem 1.5rem;
+		padding: 0.4rem 1.5rem;
 		min-height: 57px;
 		border-bottom: 1px solid var(--color-border);
 		background-color: var(--color-card);
@@ -341,9 +343,23 @@
 
 	.title-row {
 		display: inline-flex;
+		align-items: center;
+		gap: 0;
+		min-width: 0;
+	}
+
+	.favicon-slot {
+		display: inline-flex;
+		align-items: center;
+		padding-left: 0.05rem;
+		padding-right: 1rem;
+	}
+
+	.title-stack {
+		display: inline-flex;
 		flex-direction: column;
 		align-items: flex-start;
-		gap: 0.15rem;
+		gap: 0rem;
 		min-width: 0;
 	}
 
