@@ -384,6 +384,22 @@ class WebsitesAPI {
 	}
 
 	/**
+	 * List archived websites.
+	 *
+	 * @returns List payload with archived website items.
+	 * @throws Error when the request fails.
+	 */
+	async listArchived(limit: number = 200, offset: number = 0): Promise<{ items: unknown[] }> {
+		const params = new URLSearchParams({
+			limit: String(limit),
+			offset: String(offset)
+		});
+		const response = await fetch(`${this.baseUrl}/archived?${params.toString()}`);
+		if (!response.ok) throw new Error('Failed to list archived websites');
+		return response.json();
+	}
+
+	/**
 	 * Fetch a website by ID.
 	 *
 	 * @param id - Website ID.

@@ -17,9 +17,14 @@ export interface WebsiteItem {
 	pinned: boolean;
 	pinned_order?: number | null;
 	archived?: boolean;
+	favicon_url?: string | null;
+	favicon_r2_key?: string | null;
+	favicon_extracted_at?: string | null;
 	youtube_transcripts?: Record<string, WebsiteTranscriptEntry>;
+	reading_time?: string | null;
 	updated_at: string | null;
 	last_opened_at: string | null;
+	deleted_at?: string | null;
 }
 
 export interface WebsiteTranscriptEntry {
@@ -62,9 +67,14 @@ const buildWebsiteSummary = (data: WebsiteDetail): WebsiteItem => ({
 	pinned: data.pinned ?? false,
 	pinned_order: data.pinned_order ?? null,
 	archived: data.archived ?? false,
+	favicon_url: data.favicon_url ?? null,
+	favicon_r2_key: data.favicon_r2_key ?? null,
+	favicon_extracted_at: data.favicon_extracted_at ?? null,
 	youtube_transcripts: data.youtube_transcripts ?? {},
+	reading_time: data.reading_time ?? null,
 	updated_at: data.updated_at,
-	last_opened_at: data.last_opened_at
+	last_opened_at: data.last_opened_at,
+	deleted_at: data.deleted_at ?? null
 });
 
 const extractWebsiteItems = (value: unknown): WebsiteItem[] => {
@@ -73,6 +83,14 @@ const extractWebsiteItems = (value: unknown): WebsiteItem[] => {
 		return data.items.filter(isWebsiteItem);
 	}
 	return [];
+};
+
+const isArchivedWebsite = (item: WebsiteItem) => Boolean(item.archived);
+
+const mergeWebsiteCollections = (active: WebsiteItem[], archived: WebsiteItem[]): WebsiteItem[] => {
+	const activeIds = new Set(active.map((item) => item.id));
+	const filteredArchived = archived.filter((item) => !activeIds.has(item.id));
+	return [...active, ...filteredArchived];
 };
 
 function createWebsitesStore() {
@@ -84,6 +102,7 @@ function createWebsitesStore() {
 		loadingDetail: boolean;
 		searchQuery: string;
 		loaded: boolean;
+		archivedLoaded: boolean;
 	}>({
 		items: [],
 		loading: false,
@@ -91,7 +110,8 @@ function createWebsitesStore() {
 		active: null,
 		loadingDetail: false,
 		searchQuery: '',
-		loaded: false
+		loaded: false,
+		archivedLoaded: false
 	});
 
 	return {
@@ -99,18 +119,18 @@ function createWebsitesStore() {
 
 		async load(force: boolean = false) {
 			const currentState = get({ subscribe });
-			if (!force && currentState.searchQuery) {
-				return;
-			}
 			if (!force) {
 				const cached = getCachedData<WebsiteItem[]>(CACHE_KEY, {
 					ttl: CACHE_TTL,
 					version: CACHE_VERSION
 				});
 				if (cached) {
+					const cachedActive = cached.filter((item) => !isArchivedWebsite(item));
+					const currentArchived = currentState.items.filter((item) => isArchivedWebsite(item));
+					const mergedItems = mergeWebsiteCollections(cachedActive, currentArchived);
 					update((state) => ({
 						...state,
-						items: cached,
+						items: mergedItems,
 						loading: false,
 						error: null,
 						searchQuery: '',
@@ -126,11 +146,15 @@ function createWebsitesStore() {
 			update((state) => ({ ...state, loading: true, error: null, searchQuery: '' }));
 			try {
 				const data = await websitesAPI.list();
-				const items = extractWebsiteItems(data);
-				setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
+				const activeItems = extractWebsiteItems(data).filter((item) => !isArchivedWebsite(item));
+				const mergedItems = mergeWebsiteCollections(
+					activeItems,
+					currentState.items.filter((item) => isArchivedWebsite(item))
+				);
+				setCachedData(CACHE_KEY, mergedItems, { ttl: CACHE_TTL, version: CACHE_VERSION });
 				update((state) => ({
 					...state,
-					items,
+					items: mergedItems,
 					loading: false,
 					error: null,
 					searchQuery: '',
@@ -145,6 +169,34 @@ function createWebsitesStore() {
 					searchQuery: '',
 					loaded: false
 				}));
+			}
+		},
+
+		async loadArchived(force: boolean = false) {
+			const currentState = get({ subscribe });
+			if (!force && currentState.archivedLoaded) {
+				return;
+			}
+			try {
+				const data = await websitesAPI.listArchived();
+				const archivedItems = extractWebsiteItems(data).map((item) => ({
+					...item,
+					archived: true
+				}));
+				update((state) => {
+					const activeItems = state.items.filter((item) => !isArchivedWebsite(item));
+					const mergedItems = mergeWebsiteCollections(activeItems, archivedItems);
+					setCachedData(CACHE_KEY, mergedItems, { ttl: CACHE_TTL, version: CACHE_VERSION });
+					return {
+						...state,
+						items: mergedItems,
+						archivedLoaded: true
+					};
+				});
+			} catch (error) {
+				logError('Failed to load archived websites', error, {
+					scope: 'websitesStore.loadArchived'
+				});
 			}
 		},
 
@@ -270,7 +322,8 @@ function createWebsitesStore() {
 				active: null,
 				loadingDetail: false,
 				searchQuery: '',
-				loaded: false
+				loaded: false,
+				archivedLoaded: false
 			});
 		},
 

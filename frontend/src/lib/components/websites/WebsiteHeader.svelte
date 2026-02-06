@@ -1,11 +1,11 @@
 <script lang="ts">
 	import {
-		Globe,
 		Pin,
 		PinOff,
 		Pencil,
 		Copy,
 		Check,
+		Link,
 		Download,
 		Archive,
 		ArchiveRestore,
@@ -20,14 +20,19 @@
 	import { onMount } from 'svelte';
 	import { canShowTooltips } from '$lib/utils/tooltip';
 	import type { WebsiteItem } from '$lib/stores/websites';
+	import WebsiteFavicon from '$lib/components/websites/WebsiteFavicon.svelte';
+	import {
+		formatWebsiteSubtitle,
+		getWebsiteDisplayTitle,
+		getWebsiteSourceUrl
+	} from '$lib/utils/websites';
 
 	export let website: WebsiteItem | null = null;
 	export let isCopied = false;
-	export let formatDomain: (domain: string) => string;
-	export let formatDate: (date: Date) => string;
 	export let onPinToggle: () => void;
 	export let onRename: () => void;
 	export let onCopy: () => void;
+	export let onCopyUrl: () => void;
 	export let onDownload: () => void;
 	export let onArchive: () => void;
 	export let onDelete: () => void;
@@ -37,32 +42,28 @@
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
 	});
-
-	const getSourceUrl = (site: WebsiteItem) => {
-		const maybeDetail = site as WebsiteItem & { url_full?: string | null };
-		return maybeDetail.url_full || site.url;
-	};
 </script>
 
 <div class="website-header">
 	{#if website}
 		<div class="website-meta">
 			<div class="title-row">
-				<Globe size={20} />
-				<span class="title-text">{website.title}</span>
+				<span class="subtitle">
+					<WebsiteFavicon faviconUrl={website.favicon_url} size={20} />
+					<a
+						class="title-text source-title"
+						href={getWebsiteSourceUrl(website)}
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						{getWebsiteDisplayTitle(website)}
+					</a>
+				</span>
+				<span class="subtitle">
+					{formatWebsiteSubtitle(website.domain, website.reading_time)}
+				</span>
 			</div>
 			<div class="website-meta-row">
-				<span class="subtitle">
-					<a class="source" href={getSourceUrl(website)} target="_blank" rel="noopener noreferrer">
-						<span>{formatDomain(website.domain)}</span>
-					</a>
-					{#if website.published_at}
-						<span class="pipe">|</span>
-						<span class="published-date">
-							{formatDate(new Date(website.published_at))}
-						</span>
-					{/if}
-				</span>
 				<div class="website-actions">
 					<Tooltip disabled={!tooltipsEnabled}>
 						<TooltipTrigger>
@@ -88,6 +89,25 @@
 						<TooltipContent side="bottom">
 							{website.pinned ? TOOLTIP_COPY.pin.on : TOOLTIP_COPY.pin.off}
 						</TooltipContent>
+					</Tooltip>
+					<Tooltip disabled={!tooltipsEnabled}>
+						<TooltipTrigger>
+							{#snippet child({ props })}
+								<Button
+									size="icon"
+									variant="ghost"
+									{...props}
+									onclick={(event) => {
+										props.onclick?.(event);
+										onCopyUrl();
+									}}
+									aria-label="Copy website URL"
+								>
+									<Link size={16} />
+								</Button>
+							{/snippet}
+						</TooltipTrigger>
+						<TooltipContent side="bottom">Copy URL</TooltipContent>
 					</Tooltip>
 					<Tooltip disabled={!tooltipsEnabled}>
 						<TooltipTrigger>
@@ -261,6 +281,10 @@
 									<span>Copy</span>
 								{/if}
 							</button>
+							<button class="website-menu-item" onclick={onCopyUrl}>
+								<Link size={16} />
+								<span>Copy URL</span>
+							</button>
 							<button class="website-menu-item" onclick={onDownload}>
 								<Download size={16} />
 								<span>Download</span>
@@ -309,7 +333,7 @@
 
 	.website-meta {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		justify-content: space-between;
 		gap: 1rem;
 		width: 100%;
@@ -317,9 +341,10 @@
 
 	.title-row {
 		display: inline-flex;
-		align-items: center;
-		gap: 0.75rem;
-		flex-wrap: wrap;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.15rem;
+		min-width: 0;
 	}
 
 	.website-meta-row {
@@ -331,9 +356,13 @@
 	.subtitle {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 0.5rem;
 		font-size: 0.8rem;
 		color: var(--color-muted-foreground);
+		min-width: 0;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.website-actions {
@@ -370,26 +399,25 @@
 		background-color: var(--color-accent);
 	}
 
-	.pipe {
-		color: var(--color-muted-foreground);
-	}
-
 	.title-text {
 		font-size: 1rem;
 		font-weight: 600;
 		color: var(--color-foreground);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
-	.published-date {
-		color: var(--color-muted-foreground);
-	}
-
-	.website-meta .source {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		color: var(--color-muted-foreground);
+	.source-title {
 		text-decoration: none;
+	}
+
+	.source-title:hover {
+		text-decoration: underline;
+	}
+
+	.website-meta-row {
+		flex-shrink: 0;
 	}
 
 	@container (max-width: 700px) {

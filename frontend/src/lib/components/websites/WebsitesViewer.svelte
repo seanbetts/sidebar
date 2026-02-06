@@ -23,6 +23,7 @@
 	import { logError } from '$lib/utils/errorHandling';
 	import { useWebsiteActions } from '$lib/hooks/useWebsiteActions';
 	import { toast } from 'svelte-sonner';
+	import { stripWebsiteFrontmatter } from '$lib/utils/websites';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -32,27 +33,6 @@
 	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isCopied = false;
 	const { renameWebsite, pinWebsite, archiveWebsite, deleteWebsite } = useWebsiteActions();
-
-	function formatDateWithOrdinal(date: Date) {
-		const day = date.getDate();
-		const suffix =
-			day % 100 >= 11 && day % 100 <= 13
-				? 'th'
-				: day % 10 === 1
-					? 'st'
-					: day % 10 === 2
-						? 'nd'
-						: day % 10 === 3
-							? 'rd'
-							: 'th';
-		const month = date.toLocaleDateString(undefined, { month: 'long' });
-		const year = date.getFullYear();
-		return `${day}${suffix} ${month} ${year}`;
-	}
-
-	function formatDomain(domain: string) {
-		return domain.replace(/^www\./i, '');
-	}
 
 	function extractYouTubeId(url: string): string | null {
 		try {
@@ -147,22 +127,11 @@
 	});
 
 	$: if (editor && $websitesStore.active) {
-		const raw = stripFrontmatter($websitesStore.active.content || '');
+		const raw = stripWebsiteFrontmatter($websitesStore.active.content || '');
 		const normalized = normalizeHtmlBlocks(raw);
 		editor.commands.setContent(
 			rewriteVideoEmbeds(normalized, $websitesStore.active, $transcriptStatusStore)
 		);
-	}
-
-	function stripFrontmatter(text: string): string {
-		const trimmed = text.trim();
-		if (!trimmed.startsWith('---')) return text;
-		const match = trimmed.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
-		if (match) return trimmed.slice(match[0].length);
-		const lines = trimmed.split('\n');
-		const separatorIndex = lines.findIndex((line) => line.trim() === '---');
-		if (separatorIndex >= 0) return lines.slice(separatorIndex + 1).join('\n');
-		return text;
 	}
 
 	function normalizeHtmlBlocks(text: string): string {
@@ -400,7 +369,7 @@
 		const active = $websitesStore.active;
 		if (!active) return;
 		try {
-			await navigator.clipboard.writeText(stripFrontmatter(active.content || ''));
+			await navigator.clipboard.writeText(stripWebsiteFrontmatter(active.content || ''));
 			isCopied = true;
 			if (copyTimeout) clearTimeout(copyTimeout);
 			copyTimeout = setTimeout(() => {
@@ -410,6 +379,22 @@
 		} catch (error) {
 			logError('Failed to copy website content', error, {
 				scope: 'websitesViewer.copy',
+				websiteId: active.id
+			});
+		}
+	}
+
+	async function handleCopyUrl() {
+		const active = $websitesStore.active;
+		if (!active) return;
+		const sourceUrl = (active.url_full || active.url || '').trim();
+		if (!sourceUrl) return;
+		try {
+			await navigator.clipboard.writeText(sourceUrl);
+			toast.success('URL copied');
+		} catch (error) {
+			logError('Failed to copy website URL', error, {
+				scope: 'websitesViewer.copyUrl',
 				websiteId: active.id
 			});
 		}
@@ -448,11 +433,10 @@
 	<WebsiteHeader
 		website={$websitesStore.active}
 		{isCopied}
-		{formatDomain}
-		formatDate={formatDateWithOrdinal}
 		onPinToggle={handlePinToggle}
 		onRename={openRenameDialog}
 		onCopy={handleCopy}
+		onCopyUrl={handleCopyUrl}
 		onDownload={handleDownload}
 		onArchive={handleArchive}
 		onDelete={requestDelete}
