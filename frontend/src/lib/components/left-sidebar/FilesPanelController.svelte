@@ -245,8 +245,8 @@
 		subtitle="Upload or create a file to get started."
 	/>
 {:else}
-	<div class="workspace-list">
-		<div class="workspace-main">
+	<div class="files-list">
+		<div class="files-main">
 			{#if showPinnedSection}
 				<FilesPinnedSection
 					pinnedItems={pinnedItemsSorted}
@@ -323,7 +323,7 @@
 />
 
 <style>
-	.workspace-list {
+	.files-list {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
@@ -332,7 +332,7 @@
 		flex: 1;
 	}
 
-	.workspace-main {
+	.files-main {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
