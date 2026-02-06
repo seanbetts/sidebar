@@ -205,6 +205,8 @@ export function createLoadActions(context: TreeStoreContext) {
 							children: applyExpandedPaths(cached, cachedExpandedPaths),
 							expandedPaths: cachedExpandedPaths,
 							loading: false,
+							archivedLoading: state.trees[basePath]?.archivedLoading ?? false,
+							archivedLoaded: state.trees[basePath]?.archivedLoaded ?? false,
 							error: null,
 							searchQuery: '',
 							loaded: true
@@ -232,6 +234,8 @@ export function createLoadActions(context: TreeStoreContext) {
 				[basePath]: {
 					...(state.trees[basePath] || { children: [], expandedPaths: cachedExpandedPaths }),
 					loading: true,
+					archivedLoading: state.trees[basePath]?.archivedLoading ?? false,
+					archivedLoaded: state.trees[basePath]?.archivedLoaded ?? false,
 					error: null,
 					searchQuery: '',
 					loaded: state.trees[basePath]?.loaded ?? false
@@ -260,6 +264,8 @@ export function createLoadActions(context: TreeStoreContext) {
 							children: applyExpandedPaths(mergedChildren, cachedExpandedPaths),
 							expandedPaths: cachedExpandedPaths,
 							loading: false,
+							archivedLoading: state.trees[basePath]?.archivedLoading ?? false,
+							archivedLoaded: state.trees[basePath]?.archivedLoaded ?? false,
 							error: null,
 							searchQuery: '',
 							loaded: true
@@ -282,6 +288,8 @@ export function createLoadActions(context: TreeStoreContext) {
 					[basePath]: {
 						...state.trees[basePath],
 						loading: false,
+						archivedLoading: state.trees[basePath]?.archivedLoading ?? false,
+						archivedLoaded: state.trees[basePath]?.archivedLoaded ?? false,
 						error: 'Service unavailable',
 						searchQuery: '',
 						loaded: false
@@ -295,6 +303,36 @@ export function createLoadActions(context: TreeStoreContext) {
 		if (basePath !== 'notes') {
 			return;
 		}
+
+		const currentTree = context.getState().trees[basePath];
+		if (currentTree?.archivedLoading) {
+			return;
+		}
+		if (
+			!force &&
+			currentTree?.archivedLoaded &&
+			currentTree.children?.some((node) => isArchiveDirectory(node))
+		) {
+			return;
+		}
+
+		context.update((state) => {
+			const tree = state.trees[basePath] || {
+				children: [],
+				expandedPaths: new Set<string>(),
+				loading: false
+			};
+			return {
+				trees: {
+					...state.trees,
+					[basePath]: {
+						...tree,
+						archivedLoading: true,
+						archivedLoaded: tree.archivedLoaded ?? false
+					}
+				}
+			};
+		});
 
 		try {
 			const response = await fetch('/api/v1/notes/archived?limit=500&offset=0');
@@ -323,6 +361,8 @@ export function createLoadActions(context: TreeStoreContext) {
 							...tree,
 							children: applyExpandedPaths(mergedChildren, expandedPaths),
 							expandedPaths,
+							archivedLoading: false,
+							archivedLoaded: true,
 							error: null,
 							loaded: true
 						}
@@ -331,6 +371,19 @@ export function createLoadActions(context: TreeStoreContext) {
 			});
 		} catch (error) {
 			logError('Failed to load archived notes', error, { basePath });
+			context.update((state) => {
+				const tree = state.trees[basePath];
+				if (!tree) return state;
+				return {
+					trees: {
+						...state.trees,
+						[basePath]: {
+							...tree,
+							archivedLoading: false
+						}
+					}
+				};
+			});
 		}
 	};
 

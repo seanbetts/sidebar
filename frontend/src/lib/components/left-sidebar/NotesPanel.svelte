@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronRight, FileText, Search } from 'lucide-svelte';
+	import { ChevronRight, FileText, Loader2, Search } from 'lucide-svelte';
 	import { treeStore } from '$lib/stores/tree';
 	import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
 	import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
@@ -275,7 +275,12 @@
 							data-sidebar="group-content"
 							class="w-full text-sm"
 						>
-							{#if archiveNodes.length > 0}
+							{#if isArchiveExpanded && treeData?.archivedLoading}
+								<div class="notes-empty notes-loading" role="status" aria-live="polite">
+									<Loader2 size={14} class="spin" />
+									<span>Loading archived notes...</span>
+								</div>
+							{:else if archiveNodes.length > 0}
 								<div class="notes-block-content">
 									{#each archiveNodes as node (node.path)}
 										<FileTreeNode
@@ -399,5 +404,24 @@
 		padding: 0.5rem 0.25rem;
 		color: var(--color-muted-foreground);
 		font-size: 0.8rem;
+	}
+
+	.notes-loading {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.spin {
+		animation: notes-spin 1s linear infinite;
+	}
+
+	@keyframes notes-spin {
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>
