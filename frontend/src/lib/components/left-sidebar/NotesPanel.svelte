@@ -19,6 +19,7 @@
 	$: loading = treeData?.loading ?? !treeData;
 
 	const ARCHIVE_FOLDER = 'Archive';
+	let isArchiveExpanded = false;
 
 	// Data loading is now handled by parent Sidebar component
 	// onMount removed to prevent duplicate loads and initial flicker
@@ -147,6 +148,9 @@
 	$: pinnedNodes = sortPinnedNodes(collectPinned(children));
 	$: mainNodes = filterNodes(children, { excludePinned: true, excludeArchive: true });
 	$: archiveNodes = getArchiveChildren(children);
+	$: if (isArchiveExpanded) {
+		void treeStore.loadArchived(basePath);
+	}
 </script>
 
 {#if loading}
@@ -243,7 +247,11 @@
 		</div>
 
 		<div class="notes-block notes-archive">
-			<Collapsible.Root class="group/collapsible" data-collapsible-root>
+			<Collapsible.Root
+				bind:open={isArchiveExpanded}
+				class="group/collapsible"
+				data-collapsible-root
+			>
 				<div
 					data-slot="sidebar-group"
 					data-sidebar="group"

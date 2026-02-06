@@ -10,10 +10,65 @@ import {
 	getExpandedCache,
 	getTreeCacheKey
 } from '$lib/stores/tree/cache';
-import { applyExpandedPaths, hasFilePath } from '$lib/stores/tree/nodes';
+import { applyExpandedPaths, hasFilePath, sortNodes } from '$lib/stores/tree/nodes';
 import { handleFetchError, logError } from '$lib/utils/errorHandling';
 
 export function createLoadActions(context: TreeStoreContext) {
+	const ARCHIVE_FOLDER = 'Archive';
+	const ARCHIVE_FOLDER_PATH = `folder:${ARCHIVE_FOLDER}`;
+
+	const isArchiveDirectory = (node: FileNode): boolean =>
+		node.type === 'directory' && node.path === ARCHIVE_FOLDER_PATH;
+
+	const normalizeArchivedNodes = (nodes: FileNode[]): FileNode[] =>
+		nodes.flatMap((node) => {
+			if (isArchiveDirectory(node)) {
+				return node.children || [];
+			}
+			return [node];
+		});
+
+	const markArchivedNodes = (nodes: FileNode[]): FileNode[] =>
+		nodes.map((node) => {
+			if (node.type === 'file') {
+				return { ...node, archived: true };
+			}
+			if (node.children) {
+				return {
+					...node,
+					children: markArchivedNodes(node.children)
+				};
+			}
+			return node;
+		});
+
+	const archivedChildrenFromNodes = (nodes: FileNode[]): FileNode[] => {
+		const archiveNode = nodes.find((node) => isArchiveDirectory(node));
+		return archiveNode?.children || [];
+	};
+
+	const mergeArchivedNodesIntoTree = (
+		activeNodes: FileNode[],
+		archivedNodes: FileNode[]
+	): FileNode[] => {
+		const existingArchive = activeNodes.find((node) => isArchiveDirectory(node));
+		const nonArchiveNodes = activeNodes.filter((node) => !isArchiveDirectory(node));
+		const normalizedArchivedNodes = normalizeArchivedNodes(archivedNodes);
+		const archiveChildren = markArchivedNodes(normalizedArchivedNodes);
+		if (archiveChildren.length === 0) {
+			return nonArchiveNodes;
+		}
+		const archiveNode: FileNode = {
+			name: ARCHIVE_FOLDER,
+			path: ARCHIVE_FOLDER_PATH,
+			type: 'directory',
+			children: archiveChildren,
+			expanded: existingArchive?.expanded,
+			folderMarker: existingArchive?.folderMarker
+		};
+		return sortNodes([...nonArchiveNodes, archiveNode]);
+	};
+
 	const mergeFileNodes = (existingNodes: FileNode[], freshNodes: FileNode[]): FileNode[] => {
 		const result: FileNode[] = [];
 		const freshMap = new Map(freshNodes.map((node) => [node.path, node]));
@@ -87,12 +142,14 @@ export function createLoadActions(context: TreeStoreContext) {
 			context.update((state) => {
 				const existingTree = state.trees[basePath];
 				const existingChildren = existingTree?.children || [];
+				const archivedChildren = archivedChildrenFromNodes(existingChildren);
 
 				// Merge trees intelligently with timestamp checking
-				const mergedChildren =
+				const mergedActiveChildren =
 					existingChildren.length > 0
 						? mergeFileNodes(existingChildren, freshChildren)
 						: freshChildren;
+				const mergedChildren = mergeArchivedNodesIntoTree(mergedActiveChildren, archivedChildren);
 
 				const finalChildren = applyExpandedPaths(mergedChildren, expandedPaths);
 				cacheTree(basePath, finalChildren);
@@ -190,21 +247,26 @@ export function createLoadActions(context: TreeStoreContext) {
 
 			const data = await response.json();
 			const children: FileNode[] = data.children || [];
-			cacheTree(basePath, children);
-			context.update((state) => ({
-				trees: {
-					...state.trees,
-					[basePath]: {
-						...state.trees[basePath],
-						children: applyExpandedPaths(children, cachedExpandedPaths),
-						expandedPaths: cachedExpandedPaths,
-						loading: false,
-						error: null,
-						searchQuery: '',
-						loaded: true
+			context.update((state) => {
+				const currentChildren = state.trees[basePath]?.children || [];
+				const archivedChildren = archivedChildrenFromNodes(currentChildren);
+				const mergedChildren = mergeArchivedNodesIntoTree(children, archivedChildren);
+				cacheTree(basePath, mergedChildren);
+				return {
+					trees: {
+						...state.trees,
+						[basePath]: {
+							...state.trees[basePath],
+							children: applyExpandedPaths(mergedChildren, cachedExpandedPaths),
+							expandedPaths: cachedExpandedPaths,
+							loading: false,
+							error: null,
+							searchQuery: '',
+							loaded: true
+						}
 					}
-				}
-			}));
+				};
+			});
 
 			if (basePath === 'notes') {
 				const editorState = get(editorStore);
@@ -229,5 +291,48 @@ export function createLoadActions(context: TreeStoreContext) {
 		}
 	};
 
-	return { load, revalidateInBackground };
+	const loadArchived = async (basePath: string = 'notes', force: boolean = false) => {
+		if (basePath !== 'notes') {
+			return;
+		}
+
+		try {
+			const response = await fetch('/api/v1/notes/archived?limit=500&offset=0');
+			if (!response.ok) {
+				await handleFetchError(response);
+			}
+
+			const data = await response.json();
+			const archivedChildren: FileNode[] = Array.isArray(data?.children)
+				? (data.children as FileNode[])
+				: [];
+
+			context.update((state) => {
+				const tree = state.trees[basePath] || {
+					children: [],
+					expandedPaths: new Set<string>(),
+					loading: false
+				};
+				const expandedPaths = tree.expandedPaths || new Set<string>();
+				const mergedChildren = mergeArchivedNodesIntoTree(tree.children || [], archivedChildren);
+				cacheTree(basePath, mergedChildren);
+				return {
+					trees: {
+						...state.trees,
+						[basePath]: {
+							...tree,
+							children: applyExpandedPaths(mergedChildren, expandedPaths),
+							expandedPaths,
+							error: null,
+							loaded: true
+						}
+					}
+				};
+			});
+		} catch (error) {
+			logError('Failed to load archived notes', error, { basePath });
+		}
+	};
+
+	return { load, revalidateInBackground, loadArchived };
 }
