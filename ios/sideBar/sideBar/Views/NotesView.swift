@@ -18,7 +18,6 @@ public struct NotesView: View {
     @State private var isMoveSheetPresented = false
     @State private var moveSelection: String = ""
     @State private var isDeleteAlertPresented = false
-    @State private var isArchiveAlertPresented = false
     @State private var isCloseConfirmPresented = false
     @State private var isExporting = false
     @State private var exportDocument: MarkdownFileDocument?
@@ -36,7 +35,6 @@ public struct NotesView: View {
             isMoveSheetPresented: $isMoveSheetPresented,
             moveSelection: $moveSelection,
             isDeleteAlertPresented: $isDeleteAlertPresented,
-            isArchiveAlertPresented: $isArchiveAlertPresented,
             isCloseConfirmPresented: $isCloseConfirmPresented,
             isExporting: $isExporting,
             exportDocument: $exportDocument,
@@ -112,18 +110,6 @@ public struct NotesView: View {
             } message: {
                 Text("This will remove the note and cannot be undone.")
             }
-            .alert(archiveAlertTitle, isPresented: $isArchiveAlertPresented) {
-                Button(archiveActionTitle, role: .destructive) {
-                    guard let noteId = environment.notesViewModel.activeNote?.path else { return }
-                    Task {
-                        await environment.notesViewModel.setArchived(id: noteId, archived: !isArchived)
-                    }
-                }
-                .keyboardShortcut(.defaultAction)
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text(archiveAlertMessage)
-            }
             .confirmationDialog("Save changes?", isPresented: $isCloseConfirmPresented, titleVisibility: .visible) {
                 Button("Save changes") {
                     Task {
@@ -192,7 +178,7 @@ public struct NotesView: View {
                     exportMarkdown()
                 },
                 SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    isArchiveAlertPresented = true
+                    archiveActiveNote()
                 },
                 SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
@@ -246,20 +232,6 @@ public struct NotesView: View {
         isArchived ? "archivebox.fill" : "archivebox"
     }
 
-    private var archiveActionTitle: String {
-        isArchived ? "Unarchive" : "Archive"
-    }
-
-    private var archiveAlertTitle: String {
-        isArchived ? "Unarchive note" : "Archive note"
-    }
-
-    private var archiveAlertMessage: String {
-        isArchived
-            ? "This will move the note back to your main list."
-            : "This will move the note into your archive."
-    }
-
     private var currentFolderPath: String {
         guard let path = activeNode?.path else { return "" }
         guard let lastSlash = path.lastIndex(of: "/") else { return "" }
@@ -307,6 +279,13 @@ public struct NotesView: View {
         exportFilename = filename
         exportDocument = MarkdownFileDocument(text: text)
         isExporting = true
+    }
+
+    private func archiveActiveNote() {
+        guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+        Task {
+            await environment.notesViewModel.setArchived(id: noteId, archived: !isArchived)
+        }
     }
 
     private func deleteNoteAfterDismissal(id: String) async {
@@ -357,7 +336,6 @@ private struct NotesDetailView: View {
     @Binding var isMoveSheetPresented: Bool
     @Binding var moveSelection: String
     @Binding var isDeleteAlertPresented: Bool
-    @Binding var isArchiveAlertPresented: Bool
     @Binding var isCloseConfirmPresented: Bool
     @Binding var isExporting: Bool
     @Binding var exportDocument: MarkdownFileDocument?
@@ -424,8 +402,7 @@ private struct NotesDetailView: View {
                 guard viewModel.activeNote != nil else { return }
                 isDeleteAlertPresented = true
             case .archiveItem:
-                guard viewModel.activeNote != nil else { return }
-                isArchiveAlertPresented = true
+                archiveActiveNote()
             default:
                 break
             }
@@ -815,7 +792,7 @@ extension NotesDetailView {
                     exportMarkdown()
                 },
                 SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    isArchiveAlertPresented = true
+                    archiveActiveNote()
                 },
                 SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                     isDeleteAlertPresented = true
@@ -865,7 +842,7 @@ extension NotesDetailView {
                         exportMarkdown()
                     },
                     SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                        isArchiveAlertPresented = true
+                        archiveActiveNote()
                     },
                     SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
                         isDeleteAlertPresented = true
@@ -903,7 +880,7 @@ extension NotesDetailView {
                     exportMarkdown()
                 },
                 onArchive: {
-                    isArchiveAlertPresented = true
+                    archiveActiveNote()
                 },
                 onDelete: {
                     isDeleteAlertPresented = true
@@ -948,7 +925,7 @@ extension NotesDetailView {
             Label("Download", systemImage: "square.and.arrow.down")
         }
         Button {
-            isArchiveAlertPresented = true
+            archiveActiveNote()
         } label: {
             Label(archiveMenuTitle, systemImage: archiveIconName)
         }
@@ -999,20 +976,6 @@ extension NotesDetailView {
         isArchived ? "archivebox.fill" : "archivebox"
     }
 
-    private var archiveActionTitle: String {
-        isArchived ? "Unarchive" : "Archive"
-    }
-
-    private var archiveAlertTitle: String {
-        isArchived ? "Unarchive note" : "Archive note"
-    }
-
-    private var archiveAlertMessage: String {
-        isArchived
-            ? "This will move the note back to your main list."
-            : "This will move the note into your archive."
-    }
-
     private var currentFolderPath: String {
         guard let path = activeNode?.path else { return "" }
         guard let lastSlash = path.lastIndex(of: "/") else { return "" }
@@ -1021,6 +984,13 @@ extension NotesDetailView {
 
     private var folderOptions: [FolderOption] {
         FolderOption.build(from: viewModel.tree?.children ?? [])
+    }
+
+    private func archiveActiveNote() {
+        guard let noteId = viewModel.activeNote?.path else { return }
+        Task {
+            await viewModel.setArchived(id: noteId, archived: !isArchived)
+        }
     }
 
     private func copyMarkdown() {
