@@ -77,12 +77,12 @@ public extension EnvironmentConfig {
 }
 
 private func defaultApiBaseUrlString() -> String {
-    #if targetEnvironment(simulator)
-    return "http://127.0.0.1:8001/api/v1"
-    #else
     if let override = loadOptionalString(key: "API_BASE_URL") {
         return override
     }
+    #if targetEnvironment(simulator)
+    return "http://127.0.0.1:8001/api/v1"
+    #else
     return "https://sidebar-api.fly.dev/api/v1"
     #endif
 }

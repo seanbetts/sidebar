@@ -72,12 +72,14 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
 
     private func observeRequestFailures() {
         NotificationCenter.default.publisher(for: .apiClientRequestFailed)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] notification in
                 self?.handleRequestFailure(notification)
             }
             .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: .apiClientRequestSucceeded)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.handleRequestSuccess()
             }
@@ -89,9 +91,15 @@ final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
         let error = notification.userInfo?["error"] as? Error
         if let urlError = error as? URLError {
             switch urlError.code {
-            case .notConnectedToInternet, .networkConnectionLost, .cannotFindHost, .cannotConnectToHost:
+            case .notConnectedToInternet, .networkConnectionLost:
                 recordInternetFailure()
                 recordServerFailure()
+                return
+            case .cannotFindHost, .cannotConnectToHost:
+                // Host lookup/connect failures typically mean backend unreachability,
+                // not loss of device internet connectivity.
+                recordServerFailure()
+                scheduleProbe(immediate: false)
                 return
             default:
                 break
