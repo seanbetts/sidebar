@@ -40,6 +40,13 @@ export interface WebsiteDetail extends WebsiteItem {
 	url_full: string | null;
 }
 
+export interface PendingWebsiteItem {
+	id: string;
+	title: string;
+	domain: string;
+	url: string;
+}
+
 const isWebsiteItem = (value: unknown): value is WebsiteItem => {
 	if (!value || typeof value !== 'object') return false;
 	const item = value as Record<string, unknown>;
@@ -93,6 +100,51 @@ const mergeWebsiteCollections = (active: WebsiteItem[], archived: WebsiteItem[])
 	return [...active, ...filteredArchived];
 };
 
+const parseSavedWebsiteId = (value: unknown): string | null => {
+	if (!value || typeof value !== 'object') return null;
+	const payload = value as Record<string, unknown>;
+	const data = payload.data;
+	if (data && typeof data === 'object') {
+		const candidate = (data as Record<string, unknown>).id;
+		if (typeof candidate === 'string' && candidate.trim()) {
+			return candidate;
+		}
+	}
+	const rootId = payload.id;
+	return typeof rootId === 'string' && rootId.trim() ? rootId : null;
+};
+
+const stripWwwPrefix = (value: string): string => value.replace(/^www\./i, '');
+
+const normalizeWebsiteUrl = (url: string): URL | null => {
+	const trimmed = url.trim();
+	if (!trimmed) return null;
+	const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+	try {
+		const parsed = new URL(withProtocol);
+		if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+			return null;
+		}
+		return parsed;
+	} catch {
+		return null;
+	}
+};
+
+const buildPendingWebsite = (normalizedUrl: URL): PendingWebsiteItem => {
+	const hostname = stripWwwPrefix(normalizedUrl.hostname);
+	const display = hostname || normalizedUrl.host || normalizedUrl.href;
+	return {
+		id:
+			typeof globalThis.crypto?.randomUUID === 'function'
+				? `pending-${globalThis.crypto.randomUUID()}`
+				: `pending-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+		title: display,
+		domain: display,
+		url: normalizedUrl.href
+	};
+};
+
 function createWebsitesStore() {
 	const { subscribe, set, update } = writable<{
 		items: WebsiteItem[];
@@ -103,6 +155,9 @@ function createWebsitesStore() {
 		searchQuery: string;
 		loaded: boolean;
 		archivedLoaded: boolean;
+		isSavingWebsite: boolean;
+		pendingWebsite: PendingWebsiteItem | null;
+		saveError: string | null;
 	}>({
 		items: [],
 		loading: false,
@@ -111,7 +166,10 @@ function createWebsitesStore() {
 		loadingDetail: false,
 		searchQuery: '',
 		loaded: false,
-		archivedLoaded: false
+		archivedLoaded: false,
+		isSavingWebsite: false,
+		pendingWebsite: null,
+		saveError: null
 	});
 
 	return {
@@ -323,8 +381,58 @@ function createWebsitesStore() {
 				loadingDetail: false,
 				searchQuery: '',
 				loaded: false,
-				archivedLoaded: false
+				archivedLoaded: false,
+				isSavingWebsite: false,
+				pendingWebsite: null,
+				saveError: null
 			});
+		},
+
+		clearSaveError() {
+			update((state) => ({ ...state, saveError: null }));
+		},
+
+		async saveWebsite(url: string): Promise<{ success: boolean; id?: string; error?: string }> {
+			const normalized = normalizeWebsiteUrl(url);
+			if (!normalized) {
+				const error = 'Enter a valid URL.';
+				update((state) => ({ ...state, saveError: error }));
+				return { success: false, error };
+			}
+
+			const pendingWebsite = buildPendingWebsite(normalized);
+			update((state) => ({
+				...state,
+				isSavingWebsite: true,
+				pendingWebsite,
+				saveError: null
+			}));
+
+			try {
+				const result = await websitesAPI.save(normalized.href);
+				const websiteId = parseSavedWebsiteId(result);
+				if (!websiteId) {
+					throw new Error('Failed to save website');
+				}
+
+				update((state) => ({
+					...state,
+					isSavingWebsite: false,
+					pendingWebsite: null,
+					saveError: null
+				}));
+				return { success: true, id: websiteId };
+			} catch (error) {
+				const message =
+					error instanceof Error && error.message ? error.message : 'Failed to save website';
+				update((state) => ({
+					...state,
+					isSavingWebsite: false,
+					pendingWebsite: null,
+					saveError: message
+				}));
+				return { success: false, error: message };
+			}
 		},
 
 		upsertFromRealtime(item: WebsiteItem) {

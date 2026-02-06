@@ -85,6 +85,7 @@ vi.mock('$lib/stores/ingestion', () => ({
 describe('chatStore', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		localStorage.clear();
 		chatStore.reset();
 	});
 
@@ -197,5 +198,53 @@ describe('chatStore', () => {
 	it('cleans up tool timers on cleanup', () => {
 		chatStore.cleanup();
 		expect(toolStateCleanup).toHaveBeenCalled();
+	});
+
+	it('restores the last conversation when available', async () => {
+		const timestamp = new Date().toISOString();
+		localStorage.setItem('sideBar.lastConversation', 'conv-restore');
+		conversationsAPI.get.mockResolvedValue({
+			id: 'conv-restore',
+			title: 'Recovered',
+			titleGenerated: false,
+			createdAt: timestamp,
+			updatedAt: timestamp,
+			messageCount: 1,
+			firstMessage: 'Hello',
+			messages: [
+				{
+					id: 'm-1',
+					role: 'assistant',
+					content: 'Recovered',
+					status: 'complete',
+					timestamp
+				}
+			]
+		});
+
+		const restored = await chatStore.restoreLastConversation(['conv-restore']);
+
+		expect(restored).toBe(true);
+		expect(get(chatStore).conversationId).toBe('conv-restore');
+	});
+
+	it('clears stale last conversation ids when missing from available ids', async () => {
+		localStorage.setItem('sideBar.lastConversation', 'conv-missing');
+
+		const restored = await chatStore.restoreLastConversation(['conv-other']);
+
+		expect(restored).toBe(false);
+		expect(localStorage.getItem('sideBar.lastConversation')).toBeNull();
+	});
+
+	it('stores and clears prompt preview content', () => {
+		chatStore.setPromptPreview('System text', 'First message text');
+		expect(get(chatStore).promptPreview).toEqual({
+			systemPrompt: 'System text',
+			firstMessagePrompt: 'First message text'
+		});
+
+		chatStore.clearPromptPreview();
+		expect(get(chatStore).promptPreview).toBeNull();
 	});
 });
