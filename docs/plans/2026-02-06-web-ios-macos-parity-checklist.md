@@ -30,5 +30,5 @@
 - Web: Websites non-search with zero pinned shows no Pinned block
 
 ## Follow-ups
-- [ ] Decide if Websites should also hide the empty `Websites` block when only archived items exist (native currently omits empty non-archive sections).
+- [x] Websites now hide the empty `Websites` block when only archived items exist.
 - [ ] Decide whether to rename CSS classes containing `workspace` to `files` for consistency (purely cosmetic, no behavior impact).
