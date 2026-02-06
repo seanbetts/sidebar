@@ -30,10 +30,12 @@ final class RealtimeMappersTests: XCTestCase {
             metadata: [
                 "pinned": AnyCodable(true),
                 "pinned_order": AnyCodable(3),
-                "archived": AnyCodable(true)
+                "archived": AnyCodable(true),
+                "reading_time": AnyCodable("12 mins")
             ],
             savedAt: nil,
             publishedAt: nil,
+            readingTime: nil,
             updatedAt: nil,
             lastOpenedAt: nil,
             deletedAt: nil
@@ -44,6 +46,7 @@ final class RealtimeMappersTests: XCTestCase {
         XCTAssertEqual(mapped?.pinned, true)
         XCTAssertEqual(mapped?.pinnedOrder, 3)
         XCTAssertEqual(mapped?.archived, true)
+        XCTAssertEqual(mapped?.readingTime, "12 mins")
     }
 
     func testMapIngestedFileUsesUpdatedAtWhenCreatedAtMissing() {

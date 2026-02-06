@@ -39,6 +39,7 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
             metadata: nil,
             savedAt: nil,
             publishedAt: nil,
+            readingTime: nil,
             updatedAt: nil,
             lastOpenedAt: nil,
             deletedAt: nil
@@ -51,6 +52,7 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
             metadata: nil,
             savedAt: nil,
             publishedAt: nil,
+            readingTime: nil,
             updatedAt: nil,
             lastOpenedAt: nil,
             deletedAt: nil

@@ -16,6 +16,10 @@ from api.services.favicon_service import FaviconService
 from api.services.jina_service import JinaService
 from api.services.web_save_parser import extract_favicon_url, parse_url_local
 from api.services.website_processing_service import WebsiteProcessingService
+from api.services.website_reading_time import (
+    extract_reading_time_from_frontmatter,
+    normalize_reading_time,
+)
 from api.services.websites_service import WebsitesService
 
 logger = logging.getLogger(__name__)
@@ -190,69 +194,27 @@ def run_quick_save(
             )
 
 
-def _extract_reading_time(content: str) -> str | None:
-    """Extract reading_time from markdown frontmatter and normalize format."""
-    if not content or not content.startswith("---"):
-        return None
-    end = content.find("\n---", 3)
-    if end == -1:
-        return None
-    frontmatter = content[4:end]
-    for line in frontmatter.split("\n"):
-        if line.startswith("reading_time:"):
-            value = line[13:].strip().strip("'\"")
-            if not value:
-                return None
-            return _normalize_reading_time(value)
-    return None
-
-
-def _normalize_reading_time(value: str) -> str:
-    """Normalize reading time to consistent format with hours and pluralization."""
-    import re
-
-    # Extract number of minutes from formats like "104 min", "5 mins", "1 hr 30 min"
-    # First check if already has hours
-    hr_match = re.match(r"(\d+)\s*hrs?\s*(?:(\d+)\s*mins?)?", value)
-    if hr_match:
-        hours = int(hr_match.group(1))
-        mins = int(hr_match.group(2)) if hr_match.group(2) else 0
-        total_minutes = hours * 60 + mins
-    else:
-        # Extract just minutes
-        min_match = re.match(r"(\d+)\s*mins?", value)
-        if min_match:
-            total_minutes = int(min_match.group(1))
-        else:
-            return value  # Can't parse, return as-is
-
-    # Format with proper hours/mins and pluralization
-    if total_minutes >= 60:
-        hours = total_minutes // 60
-        remaining = total_minutes % 60
-        hr_label = "hr" if hours == 1 else "hrs"
-        if remaining == 0:
-            return f"{hours} {hr_label}"
-        min_label = "min" if remaining == 1 else "mins"
-        return f"{hours} {hr_label} {remaining} {min_label}"
-    min_label = "min" if total_minutes == 1 else "mins"
-    return f"{total_minutes} {min_label}"
-
-
 def website_summary(website: Website) -> dict:
     """Build a summary payload for a website record."""
+    state = inspect(website)
     metadata = website.metadata_ or {}
     reading_time_value: str | None
-    reading_time = metadata.get("reading_time")
-    if isinstance(reading_time, str) and reading_time.strip():
-        reading_time_value = _normalize_reading_time(reading_time.strip())
+    loaded_reading_time = state.attrs.reading_time.loaded_value
+    if isinstance(loaded_reading_time, str) and loaded_reading_time.strip():
+        reading_time_value = normalize_reading_time(loaded_reading_time)
     else:
-        content_value = inspect(website).attrs.content.loaded_value
-        reading_time_value = (
-            _extract_reading_time(content_value)
-            if content_value is not NO_VALUE
-            else None
-        )
+        metadata_reading_time = metadata.get("reading_time")
+        if isinstance(metadata_reading_time, str) and metadata_reading_time.strip():
+            reading_time_value = normalize_reading_time(metadata_reading_time)
+        else:
+            content_value = state.attrs.content.loaded_value
+            reading_time_value = (
+                extract_reading_time_from_frontmatter(content_value)
+                if content_value is not NO_VALUE
+                else None
+            )
+    if reading_time_value == "":
+        reading_time_value = None
 
     return {
         "id": str(website.id),

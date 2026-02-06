@@ -53,6 +53,42 @@ def test_save_and_read_website(db_session):
     assert fetched.last_opened_at is not None
 
 
+def test_save_website_derives_reading_time_from_content(db_session):
+    website = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/reading-time",
+        title="Reading Time",
+        content="---\nreading_time: '104 min'\n---\n\nBody",
+        source="https://example.com/reading-time",
+    )
+
+    assert website.reading_time == "1 hr 44 mins"
+    assert (website.metadata_ or {}).get("reading_time") == "1 hr 44 mins"
+
+
+def test_update_website_recomputes_reading_time(db_session):
+    website = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/update-reading-time",
+        title="Reading Time",
+        content="---\nreading_time: '5 min'\n---\n\nBody",
+        source="https://example.com/update-reading-time",
+    )
+    assert website.reading_time == "5 mins"
+
+    updated = WebsitesService.update_website(
+        db_session,
+        "test_user",
+        website.id,
+        content="---\nreading_time: '30 min'\n---\n\nBody",
+    )
+
+    assert updated.reading_time == "30 mins"
+    assert (updated.metadata_ or {}).get("reading_time") == "30 mins"
+
+
 def test_update_pinned_and_archived(db_session):
     website = WebsitesService.save_website(
         db_session,

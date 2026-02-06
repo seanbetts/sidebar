@@ -572,6 +572,7 @@ public struct WebsiteRealtimeRecord: Codable {
     public let metadata: [String: AnyCodable]?
     public let savedAt: String?
     public let publishedAt: String?
+    public var readingTime: String?
     public let updatedAt: String?
     public let lastOpenedAt: String?
     public let deletedAt: String?

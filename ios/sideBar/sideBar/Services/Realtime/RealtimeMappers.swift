@@ -32,7 +32,7 @@ public struct RealtimeMappers {
             faviconUrl: record.metadata?["favicon_url"]?.value as? String,
             faviconR2Key: record.metadata?["favicon_r2_key"]?.value as? String,
             youtubeTranscripts: nil,
-            readingTime: nil,
+            readingTime: record.readingTime ?? (record.metadata?["reading_time"]?.value as? String),
             updatedAt: record.updatedAt,
             lastOpenedAt: record.lastOpenedAt,
             deletedAt: record.deletedAt

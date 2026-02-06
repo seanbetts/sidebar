@@ -31,6 +31,73 @@ final class WebsitesAPITests: XCTestCase {
         XCTAssertEqual(response.data?.id, "w1")
     }
 
+    func testListDecodesReadingTimeField() async throws {
+        let api = WebsitesAPI(client: makeClient())
+        WebsitesURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertTrue(request.url?.absoluteString.contains("websites") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "items": [
+                {
+                  "id": "w1",
+                  "title": "Site",
+                  "url": "https://example.com",
+                  "domain": "example.com",
+                  "pinned": false,
+                  "archived": false,
+                  "reading_time": "12 mins"
+                }
+              ]
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        let response = try await api.list()
+
+        XCTAssertEqual(response.items.count, 1)
+        XCTAssertEqual(response.items.first?.readingTime, "12 mins")
+    }
+
+    func testGetDecodesReadingTimeField() async throws {
+        let api = WebsitesAPI(client: makeClient())
+        WebsitesURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertTrue(request.url?.absoluteString.contains("websites/w1") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "id": "w1",
+              "title": "Site",
+              "url": "https://example.com",
+              "domain": "example.com",
+              "content": "Body",
+              "pinned": false,
+              "archived": false,
+              "reading_time": "8 mins"
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        let detail = try await api.get(id: "w1")
+
+        XCTAssertEqual(detail.id, "w1")
+        XCTAssertEqual(detail.readingTime, "8 mins")
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

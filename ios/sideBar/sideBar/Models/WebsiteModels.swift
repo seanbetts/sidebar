@@ -54,6 +54,7 @@ public struct WebsiteDetail: Codable, Identifiable {
     public let faviconUrl: String?
     public let faviconR2Key: String?
     public let youtubeTranscripts: [String: WebsiteTranscriptEntry]?
+    public var readingTime: String?
     public let updatedAt: String?
     public let lastOpenedAt: String?
 }
