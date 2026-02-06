@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Import a random sample of GoodLinks URLs into Website records.
+"""Import a random sample of GoodLinks URLs using the full ingestion pipeline.
 
 Usage:
-    uv run backend/scripts/import_goodlinks_sample.py \
+    cd backend
+    uv run python scripts/import_goodlinks_sample.py \
         --user-id USER_ID \
         --export-path goodlinks-testing/GoodLinks-Export-2025.json \
-        --limit 10
+        --limit 10 \
+        --supabase
 """
 
 from __future__ import annotations
@@ -24,7 +26,7 @@ SCRIPTS_ROOT = Path(__file__).resolve().parent
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
-from .db_env import setup_environment  # noqa: E402
+from db_env import setup_environment  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ class _SkipRuthlessRemovalFilter(logging.Filter):
         return "ruthless removal did not work." not in record.getMessage()
 
 
-def parse_datetime(value: str | None) -> datetime | None:
+def parse_datetime(value: str | int | float | None) -> datetime | None:
     if not value:
         return None
     if isinstance(value, (int, float)):
@@ -44,7 +46,10 @@ def parse_datetime(value: str | None) -> datetime | None:
             return None
     cleaned = str(value).strip()
     try:
-        return datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=UTC)
+        return parsed
     except ValueError:
         return None
 
@@ -59,6 +64,56 @@ def iter_export_entries(payload: object) -> list[dict]:
     return []
 
 
+def ingest_url_via_pipeline(
+    user_id: str,
+    *,
+    url: str,
+    added_at: datetime | None,
+    archived: bool,
+) -> None:
+    """Ingest a URL via the app's quick-save pipeline and apply GoodLinks metadata."""
+    from api.db.session import SessionLocal, set_session_user_id
+    from api.routers.websites_helpers import run_quick_save
+    from api.services.website_processing_service import WebsiteProcessingService
+    from api.services.websites_service import WebsitesService
+
+    with SessionLocal() as db:
+        set_session_user_id(db, user_id)
+        job = WebsiteProcessingService.create_job(db, user_id, url)
+
+    run_quick_save(job.id, user_id, url, None)
+
+    with SessionLocal() as db:
+        set_session_user_id(db, user_id)
+        completed_job = WebsiteProcessingService.get_job(db, user_id, job.id)
+        if (
+            completed_job is None
+            or completed_job.status != "completed"
+            or completed_job.website_id is None
+        ):
+            error_message = (
+                completed_job.error_message if completed_job else "job not found"
+            )
+            raise RuntimeError(
+                f"Ingestion pipeline failed for {url}: {error_message or 'unknown error'}"
+            )
+
+        if added_at is not None:
+            WebsitesService.update_website(
+                db,
+                user_id,
+                completed_job.website_id,
+                saved_at=added_at,
+            )
+        if archived:
+            WebsitesService.update_archived(
+                db,
+                user_id,
+                completed_job.website_id,
+                archived=True,
+            )
+
+
 def import_sample(
     user_id: str,
     *,
@@ -70,9 +125,7 @@ def import_sample(
     import_all: bool,
     archived: bool,
 ) -> None:
-    from api.services.web_save_parser import ParsedPage, parse_url_local
-
-    payload = json.loads(export_path.read_text())
+    payload = json.loads(export_path.read_text(encoding="utf-8"))
     entries = iter_export_entries(payload)
     urls = []
     for entry in entries:
@@ -85,64 +138,53 @@ def import_sample(
 
     if import_all:
         sample = urls
-        limit = len(sample)
+        total = len(sample)
     else:
+        if limit <= 0:
+            raise ValueError("--limit must be greater than 0 unless --all is used.")
         if limit > len(urls):
             limit = len(urls)
         rng = random.Random(seed)
         sample = rng.sample(urls, k=limit)
-
-    db = None
-    if not dry_run:
-        from api.db.session import SessionLocal, set_session_user_id
-        from api.services.websites_service import WebsitesService
-
-        db = SessionLocal()
-        set_session_user_id(db, user_id)
+        total = len(sample)
     created = 0
     failed = 0
-    try:
-        for idx, entry in enumerate(sample, start=1):
-            url = entry.get("url")
-            added_at = parse_datetime(entry.get("addedAt"))
-            try:
-                logger.info("Parsing %s", url)
-                parsed: ParsedPage = parse_url_local(url)
-                if not dry_run:
-                    website = WebsitesService.upsert_website(
-                        db,
-                        user_id,
-                        url=url,
-                        url_full=url,
-                        title=parsed.title,
-                        content=parsed.content,
-                        source=parsed.source,
-                        saved_at=added_at or datetime.now(UTC),
-                        published_at=parsed.published_at,
-                        archived=archived,
-                    )
-                    if archived:
-                        WebsitesService.update_archived(
-                            db, user_id, website.id, archived=True
-                        )
-                created += 1
-            except Exception as exc:
-                failed += 1
-                logger.warning("Failed to import %s: %s", url, str(exc))
-            if log_every > 0 and (idx % log_every == 0 or idx == limit):
+    for idx, entry in enumerate(sample, start=1):
+        url = entry.get("url")
+        added_at = parse_datetime(entry.get("addedAt"))
+        try:
+            if not isinstance(url, str):
+                raise ValueError("Export entry missing URL.")
+            logger.info("Ingesting %s", url)
+            if dry_run:
                 logger.info(
-                    "Progress: %s/%s imported=%s failed=%s",
-                    idx,
-                    limit,
-                    created,
-                    failed,
+                    "Dry run: would ingest url=%s saved_at=%s archived=%s",
+                    url,
+                    added_at.isoformat() if added_at else None,
+                    archived,
                 )
-    finally:
-        if db is not None:
-            db.close()
+            else:
+                ingest_url_via_pipeline(
+                    user_id,
+                    url=url,
+                    added_at=added_at,
+                    archived=archived,
+                )
+            created += 1
+        except Exception as exc:
+            failed += 1
+            logger.warning("Failed to import %s: %s", url, str(exc))
+        if log_every > 0 and (idx % log_every == 0 or idx == total):
+            logger.info(
+                "Progress: %s/%s imported=%s failed=%s",
+                idx,
+                total,
+                created,
+                failed,
+            )
 
     logger.info(
-        "Import complete. Imported=%s Failed=%s Total=%s", created, failed, limit
+        "Import complete. Imported=%s Failed=%s Total=%s", created, failed, total
     )
 
 
