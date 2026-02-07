@@ -77,6 +77,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         #if DEBUG
         AppLaunchMetrics.shared.mark("didFinishLaunching")
+        assertBackgroundTaskIdentifiersConfigured()
         #endif
 
         // Register background task for token refresh
@@ -180,6 +181,21 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
             logger.error("Failed to schedule widget refresh: \(error.localizedDescription, privacy: .public)")
         }
     }
+
+#if DEBUG
+    private func assertBackgroundTaskIdentifiersConfigured() {
+        let key = "BGTaskSchedulerPermittedIdentifiers"
+        guard let configured = Bundle.main.object(forInfoDictionaryKey: key) as? [String] else {
+            assertionFailure("Missing \(key) in app Info.plist")
+            return
+        }
+        let expected = [Self.tokenRefreshTaskIdentifier, Self.widgetRefreshTaskIdentifier]
+        let missing = expected.filter { configured.contains($0) == false }
+        if missing.isEmpty == false {
+            assertionFailure("Missing BG task identifiers in Info.plist: \(missing.joined(separator: ", "))")
+        }
+    }
+#endif
 
     func application(
         _ application: UIApplication,

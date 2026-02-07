@@ -170,6 +170,13 @@
 			);
 			target = 1448E6C62F27A6420066EE47 /* sideBarWidgetsExtension */;
 		};
+		A9F18E1B3C4D5E6F00112233 /* Exceptions for "sideBar" folder in "sideBar" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 14C84A472F10562300FE0C16 /* sideBar */;
+		};
 		9A8B7C6D5E4F3A2B1C0D0E01 /* Exceptions for "sideBar Safari Extension" folder in "sideBar Safari Extension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -251,6 +258,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				142516C62F1EBECC0072E4F9 /* Exceptions for "sideBar" folder in "ShareExtension" target */,
+				A9F18E1B3C4D5E6F00112233 /* Exceptions for "sideBar" folder in "sideBar" target */,
 			);
 			path = sideBar;
 			sourceTree = "<group>";
@@ -1543,9 +1551,9 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = SideBarLaunchScreen.storyboard;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = sideBar/Info.plist;
 				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
-				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = "ai.sidebar.sidebar.tokenrefresh ai.sidebar.sidebar.widgetrefresh";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"ai.sidebar.sidebar\";\n    CFBundleURLSchemes =     (\n        sidebar\n    );\n}";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -1622,9 +1630,9 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = SideBarLaunchScreen.storyboard;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = sideBar/Info.plist;
 				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
-				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = "ai.sidebar.sidebar.tokenrefresh ai.sidebar.sidebar.widgetrefresh";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"ai.sidebar.sidebar\";\n    CFBundleURLSchemes =     (\n        sidebar\n    );\n}";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
