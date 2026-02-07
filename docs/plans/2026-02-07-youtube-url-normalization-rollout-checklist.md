@@ -187,3 +187,9 @@ Known unrelated baseline failures observed during verification:
 - [x] URL normalization rules are centralized and reused.
 - [ ] Tests, lint, and type checks pass across backend/frontend.
   Blocked by pre-existing unrelated baseline failures noted in Phase 5 verification.
+
+## Final Status
+
+- Implementation status: behavior rollout is complete across backend, web, iOS app, Safari extensions, and share extension.
+- Remaining engineering debt: repo-wide full typecheck/lint parity is blocked by pre-existing unrelated baseline failures (see Phase 5).
+- Remaining rollout sign-off: manual QA checks in Phase 5 are intentionally deferred and pending completion.
