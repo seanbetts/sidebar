@@ -19,7 +19,8 @@ Implement one centralized URL policy across backend, web, iOS app, Safari extens
 - [x] Centralize URL normalization/extraction in backend service layer.
 - [x] Keep backward compatibility for legacy queued pending share items with kind `.youtube`.
 - [x] Preserve explicit YouTube ingestion endpoint for Files-only flows.
-- [ ] Do not add schema migrations unless we find unavoidable data collisions.
+- [x] Do not add schema migrations unless we find unavoidable data collisions.
+  No schema migrations were required or introduced for this rollout.
 
 ## Phase 0: Safety + Baseline
 
@@ -95,7 +96,8 @@ Deliverables:
 - [x] Align frontend YouTube ID parsing helpers with backend contract where feasible:
 - `frontend/src/lib/components/websites/WebsitesViewer.svelte`
 - `frontend/src/lib/components/files/UniversalViewerController.svelte`
-- [ ] Update errors/messages for clarity if wording implies auto-YouTube special-casing in generic URL flows.
+- [x] Update errors/messages for clarity if wording implies auto-YouTube special-casing in generic URL flows.
+  Generic website save copy remains website-focused; explicit YouTube copy remains Files-only.
 
 Deliverables:
 - [x] Web behavior matches iOS/backend contract.
@@ -150,10 +152,12 @@ Known unrelated baseline failures observed during verification:
 
 ## Phase 6: Rollout + Cleanup
 
-- [ ] Remove dead/duplicate YouTube URL parsing helpers no longer used.
-- [ ] Confirm file size limits remain within AGENTS constraints.
+- [x] Remove dead/duplicate YouTube URL parsing helpers no longer used.
+  Sweep completed; no clearly dead YouTube helper paths remained to remove safely.
+- [x] Confirm file size limits remain within AGENTS constraints.
+  Verified for rollout-touched backend/frontend files; `WebsitesViewer.svelte` reduced to 525 LOC.
 - [x] Update docs with centralized URL policy location.
-- [ ] Prepare release note entry:
+- [x] Prepare release note entry:
 - “YouTube links from share/save URL flows are now treated like websites; Add YouTube Video remains a Files-only action.”
 
 ## Risks and Mitigations

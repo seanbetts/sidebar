@@ -24,7 +24,8 @@
 	import { useWebsiteActions } from '$lib/hooks/useWebsiteActions';
 	import { toast } from 'svelte-sonner';
 	import { getWebsiteDisplayTitle, stripWebsiteFrontmatter } from '$lib/utils/websites';
-	import { buildYouTubeNoCookieEmbedUrl, extractYouTubeVideoId } from '$lib/utils/youtube';
+	import { extractYouTubeVideoId } from '$lib/utils/youtube';
+	import { normalizeHtmlBlocks, rewriteVideoEmbeds } from './viewerEmbedTransforms';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -34,32 +35,6 @@
 	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isCopied = false;
 	const { renameWebsite, pinWebsite, archiveWebsite, deleteWebsite } = useWebsiteActions();
-
-	function hasTranscriptForVideo(markdown: string, videoId: string | null): boolean {
-		if (!videoId) return false;
-		const marker = `<!-- YOUTUBE_TRANSCRIPT:${videoId} -->`;
-		return markdown.includes(marker);
-	}
-
-	function isTranscriptPending(status?: string): boolean {
-		return status === 'queued' || status === 'processing' || status === 'retrying';
-	}
-
-	function getTranscriptEntries(
-		website: WebsiteDetail | null
-	): Record<string, WebsiteTranscriptEntry> {
-		if (!website || !website.youtube_transcripts) return {};
-		return typeof website.youtube_transcripts === 'object' ? website.youtube_transcripts : {};
-	}
-
-	function getTranscriptEntry(
-		website: WebsiteDetail | null,
-		videoId: string | null
-	): WebsiteTranscriptEntry | null {
-		if (!videoId) return null;
-		const entries = getTranscriptEntries(website);
-		return entries[videoId] ?? null;
-	}
 
 	onMount(() => {
 		editor = new Editor({
@@ -115,103 +90,6 @@
 		editor.commands.setContent(
 			rewriteVideoEmbeds(normalized, $websitesStore.active, $transcriptStatusStore)
 		);
-	}
-
-	function normalizeHtmlBlocks(text: string): string {
-		return text.replace(/<\/figure>\n(?!\s*\n)/g, '</figure>\n\n');
-	}
-
-	function buildYouTubeEmbed(url: string): string | null {
-		return buildYouTubeNoCookieEmbedUrl(url);
-	}
-
-	function buildVimeoEmbed(url: string): string | null {
-		try {
-			const parsed = new URL(url);
-			if (!parsed.hostname.includes('vimeo.com')) {
-				return null;
-			}
-			if (parsed.hostname.includes('player.vimeo.com')) {
-				return parsed.toString();
-			}
-			const match = parsed.pathname.match(/\/(\d+)/);
-			if (!match) return null;
-			return `https://player.vimeo.com/video/${match[1]}`;
-		} catch {
-			return null;
-		}
-	}
-
-	function escapeAttribute(value: string): string {
-		return value.replace(/"/g, '&quot;');
-	}
-
-	function buildTranscriptHref(url: string): string | null {
-		try {
-			const parsed = new URL(url);
-			parsed.searchParams.set('sidebarTranscript', '1');
-			return parsed.toString();
-		} catch {
-			return null;
-		}
-	}
-
-	function rewriteVideoEmbeds(
-		markdown: string,
-		website: WebsiteDetail | null,
-		activeJob: { websiteId: string; videoId: string } | null
-	): string {
-		const youtubePattern = /^\[YouTube\]\(([^)]+)\)$/gm;
-		const vimeoPattern = /^\[Vimeo\]\(([^)]+)\)$/gm;
-		const bareUrlPattern = /^(https?:\/\/[^\s]+)$/gm;
-
-		let updated = markdown.replace(youtubePattern, (_, url: string) => {
-			const embed = buildYouTubeEmbed(url.trim());
-			if (!embed) return _;
-			const videoId = extractYouTubeVideoId(url.trim());
-			const showButton = !hasTranscriptForVideo(markdown, videoId);
-			const transcriptHref = buildTranscriptHref(url.trim());
-			const transcriptEntry = getTranscriptEntry(website, videoId);
-			const isQueued =
-				isTranscriptPending(transcriptEntry?.status) ||
-				(activeJob?.websiteId === website?.id && activeJob?.videoId === videoId);
-			const button =
-				showButton && transcriptHref
-					? isQueued
-						? `<a data-youtube-transcript data-youtube-transcript-status="queued" aria-disabled="true" class="transcript-queued" href="${escapeAttribute(transcriptHref)}">Transcribing</a>`
-						: `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
-					: '';
-			return `<div data-youtube-video><iframe src="${embed}"></iframe>${button}</div>`;
-		});
-
-		updated = updated.replace(vimeoPattern, (_, url: string) => {
-			const embed = buildVimeoEmbed(url.trim());
-			return embed ? `<iframe src="${embed}"></iframe>` : _;
-		});
-
-		updated = updated.replace(bareUrlPattern, (match: string) => {
-			const youtube = buildYouTubeEmbed(match.trim());
-			if (youtube) {
-				const videoId = extractYouTubeVideoId(match.trim());
-				const showButton = !hasTranscriptForVideo(markdown, videoId);
-				const transcriptHref = buildTranscriptHref(match.trim());
-				const transcriptEntry = getTranscriptEntry(website, videoId);
-				const isQueued =
-					isTranscriptPending(transcriptEntry?.status) ||
-					(activeJob?.websiteId === website?.id && activeJob?.videoId === videoId);
-				const button =
-					showButton && transcriptHref
-						? isQueued
-							? `<a data-youtube-transcript data-youtube-transcript-status="queued" aria-disabled="true" class="transcript-queued" href="${escapeAttribute(transcriptHref)}">Transcribing</a>`
-							: `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
-						: '';
-				return `<div data-youtube-video><iframe src="${youtube}"></iframe>${button}</div>`;
-			}
-			const vimeo = buildVimeoEmbed(match.trim());
-			return vimeo ? `<iframe src="${vimeo}"></iframe>` : match;
-		});
-
-		return updated;
 	}
 
 	async function queueTranscript(websiteId: string, url: string): Promise<boolean> {
@@ -275,8 +153,9 @@
 		if (!url || !active) return;
 
 		const videoId = extractYouTubeVideoId(url);
-		const transcriptEntry = getTranscriptEntry(active, videoId);
-		if (isTranscriptPending(transcriptEntry?.status)) {
+		const transcriptEntry = active?.youtube_transcripts?.[videoId ?? ''] ?? null;
+		const isPending = ['queued', 'processing', 'retrying'].includes(transcriptEntry?.status ?? '');
+		if (isPending) {
 			return;
 		}
 
