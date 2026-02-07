@@ -12,7 +12,7 @@
 	import { useWebsiteActions } from '$lib/hooks/useWebsiteActions';
 	import { toast } from 'svelte-sonner';
 	import { logError } from '$lib/utils/errorHandling';
-	import { stripWebsiteFrontmatter } from '$lib/utils/websites';
+	import { getWebsiteDisplayTitle, stripWebsiteFrontmatter } from '$lib/utils/websites';
 
 	const ARCHIVED_FLAG = 'archived';
 
@@ -247,6 +247,25 @@
 		}
 	}
 
+	async function handleCopyTitle(site: WebsiteItem) {
+		const title = getWebsiteDisplayTitle(site).trim();
+		if (!title) {
+			toast.error('Copy unavailable');
+			return;
+		}
+		try {
+			await navigator.clipboard.writeText(title);
+			toast.success('Title copied');
+			closeMenu();
+		} catch (error) {
+			logError('Failed to copy website title', error, {
+				scope: 'websitesPanel.copyTitle',
+				websiteId: site.id
+			});
+			toast.error('Copy unavailable');
+		}
+	}
+
 	function openDeleteDialog(site: WebsiteItem) {
 		selectedSite = site;
 		deleteDialog?.openDialog(site.title || 'website');
@@ -341,6 +360,7 @@
 								onPin={handlePin}
 								onRename={openRenameDialog}
 								onCopy={handleCopy}
+								onCopyTitle={handleCopyTitle}
 								onCopyUrl={handleCopyUrl}
 								onDownload={handleDownload}
 								onArchive={handleArchive}
@@ -379,6 +399,7 @@
 							onPin={handlePin}
 							onRename={openRenameDialog}
 							onCopy={handleCopy}
+							onCopyTitle={handleCopyTitle}
 							onCopyUrl={handleCopyUrl}
 							onDownload={handleDownload}
 							onArchive={handleArchive}
@@ -417,6 +438,7 @@
 							onPin={handlePin}
 							onRename={openRenameDialog}
 							onCopy={handleCopy}
+							onCopyTitle={handleCopyTitle}
 							onCopyUrl={handleCopyUrl}
 							onDownload={handleDownload}
 							onArchive={handleArchive}
@@ -478,6 +500,7 @@
 											onPin={handlePin}
 											onRename={openRenameDialog}
 											onCopy={handleCopy}
+											onCopyTitle={handleCopyTitle}
 											onCopyUrl={handleCopyUrl}
 											onDownload={handleDownload}
 											onArchive={handleArchive}

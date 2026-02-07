@@ -23,7 +23,7 @@
 	import { logError } from '$lib/utils/errorHandling';
 	import { useWebsiteActions } from '$lib/hooks/useWebsiteActions';
 	import { toast } from 'svelte-sonner';
-	import { stripWebsiteFrontmatter } from '$lib/utils/websites';
+	import { getWebsiteDisplayTitle, stripWebsiteFrontmatter } from '$lib/utils/websites';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -400,6 +400,22 @@
 		}
 	}
 
+	async function handleCopyTitle() {
+		const active = $websitesStore.active;
+		if (!active) return;
+		const title = getWebsiteDisplayTitle(active).trim();
+		if (!title) return;
+		try {
+			await navigator.clipboard.writeText(title);
+			toast.success('Title copied');
+		} catch (error) {
+			logError('Failed to copy website title', error, {
+				scope: 'websitesViewer.copyTitle',
+				websiteId: active.id
+			});
+		}
+	}
+
 	async function handleDelete(): Promise<boolean> {
 		const active = $websitesStore.active;
 		if (!active) return false;
@@ -436,6 +452,7 @@
 		onPinToggle={handlePinToggle}
 		onRename={openRenameDialog}
 		onCopy={handleCopy}
+		onCopyTitle={handleCopyTitle}
 		onCopyUrl={handleCopyUrl}
 		onDownload={handleDownload}
 		onArchive={handleArchive}
