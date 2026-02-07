@@ -15,7 +15,13 @@ extension AppEnvironment {
 
     func registerForRemoteNotificationsIfNeeded() {
 #if os(iOS)
+#if targetEnvironment(simulator)
+        pushLogger.debug(
+            "Skipping remote notification registration on iOS simulator."
+        )
+#else
         UIApplication.shared.registerForRemoteNotifications()
+#endif
 #elseif os(macOS)
         NSApplication.shared.registerForRemoteNotifications()
 #endif
