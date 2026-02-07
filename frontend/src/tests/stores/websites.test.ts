@@ -264,4 +264,17 @@ describe('websitesStore', () => {
 		expect(finalState.isSavingWebsite).toBe(false);
 		expect(finalState.pendingWebsite).toBeNull();
 	});
+
+	it('treats YouTube URLs as regular website saves', async () => {
+		websitesAPI.save.mockResolvedValue({
+			success: true,
+			data: { id: 'saved-youtube' }
+		});
+
+		const result = await websitesStore.saveWebsite('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+		expect(websitesAPI.save).toHaveBeenCalledWith('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+		expect(result).toEqual({ success: true, id: 'saved-youtube' });
+		expect(get(websitesStore).saveError).toBeNull();
+	});
 });
