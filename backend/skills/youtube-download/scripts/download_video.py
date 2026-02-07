@@ -59,7 +59,11 @@ def _resolve_cookiefile() -> str | None:
         return None
     cookie_path = Path(value).expanduser()
     if not cookie_path.exists():
-        raise ValueError("YouTube cookies file not found")
+        logger.warning(
+            "yt-dlp cookiefile configured but missing at %s; continuing without cookies",
+            cookie_path,
+        )
+        return None
     return str(cookie_path)
 
 
