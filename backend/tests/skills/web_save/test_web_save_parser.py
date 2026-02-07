@@ -64,6 +64,19 @@ def test_extract_metadata_finds_favicon():
     assert metadata["favicon"] == "/favicon.png"
 
 
+def test_extract_metadata_ignores_undefined_canonical():
+    html = """
+    <html>
+      <head>
+        <link rel="canonical" href="undefined"/>
+      </head>
+      <body></body>
+    </html>
+    """
+    metadata = web_save_parser.extract_metadata(html, "https://example.com/article")
+    assert metadata["canonical"] == "https://example.com/article"
+
+
 def test_resolve_favicon_url_falls_back(monkeypatch):
     monkeypatch.setattr(web_save_parser, "_favicon_exists", lambda url, timeout=8: True)
     resolved = web_save_parser.resolve_favicon_url(None, "https://example.com/article")

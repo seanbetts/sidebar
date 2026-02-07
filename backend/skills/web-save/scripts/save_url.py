@@ -51,6 +51,17 @@ if not logging.getLogger().handlers:
 logger = logging.getLogger(__name__)
 
 
+def _clean_metadata_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if cleaned.lower() in {"undefined", "null", "none", "n/a"}:
+        return None
+    return cleaned
+
+
 def extract_title(content: str) -> str:
     """Extract title from markdown content.
 
@@ -99,15 +110,15 @@ def parse_jina_metadata(content: str) -> tuple[dict[str, str | None], str]:
 
     title_match = re.search(r"^Title:\s*(.+)$", content, re.MULTILINE)
     if title_match:
-        metadata["title"] = title_match.group(1).strip()
+        metadata["title"] = _clean_metadata_value(title_match.group(1))
 
     url_match = re.search(r"^URL Source:\s*(.+)$", content, re.MULTILINE)
     if url_match:
-        metadata["url_source"] = url_match.group(1).strip()
+        metadata["url_source"] = _clean_metadata_value(url_match.group(1))
 
     published_match = re.search(r"^Published Time:\s*(.+)$", content, re.MULTILINE)
     if published_match:
-        metadata["published_time"] = published_match.group(1).strip()
+        metadata["published_time"] = _clean_metadata_value(published_match.group(1))
 
     cleaned = content
     cleaned = re.sub(r"^Title:.*\n?", "", cleaned, flags=re.MULTILINE)

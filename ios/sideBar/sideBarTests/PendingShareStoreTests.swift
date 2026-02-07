@@ -240,6 +240,38 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(response["ok"] as? Bool, true)
         XCTAssertEqual(response["queued"] as? String, "website")
         XCTAssertEqual(store.loadAll().first?.kind, .website)
+        XCTAssertEqual(
+            store.loadAll().first?.url,
+            "https://www.youtube.com/watch?v=abc123xyzAA"
+        )
+    }
+
+    func testExtensionURLMessageHandlerCanonicalizesYouTubeShortURL() {
+        let store = makeStore()
+        let response = ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: "https://youtu.be/abc123xyzAA?t=22",
+            pendingStore: store
+        )
+
+        XCTAssertEqual(response["ok"] as? Bool, true)
+        XCTAssertEqual(
+            store.loadAll().first?.url,
+            "https://www.youtube.com/watch?v=abc123xyzAA"
+        )
+    }
+
+    func testExtensionURLMessageHandlerRejectsIncompleteYouTubeWatchURL() {
+        let store = makeStore()
+        let response = ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: "https://www.youtube.com/watch",
+            pendingStore: store
+        )
+
+        XCTAssertEqual(response["ok"] as? Bool, false)
+        XCTAssertEqual(response["error"] as? String, "Invalid URL")
+        XCTAssertTrue(store.loadAll().isEmpty)
     }
 
     func testShareExtensionURLQueueHandlerQueuesWebsiteForYouTubeURL() {

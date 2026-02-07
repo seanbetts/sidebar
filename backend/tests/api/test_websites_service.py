@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from api.db.base import Base
 from api.exceptions import ConflictError
+from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
 from api.services.websites_service import WebsitesService
 from sqlalchemy import text
@@ -298,3 +299,34 @@ def test_save_website_keeps_distinct_youtube_video_ids(db_session):
     assert resolved_second is not None
     assert resolved_first.id == first.id
     assert resolved_second.id == second.id
+
+
+def test_get_by_url_matches_legacy_youtube_row_via_url_full(db_session):
+    legacy = Website(
+        user_id="test_user",
+        url="https://www.youtube.com/watch",
+        url_full="https://www.youtube.com/watch?v=abc123xyzAA",
+        domain="www.youtube.com",
+        title="Legacy",
+        content="Old",
+        source="https://www.youtube.com/watch?v=abc123xyzAA",
+        saved_at=datetime.now(UTC),
+        metadata_={"pinned": False, "archived": False},
+        is_archived=False,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        last_opened_at=None,
+        deleted_at=None,
+    )
+    db_session.add(legacy)
+    db_session.commit()
+    db_session.refresh(legacy)
+
+    resolved = WebsitesService.get_by_url(
+        db_session,
+        "test_user",
+        "https://youtu.be/abc123xyzAA?t=99",
+    )
+
+    assert resolved is not None
+    assert resolved.id == legacy.id

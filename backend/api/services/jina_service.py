@@ -15,6 +15,17 @@ class JinaService:
     """Fetch and parse markdown content from Jina Reader API."""
 
     @staticmethod
+    def _clean_metadata_value(value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if cleaned.lower() in {"undefined", "null", "none", "n/a"}:
+            return None
+        return cleaned
+
+    @staticmethod
     def fetch_markdown(url: str) -> str:
         """Fetch markdown content for a URL using Jina Reader."""
         if not settings.jina_api_key:
@@ -39,15 +50,19 @@ class JinaService:
 
         title_match = re.search(r"^Title:\s*(.+)$", markdown, re.MULTILINE)
         if title_match:
-            metadata["title"] = title_match.group(1).strip()
+            metadata["title"] = JinaService._clean_metadata_value(title_match.group(1))
 
         url_match = re.search(r"^URL Source:\s*(.+)$", markdown, re.MULTILINE)
         if url_match:
-            metadata["url_source"] = url_match.group(1).strip()
+            metadata["url_source"] = JinaService._clean_metadata_value(
+                url_match.group(1)
+            )
 
         published_match = re.search(r"^Published Time:\s*(.+)$", markdown, re.MULTILINE)
         if published_match:
-            metadata["published_time"] = published_match.group(1).strip()
+            metadata["published_time"] = JinaService._clean_metadata_value(
+                published_match.group(1)
+            )
 
         cleaned = markdown
         cleaned = re.sub(r"^Title:.*\n?", "", cleaned, flags=re.MULTILINE)
