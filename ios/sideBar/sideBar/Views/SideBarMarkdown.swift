@@ -316,8 +316,7 @@ struct SideBarMarkdown: View, Equatable {
 
 struct SideBarYouTubeTranscriptContext {
     let websiteId: String
-    let transcriptEntries: [String: WebsiteTranscriptEntry]
-    let activeVideoId: String?
+    let isTranscriptPending: (String) -> Bool
     let requestTranscript: (String, String) async -> Void
 }
 
@@ -355,13 +354,6 @@ private struct SideBarYouTubeEmbedBlock: View {
     }
 
     private func isQueuedOrProcessing(context: SideBarYouTubeTranscriptContext) -> Bool {
-        if context.activeVideoId == embed.videoId {
-            return true
-        }
-        guard let entry = context.transcriptEntries[embed.videoId],
-              let status = entry.status?.lowercased() else {
-            return false
-        }
-        return status == "queued" || status == "processing" || status == "retrying"
+        context.isTranscriptPending(embed.videoId)
     }
 }

@@ -424,8 +424,9 @@ extension WebsitesDetailView {
                     text: website.content,
                     youtubeTranscriptContext: SideBarYouTubeTranscriptContext(
                         websiteId: website.id,
-                        transcriptEntries: website.youtubeTranscripts ?? [:],
-                        activeVideoId: viewModel.activeTranscriptVideoId,
+                        isTranscriptPending: { videoId in
+                            viewModel.isTranscriptPending(websiteId: website.id, videoId: videoId)
+                        },
                         requestTranscript: { websiteId, url in
                             await viewModel.requestYouTubeTranscript(websiteId: websiteId, url: url)
                         }

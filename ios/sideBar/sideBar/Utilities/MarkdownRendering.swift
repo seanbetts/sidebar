@@ -293,49 +293,11 @@ public enum MarkdownRendering {
         }
 
         guard let sourceURL else { return nil }
-        guard let videoId = extractYouTubeVideoId(from: sourceURL) else { return nil }
-        let query = "playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
-        guard let embedURL = URL(
-            string: "https://www.youtube-nocookie.com/embed/\(videoId)?\(query)"
-        ) else {
+        guard let videoId = YouTubeURLPolicy.extractVideoId(from: sourceURL),
+              let embedURL = YouTubeURLPolicy.embedURL(videoId: videoId) else {
             return nil
         }
         return MarkdownYouTubeEmbed(sourceURL: sourceURL, videoId: videoId, embedURL: embedURL)
-    }
-
-    private nonisolated static func extractYouTubeVideoId(from raw: String) -> String? {
-        guard let components = URLComponents(string: raw),
-              let hostValue = components.host?.lowercased() else {
-            return nil
-        }
-        let host = hostValue.hasPrefix("www.") ? String(hostValue.dropFirst(4)) : hostValue
-        guard host == "youtube.com" || host.hasSuffix(".youtube.com") || host == "youtu.be" || host.hasSuffix(".youtu.be") else {
-            return nil
-        }
-
-        if host == "youtu.be" || host.hasSuffix(".youtu.be") {
-            let candidate = components.path.split(separator: "/").first.map(String.init) ?? ""
-            return isValidYouTubeVideoId(candidate) ? candidate : nil
-        }
-
-        if let value = components.queryItems?.first(where: { $0.name == "v" })?.value,
-           isValidYouTubeVideoId(value) {
-            return value
-        }
-
-        let parts = components.path.split(separator: "/").map(String.init)
-        guard parts.count >= 2 else { return nil }
-        let prefix = parts[0].lowercased()
-        let candidate = parts[1]
-        guard ["shorts", "embed", "live", "v"].contains(prefix) else { return nil }
-        return isValidYouTubeVideoId(candidate) ? candidate : nil
-    }
-
-    private nonisolated static func isValidYouTubeVideoId(_ value: String) -> Bool {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count >= 6 else { return false }
-        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
-        return trimmed.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 
     private nonisolated static func firstCapture(
