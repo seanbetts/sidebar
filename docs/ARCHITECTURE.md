@@ -12,6 +12,7 @@ This document captures key architectural decisions, design patterns, and learnin
 - [Design Patterns](#design-patterns)
 - [Key Architectural Decisions](#key-architectural-decisions)
 - [Data Flow](#data-flow)
+- [URL Routing Policy](#url-routing-policy)
 - [Security Model](#security-model)
 - [Performance Considerations](#performance-considerations)
 - [Learnings & Trade-offs](#learnings--trade-offs)
@@ -260,6 +261,41 @@ Example: Chat works without location, but becomes location-aware when provided.
 ### Chat Message Lifecycle
 
 ```
+
+## URL Routing Policy
+
+### YouTube URL handling
+
+The app uses one cross-surface routing policy for YouTube URLs:
+
+- Generic URL save/share flows treat YouTube URLs as regular websites.
+- Only explicit `Add YouTube Video` actions in Files use YouTube ingestion (`/files/youtube`).
+
+### Canonical rule owners
+
+- Backend canonical URL normalization and YouTube ID extraction:
+  - `/Users/sean/Coding/sideBar/backend/api/services/url_normalization_service.py`
+- Backend website normalization adapter:
+  - `/Users/sean/Coding/sideBar/backend/api/services/websites_utils.py`
+- Backend ingestion helper usage:
+  - `/Users/sean/Coding/sideBar/backend/api/routers/ingestion_helpers.py`
+
+### Routing by surface
+
+- Web generic website save:
+  - `/Users/sean/Coding/sideBar/frontend/src/lib/stores/websites.ts`
+- Web explicit Add YouTube flow:
+  - `/Users/sean/Coding/sideBar/frontend/src/lib/hooks/useIngestionUploads.ts`
+- iOS share extension URL queueing:
+  - `/Users/sean/Coding/sideBar/ios/sideBar/ShareExtension/ShareViewController.swift`
+- Safari extensions URL queueing (iOS + macOS):
+  - `/Users/sean/Coding/sideBar/ios/sideBar/sideBar Safari Extension/SafariWebExtensionHandler.swift`
+  - `/Users/sean/Coding/sideBar/ios/sideBar/sideBar Safari Extension (macOS) Extension/SafariWebExtensionHandler.swift`
+
+### Backward compatibility
+
+- Existing queued pending-share items with kind `.youtube` are still consumed:
+  - `/Users/sean/Coding/sideBar/ios/sideBar/sideBar/App/AppEnvironment+PendingShares.swift`
 1. User Input (Frontend)
    └─> ChatInput.svelte
 
