@@ -354,7 +354,7 @@ extension NotesPanelView {
                 DisclosureGroup(
                     isExpanded: $isArchiveExpanded,
                     content: {
-                        if isArchiveLoading {
+                        if isArchiveLoading && archivedNodes.isEmpty {
                             archiveLoadingRow(message: "Loading archived notes...")
                         }
                         if archivedNodes.isEmpty {
@@ -381,7 +381,7 @@ extension NotesPanelView {
                         }
                     },
                     label: {
-                        Label("Archive", systemImage: "archivebox")
+                        archiveLabel
                     }
                 )
                 .listRowBackground(rowBackground)
@@ -439,7 +439,7 @@ extension NotesPanelView {
             DisclosureGroup(
                 isExpanded: $isArchiveExpanded,
                 content: {
-                    if isArchiveLoading {
+                    if isArchiveLoading && archivedNodes.isEmpty {
                         archiveLoadingRow(message: "Loading archived notes...")
                     }
                     if archivedNodes.isEmpty {
@@ -469,8 +469,7 @@ extension NotesPanelView {
                     }
                 },
                 label: {
-                    Label("Archive", systemImage: "archivebox")
-                        .font(.subheadline)
+                    archiveLabel
                 }
             )
         }
@@ -487,6 +486,18 @@ extension NotesPanelView {
             Text(message)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var archiveLabel: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            Label("Archive", systemImage: "archivebox")
+                .font(.subheadline)
+            if isArchiveLoading, !archivedNodes.isEmpty {
+                ProgressView()
+                    .controlSize(.small)
+            }
         }
     }
 

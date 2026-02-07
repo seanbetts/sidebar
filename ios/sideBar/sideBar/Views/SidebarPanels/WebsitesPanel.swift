@@ -242,7 +242,7 @@ extension WebsitesPanelView {
                     DisclosureGroup(
                         isExpanded: $isArchiveExpanded,
                         content: {
-                            if isArchiveLoading {
+                            if isArchiveLoading && archivedItems.isEmpty {
                                 archiveLoadingRow(message: "Loading archived websites...")
                             }
                             if archivedItems.isEmpty {
@@ -256,7 +256,7 @@ extension WebsitesPanelView {
                             }
                         },
                         label: {
-                            Label("Archive", systemImage: "archivebox")
+                            archiveLabel
                         }
                     )
                     .listRowBackground(rowBackground)
@@ -495,7 +495,7 @@ extension WebsitesPanelView {
             DisclosureGroup(
                 isExpanded: $isArchiveExpanded,
                 content: {
-                    if isArchiveLoading {
+                    if isArchiveLoading && archivedItems.isEmpty {
                         archiveLoadingRow(message: "Loading archived websites...")
                     }
                     if archivedItems.isEmpty {
@@ -514,8 +514,7 @@ extension WebsitesPanelView {
                     }
                 },
                 label: {
-                    Label("Archive", systemImage: "archivebox")
-                        .font(.subheadline)
+                    archiveLabel
                 }
             )
         }
@@ -536,6 +535,18 @@ extension WebsitesPanelView {
             Text(message)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var archiveLabel: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            Label("Archive", systemImage: "archivebox")
+                .font(.subheadline)
+            if isArchiveLoading, !archivedItems.isEmpty {
+                ProgressView()
+                    .controlSize(.small)
+            }
         }
     }
 
