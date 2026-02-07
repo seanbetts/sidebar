@@ -40,17 +40,19 @@ def test_resolve_js_runtimes_from_path(monkeypatch):
     assert module._resolve_js_runtimes() == {"node": {}}
 
 
-def test_resolve_cookiefile_from_env(tmp_path, monkeypatch):
+def test_resolve_player_clients_defaults_for_audio(monkeypatch):
     module = _load_download_module()
-    cookiefile = tmp_path / "cookies.txt"
-    cookiefile.write_text("# Netscape HTTP Cookie File\n")
-    monkeypatch.setenv("YT_DLP_COOKIES", str(cookiefile))
-    monkeypatch.delenv("YT_DLP_COOKIES_PATH", raising=False)
-    assert module._resolve_cookiefile() == str(cookiefile)
+    monkeypatch.delenv("YT_DLP_PLAYER_CLIENTS", raising=False)
+    assert module._resolve_player_clients(audio_only=True) == ["tv", "ios"]
 
 
-def test_resolve_cookiefile_missing(monkeypatch):
+def test_resolve_player_clients_defaults_for_video(monkeypatch):
     module = _load_download_module()
-    monkeypatch.setenv("YT_DLP_COOKIES", "/tmp/does-not-exist.txt")
-    monkeypatch.delenv("YT_DLP_COOKIES_PATH", raising=False)
-    assert module._resolve_cookiefile() is None
+    monkeypatch.delenv("YT_DLP_PLAYER_CLIENTS", raising=False)
+    assert module._resolve_player_clients(audio_only=False) == ["tv", "ios", "web"]
+
+
+def test_resolve_player_clients_from_env(monkeypatch):
+    module = _load_download_module()
+    monkeypatch.setenv("YT_DLP_PLAYER_CLIENTS", "ios, web, tv")
+    assert module._resolve_player_clients(audio_only=True) == ["ios", "web", "tv"]

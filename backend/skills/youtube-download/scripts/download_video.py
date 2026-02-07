@@ -53,18 +53,16 @@ def _resolve_js_runtimes() -> dict[str, dict[str, str]] | None:
     return None
 
 
-def _resolve_cookiefile() -> str | None:
-    value = (os.getenv("YT_DLP_COOKIES") or os.getenv("YT_DLP_COOKIES_PATH") or "").strip()
-    if not value:
-        return None
-    cookie_path = Path(value).expanduser()
-    if not cookie_path.exists():
-        logger.warning(
-            "yt-dlp cookiefile configured but missing at %s; continuing without cookies",
-            cookie_path,
-        )
-        return None
-    return str(cookie_path)
+def _resolve_player_clients(audio_only: bool) -> list[str] | None:
+    value = (os.getenv("YT_DLP_PLAYER_CLIENTS") or "").strip()
+    if value:
+        clients = [client.strip() for client in value.split(",") if client.strip()]
+        return clients or None
+
+    # Web client is increasingly SABR-limited; prefer TV/iOS for stable audio extraction.
+    if audio_only:
+        return ["tv", "ios"]
+    return ["tv", "ios", "web"]
 
 
 def _configure_logging(quiet: bool) -> None:
@@ -382,8 +380,11 @@ def download_youtube(
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Referer": "https://www.youtube.com/",
         },
-        "extractor_args": {"youtube": {"player_client": ["web"]}},
     }
+
+    player_clients = _resolve_player_clients(audio_only)
+    if player_clients:
+        ydl_opts["extractor_args"] = {"youtube": {"player_client": player_clients}}
 
     # Audio-only configuration
     if audio_only:
@@ -412,10 +413,10 @@ def download_youtube(
     js_runtimes = _resolve_js_runtimes()
     if js_runtimes:
         ydl_opts["js_runtimes"] = js_runtimes
-    cookiefile = _resolve_cookiefile()
-    if cookiefile:
-        ydl_opts["cookiefile"] = cookiefile
-        logger.info("Using yt-dlp cookiefile at %s", cookiefile)
+    logger.info(
+        "yt-dlp player clients: %s",
+        ",".join(player_clients) if player_clients else "default",
+    )
     logger.info("yt-dlp js runtimes: %s", ",".join(js_runtimes.keys()) if js_runtimes else "none")
     logger.info("yt-dlp audio_only=%s playlist=%s", audio_only, is_playlist)
     remote_components = _default_remote_components()
@@ -498,12 +499,21 @@ def download_youtube(
 
     except yt_dlp.utils.DownloadError as e:
         error_msg = str(e)
+        lowered = error_msg.lower()
         if "Unavailable video" in error_msg:
             raise ValueError(
                 "Video is unavailable (private, age-restricted, or removed)"
             ) from e
         elif "Invalid URL" in error_msg:
             raise ValueError("Invalid YouTube URL") from e
+        elif (
+            "sign in to confirm you're not a bot" in lowered
+            or "cookies-from-browser" in lowered
+            or "requested format is not available" in lowered
+        ):
+            raise RuntimeError(
+                "YouTube blocked anonymous download for this video"
+            ) from e
         elif "HTTP Error 403" in error_msg or "403" in error_msg:
             raise RuntimeError("HTTP 403 Forbidden while downloading YouTube media") from e
         else:
