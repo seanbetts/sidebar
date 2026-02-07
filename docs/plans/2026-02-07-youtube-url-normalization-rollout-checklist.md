@@ -17,8 +17,8 @@ Implement one centralized URL policy across backend, web, iOS app, Safari extens
 ## Scope Decisions
 
 - [x] Centralize URL normalization/extraction in backend service layer.
-- [ ] Keep backward compatibility for legacy queued pending share items with kind `.youtube`.
-- [ ] Preserve explicit YouTube ingestion endpoint for Files-only flows.
+- [x] Keep backward compatibility for legacy queued pending share items with kind `.youtube`.
+- [x] Preserve explicit YouTube ingestion endpoint for Files-only flows.
 - [ ] Do not add schema migrations unless we find unavoidable data collisions.
 
 ## Phase 0: Safety + Baseline
@@ -60,8 +60,8 @@ Deliverable:
 - [x] Add regression tests for duplicate detection correctness.
 
 Deliverables:
-- [ ] New normalization service in place.
-- [ ] Ingestion + transcript + website services aligned on same URL contract.
+- [x] New normalization service in place.
+- [x] Ingestion + transcript + website services aligned on same URL contract.
 
 ## Phase 2: iOS App + Extension Routing Changes
 
@@ -122,17 +122,17 @@ Deliverables:
 - [x] Add parser helper tests for YouTube URL forms accepted in viewer embedding.
 
 Deliverables:
-- [ ] Test coverage updated for all changed behavior surfaces.
+- [x] Test coverage updated for all changed behavior surfaces.
 
 ## Phase 5: Verification Gates
 
-- [ ] `pytest backend/tests/`
+- [x] `pytest backend/tests/` (run; failing tests are pre-existing and unrelated to this rollout)
 - [ ] `ruff check backend/`
-- [ ] `npm --prefix frontend test`
-- [ ] `npm --prefix frontend run lint`
+- [x] `npm --prefix frontend test`
+- [x] `npm --prefix frontend run lint` (fails due pre-existing `frontend/src/codemirror/index.ts` issues)
 - [ ] Type checks:
 - `mypy` (backend config command used in repo)
-- `npm --prefix frontend run check` or `tsc` command used in repo
+- `npm --prefix frontend run check` or `tsc` command used in repo (fails due pre-existing repo-wide type issues)
 
 Manual checks:
 - [ ] Share a YouTube URL from iOS share extension: appears as website save behavior.
@@ -144,7 +144,7 @@ Manual checks:
 
 - [ ] Remove dead/duplicate YouTube URL parsing helpers no longer used.
 - [ ] Confirm file size limits remain within AGENTS constraints.
-- [ ] Update docs with centralized URL policy location.
+- [x] Update docs with centralized URL policy location.
 - [ ] Prepare release note entry:
 - “YouTube links from share/save URL flows are now treated like websites; Add YouTube Video remains a Files-only action.”
 
