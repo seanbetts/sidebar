@@ -30,7 +30,6 @@ struct WebsitesPanelView: View {
     @State private var isNewWebsitePresented = false
     @State private var newWebsiteUrl: String = ""
     @State private var saveErrorMessage: String?
-    @State private var archiveHeight: CGFloat = 0
     @State var deleteTarget: WebsiteItem?
     @State var renameTarget: WebsiteItem?
     @State var renameValue: String = ""
@@ -193,8 +192,6 @@ extension WebsitesPanelView {
             ) {
                 Task { await viewModel.load() }
             }
-        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty && viewModel.pendingWebsite == nil {
-            SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
             List {
                 if let pending = viewModel.pendingWebsite {
@@ -286,8 +283,6 @@ extension WebsitesPanelView {
             ) {
                 Task { await viewModel.load() }
             }
-        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty && viewModel.pendingWebsite == nil {
-            SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
             List {
                 if let pending = viewModel.pendingWebsite {
@@ -312,18 +307,9 @@ extension WebsitesPanelView {
                 await viewModel.load()
             }
         } else {
-            GeometryReader { proxy in
-                VStack(spacing: 0) {
-                    websitesListView
-                        .frame(height: max(0, proxy.size.height - archiveHeight))
-                    websitesArchiveSection
-                }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .onPreferenceChange(ArchiveHeightKey.self) { newValue in
-                    if abs(newValue - archiveHeight) > 0.5 {
-                        archiveHeight = newValue
-                    }
-                }
+            VStack(spacing: 0) {
+                websitesListView
+                websitesArchiveSection
             }
         }
     }
@@ -534,11 +520,6 @@ extension WebsitesPanelView {
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(panelBackground)
-        .background(
-            GeometryReader { proxy in
-                Color.clear.preference(key: ArchiveHeightKey.self, value: proxy.size.height)
-            }
-        )
     }
 
     private var isArchiveLoading: Bool {
@@ -603,13 +584,5 @@ extension WebsitesPanelView {
                 saveErrorMessage = viewModel.saveErrorMessage ?? "Failed to save website. Please try again."
             }
         }
-    }
-}
-
-private struct ArchiveHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
