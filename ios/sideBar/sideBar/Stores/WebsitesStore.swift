@@ -127,6 +127,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     public func loadArchivedList(force: Bool = false) async {
         guard !(networkStatus?.isOffline ?? false) else { return }
         if !force, isRefreshingArchived {
+            await waitForArchivedRefresh()
             return
         }
         await refreshArchivedList(force: force)
@@ -265,7 +266,8 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     private func refreshArchivedList(force: Bool = false) async {
-        guard !isRefreshingArchived else {
+        if isRefreshingArchived {
+            await waitForArchivedRefresh()
             return
         }
         guard shouldRefreshArchivedList(force: force) else {
@@ -283,6 +285,12 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             }
         } catch {
             // Ignore background refresh failures; cache remains source of truth.
+        }
+    }
+
+    private func waitForArchivedRefresh() async {
+        while isRefreshingArchived {
+            try? await Task.sleep(nanoseconds: 50_000_000)
         }
     }
 
