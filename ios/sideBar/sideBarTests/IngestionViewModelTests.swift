@@ -231,6 +231,61 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(pending.first?.kind, .youtube)
     }
 
+    func testExtractYouTubeVideoIdSupportsCanonicalForms() {
+        let viewModel = makeViewModelForYouTubeParsing()
+
+        XCTAssertEqual(
+            viewModel.extractYouTubeVideoId(from: "https://youtu.be/abc123xyzAA"),
+            "abc123xyzAA"
+        )
+        XCTAssertEqual(
+            viewModel.extractYouTubeVideoId(from: "https://www.youtube.com/watch?v=abc123xyzAA"),
+            "abc123xyzAA"
+        )
+        XCTAssertEqual(
+            viewModel.extractYouTubeVideoId(from: "https://www.youtube.com/shorts/abc123xyzAA"),
+            "abc123xyzAA"
+        )
+        XCTAssertEqual(
+            viewModel.extractYouTubeVideoId(from: "https://www.youtube.com/embed/abc123xyzAA"),
+            "abc123xyzAA"
+        )
+        XCTAssertEqual(
+            viewModel.extractYouTubeVideoId(from: "https://www.youtube.com/live/abc123xyzAA"),
+            "abc123xyzAA"
+        )
+    }
+
+    func testExtractYouTubeVideoIdRejectsInvalidHostsAndIds() {
+        let viewModel = makeViewModelForYouTubeParsing()
+
+        XCTAssertNil(
+            viewModel.extractYouTubeVideoId(from: "https://example.com/watch?v=abc123xyzAA")
+        )
+        XCTAssertNil(
+            viewModel.extractYouTubeVideoId(from: "https://youtube.com.evil.com/watch?v=abc123xyzAA")
+        )
+        XCTAssertNil(viewModel.extractYouTubeVideoId(from: "https://www.youtube.com/watch?v=a"))
+        XCTAssertNil(viewModel.extractYouTubeVideoId(from: "not a url"))
+    }
+
+    func testNormalizeYouTubeUrlCandidateRejectsInvalidHosts() {
+        let viewModel = makeViewModelForYouTubeParsing()
+
+        XCTAssertNil(
+            viewModel.normalizeYouTubeUrlCandidate("https://example.com/watch?v=abc123xyzAA")
+        )
+        XCTAssertNil(
+            viewModel.normalizeYouTubeUrlCandidate(
+                "https://youtube.com.evil.com/watch?v=abc123xyzAA"
+            )
+        )
+        XCTAssertEqual(
+            viewModel.normalizeYouTubeUrlCandidate("youtu.be/abc123xyzAA"),
+            "https://youtu.be/abc123xyzAA"
+        )
+    }
+
     private func makeListItem(id: String) -> IngestionListItem {
         IngestionListItem(
             file: makeFile(id: id),
@@ -268,6 +323,25 @@ final class IngestionViewModelTests: XCTestCase {
             progress: nil,
             attempts: 1,
             updatedAt: nil
+        )
+    }
+
+    private func makeViewModelForYouTubeParsing() -> IngestionViewModel {
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        return IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
         )
     }
 }

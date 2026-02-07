@@ -28,35 +28,42 @@ extension IngestionViewModel {
     }
 
     func extractYouTubeVideoId(from raw: String) -> String? {
-        guard let normalized = normalizeYouTubeUrlCandidate(raw),
-              let url = URL(string: normalized) else {
+        guard let trimmed = raw.trimmedOrNil else { return nil }
+        let candidate = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
+        guard let components = URLComponents(string: candidate),
+              let host = components.host?.lowercased(),
+              isYouTubeHost(host) else {
             return nil
         }
-        let host = url.host?.lowercased() ?? ""
-        if host.contains("youtu.be") {
-            return url.pathComponents.last?.trimmedOrNil
+
+        let pathParts = components.path.split(separator: "/").map(String.init)
+
+        if host == "youtu.be" || host.hasSuffix(".youtu.be") {
+            guard let first = pathParts.first,
+                  let candidateId = first.trimmedOrNil,
+                  isValidYouTubeVideoId(candidateId) else {
+                return nil
+            }
+            return candidateId
         }
-        guard host.contains("youtube.com") else {
-            return nil
-        }
-        if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-           let queryItems = components.queryItems,
-           let videoId = queryItems.first(where: { $0.name == "v" })?.value?.trimmedOrNil {
+
+        if let queryItems = components.queryItems,
+           let videoId = queryItems.first(where: { $0.name == "v" })?.value?.trimmedOrNil,
+           isValidYouTubeVideoId(videoId) {
             return videoId
         }
-        let components = url.pathComponents.filter { $0 != "/" }
-        if let embedIndex = components.firstIndex(of: "embed"),
-           components.indices.contains(embedIndex + 1) {
-            return components[embedIndex + 1].trimmedOrNil
+
+        guard pathParts.count >= 2 else {
+            return nil
         }
-        if let shortsIndex = components.firstIndex(of: "shorts"),
-           components.indices.contains(shortsIndex + 1) {
-            return components[shortsIndex + 1].trimmedOrNil
+        guard let kind = pathParts.first?.lowercased(),
+              ["embed", "shorts", "live", "v"].contains(kind) else {
+            return nil
         }
-        if let liveIndex = components.firstIndex(of: "live"),
-           components.indices.contains(liveIndex + 1) {
-            return components[liveIndex + 1].trimmedOrNil
+        guard let candidateId = pathParts[1].trimmedOrNil,
+              isValidYouTubeVideoId(candidateId) else {
+            return nil
         }
-        return components.last?.trimmedOrNil
+        return candidateId
     }
 }
