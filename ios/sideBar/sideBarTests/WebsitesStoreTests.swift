@@ -198,6 +198,12 @@ private final class MockWebsitesAPI: WebsitesProviding {
         throw MockError.forced
     }
 
+    func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
+        _ = id
+        _ = url
+        throw MockError.forced
+    }
+
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = pinned

@@ -4,6 +4,12 @@ import sideBarShared
 // MARK: - MarkdownRendering
 
 public enum MarkdownRendering {
+    public struct MarkdownYouTubeEmbed {
+        public let sourceURL: String
+        public let videoId: String
+        public let embedURL: URL
+    }
+
     public nonisolated static let imageCaptionMarker = "^caption:"
 
     public struct MarkdownGallery {
@@ -19,7 +25,7 @@ public enum MarkdownRendering {
     public enum MarkdownContentBlock {
         case markdown(String)
         case gallery(MarkdownGallery)
-        case youtube(URL)
+        case youtube(MarkdownYouTubeEmbed)
     }
 
     public nonisolated static func normalizeTaskLists(_ text: String) -> String {
@@ -258,9 +264,9 @@ public enum MarkdownRendering {
         }
 
         for line in lines {
-            if let embedURL = youTubeEmbedURL(from: line) {
+            if let embed = youTubeEmbed(from: line) {
                 flushBuffer()
-                blocks.append(.youtube(embedURL))
+                blocks.append(.youtube(embed))
             } else {
                 buffer.append(line)
             }
@@ -269,7 +275,7 @@ public enum MarkdownRendering {
         return blocks
     }
 
-    private nonisolated static func youTubeEmbedURL(from line: String) -> URL? {
+    private nonisolated static func youTubeEmbed(from line: String) -> MarkdownYouTubeEmbed? {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
 
@@ -289,9 +295,12 @@ public enum MarkdownRendering {
         guard let sourceURL else { return nil }
         guard let videoId = extractYouTubeVideoId(from: sourceURL) else { return nil }
         let query = "playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
-        return URL(
+        guard let embedURL = URL(
             string: "https://www.youtube-nocookie.com/embed/\(videoId)?\(query)"
-        )
+        ) else {
+            return nil
+        }
+        return MarkdownYouTubeEmbed(sourceURL: sourceURL, videoId: videoId, embedURL: embedURL)
     }
 
     private nonisolated static func extractYouTubeVideoId(from raw: String) -> String? {

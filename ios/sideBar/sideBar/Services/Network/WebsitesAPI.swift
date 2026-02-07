@@ -7,6 +7,7 @@ public protocol WebsitesProviding {
     func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse
     func get(id: String) async throws -> WebsiteDetail
     func save(url: String) async throws -> WebsiteSaveResponse
+    func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem
     func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem
     func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem
@@ -95,6 +96,10 @@ private struct WebsiteSaveRequest: Codable {
     let url: String
 }
 
+private struct WebsiteTranscriptRequest: Codable {
+    let url: String
+}
+
 private struct WebsiteQuickSaveRequest: Codable {
     let url: String
     let title: String?
@@ -178,6 +183,14 @@ public struct WebsitesAPI {
 
     public func save(url: String) async throws -> WebsiteSaveResponse {
         return try await client.request("websites/save", method: "POST", body: WebsiteSaveRequest(url: url))
+    }
+
+    public func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
+        try await client.request(
+            "websites/\(id)/youtube-transcript",
+            method: "POST",
+            body: WebsiteTranscriptRequest(url: url)
+        )
     }
 
     public func quickSave(url: String, title: String? = nil) async throws -> WebsiteQuickSaveResponse {

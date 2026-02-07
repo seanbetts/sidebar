@@ -58,6 +58,7 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var pendingWebsite: PendingWebsiteItem?
     @Published public private(set) var archivedSummary: ArchivedSummary?
+    @Published public private(set) var activeTranscriptVideoId: String?
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore
@@ -342,6 +343,43 @@ public final class WebsitesViewModel: ObservableObject {
         }
     }
 
+    public func requestYouTubeTranscript(websiteId: String, url: String) async {
+        guard networkStatus.isOffline == false else {
+            errorMessage = "Transcript requires an online connection."
+            return
+        }
+        guard let videoId = extractYouTubeVideoId(from: url) else {
+            errorMessage = "Invalid YouTube URL."
+            return
+        }
+        if isTranscriptPending(videoId: videoId) {
+            return
+        }
+        activeTranscriptVideoId = videoId
+        defer {
+            if activeTranscriptVideoId == videoId {
+                activeTranscriptVideoId = nil
+            }
+        }
+
+        do {
+            let response = try await api.transcribeYouTube(id: websiteId, url: url)
+            if let detail = response.readyWebsite {
+                store.applyTranscriptReadyDetail(detail)
+                return
+            }
+
+            store.applyTranscriptQueuedUpdate(
+                websiteId: websiteId,
+                videoId: videoId,
+                status: response.queuedStatus ?? "queued",
+                fileId: response.queuedFileId
+            )
+        } catch {
+            errorMessage = ErrorMapping.message(for: error)
+        }
+    }
+
     public func applyRealtimeEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>) async {
         let websiteId = payload.record?.id ?? payload.oldRecord?.id
         if payload.eventType == .delete, selectedWebsiteId == websiteId {
@@ -367,6 +405,53 @@ public final class WebsitesViewModel: ObservableObject {
         if items.contains(where: { $0.url == pendingUrl }) {
             self.pendingWebsite = nil
         }
+    }
+
+    private func isTranscriptPending(videoId: String) -> Bool {
+        if activeTranscriptVideoId == videoId {
+            return true
+        }
+        guard let status = active?.youtubeTranscripts?[videoId]?.status?.lowercased() else {
+            return false
+        }
+        return status == "queued" || status == "processing" || status == "retrying"
+    }
+
+    private func extractYouTubeVideoId(from raw: String) -> String? {
+        guard let components = URLComponents(string: raw),
+              let hostValue = components.host?.lowercased() else {
+            return nil
+        }
+        let host = hostValue.hasPrefix("www.") ? String(hostValue.dropFirst(4)) : hostValue
+        guard host == "youtube.com" ||
+                host.hasSuffix(".youtube.com") ||
+                host == "youtu.be" ||
+                host.hasSuffix(".youtu.be") else {
+            return nil
+        }
+        if host == "youtu.be" || host.hasSuffix(".youtu.be") {
+            let candidate = components.path.split(separator: "/").first.map(String.init) ?? ""
+            return isValidYouTubeVideoId(candidate) ? candidate : nil
+        }
+        if let value = components.queryItems?.first(where: { $0.name == "v" })?.value,
+           isValidYouTubeVideoId(value) {
+            return value
+        }
+        let parts = components.path.split(separator: "/").map(String.init)
+        guard parts.count >= 2 else { return nil }
+        guard ["shorts", "embed", "live", "v"].contains(parts[0].lowercased()) else {
+            return nil
+        }
+        return isValidYouTubeVideoId(parts[1]) ? parts[1] : nil
+    }
+
+    private func isValidYouTubeVideoId(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 6 else { return false }
+        let allowed = CharacterSet(
+            charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+        )
+        return trimmed.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 
     /// Refreshes widget data by fetching the latest websites list

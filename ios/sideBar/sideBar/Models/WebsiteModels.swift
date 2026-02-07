@@ -66,6 +66,45 @@ public struct WebsiteTranscriptEntry: Codable {
     public let error: String?
 }
 
+public struct WebsiteTranscriptResponse: Decodable {
+    public let readyWebsite: WebsiteDetail?
+    public let queuedStatus: String?
+    public let queuedFileId: String?
+
+    public init(
+        readyWebsite: WebsiteDetail? = nil,
+        queuedStatus: String? = nil,
+        queuedFileId: String? = nil
+    ) {
+        self.readyWebsite = readyWebsite
+        self.queuedStatus = queuedStatus
+        self.queuedFileId = queuedFileId
+    }
+
+    public init(from decoder: Decoder) throws {
+        if let detail = try? WebsiteDetail(from: decoder) {
+            readyWebsite = detail
+            queuedStatus = nil
+            queuedFileId = nil
+            return
+        }
+        let envelope = try TranscriptQueueEnvelope(from: decoder)
+        readyWebsite = nil
+        queuedStatus = envelope.data?.status
+        queuedFileId = envelope.data?.fileId
+    }
+}
+
+private struct TranscriptQueueEnvelope: Decodable {
+    let success: Bool
+    let data: TranscriptQueueData?
+}
+
+private struct TranscriptQueueData: Decodable {
+    let status: String?
+    let fileId: String?
+}
+
 public struct WebsiteQuickSaveResponse: Codable {
     public let success: Bool
     public let data: WebsiteQuickSaveData?

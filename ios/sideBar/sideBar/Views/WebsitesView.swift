@@ -420,7 +420,17 @@ extension WebsitesDetailView {
     private var content: some View {
         if let website = viewModel.active {
             ScrollView {
-                SideBarMarkdownContainer(text: website.content)
+                SideBarMarkdownContainer(
+                    text: website.content,
+                    youtubeTranscriptContext: SideBarYouTubeTranscriptContext(
+                        websiteId: website.id,
+                        transcriptEntries: website.youtubeTranscripts ?? [:],
+                        activeVideoId: viewModel.activeTranscriptVideoId,
+                        requestTranscript: { websiteId, url in
+                            await viewModel.requestYouTubeTranscript(websiteId: websiteId, url: url)
+                        }
+                    )
+                )
             }
         } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {
             LoadingView(message: "Reading...")

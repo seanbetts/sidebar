@@ -657,6 +657,49 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
 }
 
 extension WebsitesStore {
+    func applyTranscriptQueuedUpdate(
+        websiteId: String,
+        videoId: String,
+        status: String,
+        fileId: String?
+    ) {
+        guard let active, active.id == websiteId else { return }
+        var transcripts = active.youtubeTranscripts ?? [:]
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        transcripts[videoId] = WebsiteTranscriptEntry(
+            status: status,
+            fileId: fileId,
+            updatedAt: timestamp,
+            error: nil
+        )
+
+        let updatedDetail = WebsiteDetail(
+            id: active.id,
+            title: active.title,
+            url: active.url,
+            urlFull: active.urlFull,
+            domain: active.domain,
+            content: active.content,
+            source: active.source,
+            savedAt: active.savedAt,
+            publishedAt: active.publishedAt,
+            pinned: active.pinned,
+            pinnedOrder: active.pinnedOrder,
+            archived: active.archived,
+            faviconUrl: active.faviconUrl,
+            faviconR2Key: active.faviconR2Key,
+            youtubeTranscripts: transcripts,
+            readingTime: active.readingTime,
+            updatedAt: active.updatedAt,
+            lastOpenedAt: active.lastOpenedAt
+        )
+        applyDetailUpdate(updatedDetail, persist: true)
+    }
+
+    func applyTranscriptReadyDetail(_ detail: WebsiteDetail) {
+        applyDetailUpdate(detail, persist: true)
+    }
+
     func currentUpdatedAt(id: String) -> String? {
         websiteItem(for: id)?.updatedAt
     }

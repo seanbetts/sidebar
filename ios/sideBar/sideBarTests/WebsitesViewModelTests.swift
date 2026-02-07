@@ -254,6 +254,44 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.selectedWebsiteId)
         XCTAssertTrue(viewModel.items.isEmpty)
     }
+
+    func testRequestYouTubeTranscriptQueuesLocalTranscriptState() async {
+        let detail = makeDetail(id: "site-1")
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            getResult: .success(detail),
+            transcribeResult: .success(
+                WebsiteTranscriptResponse(
+                    readyWebsite: nil,
+                    queuedStatus: "queued",
+                    queuedFileId: "file-1"
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.selectWebsite(id: "site-1")
+        await viewModel.requestYouTubeTranscript(
+            websiteId: "site-1",
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+
+        XCTAssertEqual(
+            viewModel.active?.youtubeTranscripts?["dQw4w9WgXcQ"]?.status,
+            "queued"
+        )
+        XCTAssertEqual(
+            viewModel.active?.youtubeTranscripts?["dQw4w9WgXcQ"]?.fileId,
+            "file-1"
+        )
+        XCTAssertNil(viewModel.activeTranscriptVideoId)
+    }
 }
 
 private enum MockError: Error {
@@ -275,6 +313,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
     let saveResult: Result<WebsiteSaveResponse, Error>
+    let transcribeResult: Result<WebsiteTranscriptResponse, Error>
     let pinResult: Result<WebsiteItem, Error>
     let renameResult: Result<WebsiteItem, Error>
     let archiveResult: Result<WebsiteItem, Error>
@@ -286,6 +325,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         listResult: Result<WebsitesResponse, Error> = .failure(MockError.forced),
         getResult: Result<WebsiteDetail, Error> = .failure(MockError.forced),
         saveResult: Result<WebsiteSaveResponse, Error> = .failure(MockError.forced),
+        transcribeResult: Result<WebsiteTranscriptResponse, Error> = .failure(MockError.forced),
         pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
         renameResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
         archiveResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
@@ -297,6 +337,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         self.listResult = listResult
         self.getResult = getResult
         self.saveResult = saveResult
+        self.transcribeResult = transcribeResult
         self.pinResult = pinResult
         self.renameResult = renameResult
         self.archiveResult = archiveResult
@@ -322,6 +363,12 @@ private final class MockWebsitesAPI: WebsitesProviding {
     func save(url: String) async throws -> WebsiteSaveResponse {
         lastSavedUrl = url
         return try saveResult.get()
+    }
+
+    func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
+        _ = id
+        _ = url
+        return try transcribeResult.get()
     }
 
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
@@ -380,6 +427,12 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
         }
     }
 
+    func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
+        _ = id
+        _ = url
+        throw MockError.forced
+    }
+
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = clientUpdatedAt
         return makeItem(id: id)
@@ -432,6 +485,12 @@ private final class ControlledArchivedWebsitesAPI: WebsitesProviding {
     }
 
     func save(url: String) async throws -> WebsiteSaveResponse {
+        _ = url
+        throw MockError.forced
+    }
+
+    func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
+        _ = id
         _ = url
         throw MockError.forced
     }
