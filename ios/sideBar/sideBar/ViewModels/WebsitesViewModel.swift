@@ -58,22 +58,25 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var pendingWebsite: PendingWebsiteItem?
     @Published public private(set) var archivedSummary: ArchivedSummary?
-    @Published public private(set) var activeTranscriptVideoId: String?
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore
+    private let ingestionStore: IngestionStore?
     private let toastCenter: ToastCenter
     private let networkStatus: any NetworkStatusProviding
+    private var pendingTranscriptJobs: [String: Set<String>] = [:]
     private var cancellables = Set<AnyCancellable>()
 
     public init(
         api: any WebsitesProviding,
         store: WebsitesStore,
+        ingestionStore: IngestionStore? = nil,
         toastCenter: ToastCenter,
         networkStatus: any NetworkStatusProviding
     ) {
         self.api = api
         self.store = store
+        self.ingestionStore = ingestionStore
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
 
@@ -93,6 +96,12 @@ public final class WebsitesViewModel: ObservableObject {
         store.$archivedSummary
             .sink { [weak self] summary in
                 self?.archivedSummary = summary
+            }
+            .store(in: &cancellables)
+
+        ingestionStore?.$items
+            .sink { [weak self] items in
+                self?.pendingTranscriptJobs = Self.pendingTranscriptMap(from: items)
             }
             .store(in: &cancellables)
     }
@@ -348,18 +357,12 @@ public final class WebsitesViewModel: ObservableObject {
             errorMessage = "Transcript requires an online connection."
             return
         }
-        guard let videoId = extractYouTubeVideoId(from: url) else {
+        guard let videoId = YouTubeURLPolicy.extractVideoId(from: url) else {
             errorMessage = "Invalid YouTube URL."
             return
         }
-        if isTranscriptPending(videoId: videoId) {
+        if isTranscriptPending(websiteId: websiteId, videoId: videoId) {
             return
-        }
-        activeTranscriptVideoId = videoId
-        defer {
-            if activeTranscriptVideoId == videoId {
-                activeTranscriptVideoId = nil
-            }
         }
 
         do {
@@ -378,6 +381,16 @@ public final class WebsitesViewModel: ObservableObject {
         } catch {
             errorMessage = ErrorMapping.message(for: error)
         }
+    }
+
+    public func isTranscriptPending(websiteId: String, videoId: String) -> Bool {
+        let normalizedVideoId = videoId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedVideoId.isEmpty else { return false }
+        if let status = active?.youtubeTranscripts?[normalizedVideoId]?.status?.lowercased(),
+           status == "queued" || status == "processing" || status == "retrying" {
+            return true
+        }
+        return pendingTranscriptJobs[websiteId]?.contains(normalizedVideoId) == true
     }
 
     public func applyRealtimeEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>) async {
@@ -407,51 +420,54 @@ public final class WebsitesViewModel: ObservableObject {
         }
     }
 
-    private func isTranscriptPending(videoId: String) -> Bool {
-        if activeTranscriptVideoId == videoId {
-            return true
+    private static func pendingTranscriptMap(from items: [IngestionListItem]) -> [String: Set<String>] {
+        let pendingStatuses = Set(["queued", "processing", "retrying"])
+        var map: [String: Set<String>] = [:]
+        for item in items {
+            guard let status = item.job.status?.lowercased(),
+                  pendingStatuses.contains(status),
+                  let metadata = item.file.sourceMetadata,
+                  metadataBool(metadata, key: "website_transcript") == true,
+                  let websiteId = metadataString(metadata, key: "website_id"),
+                  let videoId = metadataString(metadata, key: "video_id") else {
+                continue
+            }
+            map[websiteId, default: []].insert(videoId)
         }
-        guard let status = active?.youtubeTranscripts?[videoId]?.status?.lowercased() else {
-            return false
-        }
-        return status == "queued" || status == "processing" || status == "retrying"
+        return map
     }
 
-    private func extractYouTubeVideoId(from raw: String) -> String? {
-        guard let components = URLComponents(string: raw),
-              let hostValue = components.host?.lowercased() else {
-            return nil
+    private static func metadataString(_ metadata: [String: AnyCodable], key: String) -> String? {
+        guard let value = metadata[key]?.value else { return nil }
+        if let string = value as? String {
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
         }
-        let host = hostValue.hasPrefix("www.") ? String(hostValue.dropFirst(4)) : hostValue
-        guard host == "youtube.com" ||
-                host.hasSuffix(".youtube.com") ||
-                host == "youtu.be" ||
-                host.hasSuffix(".youtu.be") else {
-            return nil
+        if let number = value as? NSNumber {
+            return number.stringValue
         }
-        if host == "youtu.be" || host.hasSuffix(".youtu.be") {
-            let candidate = components.path.split(separator: "/").first.map(String.init) ?? ""
-            return isValidYouTubeVideoId(candidate) ? candidate : nil
-        }
-        if let value = components.queryItems?.first(where: { $0.name == "v" })?.value,
-           isValidYouTubeVideoId(value) {
-            return value
-        }
-        let parts = components.path.split(separator: "/").map(String.init)
-        guard parts.count >= 2 else { return nil }
-        guard ["shorts", "embed", "live", "v"].contains(parts[0].lowercased()) else {
-            return nil
-        }
-        return isValidYouTubeVideoId(parts[1]) ? parts[1] : nil
+        return nil
     }
 
-    private func isValidYouTubeVideoId(_ value: String) -> Bool {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count >= 6 else { return false }
-        let allowed = CharacterSet(
-            charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
-        )
-        return trimmed.unicodeScalars.allSatisfy { allowed.contains($0) }
+    private static func metadataBool(_ metadata: [String: AnyCodable], key: String) -> Bool? {
+        guard let value = metadata[key]?.value else { return nil }
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+        if let number = value as? NSNumber {
+            return number.boolValue
+        }
+        if let string = value as? String {
+            switch string.lowercased() {
+            case "true", "1":
+                return true
+            case "false", "0":
+                return false
+            default:
+                return nil
+            }
+        }
+        return nil
     }
 
     /// Refreshes widget data by fetching the latest websites list

@@ -401,30 +401,15 @@ extension IngestionViewModel {
     }
 
     func normalizeYouTubeUrlCandidate(_ raw: String) -> String? {
-        guard let trimmed = raw.trimmedOrNil else { return nil }
-        let candidate = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
-        guard let url = URL(string: candidate),
-              let host = url.host?.lowercased(),
-              isYouTubeHost(host),
-              extractYouTubeVideoId(from: candidate) != nil else {
-            return nil
-        }
-        return url.absoluteString
+        YouTubeURLPolicy.normalizedCandidate(raw)
     }
 
     func isYouTubeHost(_ rawHost: String) -> Bool {
-        let host = rawHost.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        return host == "youtube.com" ||
-            host.hasSuffix(".youtube.com") ||
-            host == "youtu.be" ||
-            host.hasSuffix(".youtu.be")
+        YouTubeURLPolicy.isYouTubeHost(rawHost)
     }
 
     func isValidYouTubeVideoId(_ rawValue: String) -> Bool {
-        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard value.count >= 6 else { return false }
-        let pattern = "^[A-Za-z0-9_-]+$"
-        return value.range(of: pattern, options: .regularExpression) != nil
+        YouTubeURLPolicy.isValidVideoId(rawValue)
     }
 
     func releaseSecurityScopedAccess(for fileId: String) {

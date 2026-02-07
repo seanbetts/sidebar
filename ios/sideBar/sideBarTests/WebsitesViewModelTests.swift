@@ -290,7 +290,64 @@ final class WebsitesViewModelTests: XCTestCase {
             viewModel.active?.youtubeTranscripts?["dQw4w9WgXcQ"]?.fileId,
             "file-1"
         )
-        XCTAssertNil(viewModel.activeTranscriptVideoId)
+    }
+
+    func testTranscriptPendingUsesIngestionStoreJobState() async {
+        let cache = InMemoryCacheClient()
+        let websitesAPI = MockWebsitesAPI(getResult: .success(makeDetail(id: "site-1")))
+        let websitesStore = WebsitesStore(api: websitesAPI, cache: cache)
+        let ingestionStore = IngestionStore(
+            api: MockIngestionAPI(),
+            cache: InMemoryCacheClient()
+        )
+        let viewModel = WebsitesViewModel(
+            api: websitesAPI,
+            store: websitesStore,
+            ingestionStore: ingestionStore,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.selectWebsite(id: "site-1")
+        let pendingItem = IngestionListItem(
+            file: IngestedFileMeta(
+                id: "file-1",
+                filenameOriginal: "YouTube transcript",
+                path: nil,
+                mimeOriginal: "video/youtube",
+                sizeBytes: 0,
+                sha256: nil,
+                pinned: false,
+                pinnedOrder: nil,
+                category: nil,
+                sourceUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                sourceMetadata: [
+                    "website_transcript": AnyCodable(true),
+                    "website_id": AnyCodable("site-1"),
+                    "video_id": AnyCodable("dQw4w9WgXcQ")
+                ],
+                createdAt: "2026-02-07T10:00:00Z",
+                updatedAt: nil,
+                deletedAt: nil
+            ),
+            job: IngestionJob(
+                status: "processing",
+                stage: "processing",
+                errorCode: nil,
+                errorMessage: nil,
+                userMessage: nil,
+                progress: 0.5,
+                attempts: 0,
+                updatedAt: "2026-02-07T10:00:00Z"
+            ),
+            recommendedViewer: nil
+        )
+        ingestionStore.addLocalUpload(pendingItem)
+        await Task.yield()
+
+        XCTAssertTrue(
+            viewModel.isTranscriptPending(websiteId: "site-1", videoId: "dQw4w9WgXcQ")
+        )
     }
 }
 
@@ -527,6 +584,51 @@ private final class ControlledArchivedWebsitesAPI: WebsitesProviding {
         guard let continuation = listArchivedContinuation else { return }
         listArchivedContinuation = nil
         continuation.resume(with: result)
+    }
+}
+
+private final class MockIngestionAPI: IngestionProviding {
+    func list() async throws -> IngestionListResponse {
+        IngestionListResponse(items: [])
+    }
+
+    func getMeta(fileId: String) async throws -> IngestionMetaResponse {
+        _ = fileId
+        throw MockError.forced
+    }
+
+    func getContent(fileId: String, kind: String, range: String?) async throws -> Data {
+        _ = fileId
+        _ = kind
+        _ = range
+        throw MockError.forced
+    }
+
+    func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = pinned
+        _ = clientUpdatedAt
+    }
+
+    func delete(fileId: String, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = clientUpdatedAt
+    }
+
+    func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = filename
+        _ = clientUpdatedAt
+    }
+
+    func ingestYouTube(url: String) async throws -> String {
+        _ = url
+        throw MockError.forced
+    }
+
+    func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
+        _ = payload
+        return IngestionSyncResponse(applied: [], files: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
     }
 }
 
