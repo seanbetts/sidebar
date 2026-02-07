@@ -73,9 +73,9 @@ Deliverables:
 
 ### 2.2 Keep explicit Files Add YouTube behavior
 
-- [ ] Keep `FilesPanel` Add YouTube action routing to `ingestYouTube`.
-- [ ] Keep API call to `files/youtube` in explicit YouTube flow only.
-- [ ] Verify generic website save actions always call website save flow.
+- [x] Keep `FilesPanel` Add YouTube action routing to `ingestYouTube`.
+- [x] Keep API call to `files/youtube` in explicit YouTube flow only.
+- [x] Verify generic website save actions always call website save flow.
 
 ### 2.3 Pending-share backward compatibility
 
@@ -90,7 +90,7 @@ Deliverables:
 ## Phase 3: Web App Consistency
 
 - [x] Keep sidebar/web generic URL save path as website-only.
-- [ ] Confirm Add YouTube dialog in Files remains explicit ingestion-only path:
+- [x] Confirm Add YouTube dialog in Files remains explicit ingestion-only path:
 - `frontend/src/lib/hooks/useIngestionUploads.ts`
 - [x] Align frontend YouTube ID parsing helpers with backend contract where feasible:
 - `frontend/src/lib/components/websites/WebsitesViewer.svelte`
@@ -118,7 +118,7 @@ Deliverables:
 
 ### Web tests
 
-- [ ] Update flow tests for Add YouTube explicit path vs generic website path.
+- [x] Update flow tests for Add YouTube explicit path vs generic website path.
 - [x] Add parser helper tests for YouTube URL forms accepted in viewer embedding.
 
 Deliverables:
