@@ -52,7 +52,40 @@ class WebsitesService:
         )
         if not include_deleted:
             query = query.filter(Website.deleted_at.is_(None))
-        return query.first()
+        direct_match = query.first()
+        if direct_match:
+            return direct_match
+
+        normalized_domain = extract_domain(normalized_url)
+        fallback_query = (
+            db.query(Website)
+            .options(
+                load_only(
+                    Website.id,
+                    Website.url,
+                    Website.url_full,
+                    Website.domain,
+                )
+            )
+            .filter(
+                Website.user_id == user_id,
+                Website.domain == normalized_domain,
+                Website.url_full.isnot(None),
+            )
+        )
+        if not include_deleted:
+            fallback_query = fallback_query.filter(Website.deleted_at.is_(None))
+
+        for candidate in fallback_query.limit(100).all():
+            full_url = (candidate.url_full or "").strip()
+            if not full_url:
+                continue
+            try:
+                if normalize_url(full_url) == normalized_url:
+                    return candidate
+            except ValueError:
+                continue
+        return None
 
     @staticmethod
     def save_website(

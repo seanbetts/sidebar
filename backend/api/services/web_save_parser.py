@@ -109,6 +109,18 @@ def strip_control_chars(value: str) -> str:
     return CONTROL_CHARS_RE.sub("", value)
 
 
+def _clean_metadata_value(value: str | None) -> str | None:
+    """Normalize parser metadata fields and drop placeholder sentinel values."""
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if cleaned.lower() in {"undefined", "null", "none", "n/a"}:
+        return None
+    return cleaned
+
+
 def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str, bool]:
     """Fetch raw HTML and return (html, final_url, used_js_rendering)."""
     headers = {"User-Agent": USER_AGENT}
@@ -218,22 +230,33 @@ def extract_metadata(html: str, url: str) -> dict:
                     return tag["content"].strip()
         return None
 
-    title = find_meta(["og:title", "twitter:title"], ("property", "name")) or (
-        soup.title.string.strip() if soup.title and soup.title.string else None
+    title = _clean_metadata_value(
+        find_meta(["og:title", "twitter:title"], ("property", "name"))
+        or (soup.title.string.strip() if soup.title and soup.title.string else None)
     )
-    author = find_meta(
-        ["author", "article:author", "parsely-author"], ("name", "property")
+    author = _clean_metadata_value(
+        find_meta(["author", "article:author", "parsely-author"], ("name", "property"))
     )
-    published = find_meta(
-        ["article:published_time", "og:pubdate", "pubdate", "date", "parsely-pub-date"],
-        ("property", "name"),
+    published = _clean_metadata_value(
+        find_meta(
+            [
+                "article:published_time",
+                "og:pubdate",
+                "pubdate",
+                "date",
+                "parsely-pub-date",
+            ],
+            ("property", "name"),
+        )
     )
-    image = find_meta(["og:image", "twitter:image"], ("property", "name"))
+    image = _clean_metadata_value(
+        find_meta(["og:image", "twitter:image"], ("property", "name"))
+    )
 
     canonical = None
     canonical_tag = soup.find("link", rel="canonical")
     if canonical_tag and canonical_tag.get("href"):
-        canonical = canonical_tag["href"].strip()
+        canonical = _clean_metadata_value(canonical_tag["href"])
 
     favicon = None
     for rel in (
@@ -244,7 +267,7 @@ def extract_metadata(html: str, url: str) -> dict:
     ):
         link = soup.find("link", rel=lambda value, rel=rel: _rel_matches(value, rel))
         if link and link.get("href"):
-            favicon = link["href"].strip()
+            favicon = _clean_metadata_value(link["href"])
             if favicon:
                 break
 
