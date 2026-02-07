@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+import pytest
+
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from workers import ingestion_worker
 
@@ -157,3 +159,21 @@ def test_process_youtube_job_disables_transcript_upload(test_db, monkeypatch):
     ingestion_worker._process_youtube_job(test_db, job, record)
 
     assert upload_flags == [False]
+
+
+def test_transcribe_youtube_sign_in_required_is_non_retryable(test_db, monkeypatch):
+    file_id = uuid4()
+    record = _make_youtube_ingested_file(test_db, file_id)
+
+    def fake_transcriber(*_args, **_kwargs):
+        raise RuntimeError("Sign in to confirm you're not a bot")
+
+    monkeypatch.setattr(
+        ingestion_worker, "_load_youtube_transcriber", lambda: fake_transcriber
+    )
+
+    with pytest.raises(ingestion_worker.IngestionError) as exc_info:
+        ingestion_worker._transcribe_youtube(record, upload_transcript=False)
+
+    assert exc_info.value.code == "VIDEO_DOWNLOAD_FORBIDDEN"
+    assert exc_info.value.retryable is False

@@ -627,7 +627,14 @@ def _transcribe_youtube(
     except RuntimeError as exc:
         message = str(exc)
         lowered = message.lower()
-        if "403" in lowered or "forbidden" in lowered:
+        if (
+            "403" in lowered
+            or "forbidden" in lowered
+            or "sign in to confirm" in lowered
+            or "not a bot" in lowered
+            or "cookies-from-browser" in lowered
+            or "po token" in lowered
+        ):
             raise IngestionError(
                 "VIDEO_DOWNLOAD_FORBIDDEN", message, retryable=False
             ) from exc

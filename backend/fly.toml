@@ -20,7 +20,6 @@ primary_region = "lhr"
   R2_FAVICON_BUCKET = "sidebar-favicons"
   STORAGE_BACKEND = "r2"
   YT_DLP_JS_RUNTIMES = "node"
-  YT_DLP_COOKIES = "/data/yt-cookies.txt"
 
 [http_service]
   internal_port = 8001
