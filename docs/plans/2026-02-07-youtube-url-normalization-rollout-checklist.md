@@ -84,21 +84,21 @@ Deliverables:
 - [ ] Add tests confirming both legacy and new queue items are handled correctly.
 
 Deliverables:
-- [ ] Extension/share URL routing unified to website behavior.
-- [ ] Explicit Add YouTube flow unchanged.
+- [x] Extension/share URL routing unified to website behavior.
+- [x] Explicit Add YouTube flow unchanged.
 
 ## Phase 3: Web App Consistency
 
-- [ ] Keep sidebar/web generic URL save path as website-only.
+- [x] Keep sidebar/web generic URL save path as website-only.
 - [ ] Confirm Add YouTube dialog in Files remains explicit ingestion-only path:
 - `frontend/src/lib/hooks/useIngestionUploads.ts`
-- [ ] Align frontend YouTube ID parsing helpers with backend contract where feasible:
+- [x] Align frontend YouTube ID parsing helpers with backend contract where feasible:
 - `frontend/src/lib/components/websites/WebsitesViewer.svelte`
 - `frontend/src/lib/components/files/UniversalViewerController.svelte`
 - [ ] Update errors/messages for clarity if wording implies auto-YouTube special-casing in generic URL flows.
 
 Deliverables:
-- [ ] Web behavior matches iOS/backend contract.
+- [x] Web behavior matches iOS/backend contract.
 
 ## Phase 4: Tests (Required)
 
@@ -112,14 +112,14 @@ Deliverables:
 ### iOS tests
 
 - [ ] Update `ios/sideBar/sideBarTests/PendingShareStoreTests.swift`.
-- [ ] Update `ios/sideBar/sideBarTests/IngestionViewModelTests.swift`.
+- [x] Update `ios/sideBar/sideBarTests/IngestionViewModelTests.swift`.
 - [ ] Add tests for share extension URL routing behavior.
 - [ ] Add tests for Safari extension handler URL routing behavior.
 
 ### Web tests
 
 - [ ] Update flow tests for Add YouTube explicit path vs generic website path.
-- [ ] Add parser helper tests for YouTube URL forms accepted in viewer embedding.
+- [x] Add parser helper tests for YouTube URL forms accepted in viewer embedding.
 
 Deliverables:
 - [ ] Test coverage updated for all changed behavior surfaces.

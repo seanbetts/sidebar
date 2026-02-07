@@ -24,6 +24,7 @@
 	import { useWebsiteActions } from '$lib/hooks/useWebsiteActions';
 	import { toast } from 'svelte-sonner';
 	import { getWebsiteDisplayTitle, stripWebsiteFrontmatter } from '$lib/utils/websites';
+	import { buildYouTubeNoCookieEmbedUrl, extractYouTubeVideoId } from '$lib/utils/youtube';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -33,24 +34,6 @@
 	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isCopied = false;
 	const { renameWebsite, pinWebsite, archiveWebsite, deleteWebsite } = useWebsiteActions();
-
-	function extractYouTubeId(url: string): string | null {
-		try {
-			const parsed = new URL(url);
-			if (!parsed.hostname.includes('youtube.com') && !parsed.hostname.includes('youtu.be')) {
-				return null;
-			}
-			if (parsed.hostname.includes('youtu.be')) {
-				return parsed.pathname.replace('/', '') || null;
-			}
-			if (parsed.pathname.startsWith('/shorts/')) {
-				return parsed.pathname.split('/')[2] ?? null;
-			}
-			return parsed.searchParams.get('v');
-		} catch {
-			return null;
-		}
-	}
 
 	function hasTranscriptForVideo(markdown: string, videoId: string | null): boolean {
 		if (!videoId) return false;
@@ -139,9 +122,7 @@
 	}
 
 	function buildYouTubeEmbed(url: string): string | null {
-		const videoId = extractYouTubeId(url);
-		if (!videoId) return null;
-		return `https://www.youtube-nocookie.com/embed/${videoId}`;
+		return buildYouTubeNoCookieEmbedUrl(url);
 	}
 
 	function buildVimeoEmbed(url: string): string | null {
@@ -187,7 +168,7 @@
 		let updated = markdown.replace(youtubePattern, (_, url: string) => {
 			const embed = buildYouTubeEmbed(url.trim());
 			if (!embed) return _;
-			const videoId = extractYouTubeId(url.trim());
+			const videoId = extractYouTubeVideoId(url.trim());
 			const showButton = !hasTranscriptForVideo(markdown, videoId);
 			const transcriptHref = buildTranscriptHref(url.trim());
 			const transcriptEntry = getTranscriptEntry(website, videoId);
@@ -211,7 +192,7 @@
 		updated = updated.replace(bareUrlPattern, (match: string) => {
 			const youtube = buildYouTubeEmbed(match.trim());
 			if (youtube) {
-				const videoId = extractYouTubeId(match.trim());
+				const videoId = extractYouTubeVideoId(match.trim());
 				const showButton = !hasTranscriptForVideo(markdown, videoId);
 				const transcriptHref = buildTranscriptHref(match.trim());
 				const transcriptEntry = getTranscriptEntry(website, videoId);
@@ -244,7 +225,7 @@
 				const payload = data as { data?: { file_id?: string; status?: string } };
 				const fileId = payload?.data?.file_id;
 				const status = payload?.data?.status;
-				const videoId = extractYouTubeId(url);
+				const videoId = extractYouTubeVideoId(url);
 				if (fileId && videoId) {
 					const active = $websitesStore.active;
 					const transcripts = active?.youtube_transcripts ?? {};
@@ -293,7 +274,7 @@
 		const active = $websitesStore.active;
 		if (!url || !active) return;
 
-		const videoId = extractYouTubeId(url);
+		const videoId = extractYouTubeVideoId(url);
 		const transcriptEntry = getTranscriptEntry(active, videoId);
 		if (isTranscriptPending(transcriptEntry?.status)) {
 			return;

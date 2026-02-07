@@ -11,6 +11,7 @@
 	import UniversalViewerHeader from '$lib/components/files/UniversalViewerHeader.svelte';
 	import UniversalViewerBody from '$lib/components/files/UniversalViewerBody.svelte';
 	import { logError } from '$lib/utils/errorHandling';
+	import { buildYouTubeNoCookieEmbedUrl } from '$lib/utils/youtube';
 
 	let viewerUrlValue: string | undefined;
 
@@ -140,28 +141,7 @@
 
 	function buildYouTubeEmbedUrl(url: string | null | undefined): string | null {
 		if (!url) return null;
-		try {
-			const normalized =
-				url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
-			const parsed = new URL(normalized);
-			if (!parsed.hostname.includes('youtube.com') && !parsed.hostname.includes('youtu.be')) {
-				return null;
-			}
-			let videoId: string | null = null;
-			if (parsed.hostname.includes('youtu.be')) {
-				videoId = parsed.pathname.replace('/', '') || null;
-			} else {
-				videoId = parsed.searchParams.get('v');
-				if (!videoId && parsed.pathname.startsWith('/shorts/')) {
-					const parts = parsed.pathname.split('/').filter(Boolean);
-					videoId = parts[1] ?? null;
-				}
-			}
-			if (!videoId) return null;
-			return `https://www.youtube-nocookie.com/embed/${videoId}`;
-		} catch {
-			return null;
-		}
+		return buildYouTubeNoCookieEmbedUrl(url);
 	}
 
 	async function handleDownload() {
