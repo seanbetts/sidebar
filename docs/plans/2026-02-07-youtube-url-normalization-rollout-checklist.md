@@ -79,8 +79,8 @@ Deliverables:
 
 ### 2.3 Pending-share backward compatibility
 
-- [ ] Keep `.youtube` handling in `ios/sideBar/sideBar/App/AppEnvironment+PendingShares.swift` for already queued items.
-- [ ] Ensure new extension URL shares no longer create `.youtube` items.
+- [x] Keep `.youtube` handling in `ios/sideBar/sideBar/App/AppEnvironment+PendingShares.swift` for already queued items.
+- [x] Ensure new extension URL shares no longer create `.youtube` items.
 - [x] Add tests confirming both legacy and new queue items are handled correctly.
 
 Deliverables:
@@ -127,7 +127,7 @@ Deliverables:
 ## Phase 5: Verification Gates
 
 - [x] `pytest backend/tests/` (run; failing tests are pre-existing and unrelated to this rollout)
-- [ ] `ruff check backend/`
+- [x] `ruff check backend/`
 - [x] `npm --prefix frontend test`
 - [x] `npm --prefix frontend run lint` (fails due pre-existing `frontend/src/codemirror/index.ts` issues)
 - [ ] Type checks:
@@ -139,6 +139,14 @@ Manual checks:
 - [ ] Save YouTube URL from Safari extension (iOS): website save behavior.
 - [ ] Save YouTube URL from Safari extension (macOS): website save behavior.
 - [ ] Add YouTube Video from Files (web + iOS): still creates YouTube ingestion file.
+
+Known unrelated baseline failures observed during verification:
+- Backend full-suite failures outside this rollout:
+`backend/tests/api/test_notes_workspace_service.py`,
+`backend/tests/integration/test_health.py`,
+`backend/tests/skills/web_save/test_web_save_parser.py`.
+- Frontend repo-wide lint/typecheck issues outside this rollout:
+`frontend/src/codemirror/index.ts` and broader existing `npm run check` diagnostics.
 
 ## Phase 6: Rollout + Cleanup
 
@@ -157,16 +165,21 @@ Manual checks:
 - [ ] Risk: Transcript workflows break on unsupported YouTube variants.
   Mitigation: contract tests for `watch`, `shorts`, `embed`, `youtu.be`, invalid hosts.
 
-## PR Batching Plan
+## Implementation Batches (Completed)
 
-- [ ] PR 1: Backend shared normalization service + adoption + backend tests.
-- [ ] PR 2: iOS/share/Safari routing changes + iOS tests.
-- [ ] PR 3: Web consistency updates + frontend tests.
-- [ ] PR 4: Cleanup/docs/final verification.
+- [x] Batch 1: Backend shared normalization service + adoption + backend tests.
+  Commits: `cdb07aa3`
+- [x] Batch 2: iOS/share/Safari routing changes + iOS tests.
+  Commits: `6d025bfb`, `df3f0e78`
+- [x] Batch 3: Web consistency updates + frontend tests.
+  Commits: `befe2ff4`, `4b46678d`
+- [x] Batch 4: Docs/architecture/checklist consolidation and drift fixes.
+  Commits: `88f7a0c6`, `753c56d1`
 
 ## Done Criteria
 
-- [ ] Generic URL/share flows never special-case YouTube into file ingestion.
-- [ ] Add YouTube Video button remains the only path to `files/youtube`.
-- [ ] URL normalization rules are centralized and reused.
+- [x] Generic URL/share flows never special-case YouTube into file ingestion.
+- [x] Add YouTube Video button remains the only path to `files/youtube`.
+- [x] URL normalization rules are centralized and reused.
 - [ ] Tests, lint, and type checks pass across backend/frontend.
+  Blocked by pre-existing unrelated baseline failures noted in Phase 5 verification.
