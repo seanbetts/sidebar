@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -11,11 +10,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.services.file_ingestion_service import FileIngestionService
-from api.services.websites_service import WebsitesService
-
-_YOUTUBE_ID_PATTERN = re.compile(
-    r"(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([A-Za-z0-9_-]+)"
+from api.services.url_normalization_service import (
+    extract_youtube_video_id,
 )
+from api.services.url_normalization_service import (
+    normalize_youtube_url as normalize_youtube_url_shared,
+)
+from api.services.websites_service import WebsitesService
 
 
 @dataclass(frozen=True)
@@ -37,23 +38,12 @@ class TranscriptEnqueueResult:
 
 def extract_youtube_id(url: str) -> str | None:
     """Extract a YouTube video ID from a URL."""
-    if not url:
-        return None
-    match = _YOUTUBE_ID_PATTERN.search(url)
-    return match.group(1) if match else None
+    return extract_youtube_video_id(url)
 
 
 def normalize_youtube_url(url: str) -> str:
     """Normalize a YouTube URL to a canonical watch link."""
-    if not url:
-        raise ValueError("Invalid YouTube URL")
-    cleaned = url.strip()
-    if not cleaned.startswith(("http://", "https://")):
-        cleaned = f"https://{cleaned}"
-    video_id = extract_youtube_id(cleaned)
-    if not video_id:
-        raise ValueError("Invalid YouTube URL")
-    return f"https://www.youtube.com/watch?v={video_id}"
+    return normalize_youtube_url_shared(url)
 
 
 def split_frontmatter(markdown: str) -> tuple[str, str]:

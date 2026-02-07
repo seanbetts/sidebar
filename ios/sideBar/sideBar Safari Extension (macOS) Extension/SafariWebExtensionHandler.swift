@@ -54,22 +54,9 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             return ["ok": false, "error": "Missing URL"]
         }
         let pendingStore = PendingShareStore.shared
-        if isYouTubeURL(urlString) {
-            if pendingStore.enqueueYouTube(url: urlString) != nil {
-                return ["ok": true, "queued": "youtube"]
-            }
-            return ["ok": false, "error": "Failed to queue YouTube"]
-        }
         if pendingStore.enqueueWebsite(url: urlString) != nil {
             return ["ok": true, "queued": "website"]
         }
         return ["ok": false, "error": "Failed to queue website"]
     }
-
-    private func isYouTubeURL(_ urlString: String) -> Bool {
-        guard let url = URL(string: urlString),
-              let host = url.host?.lowercased() else { return false }
-        return host.contains("youtube.com") || host.contains("youtu.be")
-    }
-
 }

@@ -24,6 +24,7 @@ def test_normalize_youtube_url_invalid():
 def test_extract_youtube_id_variants():
     assert _extract_youtube_id("https://youtu.be/abc123") == "abc123"
     assert _extract_youtube_id("https://www.youtube.com/watch?v=xyz789") == "xyz789"
+    assert _extract_youtube_id("https://www.youtube.com/shorts/xyz789") == "xyz789"
 
 
 def test_category_for_file():

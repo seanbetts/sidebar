@@ -17,6 +17,13 @@ def test_normalize_youtube_url_handles_short_links():
     assert url == "https://www.youtube.com/watch?v=FUq9qRwrDrI"
 
 
+def test_extract_youtube_id_handles_embed_and_shorts_urls():
+    embed_id = extract_youtube_id("https://www.youtube.com/embed/FUq9qRwrDrI")
+    shorts_id = extract_youtube_id("https://www.youtube.com/shorts/FUq9qRwrDrI")
+    assert embed_id == "FUq9qRwrDrI"
+    assert shorts_id == "FUq9qRwrDrI"
+
+
 def test_normalize_youtube_url_rejects_invalid():
     try:
         normalize_youtube_url("https://example.com/watch?v=bad")

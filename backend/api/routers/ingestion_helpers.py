@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import shutil
-import urllib.parse
 import uuid
 from hashlib import sha256
 from pathlib import Path
@@ -22,6 +21,10 @@ from api.exceptions import (
 from api.models.file_ingestion import IngestedFile
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.storage.service import get_storage_backend
+from api.services.url_normalization_service import (
+    extract_youtube_video_id,
+    normalize_youtube_url,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +39,10 @@ ERROR_MESSAGES = {
     "CONVERSION_TIMEOUT": "File conversion timed out. We'll retry automatically.",
     "CONVERSION_FAILED": "We couldn't convert this file.",
     "DERIVATIVE_MISSING": "We couldn't generate a preview for this file.",
-    "INVALID_XLSX": "That doesn't appear to be a valid XLSX file. Try re-saving it as .xlsx in Excel or Google Sheets.",
+    "INVALID_XLSX": (
+        "That doesn't appear to be a valid XLSX file. Try re-saving it as .xlsx in "
+        "Excel or Google Sheets."
+    ),
     "TRANSCRIPTION_UNAVAILABLE": "Audio transcription is unavailable right now.",
     "TRANSCRIPTION_FAILED": "We couldn't transcribe this audio file.",
     "VIDEO_TRANSCRIPTION_FAILED": "We couldn't transcribe this video.",
@@ -163,40 +169,16 @@ def _recommended_viewer(
 
 
 def _normalize_youtube_url(url: str) -> str:
-    parsed = urllib.parse.urlparse(
-        url if url.startswith(("http://", "https://")) else f"https://{url}"
-    )
-    if not parsed.netloc:
-        raise BadRequestError("Invalid URL")
-    if not any(domain in parsed.netloc for domain in ("youtube.com", "youtu.be")):
-        raise BadRequestError("Invalid YouTube URL")
-    if "youtu.be" in parsed.netloc:
-        video_id = parsed.path.strip("/")
-        if not video_id:
-            raise BadRequestError("Invalid YouTube URL")
-        return f"https://www.youtube.com/watch?v={video_id}"
-    if parsed.path.startswith("/shorts/"):
-        parts = [part for part in parsed.path.split("/") if part]
-        if len(parts) >= 2:
-            return f"https://www.youtube.com/watch?v={parts[1]}"
-    return url
+    try:
+        return normalize_youtube_url(url)
+    except ValueError as exc:
+        if str(exc) == "Invalid URL":
+            raise BadRequestError("Invalid URL") from exc
+        raise BadRequestError("Invalid YouTube URL") from exc
 
 
 def _extract_youtube_id(url: str) -> str | None:
-    try:
-        parsed = urllib.parse.urlparse(url)
-        if "youtu.be" in parsed.netloc:
-            return parsed.path.strip("/") or None
-        query = urllib.parse.parse_qs(parsed.query)
-        if "v" in query and query["v"]:
-            return query["v"][0]
-        if parsed.path.startswith("/shorts/"):
-            parts = [part for part in parsed.path.split("/") if part]
-            if len(parts) >= 2:
-                return parts[1]
-    except Exception:
-        return None
-    return None
+    return extract_youtube_video_id(url)
 
 
 def _category_for_file(
