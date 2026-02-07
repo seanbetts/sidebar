@@ -40,16 +40,24 @@ def test_resolve_js_runtimes_from_path(monkeypatch):
     assert module._resolve_js_runtimes() == {"node": {}}
 
 
+def test_resolve_js_runtimes_missing(monkeypatch):
+    module = _load_download_module()
+    monkeypatch.delenv("YT_DLP_JS_RUNTIMES", raising=False)
+    monkeypatch.delenv("YT_DLP_JS_RUNTIME", raising=False)
+    monkeypatch.setattr(module.shutil, "which", lambda _value: None)
+    assert module._resolve_js_runtimes() is None
+
+
 def test_resolve_player_clients_defaults_for_audio(monkeypatch):
     module = _load_download_module()
     monkeypatch.delenv("YT_DLP_PLAYER_CLIENTS", raising=False)
-    assert module._resolve_player_clients(audio_only=True) == ["tv", "ios"]
+    assert module._resolve_player_clients(audio_only=True) is None
 
 
 def test_resolve_player_clients_defaults_for_video(monkeypatch):
     module = _load_download_module()
     monkeypatch.delenv("YT_DLP_PLAYER_CLIENTS", raising=False)
-    assert module._resolve_player_clients(audio_only=False) == ["tv", "ios", "web"]
+    assert module._resolve_player_clients(audio_only=False) is None
 
 
 def test_resolve_player_clients_from_env(monkeypatch):
