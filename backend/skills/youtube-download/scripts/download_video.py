@@ -58,11 +58,7 @@ def _resolve_player_clients(audio_only: bool) -> list[str] | None:
     if value:
         clients = [client.strip() for client in value.split(",") if client.strip()]
         return clients or None
-
-    # Web client is increasingly SABR-limited; prefer TV/iOS for stable audio extraction.
-    if audio_only:
-        return ["tv", "ios"]
-    return ["tv", "ios", "web"]
+    return None
 
 
 def _configure_logging(quiet: bool) -> None:
@@ -70,10 +66,6 @@ def _configure_logging(quiet: bool) -> None:
         logging.basicConfig(level=logging.WARNING)
     else:
         logging.basicConfig(level=logging.INFO)
-
-
-def _default_remote_components() -> set[str]:
-    return {"ejs:github"}
 
 
 def _ensure_stdio() -> None:
@@ -370,16 +362,6 @@ def download_youtube(
         "noprogress": True if quiet else False,
         "progress_hooks": [] if quiet else [progress_hook],
         "quiet": quiet,
-        "http_headers": {
-            "User-Agent": (
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/123.0.0.0 Safari/537.36"
-            ),
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Referer": "https://www.youtube.com/",
-        },
     }
 
     player_clients = _resolve_player_clients(audio_only)
@@ -390,7 +372,7 @@ def download_youtube(
     if audio_only:
         ydl_opts.update(
             {
-                "format": "bestaudio/best",
+                "format": "140-8/140/bestaudio[ext=m4a]/bestaudio",
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
@@ -419,9 +401,6 @@ def download_youtube(
     )
     logger.info("yt-dlp js runtimes: %s", ",".join(js_runtimes.keys()) if js_runtimes else "none")
     logger.info("yt-dlp audio_only=%s playlist=%s", audio_only, is_playlist)
-    remote_components = _default_remote_components()
-    ydl_opts["remote_components"] = remote_components
-    logger.info("yt-dlp remote components: %s", ",".join(sorted(remote_components)))
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
