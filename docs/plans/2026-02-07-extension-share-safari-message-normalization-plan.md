@@ -55,6 +55,21 @@ Create one shared UX contract for extension states so Share Sheet, iOS Safari ex
 - `unsupported_content`
 - `generic_failure`
 
+### 1.1) Failure Taxonomy (Required)
+
+- [ ] Define one shared error taxonomy for extension flows, for example:
+- `auth_required`
+- `offline`
+- `network_timeout`
+- `invalid_payload`
+- `unsupported_content`
+- `upload_rejected`
+- `queue_failed`
+- `native_bridge_failed`
+- `unknown_failure`
+- [ ] Every thrown/returned error must map to exactly one taxonomy code before UI display.
+- [ ] Keep taxonomy values stable so tests and analytics do not drift.
+
 ### 2) Message Policy
 
 - [ ] Each state key has exactly one user-facing default message.
@@ -62,6 +77,22 @@ Create one shared UX contract for extension states so Share Sheet, iOS Safari ex
 - `upload_failed` may include sanitized short reason.
 - auth/network errors should use product copy, not raw transport errors.
 - [ ] Ensure punctuation/checkmark style is consistent across all targets.
+
+### 2.1) Failure Message Rules
+
+- [ ] Never surface raw transport/system strings directly (`localizedDescription`, JS exception text, HTTP internals).
+- [ ] Use a deterministic mapper: `error taxonomy code -> user-facing message key`.
+- [ ] Support optional short detail only for allow-listed cases (for example validation failure reason).
+- [ ] Enforce one fallback message for unclassified errors.
+- [ ] Remove double-prefix or nested prefix patterns (`Upload failed: Upload failed: ...`).
+
+### 2.2) Recovery Hints
+
+- [ ] Define which failures should include a user action hint, for example:
+- auth -> sign in
+- offline -> saved for later (if queue succeeds) or retry when online
+- unsupported content -> supported types guidance
+- [ ] Keep hints concise and consistent across Share Sheet and Safari popup surfaces.
 
 ### 3) Timing Policy
 
@@ -78,6 +109,7 @@ Create one shared UX contract for extension states so Share Sheet, iOS Safari ex
 ### A) Share Extension (Swift)
 
 - [ ] Add a shared messaging helper for Share extension state keys.
+- [ ] Add a shared error-mapping helper (`Error` -> taxonomy code -> message key).
 - [ ] Replace ad-hoc string literals in:
 - `ios/sideBar/ShareExtension/ShareViewController.swift`
 - `ios/sideBar/ShareExtension/ShareExtensionEnvironment.swift`
@@ -88,6 +120,7 @@ Create one shared UX contract for extension states so Share Sheet, iOS Safari ex
 
 - [ ] Move shared handler logic into one reusable unit in shared code.
 - [ ] Keep thin target-specific wrappers for platform registration only.
+- [ ] Return stable machine error codes in native response payload (not only free-form `error` strings).
 - [ ] Update both handler files to call shared logic:
 - `ios/sideBar/sideBar Safari Extension/SafariWebExtensionHandler.swift`
 - `ios/sideBar/sideBar Safari Extension (macOS) Extension/SafariWebExtensionHandler.swift`
@@ -95,6 +128,7 @@ Create one shared UX contract for extension states so Share Sheet, iOS Safari ex
 ### C) Safari Popup (Web resources)
 
 - [ ] Create one shared popup logic module for status mapping + save flow.
+- [ ] Map native machine error codes to shared user message keys in one place.
 - [ ] Create one shared popup style sheet for both iOS and macOS targets.
 - [ ] Align HTML structure across both popup targets so shared JS/CSS works without forks.
 - [ ] Keep target-specific UI only if strictly required by platform constraints.
@@ -118,6 +152,8 @@ Create one shared UX contract for extension states so Share Sheet, iOS Safari ex
 - timing behavior
 - close behavior
 - error-detail policy
+- error taxonomy and code mapping table
+- fallback behavior when mapping fails
 
 Deliverable:
 - [ ] Approved state/message matrix before code edits.
@@ -125,9 +161,11 @@ Deliverable:
 ## Phase 1: Message Catalog + Share Extension Adoption
 
 - [ ] Implement shared Swift message catalog/types.
+- [ ] Implement shared Swift error taxonomy + mapper.
 - [ ] Replace string literals in Share extension flow with catalog lookups.
 - [ ] Remove double-prefix upload failure formatting.
 - [ ] Normalize offline/auth handling to catalog states.
+- [ ] Replace raw `localizedDescription` display with mapped/sanitized message paths.
 
 Deliverable:
 - [ ] Share extension emits only catalog-backed messages.
@@ -137,6 +175,7 @@ Deliverable:
 - [ ] Extract shared native handler logic used by both targets.
 - [ ] Delete duplicate branching/error text from per-target handlers.
 - [ ] Ensure response payload shape remains backward compatible (`ok`, `error`, optional metadata).
+- [ ] Add machine code field in responses (for example `code`) and keep `error` for compatibility.
 
 Deliverable:
 - [ ] One logic path for both iOS/macOS Safari native handling.
@@ -147,6 +186,7 @@ Deliverable:
 - [ ] Unify popup JS status/state mapping.
 - [ ] Unify popup CSS tokens and controls.
 - [ ] Confirm UX parity for no-tab, save success, and failure states.
+- [ ] Ensure popup never displays raw exception text to users.
 
 Deliverable:
 - [ ] Popup behavior and styling are consistent across platforms.
@@ -167,6 +207,10 @@ Deliverable:
 - [ ] Add/expand iOS unit tests for message mapping and share flow state selection.
 - [ ] Add tests for Safari native handler success/failure mapping.
 - [ ] Add tests that verify duplicated copy does not drift between targets.
+- [ ] Add table-driven tests for taxonomy-code -> message-key mapping.
+- [ ] Add regression tests for fallback message on unknown/unexpected errors.
+- [ ] Add tests asserting no duplicated prefix in rendered upload failures.
+- [ ] Add tests that confirm user-facing copy does not include raw `NSError`/JS exception payloads.
 
 ### Manual
 
@@ -176,6 +220,9 @@ Deliverable:
 - [ ] Share file/image offline -> `saved_for_later` UX.
 - [ ] Safari iOS popup save success/failure/no-active-tab parity with macOS popup.
 - [ ] Auth-missing path shows consistent sign-in message everywhere.
+- [ ] Force server-side validation failure and verify sanitized, user-safe message.
+- [ ] Force queue write failure and verify consistent fallback failure copy.
+- [ ] Force network timeout and verify mapped timeout/offline copy and recovery hint.
 
 ## Phase 6: Cleanup
 
@@ -189,6 +236,8 @@ Deliverable:
   Mitigation: keep small platform adapters with a shared core.
 - [ ] Risk: message normalization hides useful diagnostics.
   Mitigation: preserve detailed diagnostics in logs, show concise user copy in UI.
+- [ ] Risk: code-level error mapping drifts between Swift and JS surfaces.
+  Mitigation: derive both mappings from one shared contract table and add parity tests.
 - [ ] Risk: popup behavior differences are intentional for one platform.
   Mitigation: confirm desired close behavior explicitly before finalizing Phase 3.
 
@@ -204,4 +253,5 @@ Deliverable:
 - [ ] No hardcoded user-facing success/failure strings remain in share/safari flow logic outside the catalog.
 - [ ] iOS/macOS Safari extension logic uses a shared core path.
 - [ ] Popup styling and message semantics are platform-consistent.
+- [ ] Error handling uses shared taxonomy + mapping with sanitized user-facing copy.
 - [ ] Verification checks pass and behavior parity is confirmed manually.
