@@ -243,3 +243,58 @@ def test_update_website_conflict(db_session):
             title="Updated",
             client_updated_at=stale,
         )
+
+
+def test_save_website_canonicalizes_youtube_url_and_dedupes_tracking_params(db_session):
+    website = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://www.youtube.com/watch?v=abc123xyzAA&list=PL1",
+        title="Video",
+        content="Content",
+        source="https://www.youtube.com/watch?v=abc123xyzAA&list=PL1",
+    )
+
+    assert website.url == "https://www.youtube.com/watch?v=abc123xyzAA"
+    same = WebsitesService.get_by_url(
+        db_session,
+        "test_user",
+        "https://youtu.be/abc123xyzAA?t=42",
+    )
+    assert same is not None
+    assert same.id == website.id
+
+
+def test_save_website_keeps_distinct_youtube_video_ids(db_session):
+    first = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://www.youtube.com/watch?v=abc123xyzAA",
+        title="Video A",
+        content="Content A",
+        source="https://www.youtube.com/watch?v=abc123xyzAA",
+    )
+    second = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://www.youtube.com/watch?v=def456uvwBB",
+        title="Video B",
+        content="Content B",
+        source="https://www.youtube.com/watch?v=def456uvwBB",
+    )
+
+    assert first.url != second.url
+    resolved_first = WebsitesService.get_by_url(
+        db_session,
+        "test_user",
+        "https://www.youtube.com/watch?v=abc123xyzAA&feature=share",
+    )
+    resolved_second = WebsitesService.get_by_url(
+        db_session,
+        "test_user",
+        "https://youtu.be/def456uvwBB",
+    )
+    assert resolved_first is not None
+    assert resolved_second is not None
+    assert resolved_first.id == first.id
+    assert resolved_second.id == second.id

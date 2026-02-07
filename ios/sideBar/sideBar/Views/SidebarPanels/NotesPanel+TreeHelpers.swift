@@ -73,6 +73,14 @@ extension NotesPanelView {
         isArchiveExpanded && viewModel.isLoadingArchived
     }
 
+    var showArchiveLoadingPlaceholder: Bool {
+        isArchiveLoading && archivedNodes.isEmpty
+    }
+
+    var showArchiveEmptyState: Bool {
+        !isArchiveLoading && archivedNodes.isEmpty
+    }
+
     func normalizeArchivedNodes(_ nodes: [FileNode]) -> [FileNode] {
         nodes.flatMap { node in
             if node.type == .directory, node.name.lowercased() == "archive" {

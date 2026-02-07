@@ -7,13 +7,13 @@ from urllib.parse import urlparse
 
 from api.exceptions import ConflictError
 from api.models.website import Website
+from api.services.url_normalization_service import normalize_website_url
 from api.services.website_reading_time import normalize_reading_time
 
 
 def normalize_url(value: str) -> str:
     """Normalize a URL for storage."""
-    parsed = urlparse(value)
-    return parsed._replace(query="", fragment="").geturl()
+    return normalize_website_url(value)
 
 
 def extract_domain(value: str) -> str:

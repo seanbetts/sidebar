@@ -242,10 +242,9 @@ extension WebsitesPanelView {
                     DisclosureGroup(
                         isExpanded: $isArchiveExpanded,
                         content: {
-                            if isArchiveLoading && archivedItems.isEmpty {
+                            if showArchiveLoadingPlaceholder {
                                 archiveLoadingRow(message: "Loading archived websites...")
-                            }
-                            if archivedItems.isEmpty {
+                            } else if showArchiveEmptyState {
                                 Text(archivedEmptyStateText)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -495,10 +494,9 @@ extension WebsitesPanelView {
             DisclosureGroup(
                 isExpanded: $isArchiveExpanded,
                 content: {
-                    if isArchiveLoading && archivedItems.isEmpty {
+                    if showArchiveLoadingPlaceholder {
                         archiveLoadingRow(message: "Loading archived websites...")
-                    }
-                    if archivedItems.isEmpty {
+                    } else if showArchiveEmptyState {
                         Text(archivedEmptyStateText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -527,6 +525,14 @@ extension WebsitesPanelView {
         isArchiveExpanded && viewModel.isLoadingArchived
     }
 
+    private var showArchiveLoadingPlaceholder: Bool {
+        isArchiveLoading && archivedItems.isEmpty
+    }
+
+    private var showArchiveEmptyState: Bool {
+        !isArchiveLoading && archivedItems.isEmpty
+    }
+
     @ViewBuilder
     private func archiveLoadingRow(message: String) -> some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
@@ -543,7 +549,7 @@ extension WebsitesPanelView {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Label("Archive", systemImage: "archivebox")
                 .font(.subheadline)
-            if isArchiveLoading, !archivedItems.isEmpty {
+            if isArchiveLoading && !archivedItems.isEmpty {
                 ProgressView()
                     .controlSize(.small)
             }
