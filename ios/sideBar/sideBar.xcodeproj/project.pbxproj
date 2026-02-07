@@ -1551,6 +1551,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use Face ID to securely unlock sideBar and protect your data.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a profile photo for your sideBar account.";
+				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = "ai.sidebar.sidebar.tokenrefresh ai.sidebar.sidebar.widgetrefresh";
 				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
 				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -1629,6 +1630,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use Face ID to securely unlock sideBar and protect your data.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a profile photo for your sideBar account.";
+				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = "ai.sidebar.sidebar.tokenrefresh ai.sidebar.sidebar.widgetrefresh";
 				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
 				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
