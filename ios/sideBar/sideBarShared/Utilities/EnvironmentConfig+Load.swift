@@ -25,34 +25,20 @@ public extension EnvironmentConfig {
             key: "R2_FAVICON_PUBLIC_BASE_URL"
         )
 
-        guard let apiBaseUrl = URL(string: apiBaseUrlString) else {
-            throw EnvironmentConfigLoadError.invalidUrl(key: "API_BASE_URL", value: apiBaseUrlString)
-        }
-
-        guard let supabaseUrl = URL(string: supabaseUrlString) else {
-            throw EnvironmentConfigLoadError.invalidUrl(key: "SUPABASE_URL", value: supabaseUrlString)
-        }
+        let apiBaseUrl = try parseHttpUrl(key: "API_BASE_URL", value: apiBaseUrlString)
+        let supabaseUrl = try parseHttpUrl(key: "SUPABASE_URL", value: supabaseUrlString)
 
         var r2Endpoint: URL?
         if let r2EndpointString {
-            guard let url = URL(string: r2EndpointString) else {
-                throw EnvironmentConfigLoadError.invalidUrl(
-                    key: "R2_ENDPOINT",
-                    value: r2EndpointString
-                )
-            }
-            r2Endpoint = url
+            r2Endpoint = try parseHttpUrl(key: "R2_ENDPOINT", value: r2EndpointString)
         }
 
         var r2FaviconPublicBaseUrl: URL?
         if let r2FaviconPublicBaseUrlString {
-            guard let url = URL(string: r2FaviconPublicBaseUrlString) else {
-                throw EnvironmentConfigLoadError.invalidUrl(
-                    key: "R2_FAVICON_PUBLIC_BASE_URL",
-                    value: r2FaviconPublicBaseUrlString
-                )
-            }
-            r2FaviconPublicBaseUrl = url
+            r2FaviconPublicBaseUrl = try parseHttpUrl(
+                key: "R2_FAVICON_PUBLIC_BASE_URL",
+                value: r2FaviconPublicBaseUrlString
+            )
         }
 
         return EnvironmentConfig(
@@ -95,18 +81,50 @@ private func loadString(key: String) throws -> String {
 }
 
 private func loadOptionalString(key: String) -> String? {
-    if let value = ProcessInfo.processInfo.environment[key], !value.trimmed.isEmpty {
-        return value.trimmed
+    if let value = ProcessInfo.processInfo.environment[key],
+        let normalized = normalizeLoadedValue(value) {
+        return normalized
     }
 
     if let value = Bundle.main.object(forInfoDictionaryKey: key) as? String,
-        !value.trimmed.isEmpty {
-        return value.trimmed
+        let normalized = normalizeLoadedValue(value) {
+        return normalized
     }
 
-    if let value = EnvironmentConfigFileReader.loadString(forKey: key) {
-        return value
+    if let value = EnvironmentConfigFileReader.loadString(forKey: key),
+        let normalized = normalizeLoadedValue(value) {
+        return normalized
     }
 
     return nil
+}
+
+private func parseHttpUrl(key: String, value: String) throws -> URL {
+    guard
+        let url = URL(string: value),
+        let scheme = url.scheme?.lowercased(),
+        (scheme == "http" || scheme == "https"),
+        let host = url.host,
+        !host.isEmpty
+    else {
+        throw EnvironmentConfigLoadError.invalidUrl(key: key, value: value)
+    }
+    return url
+}
+
+private func normalizeLoadedValue(_ value: String) -> String? {
+    let trimmed = value.trimmed
+    guard !trimmed.isEmpty else { return nil }
+    if trimmed.hasPrefix("$(") && trimmed.hasSuffix(")") {
+        return nil
+    }
+    if trimmed.hasPrefix("${") && trimmed.hasSuffix("}") {
+        return nil
+    }
+    return decodeEscapedConfigString(trimmed)
+}
+
+private func decodeEscapedConfigString(_ value: String) -> String {
+    // Values coming from .xcconfig often escape URL slashes as `\/`.
+    value.replacingOccurrences(of: "\\/", with: "/")
 }
