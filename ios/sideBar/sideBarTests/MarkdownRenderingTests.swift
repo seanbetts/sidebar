@@ -3,6 +3,10 @@ import sideBarShared
 @testable import sideBar
 
 final class MarkdownRenderingTests: XCTestCase {
+    private static let expectedYouTubeEmbedURL =
+        "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" +
+        "?playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
+
     func testNormalizeTaskListsStrikesCheckedItems() {
         let input = "- [x] done\n- [ ] todo"
         let normalized = MarkdownRendering.normalizeTaskLists(input)
@@ -35,5 +39,44 @@ final class MarkdownRenderingTests: XCTestCase {
         }
         XCTAssertEqual(gallery.imageUrls, ["https://example.com/a.png"])
         XCTAssertEqual(gallery.caption, "Hello")
+    }
+
+    func testNormalizedBlocksConvertsYouTubeMarkdownLinkToEmbedBlock() {
+        let input = "[YouTube](https://www.youtube.com/watch?v=dQw4w9WgXcQ)"
+        let blocks = MarkdownRendering.normalizedBlocks(from: input)
+
+        guard case .youtube(let url)? = blocks.first else {
+            XCTFail("Expected YouTube block")
+            return
+        }
+        XCTAssertEqual(
+            url.absoluteString,
+            Self.expectedYouTubeEmbedURL
+        )
+    }
+
+    func testNormalizedBlocksConvertsBareYouTubeUrlToEmbedBlock() {
+        let input = "https://youtu.be/dQw4w9WgXcQ"
+        let blocks = MarkdownRendering.normalizedBlocks(from: input)
+
+        guard case .youtube(let url)? = blocks.first else {
+            XCTFail("Expected YouTube block")
+            return
+        }
+        XCTAssertEqual(
+            url.absoluteString,
+            Self.expectedYouTubeEmbedURL
+        )
+    }
+
+    func testNormalizedBlocksLeavesNonYouTubeUrlAsMarkdown() {
+        let input = "https://example.com/article"
+        let blocks = MarkdownRendering.normalizedBlocks(from: input)
+
+        guard case .markdown(let markdown)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+        XCTAssertEqual(markdown, input)
     }
 }

@@ -19,6 +19,7 @@ public enum MarkdownRendering {
     public enum MarkdownContentBlock {
         case markdown(String)
         case gallery(MarkdownGallery)
+        case youtube(URL)
     }
 
     public nonisolated static func normalizeTaskLists(_ text: String) -> String {
@@ -85,18 +86,20 @@ public enum MarkdownRendering {
     public nonisolated static func normalizedBlocks(from text: String) -> [MarkdownContentBlock] {
         let stripped = stripFrontmatter(text)
         let blocks = splitMarkdownContent(stripped)
-        return blocks.compactMap { block in
+        var normalized: [MarkdownContentBlock] = []
+        for block in blocks {
             switch block {
             case .markdown(let markdown):
-                let normalized = normalizeMarkdownText(markdown)
-                guard !normalized.isBlank else {
-                    return nil
+                let cleanedMarkdown = normalizeMarkdownText(markdown)
+                guard !cleanedMarkdown.isBlank else {
+                    continue
                 }
-                return .markdown(normalized)
-            case .gallery:
-                return block
+                normalized.append(contentsOf: splitMarkdownEmbeds(cleanedMarkdown))
+            case .gallery, .youtube:
+                normalized.append(block)
             }
         }
+        return normalized
     }
 
     public nonisolated static func splitMarkdownContent(_ text: String) -> [MarkdownContentBlock] {
@@ -239,5 +242,104 @@ public enum MarkdownRendering {
     private nonisolated static func appendMarkdownIfNeeded(_ text: String, to blocks: inout [MarkdownContentBlock]) {
         guard !text.isBlank else { return }
         blocks.append(.markdown(text))
+    }
+
+    private nonisolated static func splitMarkdownEmbeds(_ markdown: String) -> [MarkdownContentBlock] {
+        let lines = markdown.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard !lines.isEmpty else { return [] }
+
+        var blocks: [MarkdownContentBlock] = []
+        var buffer: [String] = []
+
+        func flushBuffer() {
+            let text = buffer.joined(separator: "\n")
+            appendMarkdownIfNeeded(text, to: &blocks)
+            buffer.removeAll(keepingCapacity: true)
+        }
+
+        for line in lines {
+            if let embedURL = youTubeEmbedURL(from: line) {
+                flushBuffer()
+                blocks.append(.youtube(embedURL))
+            } else {
+                buffer.append(line)
+            }
+        }
+        flushBuffer()
+        return blocks
+    }
+
+    private nonisolated static func youTubeEmbedURL(from line: String) -> URL? {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let sourceURL: String?
+        if let match = firstCapture(
+            pattern: #"^\[YouTube\]\(([^)]+)\)$"#,
+            in: trimmed,
+            options: [.caseInsensitive]
+        ) {
+            sourceURL = match
+        } else if firstCapture(pattern: #"^(https?://\S+)$"#, in: trimmed) != nil {
+            sourceURL = trimmed
+        } else {
+            sourceURL = nil
+        }
+
+        guard let sourceURL else { return nil }
+        guard let videoId = extractYouTubeVideoId(from: sourceURL) else { return nil }
+        let query = "playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
+        return URL(
+            string: "https://www.youtube-nocookie.com/embed/\(videoId)?\(query)"
+        )
+    }
+
+    private nonisolated static func extractYouTubeVideoId(from raw: String) -> String? {
+        guard let components = URLComponents(string: raw),
+              let hostValue = components.host?.lowercased() else {
+            return nil
+        }
+        let host = hostValue.hasPrefix("www.") ? String(hostValue.dropFirst(4)) : hostValue
+        guard host == "youtube.com" || host.hasSuffix(".youtube.com") || host == "youtu.be" || host.hasSuffix(".youtu.be") else {
+            return nil
+        }
+
+        if host == "youtu.be" || host.hasSuffix(".youtu.be") {
+            let candidate = components.path.split(separator: "/").first.map(String.init) ?? ""
+            return isValidYouTubeVideoId(candidate) ? candidate : nil
+        }
+
+        if let value = components.queryItems?.first(where: { $0.name == "v" })?.value,
+           isValidYouTubeVideoId(value) {
+            return value
+        }
+
+        let parts = components.path.split(separator: "/").map(String.init)
+        guard parts.count >= 2 else { return nil }
+        let prefix = parts[0].lowercased()
+        let candidate = parts[1]
+        guard ["shorts", "embed", "live", "v"].contains(prefix) else { return nil }
+        return isValidYouTubeVideoId(candidate) ? candidate : nil
+    }
+
+    private nonisolated static func isValidYouTubeVideoId(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 6 else { return false }
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
+        return trimmed.unicodeScalars.allSatisfy { allowed.contains($0) }
+    }
+
+    private nonisolated static func firstCapture(
+        pattern: String,
+        in text: String,
+        options: NSRegularExpression.Options = []
+    ) -> String? {
+        let regex = makeRegex(pattern: pattern, options: options)
+        let range = NSRange(location: 0, length: text.utf16.count)
+        guard let match = regex.firstMatch(in: text, range: range),
+              let capture = Range(match.range(at: 1), in: text) else {
+            return nil
+        }
+        return String(text[capture])
     }
 }
