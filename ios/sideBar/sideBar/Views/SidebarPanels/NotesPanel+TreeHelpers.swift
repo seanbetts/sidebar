@@ -70,7 +70,7 @@ extension NotesPanelView {
     }
 
     var isArchiveLoading: Bool {
-        isArchiveExpanded && viewModel.isLoadingArchived && archivedNodes.isEmpty
+        isArchiveExpanded && viewModel.isLoadingArchived
     }
 
     func normalizeArchivedNodes(_ nodes: [FileNode]) -> [FileNode] {

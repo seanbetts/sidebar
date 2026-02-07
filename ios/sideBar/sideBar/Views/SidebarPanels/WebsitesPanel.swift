@@ -244,7 +244,8 @@ extension WebsitesPanelView {
                         content: {
                             if isArchiveLoading {
                                 archiveLoadingRow(message: "Loading archived websites...")
-                            } else if archivedItems.isEmpty {
+                            }
+                            if archivedItems.isEmpty {
                                 Text(archivedEmptyStateText)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -496,7 +497,8 @@ extension WebsitesPanelView {
                 content: {
                     if isArchiveLoading {
                         archiveLoadingRow(message: "Loading archived websites...")
-                    } else if archivedItems.isEmpty {
+                    }
+                    if archivedItems.isEmpty {
                         Text(archivedEmptyStateText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -523,7 +525,7 @@ extension WebsitesPanelView {
     }
 
     private var isArchiveLoading: Bool {
-        isArchiveExpanded && viewModel.isLoadingArchived && archivedItems.isEmpty
+        isArchiveExpanded && viewModel.isLoadingArchived
     }
 
     @ViewBuilder

@@ -356,7 +356,8 @@ extension NotesPanelView {
                     content: {
                         if isArchiveLoading {
                             archiveLoadingRow(message: "Loading archived notes...")
-                        } else if archivedNodes.isEmpty {
+                        }
+                        if archivedNodes.isEmpty {
                             Text(archivedEmptyStateText)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -440,7 +441,8 @@ extension NotesPanelView {
                 content: {
                     if isArchiveLoading {
                         archiveLoadingRow(message: "Loading archived notes...")
-                    } else if archivedNodes.isEmpty {
+                    }
+                    if archivedNodes.isEmpty {
                         Text(archivedEmptyStateText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
