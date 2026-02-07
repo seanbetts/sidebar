@@ -4,6 +4,7 @@
 		PinOff,
 		Pencil,
 		Copy,
+		Type,
 		Check,
 		Link,
 		Download,
@@ -32,6 +33,7 @@
 	export let onPinToggle: () => void;
 	export let onRename: () => void;
 	export let onCopy: () => void;
+	export let onCopyTitle: () => void;
 	export let onCopyUrl: () => void;
 	export let onDownload: () => void;
 	export let onArchive: () => void;
@@ -282,6 +284,10 @@
 									<Copy size={16} />
 									<span>Copy</span>
 								{/if}
+							</button>
+							<button class="website-menu-item" onclick={onCopyTitle}>
+								<Type size={16} />
+								<span>Copy Title</span>
 							</button>
 							<button class="website-menu-item" onclick={onCopyUrl}>
 								<Link size={16} />

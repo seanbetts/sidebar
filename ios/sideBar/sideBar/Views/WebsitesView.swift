@@ -139,6 +139,9 @@ public struct WebsitesView: View {
                 SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyWebsiteContent()
                 },
+                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
+                    copyWebsiteTitle()
+                },
                 SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
                     copyWebsiteURL()
                 },
@@ -257,6 +260,33 @@ public struct WebsitesView: View {
             #else
             let pasteboard = UIPasteboard.general
             if pasteboard.string == urlString {
+                pasteboard.string = ""
+            }
+            #endif
+        }
+    }
+
+    private func copyWebsiteTitle() {
+        guard let website = environment.websitesViewModel.active else { return }
+        let title = website.title.isEmpty ? website.url : website.title
+        guard !title.isEmpty else { return }
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = title
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(title, forType: .string)
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == title {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == title {
                 pasteboard.string = ""
             }
             #endif
@@ -522,6 +552,11 @@ extension WebsitesDetailView {
                 Label("Copy", systemImage: "doc.on.doc")
             }
             Button {
+                copyWebsiteTitle()
+            } label: {
+                Label("Copy Title", systemImage: "textformat")
+            }
+            Button {
                 copyWebsiteURL()
             } label: {
                 Label("Copy URL", systemImage: "link")
@@ -565,6 +600,9 @@ extension WebsitesDetailView {
                 SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyWebsiteContent()
                 },
+                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
+                    copyWebsiteTitle()
+                },
                 SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
                     copyWebsiteURL()
                 },
@@ -606,6 +644,9 @@ extension WebsitesDetailView {
                 },
                 SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
                     copyWebsiteContent()
+                },
+                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
+                    copyWebsiteTitle()
                 },
                 SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
                     copyWebsiteURL()
@@ -777,6 +818,33 @@ extension WebsitesDetailView {
             #else
             let pasteboard = UIPasteboard.general
             if pasteboard.string == urlString {
+                pasteboard.string = ""
+            }
+            #endif
+        }
+    }
+
+    private func copyWebsiteTitle() {
+        guard let website = viewModel.active else { return }
+        let title = website.title.isEmpty ? website.url : website.title
+        guard !title.isEmpty else { return }
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = title
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(title, forType: .string)
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == title {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == title {
                 pasteboard.string = ""
             }
             #endif
