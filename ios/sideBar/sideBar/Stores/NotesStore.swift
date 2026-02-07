@@ -94,29 +94,21 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     }
 
     public func loadArchivedTree(force: Bool = false) async throws {
+        guard networkStatus?.isNetworkAvailable ?? true else {
+            return
+        }
         if !force {
             let cached: FileTree? = cache.get(key: CacheKeys.notesArchivedTree)
             if let cached {
                 applyArchivedTreeUpdate(cached, persist: false)
-                if networkStatus?.isNetworkAvailable ?? true {
-                    Task { [weak self] in
-                        await self?.refreshArchivedTree()
-                    }
-                }
+                await refreshArchivedTree()
                 return
             }
             if let offline = offlineStore?.get(key: CacheKeys.notesArchivedTree, as: FileTree.self) {
                 applyArchivedTreeUpdate(offline, persist: false)
-                if networkStatus?.isNetworkAvailable ?? true {
-                    Task { [weak self] in
-                        await self?.refreshArchivedTree()
-                    }
-                }
+                await refreshArchivedTree()
                 return
             }
-        }
-        guard networkStatus?.isNetworkAvailable ?? true else {
-            return
         }
         let remote = try await api.listArchivedTree(limit: archivedTreeLimit, offset: 0)
         applyArchivedTreeUpdate(remote, persist: true)
@@ -223,7 +215,8 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     }
 
     private func refreshArchivedTree(force: Bool = false) async {
-        guard !isRefreshingArchivedTree else {
+        if isRefreshingArchivedTree {
+            await waitForArchivedTreeRefresh()
             return
         }
         guard shouldRefreshArchivedTree(force: force) else {
@@ -241,6 +234,12 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             }
         } catch {
             // Ignore background refresh failures; cache remains source of truth.
+        }
+    }
+
+    private func waitForArchivedTreeRefresh() async {
+        while isRefreshingArchivedTree {
+            try? await Task.sleep(nanoseconds: 50_000_000)
         }
     }
 
