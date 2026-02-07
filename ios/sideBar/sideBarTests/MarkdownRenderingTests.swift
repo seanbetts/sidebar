@@ -45,28 +45,32 @@ final class MarkdownRenderingTests: XCTestCase {
         let input = "[YouTube](https://www.youtube.com/watch?v=dQw4w9WgXcQ)"
         let blocks = MarkdownRendering.normalizedBlocks(from: input)
 
-        guard case .youtube(let url)? = blocks.first else {
+        guard case .youtube(let embed)? = blocks.first else {
             XCTFail("Expected YouTube block")
             return
         }
         XCTAssertEqual(
-            url.absoluteString,
+            embed.embedURL.absoluteString,
             Self.expectedYouTubeEmbedURL
         )
+        XCTAssertEqual(embed.sourceURL, "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        XCTAssertEqual(embed.videoId, "dQw4w9WgXcQ")
     }
 
     func testNormalizedBlocksConvertsBareYouTubeUrlToEmbedBlock() {
         let input = "https://youtu.be/dQw4w9WgXcQ"
         let blocks = MarkdownRendering.normalizedBlocks(from: input)
 
-        guard case .youtube(let url)? = blocks.first else {
+        guard case .youtube(let embed)? = blocks.first else {
             XCTFail("Expected YouTube block")
             return
         }
         XCTAssertEqual(
-            url.absoluteString,
+            embed.embedURL.absoluteString,
             Self.expectedYouTubeEmbedURL
         )
+        XCTAssertEqual(embed.sourceURL, "https://youtu.be/dQw4w9WgXcQ")
+        XCTAssertEqual(embed.videoId, "dQw4w9WgXcQ")
     }
 
     func testNormalizedBlocksLeavesNonYouTubeUrlAsMarkdown() {

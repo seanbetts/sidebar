@@ -34,14 +34,24 @@ struct SideBarMarkdownStyle: Equatable {
 struct SideBarMarkdownContainer: View {
     let text: String
     let style: SideBarMarkdownStyle
+    let youtubeTranscriptContext: SideBarYouTubeTranscriptContext?
 
-    init(text: String, style: SideBarMarkdownStyle = .default) {
+    init(
+        text: String,
+        style: SideBarMarkdownStyle = .default,
+        youtubeTranscriptContext: SideBarYouTubeTranscriptContext? = nil
+    ) {
         self.text = text
         self.style = style
+        self.youtubeTranscriptContext = youtubeTranscriptContext
     }
 
     var body: some View {
-        SideBarMarkdown(text: text, style: style)
+        SideBarMarkdown(
+            text: text,
+            style: style,
+            youtubeTranscriptContext: youtubeTranscriptContext
+        )
             .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth, alignment: .leading)
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
@@ -52,10 +62,16 @@ struct SideBarMarkdownContainer: View {
 struct SideBarMarkdown: View, Equatable {
     let text: String
     let style: SideBarMarkdownStyle
+    let youtubeTranscriptContext: SideBarYouTubeTranscriptContext?
 
-    init(text: String, style: SideBarMarkdownStyle = .default) {
+    init(
+        text: String,
+        style: SideBarMarkdownStyle = .default,
+        youtubeTranscriptContext: SideBarYouTubeTranscriptContext? = nil
+    ) {
         self.text = text
         self.style = style
+        self.youtubeTranscriptContext = youtubeTranscriptContext
     }
 
     static func == (lhs: SideBarMarkdown, rhs: SideBarMarkdown) -> Bool {
@@ -75,10 +91,12 @@ struct SideBarMarkdown: View, Equatable {
                         styledMarkdown(content)
                     case .gallery(let gallery):
                         MarkdownGalleryView(gallery: gallery)
-                    case .youtube(let url):
-                        YouTubePlayerView(url: url)
-                            .aspectRatio(16 / 9, contentMode: .fit)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    case .youtube(let embed):
+                        SideBarYouTubeEmbedBlock(
+                            embed: embed,
+                            text: text,
+                            context: youtubeTranscriptContext
+                        )
                     }
                 }
             }
@@ -294,4 +312,56 @@ struct SideBarMarkdown: View, Equatable {
             }
     }
     #endif
+}
+
+struct SideBarYouTubeTranscriptContext {
+    let websiteId: String
+    let transcriptEntries: [String: WebsiteTranscriptEntry]
+    let activeVideoId: String?
+    let requestTranscript: (String, String) async -> Void
+}
+
+private struct SideBarYouTubeEmbedBlock: View {
+    let embed: MarkdownRendering.MarkdownYouTubeEmbed
+    let text: String
+    let context: SideBarYouTubeTranscriptContext?
+
+    var body: some View {
+        VStack(alignment: .center, spacing: 10) {
+            YouTubePlayerView(url: embed.embedURL)
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            if let context, shouldShowTranscriptButton(context: context) {
+                Button {
+                    Task {
+                        await context.requestTranscript(context.websiteId, embed.sourceURL)
+                    }
+                } label: {
+                    Text(isQueuedOrProcessing(context: context) ? "Transcribing" : "Get Transcript")
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.bordered)
+                .disabled(isQueuedOrProcessing(context: context))
+                .frame(maxWidth: 420)
+            }
+        }
+    }
+
+    private func shouldShowTranscriptButton(context: SideBarYouTubeTranscriptContext) -> Bool {
+        !text.contains("<!-- YOUTUBE_TRANSCRIPT:\(embed.videoId) -->")
+    }
+
+    private func isQueuedOrProcessing(context: SideBarYouTubeTranscriptContext) -> Bool {
+        if context.activeVideoId == embed.videoId {
+            return true
+        }
+        guard let entry = context.transcriptEntries[embed.videoId],
+              let status = entry.status?.lowercased() else {
+            return false
+        }
+        return status == "queued" || status == "processing" || status == "retrying"
+    }
 }
