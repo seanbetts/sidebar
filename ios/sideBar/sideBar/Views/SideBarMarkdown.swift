@@ -324,14 +324,27 @@ private struct SideBarYouTubeEmbedBlock: View {
     let embed: MarkdownRendering.MarkdownYouTubeEmbed
     let text: String
     let context: SideBarYouTubeTranscriptContext?
+    @State private var isPlayerLoaded = false
 
     var body: some View {
         VStack(alignment: .center, spacing: 10) {
-            YouTubePlayerView(url: embed.embedURL)
-                .aspectRatio(16 / 9, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            ZStack {
+                YouTubePlayerView(url: embed.embedURL) { isLoaded in
+                    isPlayerLoaded = isLoaded
+                }
+                .opacity(isPlayerLoaded ? 1 : 0.001)
 
-            if let context, shouldShowTranscriptButton(context: context) {
+                if !isPlayerLoaded {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(DesignTokens.Colors.muted)
+                    ProgressView("Loading video…")
+                        .font(.footnote)
+                }
+            }
+            .aspectRatio(16 / 9, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            if isPlayerLoaded, let context, shouldShowTranscriptButton(context: context) {
                 Button {
                     Task {
                         await context.requestTranscript(context.websiteId, embed.sourceURL)

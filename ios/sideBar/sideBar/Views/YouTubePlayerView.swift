@@ -7,9 +7,11 @@ import os
 
 public struct YouTubePlayerView: NSViewRepresentable {
     let url: URL
+    let onLoadStateChange: (Bool) -> Void
 
-    public init(url: URL) {
+    public init(url: URL, onLoadStateChange: @escaping (Bool) -> Void = { _ in }) {
         self.url = url
+        self.onLoadStateChange = onLoadStateChange
     }
 
     public func makeNSView(context: Context) -> WKWebView {
@@ -22,40 +24,54 @@ public struct YouTubePlayerView: NSViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
+        context.coordinator.onLoadStateChange = onLoadStateChange
+        context.coordinator.notifyLoadState(false)
         webView.loadHTMLString(makeHTML(url: url), baseURL: YouTubePlayerView.embedBaseURL)
         webView.setValue(false, forKey: "drawsBackground")
         return webView
     }
 
     public func updateNSView(_ nsView: WKWebView, context: Context) {
+        context.coordinator.onLoadStateChange = onLoadStateChange
         if context.coordinator.lastURL != url {
             context.coordinator.lastURL = url
+            context.coordinator.notifyLoadState(false)
             nsView.loadHTMLString(makeHTML(url: url), baseURL: YouTubePlayerView.embedBaseURL)
         }
     }
 
     public func makeCoordinator() -> Coordinator {
-        Coordinator(url: url)
+        Coordinator(url: url, onLoadStateChange: onLoadStateChange)
     }
 
     public final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         var lastURL: URL?
+        var onLoadStateChange: (Bool) -> Void
         private let logger = Logger(subsystem: "sideBar", category: "YouTubePlayer")
 
-        init(url: URL) {
+        init(url: URL, onLoadStateChange: @escaping (Bool) -> Void) {
             self.lastURL = url
+            self.onLoadStateChange = onLoadStateChange
         }
 
         public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if message.name == "playerState",
+               let state = message.body as? String,
+               state == "iframeLoaded" {
+                notifyLoadState(true)
+                return
+            }
             logger.info("YouTube webview console: \(String(describing: message.body), privacy: .public)")
         }
 
         public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             logger.error("YouTube webview navigation failed: \(error.localizedDescription, privacy: .public)")
+            notifyLoadState(false)
         }
 
         public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             logger.error("YouTube webview provisional navigation failed: \(error.localizedDescription, privacy: .public)")
+            notifyLoadState(false)
         }
 
         public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -63,6 +79,13 @@ public struct YouTubePlayerView: NSViewRepresentable {
 
         public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
             logger.error("YouTube webview content process terminated")
+            notifyLoadState(false)
+        }
+
+        func notifyLoadState(_ isLoaded: Bool) {
+            Task { @MainActor in
+                onLoadStateChange(isLoaded)
+            }
         }
     }
 
@@ -106,6 +129,13 @@ public struct YouTubePlayerView: NSViewRepresentable {
                 window.addEventListener("error", function(event) {
                   post("window.error", [event.message || "unknown"]);
                 });
+                window.sideBarYouTubeIframeLoaded = function() {
+                  try {
+                    window.webkit.messageHandlers.playerState.postMessage("iframeLoaded");
+                  } catch (e) {
+                    post("warn", ["playerState bridge failed"]);
+                  }
+                };
               })();
             </script>
           </head>
@@ -114,6 +144,7 @@ public struct YouTubePlayerView: NSViewRepresentable {
               src=\"\(escaped)\"
               allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\"
               allowfullscreen
+              onload="window.sideBarYouTubeIframeLoaded && window.sideBarYouTubeIframeLoaded()"
             ></iframe>
           </body>
         </html>
@@ -123,6 +154,7 @@ public struct YouTubePlayerView: NSViewRepresentable {
     private func makeUserContentController(coordinator: Coordinator) -> WKUserContentController {
         let controller = WKUserContentController()
         controller.add(coordinator, name: "consoleLog")
+        controller.add(coordinator, name: "playerState")
         return controller
     }
 
@@ -131,9 +163,11 @@ public struct YouTubePlayerView: NSViewRepresentable {
 #else
 public struct YouTubePlayerView: UIViewRepresentable {
     let url: URL
+    let onLoadStateChange: (Bool) -> Void
 
-    public init(url: URL) {
+    public init(url: URL, onLoadStateChange: @escaping (Bool) -> Void = { _ in }) {
         self.url = url
+        self.onLoadStateChange = onLoadStateChange
     }
 
     public func makeUIView(context: Context) -> WKWebView {
@@ -148,6 +182,8 @@ public struct YouTubePlayerView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.scrollView.isScrollEnabled = false
+        context.coordinator.onLoadStateChange = onLoadStateChange
+        context.coordinator.notifyLoadState(false)
         webView.loadHTMLString(makeHTML(url: url), baseURL: YouTubePlayerView.embedBaseURL)
         webView.isOpaque = false
         webView.backgroundColor = .clear
@@ -155,34 +191,46 @@ public struct YouTubePlayerView: UIViewRepresentable {
     }
 
     public func updateUIView(_ uiView: WKWebView, context: Context) {
+        context.coordinator.onLoadStateChange = onLoadStateChange
         if context.coordinator.lastURL != url {
             context.coordinator.lastURL = url
+            context.coordinator.notifyLoadState(false)
             uiView.loadHTMLString(makeHTML(url: url), baseURL: YouTubePlayerView.embedBaseURL)
         }
     }
 
     public func makeCoordinator() -> Coordinator {
-        Coordinator(url: url)
+        Coordinator(url: url, onLoadStateChange: onLoadStateChange)
     }
 
     public final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         var lastURL: URL?
+        var onLoadStateChange: (Bool) -> Void
         private let logger = Logger(subsystem: "sideBar", category: "YouTubePlayer")
 
-        init(url: URL) {
+        init(url: URL, onLoadStateChange: @escaping (Bool) -> Void) {
             self.lastURL = url
+            self.onLoadStateChange = onLoadStateChange
         }
 
         public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if message.name == "playerState",
+               let state = message.body as? String,
+               state == "iframeLoaded" {
+                notifyLoadState(true)
+                return
+            }
             logger.info("YouTube webview console: \(String(describing: message.body), privacy: .public)")
         }
 
         public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             logger.error("YouTube webview navigation failed: \(error.localizedDescription, privacy: .public)")
+            notifyLoadState(false)
         }
 
         public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             logger.error("YouTube webview provisional navigation failed: \(error.localizedDescription, privacy: .public)")
+            notifyLoadState(false)
         }
 
         public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -190,6 +238,13 @@ public struct YouTubePlayerView: UIViewRepresentable {
 
         public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
             logger.error("YouTube webview content process terminated")
+            notifyLoadState(false)
+        }
+
+        func notifyLoadState(_ isLoaded: Bool) {
+            Task { @MainActor in
+                onLoadStateChange(isLoaded)
+            }
         }
     }
 
@@ -229,6 +284,13 @@ public struct YouTubePlayerView: UIViewRepresentable {
                 window.addEventListener("error", function(event) {
                   post("window.error", [event.message || "unknown"]);
                 });
+                window.sideBarYouTubeIframeLoaded = function() {
+                  try {
+                    window.webkit.messageHandlers.playerState.postMessage("iframeLoaded");
+                  } catch (e) {
+                    post("warn", ["playerState bridge failed"]);
+                  }
+                };
               })();
             </script>
           </head>
@@ -237,6 +299,7 @@ public struct YouTubePlayerView: UIViewRepresentable {
               src=\"\(escaped)\"
               allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\"
               allowfullscreen
+              onload="window.sideBarYouTubeIframeLoaded && window.sideBarYouTubeIframeLoaded()"
             ></iframe>
           </body>
         </html>
@@ -246,6 +309,7 @@ public struct YouTubePlayerView: UIViewRepresentable {
     private func makeUserContentController(coordinator: Coordinator) -> WKUserContentController {
         let controller = WKUserContentController()
         controller.add(coordinator, name: "consoleLog")
+        controller.add(coordinator, name: "playerState")
         return controller
     }
 
