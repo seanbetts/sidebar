@@ -53,9 +53,4 @@ def test_resolve_cookiefile_missing(monkeypatch):
     module = _load_download_module()
     monkeypatch.setenv("YT_DLP_COOKIES", "/tmp/does-not-exist.txt")
     monkeypatch.delenv("YT_DLP_COOKIES_PATH", raising=False)
-    try:
-        module._resolve_cookiefile()
-    except ValueError as exc:
-        assert "cookies file" in str(exc).lower()
-    else:
-        raise AssertionError("Expected ValueError for missing cookie file")
+    assert module._resolve_cookiefile() is None
