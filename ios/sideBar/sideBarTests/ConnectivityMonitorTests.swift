@@ -1,14 +1,15 @@
 import XCTest
+import sideBarShared
 @testable import sideBar
 
 @MainActor
 final class ConnectivityMonitorTests: XCTestCase {
-    func testCannotConnectToHostOnlyMarksServerUnreachable() {
+    func testCannotConnectToHostOnlyMarksServerUnreachable() async {
         var monitor: ConnectivityMonitor? = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
             startMonitoring: false
         )
-        guard let monitor else {
+        guard let strongMonitor = monitor else {
             XCTFail("Expected monitor")
             return
         }
@@ -18,26 +19,27 @@ final class ConnectivityMonitorTests: XCTestCase {
             object: nil,
             userInfo: ["error": URLError(.cannotConnectToHost)]
         )
+        await waitForMainQueueDrain()
         NotificationCenter.default.post(
             name: .apiClientRequestFailed,
             object: nil,
             userInfo: ["error": URLError(.cannotConnectToHost)]
         )
 
-        XCTAssertTrue(monitor.isNetworkAvailable)
-        XCTAssertFalse(monitor.isOffline)
-        XCTAssertFalse(monitor.isServerReachable)
+        XCTAssertTrue(strongMonitor.isNetworkAvailable)
+        XCTAssertFalse(strongMonitor.isOffline)
+        XCTAssertFalse(strongMonitor.isServerReachable)
 
         // Ensure observers are released before the next test.
         monitor = nil
     }
 
-    func testNotConnectedToInternetMarksOfflineAfterThreshold() {
+    func testNotConnectedToInternetMarksOfflineAfterThreshold() async {
         var monitor: ConnectivityMonitor? = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
             startMonitoring: false
         )
-        guard let monitor else {
+        guard let strongMonitor = monitor else {
             XCTFail("Expected monitor")
             return
         }
@@ -47,25 +49,26 @@ final class ConnectivityMonitorTests: XCTestCase {
             object: nil,
             userInfo: ["error": URLError(.notConnectedToInternet)]
         )
+        await waitForMainQueueDrain()
         NotificationCenter.default.post(
             name: .apiClientRequestFailed,
             object: nil,
             userInfo: ["error": URLError(.notConnectedToInternet)]
         )
 
-        XCTAssertFalse(monitor.isNetworkAvailable)
-        XCTAssertTrue(monitor.isOffline)
-        XCTAssertFalse(monitor.isServerReachable)
+        XCTAssertFalse(strongMonitor.isNetworkAvailable)
+        XCTAssertTrue(strongMonitor.isOffline)
+        XCTAssertFalse(strongMonitor.isServerReachable)
 
         monitor = nil
     }
 
-    func testTwoRequestSuccessesRecoverNetworkAndServerState() {
+    func testTwoRequestSuccessesRecoverNetworkAndServerState() async {
         var monitor: ConnectivityMonitor? = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
             startMonitoring: false
         )
-        guard let monitor else {
+        guard let strongMonitor = monitor else {
             XCTFail("Expected monitor")
             return
         }
@@ -80,15 +83,25 @@ final class ConnectivityMonitorTests: XCTestCase {
             object: nil,
             userInfo: ["error": URLError(.notConnectedToInternet)]
         )
-        XCTAssertTrue(monitor.isOffline)
+        await waitForMainQueueDrain()
+        XCTAssertTrue(strongMonitor.isOffline)
 
         NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
         NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
+        await waitForMainQueueDrain()
 
-        XCTAssertTrue(monitor.isNetworkAvailable)
-        XCTAssertFalse(monitor.isOffline)
-        XCTAssertTrue(monitor.isServerReachable)
+        XCTAssertTrue(strongMonitor.isNetworkAvailable)
+        XCTAssertFalse(strongMonitor.isOffline)
+        XCTAssertTrue(strongMonitor.isServerReachable)
 
         monitor = nil
+    }
+
+    private func waitForMainQueueDrain() async {
+        let expectation = expectation(description: "Drain main queue")
+        DispatchQueue.main.async {
+            expectation.fulfill()
+        }
+        await fulfillment(of: [expectation], timeout: 1.0)
     }
 }
