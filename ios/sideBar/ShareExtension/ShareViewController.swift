@@ -313,7 +313,10 @@ final class ShareViewController: UIViewController {
 
     @MainActor
     private func queuePendingWebsite(_ url: URL) {
-        if pendingShareStore.enqueueWebsite(url: url.absoluteString) != nil {
+        if ShareExtensionURLQueueHandler.enqueueURLForLater(
+            url,
+            pendingStore: pendingShareStore
+        ) != nil {
             showSuccess(message: "Saved for later")
         } else {
             showError("Could not save for later.")
