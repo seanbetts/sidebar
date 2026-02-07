@@ -75,6 +75,10 @@ struct SideBarMarkdown: View, Equatable {
                         styledMarkdown(content)
                     case .gallery(let gallery):
                         MarkdownGalleryView(gallery: gallery)
+                    case .youtube(let url):
+                        YouTubePlayerView(url: url)
+                            .aspectRatio(16 / 9, contentMode: .fit)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                 }
             }
