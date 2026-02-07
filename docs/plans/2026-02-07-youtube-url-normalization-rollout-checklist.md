@@ -81,7 +81,7 @@ Deliverables:
 
 - [ ] Keep `.youtube` handling in `ios/sideBar/sideBar/App/AppEnvironment+PendingShares.swift` for already queued items.
 - [ ] Ensure new extension URL shares no longer create `.youtube` items.
-- [ ] Add tests confirming both legacy and new queue items are handled correctly.
+- [x] Add tests confirming both legacy and new queue items are handled correctly.
 
 Deliverables:
 - [x] Extension/share URL routing unified to website behavior.
@@ -111,10 +111,10 @@ Deliverables:
 
 ### iOS tests
 
-- [ ] Update `ios/sideBar/sideBarTests/PendingShareStoreTests.swift`.
+- [x] Update `ios/sideBar/sideBarTests/PendingShareStoreTests.swift`.
 - [x] Update `ios/sideBar/sideBarTests/IngestionViewModelTests.swift`.
-- [ ] Add tests for share extension URL routing behavior.
-- [ ] Add tests for Safari extension handler URL routing behavior.
+- [x] Add tests for share extension URL routing behavior.
+- [x] Add tests for Safari extension handler URL routing behavior.
 
 ### Web tests
 

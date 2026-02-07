@@ -47,16 +47,10 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     }
 
     private func handleMessage(action: String?, urlString: String?) -> [String: Any] {
-        guard action == "save_url" else {
-            return ["ok": false, "error": "Unsupported action"]
-        }
-        guard let urlString, !urlString.isEmpty else {
-            return ["ok": false, "error": "Missing URL"]
-        }
-        let pendingStore = PendingShareStore.shared
-        if pendingStore.enqueueWebsite(url: urlString) != nil {
-            return ["ok": true, "queued": "website"]
-        }
-        return ["ok": false, "error": "Failed to queue website"]
+        ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: action,
+            urlString: urlString,
+            pendingStore: .shared
+        )
     }
 }
