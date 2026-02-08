@@ -21,7 +21,6 @@ from readability import Document
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_includes import apply_include_reinsertion
 from api.services.web_save_parser_cleanup import (
-    _canonical_image_url,
     cleanup_gizmodo_markdown,
     cleanup_openai_markdown,
     cleanup_verge_markdown,
@@ -42,6 +41,7 @@ from api.services.web_save_parser_cleanup import (
     wrap_gallery_blocks,
 )
 from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
+from api.services.web_save_parser_substack import cleanup_substack_markdown
 from api.services.web_save_parser_youtube import (
     _iter_youtube_elements as _iter_youtube_elements_impl,
 )
@@ -382,78 +382,6 @@ def _should_apply_substack_cleanup(
     ):
         return True
     return "/p/" in parsed.path and _contains_substack_markers(markdown)
-
-
-def cleanup_substack_markdown(markdown: str) -> str:
-    """Remove Substack UI chrome and malformed image-control wrappers."""
-    if not markdown:
-        return markdown
-
-    def _replace_linked_image(match: re.Match[str]) -> str:
-        alt = (match.group("alt") or "").strip()
-        image_url = (match.group("image") or "").strip()
-        link_url = (match.group("link") or "").strip()
-        if "substackcdn.com/image/fetch/" in link_url and (
-            _canonical_image_url(image_url) == _canonical_image_url(link_url)
-        ):
-            return f"![{alt}]({image_url})"
-        return f"[![{alt}]({image_url})]({link_url})"
-
-    cleaned = re.sub(
-        (
-            r"\[\s*!\[(?P<alt>[^\]]*)\]\((?P<image>[^)\s]+)\)"
-            r"(?:\s*<svg\b[^>]*>.*?</svg>\s*)*"
-            r"\s*]\((?P<link>https?://[^)\s]+)\)"
-        ),
-        _replace_linked_image,
-        markdown,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-
-    def _replace_text_link_image(match: re.Match[str]) -> str:
-        label = (match.group("label") or "").strip()
-        link_url = (match.group("link") or "").strip()
-        if not re.search(r"[A-Za-z0-9]", label):
-            return match.group(0)
-        return f"[{label}]({link_url})"
-
-    cleaned = re.sub(
-        r"\[\s*!\[\]\([^)]+\)\s*(?P<label>[^\]]+)]\((?P<link>https?://[^)\s]+)\)",
-        _replace_text_link_image,
-        cleaned,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-
-    cleaned_lines: list[str] = []
-    dropped_prefixes = (
-        "[subscribe now](",
-        "[share](",
-        "[](https://substackcdn.com/image/fetch/",
-        "](https://substackcdn.com/image/fetch/",
-    )
-    for line in cleaned.splitlines():
-        lowered = line.strip().lower()
-        if lowered.startswith(dropped_prefixes) or (
-            lowered.startswith("thanks for reading ") and "post is public" in lowered
-        ):
-            continue
-        if "![](" in line:
-            without_images = re.sub(r"!\[\]\([^)]+\)", "", line)
-            if re.search(r"[A-Za-z0-9]", without_images):
-                line = re.sub(r"\s*!\[\]\([^)]+\)\s*", " ", line)
-                line = re.sub(r"[ \t]{2,}", " ", line).rstrip()
-        cleaned_lines.append(line)
-
-    cleaned = "\n".join(cleaned_lines)
-    for pattern, flags in (
-        (r"<svg\b[^>]*>.*?</svg>", re.IGNORECASE | re.DOTALL),
-        (
-            r"^\s*\[\s*]\(https://substackcdn\.com/image/fetch/[^)]+\)\s*$\n?",
-            re.IGNORECASE | re.MULTILINE,
-        ),
-    ):
-        cleaned = re.sub(pattern, "", cleaned, flags=flags)
-    return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
 
 def _is_substack_host_rule(rule: Rule) -> bool:
