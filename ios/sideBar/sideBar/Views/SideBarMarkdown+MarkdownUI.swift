@@ -6,7 +6,7 @@ struct CappedImageProvider: ImageProvider {
     let maxSize: CGSize
 
     func makeImage(url: URL?) -> some View {
-        AsyncImage(url: url) { phase in
+        CachedMarkdownRemoteImage(url: url) { phase in
             switch phase {
             case .success(let image):
                 HStack {
@@ -31,8 +31,6 @@ struct CappedImageProvider: ImageProvider {
                     ProgressView()
                     Spacer(minLength: 0)
                 }
-            @unknown default:
-                EmptyView()
             }
         }
     }

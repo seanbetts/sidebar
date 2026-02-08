@@ -1,29 +1,127 @@
+import Foundation
 import SwiftUI
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
+
+enum CachedMarkdownRemoteImagePhase {
+    case empty
+    case success(Image)
+    case failure
+}
+
+@MainActor
+final class CachedMarkdownRemoteImageLoader: ObservableObject {
+    #if os(iOS)
+    private typealias PlatformImage = UIImage
+    #elseif os(macOS)
+    private typealias PlatformImage = NSImage
+    #endif
+
+    private static let imageCache = NSCache<NSURL, PlatformImage>()
+
+    @Published private(set) var phase: CachedMarkdownRemoteImagePhase = .empty
+    private var currentURL: URL?
+
+    func load(url: URL?) async {
+        guard let url else {
+            currentURL = nil
+            phase = .empty
+            return
+        }
+        guard currentURL != url else {
+            return
+        }
+        currentURL = url
+        phase = .empty
+
+        if let cached = Self.imageCache.object(forKey: url as NSURL) {
+            phase = .success(Self.makeImage(from: cached))
+            return
+        }
+
+        let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 30)
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard currentURL == url else { return }
+            if let http = response as? HTTPURLResponse,
+               !(200..<300).contains(http.statusCode) {
+                phase = .failure
+                return
+            }
+            guard let platformImage = Self.makePlatformImage(from: data) else {
+                phase = .failure
+                return
+            }
+            Self.imageCache.setObject(platformImage, forKey: url as NSURL)
+            phase = .success(Self.makeImage(from: platformImage))
+        } catch {
+            guard currentURL == url else { return }
+            phase = .failure
+        }
+    }
+
+    private static func makePlatformImage(from data: Data) -> PlatformImage? {
+        #if os(iOS)
+        return UIImage(data: data)
+        #elseif os(macOS)
+        return NSImage(data: data)
+        #endif
+    }
+
+    private static func makeImage(from image: PlatformImage) -> Image {
+        #if os(iOS)
+        return Image(uiImage: image)
+        #elseif os(macOS)
+        return Image(nsImage: image)
+        #endif
+    }
+}
+
+struct CachedMarkdownRemoteImage<Content: View>: View {
+    let url: URL?
+    let content: (CachedMarkdownRemoteImagePhase) -> Content
+
+    @StateObject private var loader = CachedMarkdownRemoteImageLoader()
+
+    var body: some View {
+        content(loader.phase)
+            .task(id: url?.absoluteString) {
+                await loader.load(url: url)
+            }
+    }
+}
 
 struct MarkdownGalleryView: View {
     let gallery: MarkdownRendering.MarkdownGallery
 
     private let gridSpacing: CGFloat = SideBarMarkdownLayout.gallerySpacing
     private let minImageWidth: CGFloat = SideBarMarkdownLayout.galleryMinImageWidth
-    @State private var availableWidth: CGFloat = 0
+
+    private var columns: [GridItem] {
+        [GridItem(
+            .adaptive(
+                minimum: minImageWidth,
+                maximum: SideBarMarkdownLayout.maxImageSize.width
+            ),
+            spacing: gridSpacing
+        )]
+    }
 
     var body: some View {
-        let rows = chunked(gallery.imageUrls, size: columns(for: availableWidth))
-        let imageWidth = imageWidth(for: availableWidth)
         VStack(alignment: .center, spacing: gridSpacing) {
-            ForEach(rows.indices, id: \.self) { rowIndex in
-                HStack(spacing: gridSpacing) {
-                    ForEach(rows[rowIndex], id: \.self) { urlString in
-                        MarkdownGalleryImageView(
-                            urlString: urlString,
-                            maxSize: CGSize(
-                                width: imageWidth,
-                                height: SideBarMarkdownLayout.maxImageSize.height
-                            )
+            LazyVGrid(columns: columns, alignment: .center, spacing: gridSpacing) {
+                ForEach(gallery.imageUrls, id: \.self) { urlString in
+                    MarkdownGalleryImageView(
+                        urlString: urlString,
+                        maxSize: CGSize(
+                            width: SideBarMarkdownLayout.maxImageSize.width,
+                            height: SideBarMarkdownLayout.maxImageSize.height
                         )
-                    }
+                    )
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
             }
             if let caption = gallery.caption, !caption.isEmpty {
                 Text(caption)
@@ -33,43 +131,6 @@ struct MarkdownGalleryView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .background(
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear {
-                        availableWidth = proxy.size.width
-                    }
-                    .onChange(of: proxy.size.width) { _, newValue in
-                        availableWidth = newValue
-                    }
-            }
-        )
-    }
-
-    private func columns(for availableWidth: CGFloat) -> Int {
-        let effectiveWidth = max(availableWidth, minImageWidth)
-        let count = Int((effectiveWidth + gridSpacing) / (minImageWidth + gridSpacing))
-        return max(1, count)
-    }
-
-    private func imageWidth(for availableWidth: CGFloat) -> CGFloat {
-        let effectiveWidth = max(availableWidth, minImageWidth)
-        let columnCount = columns(for: availableWidth)
-        let totalSpacing = gridSpacing * CGFloat(max(columnCount - 1, 0))
-        let columnWidth = (effectiveWidth - totalSpacing) / CGFloat(columnCount)
-        return min(columnWidth, SideBarMarkdownLayout.maxImageSize.width)
-    }
-
-    private func chunked(_ items: [String], size: Int) -> [[String]] {
-        guard size > 0 else { return [items] }
-        var chunks: [[String]] = []
-        var index = 0
-        while index < items.count {
-            let end = min(index + size, items.count)
-            chunks.append(Array(items[index..<end]))
-            index = end
-        }
-        return chunks
     }
 }
 
@@ -79,7 +140,7 @@ private struct MarkdownGalleryImageView: View {
 
     var body: some View {
         if let url = URL(string: urlString) {
-            AsyncImage(url: url) { phase in
+            CachedMarkdownRemoteImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
                     image
@@ -92,8 +153,6 @@ private struct MarkdownGalleryImageView: View {
                         .foregroundStyle(.secondary)
                 case .empty:
                     ProgressView()
-                @unknown default:
-                    EmptyView()
                 }
             }
             .frame(maxWidth: .infinity)
