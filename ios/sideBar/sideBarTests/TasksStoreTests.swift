@@ -69,6 +69,68 @@ final class TasksStoreTests: XCTestCase {
         let placeholderId = offlineStore.get(key: pendingKey, as: String.self)
         XCTAssertEqual(store.tasks.first?.id, placeholderId)
     }
+
+    func testLoadCountsUsesCacheWhenNotForcedAndRefreshesInBackground() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
+
+        let cachedCounts = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(inbox: 1, today: 7, upcoming: 2, completed: 3),
+            projects: [],
+            groups: []
+        )
+        cache.set(key: CacheKeys.tasksCounts, value: cachedCounts, ttlSeconds: 60)
+
+        let refreshedCounts = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(inbox: 1, today: 5, upcoming: 2, completed: 3),
+            projects: [],
+            groups: []
+        )
+        api.countsResponse = refreshedCounts
+
+        await store.loadCounts()
+
+        XCTAssertEqual(store.counts?.counts.today, 7)
+        XCTAssertEqual(api.countsCallCount, 0)
+
+        // Background refresh is asynchronous after returning cached value.
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(api.countsCallCount, 1)
+    }
+
+    func testLoadCountsForceBypassesCacheAndFetchesImmediately() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
+
+        let cachedCounts = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(inbox: 1, today: 7, upcoming: 2, completed: 3),
+            projects: [],
+            groups: []
+        )
+        cache.set(key: CacheKeys.tasksCounts, value: cachedCounts, ttlSeconds: 60)
+
+        let refreshedCounts = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(inbox: 1, today: 4, upcoming: 2, completed: 3),
+            projects: [],
+            groups: []
+        )
+        api.countsResponse = refreshedCounts
+
+        await store.loadCounts(force: true)
+
+        XCTAssertEqual(api.countsCallCount, 1)
+        XCTAssertEqual(store.counts?.counts.today, 4)
+    }
 }
 
 @MainActor
@@ -84,6 +146,13 @@ private final class TestNetworkStatus: NetworkStatusProviding {
 
 private final class StubTasksAPI: TasksProviding {
     var listCallCount: Int = 0
+    var countsCallCount: Int = 0
+    var countsResponse = TaskCountsResponse(
+        generatedAt: nil,
+        counts: TaskCounts(inbox: 0, today: 0, upcoming: 0, completed: 0),
+        projects: [],
+        groups: []
+    )
 
     func list(scope: String) async throws -> TaskListResponse {
         listCallCount += 1
@@ -103,7 +172,8 @@ private final class StubTasksAPI: TasksProviding {
     }
 
     func counts() async throws -> TaskCountsResponse {
-        throw StubError.unused
+        countsCallCount += 1
+        return countsResponse
     }
 
     func createGroup(title: String) async throws -> TaskGroup {
