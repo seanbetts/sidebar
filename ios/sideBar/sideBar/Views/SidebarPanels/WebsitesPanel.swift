@@ -245,10 +245,12 @@ extension WebsitesPanelView {
                             if showArchiveLoadingPlaceholder {
                                 archiveLoadingRow(message: "Loading archive...")
                                     .padding(.leading, -DesignTokens.Spacing.sm)
+                                    .listRowSeparator(.hidden, edges: .top)
                             } else if showArchiveEmptyState {
                                 Text(archivedEmptyStateText)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                    .listRowSeparator(.hidden, edges: .top)
                             } else {
                                 ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
                                     websiteListRow(item: item, index: index, allowArchive: false)

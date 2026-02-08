@@ -357,10 +357,12 @@ extension NotesPanelView {
                         if showArchiveLoadingPlaceholder {
                             archiveLoadingRow(message: "Loading archive...")
                                 .padding(.leading, -DesignTokens.Spacing.sm)
+                                .listRowSeparator(.hidden, edges: .top)
                         } else if showArchiveEmptyState {
                             Text(archivedEmptyStateText)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .listRowSeparator(.hidden, edges: .top)
                         } else {
                             OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
                                 NotesTreeRow(
