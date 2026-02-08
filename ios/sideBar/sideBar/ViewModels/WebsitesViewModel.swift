@@ -65,6 +65,7 @@ public final class WebsitesViewModel: ObservableObject {
     private let toastCenter: ToastCenter
     private let networkStatus: any NetworkStatusProviding
     private let transcriptPollIntervalNanoseconds: UInt64
+    @Published private var inFlightTranscriptRequests: [String: Set<String>] = [:]
     private var pendingTranscriptJobs: [String: Set<String>] = [:]
     private var transcriptPollingTasks: [String: Task<Void, Never>] = [:]
     private var cancellables = Set<AnyCancellable>()
@@ -371,6 +372,10 @@ public final class WebsitesViewModel: ObservableObject {
         if isTranscriptPending(websiteId: websiteId, videoId: videoId) {
             return
         }
+        setTranscriptRequestInFlight(true, websiteId: websiteId, videoId: videoId)
+        defer {
+            setTranscriptRequestInFlight(false, websiteId: websiteId, videoId: videoId)
+        }
 
         do {
             let response = try await api.transcribeYouTube(id: websiteId, url: url)
@@ -403,6 +408,9 @@ public final class WebsitesViewModel: ObservableObject {
                 return false
             }
         }
+        if inFlightTranscriptRequests[websiteId]?.contains(normalizedVideoId) == true {
+            return true
+        }
         return pendingTranscriptJobs[websiteId]?.contains(normalizedVideoId) == true
     }
 
@@ -433,6 +441,26 @@ public final class WebsitesViewModel: ObservableObject {
         }
     }
 
+    private func setTranscriptRequestInFlight(
+        _ isInFlight: Bool,
+        websiteId: String,
+        videoId: String
+    ) {
+        var next = inFlightTranscriptRequests
+        var videoIds = next[websiteId] ?? Set<String>()
+        if isInFlight {
+            videoIds.insert(videoId)
+        } else {
+            videoIds.remove(videoId)
+        }
+        if videoIds.isEmpty {
+            next.removeValue(forKey: websiteId)
+        } else {
+            next[websiteId] = videoIds
+        }
+        inFlightTranscriptRequests = next
+    }
+
     private func syncTranscriptPolling(for active: WebsiteDetail?) {
         guard let active else {
             stopTranscriptPolling()
@@ -454,41 +482,51 @@ public final class WebsitesViewModel: ObservableObject {
         guard transcriptPollingTasks[key] == nil else { return }
         transcriptPollingTasks[key] = Task { [weak self] in
             while !Task.isCancelled {
-                do {
-                    try await Task.sleep(nanoseconds: self?.transcriptPollIntervalNanoseconds ?? 0)
-                } catch {
-                    return
-                }
                 guard let self else { return }
-                guard self.selectedWebsiteId == websiteId else {
-                    self.stopTranscriptPolling(key: key)
-                    return
-                }
-                guard self.networkStatus.isOffline == false else {
-                    continue
-                }
                 do {
-                    try await self.store.loadDetail(id: websiteId, force: true)
+                    try await Task.sleep(nanoseconds: self.transcriptPollIntervalNanoseconds)
                 } catch {
-                    continue
-                }
-                guard let current = self.active, current.id == websiteId else {
-                    continue
-                }
-                guard let status = current.youtubeTranscripts?[videoId]?.status?.lowercased() else {
-                    self.stopTranscriptPolling(key: key)
                     return
                 }
-                if Self.isTranscriptStatusPending(status) {
-                    continue
+                if await self.pollTranscriptStatus(
+                    websiteId: websiteId,
+                    videoId: videoId,
+                    key: key
+                ) {
+                    return
                 }
-                if status == "failed" || status == "canceled" {
-                    self.errorMessage = current.youtubeTranscripts?[videoId]?.error ?? "Transcript failed."
-                }
-                self.stopTranscriptPolling(key: key)
-                return
             }
         }
+    }
+
+    private func pollTranscriptStatus(websiteId: String, videoId: String, key: String) async -> Bool {
+        guard selectedWebsiteId == websiteId else {
+            stopTranscriptPolling(key: key)
+            return true
+        }
+        guard networkStatus.isOffline == false else {
+            return false
+        }
+        do {
+            try await store.loadDetail(id: websiteId, force: true)
+        } catch {
+            return false
+        }
+        guard let current = active, current.id == websiteId else {
+            return false
+        }
+        guard let status = current.youtubeTranscripts?[videoId]?.status?.lowercased() else {
+            stopTranscriptPolling(key: key)
+            return true
+        }
+        guard Self.isTranscriptStatusPending(status) == false else {
+            return false
+        }
+        if status == "failed" || status == "canceled" {
+            errorMessage = current.youtubeTranscripts?[videoId]?.error ?? "Transcript failed."
+        }
+        stopTranscriptPolling(key: key)
+        return true
     }
 
     private func stopTranscriptPolling(
