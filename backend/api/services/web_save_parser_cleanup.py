@@ -311,7 +311,7 @@ def cleanup_openai_markdown(markdown: str) -> str:
 
 
 def cleanup_github_markdown(markdown: str) -> str:
-    """Remove GitHub heading-anchor icon lines from markdown output."""
+    """Remove low-value GitHub README chrome from markdown output."""
     if not markdown:
         return markdown
 
@@ -319,9 +319,37 @@ def cleanup_github_markdown(markdown: str) -> str:
         r"^\[\s*<svg\b[^>]*\bocticon-link\b.*?</svg>\s*]\(#(?:[^)]+)?\)\s*$",
         re.IGNORECASE,
     )
-    cleaned_lines = [
-        line for line in markdown.splitlines() if not heading_icon_link.match(line)
-    ]
+    badge_image_line = re.compile(
+        r"^\s*(?:\[\s*)?!\[(?P<alt>[^\]]*)]\([^)]+\)(?:\]\([^)]+\))?\s*$",
+        re.IGNORECASE,
+    )
+    thanks_contributors_line = re.compile(
+        r"^\s*thanks to all (?:clawtributors|contributors)\s*:?\s*$",
+        re.IGNORECASE,
+    )
+    removable_badge_alts = {
+        "ci status",
+        "github release",
+        "discord",
+        "mit license",
+        "star history chart",
+    }
+
+    cleaned_lines: list[str] = []
+    for line in markdown.splitlines():
+        if heading_icon_link.match(line):
+            continue
+        if thanks_contributors_line.match(line):
+            continue
+        if "avatars.githubusercontent.com" in line and "![" in line:
+            continue
+        badge_match = badge_image_line.match(line)
+        if badge_match:
+            alt_text = (badge_match.group("alt") or "").strip().lower()
+            if alt_text in removable_badge_alts:
+                continue
+        cleaned_lines.append(line)
+
     cleaned = "\n".join(cleaned_lines)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     return cleaned.strip()

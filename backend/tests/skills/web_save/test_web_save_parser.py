@@ -816,6 +816,54 @@ def test_cleanup_github_markdown_removes_octicon_heading_anchors():
     assert "octicon-mark-github" in cleaned
 
 
+def test_cleanup_github_markdown_removes_contributor_avatar_gallery():
+    markdown = "\n".join(
+        [
+            "## Community",
+            "See [CONTRIBUTING.md](https://github.com/openclaw/openclaw/blob/main/CONTRIBUTING.md) for details.",
+            "",
+            "Thanks to all clawtributors:",
+            "",
+            '[![alice](https://avatars.githubusercontent.com/u/1?v=4&s=48 "alice")](https://github.com/alice)',
+            "",
+            '[![bob](https://avatars.githubusercontent.com/u/2?v=4&s=48 "bob")](https://github.com/bob)',
+            "",
+            "AI/vibe-coded PRs welcome! 🤖",
+        ]
+    )
+
+    cleaned = web_save_parser.cleanup_github_markdown(markdown)
+
+    assert "avatars.githubusercontent.com" not in cleaned
+    assert "Thanks to all clawtributors:" not in cleaned
+    assert "## Community" in cleaned
+    assert "See [CONTRIBUTING.md]" in cleaned
+    assert "AI/vibe-coded PRs welcome!" in cleaned
+
+
+def test_cleanup_github_markdown_removes_badge_image_noise():
+    markdown = "\n".join(
+        [
+            "![CI status](https://camo.githubusercontent.com/ci-badge)",
+            "[![Discord](https://camo.githubusercontent.com/discord-badge)](https://discord.gg/clawd)",
+            "![MIT License](https://camo.githubusercontent.com/license-badge)",
+            "![Star History Chart](https://camo.githubusercontent.com/star-history)",
+            "![Architecture diagram](https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/diagram.png)",
+            "",
+            "Intro paragraph.",
+        ]
+    )
+
+    cleaned = web_save_parser.cleanup_github_markdown(markdown)
+
+    assert "CI status" not in cleaned
+    assert "Discord" not in cleaned
+    assert "MIT License" not in cleaned
+    assert "Star History Chart" not in cleaned
+    assert "Architecture diagram" in cleaned
+    assert "Intro paragraph." in cleaned
+
+
 def test_cleanup_substack_markdown_removes_chrome_and_svg_controls():
     markdown = "\n".join(
         [
