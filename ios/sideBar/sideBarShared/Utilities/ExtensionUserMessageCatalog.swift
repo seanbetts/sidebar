@@ -1,13 +1,22 @@
 import Foundation
 
-public enum ExtensionMessageCode: String {
+public enum ExtensionMessageCode: String, CaseIterable {
     case savedForLater = "saved_for_later"
+    case websiteSaved = "website_saved"
+    case imageSaved = "image_saved"
+    case fileSaved = "file_saved"
+    case savingWebsite = "saving_website"
+    case preparingImage = "preparing_image"
+    case preparingFile = "preparing_file"
+    case uploadingImage = "uploading_image"
+    case uploadingFile = "uploading_file"
     case unsupportedAction = "unsupported_action"
     case missingURL = "missing_url"
     case invalidURL = "invalid_url"
     case noActiveURL = "no_active_url"
     case queueFailed = "queue_failed"
     case notAuthenticated = "not_authenticated"
+    case invalidBaseUrl = "invalid_base_url"
     case invalidSharePayload = "invalid_share_payload"
     case unsupportedContent = "unsupported_content"
     case imageLoadFailed = "image_load_failed"
@@ -24,6 +33,22 @@ public enum ExtensionUserMessageCatalog {
         switch code {
         case .savedForLater:
             return "Saved for later."
+        case .websiteSaved:
+            return "Website saved."
+        case .imageSaved:
+            return "Image saved."
+        case .fileSaved:
+            return "File saved."
+        case .savingWebsite:
+            return "Saving website..."
+        case .preparingImage:
+            return "Preparing image..."
+        case .preparingFile:
+            return "Preparing file..."
+        case .uploadingImage:
+            return "Uploading image..."
+        case .uploadingFile:
+            return "Uploading file..."
         case .unsupportedAction:
             return "This action is not supported."
         case .missingURL, .noActiveURL:
@@ -34,6 +59,8 @@ public enum ExtensionUserMessageCatalog {
             return "Could not save for later."
         case .notAuthenticated:
             return "Please sign in to sideBar first."
+        case .invalidBaseUrl:
+            return "Invalid API base URL."
         case .invalidSharePayload:
             return "Could not read the shared content."
         case .unsupportedContent:

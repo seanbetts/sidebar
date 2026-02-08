@@ -2,23 +2,12 @@ import Foundation
 import sideBarShared
 
 enum ShareExtensionMessageMapper {
-    static let preparingImage = "Preparing image..."
-    static let preparingFile = "Preparing file..."
-    static let uploadingImage = "Uploading image..."
-    static let uploadingFile = "Uploading file..."
-    static let savingWebsite = "Saving website..."
-    static let imageSaved = "Image saved"
-    static let fileSaved = "File saved"
-    static let websiteSaved = "Website saved"
-
     static func queueResultMessage(for item: PendingShareItem?) -> String {
-        item == nil
-            ? ExtensionUserMessageCatalog.message(for: .queueFailed)
-            : ExtensionUserMessageCatalog.message(for: .savedForLater)
+        ExtensionQueueResultMapper.queueMessage(for: item)
     }
 
     static func queueSucceeded(for item: PendingShareItem?) -> Bool {
-        item != nil
+        ExtensionQueueResultMapper.queueSucceeded(for: item)
     }
 
     static func errorMessage(for error: Error) -> String {
@@ -27,7 +16,7 @@ enum ShareExtensionMessageMapper {
             case .notAuthenticated:
                 return ExtensionUserMessageCatalog.message(for: .notAuthenticated)
             case .invalidBaseUrl:
-                return "Invalid API base URL."
+                return ExtensionUserMessageCatalog.message(for: .invalidBaseUrl)
             case .invalidSharePayload:
                 return ExtensionUserMessageCatalog.message(for: .invalidSharePayload)
             case .unsupportedContentType:
@@ -37,15 +26,8 @@ enum ShareExtensionMessageMapper {
             }
         }
 
-        if let urlError = error as? URLError {
-            switch urlError.code {
-            case .timedOut:
-                return ExtensionUserMessageCatalog.message(for: .networkError)
-            case .notConnectedToInternet, .networkConnectionLost, .cannotFindHost, .cannotConnectToHost:
-                return ExtensionUserMessageCatalog.message(for: .networkError)
-            default:
-                break
-            }
+        if let code = ExtensionNetworkErrorClassifier.messageCode(for: error) {
+            return ExtensionUserMessageCatalog.message(for: code)
         }
 
         let detail = ExtensionUserMessageCatalog.sanitizedDetail(error.localizedDescription)

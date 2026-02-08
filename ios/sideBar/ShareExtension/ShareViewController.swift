@@ -79,7 +79,7 @@ final class ShareViewController: UIViewController {
 
     private func handleImage(_ itemProvider: NSItemProvider) async {
         await MainActor.run { [weak self] in
-            self?.setContentView(ShareLoadingView(message: ShareExtensionMessageMapper.preparingImage))
+            self?.setContentView(ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .preparingImage)))
         }
 
         // Try to load as UIImage first for better format handling
@@ -134,7 +134,7 @@ final class ShareViewController: UIViewController {
 
     private func handleFile(_ itemProvider: NSItemProvider, preferredType: UTType) async {
         await MainActor.run { [weak self] in
-            self?.setContentView(ShareLoadingView(message: ShareExtensionMessageMapper.preparingFile))
+            self?.setContentView(ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .preparingFile)))
         }
 
         let typeIdentifier = preferredType.identifier
@@ -231,8 +231,8 @@ final class ShareViewController: UIViewController {
         await MainActor.run { [weak self] in
             let progressView = ShareProgressView(
                 message: isImage
-                    ? ShareExtensionMessageMapper.uploadingImage
-                    : ShareExtensionMessageMapper.uploadingFile
+                    ? ExtensionUserMessageCatalog.message(for: .uploadingImage)
+                    : ExtensionUserMessageCatalog.message(for: .uploadingFile)
             )
             self?.progressView = progressView
             self?.setContentView(progressView)
@@ -252,7 +252,11 @@ final class ShareViewController: UIViewController {
             }
 
             await MainActor.run { [weak self] in
-                self?.showSuccess(message: isImage ? ShareExtensionMessageMapper.imageSaved : ShareExtensionMessageMapper.fileSaved)
+                self?.showSuccess(
+                    message: isImage
+                        ? ExtensionUserMessageCatalog.message(for: .imageSaved)
+                        : ExtensionUserMessageCatalog.message(for: .fileSaved)
+                )
             }
         } catch {
             await MainActor.run { [weak self] in
@@ -294,7 +298,7 @@ final class ShareViewController: UIViewController {
             showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
             return
         }
-        setContentView(ShareLoadingView(message: ShareExtensionMessageMapper.savingWebsite))
+        setContentView(ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .savingWebsite)))
         Task { @MainActor in
             if !(await ShareNetworkMonitor.isOnline()) {
                 queuePendingWebsite(url)
@@ -303,7 +307,7 @@ final class ShareViewController: UIViewController {
             do {
                 _ = try await environment.websitesAPI.quickSave(url: url.absoluteString, title: nil)
                 ExtensionEventStore.shared.recordWebsiteSaved(url: url.absoluteString)
-                showSuccess(message: ShareExtensionMessageMapper.websiteSaved)
+                showSuccess(message: ExtensionUserMessageCatalog.message(for: .websiteSaved))
             } catch {
                 if isOfflineError(error) {
                     queuePendingWebsite(url)
@@ -359,16 +363,20 @@ final class ShareViewController: UIViewController {
 
     // MARK: - UI
 
+    private enum DismissDelay {
+        static let value: TimeInterval = 1.2
+    }
+
     private func showError(_ message: String) {
         setContentView(ShareErrorView(message: message))
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + DismissDelay.value) { [weak self] in
             self?.extensionContext?.completeRequest(returningItems: nil)
         }
     }
 
     private func showSuccess(message: String) {
         setContentView(ShareSuccessView(message: message))
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + DismissDelay.value) { [weak self] in
             self?.extensionContext?.completeRequest(returningItems: nil)
         }
     }
@@ -386,19 +394,7 @@ final class ShareViewController: UIViewController {
     }
 
     private func isOfflineError(_ error: Error) -> Bool {
-        if let urlError = error as? URLError {
-            switch urlError.code {
-            case .notConnectedToInternet,
-                 .networkConnectionLost,
-                 .cannotFindHost,
-                 .cannotConnectToHost,
-                 .timedOut:
-                return true
-            default:
-                return false
-            }
-        }
-        return false
+        ExtensionNetworkErrorClassifier.isOfflineLike(error)
     }
 
     // MARK: - URL Parsing Helpers
