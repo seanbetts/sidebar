@@ -66,10 +66,8 @@ import Foundation
 
     var cache: CacheClient { storage.cache }
     var chatStore: ChatStore { storage.chatStore }
-    var notesStore: NotesStore? { storage.notesStore }
-    var websitesStore: WebsitesStore? { storage.websitesStore }
-    var ingestionStore: IngestionStore? { storage.ingestionStore }
     var scratchpadStore: ScratchpadStore? { storage.scratchpadStore }
+    var contextProviders: [any ContextProvider] { storage.contextProviders }
 
     var themeManager: ThemeManager { ui.themeManager }
     var toastCenter: ToastCenter? { ui.toastCenter }

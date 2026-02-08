@@ -8,13 +8,129 @@ struct ChatNetworkCoordinator {
     let networkStatus: any NetworkStatusProviding
 }
 
+enum ContextRefreshTarget {
+    case notes(noteId: String)
+    case websites(id: String?)
+    case ingestion(fileId: String?)
+}
+
+protocol ContextProvider {
+    var name: String { get }
+    func matches(_ target: ContextRefreshTarget) -> Bool
+    func invalidate(_ target: ContextRefreshTarget)
+    func refresh(_ target: ContextRefreshTarget) async throws
+}
+
+struct NotesContextProvider: ContextProvider {
+    let cache: CacheClient
+    let notesStore: NotesStore
+
+    var name: String { "notes" }
+
+    func matches(_ target: ContextRefreshTarget) -> Bool {
+        if case .notes = target {
+            return true
+        }
+        return false
+    }
+
+    func invalidate(_ target: ContextRefreshTarget) {
+        guard case let .notes(noteId) = target else { return }
+        cache.remove(key: CacheKeys.notesTree)
+        notesStore.invalidateNote(id: noteId)
+    }
+
+    func refresh(_ target: ContextRefreshTarget) async throws {
+        guard case .notes = target else { return }
+        try await notesStore.loadTree(force: true)
+    }
+}
+
+struct WebsitesContextProvider: ContextProvider {
+    let cache: CacheClient
+    let websitesStore: WebsitesStore
+
+    var name: String { "websites" }
+
+    func matches(_ target: ContextRefreshTarget) -> Bool {
+        if case .websites = target {
+            return true
+        }
+        return false
+    }
+
+    func invalidate(_ target: ContextRefreshTarget) {
+        guard case let .websites(id) = target else { return }
+        cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
+    }
+
+    func refresh(_ target: ContextRefreshTarget) async throws {
+        guard case .websites = target else { return }
+        try await websitesStore.loadList(force: true)
+    }
+}
+
+struct IngestionContextProvider: ContextProvider {
+    let cache: CacheClient
+    let ingestionStore: IngestionStore
+
+    var name: String { "files" }
+
+    func matches(_ target: ContextRefreshTarget) -> Bool {
+        if case .ingestion = target {
+            return true
+        }
+        return false
+    }
+
+    func invalidate(_ target: ContextRefreshTarget) {
+        guard case let .ingestion(fileId) = target else { return }
+        cache.invalidateList(listKey: CacheKeys.ingestionList, detailKey: CacheKeys.ingestionMeta, id: fileId)
+    }
+
+    func refresh(_ target: ContextRefreshTarget) async throws {
+        guard case let .ingestion(fileId) = target else { return }
+        try await ingestionStore.loadList(force: true)
+        if let fileId, ingestionStore.activeMeta?.file.id == fileId {
+            try await ingestionStore.loadMeta(fileId: fileId, force: true)
+        }
+    }
+}
+
 struct ChatStorageCoordinator {
     let cache: CacheClient
     let chatStore: ChatStore
-    let notesStore: NotesStore?
-    let websitesStore: WebsitesStore?
-    let ingestionStore: IngestionStore?
     let scratchpadStore: ScratchpadStore?
+    let contextProviders: [any ContextProvider]
+
+    init(
+        cache: CacheClient,
+        chatStore: ChatStore,
+        notesStore: NotesStore? = nil,
+        websitesStore: WebsitesStore? = nil,
+        ingestionStore: IngestionStore? = nil,
+        scratchpadStore: ScratchpadStore? = nil,
+        contextProviders: [any ContextProvider]? = nil
+    ) {
+        self.cache = cache
+        self.chatStore = chatStore
+        self.scratchpadStore = scratchpadStore
+        if let contextProviders {
+            self.contextProviders = contextProviders
+            return
+        }
+        var providers: [any ContextProvider] = []
+        if let notesStore {
+            providers.append(NotesContextProvider(cache: cache, notesStore: notesStore))
+        }
+        if let websitesStore {
+            providers.append(WebsitesContextProvider(cache: cache, websitesStore: websitesStore))
+        }
+        if let ingestionStore {
+            providers.append(IngestionContextProvider(cache: cache, ingestionStore: ingestionStore))
+        }
+        self.contextProviders = providers
+    }
 }
 
 struct ChatUICoordinator {

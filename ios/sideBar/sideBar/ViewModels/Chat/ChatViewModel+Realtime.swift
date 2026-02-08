@@ -14,117 +14,74 @@ extension ChatViewModel {
         guard let id = stringValue(from: event.data, key: "id") else {
             return
         }
-        cache.remove(key: CacheKeys.notesTree)
-        notesStore?.invalidateNote(id: id)
-        refreshNotesTree()
+        refreshContext(for: .notes(noteId: id))
     }
 
     func handleNoteUpdate(_ event: ChatStreamEvent) {
         guard let id = stringValue(from: event.data, key: "id") else {
             return
         }
-        cache.remove(key: CacheKeys.notesTree)
-        notesStore?.invalidateNote(id: id)
-        refreshNotesTree()
+        refreshContext(for: .notes(noteId: id))
     }
 
     func handleNoteDelete(_ event: ChatStreamEvent) {
         guard let id = stringValue(from: event.data, key: "id") else {
             return
         }
-        cache.remove(key: CacheKeys.notesTree)
-        notesStore?.invalidateNote(id: id)
-        refreshNotesTree()
+        refreshContext(for: .notes(noteId: id))
     }
 
     func handleNotePinned(_ event: ChatStreamEvent) {
         guard let id = stringValue(from: event.data, key: "id") else {
             return
         }
-        cache.remove(key: CacheKeys.notesTree)
-        notesStore?.invalidateNote(id: id)
-        refreshNotesTree()
+        refreshContext(for: .notes(noteId: id))
     }
 
     func handleNoteMoved(_ event: ChatStreamEvent) {
         guard let id = stringValue(from: event.data, key: "id") else {
             return
         }
-        cache.remove(key: CacheKeys.notesTree)
-        notesStore?.invalidateNote(id: id)
-        refreshNotesTree()
+        refreshContext(for: .notes(noteId: id))
     }
 
     func handleWebsiteSaved(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
-        cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
-        refreshWebsitesList()
+        refreshContext(for: .websites(id: id))
     }
 
     func handleWebsitePinned(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
-        cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
-        refreshWebsitesList()
+        refreshContext(for: .websites(id: id))
     }
 
     func handleWebsiteArchived(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
-        cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
-        refreshWebsitesList()
+        refreshContext(for: .websites(id: id))
     }
 
     func handleWebsiteDeleted(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
-        cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
-        refreshWebsitesList()
+        refreshContext(for: .websites(id: id))
     }
 
     func handleIngestionUpdated(_ event: ChatStreamEvent) {
         let fileId = stringValue(from: event.data, key: "file_id")
-        cache.invalidateList(listKey: CacheKeys.ingestionList, detailKey: CacheKeys.ingestionMeta, id: fileId)
-        refreshIngestionList(fileId: fileId)
+        refreshContext(for: .ingestion(fileId: fileId))
     }
 
-    func refreshNotesTree() {
-        guard let notesStore else {
-            return
-        }
-        Task {
-            do {
-                try await notesStore.loadTree(force: true)
-            } catch {
-                self.realtimeLogger.error("Failed to refresh notes after realtime event: \(error.localizedDescription, privacy: .public)")
-            }
-        }
-    }
-
-    func refreshWebsitesList() {
-        guard let websitesStore else {
-            return
-        }
-        Task {
-            do {
-                try await websitesStore.loadList(force: true)
-            } catch {
-                self.realtimeLogger.error(
-                    "Failed to refresh websites after realtime event: \(error.localizedDescription, privacy: .public)"
-                )
-            }
-        }
-    }
-
-    func refreshIngestionList(fileId: String?) {
-        guard let ingestionStore else {
-            return
-        }
-        Task {
-            do {
-                try await ingestionStore.loadList(force: true)
-                if let fileId, ingestionStore.activeMeta?.file.id == fileId {
-                    try await ingestionStore.loadMeta(fileId: fileId, force: true)
+    func refreshContext(for target: ContextRefreshTarget) {
+        for provider in contextProviders where provider.matches(target) {
+            provider.invalidate(target)
+            Task {
+                do {
+                    try await provider.refresh(target)
+                } catch {
+                    let errorMessage = error.localizedDescription
+                    self.realtimeLogger.error(
+                        "Failed to refresh \(provider.name, privacy: .public) after realtime event: \(errorMessage, privacy: .public)"
+                    )
                 }
-            } catch {
-                self.realtimeLogger.error("Failed to refresh files after realtime event: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
