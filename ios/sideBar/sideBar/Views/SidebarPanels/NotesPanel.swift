@@ -61,6 +61,11 @@ struct NotesPanelView: View {
                 hasLoaded = true
                 Task { await viewModel.loadTree() }
             }
+            consumePendingNewNoteDeepLinkIfNeeded()
+        }
+        .onChange(of: environment.pendingNewNoteDeepLink) { _, isPending in
+            guard isPending else { return }
+            consumePendingNewNoteDeepLinkIfNeeded()
         }
         .onChange(of: viewModel.searchQuery) { _, newValue in
             viewModel.updateSearch(query: newValue)
@@ -223,6 +228,13 @@ struct NotesPanelView: View {
             group.cancelAll()
         }
         #endif
+    }
+
+    private func consumePendingNewNoteDeepLinkIfNeeded() {
+        guard environment.pendingNewNoteDeepLink else { return }
+        environment.pendingNewNoteDeepLink = false
+        newNoteName = ""
+        isNewNotePresented = true
     }
 
 }
