@@ -81,6 +81,12 @@ function buildTranscriptButton(
 	return `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`;
 }
 
+function stripTranscriptArtifacts(markdown: string): string {
+	const withoutMarker = markdown.replace(/^\s*<!--\s*YOUTUBE_TRANSCRIPT:[^>]+-->\s*\n?/gm, '');
+	const withoutLegacyTitle = withoutMarker.replace(/^\s*###\s+Transcript of .+ video\s*\n?/gm, '');
+	return withoutLegacyTitle.replace(/\n{3,}/g, '\n\n');
+}
+
 export function normalizeHtmlBlocks(text: string): string {
 	return text.replace(/<\/figure>\n(?!\s*\n)/g, '</figure>\n\n');
 }
@@ -118,5 +124,5 @@ export function rewriteVideoEmbeds(
 		return vimeo ? `<iframe src="${vimeo}"></iframe>` : match;
 	});
 
-	return updated;
+	return stripTranscriptArtifacts(updated);
 }
