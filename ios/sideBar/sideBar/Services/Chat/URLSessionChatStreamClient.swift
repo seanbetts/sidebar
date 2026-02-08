@@ -3,13 +3,19 @@ import sideBarShared
 
 /// Streams chat events over URLSession SSE.
 public final class URLSessionChatStreamClient: ChatStreamClient {
+    private struct StreamTaskState {
+        let id: UUID
+        let task: Task<Void, Error>
+    }
+
     private let baseUrl: URL
     private let accessTokenProvider: () -> String?
     private let session: URLSession
     private var parser: ChatStreamParser
     public weak var handler: ChatStreamEventHandler?
 
-    private var streamTask: Task<Void, Error>?
+    private let streamTaskLock = NSLock()
+    private var streamTaskState: StreamTaskState?
 
     public init(
         baseUrl: URL,
@@ -37,8 +43,8 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         encoder.keyEncodingStrategy = .convertToSnakeCase
         urlRequest.httpBody = try encoder.encode(request)
 
-        streamTask?.cancel()
-        streamTask = Task {
+        let streamTaskId = UUID()
+        let streamTask = Task {
             let (bytes, response) = try await session.bytes(for: urlRequest)
             guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
                 throw APIClientError.requestFailed((response as? HTTPURLResponse)?.statusCode ?? 0)
@@ -57,13 +63,15 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
                 emitEvents(from: buffer)
             }
         }
-
-        _ = try await streamTask?.value
+        replaceStreamTask(with: StreamTaskState(id: streamTaskId, task: streamTask))?.task.cancel()
+        defer {
+            clearStreamTaskIfMatches(id: streamTaskId)
+        }
+        _ = try await streamTask.value
     }
 
     public func disconnect() {
-        streamTask?.cancel()
-        streamTask = nil
+        replaceStreamTask(with: nil)?.task.cancel()
     }
 
     private func emitEvents(from data: Data) {
@@ -74,5 +82,20 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
                 handler?.handle(event: event)
             }
         }
+    }
+
+    private func replaceStreamTask(with state: StreamTaskState?) -> StreamTaskState? {
+        streamTaskLock.lock()
+        defer { streamTaskLock.unlock() }
+        let previous = streamTaskState
+        streamTaskState = state
+        return previous
+    }
+
+    private func clearStreamTaskIfMatches(id: UUID) {
+        streamTaskLock.lock()
+        defer { streamTaskLock.unlock() }
+        guard streamTaskState?.id == id else { return }
+        streamTaskState = nil
     }
 }
