@@ -166,6 +166,51 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(requestCount.value, 1)
     }
 
+    func testConcurrent401RequestsCoalesceAuthRefresh() async throws {
+        let tokenBox = SynchronizedTokenBox("token-1")
+        let refreshCalls = SynchronizedCounter()
+        let requestCount = SynchronizedCounter()
+        let unauthorizedCount = SynchronizedCounter()
+        let unauthorizedBarrier = TwoRequestBarrier()
+
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { tokenBox.get() },
+            refreshAuthIfNeeded: {
+                _ = refreshCalls.increment()
+                tokenBox.set("token-2")
+                return true
+            }
+        )
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolMock.self]
+        let session = URLSession(configuration: configuration)
+        let client = APIClient(config: config, session: session)
+
+        URLProtocolMock.requestHandler = { request in
+            _ = requestCount.increment()
+            let authHeader = request.value(forHTTPHeaderField: "Authorization")
+            if authHeader == "Bearer token-1" {
+                _ = unauthorizedCount.increment()
+                unauthorizedBarrier.waitForPair()
+                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+                return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
+            }
+            XCTAssertEqual(authHeader, "Bearer token-2")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{}".utf8))
+        }
+
+        async let first: EmptyResponse = client.request("ping", method: "GET")
+        async let second: EmptyResponse = client.request("pong", method: "GET")
+        _ = try await (first, second)
+
+        XCTAssertEqual(unauthorizedCount.value(), 2)
+        XCTAssertEqual(refreshCalls.value(), 1)
+        XCTAssertEqual(requestCount.value(), 4)
+    }
+
     private func makeClient(token: String) -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
@@ -175,6 +220,66 @@ final class APIClientTests: XCTestCase {
         configuration.protocolClasses = [URLProtocolMock.self]
         let session = URLSession(configuration: configuration)
         return APIClient(config: config, session: session)
+    }
+}
+
+private final class SynchronizedTokenBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var currentToken: String
+
+    init(_ token: String) {
+        currentToken = token
+    }
+
+    func get() -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        return currentToken
+    }
+
+    func set(_ token: String) {
+        lock.lock()
+        currentToken = token
+        lock.unlock()
+    }
+}
+
+private final class SynchronizedCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    func increment() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        count += 1
+        return count
+    }
+
+    func value() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+}
+
+private final class TwoRequestBarrier: @unchecked Sendable {
+    private let arrivalsLock = NSLock()
+    private let condition = NSCondition()
+    private var arrivals = 0
+
+    func waitForPair() {
+        arrivalsLock.lock()
+        arrivals += 1
+        let currentArrivals = arrivals
+        arrivalsLock.unlock()
+
+        condition.lock()
+        defer { condition.unlock() }
+        if currentArrivals < 2 {
+            _ = condition.wait(until: Date().addingTimeInterval(1))
+            return
+        }
+        condition.broadcast()
     }
 }
 

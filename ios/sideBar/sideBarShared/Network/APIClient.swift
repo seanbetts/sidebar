@@ -43,9 +43,7 @@ public final class APIClient {
     public let config: APIClientConfig
     private let session: URLSession
     private let logger = Logger(subsystem: "sideBar", category: "APIClient")
-    private let authRefreshMinimumInterval: TimeInterval = 45
-    private var lastAuthRefreshAttempt: Date?
-    private var authRefreshTask: Task<Bool, Never>?
+    private let authRefreshCoordinator = AuthRefreshCoordinator(minimumInterval: 45)
 
     public init(config: APIClientConfig, session: URLSession = APIClient.makeDefaultSession()) {
         self.config = config
@@ -247,21 +245,7 @@ public final class APIClient {
 
     private func attemptAuthRefreshIfNeeded() async -> Bool {
         guard let refresh = config.refreshAuthIfNeeded else { return false }
-
-        if let authRefreshTask {
-            return await authRefreshTask.value
-        }
-
-        if let lastAuthRefreshAttempt,
-           Date().timeIntervalSince(lastAuthRefreshAttempt) < authRefreshMinimumInterval {
-            return false
-        }
-
-        lastAuthRefreshAttempt = Date()
-        let task = Task { await refresh() }
-        authRefreshTask = task
-        defer { authRefreshTask = nil }
-        return await task.value
+        return await authRefreshCoordinator.refreshIfNeeded(using: refresh)
     }
 
     private func logDecodingError<T>(_ error: Error, data: Data, type: T.Type) {
@@ -377,4 +361,31 @@ private struct APIErrorEnvelope: Decodable {
 
 private struct APIErrorMessage: Decodable {
     let message: String
+}
+
+private actor AuthRefreshCoordinator {
+    private let minimumInterval: TimeInterval
+    private var lastAttempt: Date?
+    private var refreshTask: Task<Bool, Never>?
+
+    init(minimumInterval: TimeInterval) {
+        self.minimumInterval = minimumInterval
+    }
+
+    func refreshIfNeeded(using refresh: @escaping () async -> Bool) async -> Bool {
+        if let refreshTask {
+            return await refreshTask.value
+        }
+
+        if let lastAttempt,
+           Date().timeIntervalSince(lastAttempt) < minimumInterval {
+            return false
+        }
+
+        lastAttempt = Date()
+        let task = Task { await refresh() }
+        refreshTask = task
+        defer { refreshTask = nil }
+        return await task.value
+    }
 }
