@@ -381,16 +381,18 @@ extension NotesPanelView {
                         }
                     },
                     label: {
-                        VStack(alignment: .leading, spacing: 0) {
+                        archiveLabel
+                            .padding(.top, DesignTokens.Spacing.md)
+                    }
+                )
+                .listRowBackground(
+                    DesignTokens.Colors.sidebarRowBackground
+                        .overlay(alignment: .top) {
                             Rectangle()
                                 .fill(DesignTokens.Colors.border)
                                 .frame(height: 1)
-                            archiveLabel
-                                .padding(.top, DesignTokens.Spacing.md)
                         }
-                    }
                 )
-                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
             }
 #endif
         }
