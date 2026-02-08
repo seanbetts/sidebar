@@ -197,17 +197,10 @@ extension NotesStore {
         guard isArchived(note) else {
             return true
         }
-        guard let modified = note.modified else {
-            return false
-        }
-        guard let cutoff = Calendar.current.date(
-            byAdding: .day,
-            value: -archivedNoteRetentionDays,
-            to: Date()
-        ) else {
-            return false
-        }
-        return Date(timeIntervalSince1970: modified) >= cutoff
+        return ArchivedRetentionPolicy.contains(
+            epochSeconds: note.modified,
+            retentionDays: archivedNoteRetentionDays
+        )
     }
 
     func persistNote(_ note: NotePayload) {
@@ -279,15 +272,10 @@ extension NotesStore {
     }
 
     func isWithinArchivedRetention(modified: Double?) -> Bool {
-        guard let modified else { return false }
-        guard let cutoff = Calendar.current.date(
-            byAdding: .day,
-            value: -archivedNoteRetentionDays,
-            to: Date()
-        ) else {
-            return false
-        }
-        return Date(timeIntervalSince1970: modified) >= cutoff
+        ArchivedRetentionPolicy.contains(
+            epochSeconds: modified,
+            retentionDays: archivedNoteRetentionDays
+        )
     }
 
     func findNode(path: String, in nodes: [FileNode]) -> FileNode? {

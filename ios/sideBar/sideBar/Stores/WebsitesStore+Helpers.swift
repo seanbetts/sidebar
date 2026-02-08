@@ -168,17 +168,10 @@ extension WebsitesStore {
         guard detail.archived else {
             return true
         }
-        guard let updatedAt = DateParsing.parseISO8601(detail.updatedAt) else {
-            return false
-        }
-        guard let cutoff = Calendar.current.date(
-            byAdding: .day,
-            value: -archivedDetailRetentionDays,
-            to: Date()
-        ) else {
-            return false
-        }
-        return updatedAt >= cutoff
+        return ArchivedRetentionPolicy.contains(
+            date: DateParsing.parseISO8601(detail.updatedAt),
+            retentionDays: archivedDetailRetentionDays
+        )
     }
 
     func updateDetail(_ detail: WebsiteDetail, with item: WebsiteItem) -> WebsiteDetail {
@@ -252,17 +245,10 @@ extension WebsitesStore {
     }
 
     func isWithinArchivedRetention(updatedAt: String?) -> Bool {
-        guard let updatedAt = DateParsing.parseISO8601(updatedAt) else {
-            return false
-        }
-        guard let cutoff = Calendar.current.date(
-            byAdding: .day,
-            value: -archivedDetailRetentionDays,
-            to: Date()
-        ) else {
-            return false
-        }
-        return updatedAt >= cutoff
+        ArchivedRetentionPolicy.contains(
+            date: DateParsing.parseISO8601(updatedAt),
+            retentionDays: archivedDetailRetentionDays
+        )
     }
 
     func hasCachedDetail(id: String) -> Bool {
