@@ -84,6 +84,8 @@ struct ConversationsPanelView: View {
             switch event.action {
             case .focusSearch:
                 isSearchFocused = true
+            case .newItem:
+                Task { await viewModel.startNewConversation() }
             case .renameItem:
                 guard let id = viewModel.selectedConversationId,
                       let conversation = viewModel.conversations.first(where: { $0.id == id }) else { return }

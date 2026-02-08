@@ -42,6 +42,11 @@ extension ConversationsPanelView {
     }
 
     var showNewChatButton: Bool {
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            return true
+        }
+        #endif
         guard viewModel.selectedConversationId != nil else {
             return false
         }

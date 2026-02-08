@@ -226,6 +226,31 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(api.getCallCount, 0)
     }
 
+    func testStartNewConversationCreatesAndSelectsConversation() async {
+        let cache = TestCacheClient()
+        let created = Conversation(
+            id: "conv-new",
+            title: "New Chat",
+            titleGenerated: false,
+            createdAt: "2026-01-02T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:00Z",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: nil
+        )
+        let api = MockConversationsAPI(
+            listResult: .success([]),
+            createResult: .success(created)
+        )
+        let viewModel = makeViewModel(api: api, cache: cache)
+
+        await viewModel.startNewConversation()
+
+        XCTAssertEqual(viewModel.selectedConversationId, created.id)
+        XCTAssertTrue(viewModel.messages.isEmpty)
+        XCTAssertEqual(viewModel.conversations.first?.id, created.id)
+    }
+
     private func makeViewModel(
         api: MockConversationsAPI,
         cache: CacheClient,

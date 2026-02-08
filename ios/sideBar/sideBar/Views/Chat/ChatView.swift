@@ -23,6 +23,9 @@ public struct ChatView: View {
                 if isCompact {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
+                            Task {
+                                await environment.chatViewModel.startNewConversation()
+                            }
                         } label: {
                             Image(systemName: "plus")
                         }
