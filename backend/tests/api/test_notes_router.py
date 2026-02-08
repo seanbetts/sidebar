@@ -55,6 +55,29 @@ def test_notes_get_success(test_client, test_db):
     assert "content" in body
 
 
+def test_notes_download_handles_unicode_filename(test_client, test_db):
+    note_id = uuid.uuid4()
+    note = Note(
+        id=note_id,
+        user_id=DEFAULT_USER_ID,
+        title="Codex Log🦞",
+        content="# Codex Log\n\nBody",
+        metadata_={"folder": "", "pinned": False},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(note)
+    test_db.commit()
+
+    response = test_client.get(f"/api/notes/{note_id}/download", headers=_auth_headers())
+    assert response.status_code == 200
+    assert response.text == "# Codex Log\n\nBody"
+    header = response.headers["content-disposition"]
+    assert 'filename="Codex Log.md"' in header
+    assert "filename*=UTF-8''Codex%20Log%F0%9F%A6%9E.md" in header
+    assert "🦞" not in header
+
+
 def test_notes_create_update_and_rename(test_client):
     create = test_client.post(
         "/api/notes",

@@ -14,6 +14,7 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NoteNotFoundError, NotFoundError
+from api.routers.download_headers import markdown_download_headers
 from api.routers.notes_folders import router as notes_folders_router
 from api.services.notes_helpers import note_sync_payload
 from api.services.notes_service import NotesService
@@ -322,7 +323,7 @@ def download_note(
     except NoteNotFoundError as exc:
         raise NotFoundError("Note", str(note_id)) from exc
 
-    headers = {"Content-Disposition": f'attachment; filename="{result["filename"]}"'}
+    headers = markdown_download_headers(result["filename"])
     return Response(result["content"], media_type="text/markdown", headers=headers)
 
 
