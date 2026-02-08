@@ -3,10 +3,11 @@ import sideBarShared
 
 func shouldKeepPendingShareItem(
     _ item: PendingShareItem,
+    isOffline: @escaping () -> Bool,
     saveWebsite: @escaping (String) async -> Bool,
     ingestYouTube: @escaping (String) async -> String?,
     resolveFileURL: @escaping (PendingShareItem) -> URL?,
-    startUpload: @escaping (URL) -> Void
+    startUpload: @escaping (URL) -> Bool
 ) async -> Bool {
     switch item.kind {
     case .website:
@@ -14,15 +15,17 @@ func shouldKeepPendingShareItem(
         let success = await saveWebsite(url)
         return !success
     case .youtube:
+        guard !isOffline() else { return true }
         guard let url = item.url else { return true }
         let error = await ingestYouTube(url)
         return error != nil
     case .file, .image:
+        guard !isOffline() else { return true }
         guard let fileURL = resolveFileURL(item) else {
             return true
         }
-        startUpload(fileURL)
-        return false
+        let started = startUpload(fileURL)
+        return !started
     @unknown default:
         return true
     }
@@ -32,24 +35,27 @@ extension AppEnvironment {
     public func consumePendingShares() async {
         guard authState == .active else { return }
         guard !connectivityMonitor.isOffline else { return }
-        let pending = PendingShareStore.shared.consumeAll()
+        let pending = PendingShareStore.shared.loadAll()
         guard !pending.isEmpty else { return }
 
-        let remaining = await filterPendingShares(pending)
-        PendingShareStore.shared.replaceAll(remaining)
-    }
-
-    private func filterPendingShares(_ items: [PendingShareItem]) async -> [PendingShareItem] {
-        var remaining: [PendingShareItem] = []
-        for item in items where await shouldKeepPendingShare(item) {
-            remaining.append(item)
+        var processedIds: [UUID] = []
+        for item in pending {
+            let shouldKeep = await shouldKeepPendingShare(item)
+            if !shouldKeep {
+                processedIds.append(item.id)
+            }
         }
-        return remaining
+        if !processedIds.isEmpty {
+            PendingShareStore.shared.remove(ids: processedIds)
+        }
     }
 
     private func shouldKeepPendingShare(_ item: PendingShareItem) async -> Bool {
         await shouldKeepPendingShareItem(
             item,
+            isOffline: { [weak self] in
+                self?.ingestionViewModel.isOfflineForIngestion() ?? true
+            },
             saveWebsite: { [weak self] url in
                 guard let self else { return false }
                 return await self.websitesViewModel.saveWebsite(url: url)
@@ -65,7 +71,9 @@ extension AppEnvironment {
                 PendingShareStore.shared.resolveFileURL(for: item)
             },
             startUpload: { [weak self] fileURL in
-                self?.ingestionViewModel.startUpload(url: fileURL)
+                guard let self else { return false }
+                self.ingestionViewModel.startUpload(url: fileURL)
+                return true
             }
         )
     }

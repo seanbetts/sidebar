@@ -15,7 +15,9 @@ extension IngestionStore {
             isOffline = false
             applyListUpdate(response.items, persist: true)
         } catch {
-            isOffline = true
+            if Self.isNetworkError(error) {
+                isOffline = true
+            }
             // Ignore background refresh failures; cache remains source of truth.
         }
     }
@@ -31,9 +33,30 @@ extension IngestionStore {
             isOffline = false
             applyMetaUpdate(response, persist: true)
         } catch {
-            isOffline = true
+            if Self.isNetworkError(error) {
+                isOffline = true
+            }
             // Ignore background refresh failures; cache remains source of truth.
         }
+    }
+
+    static func isNetworkError(_ error: Error) -> Bool {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet,
+                 .networkConnectionLost,
+                 .timedOut,
+                 .cannotFindHost,
+                 .cannotConnectToHost,
+                 .dnsLookupFailed,
+                 .dataNotAllowed,
+                 .internationalRoamingOff:
+                return true
+            default:
+                return false
+            }
+        }
+        return false
     }
 
     func applyListUpdate(_ incoming: [IngestionListItem], persist: Bool) {
