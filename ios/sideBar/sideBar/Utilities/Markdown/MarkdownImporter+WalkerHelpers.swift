@@ -6,12 +6,30 @@ import SwiftUI
 // MARK: - Inline Processing
 
 extension MarkdownToAttributedStringWalker {
-    // swiftlint:disable cyclomatic_complexity
     func inlineAttributedString(
         for markup: Markup,
         intents: InlinePresentationIntent = [],
         isStrikethrough: Bool = false
     ) -> AttributedString {
+        if let simple = inlineSimpleAttributedString(
+            for: markup,
+            intents: intents,
+            isStrikethrough: isStrikethrough
+        ) {
+            return simple
+        }
+        return inlineStyledAttributedString(
+            for: markup,
+            intents: intents,
+            isStrikethrough: isStrikethrough
+        )
+    }
+
+    private func inlineSimpleAttributedString(
+        for markup: Markup,
+        intents: InlinePresentationIntent,
+        isStrikethrough: Bool
+    ) -> AttributedString? {
         switch markup {
         case let text as Markdown.Text:
             var result = AttributedString(text.string)
@@ -27,73 +45,11 @@ extension MarkdownToAttributedStringWalker {
             return AttributedString("\n")
         case is LineBreak:
             return AttributedString("\n")
-        case let emphasis as Emphasis:
-            var inner = AttributedString()
-            let mergedIntents = intents.union(.emphasized)
-            for child in emphasis.children {
-                inner.append(inlineAttributedString(for: child, intents: mergedIntents, isStrikethrough: isStrikethrough))
-            }
-            return wrapInlineMarkers(inner, prefix: "*", suffix: "*")
-        case let strong as Strong:
-            var inner = AttributedString()
-            let mergedIntents = intents.union(.stronglyEmphasized)
-            for child in strong.children {
-                inner.append(inlineAttributedString(for: child, intents: mergedIntents, isStrikethrough: isStrikethrough))
-            }
-            return wrapInlineMarkers(inner, prefix: "**", suffix: "**")
-        case let strike as Strikethrough:
-            var inner = AttributedString()
-            for child in strike.children {
-                inner.append(inlineAttributedString(for: child, intents: intents, isStrikethrough: true))
-            }
-            return wrapInlineMarkers(inner, prefix: "~~", suffix: "~~")
-        case let code as InlineCode:
-            var inner = AttributedString(code.code)
-            let range = fullRange(in: inner)
-            let current = inner[range].inlinePresentationIntent ?? []
-            inner[range].inlinePresentationIntent = current.union(.code).union(intents)
-            inner[range].font = inlineCodeFont
-            inner[range].backgroundColor = style.codeBackground
-            if isStrikethrough {
-                applyStrikethrough(to: &inner)
-            }
-            return wrapInlineMarkers(inner, prefix: "`", suffix: "`")
-        case let link as Markdown.Link:
-            var inner = AttributedString()
-            for child in link.children {
-                inner.append(inlineAttributedString(for: child, intents: intents, isStrikethrough: isStrikethrough))
-            }
-            if let destination = link.destination,
-               let url = URL(string: destination) {
-                inner[fullRange(in: inner)].link = url
-                inner[fullRange(in: inner)].foregroundColor = .accentColor
-                inner[fullRange(in: inner)].underlineStyle = .single
-            }
-            return inner
-        case let image as Markdown.Image:
-            let alt = unwrapOptionalString(image.plainText)
-            let source = unwrapOptionalString(image.source)
-            // Store image info for round-trip, display as placeholder for now
-            // swiftlint:disable:next todo
-            // TODO: Use AdaptiveImageGlyph when API is available
-            var imageString = AttributedString("![\(alt)](\(source))")
-            if let url = URL(string: source) {
-                let range = fullRange(in: imageString)
-                imageString[range].imageInfo = ImageInfo(url: url, altText: alt)
-                imageString[range].foregroundColor = DesignTokens.Colors.textSecondary
-            }
-            return imageString
-        case let html as Markdown.InlineHTML:
-            return AttributedString(html.rawHTML)
         default:
-            var fallback = AttributedString()
-            for child in markup.children {
-                fallback.append(inlineAttributedString(for: child, intents: intents, isStrikethrough: isStrikethrough))
-            }
-            return fallback
+            return nil
         }
     }
-    // swiftlint:enable cyclomatic_complexity
+
 }
 
 // MARK: - Block Helpers

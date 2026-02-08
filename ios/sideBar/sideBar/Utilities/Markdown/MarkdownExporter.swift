@@ -368,37 +368,31 @@ private func shouldInsertBlankLine(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-// swiftlint:disable cyclomatic_complexity
 private func prefix(for blockKind: BlockKind, listDepth: Int?) -> String {
     let indent = String(repeating: "  ", count: max(0, (listDepth ?? 1) - 1))
-    switch blockKind {
-    case .heading1:
-        return "# "
-    case .heading2:
-        return "## "
-    case .heading3:
-        return "### "
-    case .heading4:
-        return "#### "
-    case .heading5:
-        return "##### "
-    case .heading6:
-        return "###### "
-    case .bulletList:
-        return indent + "- "
-    case .orderedList:
-        return indent + "1. "
-    case .taskChecked:
-        return indent + "- [x] "
-    case .taskUnchecked:
-        return indent + "- [ ] "
-    case .blockquote:
-        return indent + "> "
-    default:
-        return ""
+    let headingPrefixes: [BlockKind: String] = [
+        .heading1: "# ",
+        .heading2: "## ",
+        .heading3: "### ",
+        .heading4: "#### ",
+        .heading5: "##### ",
+        .heading6: "###### "
+    ]
+    if let headingPrefix = headingPrefixes[blockKind] {
+        return headingPrefix
     }
+    let indentedPrefixes: [BlockKind: String] = [
+        .bulletList: "- ",
+        .orderedList: "1. ",
+        .taskChecked: "- [x] ",
+        .taskUnchecked: "- [ ] ",
+        .blockquote: "> "
+    ]
+    if let indentedPrefix = indentedPrefixes[blockKind] {
+        return indent + indentedPrefix
+    }
+    return ""
 }
-// swiftlint:enable cyclomatic_complexity
 
 @available(iOS 26.0, macOS 26.0, *)
 func serializeInline(_ attributed: AttributedSubstring) -> String {
