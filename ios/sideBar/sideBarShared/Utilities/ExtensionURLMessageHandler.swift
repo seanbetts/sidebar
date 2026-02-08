@@ -39,7 +39,7 @@ public enum ExtensionURLMessageHandler {
         return nil
     }
 
-    static func normalizeQueuedURL(_ raw: String) -> String? {
+    public static func normalizeQueuedURL(_ raw: String) -> String? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let candidate = trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://")
@@ -66,23 +66,36 @@ public enum ExtensionURLMessageHandler {
         return components.string
     }
 
+    private static func failureResponse(_ code: ExtensionMessageCode) -> [String: Any] {
+        [
+            "ok": false,
+            "code": code.rawValue,
+            "error": ExtensionUserMessageCatalog.message(for: code)
+        ]
+    }
+
     public static func handleSaveURLMessage(
         action: String?,
         urlString: String?,
         pendingStore: PendingShareStore = .shared
     ) -> [String: Any] {
         guard action == "save_url" else {
-            return ["ok": false, "error": "Unsupported action"]
+            return failureResponse(.unsupportedAction)
         }
         guard let urlString, !urlString.isEmpty else {
-            return ["ok": false, "error": "Missing URL"]
+            return failureResponse(.missingURL)
         }
         guard let normalized = normalizeQueuedURL(urlString) else {
-            return ["ok": false, "error": "Invalid URL"]
+            return failureResponse(.invalidURL)
         }
         if pendingStore.enqueueWebsite(url: normalized) != nil {
-            return ["ok": true, "queued": "website"]
+            return [
+                "ok": true,
+                "code": ExtensionMessageCode.savedForLater.rawValue,
+                "message": ExtensionUserMessageCatalog.message(for: .savedForLater),
+                "queued": "website"
+            ]
         }
-        return ["ok": false, "error": "Failed to queue website"]
+        return failureResponse(.queueFailed)
     }
 }
