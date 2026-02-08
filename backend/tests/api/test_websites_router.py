@@ -55,6 +55,35 @@ def test_websites_get_success(test_client, test_db):
     assert body["content"] == "Example content"
 
 
+def test_websites_download_handles_unicode_filename(test_client, test_db):
+    website_id = uuid.uuid4()
+    website = Website(
+        id=website_id,
+        user_id=DEFAULT_USER_ID,
+        url="https://example.com/openclaw",
+        url_full="https://example.com/openclaw",
+        domain="example.com",
+        title="OpenClaw🦞",
+        content="# OpenClaw",
+        metadata_={"pinned": False, "archived": False},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(website)
+    test_db.commit()
+
+    response = test_client.get(
+        f"/api/websites/{website_id}/download",
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 200
+    assert response.text == "# OpenClaw"
+    header = response.headers["content-disposition"]
+    assert 'filename="OpenClaw.md"' in header
+    assert "filename*=UTF-8''OpenClaw%F0%9F%A6%9E.md" in header
+    assert "🦞" not in header
+
+
 def test_websites_pin_rename_archive(test_client, test_db):
     website_id = uuid.uuid4()
     website = Website(

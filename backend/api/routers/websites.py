@@ -12,6 +12,7 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
+from api.routers.download_headers import markdown_download_headers
 from api.routers.websites_helpers import normalize_url, run_quick_save, website_summary
 from api.schemas.filters import WebsiteFilters
 from api.services.website_processing_service import WebsiteProcessingService
@@ -465,7 +466,7 @@ def download_website(
         raise NotFoundError("Website", str(website_id))
 
     filename = f"{website.title}.md"
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    headers = markdown_download_headers(filename)
     return Response(website.content or "", media_type="text/markdown", headers=headers)
 
 
