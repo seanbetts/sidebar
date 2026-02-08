@@ -745,11 +745,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         raise ValueError("No readable content extracted")
 
     published_at = parse_datetime(metadata.get("published"))
-    word_count = compute_word_count(markdown)
-    image_count = count_images(markdown)
     domain = urlparse(final_url).netloc
-    tags = extract_tags(markdown, domain, title)
-    source_url = metadata.get("canonical") or final_url
 
     embeds = extract_youtube_embed_urls_from_dom(
         raw_dom_original, metadata.get("canonical") or final_url
@@ -808,6 +804,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         gallery_blocks,
         int((time.monotonic() - start_time) * 1000),
     )
+
+    word_count = compute_word_count(markdown)
+    image_count = count_images(markdown)
+    tags = extract_tags(markdown, domain, title)
 
     frontmatter_meta = {
         "source": metadata.get("canonical") or final_url,

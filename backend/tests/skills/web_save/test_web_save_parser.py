@@ -968,6 +968,57 @@ def test_simplify_linked_images_unwraps_matching_links():
     assert simplified.strip() == "![](https://example.com/img.jpg)"
 
 
+def test_compute_word_count_ignores_image_url_noise():
+    markdown = "\n".join(
+        [
+            "Intro words only.",
+            "[![Badge](https://img.shields.io/badge)](https://github.com/actions)",
+            "![Screenshot](https://example.com/screen.png)",
+            "Read [the docs](https://docs.example.com/path?q=1) and <https://example.com/raw>.",
+            "Visit https://example.com/else too.",
+        ]
+    )
+
+    assert web_save_parser.compute_word_count(markdown) == 9
+
+
+def test_parse_url_local_frontmatter_metrics_follow_final_markdown(monkeypatch):
+    words = " ".join(["word"] * 248)
+    html = f"""
+    <html>
+      <head><title>Metrics Consistency</title></head>
+      <body>
+        <article>
+          <p>{words}</p>
+          <img src="https://example.com/dup.jpg" alt="Duplicate image"/>
+          <img src="https://example.com/dup.jpg" alt="Duplicate image"/>
+          <img src="https://example.com/dup.jpg" alt="Duplicate image"/>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/metrics", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/metrics")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    body = parsed.content.split("---\n", 2)[2]
+
+    final_word_count = web_save_parser.compute_word_count(body)
+    final_image_count = web_save_parser.count_images(body)
+
+    assert final_image_count == 1
+    assert data["word_count"] == final_word_count
+    assert data["reading_time"] == web_save_parser.calculate_reading_time(
+        final_word_count,
+        image_count=final_image_count,
+    )
+
+
 def test_parse_url_local_force_rendering(monkeypatch):
     html = "<html><body><div class='force'>Placeholder</div></body></html>"
     rendered = "<html><head><title>Rendered</title></head><body><article>Rendered body</article></body></html>"

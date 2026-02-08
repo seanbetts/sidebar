@@ -87,10 +87,16 @@ def _strip_code_blocks(text: str) -> str:
 
 def _clean_markdown_for_counting(text: str) -> str:
     """Clean markdown syntax for accurate word counting."""
-    # Replace markdown links [text](url) with just text
-    text = re.sub(r"\[([^\]]*)\]\([^)]+\)", r"\1", text)
-    # Remove image markdown ![alt](url) entirely (we count images separately)
+    # Remove linked image markdown [![alt](image-url)](target-url).
+    text = re.sub(r"\[\s*!\[[^\]]*]\([^)]+\)\s*]\([^)]+\)", "", text)
+    # Remove image markdown ![alt](url) entirely (we count images separately).
     text = re.sub(r"!\[[^\]]*\]\([^)]+\)", "", text)
+    # Remove reference-style link definitions that mostly contain URL noise.
+    text = re.sub(r"(?m)^\s*\[[^\]]+]:\s*\S+.*$", "", text)
+    # Replace markdown links [text](url) with just text.
+    text = re.sub(r"\[([^\]]*)\]\([^)]+\)", r"\1", text)
+    # Remove autolink URLs.
+    text = re.sub(r"<https?://[^>]+>", "", text)
     # Remove standalone URLs
     text = re.sub(r"https?://[^\s\)>]+", "", text)
     # Remove HTML tags
