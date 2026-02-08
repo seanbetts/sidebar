@@ -473,6 +473,99 @@ def test_parse_url_local_blog_google_reinserts_missing_modules(monkeypatch):
     )
 
 
+def test_parse_url_local_blog_google_preserves_ordered_modules(monkeypatch):
+    html = """
+    <html>
+      <head><title>Game Arena</title></head>
+      <body>
+        <div class="uni-content uni-blog-article-container article-container__content" data-component="uni-article-body">
+          <div class="article-summary__content">
+            <p>Read AI-generated summary</p>
+          </div>
+          <div class="module--text module--text__article">
+            <div class="rich-text">
+              <p>Chess is a game of perfect information. The real world is not.</p>
+              <p>Last year, Google DeepMind partnered with Kaggle to launch Game Arena.</p>
+            </div>
+          </div>
+          <div class="module--text module--text__article">
+            <div class="rich-text">
+              <h2>Chess: reasoning over calculation</h2>
+              <p>Chess section details.</p>
+            </div>
+          </div>
+          <div class="module--text module--text__article">
+            <div class="rich-text">
+              <h2>Werewolf: navigating social deduction</h2>
+              <p>Werewolf section details.</p>
+            </div>
+          </div>
+          <div class="module--text module--text__article">
+            <div class="rich-text">
+              <h2>Poker: the challenge of calculated risk</h2>
+              <p>Poker section details.</p>
+              <h2>Watch the action</h2>
+              <p>Watch section details.</p>
+              <h2>Explore the arena</h2>
+              <p>Explore section details.</p>
+            </div>
+          </div>
+        </div>
+        <article>
+          <div class="module--text module--text__article">
+            <div class="rich-text">
+              <h2>Poker: the challenge of calculated risk</h2>
+              <p>Poker section details.</p>
+              <h2>Watch the action</h2>
+              <p>Watch section details.</p>
+            </div>
+          </div>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://blog.google/example", False
+
+    rule = web_save_parser.Rule(
+        id="blog-google-include-article-modules",
+        phase="pre",
+        priority=0,
+        trigger={"host": {"ends_with": "blog.google"}},
+        include=[
+            ".module--text__article",
+            "uni-pull-quote",
+            "uni-image-full-width",
+        ],
+    )
+    engine = web_save_parser.RuleEngine([rule])
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+
+    parsed = web_save_parser.parse_url_local("blog.google/example")
+
+    assert "Read AI-generated summary" not in parsed.content
+    assert (
+        parsed.content.find("Chess is a game of perfect information. The real world is not.")
+        < parsed.content.find("## Chess: reasoning over calculation")
+    )
+    assert parsed.content.find("## Chess: reasoning over calculation") < parsed.content.find(
+        "## Werewolf: navigating social deduction"
+    )
+    assert parsed.content.find("## Werewolf: navigating social deduction") < parsed.content.find(
+        "## Poker: the challenge of calculated risk"
+    )
+    assert parsed.content.find("## Poker: the challenge of calculated risk") < parsed.content.find(
+        "## Watch the action"
+    )
+    assert parsed.content.find("## Watch the action") < parsed.content.find(
+        "## Explore the arena"
+    )
+    assert parsed.content.count("## Watch the action") == 1
+    assert parsed.content.count("## Explore the arena") == 1
+
+
 def test_apply_include_reinsertion_handles_comment_root():
     extracted_html = "<!--comment--><article><p>Primary content</p></article>"
     original_html = """

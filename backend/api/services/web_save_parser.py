@@ -20,6 +20,7 @@ from readability import Document
 
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_includes import apply_include_reinsertion
+from api.services.web_save_parser_blog_google import extract_blog_google_body_html
 from api.services.web_save_parser_cleanup import (
     cleanup_gizmodo_markdown,
     cleanup_verge_markdown,
@@ -553,6 +554,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
 
     document = Document(html)
     substack_payload = None
+    used_blog_google_ordered_extraction = False
     try:
         substack_payload = fetch_substack_body_html(final_url, html, timeout=timeout)
     except requests.RequestException:
@@ -585,6 +587,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             verge_html = extract_verge_body_html(raw_html_original)
             if verge_html:
                 article_html = verge_html
+        elif urlparse(final_url).netloc.endswith("blog.google"):
+            blog_google_html = extract_blog_google_body_html(raw_html_original)
+            if blog_google_html:
+                article_html = blog_google_html
+                used_blog_google_ordered_extraction = True
     logger.debug(
         "web-save readability url=%s article_len=%s",
         final_url,
@@ -625,6 +632,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     include_selectors = [
         selector for rule in pre_rules + post_rules for selector in rule.include
     ]
+    if used_blog_google_ordered_extraction:
+        include_selectors = []
     removal_selectors = [selector for rule in post_rules for selector in rule.remove]
     reinsert_dom = raw_dom
     if any(rule.selector_overrides for rule in pre_rules):
