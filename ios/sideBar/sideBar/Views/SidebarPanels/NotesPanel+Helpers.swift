@@ -325,7 +325,7 @@ extension NotesPanelView {
                     Text("No pinned notes")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .listRowBackground(rowBackground)
+                        .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                 } else {
                     ForEach(pinnedItems) { item in
                         let isSelected = viewModel.selectedNoteId == item.id
@@ -340,11 +340,11 @@ extension NotesPanelView {
                             confirmDelete(for: item)
                         }
                         .platformContextMenu(items: noteContextMenuItemsList(for: item))
-                        .listRowBackground(isSelected ? DesignTokens.Colors.selection : rowBackground)
+                        .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
                     }
                 }
             }
-            .listRowBackground(rowBackground)
+            .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
 
             Section("Notes") {
                 mainOutlineGroup
@@ -376,14 +376,14 @@ extension NotesPanelView {
                                 }
                                 .platformContextMenu(items: noteContextMenuItemsList(for: item))
                             }
-                            .listRowBackground(rowBackground)
+                            .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                         }
                     },
                     label: {
                         archiveLabel
                     }
                 )
-                .listRowBackground(rowBackground)
+                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
             }
 #endif
         }
@@ -403,14 +403,6 @@ extension NotesPanelView {
         DesignTokens.Colors.sidebar
     }
 
-    var rowBackground: Color {
-        #if os(macOS)
-        return DesignTokens.Colors.sidebar
-        #else
-        return DesignTokens.Colors.background
-        #endif
-    }
-
     var mainOutlineGroup: some View {
         OutlineGroup(buildItems(from: mainNodes), children: \.children) { item in
             NotesTreeRow(
@@ -427,7 +419,7 @@ extension NotesPanelView {
             }
             .platformContextMenu(items: noteContextMenuItemsList(for: item))
         }
-        .listRowBackground(rowBackground)
+        .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
     }
 
     var notesArchiveSection: some View {

@@ -258,7 +258,7 @@ extension WebsitesPanelView {
                             archiveLabel
                         }
                     )
-                    .listRowBackground(rowBackground)
+                    .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                 }
 #endif
             }
@@ -394,7 +394,7 @@ extension WebsitesPanelView {
         .staggeredAppear(index: index, isActive: listAppeared)
         .onTapGesture { open(item: item) }
         .platformContextMenu(items: websiteContextMenuItemsList(for: item))
-        .listRowBackground(isSelected ? DesignTokens.Colors.selection : rowBackground)
+        .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
 
         #if os(macOS)
         row
@@ -476,14 +476,6 @@ extension WebsitesPanelView {
 
     private var panelBackground: Color {
         DesignTokens.Colors.sidebar
-    }
-
-    private var rowBackground: Color {
-        #if os(macOS)
-        return DesignTokens.Colors.sidebar
-        #else
-        return DesignTokens.Colors.background
-        #endif
     }
 
     private var websitesArchiveSection: some View {

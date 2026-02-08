@@ -41,24 +41,24 @@ struct SelectableRow<Content: View>: View {
         if useListStyling {
             rowContent
                 .listRowInsets(rowInsets)
-                .listRowBackground(isSelected ? DesignTokens.Colors.selection : rowBackground)
+                .listRowBackground(selectedRowBackground)
         } else {
             rowContent
                 .padding(.leading, rowInsets.leading)
                 .padding(.trailing, rowInsets.trailing)
-                .background(isSelected ? DesignTokens.Colors.selection : rowBackground)
+                .background(selectedRowBackground)
                 .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
         }
+    }
+
+    private var selectedRowBackground: Color {
+        isSelected ? DesignTokens.Colors.selection : rowBackground
     }
 
     private var rowBackground: Color {
         if let customRowBackground {
             return customRowBackground
         }
-        #if os(macOS)
-        return DesignTokens.Colors.sidebar
-        #else
-        return DesignTokens.Colors.background
-        #endif
+        return DesignTokens.Colors.sidebarRowBackground
     }
 }
