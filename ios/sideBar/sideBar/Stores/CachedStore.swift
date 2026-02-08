@@ -5,6 +5,12 @@ import Combine
 /// Subclasses must override `cacheKey`, `cacheTTL`, `fetchFromAPI()`, `applyData()`, and `backgroundRefresh()`.
 @MainActor
 open class CachedStoreBase<CachedData: Codable>: ObservableObject {
+    public enum CacheLoadSource {
+        case cache
+        case offline
+        case remote
+    }
+
     public let objectWillChange = ObservableObjectPublisher()
     public let cache: CacheClient
     private var backgroundRefreshTask: Task<Void, Never>?
@@ -50,17 +56,40 @@ open class CachedStoreBase<CachedData: Codable>: ObservableObject {
     }
 
     public func loadWithCache(force: Bool = false) async throws {
+        _ = try await loadWithCacheAndOffline(force: force)
+    }
+
+    @discardableResult
+    public func loadWithCacheAndOffline(
+        force: Bool = false,
+        offline: (() -> CachedData?)? = nil,
+        isNetworkAvailable: Bool = true,
+        remoteUnavailableError: (() -> Error)? = nil
+    ) async throws -> CacheLoadSource {
         let cached: CachedData? = force ? nil : cache.get(key: cacheKey)
 
         if let cached {
             applyData(cached, persist: false)
             triggerBackgroundRefresh()
-            return
+            return .cache
+        }
+
+        if !force, let offlineData = offline?() {
+            applyData(offlineData, persist: false)
+            if isNetworkAvailable {
+                triggerBackgroundRefresh()
+            }
+            return .offline
+        }
+
+        if !isNetworkAvailable, let remoteUnavailableError {
+            throw remoteUnavailableError()
         }
 
         let remote = try await fetchFromAPI()
         applyData(remote, persist: true)
         cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
+        return .remote
     }
 
     public func markBackgroundRefreshSuccess() {

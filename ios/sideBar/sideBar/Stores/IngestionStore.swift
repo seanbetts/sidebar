@@ -69,28 +69,13 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     // MARK: - Public API
 
     public func loadList(force: Bool = false) async throws {
-        if !force {
-            let cached: IngestionListResponse? = cache.get(key: cacheKey)
-            if let cached {
-                applyListUpdate(cached.items, persist: false)
-                Task { [weak self] in
-                    await self?.refreshList()
-                }
-                return
-            }
-            if let offline = offlineStore?.get(key: cacheKey, as: IngestionListResponse.self) {
-                applyListUpdate(offline.items, persist: false)
-                if !(networkStatus?.isOffline ?? false) {
-                    Task { [weak self] in
-                        await self?.refreshList()
-                    }
-                }
-                return
-            }
-        }
-        let remote = try await fetchFromAPI()
-        applyListUpdate(remote.items, persist: true)
-        cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
+        let listCacheKey = self.cacheKey
+        let offlineStore = offlineStore
+        _ = try await loadWithCacheAndOffline(
+            force: force,
+            offline: { offlineStore?.get(key: listCacheKey, as: IngestionListResponse.self) },
+            isNetworkAvailable: !(networkStatus?.isOffline ?? false)
+        )
     }
 
     public func loadMeta(fileId: String, force: Bool = false) async throws {

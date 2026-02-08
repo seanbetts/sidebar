@@ -55,35 +55,16 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     // MARK: - Public API
 
     public func loadConversations(force: Bool = false) async throws {
-        if !force {
-            let cached: [Conversation]? = cache.get(key: cacheKey)
-            if let cached {
-                applyConversationListUpdate(cached, persist: false)
-                Task { [weak self] in
-                    await self?.refreshConversationsList()
-                }
-                return
+        let listCacheKey = self.cacheKey
+        let offlineStore = offlineStore
+        _ = try await loadWithCacheAndOffline(
+            force: force,
+            offline: { offlineStore?.get(key: listCacheKey, as: [Conversation].self) },
+            isNetworkAvailable: !(networkStatus?.isOffline ?? false),
+            remoteUnavailableError: {
+                ChatOfflineError(message: "Conversations aren't available offline yet.")
             }
-            if let offline = offlineStore?.get(key: cacheKey, as: [Conversation].self) {
-                applyConversationListUpdate(offline, persist: false)
-                if !(networkStatus?.isOffline ?? false) {
-                    Task { [weak self] in
-                        await self?.refreshConversationsList()
-                    }
-                }
-                return
-            }
-        }
-        if networkStatus?.isOffline ?? false {
-            if let offline = offlineStore?.get(key: cacheKey, as: [Conversation].self) {
-                applyConversationListUpdate(offline, persist: false)
-                return
-            }
-            throw ChatOfflineError(message: "Conversations aren't available offline yet.")
-        }
-        let remote = try await fetchFromAPI()
-        applyConversationListUpdate(remote, persist: true)
-        cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
+        )
     }
 
     public func loadConversation(id: String, force: Bool = false) async throws {

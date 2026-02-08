@@ -45,20 +45,18 @@ import Combine
             errorMessage = nil
             let fallbackSelection: TaskSelection = .today
             let cacheKey = CacheKeys.tasksList(selectionKey: fallbackSelection.cacheKey)
-            if let cached: TaskListResponse = cache.get(key: cacheKey) {
-                apply(list: cached, persist: false)
-                Task { [weak self] in
-                    await self?.refresh(selection: fallbackSelection)
+            if applyCachedOrOffline(
+                force: force,
+                cacheKey: cacheKey,
+                type: TaskListResponse.self,
+                apply: { [weak self] list in
+                    self?.apply(list: list, persist: false)
+                },
+                refreshIfAvailable: { [weak self] in
+                    guard let self else { return }
+                    await self.refresh(selection: fallbackSelection)
                 }
-                return
-            }
-            if !force, let offline = offlineSnapshot(for: fallbackSelection) {
-                apply(list: offline, persist: false)
-                if networkStatus?.isNetworkAvailable ?? true {
-                    Task { [weak self] in
-                        await self?.refresh(selection: fallbackSelection)
-                    }
-                }
+            ) {
                 return
             }
             Task { [weak self] in
@@ -78,21 +76,18 @@ import Combine
             isLoading = true
             tasks = []
         }
-        if let cached {
-            apply(list: cached, persist: false)
-            Task { [weak self] in
-                await self?.refresh(selection: selection)
+        if applyCachedOrOffline(
+            force: force,
+            cacheKey: cacheKey,
+            type: TaskListResponse.self,
+            apply: { [weak self] list in
+                self?.apply(list: list, persist: false)
+            },
+            refreshIfAvailable: { [weak self] in
+                guard let self else { return }
+                await self.refresh(selection: selection)
             }
-            finishLoading(isSearch: selection.isSearch)
-            return
-        }
-        if !force, let offline = offlineSnapshot(for: selection) {
-            apply(list: offline, persist: false)
-            if networkStatus?.isNetworkAvailable ?? true {
-                Task { [weak self] in
-                    await self?.refresh(selection: selection)
-                }
-            }
+        ) {
             finishLoading(isSearch: selection.isSearch)
             return
         }
@@ -102,20 +97,18 @@ import Combine
 
     public func loadCounts(force: Bool = false) async {
         errorMessage = nil
-        if !force, let cached: TaskCountsResponse = cache.get(key: CacheKeys.tasksCounts) {
-            counts = cached
-            Task { [weak self] in
-                await self?.refreshCounts()
+        if applyCachedOrOffline(
+            force: force,
+            cacheKey: CacheKeys.tasksCounts,
+            type: TaskCountsResponse.self,
+            apply: { [weak self] response in
+                self?.counts = response
+            },
+            refreshIfAvailable: { [weak self] in
+                guard let self else { return }
+                await self.refreshCounts()
             }
-            return
-        }
-        if !force, let offline = offlineStore?.get(key: CacheKeys.tasksCounts, as: TaskCountsResponse.self) {
-            counts = offline
-            if networkStatus?.isNetworkAvailable ?? true {
-                Task { [weak self] in
-                    await self?.refreshCounts()
-                }
-            }
+        ) {
             return
         }
         await refreshCounts()
@@ -257,11 +250,33 @@ import Combine
         }
     }
 
-    private func offlineSnapshot(for selection: TaskSelection) -> TaskListResponse? {
-        guard let offlineStore else { return nil }
-        let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
-        return offlineStore.get(key: cacheKey, as: TaskListResponse.self)
+    @discardableResult
+    private func applyCachedOrOffline<T: Codable>(
+        force: Bool,
+        cacheKey: String,
+        type: T.Type,
+        apply: (T) -> Void,
+        refreshIfAvailable: @escaping @MainActor () async -> Void
+    ) -> Bool {
+        if !force, let cached: T = cache.get(key: cacheKey) {
+            apply(cached)
+            Task {
+                await refreshIfAvailable()
+            }
+            return true
+        }
+        if !force, let offline = offlineStore?.get(key: cacheKey, as: type) {
+            apply(offline)
+            if networkStatus?.isNetworkAvailable ?? true {
+                Task {
+                    await refreshIfAvailable()
+                }
+            }
+            return true
+        }
+        return false
     }
+
 }
 
 extension TasksStore {
@@ -479,10 +494,5 @@ private enum LocalTaskOperation {
 }
 
 extension TaskSelection {
-    var isSearch: Bool {
-        if case .search = self {
-            return true
-        }
-        return false
-    }
+    var isSearch: Bool { if case .search = self { true } else { false } }
 }

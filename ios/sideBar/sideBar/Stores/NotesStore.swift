@@ -76,28 +76,13 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     // MARK: - Public API
 
     public func loadTree(force: Bool = false) async throws {
-        if !force {
-            let cached: FileTree? = cache.get(key: cacheKey)
-            if let cached {
-                applyTreeUpdate(cached, persist: false)
-                Task { [weak self] in
-                    await self?.refreshTree()
-                }
-                return
-            }
-            if let offline = offlineStore?.get(key: cacheKey, as: FileTree.self) {
-                applyTreeUpdate(offline, persist: false)
-                if networkStatus?.isNetworkAvailable ?? true {
-                    Task { [weak self] in
-                        await self?.refreshTree()
-                    }
-                }
-                return
-            }
-        }
-        let remote = try await fetchFromAPI()
-        applyTreeUpdate(remote, persist: true)
-        cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
+        let treeCacheKey = self.cacheKey
+        let offlineStore = offlineStore
+        _ = try await loadWithCacheAndOffline(
+            force: force,
+            offline: { offlineStore?.get(key: treeCacheKey, as: FileTree.self) },
+            isNetworkAvailable: networkStatus?.isNetworkAvailable ?? true
+        )
     }
 
     public func loadArchivedTree(force: Bool = false) async throws {
