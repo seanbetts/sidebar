@@ -1,7 +1,12 @@
 import Foundation
+import OSLog
 import sideBarShared
 
 extension AppEnvironment {
+    private var authLogger: Logger {
+        Logger(subsystem: "sideBar", category: "AppEnvironmentAuth")
+    }
+
     public func refreshAuthState() {
         let previousAuthState = authState
         authState = container.authSession.authState
@@ -99,7 +104,16 @@ extension AppEnvironment {
                     id: taskId,
                     clientUpdatedAt: nil
                 )
-                _ = try? await container.tasksAPI.apply(TaskOperationBatch(operations: [operation]))
+                do {
+                    _ = try await container.tasksAPI.apply(TaskOperationBatch(operations: [operation]))
+                } catch {
+                    authLogger.error(
+                        "Failed to apply widget completion for task \(taskId, privacy: .public)"
+                    )
+                    authLogger.error(
+                        "Widget completion apply error: \(error.localizedDescription, privacy: .public)"
+                    )
+                }
             }
         }
 

@@ -1,6 +1,11 @@
 import Foundation
+import OSLog
 
 extension NotesStore {
+    private var offlineLogger: Logger {
+        Logger(subsystem: "sideBar", category: "NotesStoreOffline")
+    }
+
     public func cachedNotePayload(path: String) -> NotePayload? {
         notePayload(forPath: path)
     }
@@ -143,7 +148,13 @@ extension NotesStore {
         await writeQueue.deleteWrites(entityType: .note, entityId: conflict.entityId)
         if keepLocal {
             applyEditorUpdate(conflict.local)
-            try? await enqueueUpdate(noteId: conflict.entityId, content: conflict.local.content)
+            do {
+                try await enqueueUpdate(noteId: conflict.entityId, content: conflict.local.content)
+            } catch {
+                offlineLogger.error(
+                    "Failed to re-enqueue local note conflict resolution write: \(error.localizedDescription, privacy: .public)"
+                )
+            }
         } else {
             applyEditorUpdate(conflict.server)
         }
