@@ -425,9 +425,12 @@ public final class WebsitesViewModel: ObservableObject {
     private func makePendingWebsite(from url: URL) -> PendingWebsiteItem {
         let host = url.host ?? url.absoluteString
         let domain = host.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+        let pendingTitle = YouTubeURLPolicy.extractVideoId(from: url.absoluteString) == nil
+            ? "Reading..."
+            : "Watching..."
         return PendingWebsiteItem(
             id: "pending-\(UUID().uuidString)",
-            title: "Reading...",
+            title: pendingTitle,
             domain: domain,
             url: url.absoluteString
         )

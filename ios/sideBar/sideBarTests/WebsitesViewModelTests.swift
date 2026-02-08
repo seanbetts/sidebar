@@ -196,6 +196,7 @@ final class WebsitesViewModelTests: XCTestCase {
         await Task.yield()
 
         XCTAssertNotNil(viewModel.pendingWebsite)
+        XCTAssertEqual(viewModel.pendingWebsite?.title, "Reading...")
         XCTAssertEqual(viewModel.selectedWebsiteId, viewModel.pendingWebsite?.id)
         XCTAssertTrue(viewModel.isLoadingDetail)
 
@@ -203,6 +204,43 @@ final class WebsitesViewModelTests: XCTestCase {
             result: .success(WebsiteSaveResponse(
                 success: true,
                 data: WebsiteSaveData(id: "site-1", title: "Site", url: "https://example.com", domain: "example.com")
+            ))
+        )
+
+        _ = await saveTask.value
+        XCTAssertNil(viewModel.pendingWebsite)
+    }
+
+    func testSaveWebsiteSetsWatchingPendingTitleForYouTube() async {
+        let cache = InMemoryCacheClient()
+        let api = ControlledWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saveTask = Task {
+            await viewModel.saveWebsite(url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        }
+        await Task.yield()
+
+        XCTAssertNotNil(viewModel.pendingWebsite)
+        XCTAssertEqual(viewModel.pendingWebsite?.title, "Watching...")
+        XCTAssertEqual(viewModel.selectedWebsiteId, viewModel.pendingWebsite?.id)
+        XCTAssertTrue(viewModel.isLoadingDetail)
+
+        api.resumeSave(
+            result: .success(WebsiteSaveResponse(
+                success: true,
+                data: WebsiteSaveData(
+                    id: "site-yt-1",
+                    title: "Video",
+                    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    domain: "youtube.com"
+                )
             ))
         )
 
