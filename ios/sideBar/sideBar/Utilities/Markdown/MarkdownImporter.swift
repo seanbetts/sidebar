@@ -30,3 +30,31 @@ public struct MarkdownImporter {
         return MarkdownImportResult(attributedString: walker.result, frontmatter: split.frontmatter)
     }
 }
+
+@available(iOS 26.0, macOS 26.0, *)
+func splitFrontmatter(from markdown: String) -> (frontmatter: String?, body: String) {
+    let trimmed = markdown.trimmed
+    let marker = "---"
+    guard trimmed.hasPrefix(marker) else {
+        return (nil, markdown)
+    }
+
+    let lines = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
+    guard let first = lines.first, first.trimmed == marker else {
+        return (nil, markdown)
+    }
+
+    var endIndex: Int?
+    for (index, line) in lines.enumerated().dropFirst() where line.trimmed == marker {
+        endIndex = index
+        break
+    }
+
+    guard let endIndex else {
+        return (nil, markdown)
+    }
+
+    let frontmatterLines = lines[0...endIndex].joined(separator: "\n")
+    let bodyLines = lines.dropFirst(endIndex + 1).joined(separator: "\n")
+    return (frontmatterLines, bodyLines)
+}

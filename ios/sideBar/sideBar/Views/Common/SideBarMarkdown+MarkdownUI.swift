@@ -1,5 +1,6 @@
 #if canImport(MarkdownUI)
 import MarkdownUI
+import sideBarShared
 import SwiftUI
 
 struct CappedImageProvider: ImageProvider {

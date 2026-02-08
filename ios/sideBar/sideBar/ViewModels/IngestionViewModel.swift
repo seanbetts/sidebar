@@ -45,12 +45,12 @@ public final class IngestionViewModel: ObservableObject {
     @Published public var items: [IngestionListItem] = []
     @Published public var panelSearchQuery: String = ""
     @Published public private(set) var itemsVersion: Int = 0
-    @Published public private(set) var panelFilteredItems: [IngestionListItem] = []
-    @Published public private(set) var panelSearchResults: [IngestionListItem] = []
-    @Published public private(set) var panelPinnedItems: [IngestionListItem] = []
-    @Published public private(set) var panelCategorizedItems: [String: [IngestionListItem]] = [:]
-    @Published public private(set) var panelCategoriesWithItems: [String] = []
-    @Published public private(set) var panelNavigationFileIds: [String] = []
+    @Published public internal(set) var panelFilteredItems: [IngestionListItem] = []
+    @Published public internal(set) var panelSearchResults: [IngestionListItem] = []
+    @Published public internal(set) var panelPinnedItems: [IngestionListItem] = []
+    @Published public internal(set) var panelCategorizedItems: [String: [IngestionListItem]] = [:]
+    @Published public internal(set) var panelCategoriesWithItems: [String] = []
+    @Published public internal(set) var panelNavigationFileIds: [String] = []
     @Published public var activeMeta: IngestionMetaResponse?
     @Published public var selectedFileId: String?
     @Published public var selectedDerivativeKind: String?

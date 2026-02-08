@@ -1,4 +1,6 @@
+import Combine
 import Foundation
+import sideBarShared
 import SwiftUI
 #if os(iOS)
 import UIKit
@@ -82,7 +84,7 @@ final class CachedMarkdownRemoteImageLoader: ObservableObject {
 
 struct CachedMarkdownRemoteImage<Content: View>: View {
     let url: URL?
-    let content: (CachedMarkdownRemoteImagePhase) -> Content
+    @ViewBuilder let content: (CachedMarkdownRemoteImagePhase) -> Content
 
     @StateObject private var loader = CachedMarkdownRemoteImageLoader()
 
