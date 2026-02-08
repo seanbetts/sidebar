@@ -795,6 +795,27 @@ def test_cleanup_openai_markdown_removes_category_links_row():
     assert "Keep this paragraph." in cleaned
 
 
+def test_cleanup_github_markdown_removes_octicon_heading_anchors():
+    markdown = "\n".join(
+        [
+            "# Repo",
+            "",
+            '[<svg aria-hidden="true" class="octicon octicon-link"><path d="M0 0"></path></svg>](#models-selection--auth)',
+            "",
+            "## Models (selection + auth)",
+            "",
+            '[<svg aria-hidden="true" class="octicon octicon-mark-github"><path d="M0 0"></path></svg>](https://github.com)',
+        ]
+    )
+
+    cleaned = web_save_parser.cleanup_github_markdown(markdown)
+
+    assert "octicon-link" not in cleaned
+    assert "(#models-selection--auth)" not in cleaned
+    assert "## Models (selection + auth)" in cleaned
+    assert "octicon-mark-github" in cleaned
+
+
 def test_cleanup_substack_markdown_removes_chrome_and_svg_controls():
     markdown = "\n".join(
         [

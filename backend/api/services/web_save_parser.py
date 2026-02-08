@@ -21,6 +21,7 @@ from readability import Document
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_includes import apply_include_reinsertion
 from api.services.web_save_parser_cleanup import (
+    cleanup_github_markdown,
     cleanup_gizmodo_markdown,
     cleanup_openai_markdown,
     cleanup_verge_markdown,
@@ -687,6 +688,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         markdown = cleanup_youtube_markdown(markdown, source_url)
     if domain.endswith("openai.com"):
         markdown = cleanup_openai_markdown(markdown)
+    if domain.endswith("github.com"):
+        markdown = cleanup_github_markdown(markdown)
     if _should_apply_substack_cleanup(
         final_url=final_url,
         raw_html=raw_html_original,

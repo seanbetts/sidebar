@@ -310,6 +310,23 @@ def cleanup_openai_markdown(markdown: str) -> str:
     return "\n".join(output).strip()
 
 
+def cleanup_github_markdown(markdown: str) -> str:
+    """Remove GitHub heading-anchor icon lines from markdown output."""
+    if not markdown:
+        return markdown
+
+    heading_icon_link = re.compile(
+        r"^\[\s*<svg\b[^>]*\bocticon-link\b.*?</svg>\s*]\(#(?:[^)]+)?\)\s*$",
+        re.IGNORECASE,
+    )
+    cleaned_lines = [
+        line for line in markdown.splitlines() if not heading_icon_link.match(line)
+    ]
+    cleaned = "\n".join(cleaned_lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
 def extract_openai_body_html(raw_html: str) -> str | None:
     """Extract the main OpenAI article content from rendered HTML."""
     if not raw_html:
