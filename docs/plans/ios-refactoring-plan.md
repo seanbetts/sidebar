@@ -8,6 +8,8 @@ The codebase has grown to ~293 Swift files with accumulated technical debt that'
 
 **Structural (architectural):** Concurrency safety holes, state management races, code duplication across stores, inconsistent error handling, excessive coupling, and SwiftUI performance anti-patterns. These are the root causes of "whack-a-mole" bugs.
 
+Phases are numbered in execution order, optimized for a pre-launch, AI-agent-assisted workflow. File splits are pulled early because smaller files dramatically improve agent context and effectiveness for all subsequent phases.
+
 ---
 
 ## Phase 1 -- Lint & Tooling Tightening
@@ -177,9 +179,47 @@ Multiple ViewModels store `Task` dictionaries (`ChatViewModel.attachmentPollTask
 
 ---
 
-## Phase 3 -- State Management Fixes
+## Phase 3 -- Split Oversized Files
 
-### 3.1 Incomplete auth signout reset
+Smaller files fit in AI agent context windows and are easier to reason about. Do this early to improve agent effectiveness for all subsequent phases.
+
+### 3.1 Critical splits (files over 800 lines)
+
+| File | Lines | Proposed split |
+|------|-------|----------------|
+| `NativeMarkdownEditorViewModel.swift` | 2,200 | Split into `+Formatting`, `+ListHandling`, `+Selection`, `+UndoRedo` extensions |
+| `NotesView.swift` | 1,039 | Extract subviews into `NotesView+Components.swift` |
+| `WebsitesStore.swift` | 940 | Split into `+Offline`, `+Realtime`, `+Helpers` (mirroring IngestionStore pattern) |
+| `WebsitesView.swift` | 904 | Extract subviews and list components |
+| `NativeMarkdownTextView.swift` | 817 | Split platform-specific code into `+iOS` / `+macOS` |
+| `MarkdownImporter.swift` | 781 | Extract inline parsing into separate file |
+
+### 3.2 Secondary splits (600-800 lines)
+
+| File | Lines | Proposed split |
+|------|-------|----------------|
+| `WebsitesViewModel.swift` | 675 | Split into `+Public` / `+Private` |
+| `MarkdownExporter.swift` | 667 | Extract block-level export logic |
+| `FilesView.swift` | 654 | Extract subviews |
+| `WebsitesPanel.swift` | 607 | Extract row views and list sections |
+| `SupabaseRealtimeAdapter.swift` | 607 | Extract channel setup into `+Channels` |
+| `NotesStore.swift` | 601 | Already has `+Offline` -- split out `+Helpers` |
+| `FilesPanel.swift` | 600 | Extract row views |
+
+### 3.3 Organize loose Views
+
+45 files sit directly in `Views/` root. Group by feature:
+- `Views/Files/` -- FilesView, FileViewerComponents, SpreadsheetViewer, YouTubePlayerView
+- `Views/Websites/` -- WebsitesView, SiteHeaderBar
+- `Views/Tasks/` -- TasksView, TasksViewComponents
+- `Views/Settings/` -- SettingsSections
+- `Views/Common/` -- ContentViewComponents, ImagePicker, etc.
+
+---
+
+## Phase 4 -- State Management Fixes
+
+### 4.1 Incomplete auth signout reset
 
 **File:** `App/AppEnvironment+Auth.swift`
 **Severity:** HIGH
@@ -188,7 +228,7 @@ On signout, `ChatViewModel` and `TasksViewModel` are NOT reset. `OfflineStore` i
 
 **Fix:** Audit every ViewModel and Store for a `reset()` method. Call all of them in the signout handler. Add a unit test that verifies signout clears all observable state.
 
-### 3.2 Store → ViewModel state duplication
+### 4.2 Store → ViewModel state duplication
 
 **Severity:** MEDIUM (maintainability)
 
@@ -211,7 +251,7 @@ class TasksViewModel: ObservableObject {
 
 **Fix:** For each ViewModel, evaluate which `@Published` properties are genuine UI-only state vs. copies of Store data. For copies, have the View observe the Store directly (or use a computed property that reads from the store).
 
-### 3.3 Adopt `LoadableViewModel` base class
+### 4.3 Adopt `LoadableViewModel` base class
 
 **File:** `Utilities/LoadableState.swift`
 
@@ -219,7 +259,7 @@ A `LoadableViewModel` base class already exists but is **not used by any ViewMod
 
 **Fix:** Adopt `LoadableViewModel` in ViewModels that manually implement loading states (most of them). This eliminates ~20-30 lines of boilerplate per ViewModel.
 
-### 3.4 AppEnvironment `@Published` sprawl
+### 4.4 AppEnvironment `@Published` sprawl
 
 **File:** `App/AppEnvironment.swift`
 
@@ -230,13 +270,13 @@ A `LoadableViewModel` base class already exists but is **not used by any ViewMod
 - Group related properties into sub-objects (e.g., `AuthState`, `NavigationState`) to reduce observation breadth
 - Consider `@Observable` migration (iOS 17+) for finer-grained observation
 
-### 3.5 Navigation state centralization
+### 4.5 Navigation state centralization
 
 Navigation state is scattered: some in `AppEnvironment`, some in `NavigationCoordinator`, some as local `@State` in Views, and some as `@Published` in ViewModels.
 
 **Fix:** Audit all navigation-related state and consolidate into `NavigationCoordinator`. Use `NavigationPath` (iOS 16+) for programmatic navigation.
 
-### 3.6 NotesStore archived tree refresh infinite wait
+### 4.6 NotesStore archived tree refresh infinite wait
 
 **File:** `Stores/NotesStore.swift`
 **Severity:** MEDIUM
@@ -253,7 +293,7 @@ private func waitForArchivedTreeRefresh() async {
 }
 ```
 
-### 3.7 Realtime events racing with conversation load
+### 4.7 Realtime events racing with conversation load
 
 **File:** `ViewModels/Chat/ChatViewModel+Streaming.swift`
 **Severity:** MEDIUM
@@ -261,45 +301,6 @@ private func waitForArchivedTreeRefresh() async {
 `reconcileMessages()` appends the in-flight streaming message to the server response. If `ChatStore.loadConversation()` refreshes the message list while streaming is active, the streaming message can be duplicated or orphaned depending on timing.
 
 **Fix:** Gate reconciliation on a `isReconciling` flag, or use the streaming message's ID to deduplicate before appending.
-
----
-
-## Phase 4 -- Code Deduplication
-
-### 4.1 Store load/cache/offline pattern
-
-Four stores (`WebsitesStore`, `NotesStore`, `IngestionStore`, `TasksStore`) independently implement the same ~60-line pattern:
-1. Check cache → return if fresh
-2. Fetch from API
-3. Save to cache
-4. Handle offline fallback
-
-**Fix:** Extract into a generic method on `CachedStoreBase<T>`:
-```swift
-func loadWithCache(
-    cacheKey: String,
-    fetch: () async throws -> [T],
-    transform: ([T]) -> [T] = { $0 }
-) async throws -> [T]
-```
-
-### 4.2 Offline enqueue consolidation
-
-Each store has its own `enqueueOffline(operation:)` implementation with identical JSON encoding and WriteQueue insertion logic.
-
-**Fix:** Add a generic `enqueueOfflineOperation<P: Encodable>(type:payload:)` method on `CachedStoreBase`.
-
-### 4.3 API query building
-
-URL query parameter construction (pagination, filtering, sorting) is duplicated across store fetch methods.
-
-**Fix:** Create a `QueryBuilder` utility or extend `APIClient` with typed query helpers.
-
-### 4.4 Archived item retention logic
-
-Logic for retaining recently-archived items in the UI (grace period before removal) is duplicated across stores.
-
-**Fix:** Extract into a shared `ArchivedRetentionPolicy` that stores can reference.
 
 ---
 
@@ -448,9 +449,48 @@ Four `.onChange` modifiers fire in sequence on the same view (`selectedConversat
 
 ---
 
-## Phase 7 -- Coupling Reduction
+## Phase 7 -- Code Deduplication
 
-### 7.1 ChatViewModel dependency explosion
+### 7.1 Store load/cache/offline pattern
+
+Four stores (`WebsitesStore`, `NotesStore`, `IngestionStore`, `TasksStore`) independently implement the same ~60-line pattern:
+1. Check cache → return if fresh
+2. Fetch from API
+3. Save to cache
+4. Handle offline fallback
+
+**Fix:** Extract into a generic method on `CachedStoreBase<T>`:
+```swift
+func loadWithCache(
+    cacheKey: String,
+    fetch: () async throws -> [T],
+    transform: ([T]) -> [T] = { $0 }
+) async throws -> [T]
+```
+
+### 7.2 Offline enqueue consolidation
+
+Each store has its own `enqueueOffline(operation:)` implementation with identical JSON encoding and WriteQueue insertion logic.
+
+**Fix:** Add a generic `enqueueOfflineOperation<P: Encodable>(type:payload:)` method on `CachedStoreBase`.
+
+### 7.3 API query building
+
+URL query parameter construction (pagination, filtering, sorting) is duplicated across store fetch methods.
+
+**Fix:** Create a `QueryBuilder` utility or extend `APIClient` with typed query helpers.
+
+### 7.4 Archived item retention logic
+
+Logic for retaining recently-archived items in the UI (grace period before removal) is duplicated across stores.
+
+**Fix:** Extract into a shared `ArchivedRetentionPolicy` that stores can reference.
+
+---
+
+## Phase 8 -- Coupling Reduction
+
+### 8.1 ChatViewModel dependency explosion
 
 `ChatViewModel` has 13+ injected dependencies in its `init`. This makes it hard to test, hard to reason about, and tightly coupled to the entire app.
 
@@ -459,13 +499,13 @@ Four `.onChange` modifiers fire in sequence on the same view (`selectedConversat
 - `ChatStorageCoordinator` (NotesStore, WebsitesStore, IngestionStore)
 - `ChatUIState` (navigation, selection, formatting state)
 
-### 7.2 Cross-feature store coupling
+### 8.2 Cross-feature store coupling
 
 `ChatViewModel` directly references `NotesStore`, `WebsitesStore`, and `IngestionStore` for context attachment. ViewModels reference other ViewModels (`NotesEditorViewModel` → `NotesViewModel`).
 
 **Fix:** Introduce a `ContextProvider` protocol that abstracts the "get attachable items" query. Each store conforms independently. ChatViewModel depends on `[ContextProvider]` instead of concrete stores.
 
-### 7.3 Inconsistent MVVM boundaries
+### 8.3 Inconsistent MVVM boundaries
 
 `ScratchpadPopoverView` observes both its ViewModel AND a Store directly, bypassing the ViewModel layer.
 
@@ -473,71 +513,18 @@ Four `.onChange` modifiers fire in sequence on the same view (`selectedConversat
 
 ---
 
-## Phase 8 -- Split Oversized Files
+## Phase 9 -- Complexity Reduction
 
-Smaller files fit in AI agent context windows and are easier to reason about. Do this early (after concurrency fixes) to improve agent effectiveness for all subsequent phases.
+### 9.1 Address cyclomatic complexity suppressions
 
-### 8.1 Critical splits (files over 800 lines)
+The 3 `swiftlint:disable cyclomatic_complexity` spots:
+- `NativeMarkdownEditorViewModel.swift:127` -- `applyFormatting()` switch with 10 cases. Extract each case into a helper method.
+- `MarkdownExporter.swift:371` -- `prefix(for:)` with heading/list cases. Convert to dictionary lookup.
+- `MarkdownImporter.swift:343` -- Large inline parsing switch. Extract as part of Phase 3 split.
 
-| File | Lines | Proposed split |
-|------|-------|----------------|
-| `NativeMarkdownEditorViewModel.swift` | 2,200 | Split into `+Formatting`, `+ListHandling`, `+Selection`, `+UndoRedo` extensions |
-| `NotesView.swift` | 1,039 | Extract subviews into `NotesView+Components.swift` |
-| `WebsitesStore.swift` | 940 | Split into `+Offline`, `+Realtime`, `+Helpers` (mirroring IngestionStore pattern) |
-| `WebsitesView.swift` | 904 | Extract subviews and list components |
-| `NativeMarkdownTextView.swift` | 817 | Split platform-specific code into `+iOS` / `+macOS` |
-| `MarkdownImporter.swift` | 781 | Extract inline parsing into separate file |
+### 9.2 Reduce nesting in WebsitesViewModel
 
-### 8.2 Secondary splits (600-800 lines)
-
-| File | Lines | Proposed split |
-|------|-------|----------------|
-| `WebsitesViewModel.swift` | 675 | Split into `+Public` / `+Private` |
-| `MarkdownExporter.swift` | 667 | Extract block-level export logic |
-| `FilesView.swift` | 654 | Extract subviews |
-| `WebsitesPanel.swift` | 607 | Extract row views and list sections |
-| `SupabaseRealtimeAdapter.swift` | 607 | Extract channel setup into `+Channels` |
-| `NotesStore.swift` | 601 | Already has `+Offline` -- split out `+Helpers` |
-| `FilesPanel.swift` | 600 | Extract row views |
-
-### 8.3 Organize loose Views
-
-45 files sit directly in `Views/` root. Group by feature:
-- `Views/Files/` -- FilesView, FileViewerComponents, SpreadsheetViewer, YouTubePlayerView
-- `Views/Websites/` -- WebsitesView, SiteHeaderBar
-- `Views/Tasks/` -- TasksView, TasksViewComponents
-- `Views/Settings/` -- SettingsSections
-- `Views/Common/` -- ContentViewComponents, ImagePicker, etc.
-
----
-
-## Phase 9 -- Doc Comments
-
-### 9.1 Models (highest gap -- 449 public declarations, ~0% covered)
-
-Add `///` doc comments to all public types and stored properties in:
-- `FileModels.swift` (93 public decls)
-- `WebsiteModels.swift` (88)
-- `TaskModels.swift` (83)
-- `ChatModels.swift` (53)
-- `SettingsModels.swift` (33)
-- Remaining model files (~92 decls across 8 files)
-
-### 9.2 Stores (45% covered -- fill gaps)
-
-Focus on undocumented public methods in:
-- `IngestionStore+Realtime.swift` (11 undocumented)
-- `NotesStore+Offline.swift` (11 undocumented)
-
-### 9.3 App layer (6% covered)
-
-- `AppEnvironment.swift` (25 undocumented public properties)
-- `ServiceContainer.swift` (22 undocumented)
-
-### 9.4 sideBarShared (17% covered)
-
-- `PendingShareStore.swift` (23 undocumented)
-- `ExtensionEventStore.swift` (14 undocumented)
+100 lines with 4+ indentation levels. Extract nested logic into named helper methods.
 
 ---
 
@@ -559,42 +546,39 @@ After fixing Phase 2 concurrency issues, add tests that exercise concurrent acce
 
 ### 10.3 Auth signout integration test
 
-After Phase 3.1, add a test that signs out and verifies ALL observable state is cleared (no leakage across sessions).
+After Phase 4.1, add a test that signs out and verifies ALL observable state is cleared (no leakage across sessions).
 
 ---
 
-## Phase 11 -- Complexity Reduction
+## Phase 11 -- Doc Comments
 
-### 11.1 Address cyclomatic complexity suppressions
+Best done last so comments reflect the final code shape after all refactoring.
 
-The 3 `swiftlint:disable cyclomatic_complexity` spots:
-- `NativeMarkdownEditorViewModel.swift:127` -- `applyFormatting()` switch with 10 cases. Extract each case into a helper method.
-- `MarkdownExporter.swift:371` -- `prefix(for:)` with heading/list cases. Convert to dictionary lookup.
-- `MarkdownImporter.swift:343` -- Large inline parsing switch. Extract as part of Phase 8 split.
+### 11.1 Models (highest gap -- 449 public declarations, ~0% covered)
 
-### 11.2 Reduce nesting in WebsitesViewModel
+Add `///` doc comments to all public types and stored properties in:
+- `FileModels.swift` (93 public decls)
+- `WebsiteModels.swift` (88)
+- `TaskModels.swift` (83)
+- `ChatModels.swift` (53)
+- `SettingsModels.swift` (33)
+- Remaining model files (~92 decls across 8 files)
 
-100 lines with 4+ indentation levels. Extract nested logic into named helper methods.
+### 11.2 Stores (45% covered -- fill gaps)
 
----
+Focus on undocumented public methods in:
+- `IngestionStore+Realtime.swift` (11 undocumented)
+- `NotesStore+Offline.swift` (11 undocumented)
 
-## Execution Order
+### 11.3 App layer (6% covered)
 
-Optimized for a pre-launch, AI-agent-assisted workflow. File splits are pulled early because smaller files dramatically improve agent context and effectiveness for all subsequent phases.
+- `AppEnvironment.swift` (25 undocumented public properties)
+- `ServiceContainer.swift` (22 undocumented)
 
-1. **Phase 1** (Lint config) -- Sets guardrails so debt stops growing. Quick win.
-2. **Phase 2** (Concurrency safety) -- Fix real data race bugs before building on top of them. APIClient auth race (2.1) and IngestionUploadManager (2.2) are the highest-risk items.
-3. **Phase 8** (File splits) -- **Do early.** Getting files under 500 lines improves AI agent effectiveness for every phase that follows. Low regression risk since it's structural, not behavioral.
-4. **Phase 3** (State management) -- Auth signout reset (3.1) is a privacy issue; the rest reduces bug surface for future work.
-5. **Phase 5** (Error handling) -- WriteQueue silent failures (5.1) and fire-and-forget Tasks (5.2) are hiding real problems.
-6. **Phase 6** (SwiftUI performance) -- The `.onChange` array creation and in-body sorts cause visible jank.
-7. **Phase 4** (Code deduplication) -- Consolidating store patterns reduces maintenance burden and makes future changes safer.
-8. **Phase 7** (Coupling reduction) -- Improves testability and makes feature work cleaner.
-9. **Phase 11** (Complexity) -- Remove cyclomatic complexity suppressions and reduce nesting.
-10. **Phase 10** (Tests) -- Add coverage for untested ViewModels and regression tests for earlier fixes.
-11. **Phase 9** (Doc comments) -- Mechanical, best done last so comments reflect the final code shape.
+### 11.4 sideBarShared (17% covered)
 
-Each phase should be committed separately for easy review/revert.
+- `PendingShareStore.swift` (23 undocumented)
+- `ExtensionEventStore.swift` (14 undocumented)
 
 ---
 
@@ -606,5 +590,5 @@ After each phase:
 - `xcodebuild build` succeeds for both iOS and macOS targets
 - Existing tests still pass
 - For Phase 2 (concurrency): manual testing of auth refresh, upload, and offline flows
-- For Phase 3 (state): manual testing of signout → signin with different account
+- For Phase 4 (state): manual testing of signout → signin with different account
 - For Phase 6 (performance): profile with Instruments Time Profiler on list views with 100+ items
