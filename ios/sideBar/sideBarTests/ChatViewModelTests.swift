@@ -169,21 +169,7 @@ final class ChatViewModelTests: XCTestCase {
             listResult: .success([]),
             addMessageResult: .failure(MockError.forced)
         )
-        let chatAPI = ChatAPI(client: Self.sharedAPIClient)
-        let themeManager = Self.sharedThemeManager
-        let streamClient = MockChatStreamClient()
-        let chatStore = ChatStore(conversationsAPI: api, cache: cache)
-        let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
-        let viewModel = ChatViewModel(
-            chatAPI: chatAPI,
-            conversationsAPI: api,
-            ingestionAPI: ingestionAPI,
-            cache: cache,
-            themeManager: themeManager,
-            streamClient: streamClient,
-            chatStore: chatStore,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
+        let viewModel = makeViewModel(api: api, cache: cache)
 
         let message = Message(
             id: "m1",
@@ -204,19 +190,9 @@ final class ChatViewModelTests: XCTestCase {
     func testLoadConversationOfflineWithoutCacheSetsError() async {
         let cache = TestCacheClient()
         let api = ConversationsAPISpy()
-        let chatAPI = ChatAPI(client: Self.sharedAPIClient)
-        let themeManager = Self.sharedThemeManager
-        let streamClient = MockChatStreamClient()
-        let chatStore = ChatStore(conversationsAPI: api, cache: cache)
-        let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
-        let viewModel = ChatViewModel(
-            chatAPI: chatAPI,
-            conversationsAPI: api,
-            ingestionAPI: ingestionAPI,
+        let viewModel = makeViewModel(
+            api: api,
             cache: cache,
-            themeManager: themeManager,
-            streamClient: streamClient,
-            chatStore: chatStore,
             networkStatus: TestNetworkStatus(isNetworkAvailable: false)
         )
 
@@ -321,9 +297,10 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(reconciled.first?.id, "assistant-server")
     }
 
-    private func makeViewModel(
-        api: MockConversationsAPI,
+    private func makeViewModel<API: ConversationsProviding & ConversationsAPIProviding>(
+        api: API,
         cache: CacheClient,
+        networkStatus: TestNetworkStatus = TestNetworkStatus(isNetworkAvailable: true),
         scratchpadStore: ScratchpadStore? = nil
     ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
@@ -333,18 +310,28 @@ final class ChatViewModelTests: XCTestCase {
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
+        let networkStatus = TestNetworkStatus(isNetworkAvailable: true)
         let viewModel = ChatViewModel(
-            chatAPI: chatAPI,
-            conversationsAPI: api,
-            ingestionAPI: ingestionAPI,
-            cache: cache,
-            themeManager: themeManager,
-            streamClient: streamClient,
-            chatStore: chatStore,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
-            userDefaults: defaults,
-            clock: { Date(timeIntervalSince1970: 0) },
-            scratchpadStore: scratchpadStore
+            network: ChatNetworkCoordinator(
+                chatAPI: chatAPI,
+                conversationsAPI: api,
+                ingestionAPI: ingestionAPI,
+                streamClient: streamClient,
+                networkStatus: networkStatus
+            ),
+            storage: ChatStorageCoordinator(
+                cache: cache,
+                chatStore: chatStore,
+                notesStore: nil,
+                websitesStore: nil,
+                ingestionStore: nil,
+                scratchpadStore: scratchpadStore
+            ),
+            ui: ChatUICoordinator(
+                themeManager: themeManager,
+                userDefaults: defaults,
+                clock: { Date(timeIntervalSince1970: 0) }
+            )
         )
         Self.retainedViewModels.append(viewModel)
         return viewModel

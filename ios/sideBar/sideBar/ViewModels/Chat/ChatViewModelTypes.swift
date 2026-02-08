@@ -1,5 +1,41 @@
 import Foundation
 
+struct ChatNetworkCoordinator {
+    let chatAPI: ChatAPI
+    let conversationsAPI: ConversationsAPIProviding
+    let ingestionAPI: IngestionAPI
+    let streamClient: ChatStreamClient
+    let networkStatus: any NetworkStatusProviding
+}
+
+struct ChatStorageCoordinator {
+    let cache: CacheClient
+    let chatStore: ChatStore
+    let notesStore: NotesStore?
+    let websitesStore: WebsitesStore?
+    let ingestionStore: IngestionStore?
+    let scratchpadStore: ScratchpadStore?
+}
+
+struct ChatUICoordinator {
+    let themeManager: ThemeManager
+    let toastCenter: ToastCenter?
+    let userDefaults: UserDefaults
+    let clock: () -> Date
+
+    init(
+        themeManager: ThemeManager,
+        toastCenter: ToastCenter? = nil,
+        userDefaults: UserDefaults = .standard,
+        clock: @escaping () -> Date = Date.init
+    ) {
+        self.themeManager = themeManager
+        self.toastCenter = toastCenter
+        self.userDefaults = userDefaults
+        self.clock = clock
+    }
+}
+
 /// Represents ChatActiveTool.
 public struct ChatActiveTool: Equatable {
     public let name: String

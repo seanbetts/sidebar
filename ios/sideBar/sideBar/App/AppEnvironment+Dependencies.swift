@@ -104,19 +104,25 @@ extension AppEnvironment {
         websitesStore.attachWriteQueue(writeQueue)
         ingestionStore.attachWriteQueue(writeQueue)
         let chatViewModel = ChatViewModel(
-            chatAPI: container.chatAPI,
-            conversationsAPI: container.conversationsAPI,
-            ingestionAPI: container.ingestionAPI,
-            cache: container.cacheClient,
-            notesStore: notesStore,
-            websitesStore: websitesStore,
-            ingestionStore: ingestionStore,
-            themeManager: themeManager,
-            streamClient: container.makeChatStreamClient(handler: nil),
-            chatStore: chatStore,
-            networkStatus: connectivityMonitor,
-            toastCenter: toastCenter,
-            scratchpadStore: scratchpadStore
+            network: ChatNetworkCoordinator(
+                chatAPI: container.chatAPI,
+                conversationsAPI: container.conversationsAPI,
+                ingestionAPI: container.ingestionAPI,
+                streamClient: container.makeChatStreamClient(handler: nil),
+                networkStatus: connectivityMonitor
+            ),
+            storage: ChatStorageCoordinator(
+                cache: container.cacheClient,
+                chatStore: chatStore,
+                notesStore: notesStore,
+                websitesStore: websitesStore,
+                ingestionStore: ingestionStore,
+                scratchpadStore: scratchpadStore
+            ),
+            ui: ChatUICoordinator(
+                themeManager: themeManager,
+                toastCenter: toastCenter
+            )
         )
         let temporaryStore = TemporaryFileStore.shared
         let notesViewModel = NotesViewModel(

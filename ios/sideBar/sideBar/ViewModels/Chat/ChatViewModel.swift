@@ -25,14 +25,18 @@ import Foundation
 /// ## Usage
 /// ```swift
 /// let viewModel = ChatViewModel(
-///     chatAPI: api,
-///     conversationsAPI: convAPI,
-///     ingestionAPI: ingestionAPI,
-///     cache: cache,
-///     themeManager: themeManager,
-///     streamClient: streamClient,
-///     chatStore: chatStore,
-///     networkStatus: connectivityMonitor
+///     network: ChatNetworkCoordinator(
+///         chatAPI: chatAPI,
+///         conversationsAPI: conversationsAPI,
+///         ingestionAPI: ingestionAPI,
+///         streamClient: streamClient,
+///         networkStatus: connectivityMonitor
+///     ),
+///     storage: ChatStorageCoordinator(
+///         cache: cache,
+///         chatStore: chatStore
+///     ),
+///     ui: ChatUICoordinator(themeManager: themeManager)
 /// )
 /// await viewModel.loadConversations()
 /// await viewModel.selectConversation(id: conversationId)
@@ -50,21 +54,27 @@ import Foundation
     @Published public var activeTool: ChatActiveTool?
     @Published public var promptPreview: ChatPromptPreview?
 
-    let chatAPI: ChatAPI
-    let conversationsAPI: ConversationsAPIProviding
-    let cache: CacheClient
-    let ingestionAPI: IngestionAPI
-    let notesStore: NotesStore?
-    let websitesStore: WebsitesStore?
-    let ingestionStore: IngestionStore?
-    let themeManager: ThemeManager
-    let streamClient: ChatStreamClient
-    let chatStore: ChatStore
-    let networkStatus: any NetworkStatusProviding
-    let userDefaults: UserDefaults
-    let toastCenter: ToastCenter?
-    let clock: () -> Date
-    let scratchpadStore: ScratchpadStore?
+    let network: ChatNetworkCoordinator
+    let storage: ChatStorageCoordinator
+    let ui: ChatUICoordinator
+
+    var chatAPI: ChatAPI { network.chatAPI }
+    var conversationsAPI: ConversationsAPIProviding { network.conversationsAPI }
+    var ingestionAPI: IngestionAPI { network.ingestionAPI }
+    var streamClient: ChatStreamClient { network.streamClient }
+    var networkStatus: any NetworkStatusProviding { network.networkStatus }
+
+    var cache: CacheClient { storage.cache }
+    var chatStore: ChatStore { storage.chatStore }
+    var notesStore: NotesStore? { storage.notesStore }
+    var websitesStore: WebsitesStore? { storage.websitesStore }
+    var ingestionStore: IngestionStore? { storage.ingestionStore }
+    var scratchpadStore: ScratchpadStore? { storage.scratchpadStore }
+
+    var themeManager: ThemeManager { ui.themeManager }
+    var toastCenter: ToastCenter? { ui.toastCenter }
+    var userDefaults: UserDefaults { ui.userDefaults }
+    var clock: () -> Date { ui.clock }
 
     var currentStreamMessageId: String?
     var streamingConversationId: String?
@@ -75,37 +85,13 @@ import Foundation
     var attachmentPollTasks: [String: Task<Void, Never>] = [:]
 
     public init(
-        chatAPI: ChatAPI,
-        conversationsAPI: ConversationsAPIProviding,
-        ingestionAPI: IngestionAPI,
-        cache: CacheClient,
-        notesStore: NotesStore? = nil,
-        websitesStore: WebsitesStore? = nil,
-        ingestionStore: IngestionStore? = nil,
-        themeManager: ThemeManager,
-        streamClient: ChatStreamClient,
-        chatStore: ChatStore,
-        networkStatus: any NetworkStatusProviding,
-        toastCenter: ToastCenter? = nil,
-        userDefaults: UserDefaults = .standard,
-        clock: @escaping () -> Date = Date.init,
-        scratchpadStore: ScratchpadStore? = nil
+        network: ChatNetworkCoordinator,
+        storage: ChatStorageCoordinator,
+        ui: ChatUICoordinator
     ) {
-        self.chatAPI = chatAPI
-        self.conversationsAPI = conversationsAPI
-        self.cache = cache
-        self.ingestionAPI = ingestionAPI
-        self.notesStore = notesStore
-        self.websitesStore = websitesStore
-        self.ingestionStore = ingestionStore
-        self.themeManager = themeManager
-        self.streamClient = streamClient
-        self.chatStore = chatStore
-        self.networkStatus = networkStatus
-        self.userDefaults = userDefaults
-        self.toastCenter = toastCenter
-        self.clock = clock
-        self.scratchpadStore = scratchpadStore
+        self.network = network
+        self.storage = storage
+        self.ui = ui
         self.streamClient.handler = self
         self.selectedConversationId = nil
 
