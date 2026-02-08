@@ -795,6 +795,45 @@ def test_cleanup_openai_markdown_removes_category_links_row():
     assert "Keep this paragraph." in cleaned
 
 
+def test_cleanup_substack_markdown_removes_chrome_and_svg_controls():
+    markdown = "\n".join(
+        [
+            "*I’m excited about the new",
+            "[![](https://img.example.com/a.jpg)",
+            "Codex App](https://openai.com/index/introducing-the-codex-app/).",
+            "",
+            "[![](https://substack-post-media.s3.amazonaws.com/public/images/hero.jpeg)",
+            "<svg viewBox='0 0 24 24'><path d='M1 1'></path></svg>](https://substackcdn.com/image/fetch/$s_abc/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fhero.jpeg)",
+            "",
+            "[Subscribe now](https://www.ignorance.ai/subscribe)",
+            "",
+            "[<svg viewBox='0 0 24 24'><path d='M1 1'></path></svg>](https://substackcdn.com/image/fetch/abc)",
+            "",
+            "Thanks for reading Artificial Ignorance! This post is public so feel free to share it.",
+            "[Share](https://www.ignorance.ai/p/foo?action=share)",
+            "",
+            "![](https://substack-post-media.s3.amazonaws.com/public/images/keep.jpeg)",
+        ]
+    )
+
+    cleaned = web_save_parser.cleanup_substack_markdown(markdown)
+
+    assert "[Subscribe now]" not in cleaned
+    assert "[Share]" not in cleaned
+    assert "<svg" not in cleaned
+    assert "![](https://img.example.com/a.jpg)" not in cleaned
+    assert "](https://substackcdn.com/image/fetch/" not in cleaned
+    assert (
+        "![](https://substack-post-media.s3.amazonaws.com/public/images/hero.jpeg)"
+        in cleaned
+    )
+    assert "[Codex App](https://openai.com/index/introducing-the-codex-app/)" in cleaned
+    assert (
+        "![](https://substack-post-media.s3.amazonaws.com/public/images/keep.jpeg)"
+        in cleaned
+    )
+
+
 def test_insert_youtube_placeholders_handles_comment_sibling():
     extracted_html = "<article><p>Anchor</p></article>"
     raw_html = """
@@ -1698,6 +1737,125 @@ def test_parse_url_local_applies_substack_host_rules_on_custom_domain(monkeypatc
 
     assert "Primary article body" in parsed.content
     assert "Subscribe now" not in parsed.content
+
+
+def test_parse_url_local_cleans_substack_custom_domain_markdown_chrome(monkeypatch):
+    html = """
+    <html>
+      <head><title>Custom Substack</title></head>
+      <body>
+        <article><p>Fallback body</p></article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.ignorance.ai/p/custom-domain-post", False
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "title": "Custom Substack",
+                "canonical_url": "https://www.ignorance.ai/p/custom-domain-post",
+                "body_html": (
+                    "<p>I’m excited about the new "
+                    "<a href='https://openai.com/index/introducing-the-codex-app/'>"
+                    "<img src='https://substack-post-media.s3.amazonaws.com/public/images/inline.jpeg'/>"
+                    "Codex App</a>.</p>"
+                    "<p><a href='https://substackcdn.com/image/fetch/$s_abc/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fhero.jpeg'>"
+                    "<img src='https://substack-post-media.s3.amazonaws.com/public/images/hero.jpeg'/>"
+                    "<svg viewBox='0 0 24 24'><path d='M1 1'></path></svg>"
+                    "</a></p>"
+                    "<p><a href='https://www.ignorance.ai/subscribe'>Subscribe now</a></p>"
+                    "<p><a href='https://substackcdn.com/image/fetch/abc'>"
+                    "<svg viewBox='0 0 24 24'><path d='M1 1'></path></svg>"
+                    "</a></p>"
+                    "<p>Thanks for reading Artificial Ignorance! This post is public so feel free to share it.</p>"
+                    "<p><a href='https://www.ignorance.ai/p/custom-domain-post?action=share'>Share</a></p>"
+                ),
+            }
+
+    def fake_get(url: str, headers=None, timeout: int = 30):
+        return FakeResponse()
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser.requests, "get", fake_get)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+
+    parsed = web_save_parser.parse_url_local("ignorance.ai/p/custom-domain-post")
+
+    assert "<svg" not in parsed.content
+    assert "Subscribe now" not in parsed.content
+    assert "\n[Share](" not in parsed.content
+    assert "new ![](" not in parsed.content
+    assert "](https://substackcdn.com/image/fetch/" not in parsed.content
+    assert "[](https://substackcdn.com/image/fetch/" not in parsed.content
+
+
+def test_parse_url_local_cleans_substack_custom_domain_when_api_unavailable(
+    monkeypatch,
+):
+    html = """
+    <html>
+      <head>
+        <title>Custom Substack</title>
+        <meta name="substack:publication_id" content="12345" />
+      </head>
+      <body>
+        <article>
+          <p>I’m excited about the new
+            <a href="https://openai.com/index/introducing-the-codex-app/">
+              <img src="https://substack-post-media.s3.amazonaws.com/public/images/inline.jpeg"/>
+              Codex App
+            </a>.
+          </p>
+          <p>
+            <a href="https://substackcdn.com/image/fetch/$s_abc/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fhero.jpeg">
+              <img src="https://substack-post-media.s3.amazonaws.com/public/images/hero.jpeg"/>
+              <svg viewBox="0 0 24 24"><path d="M1 1"></path></svg>
+            </a>
+          </p>
+          <p><a href="https://www.ignorance.ai/subscribe">Subscribe now</a></p>
+          <p>Thanks for reading Artificial Ignorance! This post is public so feel free to share it.</p>
+          <p><a href="https://www.ignorance.ai/p/custom-domain-post?action=share">Share</a></p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.ignorance.ai/p/custom-domain-post", False
+
+    def fake_get(url: str, headers=None, timeout: int = 30):
+        raise web_save_parser.requests.RequestException("Substack API unavailable")
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser.requests, "get", fake_get)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+
+    parsed = web_save_parser.parse_url_local("ignorance.ai/p/custom-domain-post")
+
+    assert "<svg" not in parsed.content
+    assert "\n[Subscribe now](" not in parsed.content
+    assert "\n[Share](" not in parsed.content
+    assert "new ![](" not in parsed.content
+    assert "](https://substackcdn.com/image/fetch/" not in parsed.content
+    assert "[](https://substackcdn.com/image/fetch/" not in parsed.content
+    assert (
+        "![](https://substack-post-media.s3.amazonaws.com/public/images/hero.jpeg)"
+        in parsed.content
+    )
 
 
 def test_parse_url_local_scopes_readability_with_selector_override(monkeypatch):
