@@ -22,10 +22,25 @@ struct CompleteTaskIntent: AppIntent {
         // Record the completion for the main app to sync
         WidgetDataManager.shared.recordTaskCompletion(taskId: taskId)
 
-        // Update widget data optimistically (remove the completed task)
+        // Update widget data optimistically (show checked state before disappearing)
         let data = WidgetDataManager.shared.loadTodayTasks()
-        let updatedTasks = data.tasks.filter { $0.id != taskId }
-        WidgetDataManager.shared.updateTodayTasks(updatedTasks, totalCount: max(0, data.totalCount - 1))
+        let wasAlreadyCompleted = data.tasks.first(where: { $0.id == taskId })?.isCompleted ?? false
+        let completedAt = Date()
+        let updatedTasks = data.tasks.map { task in
+            guard task.id == taskId else { return task }
+            return WidgetTask(
+                id: task.id,
+                title: task.title,
+                isCompleted: true,
+                completedAt: completedAt,
+                projectName: task.projectName,
+                groupName: task.groupName,
+                hasNotes: task.hasNotes,
+                deadline: task.deadline
+            )
+        }
+        let nextTotalCount = wasAlreadyCompleted ? data.totalCount : max(0, data.totalCount - 1)
+        WidgetDataManager.shared.updateTodayTasks(updatedTasks, totalCount: nextTotalCount)
 
         return .result()
     }
