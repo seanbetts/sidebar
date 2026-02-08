@@ -316,25 +316,4 @@ extension IngestionStore {
         }
         return true
     }
-
-    private func metadataBool(_ metadata: [String: AnyCodable]?, key: String) -> Bool? {
-        guard let value = metadata?[key]?.value else { return nil }
-        if let boolValue = value as? Bool {
-            return boolValue
-        }
-        if let number = value as? NSNumber {
-            return number.boolValue
-        }
-        if let string = value as? String {
-            switch string.lowercased() {
-            case "true", "1":
-                return true
-            case "false", "0":
-                return false
-            default:
-                return nil
-            }
-        }
-        return nil
-    }
 }

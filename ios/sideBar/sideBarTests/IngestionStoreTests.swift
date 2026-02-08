@@ -221,10 +221,67 @@ final class IngestionStoreTests: XCTestCase {
         let cached: IngestionListResponse? = cache.get(key: CacheKeys.ingestionList)
         XCTAssertTrue(cached?.items.isEmpty ?? true)
     }
+
+    func testLoadListFiltersTranscriptAndDeletedRowsFromAPI() async throws {
+        let cache = TestCacheClient()
+        let defaults = makeDefaults()
+        let api = MockIngestionAPI(
+            listResponse: IngestionListResponse(
+                items: [
+                    makeItem(id: "keep-1"),
+                    makeItem(
+                        id: "drop-transcript",
+                        filename: "YouTube transcript",
+                        sourceMetadata: ["website_transcript": AnyCodable(true)]
+                    ),
+                    makeItem(id: "drop-deleted", deletedAt: "2024-01-01T12:01:00Z"),
+                    makeItem(id: "drop-ai", path: "/files/drop-ai/ai/ai.md")
+                ]
+            )
+        )
+        let store = IngestionStore(api: api, cache: cache, userDefaults: defaults)
+
+        try await store.loadList(force: true)
+
+        XCTAssertEqual(store.items.map(\.file.id), ["keep-1"])
+    }
+
+    func testLoadListFiltersTranscriptRowsFromCacheBeforeRefresh() async throws {
+        let cache = TestCacheClient()
+        let defaults = makeDefaults()
+        cache.set(
+            key: CacheKeys.ingestionList,
+            value: IngestionListResponse(
+                items: [
+                    makeItem(id: "keep-cached"),
+                    makeItem(
+                        id: "drop-cached-transcript",
+                        filename: "YouTube transcript",
+                        sourceMetadata: ["website_transcript": AnyCodable(true)]
+                    )
+                ]
+            ),
+            ttlSeconds: 600
+        )
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+
+        try await store.loadList(force: false)
+
+        XCTAssertEqual(store.items.map(\.file.id), ["keep-cached"])
+    }
 }
 
 private struct MockIngestionAPI: IngestionProviding {
+    let listResponse: IngestionListResponse?
+
+    init(listResponse: IngestionListResponse? = nil) {
+        self.listResponse = listResponse
+    }
+
     func list() async throws -> IngestionListResponse {
+        if let listResponse {
+            return listResponse
+        }
         throw MockError.forced
     }
 
@@ -279,4 +336,42 @@ private func makeDefaults() -> UserDefaults {
 
 private enum MockError: Error {
     case forced
+}
+
+private func makeItem(
+    id: String,
+    filename: String = "doc.txt",
+    path: String = "/doc.txt",
+    sourceMetadata: [String: AnyCodable]? = nil,
+    deletedAt: String? = nil
+) -> IngestionListItem {
+    IngestionListItem(
+        file: IngestedFileMeta(
+            id: id,
+            filenameOriginal: filename,
+            path: path,
+            mimeOriginal: "text/plain",
+            sizeBytes: 12,
+            sha256: nil,
+            pinned: nil,
+            pinnedOrder: nil,
+            category: nil,
+            sourceUrl: nil,
+            sourceMetadata: sourceMetadata,
+            createdAt: "2024-01-01T12:00:00Z",
+            updatedAt: "2024-01-01T12:00:00Z",
+            deletedAt: deletedAt
+        ),
+        job: IngestionJob(
+            status: "processing",
+            stage: "extracting",
+            errorCode: nil,
+            errorMessage: nil,
+            userMessage: nil,
+            progress: nil,
+            attempts: 0,
+            updatedAt: "2024-01-01T12:00:00Z"
+        ),
+        recommendedViewer: nil
+    )
 }

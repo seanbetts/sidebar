@@ -60,14 +60,15 @@ extension IngestionStore {
     }
 
     func applyListUpdate(_ incoming: [IngestionListItem], persist: Bool) {
-        guard shouldUpdateList(incoming) else {
+        let filteredIncoming = incoming.filter(shouldIncludeIngestionItem)
+        guard shouldUpdateList(filteredIncoming) else {
             return
         }
-        remoteItems = incoming
-        items = mergeItems(incoming)
+        remoteItems = filteredIncoming
+        items = mergeItems(filteredIncoming)
         if persist {
             persistListCache()
-            indexFilesInSpotlight(incoming)
+            indexFilesInSpotlight(filteredIncoming)
         }
         updateWidgetData()
     }
@@ -300,6 +301,40 @@ extension IngestionStore {
         localItems.removeValue(forKey: fileId)
         localUploadRecords.removeValue(forKey: fileId)
         persistLocalUploads()
+    }
+
+    func shouldIncludeIngestionItem(_ item: IngestionListItem) -> Bool {
+        if item.file.deletedAt != nil {
+            return false
+        }
+        if (item.file.path ?? "").lowercased().hasSuffix("/ai/ai.md") {
+            return false
+        }
+        if metadataBool(item.file.sourceMetadata, key: "website_transcript") == true {
+            return false
+        }
+        return true
+    }
+
+    func metadataBool(_ metadata: [String: AnyCodable]?, key: String) -> Bool? {
+        guard let value = metadata?[key]?.value else { return nil }
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+        if let number = value as? NSNumber {
+            return number.boolValue
+        }
+        if let string = value as? String {
+            switch string.lowercased() {
+            case "true", "1":
+                return true
+            case "false", "0":
+                return false
+            default:
+                return nil
+            }
+        }
+        return nil
     }
 }
 
