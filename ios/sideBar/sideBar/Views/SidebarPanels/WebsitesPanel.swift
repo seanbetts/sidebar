@@ -251,6 +251,7 @@ extension WebsitesPanelView {
                             } else {
                                 ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
                                     websiteListRow(item: item, index: index, allowArchive: false)
+                                        .padding(.leading, -DesignTokens.Spacing.sm)
                                 }
                             }
                         },

@@ -374,6 +374,7 @@ extension NotesPanelView {
                                 } onDelete: {
                                     confirmDelete(for: item)
                                 }
+                                .padding(.leading, -DesignTokens.Spacing.sm)
                                 .platformContextMenu(items: noteContextMenuItemsList(for: item))
                             }
                             .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
