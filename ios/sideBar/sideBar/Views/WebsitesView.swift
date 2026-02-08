@@ -430,7 +430,8 @@ extension WebsitesDetailView {
                         requestTranscript: { websiteId, url in
                             await viewModel.requestYouTubeTranscript(websiteId: websiteId, url: url)
                         }
-                    )
+                    ),
+                    renderingContext: .website
                 )
             }
         } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {

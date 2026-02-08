@@ -31,26 +31,35 @@ struct SideBarMarkdownStyle: Equatable {
     )
 }
 
+enum SideBarMarkdownRenderingContext: Equatable {
+    case standard
+    case website
+}
+
 struct SideBarMarkdownContainer: View {
     let text: String
     let style: SideBarMarkdownStyle
     let youtubeTranscriptContext: SideBarYouTubeTranscriptContext?
+    let renderingContext: SideBarMarkdownRenderingContext
 
     init(
         text: String,
         style: SideBarMarkdownStyle = .default,
-        youtubeTranscriptContext: SideBarYouTubeTranscriptContext? = nil
+        youtubeTranscriptContext: SideBarYouTubeTranscriptContext? = nil,
+        renderingContext: SideBarMarkdownRenderingContext = .standard
     ) {
         self.text = text
         self.style = style
         self.youtubeTranscriptContext = youtubeTranscriptContext
+        self.renderingContext = renderingContext
     }
 
     var body: some View {
         SideBarMarkdown(
             text: text,
             style: style,
-            youtubeTranscriptContext: youtubeTranscriptContext
+            youtubeTranscriptContext: youtubeTranscriptContext,
+            renderingContext: renderingContext
         )
             .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth, alignment: .leading)
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
@@ -63,15 +72,18 @@ struct SideBarMarkdown: View, Equatable {
     let text: String
     let style: SideBarMarkdownStyle
     let youtubeTranscriptContext: SideBarYouTubeTranscriptContext?
+    let renderingContext: SideBarMarkdownRenderingContext
 
     init(
         text: String,
         style: SideBarMarkdownStyle = .default,
-        youtubeTranscriptContext: SideBarYouTubeTranscriptContext? = nil
+        youtubeTranscriptContext: SideBarYouTubeTranscriptContext? = nil,
+        renderingContext: SideBarMarkdownRenderingContext = .standard
     ) {
         self.text = text
         self.style = style
         self.youtubeTranscriptContext = youtubeTranscriptContext
+        self.renderingContext = renderingContext
     }
 
     static func == (lhs: SideBarMarkdown, rhs: SideBarMarkdown) -> Bool {
@@ -80,7 +92,9 @@ struct SideBarMarkdown: View, Equatable {
         if lhs.youtubeTranscriptContext != nil || rhs.youtubeTranscriptContext != nil {
             return false
         }
-        return lhs.text == rhs.text && lhs.style == rhs.style
+        return lhs.text == rhs.text
+            && lhs.style == rhs.style
+            && lhs.renderingContext == rhs.renderingContext
     }
 
     var body: some View {
@@ -88,7 +102,9 @@ struct SideBarMarkdown: View, Equatable {
         let displayText = youtubeTranscriptContext == nil
             ? text
             : MarkdownRendering.stripWebsiteTranscriptArtifacts(text)
-        let blocks = MarkdownRendering.normalizedBlocks(from: displayText)
+        let blocks = renderingContext == .website
+            ? MarkdownRendering.normalizedWebsiteBlocks(from: displayText)
+            : MarkdownRendering.normalizedBlocks(from: displayText)
         if blocks.isEmpty {
             styledMarkdown(displayText)
         } else {
@@ -105,6 +121,8 @@ struct SideBarMarkdown: View, Equatable {
                             text: text,
                             context: youtubeTranscriptContext
                         )
+                    case .suppressedSVG:
+                        SideBarSuppressedSVGBlock()
                     }
                 }
             }
@@ -382,5 +400,34 @@ private struct SideBarYouTubeEmbedBlock: View {
 
     private func isQueuedOrProcessing(context: SideBarYouTubeTranscriptContext) -> Bool {
         context.isTranscriptPending(embed.videoId)
+    }
+}
+
+private struct SideBarSuppressedSVGBlock: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+            Image(systemName: "photo")
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                .font(.body.weight(.semibold))
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("SVG diagram omitted")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(DesignTokens.Colors.textPrimary)
+                Text("Open this page in the web app to view the full diagram.")
+                    .font(.caption)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(DesignTokens.Spacing.md)
+        .background(DesignTokens.Colors.muted.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        )
     }
 }

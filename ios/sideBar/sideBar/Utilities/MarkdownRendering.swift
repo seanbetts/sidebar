@@ -22,10 +22,19 @@ public enum MarkdownRendering {
         }
     }
 
+    public struct MarkdownSuppressedSVG {
+        public let rawSVG: String
+
+        public nonisolated init(rawSVG: String) {
+            self.rawSVG = rawSVG
+        }
+    }
+
     public enum MarkdownContentBlock {
         case markdown(String)
         case gallery(MarkdownGallery)
         case youtube(MarkdownYouTubeEmbed)
+        case suppressedSVG(MarkdownSuppressedSVG)
     }
 
     public nonisolated static func normalizeTaskLists(_ text: String) -> String {
@@ -117,6 +126,17 @@ public enum MarkdownRendering {
     }
 
     public nonisolated static func normalizedBlocks(from text: String) -> [MarkdownContentBlock] {
+        normalizedBlocks(from: text, suppressSVG: false)
+    }
+
+    public nonisolated static func normalizedWebsiteBlocks(from text: String) -> [MarkdownContentBlock] {
+        normalizedBlocks(from: text, suppressSVG: true)
+    }
+
+    private nonisolated static func normalizedBlocks(
+        from text: String,
+        suppressSVG: Bool
+    ) -> [MarkdownContentBlock] {
         let stripped = stripFrontmatter(text)
         let blocks = splitMarkdownContent(stripped)
         var normalized: [MarkdownContentBlock] = []
@@ -127,8 +147,20 @@ public enum MarkdownRendering {
                 guard !cleanedMarkdown.isBlank else {
                     continue
                 }
-                normalized.append(contentsOf: splitMarkdownEmbeds(cleanedMarkdown))
-            case .gallery, .youtube:
+                let websiteBlocks: [MarkdownContentBlock] = suppressSVG
+                    ? splitMarkdownSVGBlocks(cleanedMarkdown)
+                    : [.markdown(cleanedMarkdown)]
+                for websiteBlock in websiteBlocks {
+                    switch websiteBlock {
+                    case .markdown(let websiteMarkdown):
+                        normalized.append(contentsOf: splitMarkdownEmbeds(websiteMarkdown))
+                    case .suppressedSVG:
+                        normalized.append(websiteBlock)
+                    case .gallery, .youtube:
+                        normalized.append(websiteBlock)
+                    }
+                }
+            case .gallery, .youtube, .suppressedSVG:
                 normalized.append(block)
             }
         }
@@ -184,6 +216,14 @@ public enum MarkdownRendering {
     private nonisolated static func makeGalleryRegex() -> NSRegularExpression {
         let pattern = #"<figure\s+class=\"image-gallery\"[^>]*>.*?</figure>"#
         return makeRegex(pattern: pattern, options: [.dotMatchesLineSeparators])
+    }
+
+    private nonisolated static func makeSVGRegex() -> NSRegularExpression {
+        let pattern = #"<svg\b[^>]*>.*?</svg>"#
+        return makeRegex(
+            pattern: pattern,
+            options: [.dotMatchesLineSeparators, .caseInsensitive]
+        )
     }
 
     private nonisolated static func normalizeImageCaptions(_ text: String) -> String {
@@ -275,6 +315,32 @@ public enum MarkdownRendering {
     private nonisolated static func appendMarkdownIfNeeded(_ text: String, to blocks: inout [MarkdownContentBlock]) {
         guard !text.isBlank else { return }
         blocks.append(.markdown(text))
+    }
+
+    private nonisolated static func splitMarkdownSVGBlocks(_ markdown: String) -> [MarkdownContentBlock] {
+        let svgRegex = makeSVGRegex()
+        let matches = svgRegex.matches(
+            in: markdown,
+            range: NSRange(location: 0, length: markdown.utf16.count)
+        )
+        guard !matches.isEmpty else {
+            return [.markdown(markdown)]
+        }
+
+        var blocks: [MarkdownContentBlock] = []
+        var currentIndex = markdown.startIndex
+        for match in matches {
+            guard let range = Range(match.range, in: markdown) else { continue }
+            let before = String(markdown[currentIndex..<range.lowerBound])
+            appendMarkdownIfNeeded(before, to: &blocks)
+            let rawSVG = String(markdown[range])
+            blocks.append(.suppressedSVG(MarkdownSuppressedSVG(rawSVG: rawSVG)))
+            currentIndex = range.upperBound
+        }
+
+        let trailing = String(markdown[currentIndex...])
+        appendMarkdownIfNeeded(trailing, to: &blocks)
+        return blocks
     }
 
     private nonisolated static func splitMarkdownEmbeds(_ markdown: String) -> [MarkdownContentBlock] {
