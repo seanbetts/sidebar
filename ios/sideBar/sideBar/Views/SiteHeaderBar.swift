@@ -117,21 +117,11 @@ public struct SiteHeaderBar: View {
                 .accessibilityLabel("Show uploads")
                 #if os(macOS)
                 .popover(isPresented: $isIngestionCenterPresented, arrowEdge: .top) {
-                    IngestionCenterView(
-                        activeItems: environment.ingestionViewModel.activeUploadItems,
-                        failedItems: environment.ingestionViewModel.failedUploadItems,
-                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) },
-                        onClearFailure: { environment.ingestionViewModel.clearFailedUpload(fileId: $0.file.id) }
-                    )
+                    IngestionCenterView(viewModel: environment.ingestionViewModel)
                 }
                 #else
                 .sheet(isPresented: $isIngestionCenterPresented) {
-                    IngestionCenterView(
-                        activeItems: environment.ingestionViewModel.activeUploadItems,
-                        failedItems: environment.ingestionViewModel.failedUploadItems,
-                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) },
-                        onClearFailure: { environment.ingestionViewModel.clearFailedUpload(fileId: $0.file.id) }
-                    )
+                    IngestionCenterView(viewModel: environment.ingestionViewModel)
                 }
                 #endif
             }

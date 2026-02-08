@@ -1,10 +1,15 @@
 import SwiftUI
 
 struct IngestionCenterView: View {
-    let activeItems: [IngestionListItem]
-    let failedItems: [IngestionListItem]
-    let onCancel: (IngestionListItem) -> Void
-    let onClearFailure: (IngestionListItem) -> Void
+    @ObservedObject var viewModel: IngestionViewModel
+
+    private var activeItems: [IngestionListItem] {
+        viewModel.activeUploadItems
+    }
+
+    private var failedItems: [IngestionListItem] {
+        viewModel.failedUploadItems
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -43,8 +48,8 @@ struct IngestionCenterView: View {
                     item: item,
                     showCancel: showCancel,
                     showClear: showClear,
-                    onCancel: onCancel,
-                    onClear: onClearFailure
+                    onCancel: { viewModel.cancelUpload(fileId: $0.file.id) },
+                    onClear: { viewModel.clearFailedUpload(fileId: $0.file.id) }
                 )
             }
         }
