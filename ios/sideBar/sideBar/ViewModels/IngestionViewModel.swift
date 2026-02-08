@@ -108,4 +108,10 @@ public final class IngestionViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
+
+    deinit {
+        cancelJobPolling()
+        stopListPolling()
+        readyMessageTask.cancel()
+    }
 }

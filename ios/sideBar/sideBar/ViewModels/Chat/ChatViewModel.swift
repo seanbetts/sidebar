@@ -132,6 +132,14 @@ import Foundation
             .store(in: &cancellables)
     }
 
+    deinit {
+        streamClient.disconnect()
+        clearActiveToolTask?.cancel()
+        refreshTask?.cancel()
+        attachmentPollTasks.values.forEach { $0.cancel() }
+        attachmentPollTasks = [:]
+    }
+
     public var groupedConversations: [ConversationGroup] {
         let sorted = conversations.sorted { lhs, rhs in
             let leftDate = DateParsing.parseISO8601(lhs.updatedAt) ?? .distantPast
