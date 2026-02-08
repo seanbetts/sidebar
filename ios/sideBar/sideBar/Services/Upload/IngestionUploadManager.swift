@@ -84,7 +84,6 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         let baseUrl = config.baseUrl
         let accessTokenProvider = config.accessTokenProvider
         let session = self.session
-        let queue = self.queue
         let logger = self.logger
 
         DispatchQueue.global(qos: .utility).async {
@@ -122,18 +121,15 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
                 onProgress: onProgress,
                 onCompletion: onCompletion
             )
-            queue.async {
-                self.contexts[task.taskIdentifier] = context
-                self.taskIdsByUploadId[request.uploadId] = task.taskIdentifier
-            }
+            self.setContext(context, forTaskId: task.taskIdentifier, uploadId: request.uploadId)
             task.resume()
         }
     }
 
     public func cancelUpload(uploadId: String) {
-        queue.async {
-            guard let taskId = self.taskIdsByUploadId[uploadId],
-                  let task = self.session.getAllTasksSync().first(where: { $0.taskIdentifier == taskId }) else {
+        guard let taskId = taskId(forUploadId: uploadId) else { return }
+        session.getAllTasks { tasks in
+            guard let task = tasks.first(where: { $0.taskIdentifier == taskId }) else {
                 return
             }
             task.cancel()
@@ -141,12 +137,8 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     }
 
     private func handleCompletion(for task: URLSessionTask, error: Error?) {
-        let context = queue.sync { contexts[task.taskIdentifier] }
+        let context = takeContext(forTaskId: task.taskIdentifier)
         guard let context else { return }
-        queue.async {
-            self.contexts.removeValue(forKey: task.taskIdentifier)
-            self.taskIdsByUploadId.removeValue(forKey: context.uploadId)
-        }
         defer {
             do {
                 try FileManager.default.removeItem(at: context.bodyFileURL)
@@ -178,6 +170,41 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
             DispatchQueue.main.async { context.onCompletion(.success(fileId)) }
         } catch {
             DispatchQueue.main.async { context.onCompletion(.failure(error)) }
+        }
+    }
+
+    private func setContext(_ context: UploadContext, forTaskId taskId: Int, uploadId: String) {
+        queue.sync {
+            contexts[taskId] = context
+            taskIdsByUploadId[uploadId] = taskId
+        }
+    }
+
+    private func taskId(forUploadId uploadId: String) -> Int? {
+        queue.sync {
+            taskIdsByUploadId[uploadId]
+        }
+    }
+
+    private func context(forTaskId taskId: Int) -> UploadContext? {
+        queue.sync {
+            contexts[taskId]
+        }
+    }
+
+    private func appendResponseData(_ data: Data, forTaskId taskId: Int) {
+        queue.sync {
+            contexts[taskId]?.responseData.append(data)
+        }
+    }
+
+    private func takeContext(forTaskId taskId: Int) -> UploadContext? {
+        queue.sync {
+            guard let context = contexts.removeValue(forKey: taskId) else {
+                return nil
+            }
+            taskIdsByUploadId.removeValue(forKey: context.uploadId)
+            return context
         }
     }
 
@@ -270,19 +297,6 @@ private final class UploadContext {
     }
 }
 
-private extension URLSession {
-    func getAllTasksSync() -> [URLSessionTask] {
-        let semaphore = DispatchSemaphore(value: 0)
-        var tasks: [URLSessionTask] = []
-        getAllTasks { fetched in
-            tasks = fetched
-            semaphore.signal()
-        }
-        semaphore.wait()
-        return tasks
-    }
-}
-
 extension IngestionUploadManager: URLSessionTaskDelegate, URLSessionDataDelegate {
     public func urlSession(
         _ session: URLSession,
@@ -293,14 +307,12 @@ extension IngestionUploadManager: URLSessionTaskDelegate, URLSessionDataDelegate
     ) {
         guard totalBytesExpectedToSend > 0 else { return }
         let progress = Double(totalBytesSent) / Double(totalBytesExpectedToSend)
-        guard let context = queue.sync(execute: { contexts[task.taskIdentifier] }) else { return }
+        guard let context = context(forTaskId: task.taskIdentifier) else { return }
         DispatchQueue.main.async { context.onProgress(progress) }
     }
 
     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        queue.sync {
-            contexts[dataTask.taskIdentifier]?.responseData.append(data)
-        }
+        appendResponseData(data, forTaskId: dataTask.taskIdentifier)
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
