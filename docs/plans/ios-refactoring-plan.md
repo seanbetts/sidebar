@@ -475,7 +475,7 @@ Four `.onChange` modifiers fire in sequence on the same view (`selectedConversat
 
 ## Phase 8 -- Split Oversized Files
 
-(Moved from original Phase 2 -- still important but less urgent than concurrency/state fixes)
+Smaller files fit in AI agent context windows and are easier to reason about. Do this early (after concurrency fixes) to improve agent effectiveness for all subsequent phases.
 
 ### 8.1 Critical splits (files over 800 lines)
 
@@ -580,20 +580,19 @@ The 3 `swiftlint:disable cyclomatic_complexity` spots:
 
 ## Execution Order
 
-Prioritized by **risk of production bugs** (not cosmetic impact):
+Optimized for a pre-launch, AI-agent-assisted workflow. File splits are pulled early because smaller files dramatically improve agent context and effectiveness for all subsequent phases.
 
 1. **Phase 1** (Lint config) -- Sets guardrails so debt stops growing. Quick win.
-2. **Phase 2** (Concurrency safety) -- **Start here for bug prevention.** The APIClient auth race (2.1) and IngestionUploadManager (2.2) are the highest-risk items in the entire codebase.
-3. **Phase 3.1** (Auth signout reset) -- Data leakage between user sessions is a correctness and privacy issue.
-4. **Phase 5.1** (WriteQueue) -- Silent data loss in offline mode.
-5. **Phase 6.1-6.2** (SwiftUI performance hot spots) -- The `.onChange` array creation and in-body sorts are causing real jank.
-6. **Phase 3.2-3.3** (State deduplication, LoadableViewModel) -- Reduces future bug surface.
-7. **Phase 4** (Code deduplication) -- Reduces maintenance burden.
-8. **Phase 7** (Coupling reduction) -- Improves testability.
-9. **Phase 8** (File splits) -- Structural cleanup, easier reasoning.
-10. **Phase 9** (Doc comments) -- Mechanical, can be done incrementally.
-11. **Phase 10** (Tests) -- Can be interleaved with other phases.
-12. **Phase 11** (Complexity) -- Polish.
+2. **Phase 2** (Concurrency safety) -- Fix real data race bugs before building on top of them. APIClient auth race (2.1) and IngestionUploadManager (2.2) are the highest-risk items.
+3. **Phase 8** (File splits) -- **Do early.** Getting files under 500 lines improves AI agent effectiveness for every phase that follows. Low regression risk since it's structural, not behavioral.
+4. **Phase 3** (State management) -- Auth signout reset (3.1) is a privacy issue; the rest reduces bug surface for future work.
+5. **Phase 5** (Error handling) -- WriteQueue silent failures (5.1) and fire-and-forget Tasks (5.2) are hiding real problems.
+6. **Phase 6** (SwiftUI performance) -- The `.onChange` array creation and in-body sorts cause visible jank.
+7. **Phase 4** (Code deduplication) -- Consolidating store patterns reduces maintenance burden and makes future changes safer.
+8. **Phase 7** (Coupling reduction) -- Improves testability and makes feature work cleaner.
+9. **Phase 11** (Complexity) -- Remove cyclomatic complexity suppressions and reduce nesting.
+10. **Phase 10** (Tests) -- Add coverage for untested ViewModels and regression tests for earlier fixes.
+11. **Phase 9** (Doc comments) -- Mechanical, best done last so comments reflect the final code shape.
 
 Each phase should be committed separately for easy review/revert.
 
