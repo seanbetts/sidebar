@@ -84,17 +84,7 @@ extension FilesPanelView {
     }
 
     func filesNavigationItems() -> [String] {
-        if !searchQuery.trimmed.isEmpty {
-            return searchResults.filter { !isFolder($0) }.map { $0.file.id }
-        }
-        var ids: [String] = []
-        ids.append(contentsOf: pinnedItems.filter { !isFolder($0) }.map { $0.file.id })
-        for category in categoryOrder {
-            if let items = categorizedItems[category] {
-                ids.append(contentsOf: items.filter { !isFolder($0) }.map { $0.file.id })
-            }
-        }
-        return ids
+        viewModel.panelNavigationFileIds
     }
 
     func handleFileImport(_ result: Result<[URL], Error>) {
@@ -150,132 +140,40 @@ extension FilesPanelView {
     }
 
     var filteredItems: [IngestionListItem] {
-        let needle = searchQuery.trimmed.lowercased()
-        let baseItems = viewModel.items.filter { $0.statusValue != "failed" }
-        guard !needle.isEmpty else { return baseItems }
-        return baseItems.filter { item in
-            item.file.filenameOriginal.lowercased().contains(needle)
-        }
+        viewModel.panelFilteredItems
     }
 
     var searchResults: [IngestionListItem] {
-        filteredItems.sorted { lhs, rhs in
-            let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
-            let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
-            return leftDate > rightDate
-        }
+        viewModel.panelSearchResults
     }
 
     var pinnedItems: [IngestionListItem] {
-        filteredItems
-            .filter { isReady($0) && ($0.file.pinned ?? false) }
-            .sorted { lhs, rhs in
-                let left = lhs.file.pinnedOrder ?? Int.max
-                let right = rhs.file.pinnedOrder ?? Int.max
-                if left != right {
-                    return left < right
-                }
-                let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
-                let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
-                return leftDate > rightDate
-            }
+        viewModel.panelPinnedItems
     }
 
     var categorizedItems: [String: [IngestionListItem]] {
-        let unpinned = filteredItems.filter { !($0.file.pinned ?? false) }
-        let grouped = unpinned.reduce(into: [String: [IngestionListItem]]()) { result, item in
-            let category = categoryFor(item)
-            result[category, default: []].append(item)
-        }
-        return grouped.mapValues { items in
-            items.sorted { lhs, rhs in
-                let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
-                let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
-                return leftDate > rightDate
-            }
-        }
+        viewModel.panelCategorizedItems
     }
 
     var categoriesWithItems: [String] {
-        categoryOrder.filter { categorizedItems[$0]?.isEmpty == false }
+        viewModel.panelCategoriesWithItems
     }
 
     var categoryLabels: [String: String] {
-        [
-            "documents": "Documents",
-            "images": "Images",
-            "audio": "Audio",
-            "video": "Video",
-            "spreadsheets": "Spreadsheets",
-            "reports": "Reports",
-            "presentations": "Presentations",
-            "other": "Other"
-        ]
+        IngestionViewModel.panelCategoryLabels
     }
 
     var categoryOrder: [String] {
-        ["documents", "images", "audio", "video", "spreadsheets", "reports", "presentations", "other"]
-    }
-
-    func isReady(_ item: IngestionListItem) -> Bool {
-        (item.job.status ?? "") == "ready" && item.recommendedViewer != nil
-    }
-
-    func categoryFor(_ item: IngestionListItem) -> String {
-        if let category = item.file.category, !category.isEmpty {
-            return category
-        }
-        let normalized = item.file.mimeOriginal.split(separator: ";").first?
-            .trimmed
-            .lowercased() ?? item.file.mimeOriginal
-        if normalized == "video/youtube" || normalized.hasPrefix("video/") {
-            return "video"
-        }
-        if normalized.hasPrefix("image/") {
-            return "images"
-        }
-        if normalized.hasPrefix("audio/") {
-            return "audio"
-        }
-        if normalized == "application/pdf"
-            || normalized == "text/plain"
-            || normalized == "text/markdown"
-            || normalized == "text/html"
-            || normalized == "application/msword"
-            || normalized == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" {
-            return "documents"
-        }
-        if normalized == "application/vnd.ms-excel"
-            || normalized == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            || normalized == "text/csv" {
-            return "spreadsheets"
-        }
-        if normalized == "application/vnd.ms-powerpoint"
-            || normalized == "application/vnd.openxmlformats-officedocument.presentationml.presentation" {
-            return "presentations"
-        }
-        return "other"
+        IngestionViewModel.panelCategoryOrder
     }
 
     func categoryIconName(_ category: String) -> String {
-        switch category {
-        case "documents":
-            return "doc.text"
-        case "images":
-            return "photo"
-        case "audio":
-            return "waveform"
-        case "video":
-            return "video"
-        case "spreadsheets":
-            return "tablecells"
-        case "reports":
-            return "chart.line.text.clipboard"
-        case "presentations":
-            return "rectangle.on.rectangle.angled"
-        default:
-            return "folder"
-        }
+        viewModel.panelCategoryIconName(category)
+    }
+
+    func staggerIndex(for id: String, section: String? = nil) -> Int {
+        let key = section.map { "\($0):\(id)" } ?? id
+        return abs(key.hashValue % 32)
     }
 
     var panelBackground: Color {

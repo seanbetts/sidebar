@@ -24,7 +24,6 @@ struct FilesPanelView: View {
     @Environment(\.colorScheme) var colorScheme
     @State var hasLoaded = false
     @State var expandedCategories: Set<String> = []
-    @State var searchQuery: String = ""
     @State var listAppeared = false
     @State var isDeleteAlertPresented = false
     @State var deleteTarget: IngestionListItem?
@@ -103,8 +102,8 @@ extension FilesPanelView {
             .onChange(of: categoriesWithItems) { _, _ in
                 initializeExpandedCategoriesIfNeeded()
             }
-            .onChange(of: viewModel.items.map { $0.file.id }) { _, newIds in
-                let newIdSet = Set(newIds)
+            .onChange(of: viewModel.itemsVersion) { _, _ in
+                let newIdSet = Set(viewModel.items.map { $0.file.id })
                 let addedIds = newIdSet.subtracting(knownFileIds)
                 if !addedIds.isEmpty {
                     for item in viewModel.items where addedIds.contains(item.file.id) {
@@ -145,7 +144,7 @@ extension FilesPanelView {
                     Task { await viewModel.load() }
                 }
             } else if filteredItems.isEmpty {
-                if searchQuery.trimmed.isEmpty {
+                if viewModel.panelSearchQuery.trimmed.isEmpty {
                     SidebarPanelPlaceholder(title: "No files yet.")
                 } else {
                     SidebarPanelPlaceholder(title: "No results.")
@@ -184,7 +183,14 @@ extension FilesPanelView {
                     }
                 }
             }
-            SearchField(text: $searchQuery, placeholder: "Search files", isFocused: $isSearchFocused)
+            SearchField(
+                text: Binding(
+                    get: { viewModel.panelSearchQuery },
+                    set: { viewModel.panelSearchQuery = $0 }
+                ),
+                placeholder: "Search files",
+                isFocused: $isSearchFocused
+            )
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
@@ -202,8 +208,9 @@ extension FilesPanelView {
 
     var filesListView: some View {
         List {
-            if !searchQuery.trimmed.isEmpty {
-                ForEach(Array(searchResults.enumerated()), id: \.element.file.id) { index, item in
+            if !viewModel.panelSearchQuery.trimmed.isEmpty {
+                ForEach(searchResults, id: \.file.id) { item in
+                    let index = staggerIndex(for: item.file.id)
                     let isSelected = viewModel.selectedFileId == item.file.id
                     let row = FilesIngestionRow(
                         item: item,
@@ -225,7 +232,8 @@ extension FilesPanelView {
             } else {
                 if !pinnedItems.isEmpty {
                     Section("Pinned") {
-                        ForEach(Array(pinnedItems.enumerated()), id: \.element.file.id) { index, item in
+                        ForEach(pinnedItems, id: \.file.id) { item in
+                            let index = staggerIndex(for: item.file.id)
                             let isSelected = viewModel.selectedFileId == item.file.id
                             let row = FilesIngestionRow(
                                 item: item,
@@ -249,12 +257,16 @@ extension FilesPanelView {
 
                 if !categorizedItems.isEmpty {
                     Section("Files") {
-                        ForEach(Array(categoryOrder.enumerated()), id: \.element) { categoryIndex, category in
+                        ForEach(categoryOrder, id: \.self) { category in
                             if let items = categorizedItems[category], !items.isEmpty {
                                 DisclosureGroup(
                                     isExpanded: bindingForCategory(category)
                                 ) {
-                                    ForEach(Array(items.enumerated()), id: \.element.file.id) { itemIndex, item in
+                                    ForEach(items, id: \.file.id) { item in
+                                        let index = staggerIndex(
+                                            for: item.file.id,
+                                            section: category
+                                        )
                                         let row = FilesIngestionRow(
                                             item: item,
                                             isSelected: viewModel.selectedFileId == item.file.id,
@@ -265,13 +277,13 @@ extension FilesPanelView {
                                         if isFolder(item) {
                                             row
                                                 .staggeredAppear(
-                                                    index: categoryIndex + itemIndex,
+                                                    index: index,
                                                     isActive: listAppeared
                                                 )
                                         } else {
                                             row
                                                 .staggeredAppear(
-                                                    index: categoryIndex + itemIndex,
+                                                    index: index,
                                                     isActive: listAppeared
                                                 )
                                                 .onTapGesture { open(item: item) }

@@ -25,10 +25,7 @@ extension WebsitesPanelView {
     }
 
     func websitesNavigationItems() -> [String] {
-        if !searchQuery.trimmed.isEmpty {
-            return filteredItems.map { $0.id }
-        }
-        return pinnedItemsSorted.map { $0.id } + mainItems.map { $0.id }
+        viewModel.panelNavigationWebsiteIds
     }
 
     @ViewBuilder
@@ -84,28 +81,19 @@ extension WebsitesPanelView {
     }
 
     var pinnedItemsSorted: [WebsiteItem] {
-        pinnedItems.sorted { lhs, rhs in
-            let leftOrder = lhs.pinnedOrder ?? Int.max
-            let rightOrder = rhs.pinnedOrder ?? Int.max
-            if leftOrder != rightOrder {
-                return leftOrder < rightOrder
-            }
-            let leftDate = DateParsing.parseISO8601(lhs.updatedAt) ?? .distantPast
-            let rightDate = DateParsing.parseISO8601(rhs.updatedAt) ?? .distantPast
-            return leftDate > rightDate
-        }
+        viewModel.panelPinnedItemsSorted
     }
 
     var pinnedItems: [WebsiteItem] {
-        viewModel.items.filter { $0.pinned && !$0.archived }
+        viewModel.panelPinnedItemsSorted
     }
 
     var mainItems: [WebsiteItem] {
-        viewModel.items.filter { !$0.pinned && !$0.archived }
+        viewModel.panelMainItems
     }
 
     var archivedItems: [WebsiteItem] {
-        viewModel.items.filter { $0.archived }
+        viewModel.panelArchivedItems
     }
 
     var archivedEmptyStateText: String {
@@ -121,13 +109,7 @@ extension WebsitesPanelView {
     }
 
     var filteredItems: [WebsiteItem] {
-        let needle = searchQuery.trimmed.lowercased()
-        guard !needle.isEmpty else { return viewModel.items }
-        return viewModel.items.filter { item in
-            item.title.lowercased().contains(needle) ||
-            item.domain.lowercased().contains(needle) ||
-            item.url.lowercased().contains(needle)
-        }
+        viewModel.panelFilteredItems
     }
 
     var panelBackground: Color {
@@ -151,7 +133,8 @@ extension WebsitesPanelView {
                     } else {
                         ScrollView {
                             LazyVStack(spacing: DesignTokens.Spacing.xs) {
-                                ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
+                                ForEach(archivedItems, id: \.id) { item in
+                                    let index = staggerIndex(for: item.id, section: "archive")
                                     websiteListRow(item: item, index: index, useListStyling: false, allowArchive: false)
                                 }
                             }
@@ -167,6 +150,11 @@ extension WebsitesPanelView {
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(panelBackground)
+    }
+
+    func staggerIndex(for id: String, section: String? = nil) -> Int {
+        let key = section.map { "\($0):\(id)" } ?? id
+        return abs(key.hashValue % 32)
     }
 
     var isArchiveLoading: Bool {

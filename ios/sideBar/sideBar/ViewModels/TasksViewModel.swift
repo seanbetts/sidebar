@@ -10,6 +10,11 @@ public final class TasksViewModel: ObservableObject {
     @Published public internal(set) var newTaskSaving: Bool = false
     @Published public internal(set) var newTaskError: String = ""
     @Published public internal(set) var filteredUpcomingCount: Int?
+    @Published public internal(set) var panelGroupsSorted: [TaskGroup] = []
+    @Published public internal(set) var panelProjectsByGroup: [String: [TaskProject]] = [:]
+    @Published public internal(set) var panelOrphanProjects: [TaskProject] = []
+    @Published public internal(set) var panelGroupCounts: [String: Int] = [:]
+    @Published public internal(set) var panelProjectCounts: [String: Int] = [:]
 
     let api: any TasksProviding
     let store: TasksStore
@@ -33,6 +38,12 @@ public final class TasksViewModel: ObservableObject {
         store.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        Publishers.CombineLatest3(store.$groups, store.$projects, store.$counts)
+            .sink { [weak self] groups, projects, counts in
+                self?.rebuildPanelDerivedState(groups: groups, projects: projects, counts: counts)
             }
             .store(in: &cancellables)
     }
@@ -124,10 +135,56 @@ public final class TasksViewModel: ObservableObject {
         newTaskError = ""
         filteredUpcomingCount = nil
         lastNonSearchSelection = .today
+        panelGroupsSorted = []
+        panelProjectsByGroup = [:]
+        panelOrphanProjects = []
+        panelGroupCounts = [:]
+        panelProjectCounts = [:]
     }
 
     func setLocalErrorMessage(_ message: String?) {
         localErrorMessage = message
+    }
+
+    private func rebuildPanelDerivedState(
+        groups: [TaskGroup],
+        projects: [TaskProject],
+        counts: TaskCountsResponse?
+    ) {
+        panelGroupsSorted = groups.sorted {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+
+        let sortedProjects = projects.sorted {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+        var projectsByGroup: [String: [TaskProject]] = [:]
+        var orphanProjects: [TaskProject] = []
+        for project in sortedProjects {
+            if let groupId = project.groupId {
+                projectsByGroup[groupId, default: []].append(project)
+            } else {
+                orphanProjects.append(project)
+            }
+        }
+        panelProjectsByGroup = projectsByGroup
+        panelOrphanProjects = orphanProjects
+
+        var groupCounts = Dictionary(
+            uniqueKeysWithValues: (counts?.groups ?? []).map { ($0.id, $0.count) }
+        )
+        for group in groups where groupCounts[group.id] == nil {
+            groupCounts[group.id] = 0
+        }
+        panelGroupCounts = groupCounts
+
+        var projectCounts = Dictionary(
+            uniqueKeysWithValues: (counts?.projects ?? []).map { ($0.id, $0.count) }
+        )
+        for project in projects where projectCounts[project.id] == nil {
+            projectCounts[project.id] = 0
+        }
+        panelProjectCounts = projectCounts
     }
 }
 

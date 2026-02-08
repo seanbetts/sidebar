@@ -19,7 +19,6 @@ private struct TasksPanelView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-    @State private var searchQuery: String = ""
     @State private var hasLoaded = false
     @State private var showNewGroupAlert: Bool = false
     @State private var showNewProjectAlert: Bool = false
@@ -44,24 +43,13 @@ private struct TasksPanelView: View {
                 Task { await viewModel.load(selection: viewModel.selection) }
                 Task { await viewModel.loadCounts() }
             }
-            if searchQuery.isEmpty {
-                searchQuery = viewModel.searchQuery
-            }
-        }
-        .onChange(of: searchQuery) { _, newValue in
-            viewModel.updateSearch(query: newValue)
-        }
-        .onChange(of: viewModel.searchQuery) { _, newValue in
-            if searchQuery != newValue {
-                searchQuery = newValue
-            }
         }
         .onChange(of: viewModel.selection) { _, newValue in
             if case .search = newValue {
                 return
             }
-            if !searchQuery.isEmpty {
-                searchQuery = ""
+            if !viewModel.searchQuery.isEmpty {
+                viewModel.updateSearch(query: "")
             }
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
@@ -147,7 +135,14 @@ extension TasksPanelView {
                     }
                 }
             }
-            SearchField(text: $searchQuery, placeholder: "Search tasks", isFocused: $isSearchFocused)
+            SearchField(
+                text: Binding(
+                    get: { viewModel.searchQuery },
+                    set: { viewModel.updateSearch(query: $0) }
+                ),
+                placeholder: "Search tasks",
+                isFocused: $isSearchFocused
+            )
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
@@ -279,7 +274,7 @@ extension TasksPanelView {
     }
 
     private var groupsSorted: [TaskGroup] {
-        viewModel.groups.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        viewModel.panelGroupsSorted
     }
 
     /// Use filtered count for Upcoming (excludes undated tasks).
@@ -294,38 +289,19 @@ extension TasksPanelView {
     }
 
     private var projectsByGroup: [String: [TaskProject]] {
-        var map: [String: [TaskProject]] = [:]
-        for project in viewModel.projects.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }) {
-            if let groupId = project.groupId {
-                map[groupId, default: []].append(project)
-            }
-        }
-        return map
+        viewModel.panelProjectsByGroup
     }
 
     private var orphanProjects: [TaskProject] {
-        viewModel.projects.filter { $0.groupId == nil }
-            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        viewModel.panelOrphanProjects
     }
 
     private var groupCounts: [String: Int] {
-        var counts = Dictionary(uniqueKeysWithValues: (viewModel.counts?.groups ?? []).map { ($0.id, $0.count) })
-        viewModel.groups.forEach { group in
-            if counts[group.id] == nil {
-                counts[group.id] = 0
-            }
-        }
-        return counts
+        viewModel.panelGroupCounts
     }
 
     private var projectCounts: [String: Int] {
-        var counts = Dictionary(uniqueKeysWithValues: (viewModel.counts?.projects ?? []).map { ($0.id, $0.count) })
-        viewModel.projects.forEach { project in
-            if counts[project.id] == nil {
-                counts[project.id] = 0
-            }
-        }
-        return counts
+        viewModel.panelProjectCounts
     }
 
     private var panelBackground: Color {

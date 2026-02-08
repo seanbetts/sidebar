@@ -54,11 +54,17 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public internal(set) var isLoading: Bool = false
     @Published public internal(set) var isLoadingDetail: Bool = false
     @Published public internal(set) var isLoadingArchived: Bool = false
+    @Published public var panelSearchQuery: String = ""
     @Published public internal(set) var errorMessage: String?
     @Published public internal(set) var isSavingWebsite: Bool = false
     @Published public internal(set) var saveErrorMessage: String?
     @Published public internal(set) var pendingWebsite: PendingWebsiteItem?
     @Published public internal(set) var archivedSummary: ArchivedSummary?
+    @Published public internal(set) var panelFilteredItems: [WebsiteItem] = []
+    @Published public internal(set) var panelPinnedItemsSorted: [WebsiteItem] = []
+    @Published public internal(set) var panelMainItems: [WebsiteItem] = []
+    @Published public internal(set) var panelArchivedItems: [WebsiteItem] = []
+    @Published public internal(set) var panelNavigationWebsiteIds: [String] = []
     var detailLoadingMessage: String {
         pendingWebsite?.title ?? "Reading..."
     }
@@ -96,6 +102,7 @@ public final class WebsitesViewModel: ObservableObject {
             .sink { [weak self] items in
                 self?.items = items
                 self?.clearPendingIfNeeded(items: items)
+                self?.updatePanelDerivedState()
             }
             .store(in: &cancellables)
 
@@ -115,6 +122,13 @@ public final class WebsitesViewModel: ObservableObject {
         ingestionStore?.$items
             .sink { [weak self] items in
                 self?.pendingTranscriptJobs = Self.pendingTranscriptMap(from: items)
+            }
+            .store(in: &cancellables)
+
+        $panelSearchQuery
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.updatePanelDerivedState()
             }
             .store(in: &cancellables)
     }

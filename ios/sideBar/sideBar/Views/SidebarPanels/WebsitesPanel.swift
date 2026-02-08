@@ -21,7 +21,6 @@ struct WebsitesPanelView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
     @Environment(\.colorScheme) var colorScheme
-    @State var searchQuery: String = ""
     @State var hasLoaded = false
     @State var isArchiveExpanded = false
     @State var selection: String?
@@ -171,7 +170,14 @@ extension WebsitesPanelView {
                     }
                 }
             }
-            SearchField(text: $searchQuery, placeholder: "Search websites", isFocused: $isSearchFocused)
+            SearchField(
+                text: Binding(
+                    get: { viewModel.panelSearchQuery },
+                    set: { viewModel.panelSearchQuery = $0 }
+                ),
+                placeholder: "Search websites",
+                isFocused: $isSearchFocused
+            )
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
@@ -191,7 +197,7 @@ extension WebsitesPanelView {
             ) {
                 Task { await viewModel.load() }
             }
-        } else if !searchQuery.trimmed.isEmpty {
+        } else if !viewModel.panelSearchQuery.trimmed.isEmpty {
             List {
                 if let pending = viewModel.pendingWebsite {
                     Section("Adding") {
@@ -202,7 +208,8 @@ extension WebsitesPanelView {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
-                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
+                        ForEach(filteredItems, id: \.id) { item in
+                            let index = staggerIndex(for: item.id, section: "search")
                             websiteListRow(item: item, index: index)
                         }
                     }
@@ -219,7 +226,8 @@ extension WebsitesPanelView {
                 if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
                     if !pinnedItemsSorted.isEmpty {
                         Section("Pinned") {
-                            ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
+                            ForEach(pinnedItemsSorted, id: \.id) { item in
+                                let index = staggerIndex(for: item.id, section: "pinned")
                                 websiteListRow(item: item, index: index)
                             }
                         }
@@ -230,7 +238,8 @@ extension WebsitesPanelView {
                             if let pending = viewModel.pendingWebsite {
                                 PendingWebsiteRow(pending: pending, useListStyling: true)
                             }
-                            ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
+                            ForEach(mainItems, id: \.id) { item in
+                                let index = staggerIndex(for: item.id, section: "main")
                                 websiteListRow(item: item, index: index)
                             }
                         }
@@ -251,7 +260,8 @@ extension WebsitesPanelView {
                                     .foregroundStyle(.secondary)
                                     .listRowSeparator(.hidden, edges: .top)
                             } else {
-                                ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
+                                ForEach(archivedItems, id: \.id) { item in
+                                    let index = staggerIndex(for: item.id, section: "archived")
                                     websiteListRow(item: item, index: index, allowArchive: false)
                                         .padding(.leading, -DesignTokens.Spacing.sm)
                                 }
@@ -293,7 +303,7 @@ extension WebsitesPanelView {
             ) {
                 Task { await viewModel.load() }
             }
-        } else if !searchQuery.trimmed.isEmpty {
+        } else if !viewModel.panelSearchQuery.trimmed.isEmpty {
             List {
                 if let pending = viewModel.pendingWebsite {
                     Section("Adding") {
@@ -304,7 +314,8 @@ extension WebsitesPanelView {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
-                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
+                        ForEach(filteredItems, id: \.id) { item in
+                            let index = staggerIndex(for: item.id, section: "search")
                             websiteListRow(item: item, index: index)
                         }
                     }
@@ -329,7 +340,8 @@ extension WebsitesPanelView {
             if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
                 if !pinnedItemsSorted.isEmpty {
                     Section("Pinned") {
-                        ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
+                        ForEach(pinnedItemsSorted, id: \.id) { item in
+                            let index = staggerIndex(for: item.id, section: "pinned")
                             websiteListRow(item: item, index: index)
                         }
                     }
@@ -340,7 +352,8 @@ extension WebsitesPanelView {
                         if let pending = viewModel.pendingWebsite {
                             PendingWebsiteRow(pending: pending, useListStyling: true)
                         }
-                        ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
+                        ForEach(mainItems, id: \.id) { item in
+                            let index = staggerIndex(for: item.id, section: "main")
                             websiteListRow(item: item, index: index)
                         }
                     }

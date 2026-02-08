@@ -3,6 +3,47 @@ import sideBarShared
 
 @MainActor
 extension WebsitesViewModel {
+    func updatePanelDerivedState() {
+        let needle = panelSearchQuery.trimmed.lowercased()
+        let filteredItems: [WebsiteItem]
+        if needle.isEmpty {
+            filteredItems = items
+        } else {
+            filteredItems = items.filter { item in
+                item.title.lowercased().contains(needle)
+                    || item.domain.lowercased().contains(needle)
+                    || item.url.lowercased().contains(needle)
+            }
+        }
+
+        let pinnedItemsSorted = items
+            .filter { $0.pinned && !$0.archived }
+            .sorted(by: Self.sortPinnedItems)
+        let mainItems = items.filter { !$0.pinned && !$0.archived }
+        let archivedItems = items.filter { $0.archived }
+
+        panelFilteredItems = filteredItems
+        panelPinnedItemsSorted = pinnedItemsSorted
+        panelMainItems = mainItems
+        panelArchivedItems = archivedItems
+        if needle.isEmpty {
+            panelNavigationWebsiteIds = pinnedItemsSorted.map { $0.id } + mainItems.map { $0.id }
+        } else {
+            panelNavigationWebsiteIds = filteredItems.map { $0.id }
+        }
+    }
+
+    private static func sortPinnedItems(_ lhs: WebsiteItem, _ rhs: WebsiteItem) -> Bool {
+        let leftOrder = lhs.pinnedOrder ?? Int.max
+        let rightOrder = rhs.pinnedOrder ?? Int.max
+        if leftOrder != rightOrder {
+            return leftOrder < rightOrder
+        }
+        let leftDate = DateParsing.parseISO8601(lhs.updatedAt) ?? .distantPast
+        let rightDate = DateParsing.parseISO8601(rhs.updatedAt) ?? .distantPast
+        return leftDate > rightDate
+    }
+
     func isDeleteConflict(_ error: Error) -> Bool {
         guard let apiError = error as? APIClientError else { return false }
         switch apiError {

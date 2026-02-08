@@ -43,6 +43,14 @@ import sideBarShared
 /// ```
 public final class IngestionViewModel: ObservableObject {
     @Published public var items: [IngestionListItem] = []
+    @Published public var panelSearchQuery: String = ""
+    @Published public private(set) var itemsVersion: Int = 0
+    @Published public private(set) var panelFilteredItems: [IngestionListItem] = []
+    @Published public private(set) var panelSearchResults: [IngestionListItem] = []
+    @Published public private(set) var panelPinnedItems: [IngestionListItem] = []
+    @Published public private(set) var panelCategorizedItems: [String: [IngestionListItem]] = [:]
+    @Published public private(set) var panelCategoriesWithItems: [String] = []
+    @Published public private(set) var panelNavigationFileIds: [String] = []
     @Published public var activeMeta: IngestionMetaResponse?
     @Published public var selectedFileId: String?
     @Published public var selectedDerivativeKind: String?
@@ -93,6 +101,8 @@ public final class IngestionViewModel: ObservableObject {
                 self?.items = items
                 self?.updateListPollingState(items: items)
                 self?.detectReadyTransitions(items: items)
+                self?.itemsVersion &+= 1
+                self?.updatePanelDerivedState()
             }
             .store(in: &cancellables)
 
@@ -105,6 +115,13 @@ public final class IngestionViewModel: ObservableObject {
         store.$isOffline
             .sink { [weak self] isOffline in
                 self?.isOffline = isOffline
+            }
+            .store(in: &cancellables)
+
+        $panelSearchQuery
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.updatePanelDerivedState()
             }
             .store(in: &cancellables)
     }
