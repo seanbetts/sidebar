@@ -255,7 +255,13 @@ extension WebsitesPanelView {
                             }
                         },
                         label: {
-                            archiveLabel
+                            VStack(alignment: .leading, spacing: 0) {
+                                Rectangle()
+                                    .fill(DesignTokens.Colors.border)
+                                    .frame(height: 1)
+                                archiveLabel
+                                    .padding(.top, DesignTokens.Spacing.md)
+                            }
                         }
                     )
                     .listRowBackground(DesignTokens.Colors.sidebarRowBackground)

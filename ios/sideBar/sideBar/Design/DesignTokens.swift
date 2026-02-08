@@ -63,11 +63,7 @@ enum DesignTokens {
         static let errorBorder = Color.red.opacity(0.2)
 
         static var sidebarRowBackground: Color {
-            #if os(macOS)
-            return sidebar
-            #else
-            return background
-            #endif
+            .clear
         }
 
         static func sidebarRowBackground(isSelected: Bool) -> Color {
