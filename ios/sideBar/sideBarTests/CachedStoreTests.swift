@@ -44,10 +44,64 @@ final class CachedStoreTests: XCTestCase {
 
         XCTAssertEqual(store.backgroundRefreshCallCount, 1)
     }
+
+    func testLoadWithCacheBacksOffAfterRepeatedFailures() async throws {
+        let cache = TestCacheClient()
+        cache.set(key: "store-key", value: "cached", ttlSeconds: 60)
+        var now = Date(timeIntervalSince1970: 1_000)
+        let store = MockCachedStore(cache: cache, fetchResult: "fresh", now: { now })
+        store.backgroundRefreshOutcomes = [.failure, .failure, .success]
+
+        try await store.loadWithCache()
+        await waitForBackgroundTask()
+        try await store.loadWithCache()
+        await waitForBackgroundTask()
+        XCTAssertEqual(store.backgroundRefreshCallCount, 2)
+
+        try await store.loadWithCache()
+        await waitForBackgroundTask()
+        XCTAssertEqual(store.backgroundRefreshCallCount, 2)
+
+        now = now.addingTimeInterval(5)
+        try await store.loadWithCache()
+        await waitForBackgroundTask()
+        XCTAssertEqual(store.backgroundRefreshCallCount, 3)
+    }
+
+    func testResetBackgroundRefreshBackoffAllowsImmediateRetry() async throws {
+        let cache = TestCacheClient()
+        cache.set(key: "store-key", value: "cached", ttlSeconds: 60)
+        let store = MockCachedStore(cache: cache, fetchResult: "fresh")
+        store.backgroundRefreshOutcomes = [.failure, .failure, .success]
+
+        try await store.loadWithCache()
+        await waitForBackgroundTask()
+        try await store.loadWithCache()
+        await waitForBackgroundTask()
+        XCTAssertEqual(store.backgroundRefreshCallCount, 2)
+
+        try await store.loadWithCache()
+        await waitForBackgroundTask()
+        XCTAssertEqual(store.backgroundRefreshCallCount, 2)
+
+        store.resetBackgroundRefreshBackoff()
+        try await store.loadWithCache()
+        await waitForBackgroundTask()
+        XCTAssertEqual(store.backgroundRefreshCallCount, 3)
+    }
+
+    private func waitForBackgroundTask() async {
+        try? await Task.sleep(nanoseconds: 75_000_000)
+    }
 }
 
 @MainActor
 private final class MockCachedStore: CachedStoreBase<String> {
+    enum BackgroundRefreshOutcome {
+        case success
+        case failure
+    }
+
     struct Applied {
         let value: String
         let persist: Bool
@@ -59,11 +113,16 @@ private final class MockCachedStore: CachedStoreBase<String> {
     var appliedData: [Applied] = []
     var onBackgroundRefresh: (() -> Void)?
     var backgroundRefreshDelay: UInt64 = 0
+    var backgroundRefreshOutcomes: [BackgroundRefreshOutcome] = [.success]
     private(set) var backgroundRefreshCallCount = 0
 
-    init(cache: CacheClient, fetchResult: String) {
+    init(
+        cache: CacheClient,
+        fetchResult: String,
+        now: @escaping () -> Date = Date.init
+    ) {
         self.fetchResult = fetchResult
-        super.init(cache: cache)
+        super.init(cache: cache, now: now)
     }
 
     override func fetchFromAPI() async throws -> String {
@@ -78,6 +137,13 @@ private final class MockCachedStore: CachedStoreBase<String> {
         backgroundRefreshCallCount += 1
         if backgroundRefreshDelay > 0 {
             try? await Task.sleep(nanoseconds: backgroundRefreshDelay)
+        }
+        let outcome = backgroundRefreshOutcomes.isEmpty ? .success : backgroundRefreshOutcomes.removeFirst()
+        switch outcome {
+        case .success:
+            markBackgroundRefreshSuccess()
+        case .failure:
+            markBackgroundRefreshFailure()
         }
         onBackgroundRefresh?()
     }

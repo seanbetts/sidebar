@@ -5,6 +5,9 @@ import sideBarShared
 
 extension IngestionStore {
     func refreshList() async {
+        guard canAttemptBackgroundRefresh() else {
+            return
+        }
         guard !isRefreshingList else {
             return
         }
@@ -14,7 +17,9 @@ extension IngestionStore {
             let response = try await api.list()
             isOffline = false
             applyListUpdate(response.items, persist: true)
+            markBackgroundRefreshSuccess()
         } catch {
+            markBackgroundRefreshFailure()
             if Self.isNetworkError(error) {
                 isOffline = true
             }
@@ -23,6 +28,9 @@ extension IngestionStore {
     }
 
     func refreshMeta(fileId: String) async {
+        guard canAttemptBackgroundRefresh() else {
+            return
+        }
         guard !refreshingMetaIds.contains(fileId) else {
             return
         }
@@ -32,7 +40,9 @@ extension IngestionStore {
             let response = try await api.getMeta(fileId: fileId)
             isOffline = false
             applyMetaUpdate(response, persist: true)
+            markBackgroundRefreshSuccess()
         } catch {
+            markBackgroundRefreshFailure()
             if Self.isNetworkError(error) {
                 isOffline = true
             }

@@ -19,7 +19,7 @@ import WidgetKit
 /// - Handle real-time website events (insert, update, delete)
 public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     @Published public private(set) var items: [WebsiteItem] = []
-    @Published public private(set) var active: WebsiteDetail?
+    @Published public internal(set) var active: WebsiteDetail?
     @Published public private(set) var archivedSummary: ArchivedSummary?
 
     private let api: any WebsitesProviding
@@ -252,6 +252,9 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     // MARK: - Private
 
     private func refreshList() async {
+        guard canAttemptBackgroundRefresh() else {
+            return
+        }
         guard !isRefreshingList else {
             return
         }
@@ -261,12 +264,19 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             let response = try await api.list()
             updateArchivedSummary(from: response, persist: true)
             applyListUpdate(response.items, persist: true)
+            markBackgroundRefreshSuccess()
         } catch {
+            markBackgroundRefreshFailure()
             // Ignore background refresh failures; cache remains source of truth.
         }
     }
 
     private func refreshArchivedList(force: Bool = false) async {
+        if !force {
+            guard canAttemptBackgroundRefresh() else {
+                return
+            }
+        }
         if isRefreshingArchived {
             await waitForArchivedRefresh()
             return
@@ -281,10 +291,12 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             applyArchivedUpdate(response.items, persist: true)
             archivedListSyncedAt = archivedSummary?.lastUpdated
             persistArchivedSyncToken()
+            markBackgroundRefreshSuccess()
             Task { [weak self] in
                 await self?.prefetchArchivedDetails(from: response.items)
             }
         } catch {
+            markBackgroundRefreshFailure()
             // Ignore background refresh failures; cache remains source of truth.
         }
     }
@@ -296,10 +308,15 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     private func refreshDetail(id: String) async {
+        guard canAttemptBackgroundRefresh() else {
+            return
+        }
         do {
             let response = try await api.get(id: id)
             applyDetailUpdate(response, persist: true)
+            markBackgroundRefreshSuccess()
         } catch {
+            markBackgroundRefreshFailure()
             // Ignore background refresh failures; cache remains source of truth.
         }
     }

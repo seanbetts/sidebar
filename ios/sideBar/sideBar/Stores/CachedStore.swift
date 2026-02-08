@@ -8,6 +8,12 @@ open class CachedStoreBase<CachedData: Codable>: ObservableObject {
     public let objectWillChange = ObservableObjectPublisher()
     public let cache: CacheClient
     private var backgroundRefreshTask: Task<Void, Never>?
+    private let backgroundRefreshFailuresBeforeBackoff: Int
+    private let backgroundRefreshBaseDelay: TimeInterval
+    private let backgroundRefreshMaxDelay: TimeInterval
+    private let now: () -> Date
+    private(set) var consecutiveBackgroundRefreshFailures = 0
+    private(set) var nextBackgroundRefreshAllowedAt: Date?
 
     open var cacheKey: String {
         fatalError("Subclass must override cacheKey")
@@ -17,8 +23,18 @@ open class CachedStoreBase<CachedData: Codable>: ObservableObject {
         fatalError("Subclass must override cacheTTL")
     }
 
-    public init(cache: CacheClient) {
+    public init(
+        cache: CacheClient,
+        backgroundRefreshFailuresBeforeBackoff: Int = 2,
+        backgroundRefreshBaseDelay: TimeInterval = 5,
+        backgroundRefreshMaxDelay: TimeInterval = 300,
+        now: @escaping () -> Date = Date.init
+    ) {
         self.cache = cache
+        self.backgroundRefreshFailuresBeforeBackoff = max(1, backgroundRefreshFailuresBeforeBackoff)
+        self.backgroundRefreshBaseDelay = max(1, backgroundRefreshBaseDelay)
+        self.backgroundRefreshMaxDelay = max(backgroundRefreshBaseDelay, backgroundRefreshMaxDelay)
+        self.now = now
     }
 
     open func fetchFromAPI() async throws -> CachedData {
@@ -47,7 +63,37 @@ open class CachedStoreBase<CachedData: Codable>: ObservableObject {
         cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
     }
 
+    public func markBackgroundRefreshSuccess() {
+        consecutiveBackgroundRefreshFailures = 0
+        nextBackgroundRefreshAllowedAt = nil
+    }
+
+    public func markBackgroundRefreshFailure() {
+        consecutiveBackgroundRefreshFailures += 1
+        guard consecutiveBackgroundRefreshFailures >= backgroundRefreshFailuresBeforeBackoff else {
+            return
+        }
+
+        let exponent = Double(consecutiveBackgroundRefreshFailures - backgroundRefreshFailuresBeforeBackoff)
+        let multiplier = pow(2.0, exponent)
+        let delay = min(backgroundRefreshMaxDelay, backgroundRefreshBaseDelay * multiplier)
+        nextBackgroundRefreshAllowedAt = now().addingTimeInterval(delay)
+    }
+
+    public func resetBackgroundRefreshBackoff() {
+        consecutiveBackgroundRefreshFailures = 0
+        nextBackgroundRefreshAllowedAt = nil
+    }
+
+    func canAttemptBackgroundRefresh() -> Bool {
+        guard let nextBackgroundRefreshAllowedAt else {
+            return true
+        }
+        return now() >= nextBackgroundRefreshAllowedAt
+    }
+
     private func triggerBackgroundRefresh() {
+        guard canAttemptBackgroundRefresh() else { return }
         guard backgroundRefreshTask == nil else { return }
         backgroundRefreshTask = Task { @MainActor [weak self] in
             guard let self else { return }

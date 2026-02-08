@@ -126,6 +126,7 @@ extension AppEnvironment {
             .sink { [weak self] isOffline in
                 self?.isOffline = isOffline
                 if !isOffline {
+                    self?.resetStoreRefreshBackoff()
                     Task { [weak self] in
                         await self?.consumePendingShares()
                     }
@@ -137,6 +138,9 @@ extension AppEnvironment {
             .removeDuplicates()
             .sink { [weak self] isAvailable in
                 self?.isNetworkAvailable = isAvailable
+                if isAvailable {
+                    self?.resetStoreRefreshBackoff()
+                }
             }
             .store(in: &cancellables)
 
@@ -162,6 +166,13 @@ extension AppEnvironment {
 #elseif os(macOS)
         registerForRemoteNotificationsIfNeeded()
 #endif
+    }
+
+    private func resetStoreRefreshBackoff() {
+        chatStore.resetBackgroundRefreshBackoff()
+        notesStore.resetBackgroundRefreshBackoff()
+        websitesStore.resetBackgroundRefreshBackoff()
+        ingestionStore.resetBackgroundRefreshBackoff()
     }
 
 #if os(iOS)

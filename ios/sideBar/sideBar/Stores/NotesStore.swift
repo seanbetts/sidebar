@@ -21,7 +21,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     @Published public internal(set) var archivedTree: FileTree?
     @Published public internal(set) var activeNote: NotePayload?
 
-    private let api: any NotesProviding
+    let api: any NotesProviding
     let offlineStore: OfflineStore?
     let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
@@ -29,15 +29,15 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     private var isRefreshingTree = false
     private var isRefreshingArchivedTree = false
     private var refreshingNotes = Set<String>()
-    private let archivedNoteRetentionDays = 7
-    private let archivedNotePrefetchLimit = 50
+    let archivedNoteRetentionDays = 7
+    let archivedNotePrefetchLimit = 50
     private let archivedTreeLimit = 500
     private let archivedRefreshWaitTimeoutNanoseconds: UInt64
     private let archivedRefreshPollIntervalNanoseconds: UInt64
-    private var archivedSummary: ArchivedSummary?
-    private var archivedTreeSyncedAt: String?
-    private var archivedSyncLoaded = false
-    private var isPrefetchingArchivedNotes = false
+    var archivedSummary: ArchivedSummary?
+    var archivedTreeSyncedAt: String?
+    var archivedSyncLoaded = false
+    var isPrefetchingArchivedNotes = false
 
     public init(
         api: any NotesProviding,
@@ -208,6 +208,9 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     // MARK: - Private
 
     private func refreshTree() async {
+        guard canAttemptBackgroundRefresh() else {
+            return
+        }
         guard !isRefreshingTree else {
             return
         }
@@ -216,12 +219,19 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         do {
             let response = try await api.listTree()
             applyTreeUpdate(response, persist: true)
+            markBackgroundRefreshSuccess()
         } catch {
+            markBackgroundRefreshFailure()
             // Ignore background refresh failures; cache remains source of truth.
         }
     }
 
     private func refreshArchivedTree(force: Bool = false) async {
+        if !force {
+            guard canAttemptBackgroundRefresh() else {
+                return
+            }
+        }
         if isRefreshingArchivedTree {
             await waitForArchivedTreeRefresh()
             return
@@ -236,10 +246,12 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             applyArchivedTreeUpdate(response, persist: true)
             archivedTreeSyncedAt = archivedSummary?.lastUpdated
             persistArchivedSyncToken()
+            markBackgroundRefreshSuccess()
             Task { [weak self] in
                 await self?.prefetchArchivedNotes(from: response)
             }
         } catch {
+            markBackgroundRefreshFailure()
             // Ignore background refresh failures; cache remains source of truth.
         }
     }
@@ -253,6 +265,9 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     }
 
     private func refreshNote(id: String) async {
+        guard canAttemptBackgroundRefresh() else {
+            return
+        }
         guard !refreshingNotes.contains(id) else {
             return
         }
@@ -261,7 +276,9 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         do {
             let response = try await api.getNote(id: id)
             applyNoteUpdate(response, persist: true)
+            markBackgroundRefreshSuccess()
         } catch {
+            markBackgroundRefreshFailure()
             // Ignore background refresh failures; cache remains source of truth.
         }
     }

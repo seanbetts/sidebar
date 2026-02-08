@@ -333,6 +333,9 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     }
 
     private func refreshConversationsList() async {
+        guard canAttemptBackgroundRefresh() else {
+            return
+        }
         guard !isRefreshingList else {
             return
         }
@@ -342,7 +345,9 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             let response = try await conversationsAPI.list()
             let filtered = response.filter { $0.isArchived != true }
             applyConversationListUpdate(filtered, persist: true)
+            markBackgroundRefreshSuccess()
         } catch {
+            markBackgroundRefreshFailure()
             // Ignore background refresh failures; cache remains source of truth.
         }
     }
