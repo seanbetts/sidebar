@@ -4,20 +4,12 @@ import Combine
 @MainActor
 /// Manages tasks state, networking, and user actions for the tasks UI.
 public final class TasksViewModel: ObservableObject {
-    @Published public private(set) var tasks: [TaskItem] = []
-    @Published public private(set) var groups: [TaskGroup] = []
-    @Published public private(set) var projects: [TaskProject] = []
-    @Published public private(set) var counts: TaskCountsResponse?
-    @Published public private(set) var isLoading: Bool = false
-    @Published public private(set) var searchPending: Bool = false
-    @Published public internal(set) var errorMessage: String?
-    @Published public private(set) var selection: TaskSelection = .none
+    @Published private var localErrorMessage: String?
     @Published public var searchQuery: String = ""
     @Published public var newTaskDraft: TaskDraft?
     @Published public private(set) var newTaskSaving: Bool = false
     @Published public private(set) var newTaskError: String = ""
     @Published public private(set) var filteredUpcomingCount: Int?
-    @Published public var phoneDetailRouteId: String?
 
     let api: any TasksProviding
     let store: TasksStore
@@ -38,56 +30,24 @@ public final class TasksViewModel: ObservableObject {
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
 
-        store.$tasks
-            .sink { [weak self] tasks in
-                self?.tasks = tasks
-            }
-            .store(in: &cancellables)
-
-        store.$groups
-            .sink { [weak self] groups in
-                self?.groups = groups
-            }
-            .store(in: &cancellables)
-
-        store.$projects
-            .sink { [weak self] projects in
-                self?.projects = projects
-            }
-            .store(in: &cancellables)
-
-        store.$counts
-            .sink { [weak self] counts in
-                self?.counts = counts
-            }
-            .store(in: &cancellables)
-
-        store.$isLoading
-            .sink { [weak self] isLoading in
-                self?.isLoading = isLoading
-            }
-            .store(in: &cancellables)
-
-        store.$searchPending
-            .sink { [weak self] searchPending in
-                self?.searchPending = searchPending
-            }
-            .store(in: &cancellables)
-
-        store.$errorMessage
-            .sink { [weak self] error in
-                self?.errorMessage = error
-            }
-            .store(in: &cancellables)
-
-        store.$selection
-            .sink { [weak self] selection in
-                self?.selection = selection
+        store.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
     }
 
+    public var tasks: [TaskItem] { store.tasks }
+    public var groups: [TaskGroup] { store.groups }
+    public var projects: [TaskProject] { store.projects }
+    public var counts: TaskCountsResponse? { store.counts }
+    public var isLoading: Bool { store.isLoading }
+    public var searchPending: Bool { store.searchPending }
+    public var selection: TaskSelection { store.selection }
+    public var errorMessage: String? { localErrorMessage ?? store.errorMessage }
+
     public func load(selection: TaskSelection, force: Bool = false) async {
+        localErrorMessage = nil
         if selection == .none {
             await store.load(selection: selection, force: force)
             return
@@ -150,7 +110,24 @@ public final class TasksViewModel: ObservableObject {
     }
 
     public func loadCounts(force: Bool = false) async {
+        localErrorMessage = nil
         await store.loadCounts(force: force)
+    }
+
+    public func reset() {
+        searchDebounce?.cancel()
+        searchDebounce = nil
+        localErrorMessage = nil
+        searchQuery = ""
+        newTaskDraft = nil
+        newTaskSaving = false
+        newTaskError = ""
+        filteredUpcomingCount = nil
+        lastNonSearchSelection = .today
+    }
+
+    func setLocalErrorMessage(_ message: String?) {
+        localErrorMessage = message
     }
 }
 

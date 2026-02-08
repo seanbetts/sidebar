@@ -64,7 +64,7 @@ private struct TasksPanelView: View {
                 searchQuery = ""
             }
         }
-        .onReceive(environment.$shortcutActionEvent) { event in
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .tasks else { return }
             switch event.action {
             case .focusSearch:
@@ -244,7 +244,7 @@ extension TasksPanelView {
         if isCompact {
             environment.commandSelection = .tasks
             environment.pendingNewTaskDeepLink = true
-            viewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
+            environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
         } else {
             viewModel.startNewTask()
         }
@@ -271,7 +271,7 @@ extension TasksPanelView {
         )
         .onTapGesture {
             if isCompact {
-                viewModel.phoneDetailRouteId = selection.cacheKey
+                environment.tasksPhoneDetailRouteId = selection.cacheKey
             }
             environment.commandSelection = .tasks
             Task { await viewModel.load(selection: selection) }

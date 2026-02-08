@@ -130,11 +130,29 @@ extension ChatViewModel {
     func reconcileMessages(_ incoming: [Message], for conversationId: String) -> [Message] {
         guard conversationId == streamingConversationId,
               let currentStreamMessageId,
-              !incoming.contains(where: { $0.id == currentStreamMessageId }),
               let streamingMessage = messages.first(where: { $0.id == currentStreamMessageId }) else {
             return incoming
         }
-        return incoming + [streamingMessage]
+
+        var reconciled = incoming
+        if let serverIndex = reconciled.firstIndex(where: { $0.id == currentStreamMessageId }) {
+            let serverMessage = reconciled[serverIndex]
+            if serverMessage.status != .streaming {
+                currentStreamMessageId = nil
+                streamingConversationId = nil
+                return reconciled
+            }
+            if streamingMessage.content.count > serverMessage.content.count {
+                reconciled[serverIndex] = streamingMessage
+            }
+            return reconciled
+        }
+
+        if reconciled.contains(where: { $0.role == .assistant && $0.status == .streaming }) {
+            return reconciled
+        }
+
+        return reconciled + [streamingMessage]
     }
 
     func isSameMessageSnapshot(current: [Message], incoming: [Message]) -> Bool {

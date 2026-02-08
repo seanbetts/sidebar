@@ -5,11 +5,9 @@ import Combine
 
 @MainActor
 /// Manages user settings, skills, and profile image state.
-public final class SettingsViewModel: ObservableObject {
+public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var settings: UserSettings?
     @Published public private(set) var skills: [SkillItem] = []
-    @Published public private(set) var errorMessage: String?
-    @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var isLoadingSkills: Bool = false
     @Published public private(set) var isSavingSkills: Bool = false
     @Published public private(set) var skillsError: String?
@@ -28,11 +26,12 @@ public final class SettingsViewModel: ObservableObject {
         self.settingsAPI = settingsAPI
         self.skillsAPI = skillsAPI
         self.cache = cache
+        super.init()
     }
 
     public func load() async {
-        errorMessage = nil
-        isLoading = true
+        clearError()
+        setLoading(true)
         let loader = CachedLoader(
             cache: cache,
             key: CacheKeys.userSettings,
@@ -46,9 +45,9 @@ public final class SettingsViewModel: ObservableObject {
             })
             settings = response
         } catch {
-            errorMessage = error.localizedDescription
+            setError(error)
         }
-        isLoading = false
+        setLoading(false)
     }
 
     public func loadSkills() async {

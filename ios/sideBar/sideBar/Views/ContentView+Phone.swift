@@ -155,10 +155,10 @@ extension ContentView {
             detailView: { AnyView(TasksView()) },
             phoneSelection: {
                 Binding(
-                    get: { environment.tasksViewModel.phoneDetailRouteId.map(PhoneDetailRoute.init) },
+                    get: { environment.tasksPhoneDetailRouteId.map(PhoneDetailRoute.init) },
                     set: { route in
                         guard route == nil else { return }
-                        environment.tasksViewModel.phoneDetailRouteId = nil
+                        environment.tasksPhoneDetailRouteId = nil
                     }
                 )
             }

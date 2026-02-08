@@ -71,6 +71,12 @@ extension AppEnvironment {
             }
             .store(in: &cancellables)
 
+        navigation.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
         chatViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
@@ -146,10 +152,10 @@ extension AppEnvironment {
 #if os(iOS)
         requestBadgeAuthorizationIfNeeded()
         registerForRemoteNotificationsIfNeeded()
-        Publishers.CombineLatest($isAuthenticated, tasksViewModel.$counts)
+        Publishers.CombineLatest($authState, tasksStore.$counts)
             .receive(on: DispatchQueue.main)
-            .sink { isAuthenticated, counts in
-                let badgeCount = isAuthenticated ? (counts?.counts.today ?? 0) : 0
+            .sink { authState, counts in
+                let badgeCount = authState != .signedOut ? (counts?.counts.today ?? 0) : 0
                 UNUserNotificationCenter.current().setBadgeCount(badgeCount, withCompletionHandler: nil)
             }
             .store(in: &cancellables)

@@ -213,4 +213,24 @@ import Foundation
         attachments.filter { $0.status != .ready }
     }
 
+    public func reset() {
+        stopAutoRefresh()
+        stopStream()
+        selectedConversationId = nil
+        conversations = []
+        messages = []
+        isStreaming = false
+        isLoadingConversations = false
+        isLoadingMessages = false
+        attachments = []
+        errorMessage = nil
+        activeTool = nil
+        promptPreview = nil
+        generatingTitleIds.removeAll()
+        clearActiveToolTask?.cancel()
+        clearActiveToolTask = nil
+        userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+        clearAttachments()
+    }
+
 }

@@ -184,6 +184,34 @@ final class NotesStoreTests: XCTestCase {
         let offlineCached: NotePayload? = offlineStore.get(key: CacheKeys.note(id: "n2"), as: NotePayload.self)
         XCTAssertNotNil(offlineCached)
     }
+
+    func testConcurrentArchivedTreeRefreshTimesOutInsteadOfWaitingIndefinitely() async {
+        let cached = FileTree(children: [])
+        let fresh = FileTree(children: [])
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.notesArchivedTree, value: cached, ttlSeconds: 60)
+        let api = MockNotesAPI(treeResult: .success(fresh), noteResult: .failure(MockError.forced))
+        api.archivedListDelay = 0.6
+
+        let store = NotesStore(
+            api: api,
+            cache: cache,
+            archivedRefreshWaitTimeoutNanoseconds: 100_000_000,
+            archivedRefreshPollIntervalNanoseconds: 10_000_000
+        )
+
+        let firstRefresh = Task {
+            try? await store.loadArchivedTree()
+        }
+        try? await Task.sleep(nanoseconds: 30_000_000)
+
+        let start = Date()
+        try? await store.loadArchivedTree()
+        let elapsed = Date().timeIntervalSince(start)
+
+        XCTAssertLessThan(elapsed, 0.35)
+        await firstRefresh.value
+    }
 }
 
 private enum MockError: Error {
@@ -206,6 +234,8 @@ private final class MockNotesAPI: NotesProviding {
     let noteResult: Result<NotePayload, Error>
     var onList: (() -> Void)?
     var listDelay: TimeInterval?
+    var onArchivedList: (() -> Void)?
+    var archivedListDelay: TimeInterval?
 
     init(treeResult: Result<FileTree, Error>, noteResult: Result<NotePayload, Error>) {
         self.treeResult = treeResult
@@ -223,6 +253,10 @@ private final class MockNotesAPI: NotesProviding {
     func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
         _ = limit
         _ = offset
+        if let archivedListDelay {
+            try? await Task.sleep(nanoseconds: UInt64(archivedListDelay * 1_000_000_000))
+        }
+        onArchivedList?()
         return try treeResult.get()
     }
 

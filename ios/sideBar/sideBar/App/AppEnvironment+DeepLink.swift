@@ -35,13 +35,13 @@ extension AppEnvironment {
                 await tasksViewModel.load(selection: .today, force: true)
             }
             #if !os(macOS)
-            tasksViewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
+            tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
             #endif
         } else if url.path == "/new" {
             logger.info("Deep link to new task")
             pendingNewTaskDeepLink = true
             #if !os(macOS)
-            tasksViewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
+            tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
             #endif
             if isTasksFocused {
                 pendingNewTaskDeepLink = false

@@ -79,7 +79,7 @@ struct ConversationsPanelView: View {
         } message: {
             Text(deleteDialogTitle)
         }
-        .onReceive(environment.$shortcutActionEvent) { event in
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .chat else { return }
             switch event.action {
             case .focusSearch:

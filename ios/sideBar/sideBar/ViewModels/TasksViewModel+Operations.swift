@@ -2,7 +2,7 @@ import Foundation
 
 extension TasksViewModel {
     public func setErrorMessage(_ message: String) {
-        errorMessage = message
+        setLocalErrorMessage(message)
     }
 
     public func completeTask(task: TaskItem) async {
@@ -49,7 +49,7 @@ extension TasksViewModel {
             if let removedTask {
                 store.restoreTask(removedTask)
             }
-            errorMessage = ErrorMapping.message(for: error)
+            setLocalErrorMessage(ErrorMapping.message(for: error))
         }
     }
 
@@ -153,7 +153,7 @@ extension TasksViewModel {
     }
 
     private func applyTaskOperation(_ operation: TaskOperationPayload) async {
-        errorMessage = nil
+        setLocalErrorMessage(nil)
         if !networkStatus.isNetworkAvailable {
             await queueOfflineOperation(operation)
             return
@@ -171,7 +171,7 @@ extension TasksViewModel {
             await loadCounts(force: true)
             await refreshWidgetData()
         } catch {
-            errorMessage = ErrorMapping.message(for: error)
+            setLocalErrorMessage(ErrorMapping.message(for: error))
         }
     }
 
@@ -186,7 +186,7 @@ extension TasksViewModel {
         } catch WriteQueueError.queueFull {
             toastCenter.show(message: "Sync queue full. Review pending changes.")
         } catch {
-            errorMessage = "Failed to queue task changes"
+            setLocalErrorMessage("Failed to queue task changes")
         }
     }
 

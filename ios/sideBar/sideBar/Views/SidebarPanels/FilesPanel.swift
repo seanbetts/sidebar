@@ -116,7 +116,7 @@ extension FilesPanelView {
                 }
                 knownFileIds = newIdSet
             }
-            .onReceive(appEnvironment.$shortcutActionEvent) { event in
+            .onReceive(appEnvironment.navigation.$shortcutActionEvent) { event in
                 guard let event, event.section == .files else { return }
                 switch event.action {
                 case .focusSearch:

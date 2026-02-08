@@ -251,6 +251,76 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.conversations.first?.id, created.id)
     }
 
+    func testReconcileMessagesPrefersLocalStreamingContentWhenIDsMatch() {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
+        let localStreaming = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "longer local content",
+            status: .streaming,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:00Z",
+            error: nil
+        )
+        viewModel.streamingConversationId = "conv-1"
+        viewModel.currentStreamMessageId = localStreaming.id
+        viewModel.messages = [localStreaming]
+
+        let incoming = [
+            Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "short",
+                status: .streaming,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:00Z",
+                error: nil
+            )
+        ]
+
+        let reconciled = viewModel.reconcileMessages(incoming, for: "conv-1")
+        XCTAssertEqual(reconciled.first?.content, localStreaming.content)
+    }
+
+    func testReconcileMessagesDoesNotAppendLocalStreamWhenServerHasStreamingAssistant() {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
+        viewModel.streamingConversationId = "conv-1"
+        viewModel.currentStreamMessageId = "assistant-local"
+        viewModel.messages = [
+            Message(
+                id: "assistant-local",
+                role: .assistant,
+                content: "local stream",
+                status: .streaming,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:00Z",
+                error: nil
+            )
+        ]
+
+        let incoming = [
+            Message(
+                id: "assistant-server",
+                role: .assistant,
+                content: "server stream",
+                status: .streaming,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:00Z",
+                error: nil
+            )
+        ]
+
+        let reconciled = viewModel.reconcileMessages(incoming, for: "conv-1")
+        XCTAssertEqual(reconciled.count, 1)
+        XCTAssertEqual(reconciled.first?.id, "assistant-server")
+    }
+
     private func makeViewModel(
         api: MockConversationsAPI,
         cache: CacheClient,

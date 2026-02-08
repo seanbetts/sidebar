@@ -5,21 +5,26 @@ extension AppEnvironment {
     public func refreshAuthState() {
         let previousAuthState = authState
         authState = container.authSession.authState
-        let wasAuthenticated = isAuthenticated
-        isAuthenticated = authState != .signedOut
+        let wasAuthenticated = previousAuthState != .signedOut
+        let isAuthenticated = authState != .signedOut
 
         let becameSignedOut = previousAuthState != .signedOut && authState == .signedOut
         let becameStale = previousAuthState != .stale && authState == .stale
         if becameSignedOut {
             container.cacheClient.clear()
+            offlineStore.clearAllSnapshots()
             chatStore.reset()
             notesStore.reset()
             websitesStore.reset()
             ingestionStore.reset()
             tasksStore.reset()
+            chatViewModel.reset()
+            tasksViewModel.reset()
             notesViewModel.clearSelection()
             websitesViewModel.clearSelection()
             ingestionViewModel.clearSelection()
+            isTasksFocused = false
+            navigation.resetForSignOut()
             Task {
                 await spotlightIndexer.clearAllIndexes()
             }
@@ -115,7 +120,7 @@ extension AppEnvironment {
         // Navigate to tasks section and start new task
         commandSelection = .tasks
         #if !os(macOS)
-        tasksViewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
+        tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
         #endif
         if isTasksFocused {
             pendingNewTaskDeepLink = false

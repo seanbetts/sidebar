@@ -32,6 +32,7 @@ public final class AppEnvironment: ObservableObject {
     public let memoriesViewModel: MemoriesViewModel
     public let settingsViewModel: SettingsViewModel
     public let weatherViewModel: WeatherViewModel
+    public let navigation: NavigationCoordinator
     let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
     let connectivityMonitor: ConnectivityMonitor
@@ -42,24 +43,10 @@ public final class AppEnvironment: ObservableObject {
     let syncCoordinator: SyncCoordinator
 
     @Published public internal(set) var authState: AuthState = .signedOut
-    @Published public internal(set) var isAuthenticated: Bool = false
     @Published public internal(set) var isOffline: Bool = false
     @Published public internal(set) var isNetworkAvailable: Bool = true
     @Published public internal(set) var isServerReachable: Bool = true
-    @Published public var commandSelection: AppSection?
     @Published public internal(set) var signOutEvent: UUID?
-    @Published public var activeSection: AppSection?
-    @Published public var isTasksFocused: Bool = false {
-        didSet {
-            #if os(iOS)
-            UIMenuSystem.main.setNeedsRebuild()
-            #endif
-        }
-    }
-    @Published public var pendingNewTaskDeepLink: Bool = false
-    @Published public var pendingNewNoteDeepLink: Bool = false
-    @Published public var pendingScratchpadDeepLink: Bool = false
-    @Published public var shortcutActionEvent: ShortcutActionEvent?
     var cancellables = Set<AnyCancellable>()
     #if os(iOS) || os(macOS)
     var deviceToken: String?
@@ -99,6 +86,7 @@ public final class AppEnvironment: ObservableObject {
         self.ingestionViewModel = dependencies.ingestionViewModel
         self.websitesViewModel = dependencies.websitesViewModel
         self.tasksViewModel = dependencies.tasksViewModel
+        self.navigation = NavigationCoordinator()
         self.memoriesViewModel = dependencies.memoriesViewModel
         self.settingsViewModel = dependencies.settingsViewModel
         self.weatherViewModel = dependencies.weatherViewModel
@@ -147,7 +135,6 @@ public final class AppEnvironment: ObservableObject {
             }
         )
         self.authState = container.authSession.authState
-        self.isAuthenticated = self.authState != .signedOut
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
         #endif
@@ -180,4 +167,52 @@ public final class AppEnvironment: ObservableObject {
         #endif
     }
 
+    public var isAuthenticated: Bool {
+        authState != .signedOut
+    }
+
+    public var commandSelection: AppSection? {
+        get { navigation.commandSelection }
+        set { navigation.commandSelection = newValue }
+    }
+
+    public var activeSection: AppSection? {
+        get { navigation.activeSection }
+        set { navigation.activeSection = newValue }
+    }
+
+    public var isTasksFocused: Bool {
+        get { navigation.isTasksFocused }
+        set {
+            navigation.isTasksFocused = newValue
+            #if os(iOS)
+            UIMenuSystem.main.setNeedsRebuild()
+            #endif
+        }
+    }
+
+    public var pendingNewTaskDeepLink: Bool {
+        get { navigation.pendingNewTaskDeepLink }
+        set { navigation.pendingNewTaskDeepLink = newValue }
+    }
+
+    public var pendingNewNoteDeepLink: Bool {
+        get { navigation.pendingNewNoteDeepLink }
+        set { navigation.pendingNewNoteDeepLink = newValue }
+    }
+
+    public var pendingScratchpadDeepLink: Bool {
+        get { navigation.pendingScratchpadDeepLink }
+        set { navigation.pendingScratchpadDeepLink = newValue }
+    }
+
+    public var shortcutActionEvent: ShortcutActionEvent? {
+        get { navigation.shortcutActionEvent }
+        set { navigation.shortcutActionEvent = newValue }
+    }
+
+    public var tasksPhoneDetailRouteId: String? {
+        get { navigation.tasksPhoneDetailRouteId }
+        set { navigation.tasksPhoneDetailRouteId = newValue }
+    }
 }

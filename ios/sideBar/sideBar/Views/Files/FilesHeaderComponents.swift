@@ -259,7 +259,7 @@ struct FilesHeaderActions: View {
         ) { _ in
             exportDocument = nil
         }
-        .onReceive(environment.$shortcutActionEvent) { event in
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .files else { return }
             switch event.action {
             case .renameItem:

@@ -188,7 +188,7 @@ struct TasksDetailView: View {
                 )
             }
         }
-        .onReceive(environment.$shortcutActionEvent) { event in
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .tasks else { return }
             guard let task = activeTask(in: state) else { return }
             switch event.action {

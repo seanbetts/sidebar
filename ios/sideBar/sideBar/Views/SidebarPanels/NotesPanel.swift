@@ -173,7 +173,7 @@ struct NotesPanelView: View {
         } message: {
             Text("You have unsaved changes. Save before switching notes?")
         }
-        .onReceive(environment.$shortcutActionEvent) { event in
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .notes else { return }
             switch event.action {
             case .focusSearch:

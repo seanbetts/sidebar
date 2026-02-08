@@ -276,7 +276,7 @@ extension ContentView {
             }
         })
         #if os(iOS)
-        content = AnyView(content.onReceive(environment.$shortcutActionEvent) { event in
+        content = AnyView(content.onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event else { return }
             switch event.action {
             case .showShortcuts:

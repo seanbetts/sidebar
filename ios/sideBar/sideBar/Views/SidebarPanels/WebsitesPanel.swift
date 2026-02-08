@@ -134,7 +134,7 @@ struct WebsitesPanelView: View {
         ) { _ in
             exportDocument = nil
         }
-        .onReceive(appEnvironment.$shortcutActionEvent) { event in
+        .onReceive(appEnvironment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .websites else { return }
             switch event.action {
             case .focusSearch:

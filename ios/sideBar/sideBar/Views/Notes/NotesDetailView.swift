@@ -70,7 +70,7 @@ struct NotesDetailView: View {
             }
             .interactiveDismissDisabled(true)
         }
-        .onReceive(environment.$shortcutActionEvent) { event in
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .notes else { return }
             switch event.action {
             case .closeItem:

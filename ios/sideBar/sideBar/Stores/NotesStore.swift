@@ -32,6 +32,8 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     private let archivedNoteRetentionDays = 7
     private let archivedNotePrefetchLimit = 50
     private let archivedTreeLimit = 500
+    private let archivedRefreshWaitTimeoutNanoseconds: UInt64
+    private let archivedRefreshPollIntervalNanoseconds: UInt64
     private var archivedSummary: ArchivedSummary?
     private var archivedTreeSyncedAt: String?
     private var archivedSyncLoaded = false
@@ -41,11 +43,16 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         api: any NotesProviding,
         cache: CacheClient,
         offlineStore: OfflineStore? = nil,
-        networkStatus: (any NetworkStatusProviding)? = nil
+        networkStatus: (any NetworkStatusProviding)? = nil,
+        archivedRefreshWaitTimeoutNanoseconds: UInt64 = 10_000_000_000,
+        archivedRefreshPollIntervalNanoseconds: UInt64 = 50_000_000
     ) {
         self.api = api
         self.offlineStore = offlineStore
         self.networkStatus = networkStatus
+        let pollInterval = max(1, archivedRefreshPollIntervalNanoseconds)
+        self.archivedRefreshPollIntervalNanoseconds = pollInterval
+        self.archivedRefreshWaitTimeoutNanoseconds = max(pollInterval, archivedRefreshWaitTimeoutNanoseconds)
         super.init(cache: cache)
     }
 
@@ -238,8 +245,10 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     }
 
     private func waitForArchivedTreeRefresh() async {
-        while isRefreshingArchivedTree {
-            try? await Task.sleep(nanoseconds: 50_000_000)
+        var elapsed: UInt64 = 0
+        while isRefreshingArchivedTree, elapsed < archivedRefreshWaitTimeoutNanoseconds {
+            try? await Task.sleep(nanoseconds: archivedRefreshPollIntervalNanoseconds)
+            elapsed += archivedRefreshPollIntervalNanoseconds
         }
     }
 

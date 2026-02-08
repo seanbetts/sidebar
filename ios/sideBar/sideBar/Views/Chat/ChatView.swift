@@ -149,7 +149,7 @@ private struct ChatDetailView: View {
         ) { result in
             handleFileImport(result)
         }
-        .onReceive(environment.$shortcutActionEvent) { event in
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .chat else { return }
             switch event.action {
             case .sendMessage:

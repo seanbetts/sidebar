@@ -65,6 +65,10 @@ public final class OfflineStore {
         deleteEntry(forKey: key)
     }
 
+    public func clearAllSnapshots() {
+        deleteAllEntries()
+    }
+
     public func cleanupSnapshots() async {
         await cleanupSnapshots(retention: OfflineSnapshotRetention())
     }
@@ -174,6 +178,21 @@ public final class OfflineStore {
                 try context.save()
             } catch {
                 logger.error("OfflineStore remove failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func deleteAllEntries() {
+        let context = container.newBackgroundContext()
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        context.performAndWait {
+            do {
+                let request = OfflineEntry.fetchRequest()
+                let entries = try context.fetch(request)
+                entries.forEach { context.delete($0) }
+                try context.save()
+            } catch {
+                logger.error("OfflineStore clearAll failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

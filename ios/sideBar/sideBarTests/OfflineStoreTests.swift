@@ -66,6 +66,25 @@ final class OfflineStoreTests: XCTestCase {
         XCTAssertNil(loaded)
     }
 
+    func testClearAllSnapshotsDeletesAllEntries() {
+        let persistence = PersistenceController(inMemory: true)
+        let store = OfflineStore(container: persistence.container)
+
+        struct Payload: Codable, Equatable {
+            let value: String
+        }
+
+        store.set(key: "notes/1", entityType: "note", value: Payload(value: "A"), lastSyncAt: nil)
+        store.set(key: "tasks/1", entityType: "task", value: Payload(value: "B"), lastSyncAt: nil)
+
+        store.clearAllSnapshots()
+
+        let note: Payload? = store.get(key: "notes/1", as: Payload.self)
+        let task: Payload? = store.get(key: "tasks/1", as: Payload.self)
+        XCTAssertNil(note)
+        XCTAssertNil(task)
+    }
+
     func testCleanupSnapshotsPrunesNoteEntries() async throws {
         let persistence = PersistenceController(inMemory: true)
         let store = OfflineStore(container: persistence.container)
