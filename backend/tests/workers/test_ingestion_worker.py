@@ -39,6 +39,29 @@ def _make_youtube_ingested_file(test_db, file_id):
     return record
 
 
+def _make_youtube_website_transcript_ingested_file(test_db, file_id, website_id):
+    record = IngestedFile(
+        id=file_id,
+        user_id="test-user",
+        filename_original="YouTube Video",
+        mime_original="video/youtube",
+        size_bytes=0,
+        sha256=None,
+        source_url="https://www.youtube.com/watch?v=abc123",
+        source_metadata={
+            "provider": "youtube",
+            "video_id": "abc123",
+            "youtube_url": "https://www.youtube.com/watch?v=abc123",
+            "website_id": str(website_id),
+            "website_transcript": True,
+        },
+        created_at=datetime.now(UTC),
+    )
+    test_db.add(record)
+    test_db.commit()
+    return record
+
+
 def test_retryable_error_requeues_with_backoff(test_db):
     file_id = uuid4()
     _make_ingested_file(test_db, file_id)
@@ -146,9 +169,11 @@ def test_process_youtube_job_disables_transcript_upload(test_db, monkeypatch):
     test_db.commit()
 
     upload_flags: list[bool] = []
+    output_names: list[str] = []
 
-    def fake_transcribe(_record, *, upload_transcript=True):
+    def fake_transcribe(_record, *, upload_transcript=True, output_name="ai.md"):
         upload_flags.append(upload_transcript)
+        output_names.append(output_name)
         return "Transcript", {"title": "Test Video"}
 
     monkeypatch.setattr(ingestion_worker, "_transcribe_youtube", fake_transcribe)
@@ -159,6 +184,57 @@ def test_process_youtube_job_disables_transcript_upload(test_db, monkeypatch):
     ingestion_worker._process_youtube_job(test_db, job, record)
 
     assert upload_flags == [False]
+    assert output_names == ["ai.md"]
+
+
+def test_process_youtube_website_transcript_uses_minimal_stages(test_db, monkeypatch):
+    file_id = uuid4()
+    website_id = uuid4()
+    record = _make_youtube_website_transcript_ingested_file(test_db, file_id, website_id)
+    job = FileProcessingJob(
+        file_id=file_id,
+        status="processing",
+        stage="queued",
+        attempts=0,
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(job)
+    test_db.commit()
+
+    stages: list[str] = []
+    output_names: list[str] = []
+
+    def fake_set_stage(_db, _job, stage):
+        stages.append(stage)
+
+    def fake_transcribe(_record, *, upload_transcript=True, output_name="ai.md"):
+        _ = upload_transcript
+        output_names.append(output_name)
+        return "Transcript", {"title": "Test Video"}
+
+    monkeypatch.setattr(ingestion_worker, "_set_stage", fake_set_stage)
+    monkeypatch.setattr(ingestion_worker, "_refresh_lease", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ingestion_worker, "_transcribe_youtube", fake_transcribe)
+    monkeypatch.setattr(
+        ingestion_worker.WebsiteTranscriptService,
+        "update_transcript_status",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        ingestion_worker.WebsiteTranscriptService,
+        "append_transcript_from_text",
+        lambda *_args, **_kwargs: "",
+    )
+    monkeypatch.setattr(
+        ingestion_worker.FileIngestionService,
+        "soft_delete_file",
+        lambda *_args, **_kwargs: None,
+    )
+
+    ingestion_worker._process_youtube_job(test_db, job, record)
+
+    assert stages == ["validating", "extracting", "finalizing"]
+    assert output_names == ["transcript.md"]
 
 
 def test_transcribe_youtube_sign_in_required_is_non_retryable(test_db, monkeypatch):

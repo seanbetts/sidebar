@@ -100,3 +100,42 @@ def test_sync_transcripts_for_website_updates_failed_status(db_session):
     entry = (refreshed.metadata_ or {}).get("youtube_transcripts", {}).get(video_id)
     assert entry["status"] == "failed"
     assert entry["error"] == "boom"
+
+
+def test_update_transcript_status_clears_error_on_ready(db_session):
+    website = WebsitesService.save_website(
+        db_session,
+        "user-1",
+        url="https://example.com/path",
+        title="Example",
+        content="Content",
+        source="https://example.com/path",
+    )
+    url = "https://www.youtube.com/watch?v=FUq9qRwrDrI"
+    video_id = extract_youtube_id(url)
+    assert video_id is not None
+
+    WebsiteTranscriptService.update_transcript_status(
+        db_session,
+        user_id="user-1",
+        website_id=website.id,
+        youtube_url=url,
+        status="retrying",
+        file_id="file-1",
+        error="temporary failure",
+    )
+    WebsiteTranscriptService.update_transcript_status(
+        db_session,
+        user_id="user-1",
+        website_id=website.id,
+        youtube_url=url,
+        status="ready",
+        file_id="file-1",
+    )
+
+    refreshed = WebsitesService.get_website(
+        db_session, "user-1", website.id, mark_opened=False
+    )
+    entry = (refreshed.metadata_ or {}).get("youtube_transcripts", {}).get(video_id)
+    assert entry["status"] == "ready"
+    assert "error" not in entry

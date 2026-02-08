@@ -59,7 +59,7 @@ public struct WebsiteDetail: Codable, Identifiable {
     public let lastOpenedAt: String?
 }
 
-public struct WebsiteTranscriptEntry: Codable {
+public struct WebsiteTranscriptEntry: Codable, Equatable {
     public let status: String?
     public let fileId: String?
     public let updatedAt: String?
