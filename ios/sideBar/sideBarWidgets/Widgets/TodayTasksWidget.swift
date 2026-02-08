@@ -220,6 +220,7 @@ struct TaskRowView: View {
     let task: WidgetTask
     let compact: Bool
     let showSubtitle: Bool
+    @Environment(\.colorScheme) private var colorScheme
     private var taskURL: URL {
         URL(string: "sidebar://tasks/\(task.id)") ?? URL(string: "sidebar://tasks")!
     }
@@ -228,9 +229,7 @@ struct TaskRowView: View {
         HStack(spacing: 8) {
             // Interactive checkbox button
             Button(intent: CompleteTaskIntent(taskId: task.id)) {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: compact ? 16 : 18))
-                    .foregroundStyle(task.isCompleted ? .green : .secondary)
+                checkboxIcon
             }
             .buttonStyle(.plain)
 
@@ -259,6 +258,25 @@ struct TaskRowView: View {
                     .foregroundStyle(.secondary)
                     .widgetAccentable(false)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var checkboxIcon: some View {
+        let iconSize: CGFloat = compact ? 16 : 18
+        if task.isCompleted {
+            ZStack {
+                Circle()
+                    .fill(colorScheme == .dark ? Color.white : Color.black)
+                Image(systemName: "checkmark")
+                    .font(.system(size: iconSize * 0.55, weight: .bold))
+                    .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
+            }
+            .frame(width: iconSize, height: iconSize)
+        } else {
+            Image(systemName: "circle")
+                .font(.system(size: iconSize))
+                .foregroundStyle(.secondary)
         }
     }
 }
