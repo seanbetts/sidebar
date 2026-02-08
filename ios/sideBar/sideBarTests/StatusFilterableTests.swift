@@ -18,7 +18,8 @@ final class StatusFilterableTests: XCTestCase {
 
         XCTAssertEqual(items.readyItems.count, 1)
         XCTAssertEqual(items.failedItems.count, 1)
-        XCTAssertEqual(items.activeItems.count, 2)
+        XCTAssertEqual(items.activeItems.count, 1)
+        XCTAssertEqual(items.activeItems.first?.statusValue, "processing")
         XCTAssertTrue(items.hasActiveItems)
     }
 
@@ -31,5 +32,19 @@ final class StatusFilterableTests: XCTestCase {
         ]
 
         XCTAssertFalse(items.hasActiveItems)
+    }
+
+    func testFiltersAreCaseAndWhitespaceInsensitive() {
+        let items = [
+            Item(statusValue: " READY "),
+            Item(statusValue: "  FAILED"),
+            Item(statusValue: " Queued ")
+        ]
+
+        XCTAssertEqual(items.readyItems.count, 1)
+        XCTAssertEqual(items.failedItems.count, 1)
+        XCTAssertEqual(items.activeItems.count, 1)
+        XCTAssertEqual(items.activeItems.first?.statusValue, " Queued ")
+        XCTAssertTrue(items.hasActiveItems)
     }
 }
