@@ -103,10 +103,11 @@ final class PendingShareStoreTests: XCTestCase {
         )
         let keep = await shouldKeepPendingShareItem(
             item,
+            isOffline: { false },
             saveWebsite: { _ in true },
             ingestYouTube: { _ in nil },
             resolveFileURL: { _ in nil },
-            startUpload: { _ in }
+            startUpload: { _ in true }
         )
 
         XCTAssertFalse(keep)
@@ -121,10 +122,11 @@ final class PendingShareStoreTests: XCTestCase {
         )
         let keep = await shouldKeepPendingShareItem(
             item,
+            isOffline: { false },
             saveWebsite: { _ in false },
             ingestYouTube: { _ in nil },
             resolveFileURL: { _ in nil },
-            startUpload: { _ in }
+            startUpload: { _ in true }
         )
 
         XCTAssertTrue(keep)
@@ -139,10 +141,11 @@ final class PendingShareStoreTests: XCTestCase {
         )
         let keep = await shouldKeepPendingShareItem(
             item,
+            isOffline: { false },
             saveWebsite: { _ in false },
             ingestYouTube: { _ in nil },
             resolveFileURL: { _ in nil },
-            startUpload: { _ in }
+            startUpload: { _ in true }
         )
 
         XCTAssertFalse(keep)
@@ -157,13 +160,35 @@ final class PendingShareStoreTests: XCTestCase {
         )
         let keep = await shouldKeepPendingShareItem(
             item,
+            isOffline: { false },
             saveWebsite: { _ in false },
             ingestYouTube: { _ in "Failed" },
             resolveFileURL: { _ in nil },
-            startUpload: { _ in }
+            startUpload: { _ in true }
         )
 
         XCTAssertTrue(keep)
+    }
+
+    func testPendingShareRoutingYouTubeOfflineKeepsItem() async {
+        let item = PendingShareItem(
+            id: UUID(),
+            kind: .youtube,
+            createdAt: Date(),
+            url: "https://www.youtube.com/watch?v=abc123xyzAA"
+        )
+        var youTubeCalled = false
+        let keep = await shouldKeepPendingShareItem(
+            item,
+            isOffline: { true },
+            saveWebsite: { _ in false },
+            ingestYouTube: { _ in youTubeCalled = true; return nil },
+            resolveFileURL: { _ in nil },
+            startUpload: { _ in true }
+        )
+
+        XCTAssertTrue(keep)
+        XCTAssertFalse(youTubeCalled)
     }
 
     func testPendingShareRoutingFileMissingPathKeepsItem() async {
@@ -174,10 +199,11 @@ final class PendingShareStoreTests: XCTestCase {
         )
         let keep = await shouldKeepPendingShareItem(
             item,
+            isOffline: { false },
             saveWebsite: { _ in false },
             ingestYouTube: { _ in nil },
             resolveFileURL: { _ in nil },
-            startUpload: { _ in }
+            startUpload: { _ in true }
         )
 
         XCTAssertTrue(keep)
@@ -195,14 +221,55 @@ final class PendingShareStoreTests: XCTestCase {
 
         let keep = await shouldKeepPendingShareItem(
             item,
+            isOffline: { false },
             saveWebsite: { _ in false },
             ingestYouTube: { _ in nil },
             resolveFileURL: { _ in expectedURL },
-            startUpload: { startedUploads.append($0) }
+            startUpload: { startedUploads.append($0); return true }
         )
 
         XCTAssertFalse(keep)
         XCTAssertEqual(startedUploads, [expectedURL])
+    }
+
+    func testPendingShareRoutingFileOfflineKeepsItem() async {
+        let item = PendingShareItem(
+            id: UUID(),
+            kind: .file,
+            createdAt: Date(),
+            filePath: "pending-shares/\(UUID().uuidString)/file.pdf"
+        )
+        var uploadCalled = false
+        let keep = await shouldKeepPendingShareItem(
+            item,
+            isOffline: { true },
+            saveWebsite: { _ in false },
+            ingestYouTube: { _ in nil },
+            resolveFileURL: { _ in URL(fileURLWithPath: "/tmp/test") },
+            startUpload: { _ in uploadCalled = true; return true }
+        )
+
+        XCTAssertTrue(keep)
+        XCTAssertFalse(uploadCalled)
+    }
+
+    func testPendingShareRoutingFileUploadFailureKeepsItem() async {
+        let item = PendingShareItem(
+            id: UUID(),
+            kind: .file,
+            createdAt: Date(),
+            filePath: "pending-shares/\(UUID().uuidString)/file.pdf"
+        )
+        let keep = await shouldKeepPendingShareItem(
+            item,
+            isOffline: { false },
+            saveWebsite: { _ in false },
+            ingestYouTube: { _ in nil },
+            resolveFileURL: { _ in URL(fileURLWithPath: "/tmp/test") },
+            startUpload: { _ in false }
+        )
+
+        XCTAssertTrue(keep)
     }
 
     func testExtensionURLMessageHandlerRejectsUnsupportedAction() {
