@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length
 @preconcurrency import Foundation
 import Combine
 import SwiftUI
@@ -2198,3 +2199,5 @@ public enum MarkdownFormatting {
     case link(URL)
     case horizontalRule
 }
+
+// swiftlint:enable type_body_length

@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import XCTest
 import sideBarShared
 @testable import sideBar

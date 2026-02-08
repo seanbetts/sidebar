@@ -33,6 +33,7 @@ def main() -> int:
     targets = [
         repo_root / "ios/sideBar/sideBar/ViewModels",
         repo_root / "ios/sideBar/sideBar/Services",
+        repo_root / "ios/sideBar/sideBar/Stores",
     ]
     missing: list[str] = []
 
@@ -50,7 +51,7 @@ def main() -> int:
             print(f"  {item}")
         return 1
 
-    print("Doc comment check passed for ViewModels/Services.")
+    print("Doc comment check passed for ViewModels/Services/Stores.")
     return 0
 
 

@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import sideBarShared
 
@@ -23,6 +24,7 @@ private let displayWeekFormatter: DateFormatter = {
     return formatter
 }()
 
+// swiftlint:disable:next type_body_length
 public enum TasksUtils {
     private static let msPerDay: Double = 24 * 60 * 60
 

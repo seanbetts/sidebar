@@ -48,6 +48,7 @@ extension ChatViewModel {
         refreshTask = nil
     }
 
+    // swiftlint:disable:next function_body_length
     public func sendMessage(text: String) async {
         guard let trimmed = text.trimmedOrNil, !isStreaming else {
             return

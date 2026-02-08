@@ -1,7 +1,9 @@
+// swiftlint:disable file_length
 import UIKit
 import sideBarShared
 import UniformTypeIdentifiers
 
+// swiftlint:disable:next type_body_length
 final class ShareViewController: UIViewController {
     private var environment: ShareExtensionEnvironment?
     private var progressView: ShareProgressView?

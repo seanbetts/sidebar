@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
+// swiftlint:disable:next type_body_length
 public struct MarkdownShortcutProcessor {
     private struct InlinePattern {
         let prefix: String

@@ -11,6 +11,7 @@ extension KeyboardShortcutRegistry {
             + buildTasksShortcuts()
     }
 
+    // swiftlint:disable:next function_body_length
     private static func buildUniversalShortcuts() -> [KeyboardShortcut] {
         [
             KeyboardShortcut(

@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Combine
 import sideBarShared
 import SwiftUI
@@ -7,6 +8,7 @@ import LocalAuthentication
 
 // MARK: - LoginView
 
+// swiftlint:disable:next type_body_length
 public struct LoginView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

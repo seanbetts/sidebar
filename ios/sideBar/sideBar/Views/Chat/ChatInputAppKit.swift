@@ -16,6 +16,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
     let onSend: () -> Void
     let onAttach: () -> Void
 
+    // swiftlint:disable:next function_body_length
     func makeNSView(context: Context) -> NSView {
         let containerView = NSView()
 

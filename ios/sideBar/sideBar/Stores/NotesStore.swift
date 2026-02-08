@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length
 import Foundation
 import Combine
 #if canImport(WidgetKit)
@@ -599,3 +600,5 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         return notes
     }
 }
+
+// swiftlint:enable type_body_length

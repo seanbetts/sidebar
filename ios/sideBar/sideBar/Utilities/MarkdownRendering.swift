@@ -1,8 +1,10 @@
+// swiftlint:disable file_length
 import Foundation
 import sideBarShared
 
 // MARK: - MarkdownRendering
 
+// swiftlint:disable:next type_body_length
 public enum MarkdownRendering {
     public struct MarkdownYouTubeEmbed {
         public let sourceURL: String

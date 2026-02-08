@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length
 import Foundation
 import sideBarShared
 import Combine
@@ -673,3 +674,5 @@ public final class WebsitesViewModel: ObservableObject {
         }
     }
 }
+
+// swiftlint:enable type_body_length

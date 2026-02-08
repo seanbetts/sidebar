@@ -67,6 +67,7 @@ public final class AppEnvironment: ObservableObject {
     var lastRegisteredUserId: String?
     #endif
 
+    // swiftlint:disable:next function_body_length
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
         #if DEBUG

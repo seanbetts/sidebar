@@ -4,8 +4,8 @@ import Combine
 
 // MARK: - TasksStore
 
-@MainActor
-public final class TasksStore: ObservableObject {
+/// Persistent store for task items, groups, and projects with optimistic update support.
+@MainActor public final class TasksStore: ObservableObject {
     @Published public private(set) var selection: TaskSelection = .none
     @Published public private(set) var tasks: [TaskItem] = []
     @Published public private(set) var groups: [TaskGroup] = []

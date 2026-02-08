@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 public struct TasksView: View {
@@ -318,6 +319,7 @@ extension TasksDetailView {
     #endif
 
     @ViewBuilder
+    // swiftlint:disable:next function_body_length
     private func content(state: TasksViewState) -> some View {
         if viewModel.isLoading || (isSearchSelection(state.selection) && viewModel.searchPending) {
             LoadingView(

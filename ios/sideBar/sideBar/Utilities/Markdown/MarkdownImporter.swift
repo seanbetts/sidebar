@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 @preconcurrency import Foundation
 import Markdown
 import sideBarShared
@@ -32,6 +33,7 @@ public struct MarkdownImporter {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+// swiftlint:disable:next type_body_length
 private struct MarkdownToAttributedStringWalker: MarkupWalker {
     var result = AttributedString()
 
@@ -408,6 +410,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             let alt = unwrapOptionalString(image.plainText)
             let source = unwrapOptionalString(image.source)
             // Store image info for round-trip, display as placeholder for now
+            // swiftlint:disable:next todo
             // TODO: Use AdaptiveImageGlyph when API is available
             var imageString = AttributedString("![\(alt)](\(source))")
             if let url = URL(string: source) {

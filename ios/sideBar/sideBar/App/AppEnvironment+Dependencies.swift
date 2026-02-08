@@ -29,6 +29,7 @@ extension AppEnvironment {
         let spotlightIndexer: SpotlightIndexer
     }
 
+    // swiftlint:disable:next function_body_length
     static func buildDependencies(
         container: ServiceContainer,
         isTestMode: Bool

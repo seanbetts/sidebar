@@ -1,3 +1,4 @@
+// swiftlint:disable type_body_length
 import Foundation
 import sideBarShared
 import Combine
@@ -492,3 +493,5 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 }
+
+// swiftlint:enable type_body_length

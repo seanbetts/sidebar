@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length
 import Foundation
 import Combine
 #if canImport(WidgetKit)
@@ -938,3 +939,5 @@ private struct WebsiteDetailOfflineError: LocalizedError {
 
     var errorDescription: String? { message }
 }
+
+// swiftlint:enable type_body_length

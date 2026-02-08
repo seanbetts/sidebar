@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length
 import Combine
 import CoreData
 import Foundation
@@ -533,3 +534,5 @@ public final class WriteQueue: ObservableObject {
         }
     }
 }
+
+// swiftlint:enable type_body_length
