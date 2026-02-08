@@ -1,0 +1,248 @@
+import Foundation
+import sideBarShared
+
+@MainActor
+extension WebsitesViewModel {
+    func isDeleteConflict(_ error: Error) -> Bool {
+        guard let apiError = error as? APIClientError else { return false }
+        switch apiError {
+        case .apiError(let message):
+            return message.localizedCaseInsensitiveContains("updated since last sync")
+        case .requestFailed(409):
+            return true
+        default:
+            return false
+        }
+    }
+
+    func retryDeleteAfterRefresh(id: String, fallbackUpdatedAt: String?) async -> Bool {
+        do {
+            try await store.loadList(force: true)
+        } catch {
+            return false
+        }
+        if items.contains(where: { $0.id == id }) == false {
+            if selectedWebsiteId == id {
+                clearSelection()
+            }
+            return true
+        }
+        let refreshedUpdatedAt = store.currentUpdatedAt(id: id) ?? fallbackUpdatedAt
+        do {
+            try await api.delete(id: id, clientUpdatedAt: refreshedUpdatedAt)
+            store.removeItem(id: id, persist: true)
+            if selectedWebsiteId == id {
+                clearSelection()
+            }
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func makePendingWebsite(from url: URL) -> PendingWebsiteItem {
+        let host = url.host ?? url.absoluteString
+        let domain = host.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+        let pendingTitle = YouTubeURLPolicy.extractVideoId(from: url.absoluteString) == nil
+            ? "Reading..."
+            : "Watching..."
+        return PendingWebsiteItem(
+            id: "pending-\(UUID().uuidString)",
+            title: pendingTitle,
+            domain: domain,
+            url: url.absoluteString
+        )
+    }
+
+    func clearPendingIfNeeded(items: [WebsiteItem]) {
+        guard let pendingWebsite else { return }
+        let pendingUrl = pendingWebsite.url
+        if items.contains(where: { $0.url == pendingUrl }) {
+            self.pendingWebsite = nil
+        }
+    }
+
+    func setTranscriptRequestInFlight(
+        _ isInFlight: Bool,
+        websiteId: String,
+        videoId: String
+    ) {
+        var next = inFlightTranscriptRequests
+        var videoIds = next[websiteId] ?? Set<String>()
+        if isInFlight {
+            videoIds.insert(videoId)
+        } else {
+            videoIds.remove(videoId)
+        }
+        if videoIds.isEmpty {
+            next.removeValue(forKey: websiteId)
+        } else {
+            next[websiteId] = videoIds
+        }
+        inFlightTranscriptRequests = next
+    }
+
+    func syncTranscriptPolling(for active: WebsiteDetail?) {
+        guard let active else {
+            stopTranscriptPolling()
+            return
+        }
+        var activeKeys = Set<String>()
+        for (videoId, entry) in active.youtubeTranscripts ?? [:] {
+            guard Self.isTranscriptStatusPending(entry.status) else { continue }
+            activeKeys.insert(Self.transcriptPollingKey(websiteId: active.id, videoId: videoId))
+            startTranscriptPollingIfNeeded(websiteId: active.id, videoId: videoId)
+        }
+        for key in Array(transcriptPollingTasks.keys) where !activeKeys.contains(key) {
+            stopTranscriptPolling(key: key)
+        }
+    }
+
+    func startTranscriptPollingIfNeeded(websiteId: String, videoId: String) {
+        let key = Self.transcriptPollingKey(websiteId: websiteId, videoId: videoId)
+        guard transcriptPollingTasks[key] == nil else { return }
+        transcriptPollingTasks[key] = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                do {
+                    try await Task.sleep(nanoseconds: self.transcriptPollIntervalNanoseconds)
+                } catch {
+                    return
+                }
+                if await self.pollTranscriptStatus(
+                    websiteId: websiteId,
+                    videoId: videoId,
+                    key: key
+                ) {
+                    return
+                }
+            }
+        }
+    }
+
+    func pollTranscriptStatus(websiteId: String, videoId: String, key: String) async -> Bool {
+        guard selectedWebsiteId == websiteId else {
+            stopTranscriptPolling(key: key)
+            return true
+        }
+        guard networkStatus.isOffline == false else {
+            return false
+        }
+        do {
+            try await store.loadDetail(id: websiteId, force: true)
+        } catch {
+            return false
+        }
+        guard let current = active, current.id == websiteId else {
+            return false
+        }
+        guard let status = current.youtubeTranscripts?[videoId]?.status?.lowercased() else {
+            stopTranscriptPolling(key: key)
+            return true
+        }
+        guard Self.isTranscriptStatusPending(status) == false else {
+            return false
+        }
+        if status == "failed" || status == "canceled" {
+            errorMessage = current.youtubeTranscripts?[videoId]?.error ?? "Transcript failed."
+        }
+        stopTranscriptPolling(key: key)
+        return true
+    }
+
+    func stopTranscriptPolling(
+        websiteId: String? = nil,
+        videoId: String? = nil,
+        key: String? = nil
+    ) {
+        if let key {
+            transcriptPollingTasks[key]?.cancel()
+            transcriptPollingTasks[key] = nil
+            return
+        }
+        if let websiteId, let videoId {
+            let entryKey = Self.transcriptPollingKey(websiteId: websiteId, videoId: videoId)
+            transcriptPollingTasks[entryKey]?.cancel()
+            transcriptPollingTasks[entryKey] = nil
+            return
+        }
+        for task in transcriptPollingTasks.values {
+            task.cancel()
+        }
+        transcriptPollingTasks = [:]
+    }
+
+    static func transcriptPollingKey(websiteId: String, videoId: String) -> String {
+        "\(websiteId):\(videoId)"
+    }
+
+    static func isTranscriptStatusPending(_ status: String?) -> Bool {
+        guard let status else { return false }
+        switch status.lowercased() {
+        case "queued", "processing", "retrying":
+            return true
+        default:
+            return false
+        }
+    }
+
+    static func pendingTranscriptMap(from items: [IngestionListItem]) -> [String: Set<String>] {
+        let pendingStatuses = Set(["queued", "processing", "retrying"])
+        var map: [String: Set<String>] = [:]
+        for item in items {
+            guard let status = item.job.status?.lowercased(),
+                  pendingStatuses.contains(status),
+                  let metadata = item.file.sourceMetadata,
+                  metadataBool(metadata, key: "website_transcript") == true,
+                  let websiteId = metadataString(metadata, key: "website_id"),
+                  let videoId = metadataString(metadata, key: "video_id") else {
+                continue
+            }
+            map[websiteId, default: []].insert(videoId)
+        }
+        return map
+    }
+
+    static func metadataString(_ metadata: [String: AnyCodable], key: String) -> String? {
+        guard let value = metadata[key]?.value else { return nil }
+        if let string = value as? String {
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        if let number = value as? NSNumber {
+            return number.stringValue
+        }
+        return nil
+    }
+
+    static func metadataBool(_ metadata: [String: AnyCodable], key: String) -> Bool? {
+        guard let value = metadata[key]?.value else { return nil }
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+        if let number = value as? NSNumber {
+            return number.boolValue
+        }
+        if let string = value as? String {
+            switch string.lowercased() {
+            case "true", "1":
+                return true
+            case "false", "0":
+                return false
+            default:
+                return nil
+            }
+        }
+        return nil
+    }
+
+    /// Refreshes widget data by fetching the latest websites list
+    /// Called by background refresh task to keep widgets up-to-date
+    func refreshWidgetData() async {
+        do {
+            try await store.loadList(force: true)
+        } catch {
+            // Silently fail - widget will use cached data
+        }
+    }
+}

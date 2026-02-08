@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import Foundation
 import sideBarShared
 import SwiftUI
@@ -16,7 +15,6 @@ public struct FilesPanel: View {
         FilesPanelView(viewModel: environment.ingestionViewModel)
     }
 }
-
 struct FilesPanelView: View {
     @EnvironmentObject var appEnvironment: AppEnvironment
     @ObservedObject var viewModel: IngestionViewModel
@@ -46,7 +44,7 @@ struct FilesPanelView: View {
 }
 
 extension FilesPanelView {
-    private var content: some View {
+    var content: some View {
         let base = mainContent
             .frame(maxHeight: .infinity)
             .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
@@ -133,7 +131,7 @@ extension FilesPanelView {
             }
     }
 
-    private var mainContent: some View {
+    var mainContent: some View {
         VStack(spacing: 0) {
             header
             if viewModel.isLoading && viewModel.items.isEmpty {
@@ -158,7 +156,7 @@ extension FilesPanelView {
         }
     }
 
-    private var header: some View {
+    var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Files") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
@@ -194,7 +192,7 @@ extension FilesPanelView {
         .background(panelHeaderBackground(colorScheme))
     }
 
-    private var isCompact: Bool {
+    var isCompact: Bool {
         #if os(macOS)
         return false
         #else
@@ -202,7 +200,7 @@ extension FilesPanelView {
         #endif
     }
 
-    private var filesListView: some View {
+    var filesListView: some View {
         List {
             if !searchQuery.trimmed.isEmpty {
                 ForEach(Array(searchResults.enumerated()), id: \.element.file.id) { index, item in
@@ -309,285 +307,4 @@ extension FilesPanelView {
             listAppeared = !isLoading
         }
     }
-}
-
-extension FilesPanelView {
-    private func renameSheet() -> some View {
-        RenameItemSheet(
-            title: "Rename File",
-            placeholder: "File name",
-            text: $renameValue
-        ) { newName in
-            Task { await commitRename(to: newName) }
-        }
-    }
-
-    private func open(item: IngestionListItem) {
-        open(fileId: item.file.id)
-    }
-
-    private func open(fileId: String) {
-        viewModel.prepareSelection(fileId: fileId)
-        Task { await viewModel.selectFile(fileId: fileId) }
-    }
-
-    private func pinAction(for item: IngestionListItem) -> (() -> Void)? {
-        guard item.file.category != "folder" else {
-            return nil
-        }
-        return {
-            pinTarget = item
-            Task { await togglePin() }
-        }
-    }
-
-    private func deleteAction(for item: IngestionListItem) -> (() -> Void)? {
-        guard item.file.category != "folder" else {
-            return nil
-        }
-        return {
-            presentDelete(for: item)
-        }
-    }
-
-    private func togglePin() async {
-        guard let item = pinTarget else { return }
-        let isPinned = item.file.pinned ?? false
-        await viewModel.togglePinned(fileId: item.file.id, pinned: !isPinned)
-        pinTarget = nil
-    }
-
-    private func presentDelete(for item: IngestionListItem) {
-        deleteTarget = item
-        isDeleteAlertPresented = true
-    }
-
-    private func confirmDelete() {
-        guard let item = deleteTarget else { return }
-        Task {
-            let success = await viewModel.deleteFile(fileId: item.file.id)
-            if !success {
-                appEnvironment.toastCenter.show(message: "Failed to delete file")
-            }
-        }
-        clearDeleteTarget()
-    }
-
-    private func clearDeleteTarget() {
-        deleteTarget = nil
-        isDeleteAlertPresented = false
-    }
-
-    private func navigateFilesList(direction: ShortcutListDirection) {
-        let ids = filesNavigationItems()
-        guard !ids.isEmpty else { return }
-        let currentId = viewModel.selectedFileId
-        let nextIndex: Int
-        if let currentId, let index = ids.firstIndex(of: currentId) {
-            nextIndex = direction == .next ? min(ids.count - 1, index + 1) : max(0, index - 1)
-        } else {
-            nextIndex = direction == .next ? 0 : ids.count - 1
-        }
-        open(fileId: ids[nextIndex])
-    }
-
-    private func filesNavigationItems() -> [String] {
-        if !searchQuery.trimmed.isEmpty {
-            return searchResults.filter { !isFolder($0) }.map { $0.file.id }
-        }
-        var ids: [String] = []
-        ids.append(contentsOf: pinnedItems.filter { !isFolder($0) }.map { $0.file.id })
-        for category in categoryOrder {
-            if let items = categorizedItems[category] {
-                ids.append(contentsOf: items.filter { !isFolder($0) }.map { $0.file.id })
-            }
-        }
-        return ids
-    }
-
-    private func handleFileImport(_ result: Result<[URL], Error>) {
-        switch result {
-        case .success(let urls):
-            viewModel.addUploads(urls: urls)
-        case .failure:
-            appEnvironment.toastCenter.show(message: "Failed to add files")
-        }
-    }
-
-    private func addYouTube() {
-        let url = newYouTubeUrl.trimmed
-        guard !url.isEmpty else { return }
-        newYouTubeUrl = ""
-        isYouTubeAlertPresented = false
-        Task {
-            if let message = await viewModel.ingestYouTube(url: url) {
-                appEnvironment.toastCenter.show(message: message)
-            }
-        }
-    }
-
-    private var deleteDialogTitle: String {
-        guard let deleteTarget else {
-            return "Delete file"
-        }
-        let name = stripFileExtension(deleteTarget.file.filenameOriginal)
-        return "Delete \"\(name)\"?"
-    }
-
-    private func isFolder(_ item: IngestionListItem) -> Bool {
-        item.file.category == "folder"
-    }
-
-    private func bindingForCategory(_ category: String) -> Binding<Bool> {
-        Binding(
-            get: { expandedCategories.contains(category) },
-            set: { isExpanded in
-                if isExpanded {
-                    expandedCategories.insert(category)
-                } else {
-                    expandedCategories.remove(category)
-                }
-            }
-        )
-    }
-
-    private func initializeExpandedCategoriesIfNeeded() {
-        if expandedCategories.isEmpty {
-            expandedCategories = []
-        }
-    }
-
-    private var filteredItems: [IngestionListItem] {
-        let needle = searchQuery.trimmed.lowercased()
-        let baseItems = viewModel.items.filter { $0.statusValue != "failed" }
-        guard !needle.isEmpty else { return baseItems }
-        return baseItems.filter { item in
-            item.file.filenameOriginal.lowercased().contains(needle)
-        }
-    }
-
-    private var searchResults: [IngestionListItem] {
-        filteredItems.sorted { lhs, rhs in
-            let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
-            let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
-            return leftDate > rightDate
-        }
-    }
-
-    private var pinnedItems: [IngestionListItem] {
-        filteredItems
-            .filter { isReady($0) && ($0.file.pinned ?? false) }
-            .sorted { lhs, rhs in
-                let left = lhs.file.pinnedOrder ?? Int.max
-                let right = rhs.file.pinnedOrder ?? Int.max
-                if left != right {
-                    return left < right
-                }
-                let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
-                let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
-                return leftDate > rightDate
-            }
-    }
-
-    private var categorizedItems: [String: [IngestionListItem]] {
-        let unpinned = filteredItems.filter { !($0.file.pinned ?? false) }
-        let grouped = unpinned.reduce(into: [String: [IngestionListItem]]()) { result, item in
-            let category = categoryFor(item)
-            result[category, default: []].append(item)
-        }
-        return grouped.mapValues { items in
-            items.sorted { lhs, rhs in
-                let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
-                let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
-                return leftDate > rightDate
-            }
-        }
-    }
-
-    private var categoriesWithItems: [String] {
-        categoryOrder.filter { categorizedItems[$0]?.isEmpty == false }
-    }
-
-    private var categoryLabels: [String: String] {
-        [
-            "documents": "Documents",
-            "images": "Images",
-            "audio": "Audio",
-            "video": "Video",
-            "spreadsheets": "Spreadsheets",
-            "reports": "Reports",
-            "presentations": "Presentations",
-            "other": "Other"
-        ]
-    }
-
-    private var categoryOrder: [String] {
-        ["documents", "images", "audio", "video", "spreadsheets", "reports", "presentations", "other"]
-    }
-
-    private func isReady(_ item: IngestionListItem) -> Bool {
-        (item.job.status ?? "") == "ready" && item.recommendedViewer != nil
-    }
-
-    private func categoryFor(_ item: IngestionListItem) -> String {
-        if let category = item.file.category, !category.isEmpty {
-            return category
-        }
-        let normalized = item.file.mimeOriginal.split(separator: ";").first?
-            .trimmed
-            .lowercased() ?? item.file.mimeOriginal
-        if normalized == "video/youtube" || normalized.hasPrefix("video/") {
-            return "video"
-        }
-        if normalized.hasPrefix("image/") {
-            return "images"
-        }
-        if normalized.hasPrefix("audio/") {
-            return "audio"
-        }
-        if normalized == "application/pdf"
-            || normalized == "text/plain"
-            || normalized == "text/markdown"
-            || normalized == "text/html"
-            || normalized == "application/msword"
-            || normalized == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" {
-            return "documents"
-        }
-        if normalized == "application/vnd.ms-excel"
-            || normalized == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            || normalized == "text/csv" {
-            return "spreadsheets"
-        }
-        if normalized == "application/vnd.ms-powerpoint"
-            || normalized == "application/vnd.openxmlformats-officedocument.presentationml.presentation" {
-            return "presentations"
-        }
-        return "other"
-    }
-
-    private func categoryIconName(_ category: String) -> String {
-        switch category {
-        case "documents":
-            return "doc.text"
-        case "images":
-            return "photo"
-        case "audio":
-            return "waveform"
-        case "video":
-            return "video"
-        case "spreadsheets":
-            return "tablecells"
-        case "reports":
-            return "chart.line.text.clipboard"
-        case "presentations":
-            return "rectangle.on.rectangle.angled"
-        default:
-            return "folder"
-        }
-    }
-
-    private var panelBackground: Color {
-        DesignTokens.Colors.sidebar
-    }
-
 }
