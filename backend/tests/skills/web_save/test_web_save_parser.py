@@ -1611,9 +1611,9 @@ def test_parse_url_local_returns_paywall_message(monkeypatch):
 def test_parse_url_local_uses_substack_api(monkeypatch):
     html = """
     <html>
-      <head><title>Substack</title></head>
+      <head><title>Custom Domain Post</title></head>
       <body>
-        <div>substack</div>
+        <div>Article shell</div>
       </body>
     </html>
     """
@@ -1641,6 +1641,63 @@ def test_parse_url_local_uses_substack_api(monkeypatch):
 
     parsed = web_save_parser.parse_url_local("example.com/p/substack-post")
     assert "Full body" in parsed.content
+
+
+def test_parse_url_local_applies_substack_host_rules_on_custom_domain(monkeypatch):
+    html = """
+    <html>
+      <head><title>Custom Substack</title></head>
+      <body>
+        <article><p>Fallback body</p></article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.ignorance.ai/p/custom-domain-post", False
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "title": "Custom Substack",
+                "canonical_url": "https://www.ignorance.ai/p/custom-domain-post",
+                "body_html": (
+                    "<div class='post-footer'>Subscribe now</div>"
+                    "<p>Primary article body</p>"
+                ),
+            }
+
+    def fake_get(url: str, headers=None, timeout: int = 30):
+        return FakeResponse()
+
+    engine = web_save_parser.RuleEngine(
+        rules=[
+            web_save_parser.Rule(
+                id="substack-cleanup",
+                phase="post",
+                priority=0,
+                trigger={"host": {"ends_with": "substack.com"}},
+                remove=[".post-footer"],
+            )
+        ]
+    )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser.requests, "get", fake_get)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+    monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+
+    parsed = web_save_parser.parse_url_local("ignorance.ai/p/custom-domain-post")
+
+    assert "Primary article body" in parsed.content
+    assert "Subscribe now" not in parsed.content
 
 
 def test_parse_url_local_scopes_readability_with_selector_override(monkeypatch):
