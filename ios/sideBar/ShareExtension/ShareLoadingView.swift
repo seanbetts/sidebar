@@ -7,4 +7,8 @@ final class ShareLoadingView: ShareStateView {
         activityIndicator.startAnimating()
         super.init(message: message, accessoryView: activityIndicator)
     }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 }

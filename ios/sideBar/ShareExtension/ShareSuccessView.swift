@@ -12,4 +12,8 @@ final class ShareSuccessView: ShareStateView {
 
         super.init(message: message, accessoryView: checkmarkImageView, spacingAfterTitle: 72)
     }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 }
