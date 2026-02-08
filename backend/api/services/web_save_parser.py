@@ -796,6 +796,9 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
 
     markdown = dedupe_markdown_images(markdown)
     markdown = wrap_gallery_blocks(markdown)
+    if domain.endswith("github.com"):
+        # Final safety pass after markdown post-processing.
+        markdown = cleanup_github_markdown(markdown)
     gallery_blocks = markdown.count('class="image-gallery"')
     logger.info(
         "web-save postprocess url=%s markdown_len=%s galleries=%s elapsed_ms=%s",

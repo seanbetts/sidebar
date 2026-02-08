@@ -96,6 +96,16 @@ def cleanup_github_markdown(markdown: str) -> str:
             hosts.intersection({"img.shields.io", "camo.githubusercontent.com"})
         ) and any(token in alt_lower for token in badge_alt_tokens)
 
+    def _is_star_history_line(line: str) -> bool:
+        parts = _image_line_parts(line)
+        if not parts:
+            return False
+        alt_text, img_url, link_url = parts
+        alt_lower = alt_text.lower()
+        urls = [url for url in (img_url, link_url) if url]
+        decoded_blob = " ".join(unquote(url).lower() for url in urls)
+        return "star history" in alt_lower or "star-history.com" in decoded_blob
+
     def _is_prose_line(line: str) -> bool:
         stripped = line.strip()
         if not stripped:
@@ -115,6 +125,8 @@ def cleanup_github_markdown(markdown: str) -> str:
         if thanks_contributors_line.match(line):
             continue
         if _is_avatar_image_line(line):
+            continue
+        if _is_star_history_line(line):
             continue
         cleaned_lines.append(line)
 

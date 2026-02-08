@@ -888,6 +888,28 @@ def test_cleanup_github_markdown_keeps_badge_like_line_after_intro():
     assert "architecture tradeoffs" in cleaned
 
 
+def test_cleanup_github_markdown_removes_star_history_outside_badge_zone():
+    markdown = "\n".join(
+        [
+            "# Repo",
+            "",
+            "This repository explains architecture tradeoffs in detail.",
+            "",
+            "## References",
+            "",
+            "[![Star History Chart](https://camo.githubusercontent.com/star-history)](https://www.star-history.com/#openclaw/openclaw&type=date)",
+            "",
+            "Reference text that should stay.",
+        ]
+    )
+
+    cleaned = web_save_parser.cleanup_github_markdown(markdown)
+
+    assert "Star History Chart" not in cleaned
+    assert "star-history.com" not in cleaned
+    assert "Reference text that should stay." in cleaned
+
+
 def test_cleanup_substack_markdown_removes_chrome_and_svg_controls():
     markdown = "\n".join(
         [
@@ -1058,6 +1080,9 @@ def test_parse_url_local_applies_github_cleanup_conservatively(monkeypatch):
           <h2>Later Section</h2>
           <p><img alt="CI status" src="https://camo.githubusercontent.com/xyz999/ci-stable"/></p>
           <p>In this section we intentionally reference the status badge.</p>
+          <h2>Community</h2>
+          <p><a href="https://www.star-history.com/#openclaw/openclaw"><img alt="Star History Chart" src="https://camo.githubusercontent.com/star-history"/></a></p>
+          <p><a href="https://github.com/apps/dependabot"><img alt="dependabot[bot]" src="https://avatars.githubusercontent.com/in/29110?v=4&s=48"/></a></p>
         </article>
       </body>
     </html>
@@ -1076,6 +1101,10 @@ def test_parse_url_local_applies_github_cleanup_conservatively(monkeypatch):
     assert "This repository contains useful implementation details." in parsed.content
     assert "Later Section" in parsed.content
     assert parsed.content.count("CI status") == 1
+    assert "Star History Chart" not in parsed.content
+    assert "star-history.com" not in parsed.content
+    assert "avatars.githubusercontent.com" not in parsed.content
+    assert "dependabot[bot]" not in parsed.content
 
 
 def test_parse_url_local_force_rendering(monkeypatch):
