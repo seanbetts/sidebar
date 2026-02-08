@@ -6,6 +6,9 @@ public enum ShareExtensionURLQueueHandler {
         _ url: URL,
         pendingStore: PendingShareStore = .shared
     ) -> PendingShareItem? {
-        pendingStore.enqueueWebsite(url: url.absoluteString)
+        guard let normalized = ExtensionURLMessageHandler.normalizeQueuedURL(url.absoluteString) else {
+            return nil
+        }
+        return pendingStore.enqueueWebsite(url: normalized)
     }
 }

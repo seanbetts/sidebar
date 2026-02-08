@@ -96,15 +96,15 @@ enum ShareExtensionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notAuthenticated:
-            return "Please sign in to sideBar first."
+            return ExtensionUserMessageCatalog.message(for: .notAuthenticated)
         case .invalidBaseUrl:
             return "Invalid API base URL."
         case .invalidSharePayload:
-            return "Could not read the shared content."
+            return ExtensionUserMessageCatalog.message(for: .invalidSharePayload)
         case .unsupportedContentType:
-            return "This content type is not supported."
+            return ExtensionUserMessageCatalog.message(for: .unsupportedContent)
         case .uploadFailed(let message):
-            return "Upload failed: \(message)"
+            return ExtensionUserMessageCatalog.uploadFailureMessage(detail: message)
         }
     }
 }

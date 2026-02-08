@@ -281,7 +281,8 @@ final class PendingShareStoreTests: XCTestCase {
         )
 
         XCTAssertEqual(response["ok"] as? Bool, false)
-        XCTAssertEqual(response["error"] as? String, "Unsupported action")
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.unsupportedAction.rawValue)
+        XCTAssertEqual(response["error"] as? String, ExtensionUserMessageCatalog.message(for: .unsupportedAction))
     }
 
     func testExtensionURLMessageHandlerRejectsMissingURL() {
@@ -293,7 +294,8 @@ final class PendingShareStoreTests: XCTestCase {
         )
 
         XCTAssertEqual(response["ok"] as? Bool, false)
-        XCTAssertEqual(response["error"] as? String, "Missing URL")
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.missingURL.rawValue)
+        XCTAssertEqual(response["error"] as? String, ExtensionUserMessageCatalog.message(for: .missingURL))
     }
 
     func testExtensionURLMessageHandlerQueuesWebsiteForYouTubeURL() {
@@ -305,6 +307,8 @@ final class PendingShareStoreTests: XCTestCase {
         )
 
         XCTAssertEqual(response["ok"] as? Bool, true)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
+        XCTAssertEqual(response["message"] as? String, ExtensionUserMessageCatalog.message(for: .savedForLater))
         XCTAssertEqual(response["queued"] as? String, "website")
         XCTAssertEqual(store.loadAll().first?.kind, .website)
         XCTAssertEqual(
@@ -337,7 +341,8 @@ final class PendingShareStoreTests: XCTestCase {
         )
 
         XCTAssertEqual(response["ok"] as? Bool, false)
-        XCTAssertEqual(response["error"] as? String, "Invalid URL")
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.invalidURL.rawValue)
+        XCTAssertEqual(response["error"] as? String, ExtensionUserMessageCatalog.message(for: .invalidURL))
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
@@ -350,6 +355,26 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertNotNil(item)
         XCTAssertEqual(item?.kind, .website)
         XCTAssertEqual(store.loadAll().first?.kind, .website)
+    }
+
+    func testShareExtensionURLQueueHandlerCanonicalizesYouTubeShortURL() {
+        let store = makeStore()
+        let url = URL(string: "https://youtu.be/abc123xyzAA?t=10")!
+
+        let item = ShareExtensionURLQueueHandler.enqueueURLForLater(url, pendingStore: store)
+
+        XCTAssertNotNil(item)
+        XCTAssertEqual(item?.url, "https://www.youtube.com/watch?v=abc123xyzAA")
+    }
+
+    func testShareExtensionURLQueueHandlerRejectsInvalidURL() {
+        let store = makeStore()
+        let url = URL(string: "file:///tmp/example.txt")!
+
+        let item = ShareExtensionURLQueueHandler.enqueueURLForLater(url, pendingStore: store)
+
+        XCTAssertNil(item)
+        XCTAssertTrue(store.loadAll().isEmpty)
     }
 
     private func makeStore() -> PendingShareStore {

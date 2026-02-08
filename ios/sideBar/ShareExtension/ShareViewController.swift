@@ -13,7 +13,7 @@ final class ShareViewController: UIViewController {
         do {
             environment = try ShareExtensionEnvironment()
         } catch {
-            showError(error.localizedDescription)
+            showError(ShareExtensionMessageMapper.errorMessage(for: error))
             return
         }
         processSharedContent()
@@ -23,13 +23,13 @@ final class ShareViewController: UIViewController {
 
     private func processSharedContent() {
         guard let extensionItems = extensionContext?.inputItems as? [NSExtensionItem] else {
-            showError(ShareExtensionError.invalidSharePayload.localizedDescription)
+            showError(ExtensionUserMessageCatalog.message(for: .invalidSharePayload))
             return
         }
 
         let itemProviders = extensionItems.flatMap { $0.attachments ?? [] }
         guard !itemProviders.isEmpty else {
-            showError(ShareExtensionError.invalidSharePayload.localizedDescription)
+            showError(ExtensionUserMessageCatalog.message(for: .invalidSharePayload))
             return
         }
 
@@ -70,7 +70,7 @@ final class ShareViewController: UIViewController {
             }
 
             await MainActor.run { [weak self] in
-                self?.showError("No supported content found.")
+                self?.showError(ExtensionUserMessageCatalog.message(for: .unsupportedContent))
             }
         }
     }
@@ -79,7 +79,7 @@ final class ShareViewController: UIViewController {
 
     private func handleImage(_ itemProvider: NSItemProvider) async {
         await MainActor.run { [weak self] in
-            self?.setContentView(ShareLoadingView(message: "Preparing image..."))
+            self?.setContentView(ShareLoadingView(message: ShareExtensionMessageMapper.preparingImage))
         }
 
         // Try to load as UIImage first for better format handling
@@ -100,14 +100,14 @@ final class ShareViewController: UIViewController {
             mimeType = mimeTypeForFilename(filename)
         } else {
             await MainActor.run { [weak self] in
-                self?.showError("Could not load image.")
+                self?.showError(ExtensionUserMessageCatalog.message(for: .imageLoadFailed))
             }
             return
         }
 
         guard let data = imageData else {
             await MainActor.run { [weak self] in
-                self?.showError("Could not process image.")
+                self?.showError(ExtensionUserMessageCatalog.message(for: .imageProcessFailed))
             }
             return
         }
@@ -134,7 +134,7 @@ final class ShareViewController: UIViewController {
 
     private func handleFile(_ itemProvider: NSItemProvider, preferredType: UTType) async {
         await MainActor.run { [weak self] in
-            self?.setContentView(ShareLoadingView(message: "Preparing file..."))
+            self?.setContentView(ShareLoadingView(message: ShareExtensionMessageMapper.preparingFile))
         }
 
         let typeIdentifier = preferredType.identifier
@@ -158,7 +158,7 @@ final class ShareViewController: UIViewController {
         // Fall back to loading data directly
         guard let data = await loadData(from: itemProvider, typeIdentifier: typeIdentifier) else {
             await MainActor.run { [weak self] in
-                self?.showError("Could not load file.")
+                self?.showError(ExtensionUserMessageCatalog.message(for: .fileLoadFailed))
             }
             return
         }
@@ -213,7 +213,7 @@ final class ShareViewController: UIViewController {
             try? FileManager.default.removeItem(at: fileURL)
         } catch {
             await MainActor.run { [weak self] in
-                self?.showError("Could not read file: \(error.localizedDescription)")
+                self?.showError(ExtensionUserMessageCatalog.message(for: .fileReadFailed))
             }
         }
     }
@@ -223,14 +223,17 @@ final class ShareViewController: UIViewController {
     private func uploadFile(data: Data, filename: String, mimeType: String, isImage: Bool) async {
         guard let environment else {
             await MainActor.run { [weak self] in
-                self?.showError(ShareExtensionError.notAuthenticated.localizedDescription)
+                self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
             }
             return
         }
 
-        let contentType = isImage ? "image" : "file"
         await MainActor.run { [weak self] in
-            let progressView = ShareProgressView(message: "Uploading \(contentType)...")
+            let progressView = ShareProgressView(
+                message: isImage
+                    ? ShareExtensionMessageMapper.uploadingImage
+                    : ShareExtensionMessageMapper.uploadingFile
+            )
             self?.progressView = progressView
             self?.setContentView(progressView)
         }
@@ -249,7 +252,7 @@ final class ShareViewController: UIViewController {
             }
 
             await MainActor.run { [weak self] in
-                self?.showSuccess(message: isImage ? "Image saved" : "File saved")
+                self?.showSuccess(message: isImage ? ShareExtensionMessageMapper.imageSaved : ShareExtensionMessageMapper.fileSaved)
             }
         } catch {
             await MainActor.run { [weak self] in
@@ -257,7 +260,7 @@ final class ShareViewController: UIViewController {
                     self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)
                     return
                 }
-                self?.showError("Upload failed: \(error.localizedDescription)")
+                self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))
             }
         }
     }
@@ -288,10 +291,10 @@ final class ShareViewController: UIViewController {
 
     private func saveURL(_ url: URL) {
         guard let environment else {
-            showError(ShareExtensionError.notAuthenticated.localizedDescription)
+            showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
             return
         }
-        setContentView(ShareLoadingView(message: "Saving website..."))
+        setContentView(ShareLoadingView(message: ShareExtensionMessageMapper.savingWebsite))
         Task { @MainActor in
             if !(await ShareNetworkMonitor.isOnline()) {
                 queuePendingWebsite(url)
@@ -300,12 +303,12 @@ final class ShareViewController: UIViewController {
             do {
                 _ = try await environment.websitesAPI.quickSave(url: url.absoluteString, title: nil)
                 ExtensionEventStore.shared.recordWebsiteSaved(url: url.absoluteString)
-                showSuccess(message: "Website saved")
+                showSuccess(message: ShareExtensionMessageMapper.websiteSaved)
             } catch {
                 if isOfflineError(error) {
                     queuePendingWebsite(url)
                 } else {
-                    showError(error.localizedDescription)
+                    showError(ShareExtensionMessageMapper.errorMessage(for: error))
                 }
             }
         }
@@ -313,44 +316,45 @@ final class ShareViewController: UIViewController {
 
     @MainActor
     private func queuePendingWebsite(_ url: URL) {
-        if ShareExtensionURLQueueHandler.enqueueURLForLater(
+        let item = ShareExtensionURLQueueHandler.enqueueURLForLater(
             url,
             pendingStore: pendingShareStore
-        ) != nil {
-            showSuccess(message: "Saved for later")
-        } else {
-            showError("Could not save for later.")
-        }
+        )
+        showQueueResult(item)
     }
 
     @MainActor
     private func queuePendingFile(data: Data, filename: String, mimeType: String, isImage: Bool) {
         let kind: PendingShareKind = isImage ? .image : .file
-        if pendingShareStore.enqueueFile(
+        let item = pendingShareStore.enqueueFile(
             data: data,
             filename: filename,
             mimeType: mimeType,
             kind: kind
-        ) != nil {
-            showSuccess(message: "Saved for later")
-        } else {
-            showError("Could not save for later.")
-        }
+        )
+        showQueueResult(item)
     }
 
     @MainActor
     private func queuePendingFile(at url: URL, filename: String, mimeType: String, isImage: Bool) {
         let kind: PendingShareKind = isImage ? .image : .file
-        if pendingShareStore.enqueueFile(
+        let item = pendingShareStore.enqueueFile(
             at: url,
             filename: filename,
             mimeType: mimeType,
             kind: kind
-        ) != nil {
-            showSuccess(message: "Saved for later")
-        } else {
-            showError("Could not save for later.")
+        )
+        showQueueResult(item)
+    }
+
+    @MainActor
+    private func showQueueResult(_ item: PendingShareItem?) {
+        let message = ShareExtensionMessageMapper.queueResultMessage(for: item)
+        if ShareExtensionMessageMapper.queueSucceeded(for: item) {
+            showSuccess(message: message)
+            return
         }
+        showError(message)
     }
 
     // MARK: - UI
