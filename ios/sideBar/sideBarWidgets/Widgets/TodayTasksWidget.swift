@@ -28,7 +28,7 @@ struct TodayTasksWidgetView: View {
     var body: some View {
         if !entry.isAuthenticated {
             notAuthenticatedView
-        } else if entry.data.tasks.isEmpty {
+        } else if visibleTasks.isEmpty {
             emptyStateView
         } else {
             taskListView
@@ -69,8 +69,14 @@ struct TodayTasksWidgetView: View {
         }
     }
 
+    private var visibleTasks: [WidgetTask] {
+        WidgetTasksUtils.sortByDueDate(
+            WidgetTasksUtils.visibleTasks(entry.data.tasks, now: entry.date)
+        )
+    }
+
     private var displayedTasks: [WidgetTask] {
-        Array(WidgetTasksUtils.sortByDueDate(entry.data.tasks).prefix(maxTasks))
+        Array(visibleTasks.prefix(maxTasks))
     }
 
     private var maxTasks: Int {

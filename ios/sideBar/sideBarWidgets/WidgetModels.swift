@@ -7,6 +7,7 @@ public struct WidgetTask: WidgetStorable {
   public let id: String
   public let title: String
   public let isCompleted: Bool
+  public let completedAt: Date?
   public let projectName: String?
   public let groupName: String?
   public let hasNotes: Bool
@@ -16,6 +17,7 @@ public struct WidgetTask: WidgetStorable {
     id: String,
     title: String,
     isCompleted: Bool = false,
+    completedAt: Date? = nil,
     projectName: String? = nil,
     groupName: String? = nil,
     hasNotes: Bool = false,
@@ -24,6 +26,7 @@ public struct WidgetTask: WidgetStorable {
     self.id = id
     self.title = title
     self.isCompleted = isCompleted
+    self.completedAt = completedAt
     self.projectName = projectName
     self.groupName = groupName
     self.hasNotes = hasNotes
@@ -249,6 +252,23 @@ private let widgetTasksDateFormatter: DateFormatter = {
 
 public enum WidgetTasksUtils {
   private static let msPerDay: Double = 24 * 60 * 60
+  private static let completionDisplayDurationSeconds: TimeInterval = 1.25
+
+  public static func visibleTasks(_ tasks: [WidgetTask], now: Date) -> [WidgetTask] {
+    tasks.filter { task in
+      !hasCompletionDisplayExpired(task, now: now)
+    }
+  }
+
+  public static func completionRemovalDate(for task: WidgetTask) -> Date? {
+    guard task.isCompleted, let completedAt = task.completedAt else { return nil }
+    return completedAt.addingTimeInterval(completionDisplayDurationSeconds)
+  }
+
+  public static func hasCompletionDisplayExpired(_ task: WidgetTask, now: Date) -> Bool {
+    guard let removalDate = completionRemovalDate(for: task) else { return false }
+    return now >= removalDate
+  }
 
   public static func isOverdue(_ task: WidgetTask) -> Bool {
     guard let date = parseTaskDate(task) else { return false }

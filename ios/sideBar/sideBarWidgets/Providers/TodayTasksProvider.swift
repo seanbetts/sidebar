@@ -66,6 +66,10 @@ struct TodayTasksProvider: TimelineProvider {
         var boundaryDates: Set<Date> = []
 
         for task in data.tasks {
+            if let completionBoundary = WidgetTasksUtils.completionRemovalDate(for: task),
+               completionBoundary > now {
+                boundaryDates.insert(completionBoundary)
+            }
             if let deadline = task.deadline,
                deadline.count >= 10,
                let taskDate = Self.dateFormatter.date(from: String(deadline.prefix(10))) {

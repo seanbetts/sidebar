@@ -11,6 +11,7 @@ public struct WidgetTask: WidgetStorable {
   public let id: String
   public let title: String
   public let isCompleted: Bool
+  public let completedAt: Date?
   public let projectName: String?
   public let groupName: String?
   public let hasNotes: Bool
@@ -20,6 +21,7 @@ public struct WidgetTask: WidgetStorable {
     id: String,
     title: String,
     isCompleted: Bool = false,
+    completedAt: Date? = nil,
     projectName: String? = nil,
     groupName: String? = nil,
     hasNotes: Bool = false,
@@ -28,6 +30,7 @@ public struct WidgetTask: WidgetStorable {
     self.id = id
     self.title = title
     self.isCompleted = isCompleted
+    self.completedAt = completedAt
     self.projectName = projectName
     self.groupName = groupName
     self.hasNotes = hasNotes
@@ -316,6 +319,7 @@ extension WidgetTask {
     self.id = task.id
     self.title = task.title
     self.isCompleted = task.status == "completed"
+    self.completedAt = nil
     self.projectName = projectName
     self.groupName = groupName
     self.hasNotes = task.notes != nil && !task.notes!.isEmpty
