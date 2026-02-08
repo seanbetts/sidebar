@@ -1,8 +1,10 @@
 import SwiftUI
+import OSLog
 
 struct PendingWritesView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @State private var pendingWrites: [PendingWriteSummary] = []
+    private let logger = Logger(subsystem: "sideBar", category: "PendingWritesView")
 
     var body: some View {
         List {
@@ -51,7 +53,12 @@ struct PendingWritesView: View {
     }
 
     private func reloadPendingWrites() async {
-        pendingWrites = await environment.writeQueue.fetchPendingWrites()
+        do {
+            pendingWrites = try await environment.writeQueue.fetchPendingWrites()
+        } catch {
+            logger.error("Failed to reload pending writes: \(error.localizedDescription, privacy: .public)")
+            pendingWrites = []
+        }
     }
 
     private func deletePendingWrites(at offsets: IndexSet) {

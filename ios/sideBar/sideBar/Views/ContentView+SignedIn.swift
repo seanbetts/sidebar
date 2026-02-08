@@ -419,7 +419,13 @@ extension ContentView {
     @MainActor
     private func refreshPendingWriteConflict() async {
         if environment.writeQueue.isPausedForConflict {
-            pendingWriteConflict = await environment.writeQueue.fetchNextConflict()
+            do {
+                pendingWriteConflict = try await environment.writeQueue.fetchNextConflict()
+            } catch {
+                let logger = Logger(subsystem: "sideBar", category: "ContentView")
+                logger.error("Failed to fetch write conflict: \(error.localizedDescription, privacy: .public)")
+                pendingWriteConflict = nil
+            }
         } else {
             pendingWriteConflict = nil
         }

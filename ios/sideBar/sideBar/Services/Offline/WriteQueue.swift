@@ -2,6 +2,7 @@
 import Combine
 import CoreData
 import Foundation
+import OSLog
 
 enum WriteOperation: String {
     case create
@@ -87,6 +88,7 @@ public final class WriteQueue: ObservableObject {
     private let autoProcessEnabled: Bool
     private var cancellables = Set<AnyCancellable>()
     private let encoder = JSONEncoder()
+    private let logger = Logger(subsystem: "sideBar", category: "WriteQueue")
 
     init(
         container: NSPersistentContainer,
@@ -160,7 +162,17 @@ public final class WriteQueue: ObservableObject {
         isProcessing = true
         defer { isProcessing = false }
 
-        while let write = try? await fetchNextPending() {
+        while true {
+            let write: PendingWriteRecord?
+            do {
+                write = try await fetchNextPending()
+            } catch {
+                logger.error("Failed to fetch next pending write: \(error.localizedDescription, privacy: .public)")
+                break
+            }
+            guard let write else {
+                break
+            }
             let shouldContinue = await processWrite(write)
             if !shouldContinue {
                 break
@@ -171,45 +183,15 @@ public final class WriteQueue: ObservableObject {
         await loadPendingCount()
     }
 
-    func fetchPendingWrites() async -> [PendingWriteSummary] {
-        do {
-            return try await performBackgroundTask { context in
-                let request = PendingWrite.fetchRequest()
-                request.sortDescriptors = [
-                    NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)
-                ]
-                let writes = try context.fetch(request)
-                return writes.map { write in
-                    PendingWriteSummary(
-                        id: write.id,
-                        operationType: write.operationType,
-                        entityType: write.entityType,
-                        entityId: write.entityId,
-                        status: write.status,
-                        attempts: write.attempts,
-                        lastError: write.lastError,
-                        conflictReason: write.conflictReason,
-                        createdAt: write.createdAt,
-                        lastAttemptAt: write.lastAttemptAt
-                    )
-                }
-            }
-        } catch {
-            return []
-        }
-    }
-
-    func fetchNextConflict() async -> PendingWriteSummary? {
-        do {
-            return try await performBackgroundTask { context in
-                let request = PendingWrite.fetchRequest()
-                request.fetchLimit = 1
-                request.predicate = NSPredicate(format: "conflictReason != nil")
-                request.sortDescriptors = [
-                    NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
-                ]
-                guard let write = try context.fetch(request).first else { return nil }
-                return PendingWriteSummary(
+    func fetchPendingWrites() async throws -> [PendingWriteSummary] {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.sortDescriptors = [
+                NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)
+            ]
+            let writes = try context.fetch(request)
+            return writes.map { write in
+                PendingWriteSummary(
                     id: write.id,
                     operationType: write.operationType,
                     entityType: write.entityType,
@@ -222,8 +204,30 @@ public final class WriteQueue: ObservableObject {
                     lastAttemptAt: write.lastAttemptAt
                 )
             }
-        } catch {
-            return nil
+        }
+    }
+
+    func fetchNextConflict() async throws -> PendingWriteSummary? {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "conflictReason != nil")
+            request.sortDescriptors = [
+                NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
+            ]
+            guard let write = try context.fetch(request).first else { return nil }
+            return PendingWriteSummary(
+                id: write.id,
+                operationType: write.operationType,
+                entityType: write.entityType,
+                entityId: write.entityId,
+                status: write.status,
+                attempts: write.attempts,
+                lastError: write.lastError,
+                conflictReason: write.conflictReason,
+                createdAt: write.createdAt,
+                lastAttemptAt: write.lastAttemptAt
+            )
         }
     }
 
@@ -470,6 +474,7 @@ public final class WriteQueue: ObservableObject {
         do {
             pendingCount = try await countPendingWrites()
         } catch {
+            logger.error("Failed to load pending count: \(error.localizedDescription, privacy: .public)")
             pendingCount = 0
         }
     }

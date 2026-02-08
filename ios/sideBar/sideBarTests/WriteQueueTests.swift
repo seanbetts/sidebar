@@ -103,7 +103,7 @@ final class WriteQueueTests: XCTestCase {
             payload: Payload(value: "Hi")
         )
 
-        let pending = await queue.fetchPendingWrites()
+        let pending = try await queue.fetchPendingWrites()
 
         XCTAssertEqual(pending.count, 1)
         XCTAssertEqual(pending.first?.entityType, WriteEntityType.note.rawValue)
@@ -180,7 +180,7 @@ final class WriteQueueTests: XCTestCase {
 
         await queue.pruneOldestWrites(keeping: 1)
 
-        let pending = await queue.fetchPendingWrites()
+        let pending = try await queue.fetchPendingWrites()
         XCTAssertEqual(pending.count, 1)
     }
 
@@ -295,7 +295,7 @@ final class WriteQueueTests: XCTestCase {
 
         try context.save()
 
-        let next = await queue.fetchNextConflict()
+        let next = try await queue.fetchNextConflict()
         XCTAssertEqual(next?.id, firstId)
         XCTAssertEqual(next?.conflictReason, "First conflict")
     }
@@ -328,7 +328,7 @@ final class WriteQueueTests: XCTestCase {
         await queue.processQueue()
 
         XCTAssertTrue(queue.isPausedForConflict)
-        let next = await queue.fetchNextConflict()
+        let next = try await queue.fetchNextConflict()
         XCTAssertEqual(next?.conflictReason, executor.conflictReason)
     }
 }
