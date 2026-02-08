@@ -834,6 +834,37 @@ def test_cleanup_substack_markdown_removes_chrome_and_svg_controls():
     )
 
 
+def test_cleanup_substack_markdown_normalizes_footnotes_and_editor_markup():
+    markdown = "\n".join(
+        [
+            "Main claim with citation[1](#footnote-1) and another[2](#footnote-2).",
+            "",
+            "### ",
+            "",
+            "***Editor:******Ankit Maloo blogs at** <https://ankitmaloo.com/>",
+            "",
+            "[1](#footnote-anchor-1)",
+            "",
+            "First footnote content.",
+            "",
+            "[2](#footnote-anchor-2)",
+            "",
+            "Second footnote content.",
+        ]
+    )
+
+    cleaned = web_save_parser.cleanup_substack_markdown(markdown)
+
+    assert "[^1]" in cleaned
+    assert "[^2]" in cleaned
+    assert "[^1]: First footnote content." in cleaned
+    assert "[^2]: Second footnote content." in cleaned
+    assert "#footnote-" not in cleaned
+    assert "\n###\n" not in cleaned
+    assert "***Editor:******" not in cleaned
+    assert "***Editor:*** Ankit Maloo blogs at**" in cleaned
+
+
 def test_insert_youtube_placeholders_handles_comment_sibling():
     extracted_html = "<article><p>Anchor</p></article>"
     raw_html = """
