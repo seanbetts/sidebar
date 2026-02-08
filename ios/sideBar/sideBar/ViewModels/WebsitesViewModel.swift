@@ -352,14 +352,19 @@ public final class WebsitesViewModel: ObservableObject {
             }
             return
         }
+        let attemptedUpdatedAt = store.currentUpdatedAt(id: id)
         do {
-            try await api.delete(id: id, clientUpdatedAt: store.currentUpdatedAt(id: id))
+            try await api.delete(id: id, clientUpdatedAt: attemptedUpdatedAt)
             store.removeItem(id: id, persist: true)
             if selectedWebsiteId == id {
                 clearSelection()
             }
         } catch {
-            errorMessage = error.localizedDescription
+            if isDeleteConflict(error),
+               await retryDeleteAfterRefresh(id: id, fallbackUpdatedAt: attemptedUpdatedAt) {
+                return
+            }
+            toastCenter.show(message: "Failed to delete website")
         }
     }
 
@@ -423,6 +428,43 @@ public final class WebsitesViewModel: ObservableObject {
             selectedWebsiteId = nil
         }
         store.applyRealtimeEvent(payload)
+    }
+
+    private func isDeleteConflict(_ error: Error) -> Bool {
+        guard let apiError = error as? APIClientError else { return false }
+        switch apiError {
+        case .apiError(let message):
+            return message.localizedCaseInsensitiveContains("updated since last sync")
+        case .requestFailed(409):
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func retryDeleteAfterRefresh(id: String, fallbackUpdatedAt: String?) async -> Bool {
+        do {
+            try await store.loadList(force: true)
+        } catch {
+            return false
+        }
+        if items.contains(where: { $0.id == id }) == false {
+            if selectedWebsiteId == id {
+                clearSelection()
+            }
+            return true
+        }
+        let refreshedUpdatedAt = store.currentUpdatedAt(id: id) ?? fallbackUpdatedAt
+        do {
+            try await api.delete(id: id, clientUpdatedAt: refreshedUpdatedAt)
+            store.removeItem(id: id, persist: true)
+            if selectedWebsiteId == id {
+                clearSelection()
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func makePendingWebsite(from url: URL) -> PendingWebsiteItem {
