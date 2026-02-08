@@ -66,6 +66,7 @@ public final class IngestionViewModel: ObservableObject {
     var cancellables = Set<AnyCancellable>()
     var securityScopedURLs: [String: URL] = [:]
     var jobPollingTasks: [String: Task<Void, Never>] = [:]
+    var jobPollingTaskTokens: [String: UUID] = [:]
     var listPollingTask: PollingTask?
     var statusCache: [String: String] = [:]
     let readyMessageTask = ManagedTask()

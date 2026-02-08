@@ -44,12 +44,18 @@ extension IngestionViewModel {
             return
         }
         guard jobPollingTasks[fileId] == nil else { return }
+        let token = UUID()
+        jobPollingTaskTokens[fileId] = token
         jobPollingTasks[fileId] = Task { [weak self] in
             guard let self else { return }
+            defer {
+                Task { @MainActor [weak self] in
+                    self?.finishJobPolling(fileId: fileId, token: token)
+                }
+            }
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 guard self.selectedFileId == fileId else {
-                    self.cancelJobPolling(fileId: fileId)
                     return
                 }
                 do {
@@ -58,11 +64,9 @@ extension IngestionViewModel {
                         self.store.updateJob(fileId: fileId, job: meta.job, recommendedViewer: meta.recommendedViewer)
                         if (meta.job.status ?? "") == "ready" {
                             await self.ensureViewerReady(for: fileId)
-                            self.cancelJobPolling(fileId: fileId)
                             return
                         }
-                        if (meta.job.status ?? "") == "failed" {
-                            self.cancelJobPolling(fileId: fileId)
+                        if (meta.job.status ?? "") == "failed" || (meta.job.status ?? "") == "canceled" {
                             return
                         }
                     }
@@ -77,12 +81,20 @@ extension IngestionViewModel {
         if let fileId {
             jobPollingTasks[fileId]?.cancel()
             jobPollingTasks[fileId] = nil
+            jobPollingTaskTokens[fileId] = nil
             return
         }
         for task in jobPollingTasks.values {
             task.cancel()
         }
         jobPollingTasks = [:]
+        jobPollingTaskTokens = [:]
+    }
+
+    private func finishJobPolling(fileId: String, token: UUID) {
+        guard jobPollingTaskTokens[fileId] == token else { return }
+        jobPollingTasks[fileId] = nil
+        jobPollingTaskTokens[fileId] = nil
     }
 
     func updateListPollingState(items: [IngestionListItem]) {
