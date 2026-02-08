@@ -355,7 +355,8 @@ extension NotesPanelView {
                     isExpanded: $isArchiveExpanded,
                     content: {
                         if showArchiveLoadingPlaceholder {
-                            archiveLoadingRow(message: "Loading archived notes...")
+                            archiveLoadingRow(message: "Loading archive...")
+                                .padding(.leading, -DesignTokens.Spacing.sm)
                         } else if showArchiveEmptyState {
                             Text(archivedEmptyStateText)
                                 .font(.caption)
