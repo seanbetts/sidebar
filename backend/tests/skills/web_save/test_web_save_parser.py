@@ -841,6 +841,10 @@ def test_cleanup_substack_markdown_normalizes_footnotes_and_editor_markup():
             "",
             "### ",
             "",
+            "> Quoted intro.",
+            ">",
+            "> Continued quote.",
+            "",
             "***Editor:******Ankit Maloo blogs at** <https://ankitmaloo.com/>",
             "",
             "[1](#footnote-anchor-1)",
@@ -861,8 +865,10 @@ def test_cleanup_substack_markdown_normalizes_footnotes_and_editor_markup():
     assert "[^2]: Second footnote content." in cleaned
     assert "#footnote-" not in cleaned
     assert "\n###\n" not in cleaned
-    assert "***Editor:******" not in cleaned
-    assert "***Editor:*** Ankit Maloo blogs at**" in cleaned
+    assert "\n>\n" not in cleaned
+    assert "> Quoted intro." in cleaned
+    assert "> Continued quote." in cleaned
+    assert "Editor: Ankit Maloo blogs at <https://ankitmaloo.com/>" in cleaned
 
 
 def test_insert_youtube_placeholders_handles_comment_sibling():
