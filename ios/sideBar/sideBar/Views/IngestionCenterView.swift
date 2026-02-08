@@ -70,7 +70,7 @@ private struct IngestionCenterRow: View {
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
-                if showCancel && isUploading {
+                if showCancel && isCancellable {
                     Button {
                         onCancel(item)
                     } label: {
@@ -116,8 +116,14 @@ private struct IngestionCenterRow: View {
         )
     }
 
-    private var isUploading: Bool {
-        (item.job.status ?? "") == "uploading"
+    private var isLocalPlaceholder: Bool {
+        item.file.id.hasPrefix("local-") || item.file.id.hasPrefix("youtube-")
+    }
+
+    private var isCancellable: Bool {
+        guard isLocalPlaceholder else { return false }
+        let status = (item.job.status ?? "").lowercased()
+        return status == "uploading" || status == "queued" || status == "processing"
     }
 
     private var isFailed: Bool {

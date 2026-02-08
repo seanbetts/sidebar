@@ -231,6 +231,39 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(pending.first?.kind, .youtube)
     }
 
+    func testClearFailedUploadShowsToastWhenDeleteFails() async {
+        let failedItem = makeListItem(id: "file-1", status: "failed", stage: "failed")
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [failedItem])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let toastCenter = ToastCenter()
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: toastCenter
+        )
+
+        await viewModel.load()
+        viewModel.clearFailedUpload(fileId: "file-1")
+
+        for _ in 0..<10 {
+            if toastCenter.toast != nil {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        XCTAssertEqual(toastCenter.toast?.message, "Failed to clear failed upload")
+    }
+
     func testExtractYouTubeVideoIdSupportsCanonicalForms() {
         let viewModel = makeViewModelForYouTubeParsing()
 
@@ -286,10 +319,10 @@ final class IngestionViewModelTests: XCTestCase {
         )
     }
 
-    private func makeListItem(id: String) -> IngestionListItem {
+    private func makeListItem(id: String, status: String = "ready", stage: String = "done") -> IngestionListItem {
         IngestionListItem(
             file: makeFile(id: id),
-            job: makeJob(),
+            job: makeJob(status: status, stage: stage),
             recommendedViewer: "text_original"
         )
     }
@@ -313,10 +346,10 @@ final class IngestionViewModelTests: XCTestCase {
         )
     }
 
-    private func makeJob() -> IngestionJob {
+    private func makeJob(status: String = "ready", stage: String = "done") -> IngestionJob {
         IngestionJob(
-            status: "ready",
-            stage: "done",
+            status: status,
+            stage: stage,
             errorCode: nil,
             errorMessage: nil,
             userMessage: nil,

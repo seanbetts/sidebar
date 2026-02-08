@@ -6,23 +6,32 @@ public protocol StatusFilterable {
 }
 
 public extension Array where Element: StatusFilterable {
-    static var terminalStatuses: [String] {
+    static var terminalStatuses: Set<String> {
         ["ready", "failed", "canceled"]
     }
 
+    static func normalizedStatus(_ status: String) -> String {
+        status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    static func isActiveStatus(_ status: String) -> Bool {
+        let normalized = normalizedStatus(status)
+        return !normalized.isEmpty && !terminalStatuses.contains(normalized)
+    }
+
     var activeItems: [Element] {
-        filter { !Self.terminalStatuses.contains($0.statusValue) }
+        filter { Self.isActiveStatus($0.statusValue) }
     }
 
     var readyItems: [Element] {
-        filter { $0.statusValue == "ready" }
+        filter { Self.normalizedStatus($0.statusValue) == "ready" }
     }
 
     var failedItems: [Element] {
-        filter { $0.statusValue == "failed" }
+        filter { Self.normalizedStatus($0.statusValue) == "failed" }
     }
 
     var hasActiveItems: Bool {
-        contains { !$0.statusValue.isEmpty && !Self.terminalStatuses.contains($0.statusValue) }
+        contains { Self.isActiveStatus($0.statusValue) }
     }
 }

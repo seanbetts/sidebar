@@ -164,8 +164,12 @@ extension IngestionViewModel {
             }
             return
         }
-        Task {
-            _ = await deleteFile(fileId: fileId)
+        Task { [weak self] in
+            guard let self else { return }
+            let didDelete = await deleteFile(fileId: fileId)
+            if !didDelete {
+                toastCenter.show(message: "Failed to clear failed upload")
+            }
         }
     }
 
