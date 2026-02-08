@@ -24,6 +24,7 @@ from api.services.web_save_parser_cleanup import (
     cleanup_gizmodo_markdown,
     cleanup_verge_markdown,
     cleanup_youtube_markdown,
+    dedupe_markdown_blocks,
     dedupe_markdown_images,
     extract_openai_body_html,
     extract_verge_body_html,
@@ -799,6 +800,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if domain.endswith("github.com"):
         # Final safety pass after markdown post-processing.
         markdown = cleanup_github_markdown(markdown)
+    markdown = dedupe_markdown_blocks(markdown)
     gallery_blocks = markdown.count('class="image-gallery"')
     logger.info(
         "web-save postprocess url=%s markdown_len=%s galleries=%s elapsed_ms=%s",

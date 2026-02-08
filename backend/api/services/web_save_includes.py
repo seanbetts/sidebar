@@ -94,15 +94,26 @@ def apply_include_reinsertion(
         tree: lxml_html.HtmlElement, node: lxml_html.HtmlElement
     ) -> bool:
         """Check if node's content already exists in the extracted tree."""
-        node_text = " ".join(node.text_content().split())
+
+        def _normalize_text(value: str) -> str:
+            return " ".join(value.split())
+
+        node_text = _normalize_text(node.text_content())
         if len(node_text) < 20:
             return False
+        tree_text = _normalize_text(tree.text_content())
+        if len(node_text) >= 80 and node_text in tree_text:
+            return True
+        if len(node_text) >= 120:
+            words = node_text.split()
+            leading = " ".join(words[:12])
+            trailing = " ".join(words[-12:])
+            if leading and trailing and leading in tree_text and trailing in tree_text:
+                return True
         for elem in tree.iter():
             if not isinstance(elem.tag, str):
                 continue
-            if elem.tag != node.tag:
-                continue
-            elem_text = " ".join(elem.text_content().split())
+            elem_text = _normalize_text(elem.text_content())
             if node_text == elem_text:
                 return True
         return False

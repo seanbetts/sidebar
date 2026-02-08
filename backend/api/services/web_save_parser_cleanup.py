@@ -85,6 +85,29 @@ def dedupe_markdown_images(markdown: str) -> str:
     return deduped.strip()
 
 
+def dedupe_markdown_blocks(markdown: str) -> str:
+    """Remove duplicate markdown blocks while preserving first occurrence order."""
+    if not markdown:
+        return markdown
+    blocks = re.split(r"\n{2,}", markdown.strip())
+    seen: set[str] = set()
+    output: list[str] = []
+    heading_pattern = re.compile(r"^#{1,6}\s+\S")
+    for block in blocks:
+        trimmed = block.strip()
+        if not trimmed:
+            continue
+        normalized = " ".join(trimmed.split())
+        is_heading = bool(heading_pattern.match(trimmed))
+        min_length = 8 if is_heading else 40
+        if len(normalized) >= min_length and normalized in seen:
+            continue
+        if len(normalized) >= min_length:
+            seen.add(normalized)
+        output.append(trimmed)
+    return "\n\n".join(output).strip()
+
+
 def wrap_gallery_blocks(markdown: str) -> str:
     """Wrap consecutive gallery images into a single HTML gallery block."""
     image_line = re.compile(

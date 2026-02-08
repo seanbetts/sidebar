@@ -563,6 +563,56 @@ def test_apply_include_reinsertion_skips_comment_siblings_for_positioning():
     )
 
 
+def test_apply_include_reinsertion_skips_existing_long_module_content():
+    extracted_html = """
+    <article>
+      <p>Chess is a game of perfect information. The real world is not.</p>
+      <p>Chess relies on reasoning. Werewolf relies on social deduction. Poker introduces a new dimension: risk management.</p>
+      <h2>Watch the action</h2>
+      <p>Marking the launch of these new and updated benchmarks, we have partnered with experts for analysis.</p>
+      <h2>Explore the arena</h2>
+      <p>Check it out at <a href="http://kaggle.com/game-arena">kaggle.com/game-arena</a>.</p>
+    </article>
+    """
+    original_html = """
+    <html>
+      <body>
+        <div class="module--text module--text__article">
+          <div class="rich-text">
+            <h2>Chess: reasoning over calculation</h2>
+            <p>Chess section details.</p>
+          </div>
+        </div>
+        <div class="module--text module--text__article">
+          <div class="rich-text">
+            <p>Chess relies on reasoning. Werewolf relies on social deduction. Poker introduces a new dimension: risk management.</p>
+            <h2>Watch the action</h2>
+            <p>Marking the launch of these new and updated benchmarks, we have partnered with experts for analysis.</p>
+            <h2>Explore the arena</h2>
+            <p>Check it out at <a href="http://kaggle.com/game-arena">kaggle.com/game-arena</a>.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+    original_dom = lxml_html.fromstring(original_html)
+    updated = web_save_includes.apply_include_reinsertion(
+        extracted_html,
+        original_dom,
+        include_selectors=[".module--text__article"],
+        removal_rules=[],
+    )
+    assert "Chess: reasoning over calculation" in updated
+    assert updated.count("Watch the action") == 1
+    assert updated.count("Explore the arena") == 1
+    assert (
+        updated.count(
+            "Chess relies on reasoning. Werewolf relies on social deduction. Poker introduces a new dimension: risk management."
+        )
+        == 1
+    )
+
+
 def test_apply_include_reinsertion_uses_ancestor_siblings_for_position():
     extracted_html = "<article><p>Before</p><p>Between</p><p>After</p></article>"
     original_html = """
@@ -1346,6 +1396,36 @@ def test_dedupe_markdown_images_separates_adjacent_images():
     deduped = web_save_parser.dedupe_markdown_images(markdown)
     assert "\n\n![](https://example.com/b.png)" in deduped
     assert "\n\n[![](https://example.com/d.png)]" in deduped
+
+
+def test_dedupe_markdown_blocks_removes_repeated_sections():
+    markdown = "\n\n".join(
+        [
+            "Chess relies on reasoning. Werewolf relies on social deduction. Poker introduces a new dimension: risk management.",
+            "## Watch the action",
+            "Tune in to the three daily livestreams at 9:30 AM PT at [kaggle.com/game-arena](https://www.kaggle.com/game-arena).",
+            "## Explore the arena",
+            "Check it out at [kaggle.com/game-arena](http://kaggle.com/game-arena).",
+            "Chess relies on reasoning. Werewolf relies on social deduction. Poker introduces a new dimension: risk management.",
+            "## Watch the action",
+            "Tune in to the three daily livestreams at 9:30 AM PT at [kaggle.com/game-arena](https://www.kaggle.com/game-arena).",
+            "## Explore the arena",
+            "Check it out at [kaggle.com/game-arena](http://kaggle.com/game-arena).",
+        ]
+    )
+    deduped = web_save_parser.dedupe_markdown_blocks(markdown)
+    assert (
+        deduped.count(
+            "Chess relies on reasoning. Werewolf relies on social deduction. Poker introduces a new dimension: risk management."
+        )
+        == 1
+    )
+    assert deduped.count("## Watch the action") == 1
+    assert deduped.count("## Explore the arena") == 1
+    assert (
+        deduped.count("Check it out at [kaggle.com/game-arena](http://kaggle.com/game-arena).")
+        == 1
+    )
 
 
 def test_normalize_image_captions_moves_figcaption():
