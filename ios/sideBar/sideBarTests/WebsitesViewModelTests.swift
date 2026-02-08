@@ -297,6 +297,64 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.items.isEmpty)
     }
 
+    func testDeleteWebsiteConflictRefreshesAndRetries() async {
+        let staleUpdatedAt = "2026-02-08T14:19:25.939359+00:00"
+        let freshUpdatedAt = "2026-02-08T14:20:06.958809+00:00"
+        let staleItem = makeItem(id: "site-1", updatedAt: staleUpdatedAt)
+        let freshItem = makeItem(id: "site-1", updatedAt: freshUpdatedAt)
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [staleItem]))
+        )
+        api.enqueueDeleteResult(.failure(APIClientError.apiError("Website has been updated since last sync")))
+        api.enqueueDeleteResult(.success(()))
+        let toastCenter = ToastCenter()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.load(force: true)
+        api.enqueueListResult(.success(WebsitesResponse(items: [freshItem])))
+        await viewModel.deleteWebsite(id: "site-1")
+
+        XCTAssertEqual(api.deleteRequestUpdatedAts, [staleUpdatedAt, freshUpdatedAt])
+        XCTAssertTrue(viewModel.items.isEmpty)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertNil(toastCenter.toast)
+    }
+
+    func testDeleteWebsiteUsesFreshestUpdatedAtFromActiveDetail() async {
+        let staleUpdatedAt = "2026-02-08T14:19:25.939359+00:00"
+        let freshUpdatedAt = "2026-02-08T14:20:06.958809+00:00"
+        let staleItem = makeItem(id: "site-1", updatedAt: staleUpdatedAt)
+        let detail = makeDetail(id: "site-1", updatedAt: freshUpdatedAt)
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [staleItem])),
+            getResult: .success(detail),
+            deleteResult: .success(())
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.load(force: true)
+        await viewModel.selectWebsite(id: "site-1")
+        await viewModel.deleteWebsite(id: "site-1")
+
+        XCTAssertEqual(api.deleteRequestUpdatedAts, [freshUpdatedAt])
+        XCTAssertTrue(viewModel.items.isEmpty)
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
     func testRequestYouTubeTranscriptQueuesLocalTranscriptState() async {
         let detail = makeDetail(id: "site-1")
         let cache = InMemoryCacheClient()
@@ -625,7 +683,10 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let syncResult: Result<WebsiteSyncResponse, Error>
     let transcribeHandler: ((_ id: String, _ url: String) async throws -> WebsiteTranscriptResponse)?
     private(set) var lastSavedUrl: String?
+    private(set) var deleteRequestUpdatedAts: [String?] = []
+    private var queuedListResults: [Result<WebsitesResponse, Error>] = []
     private var queuedGetResults: [Result<WebsiteDetail, Error>] = []
+    private var queuedDeleteResults: [Result<Void, Error>] = []
 
     init(
         listResult: Result<WebsitesResponse, Error> = .failure(MockError.forced),
@@ -654,7 +715,10 @@ private final class MockWebsitesAPI: WebsitesProviding {
     }
 
     func list() async throws -> WebsitesResponse {
-        try listResult.get()
+        if !queuedListResults.isEmpty {
+            return try queuedListResults.removeFirst().get()
+        }
+        return try listResult.get()
     }
 
     func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse {
@@ -708,7 +772,11 @@ private final class MockWebsitesAPI: WebsitesProviding {
 
     func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
-        _ = clientUpdatedAt
+        deleteRequestUpdatedAts.append(clientUpdatedAt)
+        if !queuedDeleteResults.isEmpty {
+            try queuedDeleteResults.removeFirst().get()
+            return
+        }
         try deleteResult.get()
     }
 
@@ -719,6 +787,14 @@ private final class MockWebsitesAPI: WebsitesProviding {
 
     func enqueueGetResult(_ result: Result<WebsiteDetail, Error>) {
         queuedGetResults.append(result)
+    }
+
+    func enqueueListResult(_ result: Result<WebsitesResponse, Error>) {
+        queuedListResults.append(result)
+    }
+
+    func enqueueDeleteResult(_ result: Result<Void, Error>) {
+        queuedDeleteResults.append(result)
     }
 }
 
@@ -893,7 +969,7 @@ private final class MockIngestionAPI: IngestionProviding {
     }
 }
 
-private func makeItem(id: String) -> WebsiteItem {
+private func makeItem(id: String, updatedAt: String? = nil) -> WebsiteItem {
     WebsiteItem(
         id: id,
         title: "Site",
@@ -908,7 +984,7 @@ private func makeItem(id: String) -> WebsiteItem {
         faviconR2Key: nil,
         youtubeTranscripts: nil,
         readingTime: nil,
-        updatedAt: nil,
+        updatedAt: updatedAt,
         lastOpenedAt: nil,
         deletedAt: nil
     )
@@ -917,7 +993,8 @@ private func makeItem(id: String) -> WebsiteItem {
 private func makeDetail(
     id: String,
     content: String = "Example",
-    youtubeTranscripts: [String: WebsiteTranscriptEntry]? = nil
+    youtubeTranscripts: [String: WebsiteTranscriptEntry]? = nil,
+    updatedAt: String? = nil
 ) -> WebsiteDetail {
     WebsiteDetail(
         id: id,
@@ -936,7 +1013,7 @@ private func makeDetail(
         faviconR2Key: nil,
         youtubeTranscripts: youtubeTranscripts,
         readingTime: nil,
-        updatedAt: nil,
+        updatedAt: updatedAt,
         lastOpenedAt: nil
     )
 }

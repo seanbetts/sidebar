@@ -864,30 +864,55 @@ extension WebsitesStore {
     }
 
     private func websiteItem(for id: String) -> WebsiteItem? {
-        if let item = items.first(where: { $0.id == id }) {
-            return item
+        let listItem = items.first(where: { $0.id == id })
+        let activeItem = activeItem(for: id)
+        guard listItem != nil || activeItem != nil else {
+            return nil
         }
-        if let active, active.id == id {
-            return WebsiteItem(
-                id: active.id,
-                title: active.title,
-                url: active.url,
-                domain: active.domain,
-                savedAt: active.savedAt,
-                publishedAt: active.publishedAt,
-                pinned: active.pinned,
-                pinnedOrder: active.pinnedOrder,
-                archived: active.archived,
-                faviconUrl: active.faviconUrl,
-                faviconR2Key: active.faviconR2Key,
-                youtubeTranscripts: active.youtubeTranscripts,
-                readingTime: active.readingTime,
-                updatedAt: active.updatedAt,
-                lastOpenedAt: active.lastOpenedAt,
-                deletedAt: nil
-            )
+        if let listItem, let activeItem {
+            return newerItem(between: listItem, and: activeItem)
         }
-        return nil
+        return listItem ?? activeItem
+    }
+
+    private func activeItem(for id: String) -> WebsiteItem? {
+        guard let active, active.id == id else { return nil }
+        return WebsiteItem(
+            id: active.id,
+            title: active.title,
+            url: active.url,
+            domain: active.domain,
+            savedAt: active.savedAt,
+            publishedAt: active.publishedAt,
+            pinned: active.pinned,
+            pinnedOrder: active.pinnedOrder,
+            archived: active.archived,
+            faviconUrl: active.faviconUrl,
+            faviconR2Key: active.faviconR2Key,
+            youtubeTranscripts: active.youtubeTranscripts,
+            readingTime: active.readingTime,
+            updatedAt: active.updatedAt,
+            lastOpenedAt: active.lastOpenedAt,
+            deletedAt: nil
+        )
+    }
+
+    private func newerItem(between lhs: WebsiteItem, and rhs: WebsiteItem) -> WebsiteItem {
+        let lhsUpdated = DateParsing.parseISO8601(lhs.updatedAt)
+        let rhsUpdated = DateParsing.parseISO8601(rhs.updatedAt)
+        switch (lhsUpdated, rhsUpdated) {
+        case let (leftDate?, rightDate?):
+            return leftDate >= rightDate ? lhs : rhs
+        case (_?, nil):
+            return lhs
+        case (nil, _?):
+            return rhs
+        case (nil, nil):
+            if lhs.updatedAt == nil, rhs.updatedAt != nil {
+                return rhs
+            }
+            return lhs
+        }
     }
 
     private func makeServerSnapshot(websiteId: String) -> ServerSnapshot? {
