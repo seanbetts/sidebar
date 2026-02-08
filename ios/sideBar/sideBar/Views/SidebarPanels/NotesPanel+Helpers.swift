@@ -382,7 +382,6 @@ extension NotesPanelView {
                     },
                     label: {
                         archiveLabel
-                            .padding(.top, DesignTokens.Spacing.md)
                     }
                 )
                 .listRowBackground(

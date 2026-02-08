@@ -257,7 +257,6 @@ extension WebsitesPanelView {
                         },
                         label: {
                             archiveLabel
-                                .padding(.top, DesignTokens.Spacing.md)
                         }
                     )
                     .listRowBackground(
