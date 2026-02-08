@@ -29,6 +29,68 @@ final class MarkdownRenderingTests: XCTestCase {
         XCTAssertTrue(normalized.contains(MarkdownRendering.imageCaptionMarker))
     }
 
+    func testNormalizedWebsiteBlocksUnwrapsLinkedImageWithMatchingTarget() {
+        let input = "[![](https://example.com/image.png)](https://example.com/image.png)"
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        guard case .markdown(let normalized)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+        XCTAssertEqual(normalized, "![](https://example.com/image.png)")
+    }
+
+    func testNormalizedWebsiteBlocksUnwrapsSubstackProxyLinkedImage() {
+        let input =
+            "[![](https://substackcdn.com/image/fetch/$s_def,w_1456/" +
+            "https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fhero.webp)]" +
+            "(https://substack-post-media.s3.amazonaws.com/public/images/hero.webp)"
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        guard case .markdown(let normalized)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+        XCTAssertEqual(
+            normalized,
+            "![](https://substackcdn.com/image/fetch/$s_def,w_1456/" +
+            "https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fhero.webp)"
+        )
+    }
+
+    func testNormalizedWebsiteBlocksKeepsLinkedImageWithDifferentTarget() {
+        let input = "[![](https://example.com/image.png)](https://example.com/article)"
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        guard case .markdown(let normalized)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+        XCTAssertEqual(normalized, input)
+    }
+
+    func testNormalizedWebsiteBlocksUnwrapsBracketOnlyImage() {
+        let input = "[![](https://example.com/image.png)]"
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        guard case .markdown(let normalized)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+        XCTAssertEqual(normalized, "![](https://example.com/image.png)")
+    }
+
+    func testNormalizedWebsiteBlocksUnwrapsDanglingBracketImage() {
+        let input = "[![](https://example.com/image.png)"
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        guard case .markdown(let normalized)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+        XCTAssertEqual(normalized, "![](https://example.com/image.png)")
+    }
+
     func testSplitMarkdownContentExtractsGallery() {
         let html = "<figure class=\"image-gallery\" data-caption=\"Hello\"><img src=\"https://example.com/a.png\" /></figure>"
         let blocks = MarkdownRendering.splitMarkdownContent(html)
