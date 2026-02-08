@@ -102,7 +102,7 @@ public final class TasksStore: ObservableObject {
 
     public func loadCounts(force: Bool = false) async {
         errorMessage = nil
-        if let cached: TaskCountsResponse = cache.get(key: CacheKeys.tasksCounts) {
+        if !force, let cached: TaskCountsResponse = cache.get(key: CacheKeys.tasksCounts) {
             counts = cached
             Task { [weak self] in
                 await self?.refreshCounts()
