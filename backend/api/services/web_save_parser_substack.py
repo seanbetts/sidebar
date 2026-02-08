@@ -98,7 +98,6 @@ def cleanup_substack_markdown(markdown: str) -> str:
         return f"[{label_text}]({link_url})"
 
     cleaned = _INLINE_IMAGE_LINK_PATTERN.sub(_replace_text_link_image, cleaned)
-    cleaned = re.sub(r"\*{3}Editor:\*{4,}", "***Editor:*** ", cleaned)
 
     cleaned_lines: list[str] = []
     dropped_prefixes = (
@@ -115,8 +114,14 @@ def cleanup_substack_markdown(markdown: str) -> str:
             and "post is public" in lowered_line
         ):
             continue
+        if re.fullmatch(r">\s*", stripped_line):
+            continue
         if _EMPTY_HEADING_PATTERN.fullmatch(stripped_line):
             continue
+        if stripped_line.startswith("***Editor:"):
+            line = re.sub(r"^\*{3}Editor:\*+\s*", "Editor: ", line)
+            line = line.replace("*", "")
+            line = re.sub(r"[ \t]{2,}", " ", line).strip()
         if "![](" in line:
             without_images = re.sub(r"!\[\]\([^)]+\)", "", line)
             if re.search(r"[A-Za-z0-9]", without_images):
