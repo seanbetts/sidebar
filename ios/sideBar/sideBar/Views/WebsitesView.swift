@@ -434,7 +434,7 @@ extension WebsitesDetailView {
                 )
             }
         } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {
-            LoadingView(message: "Reading...")
+            LoadingView(message: viewModel.detailLoadingMessage)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
             PlaceholderView(

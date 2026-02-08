@@ -58,6 +58,9 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var pendingWebsite: PendingWebsiteItem?
     @Published public private(set) var archivedSummary: ArchivedSummary?
+    var detailLoadingMessage: String {
+        pendingWebsite?.title ?? "Reading..."
+    }
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore
