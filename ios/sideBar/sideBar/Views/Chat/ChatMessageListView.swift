@@ -47,45 +47,50 @@ struct ChatMessageListView: View {
                 .frame(maxWidth: ChatLayout.maxContentWidth)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
-            .task(id: viewModel.selectedConversationId) {
-                guard viewModel.selectedConversationId != nil else {
-                    return
-                }
-                shouldScrollToBottom = true
-                await Task.yield()
-                scrollToBottom(proxy: proxy, animated: false)
-                try? await Task.sleep(nanoseconds: 200_000_000)
-                scrollToBottom(proxy: proxy, animated: false)
-                shouldScrollToBottom = false
-            }
-            .onChange(of: viewModel.selectedConversationId) { _, _ in
-                visibleMessageCount = pageSize
-                isAutoLoadingMore = false
-                shouldScrollToBottom = true
-            }
-            .onChange(of: viewModel.messages.count) { oldValue, newValue in
-                if oldValue == 0 {
-                    visibleMessageCount = min(pageSize, newValue)
-                } else if visibleMessageCount >= oldValue {
-                    visibleMessageCount = newValue
-                } else if visibleMessageCount > newValue {
-                    visibleMessageCount = newValue
-                }
-                let shouldJump = shouldScrollToBottom
-                scrollToBottom(proxy: proxy, animated: !shouldJump)
-                if shouldJump {
+            .onChange(of: scrollChangeToken) { oldToken, newToken in
+                if oldToken.selectedConversationId != newToken.selectedConversationId {
+                    visibleMessageCount = pageSize
+                    isAutoLoadingMore = false
+                    shouldScrollToBottom = true
+                    scrollToBottom(proxy: proxy, animated: false)
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 200_000_000)
                         scrollToBottom(proxy: proxy, animated: false)
                     }
+                    shouldScrollToBottom = false
+                    return
                 }
-                shouldScrollToBottom = false
-            }
-            .onChange(of: viewModel.messages.last?.content ?? "") { _, _ in
-                scrollToBottom(proxy: proxy, animated: shouldScrollToBottom == false)
-            }
-            .onChange(of: bottomInset) { _, _ in
-                scrollToBottom(proxy: proxy, animated: false)
+
+                if oldToken.messageCount != newToken.messageCount {
+                    let oldValue = oldToken.messageCount
+                    let newValue = newToken.messageCount
+                    if oldValue == 0 {
+                        visibleMessageCount = min(pageSize, newValue)
+                    } else if visibleMessageCount >= oldValue {
+                        visibleMessageCount = newValue
+                    } else if visibleMessageCount > newValue {
+                        visibleMessageCount = newValue
+                    }
+                    let shouldJump = shouldScrollToBottom
+                    scrollToBottom(proxy: proxy, animated: !shouldJump)
+                    if shouldJump {
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 200_000_000)
+                            scrollToBottom(proxy: proxy, animated: false)
+                        }
+                    }
+                    shouldScrollToBottom = false
+                    return
+                }
+
+                if oldToken.lastMessageSignature != newToken.lastMessageSignature {
+                    scrollToBottom(proxy: proxy, animated: shouldScrollToBottom == false)
+                    return
+                }
+
+                if oldToken.bottomInset != newToken.bottomInset {
+                    scrollToBottom(proxy: proxy, animated: false)
+                }
             }
             .refreshable {
                 await viewModel.refreshConversations()
@@ -104,6 +109,16 @@ struct ChatMessageListView: View {
 
     private var hasMoreMessages: Bool {
         viewModel.messages.count > visibleMessageCount
+    }
+
+    private var scrollChangeToken: ScrollChangeToken {
+        let lastMessage = viewModel.messages.last
+        return ScrollChangeToken(
+            selectedConversationId: viewModel.selectedConversationId,
+            messageCount: viewModel.messages.count,
+            lastMessageSignature: "\(lastMessage?.id ?? ""):\(lastMessage?.content ?? "")",
+            bottomInset: bottomInset
+        )
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
@@ -153,4 +168,11 @@ struct ChatMessageListView: View {
             completion()
         }
     }
+}
+
+private struct ScrollChangeToken: Equatable {
+    let selectedConversationId: String?
+    let messageCount: Int
+    let lastMessageSignature: String
+    let bottomInset: CGFloat
 }
