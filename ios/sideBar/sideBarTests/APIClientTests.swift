@@ -78,6 +78,18 @@ final class APIClientTests: XCTestCase {
     }
 
     func test401TriggersRefreshAndRetriesGetOnce() async throws {
+        try await assertAuthRefreshRetry(for: "GET")
+    }
+
+    func test401TriggersRefreshAndRetriesPutOnce() async throws {
+        try await assertAuthRefreshRetry(for: "PUT")
+    }
+
+    func test401TriggersRefreshAndRetriesDeleteOnce() async throws {
+        try await assertAuthRefreshRetry(for: "DELETE")
+    }
+
+    private func assertAuthRefreshRetry(for method: String) async throws {
         final class TokenBox: @unchecked Sendable {
             var token: String
             init(_ token: String) { self.token = token }
@@ -117,7 +129,11 @@ final class APIClientTests: XCTestCase {
             return (response, Data("{}".utf8))
         }
 
-        let _: EmptyResponse = try await client.request("ping", method: "GET")
+        if method == "GET" {
+            let _: EmptyResponse = try await client.request("ping", method: method)
+        } else {
+            try await client.requestVoid("ping", method: method)
+        }
         XCTAssertEqual(refreshCalls.value, 1)
         XCTAssertEqual(requestCount.value, 2)
     }
