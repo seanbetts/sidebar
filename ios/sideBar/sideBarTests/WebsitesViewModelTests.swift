@@ -358,6 +358,49 @@ final class WebsitesViewModelTests: XCTestCase {
         )
     }
 
+    func testRequestYouTubeTranscriptSetsPendingStateWhileRequestInFlight() async {
+        let detail = makeDetail(id: "site-1")
+        let gate = ControlledTranscriptRequest()
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            getResult: .success(detail),
+            transcribeHandler: { _, _ in
+                try await gate.waitForResult()
+            }
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.selectWebsite(id: "site-1")
+        let requestTask = Task {
+            await viewModel.requestYouTubeTranscript(
+                websiteId: "site-1",
+                url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            )
+        }
+
+        for _ in 0..<10 where viewModel.isTranscriptPending(
+            websiteId: "site-1",
+            videoId: "dQw4w9WgXcQ"
+        ) == false {
+            await Task.yield()
+        }
+        XCTAssertTrue(
+            viewModel.isTranscriptPending(websiteId: "site-1", videoId: "dQw4w9WgXcQ")
+        )
+
+        gate.resume(with: .failure(MockError.forced))
+        _ = await requestTask.value
+        XCTAssertFalse(
+            viewModel.isTranscriptPending(websiteId: "site-1", videoId: "dQw4w9WgXcQ")
+        )
+    }
+
     func testTranscriptReadyStateOverridesStalePendingIngestionJob() async {
         let videoId = "dQw4w9WgXcQ"
         let readyEntry = WebsiteTranscriptEntry(
@@ -503,6 +546,23 @@ private enum MockError: Error {
 }
 
 @MainActor
+private final class ControlledTranscriptRequest {
+    private var continuation: CheckedContinuation<WebsiteTranscriptResponse, Error>?
+
+    func waitForResult() async throws -> WebsiteTranscriptResponse {
+        try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func resume(with result: Result<WebsiteTranscriptResponse, Error>) {
+        guard let continuation else { return }
+        self.continuation = nil
+        continuation.resume(with: result)
+    }
+}
+
+@MainActor
 private struct TestNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
     let isOffline: Bool
@@ -523,6 +583,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let archiveResult: Result<WebsiteItem, Error>
     let deleteResult: Result<Void, Error>
     let syncResult: Result<WebsiteSyncResponse, Error>
+    let transcribeHandler: ((_ id: String, _ url: String) async throws -> WebsiteTranscriptResponse)?
     private(set) var lastSavedUrl: String?
     private var queuedGetResults: [Result<WebsiteDetail, Error>] = []
 
@@ -531,6 +592,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         getResult: Result<WebsiteDetail, Error> = .failure(MockError.forced),
         saveResult: Result<WebsiteSaveResponse, Error> = .failure(MockError.forced),
         transcribeResult: Result<WebsiteTranscriptResponse, Error> = .failure(MockError.forced),
+        transcribeHandler: ((_ id: String, _ url: String) async throws -> WebsiteTranscriptResponse)? = nil,
         pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
         renameResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
         archiveResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
@@ -543,6 +605,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         self.getResult = getResult
         self.saveResult = saveResult
         self.transcribeResult = transcribeResult
+        self.transcribeHandler = transcribeHandler
         self.pinResult = pinResult
         self.renameResult = renameResult
         self.archiveResult = archiveResult
@@ -574,6 +637,9 @@ private final class MockWebsitesAPI: WebsitesProviding {
     }
 
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
+        if let transcribeHandler {
+            return try await transcribeHandler(id, url)
+        }
         _ = id
         _ = url
         return try transcribeResult.get()

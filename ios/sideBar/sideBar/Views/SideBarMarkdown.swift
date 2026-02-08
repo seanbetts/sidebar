@@ -353,10 +353,16 @@ private struct SideBarYouTubeEmbedBlock: View {
                         await context.requestTranscript(context.websiteId, embed.sourceURL)
                     }
                 } label: {
-                    Text(isQueuedOrProcessing(context: context) ? "Transcribing" : "Get Transcript")
-                        .font(.footnote.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                    HStack(spacing: 8) {
+                        if isQueuedOrProcessing(context: context) {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text(isQueuedOrProcessing(context: context) ? "Transcribing" : "Get Transcript")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
                 }
                 .buttonStyle(.bordered)
                 .disabled(isQueuedOrProcessing(context: context))
