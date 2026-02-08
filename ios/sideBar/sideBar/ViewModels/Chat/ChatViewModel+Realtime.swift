@@ -1,10 +1,15 @@
 import Combine
 import sideBarShared
 import Foundation
+import OSLog
 
 // MARK: - ChatViewModel+Realtime
 
 extension ChatViewModel {
+    private var realtimeLogger: Logger {
+        Logger(subsystem: "sideBar", category: "ChatViewModelRealtime")
+    }
+
     func handleNoteCreate(_ event: ChatStreamEvent) {
         guard let id = stringValue(from: event.data, key: "id") else {
             return
@@ -85,7 +90,11 @@ extension ChatViewModel {
             return
         }
         Task {
-            try? await notesStore.loadTree(force: true)
+            do {
+                try await notesStore.loadTree(force: true)
+            } catch {
+                self.realtimeLogger.error("Failed to refresh notes after realtime event: \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -94,7 +103,13 @@ extension ChatViewModel {
             return
         }
         Task {
-            try? await websitesStore.loadList(force: true)
+            do {
+                try await websitesStore.loadList(force: true)
+            } catch {
+                self.realtimeLogger.error(
+                    "Failed to refresh websites after realtime event: \(error.localizedDescription, privacy: .public)"
+                )
+            }
         }
     }
 
@@ -103,9 +118,13 @@ extension ChatViewModel {
             return
         }
         Task {
-            try? await ingestionStore.loadList(force: true)
-            if let fileId, ingestionStore.activeMeta?.file.id == fileId {
-                try? await ingestionStore.loadMeta(fileId: fileId, force: true)
+            do {
+                try await ingestionStore.loadList(force: true)
+                if let fileId, ingestionStore.activeMeta?.file.id == fileId {
+                    try await ingestionStore.loadMeta(fileId: fileId, force: true)
+                }
+            } catch {
+                self.realtimeLogger.error("Failed to refresh files after realtime event: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

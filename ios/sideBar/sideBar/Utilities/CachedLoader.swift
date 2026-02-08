@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Reusable cache-first loading pattern.
 public struct CachedLoader<T: Codable> {
@@ -6,6 +7,7 @@ public struct CachedLoader<T: Codable> {
     private let cacheKey: String
     private let ttlSeconds: TimeInterval
     private let fetch: () async throws -> T
+    private let logger = Logger(subsystem: "sideBar", category: "CachedLoader")
 
     public init(
         cache: CacheClient,
@@ -27,13 +29,21 @@ public struct CachedLoader<T: Codable> {
     ) async throws -> (T, Bool) {
         if !force, let cached: T = cache.get(key: cacheKey) {
             Task {
-                if let fresh = try? await fetch() {
+                do {
+                    let fresh = try await fetch()
                     cache.set(key: cacheKey, value: fresh, ttlSeconds: ttlSeconds)
                     if let onRefresh {
                         await MainActor.run {
                             onRefresh(fresh)
                         }
                     }
+                } catch {
+                    logger.error(
+                        "Background refresh failed for key \(self.cacheKey, privacy: .public)"
+                    )
+                    logger.error(
+                        "Background refresh error: \(error.localizedDescription, privacy: .public)"
+                    )
                 }
             }
             return (cached, true)

@@ -1,6 +1,7 @@
 import Foundation
 import sideBarShared
 import Combine
+import OSLog
 
 // MARK: - WebsitesViewModel
 
@@ -68,6 +69,7 @@ public final class WebsitesViewModel: ObservableObject {
     private let toastCenter: ToastCenter
     private let networkStatus: any NetworkStatusProviding
     private let transcriptPollIntervalNanoseconds: UInt64
+    private let logger = Logger(subsystem: "sideBar", category: "WebsitesViewModel")
     @Published private var inFlightTranscriptRequests: [String: Set<String>] = [:]
     private var pendingTranscriptJobs: [String: Set<String>] = [:]
     private var transcriptPollingTasks: [String: Task<Void, Never>] = [:]
@@ -245,7 +247,11 @@ public final class WebsitesViewModel: ObservableObject {
             pendingWebsite = nil
             store.invalidateList()
             Task { [weak self] in
-                try? await self?.store.loadList(force: true)
+                do {
+                    try await self?.store.loadList(force: true)
+                } catch {
+                    self?.logger.error("Failed to refresh websites list after save: \(error.localizedDescription, privacy: .public)")
+                }
             }
             return true
         } catch {
