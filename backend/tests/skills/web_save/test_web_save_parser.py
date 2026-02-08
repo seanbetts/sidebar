@@ -828,6 +828,8 @@ def test_cleanup_github_markdown_removes_contributor_avatar_gallery():
             "",
             '[![bob](https://avatars.githubusercontent.com/u/2?v=4&s=48 "bob")](https://github.com/bob)',
             "",
+            '[![dependabot[bot]](https://avatars.githubusercontent.com/in/29110?v=4&s=48 "dependabot[bot]")](https://github.com/apps/dependabot)',
+            "",
             "AI/vibe-coded PRs welcome! 🤖",
         ]
     )
@@ -862,6 +864,28 @@ def test_cleanup_github_markdown_removes_badge_image_noise():
     assert "Star History Chart" not in cleaned
     assert "Architecture diagram" in cleaned
     assert "Intro paragraph." in cleaned
+
+
+def test_cleanup_github_markdown_keeps_badge_like_line_after_intro():
+    markdown = "\n".join(
+        [
+            "# Repo",
+            "",
+            "This repository explains architecture tradeoffs in detail.",
+            "",
+            "## Build Status Reference",
+            "",
+            "![CI status](https://img.shields.io/badge/ci-passing-brightgreen)",
+            "",
+            "The status badge above is referenced in this section.",
+        ]
+    )
+
+    cleaned = web_save_parser.cleanup_github_markdown(markdown)
+
+    assert "CI status" in cleaned
+    assert "Build Status Reference" in cleaned
+    assert "architecture tradeoffs" in cleaned
 
 
 def test_cleanup_substack_markdown_removes_chrome_and_svg_controls():
@@ -1017,6 +1041,41 @@ def test_parse_url_local_frontmatter_metrics_follow_final_markdown(monkeypatch):
         final_word_count,
         image_count=final_image_count,
     )
+
+
+def test_parse_url_local_applies_github_cleanup_conservatively(monkeypatch):
+    html = """
+    <html>
+      <head><title>GitHub Cleanup Probe</title></head>
+      <body>
+        <article>
+          <h1>Repo</h1>
+          <a href="#repo"><svg class="octicon octicon-link"></svg></a>
+          <p><img alt="CI status" src="https://camo.githubusercontent.com/abc123/ci-passing"/></p>
+          <p><img alt="GitHub release" src="https://camo.githubusercontent.com/def456/release"/></p>
+          <p><img alt="Architecture diagram" src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/diagram.png"/></p>
+          <p>This repository contains useful implementation details.</p>
+          <h2>Later Section</h2>
+          <p><img alt="CI status" src="https://camo.githubusercontent.com/xyz999/ci-stable"/></p>
+          <p>In this section we intentionally reference the status badge.</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://github.com/openclaw/openclaw", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("github.com/openclaw/openclaw")
+
+    assert "octicon-link" not in parsed.content
+    assert "GitHub release" not in parsed.content
+    assert "Architecture diagram" in parsed.content
+    assert "This repository contains useful implementation details." in parsed.content
+    assert "Later Section" in parsed.content
+    assert parsed.content.count("CI status") == 1
 
 
 def test_parse_url_local_force_rendering(monkeypatch):

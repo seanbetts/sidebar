@@ -21,9 +21,7 @@ from readability import Document
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_includes import apply_include_reinsertion
 from api.services.web_save_parser_cleanup import (
-    cleanup_github_markdown,
     cleanup_gizmodo_markdown,
-    cleanup_openai_markdown,
     cleanup_verge_markdown,
     cleanup_youtube_markdown,
     dedupe_markdown_images,
@@ -41,7 +39,9 @@ from api.services.web_save_parser_cleanup import (
     simplify_linked_images,
     wrap_gallery_blocks,
 )
+from api.services.web_save_parser_github import cleanup_github_markdown
 from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
+from api.services.web_save_parser_openai import cleanup_openai_markdown
 from api.services.web_save_parser_substack import cleanup_substack_markdown
 from api.services.web_save_parser_youtube import (
     _iter_youtube_elements as _iter_youtube_elements_impl,
