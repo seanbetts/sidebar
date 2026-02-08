@@ -26,9 +26,9 @@ public enum WidgetContentType: String, CaseIterable {
       return [
         "TodayTasksWidget",
         "TaskCountWidget",
-        "LockScreenTaskCountWidget",
-        "LockScreenTaskPreviewWidget",
-        "LockScreenInlineWidget"
+        "LockScreenTaskCount",
+        "LockScreenTaskPreview",
+        "LockScreenInline"
       ]
     case .notes:
       return [

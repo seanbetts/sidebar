@@ -54,8 +54,8 @@ public final class WidgetDataManager {
       defaults.set(encoded, forKey: contentType.dataKey)
       defaults.synchronize()
     }
-    if let firstKind = contentType.widgetKinds.first {
-      WidgetCenter.shared.reloadTimelines(ofKind: firstKind)
+    for kind in contentType.widgetKinds {
+      WidgetCenter.shared.reloadTimelines(ofKind: kind)
     }
   }
 
