@@ -33,6 +33,7 @@ public protocol RealtimeEventHandler: AnyObject {
     private var websitesSubscriptions: [ObservationToken] = []
     private var ingestedFilesSubscriptions: [ObservationToken] = []
     private var fileJobsSubscriptions: [ObservationToken] = []
+    private var transitionTask: Task<Void, Never>?
 
     public init(config: EnvironmentConfig, handler: RealtimeEventHandler? = nil) {
         self.handler = handler
@@ -50,6 +51,21 @@ public protocol RealtimeEventHandler: AnyObject {
     }
 
     public func start(userId: String, accessToken: String?) async {
+        let task = enqueueTransition { [weak self] in
+            await self?.startInternal(userId: userId, accessToken: accessToken)
+        }
+        await task.value
+    }
+
+    public func stop() {
+        _ = enqueueTransition { [weak self] in
+            await self?.stopInternal()
+        }
+    }
+}
+
+extension SupabaseRealtimeAdapter {
+    private func startInternal(userId: String, accessToken: String?) async {
         await tokenStore.set(accessToken)
         await client.realtimeV2.setAuth(accessToken)
         let shouldResubscribeNotes = currentUserId != userId || notesChannel == nil
@@ -71,43 +87,38 @@ public protocol RealtimeEventHandler: AnyObject {
         }
     }
 
-    public func stop() {
+    private func stopInternal() async {
         notesSubscriptions.removeAll()
         websitesSubscriptions.removeAll()
         ingestedFilesSubscriptions.removeAll()
         fileJobsSubscriptions.removeAll()
-        let channel = notesChannel
-        let websitesChannel = websitesChannel
-        let ingestedFilesChannel = ingestedFilesChannel
-        let fileJobsChannel = fileJobsChannel
+        let channels: [RealtimeChannelV2] = [
+            notesChannel,
+            websitesChannel,
+            ingestedFilesChannel,
+            fileJobsChannel
+        ].compactMap { $0 }
         notesChannel = nil
-        self.websitesChannel = nil
-        self.ingestedFilesChannel = nil
-        self.fileJobsChannel = nil
-        Task {
-            await tokenStore.set(nil)
-        }
+        websitesChannel = nil
+        ingestedFilesChannel = nil
+        fileJobsChannel = nil
+        await tokenStore.set(nil)
         currentUserId = nil
-        if let channel {
-            Task {
-                await client.realtimeV2.removeChannel(channel)
-            }
+        for channel in channels {
+            await client.realtimeV2.removeChannel(channel)
         }
-        if let websitesChannel {
-            Task {
-                await client.realtimeV2.removeChannel(websitesChannel)
+    }
+
+    private func enqueueTransition(_ operation: @escaping @MainActor () async -> Void) -> Task<Void, Never> {
+        let previous = transitionTask
+        let task = Task { @MainActor in
+            if let previous {
+                await previous.value
             }
+            await operation()
         }
-        if let ingestedFilesChannel {
-            Task {
-                await client.realtimeV2.removeChannel(ingestedFilesChannel)
-            }
-        }
-        if let fileJobsChannel {
-            Task {
-                await client.realtimeV2.removeChannel(fileJobsChannel)
-            }
-        }
+        transitionTask = task
+        return task
     }
 }
 
