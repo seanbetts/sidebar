@@ -46,6 +46,7 @@ public final class PendingShareStore {
     private let fileManager: FileManager
     private let baseDirectory: URL?
     private let userDefaults: UserDefaults?
+    private let accessLock = NSRecursiveLock()
 
     public init(
         baseDirectory: URL? = nil,
@@ -59,44 +60,48 @@ public final class PendingShareStore {
 
     @discardableResult
     public func enqueueWebsite(url: String) -> PendingShareItem? {
-        logMissingAppGroupIfNeeded(context: "enqueueWebsite")
-        let existingItems = loadAll()
-        if let existing = existingItems.first(where: { $0.kind == .website && $0.url == url }) {
-            os_log(.default, log: Self.log, "Website share already queued %{public}@", url)
-            return existing
+        withAccessLock {
+            logMissingAppGroupIfNeeded(context: "enqueueWebsite")
+            let existingItems = loadAll()
+            if let existing = existingItems.first(where: { $0.kind == .website && $0.url == url }) {
+                os_log(.default, log: Self.log, "Website share already queued %{public}@", url)
+                return existing
+            }
+            let item = PendingShareItem(
+                id: UUID(),
+                kind: .website,
+                createdAt: Date(),
+                url: url
+            )
+            var items = existingItems
+            items.append(item)
+            replaceAll(items)
+            os_log(.default, log: Self.log, "Queued website share %{public}@", url)
+            return item
         }
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .website,
-            createdAt: Date(),
-            url: url
-        )
-        var items = existingItems
-        items.append(item)
-        replaceAll(items)
-        os_log(.default, log: Self.log, "Queued website share %{public}@", url)
-        return item
     }
 
     @discardableResult
     public func enqueueYouTube(url: String) -> PendingShareItem? {
-        logMissingAppGroupIfNeeded(context: "enqueueYouTube")
-        let existingItems = loadAll()
-        if let existing = existingItems.first(where: { $0.kind == .youtube && $0.url == url }) {
-            os_log(.default, log: Self.log, "YouTube share already queued %{public}@", url)
-            return existing
+        withAccessLock {
+            logMissingAppGroupIfNeeded(context: "enqueueYouTube")
+            let existingItems = loadAll()
+            if let existing = existingItems.first(where: { $0.kind == .youtube && $0.url == url }) {
+                os_log(.default, log: Self.log, "YouTube share already queued %{public}@", url)
+                return existing
+            }
+            let item = PendingShareItem(
+                id: UUID(),
+                kind: .youtube,
+                createdAt: Date(),
+                url: url
+            )
+            var items = existingItems
+            items.append(item)
+            replaceAll(items)
+            os_log(.default, log: Self.log, "Queued YouTube share %{public}@", url)
+            return item
         }
-        let item = PendingShareItem(
-            id: UUID(),
-            kind: .youtube,
-            createdAt: Date(),
-            url: url
-        )
-        var items = existingItems
-        items.append(item)
-        replaceAll(items)
-        os_log(.default, log: Self.log, "Queued YouTube share %{public}@", url)
-        return item
     }
 
     @discardableResult
@@ -106,24 +111,26 @@ public final class PendingShareStore {
         mimeType: String,
         kind: PendingShareKind
     ) -> PendingShareItem? {
-        let itemId = UUID()
-        guard let filePath = writeFile(
-            data: data,
-            itemId: itemId,
-            filename: filename
-        ) else {
-            return nil
+        withAccessLock {
+            let itemId = UUID()
+            guard let filePath = writeFile(
+                data: data,
+                itemId: itemId,
+                filename: filename
+            ) else {
+                return nil
+            }
+            let item = PendingShareItem(
+                id: itemId,
+                kind: kind,
+                createdAt: Date(),
+                filePath: filePath,
+                filename: filename,
+                mimeType: mimeType
+            )
+            append(item)
+            return item
         }
-        let item = PendingShareItem(
-            id: itemId,
-            kind: kind,
-            createdAt: Date(),
-            filePath: filePath,
-            filename: filename,
-            mimeType: mimeType
-        )
-        append(item)
-        return item
     }
 
     @discardableResult
@@ -133,78 +140,92 @@ public final class PendingShareStore {
         mimeType: String,
         kind: PendingShareKind
     ) -> PendingShareItem? {
-        let itemId = UUID()
-        guard let filePath = copyFile(
-            from: url,
-            itemId: itemId,
-            filename: filename
-        ) else {
-            return nil
+        withAccessLock {
+            let itemId = UUID()
+            guard let filePath = copyFile(
+                from: url,
+                itemId: itemId,
+                filename: filename
+            ) else {
+                return nil
+            }
+            let item = PendingShareItem(
+                id: itemId,
+                kind: kind,
+                createdAt: Date(),
+                filePath: filePath,
+                filename: filename,
+                mimeType: mimeType
+            )
+            append(item)
+            return item
         }
-        let item = PendingShareItem(
-            id: itemId,
-            kind: kind,
-            createdAt: Date(),
-            filePath: filePath,
-            filename: filename,
-            mimeType: mimeType
-        )
-        append(item)
-        return item
     }
 
     public func loadAll() -> [PendingShareItem] {
-        guard let defaults else { return [] }
-        guard let data = defaults.data(forKey: itemsKey) else { return [] }
-        let decoder = Self.makeDecoder()
-        return (try? decoder.decode([PendingShareItem].self, from: data)) ?? []
+        withAccessLock {
+            guard let defaults else { return [] }
+            guard let data = defaults.data(forKey: itemsKey) else { return [] }
+            let decoder = Self.makeDecoder()
+            return (try? decoder.decode([PendingShareItem].self, from: data)) ?? []
+        }
     }
 
     public func replaceAll(_ items: [PendingShareItem]) {
-        guard let defaults else { return }
-        let encoder = Self.makeEncoder()
-        if let data = try? encoder.encode(items) {
-            defaults.set(data, forKey: itemsKey)
-            defaults.synchronize()
+        withAccessLock {
+            guard let defaults else { return }
+            let encoder = Self.makeEncoder()
+            if let data = try? encoder.encode(items) {
+                defaults.set(data, forKey: itemsKey)
+                defaults.synchronize()
+            }
         }
     }
 
     public func consumeAll() -> [PendingShareItem] {
-        let items = loadAll()
-        guard !items.isEmpty else { return [] }
-        replaceAll([])
-        return items
+        withAccessLock {
+            let items = loadAll()
+            guard !items.isEmpty else { return [] }
+            replaceAll([])
+            return items
+        }
     }
 
     public func remove(ids: [UUID]) {
-        guard !ids.isEmpty else { return }
-        var items = loadAll()
-        items.removeAll { ids.contains($0.id) }
-        replaceAll(items)
+        withAccessLock {
+            guard !ids.isEmpty else { return }
+            var items = loadAll()
+            items.removeAll { ids.contains($0.id) }
+            replaceAll(items)
+        }
     }
 
     public func resolveFileURL(for item: PendingShareItem) -> URL? {
-        guard let filePath = item.filePath, let baseDirectory = rootDirectory else { return nil }
-        return baseDirectory.appendingPathComponent(filePath)
+        withAccessLock {
+            guard let filePath = item.filePath, let baseDirectory = rootDirectory else { return nil }
+            return baseDirectory.appendingPathComponent(filePath)
+        }
     }
 
     public func cleanup(olderThan days: Int) {
-        guard days > 0 else { return }
-        let cutoff = Date().addingTimeInterval(TimeInterval(-days * 24 * 60 * 60))
-        var items = loadAll()
-        var removedIds: [UUID] = []
-        for item in items where item.createdAt < cutoff {
-            if let url = resolveFileURL(for: item) {
-                try? fileManager.removeItem(at: url)
+        withAccessLock {
+            guard days > 0 else { return }
+            let cutoff = Date().addingTimeInterval(TimeInterval(-days * 24 * 60 * 60))
+            var items = loadAll()
+            var removedIds: [UUID] = []
+            for item in items where item.createdAt < cutoff {
+                if let url = resolveFileURL(for: item) {
+                    try? fileManager.removeItem(at: url)
+                }
+                removedIds.append(item.id)
             }
-            removedIds.append(item.id)
+            if !removedIds.isEmpty {
+                items.removeAll { removedIds.contains($0.id) }
+                replaceAll(items)
+            }
+            cleanEmptyDirectories()
+            cleanOrphanedDirectories(olderThan: cutoff)
         }
-        if !removedIds.isEmpty {
-            items.removeAll { removedIds.contains($0.id) }
-            replaceAll(items)
-        }
-        cleanEmptyDirectories()
-        cleanOrphanedDirectories(olderThan: cutoff)
     }
 
     private func append(_ item: PendingShareItem) {
@@ -324,5 +345,11 @@ public final class PendingShareStore {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
+    }
+
+    private func withAccessLock<T>(_ operation: () -> T) -> T {
+        accessLock.lock()
+        defer { accessLock.unlock() }
+        return operation()
     }
 }
