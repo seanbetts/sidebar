@@ -26,6 +26,7 @@
 	import { getWebsiteDisplayTitle, stripWebsiteFrontmatter } from '$lib/utils/websites';
 	import { extractYouTubeVideoId } from '$lib/utils/youtube';
 	import { normalizeHtmlBlocks, rewriteVideoEmbeds } from './viewerEmbedTransforms';
+	import { applyTranscriptQueuedState, resetTranscriptLinkState } from './transcriptLinkState';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -160,14 +161,11 @@
 		}
 
 		event.preventDefault();
-		link.setAttribute('aria-busy', 'true');
-		link.setAttribute('aria-disabled', 'true');
-		link.classList.add('transcript-queued');
-		link.setAttribute('data-youtube-transcript-status', 'queued');
-		link.textContent = 'Transcribing';
+		applyTranscriptQueuedState(link);
 		const queued = await queueTranscript(active.id, url);
 		if (!queued) {
-			link.textContent = 'Get Transcript';
+			resetTranscriptLinkState(link);
+			return;
 		}
 		link.removeAttribute('aria-busy');
 	}
