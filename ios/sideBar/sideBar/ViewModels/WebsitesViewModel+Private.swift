@@ -3,6 +3,92 @@ import sideBarShared
 
 @MainActor
 extension WebsitesViewModel {
+    func normalizedWebsiteURL(from rawURL: String) -> URL? {
+        guard let trimmed = rawURL.trimmedOrNil,
+              let normalized = WebsiteURLValidator.normalizedCandidate(trimmed) else {
+            saveErrorMessage = "Enter a valid URL."
+            return nil
+        }
+        return normalized
+    }
+
+    func enqueueOfflineWebsiteSave(for normalizedURL: URL) -> Bool {
+        if PendingShareStore.shared.enqueueWebsite(url: normalizedURL.absoluteString) != nil {
+            pendingWebsite = makePendingWebsite(from: normalizedURL)
+            saveErrorMessage = nil
+            toastCenter.show(message: "Saved for later", style: .success)
+            return true
+        }
+        saveErrorMessage = "Could not save for later."
+        return false
+    }
+
+    func beginWebsiteSave(for normalizedURL: URL) -> String? {
+        let previousSelectedId = selectedWebsiteId
+        let pending = makePendingWebsite(from: normalizedURL)
+        pendingWebsite = pending
+        selectedWebsiteId = pending.id
+        saveErrorMessage = nil
+        isSavingWebsite = true
+        isLoadingDetail = true
+        return previousSelectedId
+    }
+
+    func endWebsiteSave() {
+        isSavingWebsite = false
+        isLoadingDetail = false
+    }
+
+    func validatedSaveData(from response: WebsiteSaveResponse, previousSelectedId: String?) -> WebsiteSaveData? {
+        guard response.success, let data = response.data else {
+            failWebsiteSave(previousSelectedId: previousSelectedId, message: "Failed to save website")
+            return nil
+        }
+        return data
+    }
+
+    func applySavedWebsite(_ data: WebsiteSaveData) async throws {
+        selectedWebsiteId = data.id
+        try await store.loadDetail(id: data.id, force: true)
+        let detail = active
+        store.insertItemAtTop(
+            WebsiteItem(
+                id: data.id,
+                title: detail?.title ?? data.title,
+                url: detail?.url ?? data.url,
+                domain: detail?.domain ?? data.domain,
+                savedAt: detail?.savedAt,
+                publishedAt: detail?.publishedAt,
+                pinned: detail?.pinned ?? false,
+                pinnedOrder: detail?.pinnedOrder,
+                archived: detail?.archived ?? false,
+                faviconUrl: detail?.faviconUrl,
+                faviconR2Key: detail?.faviconR2Key,
+                youtubeTranscripts: detail?.youtubeTranscripts,
+                readingTime: detail?.readingTime,
+                updatedAt: detail?.updatedAt,
+                lastOpenedAt: detail?.lastOpenedAt,
+                deletedAt: nil
+            ),
+            persist: true
+        )
+        pendingWebsite = nil
+        store.invalidateList()
+        Task { [weak self] in
+            do {
+                try await self?.store.loadList(force: true)
+            } catch {
+                self?.logger.error("Failed to refresh websites list after save: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    func failWebsiteSave(previousSelectedId: String?, message: String) {
+        pendingWebsite = nil
+        selectedWebsiteId = previousSelectedId
+        saveErrorMessage = message
+    }
+
     func updatePanelDerivedState() {
         let needle = panelSearchQuery.trimmed.lowercased()
         let filteredItems: [WebsiteItem]
