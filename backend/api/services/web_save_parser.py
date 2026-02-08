@@ -315,8 +315,6 @@ def fetch_substack_body_html(
     url: str, html: str, *, timeout: int = 30
 ) -> tuple[str, dict] | None:
     """Fetch Substack post HTML from the public API when available."""
-    if "substack" not in html.lower():
-        return None
     parsed = urlparse(url)
     if "/p/" not in parsed.path:
         return None
@@ -339,6 +337,45 @@ def fetch_substack_body_html(
         "canonical": data.get("canonical_url"),
     }
     return body_html, meta
+
+
+def _is_substack_host(host: str) -> bool:
+    """Return True when a host belongs to substack.com."""
+    normalized = host.lower().strip(".")
+    return normalized == "substack.com" or normalized.endswith(".substack.com")
+
+
+def _is_substack_host_rule(rule: Rule) -> bool:
+    """Return True when a rule is explicitly keyed to substack.com host matching."""
+    host_trigger = (rule.trigger or {}).get("host") or {}
+    for key in ("equals", "equals_www", "ends_with", "etld_plus_one"):
+        value = host_trigger.get(key)
+        if isinstance(value, str) and _is_substack_host(value):
+            return True
+    return False
+
+
+def _merge_rules(base_rules: list[Rule], extra_rules: list[Rule]) -> list[Rule]:
+    """Merge rule lists by id while preserving priority ordering from inputs."""
+    seen: set[str] = set()
+    merged: list[Rule] = []
+    for rule in base_rules + extra_rules:
+        if rule.id in seen:
+            continue
+        merged.append(rule)
+        seen.add(rule.id)
+    return merged
+
+
+def _match_substack_host_rules(
+    engine: RuleEngine,
+    html: str,
+    *,
+    phase: str,
+) -> list[Rule]:
+    """Match Substack host rules for a phase using a synthetic Substack URL."""
+    matched = engine.match_rules("https://substack.com/p/synthetic", html, phase=phase)
+    return [rule for rule in matched if _is_substack_host_rule(rule)]
 
 
 def parse_datetime(value: str | None) -> datetime | None:
@@ -482,6 +519,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if substack_payload:
         article_html, substack_meta = substack_payload
         metadata.update({key: value for key, value in substack_meta.items() if value})
+        if not _is_substack_host(urlparse(final_url).netloc):
+            pre_rules = _merge_rules(
+                pre_rules,
+                _match_substack_host_rules(engine, html, phase="pre"),
+            )
     else:
         try:
             article_html = document.summary(html_partial=True)
@@ -508,6 +550,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         len(article_html),
     )
     post_rules = engine.match_rules(final_url, article_html, phase="post")
+    if substack_payload and not _is_substack_host(urlparse(final_url).netloc):
+        post_rules = _merge_rules(
+            post_rules,
+            _match_substack_host_rules(engine, article_html, phase="post"),
+        )
     if post_rules:
         logger.debug(
             "web-save post rules url=%s ids=%s",
