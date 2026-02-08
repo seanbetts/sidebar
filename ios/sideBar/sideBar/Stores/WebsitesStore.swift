@@ -487,7 +487,9 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         guard let current = active else {
             return true
         }
-        return current.updatedAt != incoming.updatedAt || current.content != incoming.content
+        return current.updatedAt != incoming.updatedAt
+            || current.content != incoming.content
+            || current.youtubeTranscripts != incoming.youtubeTranscripts
     }
 
     private func shouldPersistDetail(_ detail: WebsiteDetail) -> Bool {

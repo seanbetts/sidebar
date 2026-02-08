@@ -580,7 +580,10 @@ def _load_youtube_transcriber() -> Callable[..., dict]:
 
 
 def _transcribe_youtube(
-    record: IngestedFile, *, upload_transcript: bool = True
+    record: IngestedFile,
+    *,
+    upload_transcript: bool = True,
+    output_name: str = "ai.md",
 ) -> tuple[str, dict]:
     if not record.source_url:
         raise IngestionError(
@@ -594,7 +597,7 @@ def _transcribe_youtube(
             record.source_url,
             user_id=str(record.user_id),
             output_dir=f"files/{record.id}/ai",
-            output_name="ai.md",
+            output_name=output_name,
             audio_dir="files/videos",
             keep_audio=False,
             upload_transcript=upload_transcript,
@@ -1821,6 +1824,12 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
     derivatives: list[DerivativePayload] | None = None
     transcript_target = _get_transcript_target(record)
     is_website_transcript = transcript_target is not None
+    transcript_output_name = "transcript.md" if is_website_transcript else "ai.md"
+    pipeline_stages: Sequence[str] = (
+        ("validating", "extracting", "finalizing")
+        if is_website_transcript
+        else PIPELINE_STAGES
+    )
     if transcript_target:
         WebsiteTranscriptService.update_transcript_status(
             db,
@@ -1830,7 +1839,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
             status="processing",
         )
     try:
-        for stage in PIPELINE_STAGES:
+        for stage in pipeline_stages:
             db.refresh(job)
             if job.status in {"paused", "canceled"}:
                 raise IngestionError(
@@ -1847,7 +1856,9 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                     )
             elif stage == "extracting":
                 transcript, metadata = _transcribe_youtube(
-                    record, upload_transcript=False
+                    record,
+                    upload_transcript=False,
+                    output_name=transcript_output_name,
                 )
             elif stage == "ai_md":
                 if not is_website_transcript:
@@ -1904,6 +1915,14 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                         video_title=metadata.get("title")
                         if isinstance(metadata, dict)
                         else None,
+                    )
+                    WebsiteTranscriptService.update_transcript_status(
+                        db,
+                        user_id=str(record.user_id),
+                        website_id=transcript_target[0],
+                        youtube_url=transcript_target[1],
+                        status="ready",
+                        file_id=str(record.id),
                     )
                     FileIngestionService.soft_delete_file(db, record.id)
         return

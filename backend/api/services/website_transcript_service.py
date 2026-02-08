@@ -392,7 +392,7 @@ class WebsiteTranscriptService:
             entry["file_id"] = file_id
         if error:
             entry["error"] = error
-        elif status in {"queued", "processing", "retrying"}:
+        elif status in {"queued", "processing", "retrying", "ready"}:
             entry.pop("error", None)
         transcripts[video_id] = entry
         metadata["youtube_transcripts"] = transcripts

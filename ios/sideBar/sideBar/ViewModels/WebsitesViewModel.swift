@@ -64,7 +64,9 @@ public final class WebsitesViewModel: ObservableObject {
     private let ingestionStore: IngestionStore?
     private let toastCenter: ToastCenter
     private let networkStatus: any NetworkStatusProviding
+    private let transcriptPollIntervalNanoseconds: UInt64
     private var pendingTranscriptJobs: [String: Set<String>] = [:]
+    private var transcriptPollingTasks: [String: Task<Void, Never>] = [:]
     private var cancellables = Set<AnyCancellable>()
 
     public init(
@@ -72,13 +74,17 @@ public final class WebsitesViewModel: ObservableObject {
         store: WebsitesStore,
         ingestionStore: IngestionStore? = nil,
         toastCenter: ToastCenter,
-        networkStatus: any NetworkStatusProviding
+        networkStatus: any NetworkStatusProviding,
+        transcriptPollInterval: TimeInterval = 5
     ) {
         self.api = api
         self.store = store
         self.ingestionStore = ingestionStore
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
+        self.transcriptPollIntervalNanoseconds = UInt64(
+            max(transcriptPollInterval, 0.25) * 1_000_000_000
+        )
 
         store.$items
             .sink { [weak self] items in
@@ -90,6 +96,7 @@ public final class WebsitesViewModel: ObservableObject {
         store.$active
             .sink { [weak self] active in
                 self?.active = active
+                self?.syncTranscriptPolling(for: active)
             }
             .store(in: &cancellables)
 
@@ -369,6 +376,7 @@ public final class WebsitesViewModel: ObservableObject {
             let response = try await api.transcribeYouTube(id: websiteId, url: url)
             if let detail = response.readyWebsite {
                 store.applyTranscriptReadyDetail(detail)
+                stopTranscriptPolling(websiteId: websiteId, videoId: videoId)
                 return
             }
 
@@ -378,6 +386,7 @@ public final class WebsitesViewModel: ObservableObject {
                 status: response.queuedStatus ?? "queued",
                 fileId: response.queuedFileId
             )
+            startTranscriptPollingIfNeeded(websiteId: websiteId, videoId: videoId)
         } catch {
             errorMessage = ErrorMapping.message(for: error)
         }
@@ -386,9 +395,13 @@ public final class WebsitesViewModel: ObservableObject {
     public func isTranscriptPending(websiteId: String, videoId: String) -> Bool {
         let normalizedVideoId = videoId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedVideoId.isEmpty else { return false }
-        if let status = active?.youtubeTranscripts?[normalizedVideoId]?.status?.lowercased(),
-           status == "queued" || status == "processing" || status == "retrying" {
-            return true
+        if let status = active?.youtubeTranscripts?[normalizedVideoId]?.status?.lowercased() {
+            if Self.isTranscriptStatusPending(status) {
+                return true
+            }
+            if status == "ready" || status == "failed" || status == "canceled" {
+                return false
+            }
         }
         return pendingTranscriptJobs[websiteId]?.contains(normalizedVideoId) == true
     }
@@ -417,6 +430,100 @@ public final class WebsitesViewModel: ObservableObject {
         let pendingUrl = pendingWebsite.url
         if items.contains(where: { $0.url == pendingUrl }) {
             self.pendingWebsite = nil
+        }
+    }
+
+    private func syncTranscriptPolling(for active: WebsiteDetail?) {
+        guard let active else {
+            stopTranscriptPolling()
+            return
+        }
+        var activeKeys = Set<String>()
+        for (videoId, entry) in active.youtubeTranscripts ?? [:] {
+            guard Self.isTranscriptStatusPending(entry.status) else { continue }
+            activeKeys.insert(Self.transcriptPollingKey(websiteId: active.id, videoId: videoId))
+            startTranscriptPollingIfNeeded(websiteId: active.id, videoId: videoId)
+        }
+        for key in Array(transcriptPollingTasks.keys) where !activeKeys.contains(key) {
+            stopTranscriptPolling(key: key)
+        }
+    }
+
+    private func startTranscriptPollingIfNeeded(websiteId: String, videoId: String) {
+        let key = Self.transcriptPollingKey(websiteId: websiteId, videoId: videoId)
+        guard transcriptPollingTasks[key] == nil else { return }
+        transcriptPollingTasks[key] = Task { [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: self?.transcriptPollIntervalNanoseconds ?? 0)
+                } catch {
+                    return
+                }
+                guard let self else { return }
+                guard self.selectedWebsiteId == websiteId else {
+                    self.stopTranscriptPolling(key: key)
+                    return
+                }
+                guard self.networkStatus.isOffline == false else {
+                    continue
+                }
+                do {
+                    try await self.store.loadDetail(id: websiteId, force: true)
+                } catch {
+                    continue
+                }
+                guard let current = self.active, current.id == websiteId else {
+                    continue
+                }
+                guard let status = current.youtubeTranscripts?[videoId]?.status?.lowercased() else {
+                    self.stopTranscriptPolling(key: key)
+                    return
+                }
+                if Self.isTranscriptStatusPending(status) {
+                    continue
+                }
+                if status == "failed" || status == "canceled" {
+                    self.errorMessage = current.youtubeTranscripts?[videoId]?.error ?? "Transcript failed."
+                }
+                self.stopTranscriptPolling(key: key)
+                return
+            }
+        }
+    }
+
+    private func stopTranscriptPolling(
+        websiteId: String? = nil,
+        videoId: String? = nil,
+        key: String? = nil
+    ) {
+        if let key {
+            transcriptPollingTasks[key]?.cancel()
+            transcriptPollingTasks[key] = nil
+            return
+        }
+        if let websiteId, let videoId {
+            let entryKey = Self.transcriptPollingKey(websiteId: websiteId, videoId: videoId)
+            transcriptPollingTasks[entryKey]?.cancel()
+            transcriptPollingTasks[entryKey] = nil
+            return
+        }
+        for task in transcriptPollingTasks.values {
+            task.cancel()
+        }
+        transcriptPollingTasks = [:]
+    }
+
+    private static func transcriptPollingKey(websiteId: String, videoId: String) -> String {
+        "\(websiteId):\(videoId)"
+    }
+
+    private static func isTranscriptStatusPending(_ status: String?) -> Bool {
+        guard let status else { return false }
+        switch status.lowercased() {
+        case "queued", "processing", "retrying":
+            return true
+        default:
+            return false
         }
     }
 
