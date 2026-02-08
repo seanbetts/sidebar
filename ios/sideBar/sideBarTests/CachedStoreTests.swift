@@ -31,6 +31,19 @@ final class CachedStoreTests: XCTestCase {
         let cached: String? = cache.get(key: "store-key")
         XCTAssertEqual(cached, "fresh")
     }
+
+    func testLoadWithCacheCoalescesBackgroundRefreshWhenAlreadyRunning() async throws {
+        let cache = TestCacheClient()
+        cache.set(key: "store-key", value: "cached", ttlSeconds: 60)
+        let store = MockCachedStore(cache: cache, fetchResult: "fresh")
+        store.backgroundRefreshDelay = 300_000_000
+
+        try await store.loadWithCache()
+        try await store.loadWithCache()
+        try? await Task.sleep(nanoseconds: 450_000_000)
+
+        XCTAssertEqual(store.backgroundRefreshCallCount, 1)
+    }
 }
 
 @MainActor
@@ -45,6 +58,8 @@ private final class MockCachedStore: CachedStoreBase<String> {
     let fetchResult: String
     var appliedData: [Applied] = []
     var onBackgroundRefresh: (() -> Void)?
+    var backgroundRefreshDelay: UInt64 = 0
+    private(set) var backgroundRefreshCallCount = 0
 
     init(cache: CacheClient, fetchResult: String) {
         self.fetchResult = fetchResult
@@ -60,6 +75,10 @@ private final class MockCachedStore: CachedStoreBase<String> {
     }
 
     override func backgroundRefresh() async {
+        backgroundRefreshCallCount += 1
+        if backgroundRefreshDelay > 0 {
+            try? await Task.sleep(nanoseconds: backgroundRefreshDelay)
+        }
         onBackgroundRefresh?()
     }
 }

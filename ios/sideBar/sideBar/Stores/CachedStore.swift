@@ -7,6 +7,7 @@ import Combine
 open class CachedStoreBase<CachedData: Codable>: ObservableObject {
     public let objectWillChange = ObservableObjectPublisher()
     public let cache: CacheClient
+    private var backgroundRefreshTask: Task<Void, Never>?
 
     open var cacheKey: String {
         fatalError("Subclass must override cacheKey")
@@ -37,14 +38,21 @@ open class CachedStoreBase<CachedData: Codable>: ObservableObject {
 
         if let cached {
             applyData(cached, persist: false)
-            Task { [weak self] in
-                await self?.backgroundRefresh()
-            }
+            triggerBackgroundRefresh()
             return
         }
 
         let remote = try await fetchFromAPI()
         applyData(remote, persist: true)
         cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
+    }
+
+    private func triggerBackgroundRefresh() {
+        guard backgroundRefreshTask == nil else { return }
+        backgroundRefreshTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.backgroundRefreshTask = nil }
+            await self.backgroundRefresh()
+        }
     }
 }
