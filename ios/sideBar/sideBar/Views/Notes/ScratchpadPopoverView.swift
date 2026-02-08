@@ -3,7 +3,6 @@ import MarkdownUI
 
 public struct ScratchpadPopoverView: View {
     @StateObject private var viewModel: ScratchpadViewModel
-    @ObservedObject private var scratchpadStore: ScratchpadStore
     @State private var draft: String = ""
     @State private var isEditing = false
     @State private var isSaving: Bool = false
@@ -17,8 +16,13 @@ public struct ScratchpadPopoverView: View {
     @FocusState private var isEditorFocused: Bool
 
     public init(api: any ScratchpadProviding, cache: CacheClient, scratchpadStore: ScratchpadStore) {
-        _viewModel = StateObject(wrappedValue: ScratchpadViewModel(api: api, cache: cache))
-        _scratchpadStore = ObservedObject(wrappedValue: scratchpadStore)
+        _viewModel = StateObject(
+            wrappedValue: ScratchpadViewModel(
+                api: api,
+                cache: cache,
+                scratchpadStore: scratchpadStore
+            )
+        )
     }
 
     public var body: some View {
@@ -75,7 +79,7 @@ public struct ScratchpadPopoverView: View {
                 isEditing = false
             }
         }
-        .onReceive(scratchpadStore.$version) { _ in
+        .onChange(of: viewModel.refreshVersion) { _, _ in
             refreshScratchpad()
         }
         .onDisappear {

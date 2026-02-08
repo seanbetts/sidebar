@@ -8,13 +8,24 @@ import Combine
 public final class ScratchpadViewModel: ObservableObject {
     @Published public private(set) var scratchpad: ScratchpadResponse?
     @Published public private(set) var errorMessage: String?
+    @Published public private(set) var refreshVersion: Int = 0
 
     private let api: any ScratchpadProviding
     private let cache: CacheClient
+    private var cancellables = Set<AnyCancellable>()
 
-    public init(api: any ScratchpadProviding, cache: CacheClient) {
+    public init(
+        api: any ScratchpadProviding,
+        cache: CacheClient,
+        scratchpadStore: ScratchpadStore? = nil
+    ) {
         self.api = api
         self.cache = cache
+        scratchpadStore?.$version
+            .sink { [weak self] version in
+                self?.refreshVersion = version
+            }
+            .store(in: &cancellables)
     }
 
     public func cachedScratchpad() -> ScratchpadResponse? {
