@@ -365,6 +365,9 @@ def _find_by_position(
     while current is not None:
         preceding = current.getprevious()
         while preceding is not None:
+            if not isinstance(preceding.tag, str):
+                preceding = preceding.getprevious()
+                continue
             preceding_text = preceding.text_content().strip()[:100]
             if preceding_text and len(preceding_text) >= 5:
                 for elem in extracted_tree.iter():

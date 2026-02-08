@@ -82,6 +82,16 @@
     mode: force
     wait_for: "main"
 
+- id: blog-google-include-article-modules
+  phase: pre
+  trigger:
+    host:
+      ends_with: "blog.google"
+  include:
+    - ".module--text__article"
+    - "uni-pull-quote"
+    - "uni-image-full-width"
+
 - id: washingtonpost-cleanup
   phase: post
   trigger:

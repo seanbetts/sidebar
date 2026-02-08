@@ -407,6 +407,72 @@ def test_parse_url_local_includes_reinserted_nodes(monkeypatch):
     assert "Special include" in parsed.content
 
 
+def test_parse_url_local_blog_google_reinserts_missing_modules(monkeypatch):
+    html = """
+    <html>
+      <head><title>Game Arena</title></head>
+      <body>
+        <div class="article-summary__content">
+          <p>Read AI-generated summary</p>
+        </div>
+        <div class="module--text module--text__article">
+          <div class="rich-text">
+            <h2>Chess: reasoning over calculation</h2>
+            <p>Chess section details.</p>
+          </div>
+        </div>
+        <div class="module--text module--text__article">
+          <div class="rich-text">
+            <h2>Werewolf: navigating social deduction</h2>
+            <p>Werewolf section details.</p>
+          </div>
+        </div>
+        <uni-image-full-width>
+          <div slot="image-slot">
+            <img alt="Werewolf board" src="https://images.example.com/werewolf.png"/>
+          </div>
+        </uni-image-full-width>
+        <article>
+          <div class="module--text module--text__article">
+            <div class="rich-text">
+              <h2>Poker: the challenge of calculated risk</h2>
+              <p>Poker section details.</p>
+            </div>
+          </div>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://blog.google/example", False
+
+    rule = web_save_parser.Rule(
+        id="blog-google-include-article-modules",
+        phase="pre",
+        priority=0,
+        trigger={"host": {"ends_with": "blog.google"}},
+        include=[
+            ".module--text__article",
+            "uni-pull-quote",
+            "uni-image-full-width",
+        ],
+    )
+    engine = web_save_parser.RuleEngine([rule])
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+
+    parsed = web_save_parser.parse_url_local("blog.google/example")
+
+    assert "Chess: reasoning over calculation" in parsed.content
+    assert "Werewolf: navigating social deduction" in parsed.content
+    assert "Poker: the challenge of calculated risk" in parsed.content
+    assert "Werewolf board" in parsed.content
+    assert parsed.content.find("Chess: reasoning over calculation") < parsed.content.find(
+        "Poker: the challenge of calculated risk"
+    )
+
+
 def test_apply_include_reinsertion_handles_comment_root():
     extracted_html = "<!--comment--><article><p>Primary content</p></article>"
     original_html = """
@@ -450,6 +516,51 @@ def test_apply_include_reinsertion_preserves_include_order():
     assert first_index != -1
     assert second_index != -1
     assert first_index < second_index
+
+
+def test_apply_include_reinsertion_skips_comment_siblings_for_positioning():
+    extracted_html = """
+    <article>
+      <div class="module--text module--text__article">
+        <h2>Poker: the challenge of calculated risk</h2>
+        <p>Poker section details.</p>
+      </div>
+    </article>
+    """
+    original_html = """
+    <html>
+      <body>
+        <div class="module--text module--text__article">
+          <h2>Chess: reasoning over calculation</h2>
+          <p>Chess section details.</p>
+        </div>
+        <!-- Readability drops earlier modules on this page shape -->
+        <div class="module--text module--text__article">
+          <h2>Werewolf: navigating social deduction</h2>
+          <p>Werewolf section details.</p>
+        </div>
+        <article>
+          <div class="module--text module--text__article">
+            <h2>Poker: the challenge of calculated risk</h2>
+            <p>Poker section details.</p>
+          </div>
+        </article>
+      </body>
+    </html>
+    """
+    original_dom = lxml_html.fromstring(original_html)
+    updated = web_save_includes.apply_include_reinsertion(
+        extracted_html,
+        original_dom,
+        include_selectors=[".module--text__article"],
+        removal_rules=[],
+    )
+    assert "Chess: reasoning over calculation" in updated
+    assert "Werewolf: navigating social deduction" in updated
+    assert "Poker: the challenge of calculated risk" in updated
+    assert updated.find("Chess: reasoning over calculation") < updated.find(
+        "Werewolf: navigating social deduction"
+    )
 
 
 def test_apply_include_reinsertion_uses_ancestor_siblings_for_position():
