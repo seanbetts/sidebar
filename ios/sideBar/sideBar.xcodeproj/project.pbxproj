@@ -170,13 +170,6 @@
 			);
 			target = 1448E6C62F27A6420066EE47 /* sideBarWidgetsExtension */;
 		};
-		A9F18E1B3C4D5E6F00112233 /* Exceptions for "sideBar" folder in "sideBar" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 14C84A472F10562300FE0C16 /* sideBar */;
-		};
 		9A8B7C6D5E4F3A2B1C0D0E01 /* Exceptions for "sideBar Safari Extension" folder in "sideBar Safari Extension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -197,6 +190,13 @@
 				Info.plist,
 			);
 			target = 146EA0952F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */;
+		};
+		A9F18E1B3C4D5E6F00112233 /* Exceptions for "sideBar" folder in "sideBar" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 14C84A472F10562300FE0C16 /* sideBar */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -257,8 +257,8 @@
 		14C84A4A2F10562300FE0C16 /* sideBar */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				142516C62F1EBECC0072E4F9 /* Exceptions for "sideBar" folder in "ShareExtension" target */,
 				A9F18E1B3C4D5E6F00112233 /* Exceptions for "sideBar" folder in "sideBar" target */,
+				142516C62F1EBECC0072E4F9 /* Exceptions for "sideBar" folder in "ShareExtension" target */,
 			);
 			path = sideBar;
 			sourceTree = "<group>";
