@@ -1,6 +1,7 @@
 import SwiftUI
 import WidgetKit
 
+#if os(iOS)
 // MARK: - Lock Screen File Count (Circular)
 
 struct LockScreenFileCountWidget: Widget {
@@ -158,3 +159,4 @@ struct LockScreenFilesInlineView: View {
 } timeline: {
     PinnedFilesEntry.placeholder
 }
+#endif

@@ -24,6 +24,7 @@ struct SideBarWidgetsBundle: WidgetBundle {
         // Home screen widgets - Files
         PinnedFilesWidget()
 
+        #if os(iOS)
         // Lock screen widgets - Tasks
         LockScreenTaskCountWidget()
         LockScreenTaskPreviewWidget()
@@ -43,5 +44,6 @@ struct SideBarWidgetsBundle: WidgetBundle {
         LockScreenFileCountWidget()
         LockScreenFilePreviewWidget()
         LockScreenFilesInlineWidget()
+        #endif
     }
 }

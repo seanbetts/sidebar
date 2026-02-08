@@ -1,6 +1,7 @@
 import SwiftUI
 import WidgetKit
 
+#if os(iOS)
 // MARK: - Lock Screen Site Count (Circular)
 
 struct LockScreenSiteCountWidget: Widget {
@@ -152,3 +153,4 @@ struct LockScreenSitesInlineView: View {
 } timeline: {
     SavedSitesEntry.placeholder
 }
+#endif

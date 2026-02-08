@@ -1,6 +1,7 @@
 import SwiftUI
 import WidgetKit
 
+#if os(iOS)
 // MARK: - Lock Screen Note Count (Circular)
 
 struct LockScreenNoteCountWidget: Widget {
@@ -152,3 +153,4 @@ struct LockScreenNotesInlineView: View {
 } timeline: {
     PinnedNotesEntry.placeholder
 }
+#endif

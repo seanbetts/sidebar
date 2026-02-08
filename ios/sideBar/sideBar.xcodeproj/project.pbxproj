@@ -14,7 +14,7 @@
 		142516B72F1EB96B0072E4F9 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6C92F27A6420066EE47 /* WidgetKit.framework */; };
 		1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6CB2F27A6420066EE47 /* SwiftUI.framework */; };
-		1448E6DD2F27A6430066EE47 /* sideBarWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+			1448E6DD2F27A6430066EE47 /* sideBarWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		146EA0712F2FE83C004AE7D1 /* sideBar Safari Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 146EA0592F2FE83C004AE7D1 /* sideBar Safari Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		146EA0972F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 146EA0962F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
@@ -1094,9 +1094,9 @@
 			};
 			name = Release;
 		};
-		1448E6E02F27A6430066EE47 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
+			1448E6E02F27A6430066EE47 /* Debug */ = {
+				isa = XCBuildConfiguration;
+				buildSettings = {
 				APP_GROUP_ID = group.ai.sidebar.sidebar;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
@@ -1105,33 +1105,34 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = sideBarWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
-				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
+					INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
+					INFOPLIST_KEY_NSHumanReadableCopyright = "";
+					IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+					KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
+					KEYCHAIN_SERVICE = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.sideBarWidgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+					MARKETING_VERSION = 0.1;
+					PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.sideBarWidgets;
+					PRODUCT_NAME = "$(TARGET_NAME)";
+					SDKROOT = auto;
+					SKIP_INSTALL = YES;
+					STRING_CATALOG_GENERATE_SYMBOLS = YES;
+					SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+					SWIFT_APPROACHABLE_CONCURRENCY = YES;
+					SWIFT_EMIT_LOC_STRINGS = YES;
+					SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		1448E6E12F27A6430066EE47 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
+			1448E6E12F27A6430066EE47 /* Release */ = {
+				isa = XCBuildConfiguration;
+				buildSettings = {
 				APP_GROUP_ID = group.ai.sidebar.sidebar;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
@@ -1140,25 +1141,26 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = sideBarWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
-				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
+					INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
+					INFOPLIST_KEY_NSHumanReadableCopyright = "";
+					IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+					KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
+					KEYCHAIN_SERVICE = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.sideBarWidgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+					MARKETING_VERSION = 0.1;
+					PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.sideBarWidgets;
+					PRODUCT_NAME = "$(TARGET_NAME)";
+					SDKROOT = auto;
+					SKIP_INSTALL = YES;
+					STRING_CATALOG_GENERATE_SYMBOLS = YES;
+					SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+					SWIFT_APPROACHABLE_CONCURRENCY = YES;
+					SWIFT_EMIT_LOC_STRINGS = YES;
+					SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;

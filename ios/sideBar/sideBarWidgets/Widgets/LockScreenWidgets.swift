@@ -1,6 +1,7 @@
 import SwiftUI
 import WidgetKit
 
+#if os(iOS)
 // MARK: - Lock Screen Task Count (Circular)
 
 struct LockScreenTaskCountWidget: Widget {
@@ -152,3 +153,4 @@ struct LockScreenInlineView: View {
 } timeline: {
     TodayTasksEntry.placeholder
 }
+#endif
