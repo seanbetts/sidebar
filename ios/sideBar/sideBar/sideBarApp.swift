@@ -98,6 +98,9 @@ struct SideBarApp: App {
             #endif
         }
         #if os(macOS)
+        .defaultSize(width: 1200, height: 820)
+        #endif
+        #if os(macOS)
         .commands {
             SidebarCommands()
         }
