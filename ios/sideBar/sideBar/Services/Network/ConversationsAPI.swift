@@ -53,8 +53,13 @@ public struct ConversationsAPI {
     }
 
     public func search(query: String, limit: Int = 10) async throws -> [Conversation] {
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let path = "conversations/search?query=\(encoded)&limit=\(limit)"
+        let path = APIClient.path(
+            "conversations/search",
+            queryItems: [
+                URLQueryItem(name: "query", value: query),
+                URLQueryItem(name: "limit", value: String(limit))
+            ]
+        )
         return try await client.request(path, method: "POST")
     }
 }

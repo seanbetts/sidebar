@@ -160,20 +160,25 @@ public struct WebsitesAPI {
     }
 
     public func listArchived(limit: Int = 200, offset: Int = 0) async throws -> WebsitesResponse {
-        var queryItems: [String] = []
+        var queryItems: [URLQueryItem] = []
         if limit > 0 {
-            queryItems.append("limit=\(limit)")
+            queryItems.append(URLQueryItem(name: "limit", value: String(limit)))
         }
         if offset > 0 {
-            queryItems.append("offset=\(offset)")
+            queryItems.append(URLQueryItem(name: "offset", value: String(offset)))
         }
-        let suffix = queryItems.isEmpty ? "" : "?\(queryItems.joined(separator: "&"))"
-        return try await client.request("websites/archived\(suffix)")
+        let path = APIClient.path("websites/archived", queryItems: queryItems)
+        return try await client.request(path)
     }
 
     public func search(query: String, limit: Int = 50) async throws -> WebsitesResponse {
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let path = "websites/search?query=\(encoded)&limit=\(limit)"
+        let path = APIClient.path(
+            "websites/search",
+            queryItems: [
+                URLQueryItem(name: "query", value: query),
+                URLQueryItem(name: "limit", value: String(limit))
+            ]
+        )
         return try await client.request(path, method: "POST")
     }
 

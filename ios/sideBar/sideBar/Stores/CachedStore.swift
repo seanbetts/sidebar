@@ -5,6 +5,7 @@ import Combine
 /// Subclasses must override `cacheKey`, `cacheTTL`, `fetchFromAPI()`, `applyData()`, and `backgroundRefresh()`.
 @MainActor
 open class CachedStoreBase<CachedData: Codable>: ObservableObject {
+    /// Indicates where data was resolved during a cache-first load.
     public enum CacheLoadSource {
         case cache
         case offline

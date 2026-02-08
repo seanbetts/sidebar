@@ -338,6 +338,24 @@ public final class APIClient {
         }
         return URLSession(configuration: configuration)
     }
+
+    public static func path(_ path: String, queryItems: [URLQueryItem]) -> String {
+        let validItems = queryItems.filter {
+            guard let value = $0.value else {
+                return false
+            }
+            return !value.isEmpty
+        }
+        guard !validItems.isEmpty else {
+            return path
+        }
+        var components = URLComponents()
+        components.queryItems = validItems
+        guard let query = components.percentEncodedQuery, !query.isEmpty else {
+            return path
+        }
+        return "\(path)?\(query)"
+    }
 }
 
 /// Type-erases Encodable values so they can be encoded uniformly.

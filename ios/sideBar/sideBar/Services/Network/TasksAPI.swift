@@ -133,8 +133,11 @@ public struct TasksAPI {
     }
 
     public func search(query: String) async throws -> TaskListResponse {
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        return try await client.request("tasks/search?query=\(encoded)")
+        let path = APIClient.path(
+            "tasks/search",
+            queryItems: [URLQueryItem(name: "query", value: query)]
+        )
+        return try await client.request(path)
     }
 
     public func counts() async throws -> TaskCountsResponse {

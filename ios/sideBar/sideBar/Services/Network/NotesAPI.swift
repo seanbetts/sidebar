@@ -34,15 +34,15 @@ public struct NotesAPI {
     }
 
     public func listArchivedTree(limit: Int = 200, offset: Int = 0) async throws -> FileTree {
-        var queryItems: [String] = []
+        var queryItems: [URLQueryItem] = []
         if limit > 0 {
-            queryItems.append("limit=\(limit)")
+            queryItems.append(URLQueryItem(name: "limit", value: String(limit)))
         }
         if offset > 0 {
-            queryItems.append("offset=\(offset)")
+            queryItems.append(URLQueryItem(name: "offset", value: String(offset)))
         }
-        let suffix = queryItems.isEmpty ? "" : "?\(queryItems.joined(separator: "&"))"
-        return try await client.request("notes/archived\(suffix)")
+        let path = APIClient.path("notes/archived", queryItems: queryItems)
+        return try await client.request(path)
     }
 
     public func search(query: String, limit: Int = 50) async throws -> [FileNode] {

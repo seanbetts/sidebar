@@ -15,7 +15,13 @@ public struct WeatherAPI {
     }
 
     public func getWeather(lat: Double, lon: Double) async throws -> WeatherResponse {
-        let path = "weather?lat=\(lat)&lon=\(lon)"
+        let path = APIClient.path(
+            "weather",
+            queryItems: [
+                URLQueryItem(name: "lat", value: String(lat)),
+                URLQueryItem(name: "lon", value: String(lon))
+            ]
+        )
         return try await client.request(path)
     }
 }

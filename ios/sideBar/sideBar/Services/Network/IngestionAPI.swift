@@ -129,8 +129,10 @@ public struct IngestionAPI {
     }
 
     public func getContent(fileId: String, kind: String, range: String? = nil) async throws -> Data {
-        let encodedKind = kind.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? kind
-        let requestPath = "files/\(fileId)/content?kind=\(encodedKind)"
+        let requestPath = APIClient.path(
+            "files/\(fileId)/content",
+            queryItems: [URLQueryItem(name: "kind", value: kind)]
+        )
         var headers: [String: String] = [:]
         if let range {
             headers["Range"] = range

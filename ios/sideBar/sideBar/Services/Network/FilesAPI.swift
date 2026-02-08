@@ -17,15 +17,22 @@ public struct FilesAPI {
     }
 
     public func listTree(basePath: String = "documents") async throws -> FileTree {
-        let encoded = encodeQueryValue(basePath)
-        let path = "files/tree?basePath=\(encoded)"
+        let path = APIClient.path(
+            "files/tree",
+            queryItems: [URLQueryItem(name: "basePath", value: basePath)]
+        )
         return try await client.request(path)
     }
 
     public func search(query: String, basePath: String = "documents", limit: Int = 50) async throws -> [FileNode] {
-        let encoded = encodeQueryValue(query)
-        let baseEncoded = encodeQueryValue(basePath)
-        let path = "files/search?query=\(encoded)&basePath=\(baseEncoded)&limit=\(limit)"
+        let path = APIClient.path(
+            "files/search",
+            queryItems: [
+                URLQueryItem(name: "query", value: query),
+                URLQueryItem(name: "basePath", value: basePath),
+                URLQueryItem(name: "limit", value: String(limit))
+            ]
+        )
         struct SearchResponse: Codable { let items: [FileNode] }
         let response: SearchResponse = try await client.request(path, method: "POST")
         return response.items
@@ -82,9 +89,13 @@ public struct FilesAPI {
     }
 
     public func getContent(basePath: String = "documents", path: String) async throws -> FileContent {
-        let encoded = encodeQueryValue(path)
-        let baseEncoded = encodeQueryValue(basePath)
-        let requestPath = "files/content?basePath=\(baseEncoded)&path=\(encoded)"
+        let requestPath = APIClient.path(
+            "files/content",
+            queryItems: [
+                URLQueryItem(name: "basePath", value: basePath),
+                URLQueryItem(name: "path", value: path)
+            ]
+        )
         return try await client.request(requestPath)
     }
 
@@ -94,17 +105,15 @@ public struct FilesAPI {
     }
 
     public func download(basePath: String = "documents", path: String) async throws -> Data {
-        let encoded = encodeQueryValue(path)
-        let baseEncoded = encodeQueryValue(basePath)
-        let requestPath = "files/download?basePath=\(baseEncoded)&path=\(encoded)"
+        let requestPath = APIClient.path(
+            "files/download",
+            queryItems: [
+                URLQueryItem(name: "basePath", value: basePath),
+                URLQueryItem(name: "path", value: path)
+            ]
+        )
         return try await client.requestData(requestPath)
     }
 }
 
 extension FilesAPI: FilesProviding {}
-
-private func encodeQueryValue(_ value: String) -> String {
-    var allowed = CharacterSet.urlQueryAllowed
-    allowed.remove(charactersIn: "&=?/")
-    return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
-}
