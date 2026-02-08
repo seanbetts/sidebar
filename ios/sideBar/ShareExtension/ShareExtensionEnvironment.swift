@@ -98,7 +98,7 @@ enum ShareExtensionError: LocalizedError {
         case .notAuthenticated:
             return ExtensionUserMessageCatalog.message(for: .notAuthenticated)
         case .invalidBaseUrl:
-            return "Invalid API base URL."
+            return ExtensionUserMessageCatalog.message(for: .invalidBaseUrl)
         case .invalidSharePayload:
             return ExtensionUserMessageCatalog.message(for: .invalidSharePayload)
         case .unsupportedContentType:
