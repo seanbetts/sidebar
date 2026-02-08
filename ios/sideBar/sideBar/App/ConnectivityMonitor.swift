@@ -4,7 +4,7 @@ import Network
 import sideBarShared
 
 @MainActor
-final class ConnectivityMonitor: ObservableObject, @unchecked Sendable {
+final class ConnectivityMonitor: ObservableObject {
     @Published private(set) var isOffline: Bool = false
     @Published private(set) var isNetworkAvailable: Bool = true
     @Published private(set) var isServerReachable: Bool = true
