@@ -129,6 +129,98 @@ final class IngestionStoreTests: XCTestCase {
         let reloaded = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
         XCTAssertTrue(reloaded.items.contains { $0.file.id == "local-1" })
     }
+
+    func testApplyIngestedFileEventSkipsWebsiteTranscriptRecords() async {
+        let cache = TestCacheClient()
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+
+        let payload = RealtimePayload<IngestedFileRealtimeRecord>(
+            eventType: .insert,
+            table: RealtimeTable.ingestedFiles,
+            schema: "public",
+            record: IngestedFileRealtimeRecord(
+                id: "f-transcript",
+                filenameOriginal: "YouTube transcript",
+                path: "/YouTube transcript",
+                mimeOriginal: "video/youtube",
+                sizeBytes: 0,
+                sha256: nil,
+                sourceUrl: "https://www.youtube.com/watch?v=abc123xyz89",
+                sourceMetadata: ["website_transcript": AnyCodable(true)],
+                pinned: nil,
+                pinnedOrder: nil,
+                createdAt: "2024-01-01T12:00:00Z",
+                updatedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        store.applyIngestedFileEvent(payload)
+
+        XCTAssertTrue(store.items.isEmpty)
+        let cached: IngestionListResponse? = cache.get(key: CacheKeys.ingestionList)
+        XCTAssertTrue(cached?.items.isEmpty ?? true)
+    }
+
+    func testApplyIngestedFileEventUpdateRemovesSoftDeletedRecord() async {
+        let cache = TestCacheClient()
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+
+        let insertPayload = RealtimePayload<IngestedFileRealtimeRecord>(
+            eventType: .insert,
+            table: RealtimeTable.ingestedFiles,
+            schema: "public",
+            record: IngestedFileRealtimeRecord(
+                id: "f1",
+                filenameOriginal: "doc.txt",
+                path: "/doc.txt",
+                mimeOriginal: "text/plain",
+                sizeBytes: 12,
+                sha256: nil,
+                sourceUrl: nil,
+                sourceMetadata: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                createdAt: "2024-01-01T12:00:00Z",
+                updatedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+        store.applyIngestedFileEvent(insertPayload)
+        XCTAssertEqual(store.items.count, 1)
+
+        let updatePayload = RealtimePayload<IngestedFileRealtimeRecord>(
+            eventType: .update,
+            table: RealtimeTable.ingestedFiles,
+            schema: "public",
+            record: IngestedFileRealtimeRecord(
+                id: "f1",
+                filenameOriginal: "doc.txt",
+                path: "/doc.txt",
+                mimeOriginal: "text/plain",
+                sizeBytes: 12,
+                sha256: nil,
+                sourceUrl: nil,
+                sourceMetadata: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                createdAt: "2024-01-01T12:00:00Z",
+                updatedAt: "2024-01-01T12:01:00Z",
+                deletedAt: "2024-01-01T12:01:00Z"
+            ),
+            oldRecord: nil
+        )
+
+        store.applyIngestedFileEvent(updatePayload)
+
+        XCTAssertTrue(store.items.isEmpty)
+        let cached: IngestionListResponse? = cache.get(key: CacheKeys.ingestionList)
+        XCTAssertTrue(cached?.items.isEmpty ?? true)
+    }
 }
 
 private struct MockIngestionAPI: IngestionProviding {

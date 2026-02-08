@@ -16,8 +16,14 @@ extension IngestionStore {
                 }
             }
         case .insert, .update:
-            guard let record = payload.record,
-                  let mapped = RealtimeMappers.mapIngestedFile(record) else {
+            guard let record = payload.record else {
+                return
+            }
+            if shouldIncludeIngestionRealtimeRecord(record) == false {
+                removeItem(fileId: record.id)
+                return
+            }
+            guard let mapped = RealtimeMappers.mapIngestedFile(record) else {
                 return
             }
             let job = remoteItems.first(where: { $0.file.id == mapped.id })?.job ?? IngestionJob(
@@ -295,5 +301,39 @@ extension IngestionStore {
             guard status == "uploading" || status == "queued" else { return nil }
             return LocalUploadResumeItem(item: record.item, bookmarkData: bookmarkData)
         }
+    }
+
+    private func shouldIncludeIngestionRealtimeRecord(_ record: IngestedFileRealtimeRecord) -> Bool {
+        if record.deletedAt != nil {
+            return false
+        }
+        if (record.path ?? "").lowercased().hasSuffix("/ai/ai.md") {
+            return false
+        }
+        if metadataBool(record.sourceMetadata, key: "website_transcript") == true {
+            return false
+        }
+        return true
+    }
+
+    private func metadataBool(_ metadata: [String: AnyCodable]?, key: String) -> Bool? {
+        guard let value = metadata?[key]?.value else { return nil }
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+        if let number = value as? NSNumber {
+            return number.boolValue
+        }
+        if let string = value as? String {
+            switch string.lowercased() {
+            case "true", "1":
+                return true
+            case "false", "0":
+                return false
+            default:
+                return nil
+            }
+        }
+        return nil
     }
 }
