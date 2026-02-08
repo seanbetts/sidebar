@@ -4,29 +4,16 @@ import CoreSpotlight
 #if os(iOS)
 import UIKit
 
+@MainActor
 final class AppSceneDelegate: NSObject, UIWindowSceneDelegate {
     private let logger = Logger(subsystem: "sideBar", category: "DeepLink")
+    private static var queuedDeepLinks: [URL] = []
 
     func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
         guard let url = contexts.first?.url else { return }
         guard url.scheme == "sidebar" else { return }
         logger.info("SceneDelegate handling deep link: \(url.absoluteString, privacy: .public)")
-        if let environment = AppEnvironment.shared {
-            Task { @MainActor in
-                environment.handleDeepLink(url)
-            }
-            return
-        }
-        Task { @MainActor in
-            for _ in 0..<10 {
-                try? await Task.sleep(nanoseconds: 200_000_000)
-                if let environment = AppEnvironment.shared {
-                    environment.handleDeepLink(url)
-                    return
-                }
-            }
-            logger.error("SceneDelegate dropped deep link (environment not ready)")
-        }
+        handleOrQueueDeepLink(url)
     }
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
@@ -40,22 +27,26 @@ final class AppSceneDelegate: NSObject, UIWindowSceneDelegate {
             return
         }
         logger.info("SceneDelegate handling Spotlight tap: \(identifier, privacy: .public)")
-        if let environment = AppEnvironment.shared {
-            Task { @MainActor in
-                environment.handleDeepLink(url)
-            }
+        handleOrQueueDeepLink(url)
+    }
+
+    static func flushQueuedDeepLinks(using environment: AppEnvironment) {
+        guard !queuedDeepLinks.isEmpty else { return }
+        let queued = queuedDeepLinks
+        queuedDeepLinks.removeAll()
+        for url in queued {
+            environment.handleDeepLink(url)
+        }
+    }
+
+    private func handleOrQueueDeepLink(_ url: URL) {
+        guard let environment = AppEnvironment.shared else {
+            Self.queuedDeepLinks.append(url)
+            logger.info("SceneDelegate queued deep link until environment is ready")
             return
         }
-        Task { @MainActor in
-            for _ in 0..<10 {
-                try? await Task.sleep(nanoseconds: 200_000_000)
-                if let environment = AppEnvironment.shared {
-                    environment.handleDeepLink(url)
-                    return
-                }
-            }
-            logger.error("SceneDelegate dropped Spotlight deep link (environment not ready)")
-        }
+        Self.flushQueuedDeepLinks(using: environment)
+        environment.handleDeepLink(url)
     }
 }
 #endif

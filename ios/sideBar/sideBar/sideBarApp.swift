@@ -86,6 +86,9 @@ struct SideBarApp: App {
                 .environmentObject(environment)
                 .environment(\.controlSize, .large)
                 .dynamicTypeSize(.large)
+                .onOpenURL { url in
+                    environment.handleDeepLink(url)
+                }
             #else
             ContentView()
                 .environmentObject(environment)

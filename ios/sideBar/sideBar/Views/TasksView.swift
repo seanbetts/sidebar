@@ -16,20 +16,18 @@ public struct TasksView: View {
                 await environment.tasksViewModel.load(selection: environment.tasksViewModel.selection)
                 await environment.tasksViewModel.loadCounts()
             }
-            #if os(iOS)
             .onAppear {
                 environment.isTasksFocused = true
-                if environment.pendingNewTaskDeepLink {
-                    environment.pendingNewTaskDeepLink = false
-                    Task {
-                        await environment.tasksViewModel.load(selection: .today)
-                        environment.tasksViewModel.startNewTask()
-                    }
-                }
+                consumePendingNewTaskDeepLinkIfNeeded()
             }
             .onDisappear {
                 environment.isTasksFocused = false
             }
+            .onChange(of: environment.pendingNewTaskDeepLink) { _, isPending in
+                guard isPending else { return }
+                consumePendingNewTaskDeepLinkIfNeeded()
+            }
+            #if os(iOS)
             .onChange(of: scenePhase) {
                 guard scenePhase == .active else { return }
                 Task {
@@ -56,6 +54,15 @@ public struct TasksView: View {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+
+    private func consumePendingNewTaskDeepLinkIfNeeded() {
+        guard environment.pendingNewTaskDeepLink else { return }
+        environment.pendingNewTaskDeepLink = false
+        Task {
+            await environment.tasksViewModel.load(selection: .today)
+            environment.tasksViewModel.startNewTask()
+        }
     }
 }
 

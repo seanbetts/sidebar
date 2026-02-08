@@ -150,6 +150,9 @@ public final class AppEnvironment: ObservableObject {
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
         #endif
+        #if os(iOS)
+        AppSceneDelegate.flushQueuedDeepLinks(using: self)
+        #endif
         #if DEBUG
         logStep("Stores + view models", storeStart)
         #endif

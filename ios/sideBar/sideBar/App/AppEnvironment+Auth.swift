@@ -114,10 +114,15 @@ extension AppEnvironment {
 
         // Navigate to tasks section and start new task
         commandSelection = .tasks
-        pendingNewTaskDeepLink = true
         #if !os(macOS)
         tasksViewModel.phoneDetailRouteId = TaskSelection.today.cacheKey
         #endif
+        if isTasksFocused {
+            pendingNewTaskDeepLink = false
+            tasksViewModel.startNewTask()
+        } else {
+            pendingNewTaskDeepLink = true
+        }
     }
 
     /// Consumes pending add note intent from widget and opens the add note UI
