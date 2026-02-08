@@ -50,7 +50,6 @@ extension WebsitesStore {
     }
 
     func enqueueRename(id: String, title: String) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let operationId = UUID().uuidString
         let payload = WebsiteOperationPayload(
             operationId: operationId,
@@ -60,7 +59,8 @@ extension WebsitesStore {
             clientUpdatedAt: websiteItem(for: id)?.updatedAt
         )
         let snapshot = makeServerSnapshot(websiteId: id)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .rename,
             entityType: .website,
             entityId: id,
@@ -90,7 +90,6 @@ extension WebsitesStore {
     }
 
     func enqueuePin(id: String, pinned: Bool) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let operationId = UUID().uuidString
         let payload = WebsiteOperationPayload(
             operationId: operationId,
@@ -100,7 +99,8 @@ extension WebsitesStore {
             clientUpdatedAt: websiteItem(for: id)?.updatedAt
         )
         let snapshot = makeServerSnapshot(websiteId: id)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .pin,
             entityType: .website,
             entityId: id,
@@ -130,7 +130,6 @@ extension WebsitesStore {
     }
 
     func enqueueArchive(id: String, archived: Bool) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let operationId = UUID().uuidString
         let payload = WebsiteOperationPayload(
             operationId: operationId,
@@ -140,7 +139,8 @@ extension WebsitesStore {
             clientUpdatedAt: websiteItem(for: id)?.updatedAt
         )
         let snapshot = makeServerSnapshot(websiteId: id)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .archive,
             entityType: .website,
             entityId: id,
@@ -173,7 +173,6 @@ extension WebsitesStore {
     }
 
     func enqueueDelete(id: String) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let operationId = UUID().uuidString
         let payload = WebsiteOperationPayload(
             operationId: operationId,
@@ -182,7 +181,8 @@ extension WebsitesStore {
             clientUpdatedAt: websiteItem(for: id)?.updatedAt
         )
         let snapshot = makeServerSnapshot(websiteId: id)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .delete,
             entityType: .website,
             entityId: id,

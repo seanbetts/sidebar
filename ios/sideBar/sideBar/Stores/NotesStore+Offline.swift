@@ -67,9 +67,9 @@ extension NotesStore {
     }
 
     public func enqueueUpdate(noteId: String, content: String) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let snapshot = makeServerSnapshot(noteId: noteId, notePath: nil)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .update,
             entityType: .note,
             entityId: noteId,
@@ -79,9 +79,9 @@ extension NotesStore {
     }
 
     public func enqueueRename(noteId: String, notePath: String, newName: String) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let snapshot = makeServerSnapshot(noteId: noteId, notePath: notePath)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .rename,
             entityType: .note,
             entityId: noteId,
@@ -92,9 +92,9 @@ extension NotesStore {
     }
 
     public func enqueueMove(notePath: String, folder: String) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .move,
             entityType: .note,
             entityId: notePath,
@@ -105,9 +105,9 @@ extension NotesStore {
     }
 
     public func enqueuePin(notePath: String, pinned: Bool) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .pin,
             entityType: .note,
             entityId: notePath,
@@ -118,9 +118,9 @@ extension NotesStore {
     }
 
     public func enqueueArchive(notePath: String, archived: Bool) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .archive,
             entityType: .note,
             entityId: notePath,
@@ -131,9 +131,9 @@ extension NotesStore {
     }
 
     public func enqueueDelete(notePath: String) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .delete,
             entityType: .note,
             entityId: notePath,

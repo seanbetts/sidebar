@@ -97,6 +97,26 @@ open class CachedStoreBase<CachedData: Codable>: ObservableObject {
         nextBackgroundRefreshAllowedAt = nil
     }
 
+    public func enqueueOfflineOperation<Payload: Encodable>(
+        writeQueue: WriteQueue?,
+        operation: WriteOperation,
+        entityType: WriteEntityType,
+        entityId: String?,
+        payload: Payload,
+        serverSnapshot: ServerSnapshot? = nil
+    ) async throws {
+        guard let writeQueue else {
+            throw WriteQueueError.missingQueue
+        }
+        try await writeQueue.enqueue(
+            operation: operation,
+            entityType: entityType,
+            entityId: entityId,
+            payload: payload,
+            serverSnapshot: serverSnapshot
+        )
+    }
+
     public func markBackgroundRefreshFailure() {
         consecutiveBackgroundRefreshFailures += 1
         guard consecutiveBackgroundRefreshFailures >= backgroundRefreshFailuresBeforeBackoff else {

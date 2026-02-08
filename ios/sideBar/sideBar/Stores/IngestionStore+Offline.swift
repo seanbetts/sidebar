@@ -8,7 +8,6 @@ extension IngestionStore {
     }
 
     func enqueuePin(fileId: String, pinned: Bool) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let operationId = UUID().uuidString
         let payload = IngestionOperationPayload(
             operationId: operationId,
@@ -18,7 +17,8 @@ extension IngestionStore {
             clientUpdatedAt: fileMeta(for: fileId)?.updatedAt
         )
         let snapshot = makeServerSnapshot(fileId: fileId)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .pin,
             entityType: .file,
             entityId: fileId,
@@ -29,7 +29,6 @@ extension IngestionStore {
     }
 
     func enqueueRename(fileId: String, filename: String) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let operationId = UUID().uuidString
         let payload = IngestionOperationPayload(
             operationId: operationId,
@@ -39,7 +38,8 @@ extension IngestionStore {
             clientUpdatedAt: fileMeta(for: fileId)?.updatedAt
         )
         let snapshot = makeServerSnapshot(fileId: fileId)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .rename,
             entityType: .file,
             entityId: fileId,
@@ -50,7 +50,6 @@ extension IngestionStore {
     }
 
     func enqueueDelete(fileId: String) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
         let operationId = UUID().uuidString
         let payload = IngestionOperationPayload(
             operationId: operationId,
@@ -59,7 +58,8 @@ extension IngestionStore {
             clientUpdatedAt: fileMeta(for: fileId)?.updatedAt
         )
         let snapshot = makeServerSnapshot(fileId: fileId)
-        try await writeQueue.enqueue(
+        try await enqueueOfflineOperation(
+            writeQueue: writeQueue,
             operation: .delete,
             entityType: .file,
             entityId: fileId,
