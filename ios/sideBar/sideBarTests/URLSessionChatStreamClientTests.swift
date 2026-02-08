@@ -76,6 +76,57 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         }
     }
 
+    // MARK: - Concurrency regression (Phase 2.5)
+
+    func testDisconnectDuringConnectDoesNotCrash() async throws {
+        URLProtocolStreamingMock.dataChunks = (0..<100).map { _ in
+            Data("event: token\ndata: {\"text\":\"hi\"}\n\n".utf8)
+        }
+        URLProtocolStreamingMock.requestHandler = { request in
+            HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        }
+        let session = makeSession()
+        let client = URLSessionChatStreamClient(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { "token" },
+            session: session
+        )
+
+        let connectTask = Task {
+            try? await client.connect(request: ChatStreamRequest(message: "Hello"))
+        }
+        try await Task.sleep(nanoseconds: 10_000_000)
+        client.disconnect()
+
+        await connectTask.value
+    }
+
+    func testRapidConnectDisconnectCyclesDoNotCrash() async throws {
+        URLProtocolStreamingMock.dataChunks = [
+            Data("event: token\ndata: {\"text\":\"hi\"}\n\n".utf8)
+        ]
+        URLProtocolStreamingMock.requestHandler = { request in
+            HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        }
+        let session = makeSession()
+        let client = URLSessionChatStreamClient(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { "token" },
+            session: session
+        )
+
+        for _ in 0..<10 {
+            let task = Task {
+                try? await client.connect(request: ChatStreamRequest(message: "Hello"))
+            }
+            try await Task.sleep(nanoseconds: 1_000_000)
+            client.disconnect()
+            await task.value
+        }
+    }
+
+    // MARK: - Helpers
+
     private func makeSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [URLProtocolStreamingMock.self]

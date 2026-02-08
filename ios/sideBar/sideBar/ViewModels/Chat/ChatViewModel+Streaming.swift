@@ -138,8 +138,8 @@ extension ChatViewModel {
         if let serverIndex = reconciled.firstIndex(where: { $0.id == currentStreamMessageId }) {
             let serverMessage = reconciled[serverIndex]
             if serverMessage.status != .streaming {
-                currentStreamMessageId = nil
-                streamingConversationId = nil
+                self.currentStreamMessageId = nil
+                self.streamingConversationId = nil
                 return reconciled
             }
             if streamingMessage.content.count > serverMessage.content.count {

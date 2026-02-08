@@ -18,17 +18,17 @@ struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
     @EnvironmentObject var appEnvironment: AppEnvironment
     #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var searchQuery: String = ""
-    @State private var hasLoaded = false
-    @State private var isArchiveExpanded = false
-    @State private var selection: String?
-    @State private var listAppeared = false
-    @State private var isNewWebsitePresented = false
-    @State private var newWebsiteUrl: String = ""
-    @State private var saveErrorMessage: String?
+    @Environment(\.colorScheme) var colorScheme
+    @State var searchQuery: String = ""
+    @State var hasLoaded = false
+    @State var isArchiveExpanded = false
+    @State var selection: String?
+    @State var listAppeared = false
+    @State var isNewWebsitePresented = false
+    @State var newWebsiteUrl: String = ""
+    @State var saveErrorMessage: String?
     @State var deleteTarget: WebsiteItem?
     @State var renameTarget: WebsiteItem?
     @State var renameValue: String = ""
@@ -36,7 +36,7 @@ struct WebsitesPanelView: View {
     @State var exportDocument: MarkdownFileDocument?
     @State var isExporting = false
     @State var exportFilename: String = "website"
-    @FocusState private var isSearchFocused: Bool
+    @FocusState var isSearchFocused: Bool
 
     var body: some View {
         let base = VStack(spacing: 0) {

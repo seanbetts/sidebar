@@ -4,20 +4,20 @@ import Combine
 @MainActor
 /// Manages tasks state, networking, and user actions for the tasks UI.
 public final class TasksViewModel: ObservableObject {
-    @Published private var localErrorMessage: String?
+    @Published var localErrorMessage: String?
     @Published public var searchQuery: String = ""
     @Published public var newTaskDraft: TaskDraft?
-    @Published public private(set) var newTaskSaving: Bool = false
-    @Published public private(set) var newTaskError: String = ""
-    @Published public private(set) var filteredUpcomingCount: Int?
+    @Published public internal(set) var newTaskSaving: Bool = false
+    @Published public internal(set) var newTaskError: String = ""
+    @Published public internal(set) var filteredUpcomingCount: Int?
 
     let api: any TasksProviding
     let store: TasksStore
     let toastCenter: ToastCenter
     let networkStatus: any NetworkStatusProviding
-    private var cancellables = Set<AnyCancellable>()
-    private var searchDebounce: Task<Void, Never>?
-    private var lastNonSearchSelection: TaskSelection = .today
+    var cancellables = Set<AnyCancellable>()
+    var searchDebounce: Task<Void, Never>?
+    var lastNonSearchSelection: TaskSelection = .today
 
     public init(
         api: any TasksProviding,

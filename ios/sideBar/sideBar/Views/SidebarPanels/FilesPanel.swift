@@ -19,24 +19,24 @@ struct FilesPanelView: View {
     @EnvironmentObject var appEnvironment: AppEnvironment
     @ObservedObject var viewModel: IngestionViewModel
     #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var hasLoaded = false
-    @State private var expandedCategories: Set<String> = []
-    @State private var searchQuery: String = ""
-    @State private var listAppeared = false
+    @Environment(\.colorScheme) var colorScheme
+    @State var hasLoaded = false
+    @State var expandedCategories: Set<String> = []
+    @State var searchQuery: String = ""
+    @State var listAppeared = false
     @State var isDeleteAlertPresented = false
     @State var deleteTarget: IngestionListItem?
-    @State private var pinTarget: IngestionListItem?
-    @State private var isFileImporterPresented = false
-    @State private var isYouTubeAlertPresented = false
-    @State private var newYouTubeUrl: String = ""
-    @State private var knownFileIds: Set<String> = []
+    @State var pinTarget: IngestionListItem?
+    @State var isFileImporterPresented = false
+    @State var isYouTubeAlertPresented = false
+    @State var newYouTubeUrl: String = ""
+    @State var knownFileIds: Set<String> = []
     @State var renameTarget: IngestionListItem?
     @State var renameValue: String = ""
     @State var isRenameSheetPresented = false
-    @FocusState private var isSearchFocused: Bool
+    @FocusState var isSearchFocused: Bool
 
     var body: some View {
         content

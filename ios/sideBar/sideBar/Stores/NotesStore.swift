@@ -26,14 +26,14 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
     weak var spotlightIndexer: (any SpotlightIndexing)?
-    private var isRefreshingTree = false
-    private var isRefreshingArchivedTree = false
-    private var refreshingNotes = Set<String>()
+    var isRefreshingTree = false
+    var isRefreshingArchivedTree = false
+    var refreshingNotes = Set<String>()
     let archivedNoteRetentionDays = 7
     let archivedNotePrefetchLimit = 50
-    private let archivedTreeLimit = 500
-    private let archivedRefreshWaitTimeoutNanoseconds: UInt64
-    private let archivedRefreshPollIntervalNanoseconds: UInt64
+    let archivedTreeLimit = 500
+    let archivedRefreshWaitTimeoutNanoseconds: UInt64
+    let archivedRefreshPollIntervalNanoseconds: UInt64
     var archivedSummary: ArchivedSummary?
     var archivedTreeSyncedAt: String?
     var archivedSyncLoaded = false
@@ -207,7 +207,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
 
     // MARK: - Private
 
-    private func refreshTree() async {
+    func refreshTree() async {
         guard canAttemptBackgroundRefresh() else {
             return
         }
@@ -226,7 +226,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         }
     }
 
-    private func refreshArchivedTree(force: Bool = false) async {
+    func refreshArchivedTree(force: Bool = false) async {
         if !force {
             guard canAttemptBackgroundRefresh() else {
                 return
@@ -256,7 +256,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         }
     }
 
-    private func waitForArchivedTreeRefresh() async {
+    func waitForArchivedTreeRefresh() async {
         var elapsed: UInt64 = 0
         while isRefreshingArchivedTree, elapsed < archivedRefreshWaitTimeoutNanoseconds {
             try? await Task.sleep(nanoseconds: archivedRefreshPollIntervalNanoseconds)
@@ -264,7 +264,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         }
     }
 
-    private func refreshNote(id: String) async {
+    func refreshNote(id: String) async {
         guard canAttemptBackgroundRefresh() else {
             return
         }

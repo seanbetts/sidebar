@@ -319,6 +319,96 @@ final class IngestionViewModelTests: XCTestCase {
         )
     }
 
+    // MARK: - Concurrency regression (Phase 2.8)
+
+    func testStartJobPollingDoesNotCreateDuplicateTasks() {
+        let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
+
+        vm.startJobPollingIfNeeded(fileId: "file-1")
+        vm.startJobPollingIfNeeded(fileId: "file-1")
+
+        XCTAssertEqual(vm.jobPollingTasks.count, 1, "Duplicate polling tasks should be prevented")
+    }
+
+    func testCancelJobPollingClearsAllTasksAndTokens() {
+        let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
+
+        vm.startJobPollingIfNeeded(fileId: "file-1")
+        XCTAssertEqual(vm.jobPollingTasks.count, 1)
+        XCTAssertEqual(vm.jobPollingTaskTokens.count, 1)
+
+        vm.cancelJobPolling()
+
+        XCTAssertTrue(vm.jobPollingTasks.isEmpty)
+        XCTAssertTrue(vm.jobPollingTaskTokens.isEmpty)
+    }
+
+    func testCancelJobPollingByFileIdLeavesOtherTasks() {
+        let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
+
+        vm.startJobPollingIfNeeded(fileId: "file-1")
+        // Manually add a second file's polling state
+        vm.selectedFileId = "file-2"
+        vm.activeMeta = IngestionMetaResponse(
+            file: makeFile(id: "file-2"),
+            job: makeJob(status: "processing"),
+            derivatives: [],
+            recommendedViewer: nil
+        )
+        vm.startJobPollingIfNeeded(fileId: "file-2")
+        XCTAssertEqual(vm.jobPollingTasks.count, 2)
+
+        vm.cancelJobPolling(fileId: "file-1")
+
+        XCTAssertNil(vm.jobPollingTasks["file-1"])
+        XCTAssertNotNil(vm.jobPollingTasks["file-2"])
+    }
+
+    func testNewPollingTokenReplacesOldToken() {
+        let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
+
+        vm.startJobPollingIfNeeded(fileId: "file-1")
+        let firstToken = vm.jobPollingTaskTokens["file-1"]
+        XCTAssertNotNil(firstToken)
+
+        vm.cancelJobPolling(fileId: "file-1")
+        vm.startJobPollingIfNeeded(fileId: "file-1")
+        let secondToken = vm.jobPollingTaskTokens["file-1"]
+        XCTAssertNotNil(secondToken)
+
+        XCTAssertNotEqual(firstToken, secondToken, "Restarted polling should get a fresh token")
+    }
+
+    private func makePollingViewModel(fileId: String, jobStatus: String) -> IngestionViewModel {
+        let meta = IngestionMetaResponse(
+            file: makeFile(id: fileId),
+            job: makeJob(status: jobStatus),
+            derivatives: [],
+            recommendedViewer: nil
+        )
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .success(meta),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let vm = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+        vm.selectedFileId = fileId
+        vm.activeMeta = meta
+        return vm
+    }
+
+    // MARK: - Helpers
+
     private func makeListItem(id: String, status: String = "ready", stage: String = "done") -> IngestionListItem {
         IngestionListItem(
             file: makeFile(id: id),

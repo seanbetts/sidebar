@@ -283,7 +283,7 @@ extension SupabaseRealtimeAdapter {
     }
 }
 
-private actor AccessTokenStore {
+actor AccessTokenStore {
     private var token: String?
 
     func get() -> String? {

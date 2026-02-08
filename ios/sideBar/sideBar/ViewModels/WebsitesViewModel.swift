@@ -48,32 +48,32 @@ public final class WebsitesViewModel: ObservableObject {
         public let url: String
     }
 
-    @Published public private(set) var items: [WebsiteItem] = []
-    @Published public private(set) var active: WebsiteDetail?
-    @Published public private(set) var selectedWebsiteId: String?
-    @Published public private(set) var isLoading: Bool = false
-    @Published public private(set) var isLoadingDetail: Bool = false
-    @Published public private(set) var isLoadingArchived: Bool = false
-    @Published public private(set) var errorMessage: String?
-    @Published public private(set) var isSavingWebsite: Bool = false
-    @Published public private(set) var saveErrorMessage: String?
-    @Published public private(set) var pendingWebsite: PendingWebsiteItem?
-    @Published public private(set) var archivedSummary: ArchivedSummary?
+    @Published public internal(set) var items: [WebsiteItem] = []
+    @Published public internal(set) var active: WebsiteDetail?
+    @Published public internal(set) var selectedWebsiteId: String?
+    @Published public internal(set) var isLoading: Bool = false
+    @Published public internal(set) var isLoadingDetail: Bool = false
+    @Published public internal(set) var isLoadingArchived: Bool = false
+    @Published public internal(set) var errorMessage: String?
+    @Published public internal(set) var isSavingWebsite: Bool = false
+    @Published public internal(set) var saveErrorMessage: String?
+    @Published public internal(set) var pendingWebsite: PendingWebsiteItem?
+    @Published public internal(set) var archivedSummary: ArchivedSummary?
     var detailLoadingMessage: String {
         pendingWebsite?.title ?? "Reading..."
     }
 
-    private let api: any WebsitesProviding
-    private let store: WebsitesStore
-    private let ingestionStore: IngestionStore?
-    private let toastCenter: ToastCenter
-    private let networkStatus: any NetworkStatusProviding
-    private let transcriptPollIntervalNanoseconds: UInt64
-    private let logger = Logger(subsystem: "sideBar", category: "WebsitesViewModel")
-    @Published private var inFlightTranscriptRequests: [String: Set<String>] = [:]
-    private var pendingTranscriptJobs: [String: Set<String>] = [:]
-    private var transcriptPollingTasks: [String: Task<Void, Never>] = [:]
-    private var cancellables = Set<AnyCancellable>()
+    let api: any WebsitesProviding
+    let store: WebsitesStore
+    let ingestionStore: IngestionStore?
+    let toastCenter: ToastCenter
+    let networkStatus: any NetworkStatusProviding
+    let transcriptPollIntervalNanoseconds: UInt64
+    let logger = Logger(subsystem: "sideBar", category: "WebsitesViewModel")
+    @Published var inFlightTranscriptRequests: [String: Set<String>] = [:]
+    var pendingTranscriptJobs: [String: Set<String>] = [:]
+    var transcriptPollingTasks: [String: Task<Void, Never>] = [:]
+    var cancellables = Set<AnyCancellable>()
 
     public init(
         api: any WebsitesProviding,

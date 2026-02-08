@@ -20,8 +20,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             updatePrefixVisibility()
         }
     }
-    @Published public private(set) var hasUnsavedChanges: Bool = false
-    @Published public private(set) var autosaveToken: Int = 0
+    @Published public internal(set) var hasUnsavedChanges: Bool = false
+    @Published public internal(set) var autosaveToken: Int = 0
     public var autosaveDelay: TimeInterval = 1.5
 
 #if os(iOS)

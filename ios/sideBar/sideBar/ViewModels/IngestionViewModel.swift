@@ -110,8 +110,7 @@ public final class IngestionViewModel: ObservableObject {
     }
 
     deinit {
-        cancelJobPolling()
-        stopListPolling()
-        readyMessageTask.cancel()
+        for task in jobPollingTasks.values { task.cancel() }
+        listPollingTask?.cancel()
     }
 }

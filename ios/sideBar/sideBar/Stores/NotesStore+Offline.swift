@@ -397,17 +397,6 @@ extension NotesStore {
         return offlineStore?.get(key: cacheKey, as: NotePayload.self)
     }
 
-    private func findNode(path: String, in nodes: [FileNode]) -> FileNode? {
-        for node in nodes {
-            if node.path == path {
-                return node
-            }
-            if let children = node.children, let found = findNode(path: path, in: children) {
-                return found
-            }
-        }
-        return nil
-    }
 }
 
 private struct EmptyPayload: Codable {}

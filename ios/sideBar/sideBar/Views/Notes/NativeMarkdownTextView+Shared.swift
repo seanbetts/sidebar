@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
-private func displayText(for text: AttributedString, isEditable: Bool) -> NSAttributedString {
+func displayText(for text: AttributedString, isEditable: Bool) -> NSAttributedString {
     CodeBlockAttachmentBuilder.displayText(
         from: text,
         renderCodeBlocks: !isEditable,
@@ -11,7 +11,7 @@ private func displayText(for text: AttributedString, isEditable: Bool) -> NSAttr
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func nsRange(from selection: AttributedTextSelection, in text: AttributedString) -> NSRange {
+func nsRange(from selection: AttributedTextSelection, in text: AttributedString) -> NSRange {
     let string = String(text.characters)
     switch selection.indices(in: text) {
     case .insertionPoint(let index):
@@ -34,7 +34,7 @@ private func nsRange(from selection: AttributedTextSelection, in text: Attribute
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func selectionFromRange(_ range: NSRange, in text: AttributedString) -> AttributedTextSelection {
+func selectionFromRange(_ range: NSRange, in text: AttributedString) -> AttributedTextSelection {
     let string = String(text.characters)
     let maxLocation = string.utf16.count
     let safeLocation = min(max(0, range.location), maxLocation)

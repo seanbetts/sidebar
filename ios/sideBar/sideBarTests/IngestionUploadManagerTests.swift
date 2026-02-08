@@ -27,6 +27,69 @@ final class IngestionUploadManagerTests: XCTestCase {
         XCTAssertThrowsError(try IngestionUploadHelpers.parseUploadResponse(data: data))
     }
 
+    // MARK: - Concurrency regression (Phase 2.2)
+
+    func testConcurrentCancelUploadsDoNotDeadlock() {
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+        let manager = IngestionUploadManager(config: config)
+        let group = DispatchGroup()
+
+        for i in 0..<50 {
+            group.enter()
+            DispatchQueue.global().async {
+                manager.cancelUpload(uploadId: "upload-\(i)")
+                group.leave()
+            }
+        }
+
+        let result = group.wait(timeout: .now() + 5)
+        XCTAssertEqual(result, .success, "Concurrent cancel calls should not deadlock")
+    }
+
+    func testConcurrentStartAndCancelDoNotCrash() {
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+        let manager = IngestionUploadManager(config: config)
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("test-upload-\(UUID().uuidString)")
+        try? Data("data".utf8).write(to: fileURL)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let group = DispatchGroup()
+        for i in 0..<20 {
+            let uploadId = "upload-\(i)"
+            group.enter()
+            DispatchQueue.global().async {
+                manager.startUpload(
+                    request: UploadRequest(
+                        uploadId: uploadId,
+                        fileURL: fileURL,
+                        filename: "test.txt",
+                        mimeType: "text/plain",
+                        folder: "test"
+                    ),
+                    onProgress: { _ in },
+                    onCompletion: { _ in }
+                )
+                group.leave()
+            }
+            group.enter()
+            DispatchQueue.global().async {
+                manager.cancelUpload(uploadId: uploadId)
+                group.leave()
+            }
+        }
+
+        let result = group.wait(timeout: .now() + 10)
+        XCTAssertEqual(result, .success, "Concurrent start+cancel should not crash or deadlock")
+    }
+
+    // MARK: - Helpers
+
     func testWriteMultipartBodyIncludesFields() throws {
         let boundary = "Boundary-Test"
         let inputURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
