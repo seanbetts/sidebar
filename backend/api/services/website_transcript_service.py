@@ -102,13 +102,10 @@ def append_transcript_to_markdown(
     if not transcript_body:
         return TranscriptAppendResult(content=markdown, changed=False)
 
-    title = (video_title or "").strip() or "YouTube"
     transcript_block = [
         "___",
         "",
         marker,
-        "",
-        f"### Transcript of {title} video",
         "",
         transcript_body,
     ]

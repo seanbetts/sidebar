@@ -83,4 +83,23 @@ final class MarkdownRenderingTests: XCTestCase {
         }
         XCTAssertEqual(markdown, input)
     }
+
+    func testStripWebsiteTranscriptArtifactsRemovesMarkerAndLegacyTitle() {
+        let input = """
+        ___
+
+        <!-- YOUTUBE_TRANSCRIPT:dQw4w9WgXcQ -->
+
+        ### Transcript of Example video
+
+        Hello world transcript.
+        """
+
+        let stripped = MarkdownRendering.stripWebsiteTranscriptArtifacts(input)
+
+        XCTAssertTrue(stripped.contains("___"))
+        XCTAssertTrue(stripped.contains("Hello world transcript."))
+        XCTAssertFalse(stripped.contains("YOUTUBE_TRANSCRIPT"))
+        XCTAssertFalse(stripped.contains("Transcript of Example video"))
+    }
 }

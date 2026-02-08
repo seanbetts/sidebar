@@ -80,9 +80,12 @@ struct SideBarMarkdown: View, Equatable {
 
     var body: some View {
         #if canImport(MarkdownUI)
-        let blocks = MarkdownRendering.normalizedBlocks(from: text)
+        let displayText = youtubeTranscriptContext == nil
+            ? text
+            : MarkdownRendering.stripWebsiteTranscriptArtifacts(text)
+        let blocks = MarkdownRendering.normalizedBlocks(from: displayText)
         if blocks.isEmpty {
-            styledMarkdown(text)
+            styledMarkdown(displayText)
         } else {
             VStack(alignment: .leading, spacing: SideBarMarkdownLayout.blockSpacing) {
                 ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in

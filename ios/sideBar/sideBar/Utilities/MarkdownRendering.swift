@@ -89,6 +89,33 @@ public enum MarkdownRendering {
         return normalizeImageCaptions(normalized)
     }
 
+    public nonisolated static func stripWebsiteTranscriptArtifacts(
+        _ text: String
+    ) -> String {
+        let markerRegex = makeRegex(
+            pattern: #"(?m)^\s*<!--\s*YOUTUBE_TRANSCRIPT:[^>]+-->\s*\n?"#
+        )
+        let legacyTitleRegex = makeRegex(
+            pattern: #"(?m)^\s*###\s+Transcript of .+ video\s*\n?"#
+        )
+        var cleaned = markerRegex.stringByReplacingMatches(
+            in: text,
+            range: NSRange(location: 0, length: text.utf16.count),
+            withTemplate: ""
+        )
+        cleaned = legacyTitleRegex.stringByReplacingMatches(
+            in: cleaned,
+            range: NSRange(location: 0, length: cleaned.utf16.count),
+            withTemplate: ""
+        )
+        let extraBlankRegex = makeRegex(pattern: #"\n{3,}"#)
+        return extraBlankRegex.stringByReplacingMatches(
+            in: cleaned,
+            range: NSRange(location: 0, length: cleaned.utf16.count),
+            withTemplate: "\n\n"
+        )
+    }
+
     public nonisolated static func normalizedBlocks(from text: String) -> [MarkdownContentBlock] {
         let stripped = stripFrontmatter(text)
         let blocks = splitMarkdownContent(stripped)

@@ -56,7 +56,7 @@ def test_append_transcript_appends_block_to_end():
     assert "Hello transcript" in result.content
     assert result.content.rstrip().endswith("Hello transcript")
     assert "___" in result.content
-    assert "Transcript of Example Video video" in result.content
+    assert "Transcript of Example Video video" not in result.content
 
 
 def test_append_transcript_strips_transcript_frontmatter():
@@ -80,7 +80,7 @@ def test_append_transcript_strips_transcript_frontmatter():
     assert result.changed is True
     assert "title: Example" not in result.content
     assert "Transcript body line one." in result.content
-    assert "Transcript of Sample video" in result.content
+    assert "Transcript of Sample video" not in result.content
 
 
 def test_append_transcript_strips_hash_header_block():
@@ -104,4 +104,4 @@ def test_append_transcript_strips_hash_header_block():
     assert result.changed is True
     assert "Transcript of Example.mp3" not in result.content
     assert "Final transcript line." in result.content
-    assert "Transcript of Example video" in result.content
+    assert "Transcript of Example video" not in result.content
