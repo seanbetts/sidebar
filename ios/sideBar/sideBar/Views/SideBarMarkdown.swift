@@ -75,7 +75,12 @@ struct SideBarMarkdown: View, Equatable {
     }
 
     static func == (lhs: SideBarMarkdown, rhs: SideBarMarkdown) -> Bool {
-        lhs.text == rhs.text && lhs.style == rhs.style
+        // Transcript button state (queued/processing) is driven by external view model state.
+        // Force re-render whenever transcript context is present so status changes are reflected.
+        if lhs.youtubeTranscriptContext != nil || rhs.youtubeTranscriptContext != nil {
+            return false
+        }
+        return lhs.text == rhs.text && lhs.style == rhs.style
     }
 
     var body: some View {
