@@ -1,6 +1,7 @@
 import Foundation
 import os.log
 
+/// Represents a queued share payload category persisted between extension and app.
 public enum PendingShareKind: String, Codable {
     case website
     case file
@@ -8,15 +9,24 @@ public enum PendingShareKind: String, Codable {
     case youtube
 }
 
+/// Represents a single queued share payload persisted for deferred processing.
 public struct PendingShareItem: Codable, Equatable, Identifiable {
+    /// Unique identifier for the queued share item.
     public let id: UUID
+    /// Share payload category for downstream routing.
     public let kind: PendingShareKind
+    /// Timestamp when the item was queued.
     public let createdAt: Date
+    /// Shared website URL when kind is `.website` or `.youtube`.
     public let url: String?
+    /// Relative file path for copied binary payloads.
     public let filePath: String?
+    /// Original filename supplied by the share source.
     public let filename: String?
+    /// MIME type for binary payload processing.
     public let mimeType: String?
 
+    /// Creates a queued share payload model.
     public init(
         id: UUID,
         kind: PendingShareKind,
@@ -36,7 +46,9 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
     }
 }
 
+/// Stores pending share payloads in app-group storage for later app ingestion.
 public final class PendingShareStore {
+    /// Process-wide shared pending-share store instance.
     public static let shared = PendingShareStore()
 
     private static let log = OSLog(subsystem: "ai.sidebar.sidebar", category: "PendingShareStore")
@@ -48,6 +60,7 @@ public final class PendingShareStore {
     private let userDefaults: UserDefaults?
     private let accessLock = NSRecursiveLock()
 
+    /// Creates a pending-share store with injectable storage dependencies for tests.
     public init(
         baseDirectory: URL? = nil,
         userDefaults: UserDefaults? = nil,
@@ -59,6 +72,7 @@ public final class PendingShareStore {
     }
 
     @discardableResult
+    /// Enqueues a website URL share if not already present.
     public func enqueueWebsite(url: String) -> PendingShareItem? {
         withAccessLock {
             logMissingAppGroupIfNeeded(context: "enqueueWebsite")
@@ -82,6 +96,7 @@ public final class PendingShareStore {
     }
 
     @discardableResult
+    /// Enqueues a YouTube URL share if not already present.
     public func enqueueYouTube(url: String) -> PendingShareItem? {
         withAccessLock {
             logMissingAppGroupIfNeeded(context: "enqueueYouTube")
@@ -105,6 +120,7 @@ public final class PendingShareStore {
     }
 
     @discardableResult
+    /// Writes binary data to app-group storage and enqueues the resulting file share item.
     public func enqueueFile(
         data: Data,
         filename: String,
@@ -134,6 +150,7 @@ public final class PendingShareStore {
     }
 
     @discardableResult
+    /// Copies an existing file into app-group storage and enqueues the resulting file share item.
     public func enqueueFile(
         at url: URL,
         filename: String,
@@ -162,6 +179,7 @@ public final class PendingShareStore {
         }
     }
 
+    /// Loads all currently queued pending share items.
     public func loadAll() -> [PendingShareItem] {
         withAccessLock {
             guard let defaults else { return [] }
@@ -171,6 +189,7 @@ public final class PendingShareStore {
         }
     }
 
+    /// Replaces all queued share items with the provided collection.
     public func replaceAll(_ items: [PendingShareItem]) {
         withAccessLock {
             guard let defaults else { return }
@@ -182,6 +201,7 @@ public final class PendingShareStore {
         }
     }
 
+    /// Returns and clears all queued share items.
     public func consumeAll() -> [PendingShareItem] {
         withAccessLock {
             let items = loadAll()
@@ -191,6 +211,7 @@ public final class PendingShareStore {
         }
     }
 
+    /// Removes queued items matching the provided identifiers.
     public func remove(ids: [UUID]) {
         withAccessLock {
             guard !ids.isEmpty else { return }
@@ -200,6 +221,7 @@ public final class PendingShareStore {
         }
     }
 
+    /// Resolves the absolute file URL for a queued file item when available.
     public func resolveFileURL(for item: PendingShareItem) -> URL? {
         withAccessLock {
             guard let filePath = item.filePath, let baseDirectory = rootDirectory else { return nil }
@@ -207,6 +229,7 @@ public final class PendingShareStore {
         }
     }
 
+    /// Removes queued items and backing files older than the provided day count.
     public func cleanup(olderThan days: Int) {
         withAccessLock {
             guard days > 0 else { return }
