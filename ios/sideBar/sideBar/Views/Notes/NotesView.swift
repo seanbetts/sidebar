@@ -157,30 +157,30 @@ public struct NotesView: View {
             systemImage: "ellipsis",
             accessibilityLabel: "Note options",
             items: [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                .pin(isPinned: isPinned) {
                     guard let noteId = environment.notesViewModel.activeNote?.path else { return }
                     Task {
                         await environment.notesViewModel.setPinned(id: noteId, pinned: !isPinned)
                     }
                 },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                .rename {
                     renameValue = displayTitle
                     isRenameDialogPresented = true
                 },
-                SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                .move {
                     moveSelection = currentFolderPath
                     isMoveSheetPresented = true
                 },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                .copy {
                     copyMarkdown()
                 },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                .download {
                     exportMarkdown()
                 },
-                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                .archive(isArchived: isArchived) {
                     archiveActiveNote()
                 },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                .delete {
                     isDeleteAlertPresented = true
                 }
             ],
@@ -214,22 +214,6 @@ public struct NotesView: View {
 
     private var isArchived: Bool {
         activeNode?.archived == true
-    }
-
-    private var pinActionTitle: String {
-        isPinned ? "Unpin" : "Pin"
-    }
-
-    private var pinIconName: String {
-        isPinned ? "pin.slash" : "pin"
-    }
-
-    private var archiveMenuTitle: String {
-        isArchived ? "Unarchive" : "Archive"
-    }
-
-    private var archiveIconName: String {
-        isArchived ? "archivebox.fill" : "archivebox"
     }
 
     private var currentFolderPath: String {

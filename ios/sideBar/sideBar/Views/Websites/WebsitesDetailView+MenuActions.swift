@@ -58,36 +58,7 @@ extension WebsitesDetailView {
         HeaderActionMenuButton(
             systemImage: "ellipsis",
             accessibilityLabel: "Website options",
-            items: [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                    guard let websiteId = viewModel.active?.id else { return }
-                    Task {
-                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
-                    }
-                },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
-                    renameValue = viewModel.active?.title ?? ""
-                    isRenameDialogPresented = true
-                },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                    copyWebsiteContent()
-                },
-                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
-                    copyWebsiteTitle()
-                },
-                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
-                    copyWebsiteURL()
-                },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                    exportWebsite()
-                },
-                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    archiveActiveWebsite()
-                },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                    isDeleteAlertPresented = true
-                }
-            ],
+            items: websiteHeaderMenuItems,
             isCompact: isCompact
         )
         .disabled(viewModel.active == nil)
@@ -99,39 +70,43 @@ extension WebsitesDetailView {
         HeaderActionMenuButton(
             systemImage: "ellipsis",
             accessibilityLabel: "Website options",
-            items: [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                    guard let websiteId = viewModel.active?.id else { return }
-                    Task {
-                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
-                    }
-                },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
-                    renameValue = viewModel.active?.title ?? ""
-                    isRenameDialogPresented = true
-                },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                    copyWebsiteContent()
-                },
-                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
-                    copyWebsiteTitle()
-                },
-                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
-                    copyWebsiteURL()
-                },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                    exportWebsite()
-                },
-                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    archiveActiveWebsite()
-                },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                    isDeleteAlertPresented = true
-                }
-            ],
+            items: websiteHeaderMenuItems,
             isCompact: isCompact
         )
         .disabled(viewModel.active == nil)
     }
     #endif
+
+    private var websiteHeaderMenuItems: [SidebarMenuItem] {
+        [
+            .pin(isPinned: isPinned) {
+                guard let websiteId = viewModel.active?.id else { return }
+                Task {
+                    await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                }
+            },
+            .rename {
+                renameValue = viewModel.active?.title ?? ""
+                isRenameDialogPresented = true
+            },
+            .copy {
+                copyWebsiteContent()
+            },
+            SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
+                copyWebsiteTitle()
+            },
+            SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+                copyWebsiteURL()
+            },
+            .download {
+                exportWebsite()
+            },
+            .archive(isArchived: isArchived) {
+                archiveActiveWebsite()
+            },
+            .delete {
+                isDeleteAlertPresented = true
+            }
+        ]
+    }
 }

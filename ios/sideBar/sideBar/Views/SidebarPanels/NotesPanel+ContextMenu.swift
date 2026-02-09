@@ -19,54 +19,38 @@ extension NotesPanelView {
     func noteContextMenuItemsList(for item: FileNodeItem) -> [SidebarMenuItem] {
         if item.isFile {
             return [
-                SidebarMenuItem(title: notePinTitle(for: item), systemImage: notePinIconName(for: item), role: nil) {
+                .pin(isPinned: item.pinned) {
                     togglePin(for: item)
                 },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                .rename {
                     beginRename(for: item)
                 },
-                SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                .move {
                     beginMove(for: item)
                 },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                .copy {
                     Task { await copyNoteContent(for: item) }
                 },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                .download {
                     Task { await exportNoteContent(for: item) }
                 },
-                SidebarMenuItem(title: noteArchiveTitle(for: item), systemImage: noteArchiveIconName(for: item), role: nil) {
+                .archive(isArchived: item.archived) {
                     toggleArchive(for: item)
                 },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                .delete {
                     confirmDelete(for: item)
                 }
             ]
         }
 
         return [
-            SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+            .rename {
                 beginRename(for: item)
             },
-            SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+            .delete {
                 confirmDelete(for: item)
             }
         ]
-    }
-
-    private func notePinTitle(for item: FileNodeItem) -> String {
-        item.pinned ? "Unpin" : "Pin"
-    }
-
-    private func notePinIconName(for item: FileNodeItem) -> String {
-        item.pinned ? "pin.slash" : "pin"
-    }
-
-    private func noteArchiveTitle(for item: FileNodeItem) -> String {
-        item.archived ? "Unarchive" : "Archive"
-    }
-
-    private func noteArchiveIconName(for item: FileNodeItem) -> String {
-        item.archived ? "archivebox.fill" : "archivebox"
     }
 
     private func beginMove(for item: FileNodeItem) {

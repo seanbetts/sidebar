@@ -79,34 +79,7 @@ extension NotesDetailView {
         HeaderActionMenuButton(
             systemImage: "ellipsis",
             accessibilityLabel: "Note options",
-            items: [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                    guard let noteId = viewModel.activeNote?.path else { return }
-                    Task {
-                        await viewModel.setPinned(id: noteId, pinned: !isPinned)
-                    }
-                },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
-                    renameValue = displayTitle
-                    isRenameDialogPresented = true
-                },
-                SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
-                    moveSelection = currentFolderPath
-                    isMoveSheetPresented = true
-                },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                    copyMarkdown()
-                },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                    exportMarkdown()
-                },
-                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    archiveActiveNote()
-                },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                    isDeleteAlertPresented = true
-                }
-            ],
+            items: noteSidebarMenuItems,
             isCompact: isCompact
         )
         .disabled(viewModel.activeNote == nil)
@@ -129,34 +102,7 @@ extension NotesDetailView {
             HeaderActionMenuButton(
                 systemImage: "ellipsis",
                 accessibilityLabel: "Note options",
-                items: [
-                    SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                        guard let noteId = viewModel.activeNote?.path else { return }
-                        Task {
-                            await viewModel.setPinned(id: noteId, pinned: !isPinned)
-                        }
-                    },
-                    SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
-                        renameValue = displayTitle
-                        isRenameDialogPresented = true
-                    },
-                    SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
-                        moveSelection = currentFolderPath
-                        isMoveSheetPresented = true
-                    },
-                    SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                        copyMarkdown()
-                    },
-                    SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                        exportMarkdown()
-                    },
-                    SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                        archiveActiveNote()
-                    },
-                    SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                        isDeleteAlertPresented = true
-                    }
-                ],
+                items: noteSidebarMenuItems,
                 isCompact: isCompact
             )
             .disabled(viewModel.activeNote == nil)
@@ -199,6 +145,37 @@ extension NotesDetailView {
             .fixedSize()
         }
         #endif
+    }
+
+    private var noteSidebarMenuItems: [SidebarMenuItem] {
+        [
+            .pin(isPinned: isPinned) {
+                guard let noteId = viewModel.activeNote?.path else { return }
+                Task {
+                    await viewModel.setPinned(id: noteId, pinned: !isPinned)
+                }
+            },
+            .rename {
+                renameValue = displayTitle
+                isRenameDialogPresented = true
+            },
+            .move {
+                moveSelection = currentFolderPath
+                isMoveSheetPresented = true
+            },
+            .copy {
+                copyMarkdown()
+            },
+            .download {
+                exportMarkdown()
+            },
+            .archive(isArchived: isArchived) {
+                archiveActiveNote()
+            },
+            .delete {
+                isDeleteAlertPresented = true
+            }
+        ]
     }
 
     @ViewBuilder

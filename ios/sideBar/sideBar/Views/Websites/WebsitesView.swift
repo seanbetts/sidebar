@@ -126,17 +126,17 @@ public struct WebsitesView: View {
             systemImage: "ellipsis",
             accessibilityLabel: "Website options",
             items: [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                .pin(isPinned: isPinned) {
                     guard let websiteId = environment.websitesViewModel.active?.id else { return }
                     Task {
                         await environment.websitesViewModel.setPinned(id: websiteId, pinned: !isPinned)
                     }
                 },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                .rename {
                     renameValue = environment.websitesViewModel.active?.title ?? ""
                     isRenameDialogPresented = true
                 },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                .copy {
                     copyWebsiteContent()
                 },
                 SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
@@ -145,13 +145,13 @@ public struct WebsitesView: View {
                 SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
                     copyWebsiteURL()
                 },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                .download {
                     exportWebsite()
                 },
-                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                .archive(isArchived: isArchived) {
                     archiveActiveWebsite()
                 },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                .delete {
                     isDeleteAlertPresented = true
                 }
             ],
@@ -167,22 +167,6 @@ public struct WebsitesView: View {
 
     private var isArchived: Bool {
         environment.websitesViewModel.active?.archived == true
-    }
-
-    private var pinActionTitle: String {
-        isPinned ? "Unpin" : "Pin"
-    }
-
-    private var pinIconName: String {
-        isPinned ? "pin.slash" : "pin"
-    }
-
-    private var archiveMenuTitle: String {
-        isArchived ? "Unarchive" : "Archive"
-    }
-
-    private var archiveIconName: String {
-        isArchived ? "archivebox.fill" : "archivebox"
     }
 
     private var renameDialogTitle: String {

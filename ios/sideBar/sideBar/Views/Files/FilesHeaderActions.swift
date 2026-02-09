@@ -109,19 +109,19 @@ struct FilesHeaderActions: View {
             systemImage: "ellipsis",
             accessibilityLabel: "File options",
             items: [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                .pin(isPinned: isPinned) {
                     Task { await togglePin() }
                 },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                .rename {
                     beginRename()
                 },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                .copy {
                     copyFileContent()
                 },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                .download {
                     Task { await downloadFile() }
                 },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                .delete {
                     isDeleteAlertPresented = true
                 }
             ],

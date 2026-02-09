@@ -14,39 +14,31 @@ extension FilesPanelView {
 
     func fileContextMenuItemsList(for item: IngestionListItem) -> [SidebarMenuItem] {
         [
-            SidebarMenuItem(title: filePinTitle(for: item), systemImage: filePinIconName(for: item), role: nil) {
+            .pin(isPinned: item.file.pinned ?? false) {
                 Task {
                     await viewModel.togglePinned(fileId: item.file.id, pinned: !(item.file.pinned ?? false))
                 }
             },
-            SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+            .rename {
                 beginRename(for: item)
             },
-            SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+            .copy {
                 Task {
                     await selectFileForAction(item)
                     copySelectedFileContent()
                 }
             },
-            SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+            .download {
                 Task {
                     await selectFileForAction(item)
                     self.appEnvironment.emitShortcutAction(.openInDefaultApp)
                 }
             },
-            SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+            .delete {
                 deleteTarget = item
                 isDeleteAlertPresented = true
             }
         ]
-    }
-
-    private func filePinTitle(for item: IngestionListItem) -> String {
-        (item.file.pinned ?? false) ? "Unpin" : "Pin"
-    }
-
-    private func filePinIconName(for item: IngestionListItem) -> String {
-        (item.file.pinned ?? false) ? "pin.slash" : "pin"
     }
 
     @MainActor

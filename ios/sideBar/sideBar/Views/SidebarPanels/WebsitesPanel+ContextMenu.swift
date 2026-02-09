@@ -14,13 +14,13 @@ extension WebsitesPanelView {
 
     func websiteContextMenuItemsList(for item: WebsiteItem) -> [SidebarMenuItem] {
         [
-            SidebarMenuItem(title: websitePinTitle(for: item), systemImage: websitePinIconName(for: item), role: nil) {
+            .pin(isPinned: item.pinned) {
                 Task { await viewModel.setPinned(id: item.id, pinned: !item.pinned) }
             },
-            SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+            .rename {
                 beginRename(for: item)
             },
-            SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+            .copy {
                 Task { await copyWebsiteContent(for: item) }
             },
             SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
@@ -29,32 +29,16 @@ extension WebsitesPanelView {
             SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
                 copyWebsiteURL(for: item)
             },
-            SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+            .download {
                 Task { await exportWebsiteContent(for: item) }
             },
-            SidebarMenuItem(title: websiteArchiveTitle(for: item), systemImage: websiteArchiveIconName(for: item), role: nil) {
+            .archive(isArchived: item.archived) {
                 Task { await viewModel.setArchived(id: item.id, archived: !item.archived) }
             },
-            SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+            .delete {
                 deleteTarget = item
             }
         ]
-    }
-
-    private func websitePinTitle(for item: WebsiteItem) -> String {
-        item.pinned ? "Unpin" : "Pin"
-    }
-
-    private func websitePinIconName(for item: WebsiteItem) -> String {
-        item.pinned ? "pin.slash" : "pin"
-    }
-
-    private func websiteArchiveTitle(for item: WebsiteItem) -> String {
-        item.archived ? "Unarchive" : "Archive"
-    }
-
-    private func websiteArchiveIconName(for item: WebsiteItem) -> String {
-        item.archived ? "archivebox.fill" : "archivebox"
     }
 
     @MainActor
