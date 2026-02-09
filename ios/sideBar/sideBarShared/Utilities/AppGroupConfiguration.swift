@@ -1,5 +1,6 @@
 import Foundation
 
+/// Provides app group, keychain access group, and shared container identifiers.
 public enum AppGroupConfiguration {
     private static let appGroupIdKey = "APP_GROUP_ID"
     private static let keychainAccessGroupKey = "KEYCHAIN_ACCESS_GROUP"

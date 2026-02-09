@@ -1,5 +1,6 @@
 import Foundation
 
+/// Errors thrown when a required configuration value is missing or invalid.
 public enum EnvironmentConfigLoadError: LocalizedError, Equatable {
     case missingValue(key: String)
     case invalidUrl(key: String, value: String)

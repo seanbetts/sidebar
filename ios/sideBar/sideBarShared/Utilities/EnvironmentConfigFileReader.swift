@@ -1,5 +1,6 @@
 import Foundation
 
+/// Reads configuration values from the SideBarConfig plist bundle resource.
 public enum EnvironmentConfigFileReader {
     public static func loadString(forKey key: String, bundle: Bundle = .main) -> String? {
         if let url = bundle.url(forResource: "SideBarConfig", withExtension: "plist") {

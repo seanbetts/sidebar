@@ -1,5 +1,6 @@
 import Foundation
 
+/// Converts share-queue results into user-visible status messages.
 public enum ExtensionQueueResultMapper {
     public static func queueSucceeded(for item: PendingShareItem?) -> Bool {
         item != nil

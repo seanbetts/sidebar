@@ -1,5 +1,6 @@
 import Foundation
 
+/// Type-erased Codable wrapper for encoding and decoding arbitrary JSON values.
 public struct AnyCodable: Codable {
     public let value: Any
 

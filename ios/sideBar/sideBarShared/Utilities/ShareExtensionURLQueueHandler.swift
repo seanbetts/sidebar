@@ -1,5 +1,6 @@
 import Foundation
 
+/// Enqueues shared URLs for offline processing via the pending share store.
 public enum ShareExtensionURLQueueHandler {
     @discardableResult
     public static func enqueueURLForLater(

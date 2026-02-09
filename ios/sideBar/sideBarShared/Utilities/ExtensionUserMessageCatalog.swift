@@ -28,6 +28,7 @@ public enum ExtensionMessageCode: String, CaseIterable {
     case unknownFailure = "unknown_failure"
 }
 
+/// Catalog of user-facing messages keyed by extension message code.
 public enum ExtensionUserMessageCatalog {
     private static let messagesByCode: [ExtensionMessageCode: String] = [
         .savedForLater: "Saved for later.",

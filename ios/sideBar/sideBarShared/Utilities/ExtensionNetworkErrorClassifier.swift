@@ -1,5 +1,6 @@
 import Foundation
 
+/// Maps URL-session errors to user-facing extension message codes.
 public enum ExtensionNetworkErrorClassifier {
     public static func isOfflineLike(_ error: Error) -> Bool {
         messageCode(for: error) == .networkError

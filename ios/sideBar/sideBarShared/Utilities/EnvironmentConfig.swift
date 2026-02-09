@@ -1,5 +1,6 @@
 import Foundation
 
+/// Holds API, Supabase, and R2 endpoint configuration loaded from the environment plist.
 public struct EnvironmentConfig {
     public let apiBaseUrl: URL
     public let supabaseUrl: URL
