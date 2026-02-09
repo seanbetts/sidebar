@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import SwiftUI
 
 public struct TasksPanel: View {
@@ -498,15 +497,4 @@ private extension TasksPanelView {
             return ""
         }
     }
-}
-
-private struct TaskListTarget {
-    let id: String
-    let title: String
-    let kind: TaskListTargetKind
-}
-
-private enum TaskListTargetKind {
-    case group
-    case project
 }
