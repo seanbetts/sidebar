@@ -34,3 +34,14 @@ def test_parse_metadata_cleans_null_like_values():
     assert metadata["title"] is None
     assert metadata["url_source"] is None
     assert metadata["published_time"] is None
+
+
+def test_extract_title_strips_youtube_suffix():
+    markdown = "# OpenAI Super Bowl 2026 | Codex | You Can Just Build Things - YouTube\n\nBody"
+
+    title = JinaService.extract_title(
+        markdown,
+        "https://www.youtube.com/watch?v=aCN9iCXNJqQ",
+    )
+
+    assert title == "OpenAI Super Bowl 2026 | Codex | You Can Just Build Things"

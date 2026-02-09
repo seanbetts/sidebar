@@ -1882,6 +1882,23 @@ def test_parse_url_local_tracks_youtube_embed(monkeypatch):
     assert "[YouTube](https://www.youtube.com/watch?v=abc123)" in parsed.content
 
 
+def test_parse_url_local_normalizes_youtube_title_suffix(monkeypatch):
+    html = """
+    <html>
+      <head><title>Recovered Video Title - YouTube</title></head>
+      <body><article><p>Content body</p></article></body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.youtube.com/watch?v=abc123xyzAA", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("https://www.youtube.com/watch?v=abc123xyzAA")
+    assert parsed.title == "Recovered Video Title"
+
+
 def test_parse_url_local_tracks_youtube_embed_from_raw_html(monkeypatch):
     html = """
     <html>

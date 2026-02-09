@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import httpx
 
 from api.config import settings
+from api.services.website_title_service import resolve_website_title
 
 
 class JinaService:
@@ -87,21 +88,31 @@ class JinaService:
     def extract_title(markdown: str, url: str) -> str:
         """Derive a title from markdown content or URL."""
         title_match = re.search(r"^#\s+(.+)", markdown, re.MULTILINE)
+        candidate_title = None
         if title_match:
-            return title_match.group(1).strip()
+            candidate_title = title_match.group(1).strip()
+        else:
+            title_line_match = re.search(r"^Title:\s*(.+)", markdown, re.MULTILINE)
+            if title_line_match:
+                candidate_title = title_line_match.group(1).strip()
+            else:
+                for line in markdown.split("\n"):
+                    stripped = line.strip()
+                    if (
+                        stripped
+                        and not stripped.startswith("---")
+                        and not stripped.startswith("#")
+                    ):
+                        candidate_title = stripped[:100]
+                        break
 
-        title_line_match = re.search(r"^Title:\s*(.+)", markdown, re.MULTILINE)
-        if title_line_match:
-            return title_line_match.group(1).strip()
-
-        for line in markdown.split("\n"):
-            stripped = line.strip()
-            if (
-                stripped
-                and not stripped.startswith("---")
-                and not stripped.startswith("#")
-            ):
-                return stripped[:100]
+        resolved = resolve_website_title(
+            candidate_title,
+            url=url,
+            allow_network=False,
+        )
+        if resolved:
+            return resolved
 
         parsed = urlparse(url)
         return parsed.netloc or url

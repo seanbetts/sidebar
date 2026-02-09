@@ -23,6 +23,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
+    from api.services.favicon_service import FaviconService
     from api.services.web_save_parser import (
         ParsedPage,
         build_frontmatter,
@@ -34,12 +35,13 @@ try:
         compute_word_count,
         extract_tags,
     )
-    from api.services.favicon_service import FaviconService
+    from api.services.website_title_service import resolve_website_title
     from api.services.websites_service import WebsitesService
 except Exception:
     SessionLocal = None
     WebsitesService = None
     FaviconService = None
+    resolve_website_title = None
 
 
 if not logging.getLogger().handlers:
@@ -207,12 +209,17 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         try:
             content = get_markdown_content(url, api_key)
             parsed_metadata, cleaned_content = parse_jina_metadata(content)
-            title = (
-                parsed_metadata.get("title")
-                or extract_title(cleaned_content)
-                or urlparse(url).netloc
-            )
             source = parsed_metadata.get("url_source") or url
+            candidate_title = parsed_metadata.get("title") or extract_title(
+                cleaned_content
+            )
+            if resolve_website_title is not None:
+                title = (
+                    resolve_website_title(candidate_title, url=source)
+                    or urlparse(source).netloc
+                )
+            else:
+                title = candidate_title or urlparse(source).netloc
             published_at = parse_published_at(parsed_metadata.get("published_time"))
             word_count = compute_word_count(cleaned_content)
             domain = urlparse(source).netloc

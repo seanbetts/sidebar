@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 from sqlalchemy import inspect
 from sqlalchemy.orm.attributes import NO_VALUE
@@ -20,6 +21,7 @@ from api.services.website_reading_time import (
     extract_reading_time_from_frontmatter,
     normalize_reading_time,
 )
+from api.services.website_title_service import resolve_website_title
 from api.services.websites_service import WebsitesService
 
 logger = logging.getLogger(__name__)
@@ -77,12 +79,16 @@ def run_quick_save(
                 logger.info("web-save using jina url=%s mode=%s", url, web_save_mode)
                 markdown = JinaService.fetch_markdown(url)
                 metadata, cleaned = JinaService.parse_metadata(markdown)
-                resolved_title = (
+                source = metadata.get("url_source") or url
+                candidate_title = (
                     title
                     or metadata.get("title")
                     or JinaService.extract_title(cleaned, url)
                 )
-                source = metadata.get("url_source") or url
+                resolved_title = (
+                    resolve_website_title(candidate_title, url=source)
+                    or urlparse(source).netloc
+                )
                 published_at = JinaService.parse_published_at(
                     metadata.get("published_time")
                 )

@@ -73,6 +73,7 @@ from api.services.web_save_tagger import (
     count_images,
     extract_tags,
 )
+from api.services.website_title_service import resolve_website_title
 
 logger = logging.getLogger(__name__)
 
@@ -675,13 +676,21 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     article_html = insert_youtube_placeholders(
         article_html, raw_dom_original, metadata.get("canonical") or final_url
     )
-    title = (
-        metadata.get("title")
-        or document.short_title()
-        or document.title()
-        or urlparse(final_url).netloc
-    )
     source_url = metadata.get("canonical") or final_url
+    title = resolve_website_title(
+        metadata.get("title"),
+        url=source_url,
+        raw_html=raw_html_original,
+    )
+    if not title:
+        title = resolve_website_title(
+            document.short_title() or document.title(),
+            url=source_url,
+            raw_html=raw_html_original,
+            allow_network=False,
+        )
+    if not title:
+        title = urlparse(final_url).netloc
     image_url = metadata.get("image")
     if image_url:
         resolved_image = urljoin(source_url, image_url)
