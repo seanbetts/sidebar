@@ -36,10 +36,10 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             profile?.uuidString ?? "none"
         )
 
-        let payload = message as? [String: Any]
-        let action = payload?["action"] as? String
-        let urlString = payload?["url"] as? String
-        let responsePayload = handleMessage(action: action, urlString: urlString)
+        let responsePayload = SafariExtensionMessageHandler.responsePayload(
+            for: message,
+            pendingStore: .shared
+        )
         os_log(.default, "SafariWebExtensionHandler response=%@", String(describing: responsePayload))
 
         let response = NSExtensionItem()
@@ -50,13 +50,5 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         }
 
         context.completeRequest(returningItems: [ response ], completionHandler: nil)
-    }
-
-    private func handleMessage(action: String?, urlString: String?) -> [String: Any] {
-        ExtensionURLMessageHandler.handleSaveURLMessage(
-            action: action,
-            urlString: urlString,
-            pendingStore: .shared
-        )
     }
 }
