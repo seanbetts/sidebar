@@ -1,7 +1,6 @@
 import XCTest
 @testable import sideBar
 
-
 @MainActor
 final class TasksUtilsTests: XCTestCase {
 

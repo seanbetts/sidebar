@@ -2,7 +2,6 @@ import XCTest
 import sideBarShared
 @testable import sideBar
 
-
 @MainActor
 final class SettingsAPITests: XCTestCase {
     override func tearDown() {
