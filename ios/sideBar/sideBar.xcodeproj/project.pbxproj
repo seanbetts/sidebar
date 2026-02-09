@@ -1537,7 +1537,7 @@
 		};
 		14C84A6A2F10562500FE0C16 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */;
+			baseConfigurationReference = 14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */;
 			buildSettings = {
 				"APS_ENVIRONMENT[sdk=iphoneos*]" = development;
 				"APS_ENVIRONMENT[sdk=macosx*]" = development;
@@ -1616,7 +1616,7 @@
 		};
 		14C84A6B2F10562500FE0C16 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */;
+			baseConfigurationReference = 14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */;
 			buildSettings = {
 				"APS_ENVIRONMENT[sdk=iphoneos*]" = production;
 				"APS_ENVIRONMENT[sdk=macosx*]" = production;

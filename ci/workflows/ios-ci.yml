@@ -40,7 +40,7 @@ jobs:
 
   ios_test_matrix:
     needs: ios_quality
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
@@ -48,12 +48,15 @@ jobs:
           - id: ipad
             label: "iPad Pro 13-inch (M5) iPadOS 26"
             destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=26.2"
+            runs_on: macos-latest
           - id: iphone
             label: "iPhone 17 Pro iOS 26"
             destination: "platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2"
+            runs_on: macos-latest
           - id: mac
             label: "macOS 26"
             destination: "platform=macOS,arch=arm64"
+            runs_on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
