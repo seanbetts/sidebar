@@ -245,48 +245,6 @@ public final class WidgetDataManager {
   }
 }
 
-// MARK: - Backward Compatibility (Deprecated)
-
-extension WidgetDataManager {
-  /// Backward compatible method for tasks
-  @available(*, deprecated, message: "Use store(_:for:) with WidgetTaskData")
-  public func updateTodayTasks(_ tasks: [WidgetTask], totalCount: Int) {
-    let data = WidgetTaskData(tasks: tasks, totalCount: totalCount)
-    store(data, for: .tasks)
-  }
-
-  @available(*, deprecated, message: "Use load(for:) with WidgetTaskData")
-  public func loadTodayTasks() -> WidgetTaskData {
-    load(for: .tasks)
-  }
-
-  @available(*, deprecated, message: "Use recordPendingOperation with TaskWidgetAction.complete")
-  public func recordTaskCompletion(taskId: String) {
-    let operation = WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete)
-    recordPendingOperation(operation, for: .tasks)
-  }
-
-  @available(*, deprecated, message: "Use consumePendingOperations")
-  public func consumePendingCompletions() -> [String] {
-    let operations = consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
-    return operations
-      .filter { $0.action == .complete }
-      .map { $0.itemId }
-  }
-
-  @available(*, deprecated, message: "Use recordPendingOperation with TaskWidgetAction.addNew")
-  public func recordAddTaskIntent() {
-    let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
-    recordPendingOperation(operation, for: .tasks)
-  }
-
-  @available(*, deprecated, message: "Use consumePendingOperations")
-  public func consumeAddTaskIntent() -> Bool {
-    let operations = consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
-    return operations.contains { $0.action == .addNew }
-  }
-}
-
 // MARK: - Quick Save
 
 extension WidgetDataManager {
@@ -323,7 +281,7 @@ extension WidgetTask {
     self.completedAt = nil
     self.projectName = projectName
     self.groupName = groupName
-    self.hasNotes = task.notes != nil && !task.notes!.isEmpty
+    self.hasNotes = !(task.notes?.isEmpty ?? true)
     self.deadline = task.deadline
   }
 }
