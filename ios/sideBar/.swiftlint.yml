@@ -2,6 +2,8 @@ included:
   - sideBar
   - sideBarTests
   - ShareExtension
+  - sideBarShared
+  - sideBarWidgets
 
 excluded:
   - sideBar.xcodeproj
@@ -11,8 +13,6 @@ excluded:
   - Carthage
   - Pods
   - Config
-  - sideBarShared
-  - sideBarWidgets
   - sideBarUITests
   - "sideBar Safari Extension"
   - "sideBar Safari Extension (macOS)"

@@ -72,7 +72,7 @@ repos:
         name: ios-doc-comments
         entry: python scripts/check_ios_doc_comments.py
         language: system
-        files: ^ios/sideBar/sideBar/(ViewModels|Services)/.*\.swift$
+        files: ^ios/sideBar/sideBar/(ViewModels|Services|Stores)/.*\.swift$
         pass_filenames: false
       - id: ios-tests
         name: ios-tests
