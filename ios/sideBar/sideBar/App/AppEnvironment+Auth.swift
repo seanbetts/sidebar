@@ -26,8 +26,16 @@ extension AppEnvironment {
             chatViewModel.reset()
             tasksViewModel.reset()
             notesViewModel.clearSelection()
+            notesViewModel.searchQuery = ""
             websitesViewModel.clearSelection()
+            websitesViewModel.panelSearchQuery = ""
+            websitesViewModel.errorMessage = nil
+            websitesViewModel.saveErrorMessage = nil
+            websitesViewModel.pendingWebsite = nil
+            websitesViewModel.isSavingWebsite = false
             ingestionViewModel.clearSelection()
+            ingestionViewModel.panelSearchQuery = ""
+            ingestionViewModel.errorMessage = nil
             isTasksFocused = false
             navigation.resetForSignOut()
             Task {

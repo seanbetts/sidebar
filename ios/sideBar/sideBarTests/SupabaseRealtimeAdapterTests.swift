@@ -1,5 +1,7 @@
 import XCTest
 import sideBarShared
+import Realtime
+import Supabase
 @testable import sideBar
 
 @MainActor

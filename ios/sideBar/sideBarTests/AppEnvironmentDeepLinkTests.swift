@@ -76,19 +76,44 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     }
 
     func testRefreshAuthStateOnSignOutResetsNavigationViewModelsAndOfflineSnapshots() async {
-        struct TestPayload: Codable, Equatable {
-            let value: String
-        }
-
         let environment = requireEnvironment()
         await environment.container.authSession.signOut()
+        primeEnvironmentForSignOutReset(environment)
+
+        environment.refreshAuthState()
+
+        assertAuthAndNavigationStateCleared(environment)
+        assertFeatureStateCleared(environment)
+        assertStorageStateCleared(environment)
+    }
+
+    private func primeEnvironmentForSignOutReset(_ environment: AppEnvironment) {
         environment.authState = .active
+        environment.commandSelection = .tasks
+        environment.activeSection = .chat
+        environment.shortcutActionEvent = ShortcutActionEvent(action: .openSettings, section: .settings)
+        environment.isTasksFocused = true
         environment.pendingNewTaskDeepLink = true
         environment.pendingNewNoteDeepLink = true
         environment.pendingScratchpadDeepLink = true
         environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
         environment.tasksViewModel.updateSearch(query: "follow up")
         environment.tasksViewModel.startNewTask()
+        environment.notesViewModel.updateSearch(query: "project")
+        environment.websitesViewModel.selectedWebsiteId = "website-1"
+        environment.websitesViewModel.panelSearchQuery = "example.com"
+        environment.websitesViewModel.errorMessage = "website error"
+        environment.websitesViewModel.saveErrorMessage = "save error"
+        environment.websitesViewModel.pendingWebsite = WebsitesViewModel.PendingWebsiteItem(
+            id: "pending-1",
+            title: "Example",
+            domain: "example.com",
+            url: "https://example.com"
+        )
+        environment.ingestionViewModel.selectedFileId = "file-1"
+        environment.ingestionViewModel.selectedDerivativeKind = "text_original"
+        environment.ingestionViewModel.panelSearchQuery = "invoice"
+        environment.ingestionViewModel.errorMessage = "ingestion error"
         environment.chatViewModel.selectedConversationId = "conversation-1"
         environment.chatViewModel.messages = [
             Message(
@@ -102,26 +127,56 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
                 error: nil
             )
         ]
+        environment.container.cacheClient.set(
+            key: "tests.signout.cache",
+            value: SignOutPayload(value: "cache"),
+            ttlSeconds: 60
+        )
         environment.offlineStore.set(
             key: "tests.signout.reset",
             entityType: "test",
-            value: TestPayload(value: "value"),
+            value: SignOutPayload(value: "value"),
             lastSyncAt: nil
         )
+    }
 
-        environment.refreshAuthState()
-
+    private func assertAuthAndNavigationStateCleared(_ environment: AppEnvironment) {
+        XCTAssertEqual(environment.authState, .signedOut)
+        XCTAssertFalse(environment.isAuthenticated)
+        XCTAssertNil(environment.commandSelection)
+        XCTAssertNil(environment.activeSection)
+        XCTAssertFalse(environment.isTasksFocused)
+        XCTAssertNil(environment.shortcutActionEvent)
+        XCTAssertEqual(environment.tasksViewModel.selection, .none)
         XCTAssertNil(environment.tasksViewModel.newTaskDraft)
         XCTAssertEqual(environment.tasksViewModel.searchQuery, "")
         XCTAssertNil(environment.tasksPhoneDetailRouteId)
         XCTAssertFalse(environment.pendingNewTaskDeepLink)
         XCTAssertFalse(environment.pendingNewNoteDeepLink)
         XCTAssertFalse(environment.pendingScratchpadDeepLink)
+    }
+
+    private func assertFeatureStateCleared(_ environment: AppEnvironment) {
         XCTAssertNil(environment.chatViewModel.selectedConversationId)
         XCTAssertTrue(environment.chatViewModel.messages.isEmpty)
-        let payload: TestPayload? = environment.offlineStore.get(
+        XCTAssertEqual(environment.notesViewModel.searchQuery, "")
+        XCTAssertNil(environment.websitesViewModel.selectedWebsiteId)
+        XCTAssertEqual(environment.websitesViewModel.panelSearchQuery, "")
+        XCTAssertNil(environment.websitesViewModel.errorMessage)
+        XCTAssertNil(environment.websitesViewModel.saveErrorMessage)
+        XCTAssertNil(environment.websitesViewModel.pendingWebsite)
+        XCTAssertNil(environment.ingestionViewModel.selectedFileId)
+        XCTAssertNil(environment.ingestionViewModel.selectedDerivativeKind)
+        XCTAssertEqual(environment.ingestionViewModel.panelSearchQuery, "")
+        XCTAssertNil(environment.ingestionViewModel.errorMessage)
+    }
+
+    private func assertStorageStateCleared(_ environment: AppEnvironment) {
+        let cachedPayload: SignOutPayload? = environment.container.cacheClient.get(key: "tests.signout.cache")
+        XCTAssertNil(cachedPayload)
+        let payload: SignOutPayload? = environment.offlineStore.get(
             key: "tests.signout.reset",
-            as: TestPayload.self
+            as: SignOutPayload.self
         )
         XCTAssertNil(payload)
     }
@@ -157,4 +212,8 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.tasksViewModel.reset()
         environment.chatViewModel.reset()
     }
+}
+
+private struct SignOutPayload: Codable, Equatable {
+    let value: String
 }
