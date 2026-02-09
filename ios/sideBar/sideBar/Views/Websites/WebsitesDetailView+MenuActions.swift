@@ -1,0 +1,137 @@
+import SwiftUI
+
+extension WebsitesDetailView {
+    var websiteActionsMenu: some View {
+        #if os(macOS)
+        Menu {
+            Button {
+                guard let websiteId = viewModel.active?.id else { return }
+                Task {
+                    await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                }
+            } label: {
+                Label(pinActionTitle, systemImage: pinIconName)
+            }
+            Button {
+                renameValue = viewModel.active?.title ?? ""
+                isRenameDialogPresented = true
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            Button {
+                copyWebsiteContent()
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+            Button {
+                copyWebsiteTitle()
+            } label: {
+                Label("Copy Title", systemImage: "textformat")
+            }
+            Button {
+                copyWebsiteURL()
+            } label: {
+                Label("Copy URL", systemImage: "link")
+            }
+            Button {
+                exportWebsite()
+            } label: {
+                Label("Download", systemImage: "square.and.arrow.down")
+            }
+            Button {
+                archiveActiveWebsite()
+            } label: {
+                Label(archiveMenuTitle, systemImage: archiveIconName)
+            }
+            Button(role: .destructive) {
+                isDeleteAlertPresented = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        } label: {
+            HeaderActionIcon(systemName: "ellipsis")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Website options")
+        .disabled(viewModel.active == nil)
+        #else
+        HeaderActionMenuButton(
+            systemImage: "ellipsis",
+            accessibilityLabel: "Website options",
+            items: [
+                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    guard let websiteId = viewModel.active?.id else { return }
+                    Task {
+                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                    }
+                },
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    renameValue = viewModel.active?.title ?? ""
+                    isRenameDialogPresented = true
+                },
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyWebsiteContent()
+                },
+                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
+                    copyWebsiteTitle()
+                },
+                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+                    copyWebsiteURL()
+                },
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    exportWebsite()
+                },
+                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    archiveActiveWebsite()
+                },
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ],
+            isCompact: isCompact
+        )
+        .disabled(viewModel.active == nil)
+        #endif
+    }
+
+    #if os(iOS)
+    var websiteToolbarMenu: some View {
+        HeaderActionMenuButton(
+            systemImage: "ellipsis",
+            accessibilityLabel: "Website options",
+            items: [
+                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    guard let websiteId = viewModel.active?.id else { return }
+                    Task {
+                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                    }
+                },
+                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    renameValue = viewModel.active?.title ?? ""
+                    isRenameDialogPresented = true
+                },
+                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyWebsiteContent()
+                },
+                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
+                    copyWebsiteTitle()
+                },
+                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+                    copyWebsiteURL()
+                },
+                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    exportWebsite()
+                },
+                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    archiveActiveWebsite()
+                },
+                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ],
+            isCompact: isCompact
+        )
+        .disabled(viewModel.active == nil)
+    }
+    #endif
+}

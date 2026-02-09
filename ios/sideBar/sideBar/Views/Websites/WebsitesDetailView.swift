@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import SwiftUI
 import Combine
 import sideBarShared
@@ -153,7 +152,7 @@ extension WebsitesDetailView {
         }
     }
 
-    private var displayTitle: String {
+    var displayTitle: String {
         guard let website = viewModel.active else {
             return "Websites"
         }
@@ -236,141 +235,9 @@ extension WebsitesDetailView {
         )
     }
 
-    private var websiteActionsMenu: some View {
-        #if os(macOS)
-        Menu {
-            Button {
-                guard let websiteId = viewModel.active?.id else { return }
-                Task {
-                    await viewModel.setPinned(id: websiteId, pinned: !isPinned)
-                }
-            } label: {
-                Label(pinActionTitle, systemImage: pinIconName)
-            }
-            Button {
-                renameValue = viewModel.active?.title ?? ""
-                isRenameDialogPresented = true
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
-            Button {
-                copyWebsiteContent()
-            } label: {
-                Label("Copy", systemImage: "doc.on.doc")
-            }
-            Button {
-                copyWebsiteTitle()
-            } label: {
-                Label("Copy Title", systemImage: "textformat")
-            }
-            Button {
-                copyWebsiteURL()
-            } label: {
-                Label("Copy URL", systemImage: "link")
-            }
-            Button {
-                exportWebsite()
-            } label: {
-                Label("Download", systemImage: "square.and.arrow.down")
-            }
-            Button {
-                archiveActiveWebsite()
-            } label: {
-                Label(archiveMenuTitle, systemImage: archiveIconName)
-            }
-            Button(role: .destructive) {
-                isDeleteAlertPresented = true
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        } label: {
-            HeaderActionIcon(systemName: "ellipsis")
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Website options")
-        .disabled(viewModel.active == nil)
-        #else
-        HeaderActionMenuButton(
-            systemImage: "ellipsis",
-            accessibilityLabel: "Website options",
-            items: [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                    guard let websiteId = viewModel.active?.id else { return }
-                    Task {
-                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
-                    }
-                },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
-                    renameValue = viewModel.active?.title ?? ""
-                    isRenameDialogPresented = true
-                },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                    copyWebsiteContent()
-                },
-                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
-                    copyWebsiteTitle()
-                },
-                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
-                    copyWebsiteURL()
-                },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                    exportWebsite()
-                },
-                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    archiveActiveWebsite()
-                },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                    isDeleteAlertPresented = true
-                }
-            ],
-            isCompact: isCompact
-        )
-        .disabled(viewModel.active == nil)
-        #endif
-    }
-
     #if os(iOS)
-    private var isPhone: Bool {
+    var isPhone: Bool {
         UIDevice.current.userInterfaceIdiom == .phone
-    }
-
-    private var websiteToolbarMenu: some View {
-        HeaderActionMenuButton(
-            systemImage: "ellipsis",
-            accessibilityLabel: "Website options",
-            items: [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                    guard let websiteId = viewModel.active?.id else { return }
-                    Task {
-                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
-                    }
-                },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
-                    renameValue = viewModel.active?.title ?? ""
-                    isRenameDialogPresented = true
-                },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                    copyWebsiteContent()
-                },
-                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
-                    copyWebsiteTitle()
-                },
-                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
-                    copyWebsiteURL()
-                },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                    exportWebsite()
-                },
-                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    archiveActiveWebsite()
-                },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                    isDeleteAlertPresented = true
-                }
-            ],
-            isCompact: isCompact
-        )
-        .disabled(viewModel.active == nil)
     }
     #endif
 
@@ -404,31 +271,31 @@ extension WebsitesDetailView {
         #endif
     }
 
-    private var isPinned: Bool {
+    var isPinned: Bool {
         viewModel.active?.pinned == true
     }
 
-    private var isArchived: Bool {
+    var isArchived: Bool {
         viewModel.active?.archived == true
     }
 
-    private var pinActionTitle: String {
+    var pinActionTitle: String {
         isPinned ? "Unpin" : "Pin"
     }
 
-    private var pinIconName: String {
+    var pinIconName: String {
         isPinned ? "pin.slash" : "pin"
     }
 
-    private var archiveMenuTitle: String {
+    var archiveMenuTitle: String {
         isArchived ? "Unarchive" : "Archive"
     }
 
-    private var archiveIconName: String {
+    var archiveIconName: String {
         isArchived ? "archivebox.fill" : "archivebox"
     }
 
-    private var isCompact: Bool {
+    var isCompact: Bool {
         #if os(macOS)
         return false
         #else
@@ -436,7 +303,7 @@ extension WebsitesDetailView {
         #endif
     }
 
-    private func openSource() {
+    func openSource() {
         guard let url = sourceURL else { return }
         #if os(iOS) && canImport(SafariServices)
         safariURL = url
@@ -445,12 +312,12 @@ extension WebsitesDetailView {
         #endif
     }
 
-    private func openInDefaultBrowser() {
+    func openInDefaultBrowser() {
         guard let url = sourceURL else { return }
         openURL(url)
     }
 
-    private func archiveActiveWebsite() {
+    func archiveActiveWebsite() {
         guard let websiteId = viewModel.active?.id else { return }
         Task {
             await viewModel.setArchived(id: websiteId, archived: !isArchived)
@@ -479,86 +346,7 @@ extension WebsitesDetailView {
         return { openInDefaultBrowser() }
     }
 
-    private func copyWebsiteContent() {
-        guard let content = viewModel.active?.content, !content.isEmpty else { return }
-        let stripped = MarkdownRendering.stripFrontmatter(content)
-        guard !stripped.isEmpty else { return }
-        #if os(iOS)
-        let pasteboard = UIPasteboard.general
-        pasteboard.string = stripped
-        #elseif os(macOS)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(stripped, forType: .string)
-        #endif
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-            #if os(macOS)
-            let pasteboard = NSPasteboard.general
-            if pasteboard.string(forType: .string) == stripped {
-                pasteboard.clearContents()
-            }
-            #else
-            let pasteboard = UIPasteboard.general
-            if pasteboard.string == stripped {
-                pasteboard.string = ""
-            }
-            #endif
-        }
-    }
-
-    private func copyWebsiteURL() {
-        guard let urlString = sourceURL?.absoluteString, !urlString.isEmpty else { return }
-        #if os(iOS)
-        let pasteboard = UIPasteboard.general
-        pasteboard.string = urlString
-        #elseif os(macOS)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(urlString, forType: .string)
-        #endif
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-            #if os(macOS)
-            let pasteboard = NSPasteboard.general
-            if pasteboard.string(forType: .string) == urlString {
-                pasteboard.clearContents()
-            }
-            #else
-            let pasteboard = UIPasteboard.general
-            if pasteboard.string == urlString {
-                pasteboard.string = ""
-            }
-            #endif
-        }
-    }
-
-    private func copyWebsiteTitle() {
-        guard let website = viewModel.active else { return }
-        let title = website.title.isEmpty ? website.url : website.title
-        guard !title.isEmpty else { return }
-        #if os(iOS)
-        let pasteboard = UIPasteboard.general
-        pasteboard.string = title
-        #elseif os(macOS)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(title, forType: .string)
-        #endif
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-            #if os(macOS)
-            let pasteboard = NSPasteboard.general
-            if pasteboard.string(forType: .string) == title {
-                pasteboard.clearContents()
-            }
-            #else
-            let pasteboard = UIPasteboard.general
-            if pasteboard.string == title {
-                pasteboard.string = ""
-            }
-            #endif
-        }
-    }
-
-    private func exportWebsite() {
+    func exportWebsite() {
         guard let website = viewModel.active else { return }
         let fallbackName = website.title.isEmpty ? "website" : website.title
         let stripped = MarkdownRendering.stripFrontmatter(website.content)
@@ -568,14 +356,14 @@ extension WebsitesDetailView {
         isExporting = true
     }
 
-    private var sourceURL: URL? {
+    var sourceURL: URL? {
         guard let website = viewModel.active else { return nil }
         let urlString = (website.urlFull?.isEmpty == false) ? website.urlFull : website.url
         guard let urlString else { return nil }
         return URL(string: urlString)
     }
 
-    private func formatDomain(_ domain: String) -> String {
+    func formatDomain(_ domain: String) -> String {
         domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
     }
 

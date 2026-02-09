@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import SwiftUI
 import UniformTypeIdentifiers
 #if os(iOS)
@@ -99,74 +98,6 @@ struct NotesDetailView: View {
         #endif
     }
 }
-
-#if os(iOS)
-private struct NoteActionsMenuButton: UIViewRepresentable {
-    let title: String
-    let pinTitle: String
-    let pinIcon: String
-    let archiveTitle: String
-    let archiveIcon: String
-    let isEnabled: Bool
-    let onPin: () -> Void
-    let onRename: () -> Void
-    let onMove: () -> Void
-    let onCopy: () -> Void
-    let onDownload: () -> Void
-    let onArchive: () -> Void
-    let onDelete: () -> Void
-
-    func makeUIView(context: Context) -> UIButton {
-        let button = UIButton(type: .system)
-        var config = UIButton.Configuration.plain()
-        config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
-        button.configuration = config
-        button.setImage(UIImage(systemName: "ellipsis"), for: .normal)
-        button.showsMenuAsPrimaryAction = true
-        button.accessibilityLabel = title
-        button.frame = CGRect(x: 0, y: 0, width: 28, height: 28)
-        return button
-    }
-
-    func updateUIView(_ uiView: UIButton, context: Context) {
-        uiView.isEnabled = isEnabled
-        uiView.menu = makeMenu()
-    }
-
-    private func makeMenu() -> UIMenu {
-        let pinAction = UIAction(title: pinTitle, image: UIImage(systemName: pinIcon)) { _ in
-            onPin()
-        }
-        let renameAction = UIAction(title: "Rename", image: UIImage(systemName: "pencil")) { _ in
-            onRename()
-        }
-        let moveAction = UIAction(title: "Move", image: UIImage(systemName: "arrow.forward.folder")) { _ in
-            onMove()
-        }
-        let copyAction = UIAction(title: "Copy", image: UIImage(systemName: "doc.on.doc")) { _ in
-            onCopy()
-        }
-        let downloadAction = UIAction(title: "Download", image: UIImage(systemName: "square.and.arrow.down")) { _ in
-            onDownload()
-        }
-        let archiveAction = UIAction(title: archiveTitle, image: UIImage(systemName: archiveIcon)) { _ in
-            onArchive()
-        }
-        let deleteAction = UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { _ in
-            onDelete()
-        }
-        return UIMenu(children: [
-            pinAction,
-            renameAction,
-            moveAction,
-            copyAction,
-            downloadAction,
-            archiveAction,
-            deleteAction
-        ])
-    }
-}
-#endif
 
 extension NotesDetailView {
     private var header: some View {
@@ -386,7 +317,7 @@ extension NotesDetailView {
         }
     }
 
-    private var displayTitle: String {
+    var displayTitle: String {
         guard let name = viewModel.activeNote?.name else {
             return "Notes"
         }
@@ -396,7 +327,7 @@ extension NotesDetailView {
         return name
     }
 
-    private var isCompact: Bool {
+    var isCompact: Bool {
         #if os(macOS)
         return false
         #else
@@ -405,7 +336,7 @@ extension NotesDetailView {
     }
 
     #if os(iOS)
-    private var isPhone: Bool {
+    var isPhone: Bool {
         UIDevice.current.userInterfaceIdiom == .phone
     }
 
@@ -446,275 +377,5 @@ extension NotesDetailView {
         #endif
         isWorkspaceExpanded.toggle()
     }
-
-    private var noteToolbarMenu: some View {
-        HeaderActionMenuButton(
-            systemImage: "ellipsis",
-            accessibilityLabel: "Note options",
-            items: [
-                SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                    guard let noteId = viewModel.activeNote?.path else { return }
-                    Task {
-                        await viewModel.setPinned(id: noteId, pinned: !isPinned)
-                    }
-                },
-                SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
-                    renameValue = displayTitle
-                    isRenameDialogPresented = true
-                },
-                SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
-                    moveSelection = currentFolderPath
-                    isMoveSheetPresented = true
-                },
-                SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                    copyMarkdown()
-                },
-                SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                    exportMarkdown()
-                },
-                SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                    archiveActiveNote()
-                },
-                SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                    isDeleteAlertPresented = true
-                }
-            ],
-            isCompact: isCompact
-        )
-        .disabled(viewModel.activeNote == nil)
-    }
     #endif
-
-    @ViewBuilder
-    private var noteActionsMenu: some View {
-        #if os(macOS)
-        Menu {
-            noteActionsMenuItems
-        } label: {
-            HeaderActionIcon(systemName: "ellipsis")
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Note options")
-        .disabled(viewModel.activeNote == nil)
-        #else
-        if isCompact {
-            HeaderActionMenuButton(
-                systemImage: "ellipsis",
-                accessibilityLabel: "Note options",
-                items: [
-                    SidebarMenuItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
-                        guard let noteId = viewModel.activeNote?.path else { return }
-                        Task {
-                            await viewModel.setPinned(id: noteId, pinned: !isPinned)
-                        }
-                    },
-                    SidebarMenuItem(title: "Rename", systemImage: "pencil", role: nil) {
-                        renameValue = displayTitle
-                        isRenameDialogPresented = true
-                    },
-                    SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
-                        moveSelection = currentFolderPath
-                        isMoveSheetPresented = true
-                    },
-                    SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
-                        copyMarkdown()
-                    },
-                    SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
-                        exportMarkdown()
-                    },
-                    SidebarMenuItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
-                        archiveActiveNote()
-                    },
-                    SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive) {
-                        isDeleteAlertPresented = true
-                    }
-                ],
-                isCompact: isCompact
-            )
-            .disabled(viewModel.activeNote == nil)
-        } else {
-            NoteActionsMenuButton(
-                title: "Note options",
-                pinTitle: pinActionTitle,
-                pinIcon: pinIconName,
-                archiveTitle: archiveMenuTitle,
-                archiveIcon: archiveIconName,
-                isEnabled: viewModel.activeNote != nil,
-                onPin: {
-                    guard let noteId = viewModel.activeNote?.path else { return }
-                    Task {
-                        await viewModel.setPinned(id: noteId, pinned: !isPinned)
-                    }
-                },
-                onRename: {
-                    renameValue = displayTitle
-                    isRenameDialogPresented = true
-                },
-                onMove: {
-                    moveSelection = currentFolderPath
-                    isMoveSheetPresented = true
-                },
-                onCopy: {
-                    copyMarkdown()
-                },
-                onDownload: {
-                    exportMarkdown()
-                },
-                onArchive: {
-                    archiveActiveNote()
-                },
-                onDelete: {
-                    isDeleteAlertPresented = true
-                }
-            )
-            .frame(width: 28, height: 28)
-            .fixedSize()
-        }
-        #endif
-    }
-
-    @ViewBuilder
-    private var noteActionsMenuItems: some View {
-        Button {
-            guard let noteId = viewModel.activeNote?.path else { return }
-            Task {
-                await viewModel.setPinned(id: noteId, pinned: !isPinned)
-            }
-        } label: {
-            Label(pinActionTitle, systemImage: pinIconName)
-        }
-        Button {
-            renameValue = displayTitle
-            isRenameDialogPresented = true
-        } label: {
-            Label("Rename", systemImage: "pencil")
-        }
-        Button {
-            moveSelection = currentFolderPath
-            isMoveSheetPresented = true
-        } label: {
-            Label("Move", systemImage: "arrow.forward.folder")
-        }
-        Button {
-            copyMarkdown()
-        } label: {
-            Label("Copy", systemImage: "doc.on.doc")
-        }
-        Button {
-            exportMarkdown()
-        } label: {
-            Label("Download", systemImage: "square.and.arrow.down")
-        }
-        Button {
-            archiveActiveNote()
-        } label: {
-            Label(archiveMenuTitle, systemImage: archiveIconName)
-        }
-        Button(role: .destructive) {
-            isDeleteAlertPresented = true
-        } label: {
-            Label("Delete", systemImage: "trash")
-        }
-    }
-
-    private var closeButton: some View {
-        HeaderActionButton(
-            systemName: "xmark",
-            accessibilityLabel: "Close note",
-            action: {
-                requestCloseNote()
-            },
-            isDisabled: viewModel.activeNote == nil
-        )
-    }
-
-    private var activeNode: FileNode? {
-        guard let noteId = viewModel.activeNote?.path else { return nil }
-        return viewModel.noteNode(id: noteId)
-    }
-
-    private var isPinned: Bool {
-        activeNode?.pinned == true
-    }
-
-    private var isArchived: Bool {
-        activeNode?.archived == true
-    }
-
-    private var pinActionTitle: String {
-        isPinned ? "Unpin" : "Pin"
-    }
-
-    private var pinIconName: String {
-        isPinned ? "pin.slash" : "pin"
-    }
-
-    private var archiveMenuTitle: String {
-        isArchived ? "Unarchive" : "Archive"
-    }
-
-    private var archiveIconName: String {
-        isArchived ? "archivebox.fill" : "archivebox"
-    }
-
-    private var currentFolderPath: String {
-        guard let path = activeNode?.path else { return "" }
-        guard let lastSlash = path.lastIndex(of: "/") else { return "" }
-        return String(path[..<lastSlash])
-    }
-
-    private var folderOptions: [FolderOption] {
-        FolderOption.build(from: viewModel.tree?.children ?? [])
-    }
-
-    private func archiveActiveNote() {
-        guard let noteId = viewModel.activeNote?.path else { return }
-        Task {
-            await viewModel.setArchived(id: noteId, archived: !isArchived)
-        }
-    }
-
-    private func copyMarkdown() {
-        let text = editorViewModel.content.isEmpty ? viewModel.activeNote?.content ?? "" : editorViewModel.content
-        guard !text.isEmpty else { return }
-        #if os(iOS)
-        let pasteboard = UIPasteboard.general
-        pasteboard.string = text
-        #elseif os(macOS)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-        #endif
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-            #if os(macOS)
-            let pasteboard = NSPasteboard.general
-            if pasteboard.string(forType: .string) == text {
-                pasteboard.clearContents()
-            }
-            #else
-            let pasteboard = UIPasteboard.general
-            if pasteboard.string == text {
-                pasteboard.string = ""
-            }
-            #endif
-        }
-    }
-
-    private func exportMarkdown() {
-        let text = editorViewModel.content.isEmpty ? viewModel.activeNote?.content ?? "" : editorViewModel.content
-        guard let name = viewModel.activeNote?.name else { return }
-        let filename = name.hasSuffix(".md") ? name : "\(name).md"
-        exportFilename = filename
-        exportDocument = MarkdownFileDocument(text: text)
-        isExporting = true
-    }
-
-    private func requestCloseNote() {
-        if editorViewModel.isDirty {
-            isCloseConfirmPresented = true
-            return
-        }
-        viewModel.clearSelection()
-    }
-
 }
