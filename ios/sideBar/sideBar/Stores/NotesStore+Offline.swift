@@ -6,19 +6,23 @@ extension NotesStore {
         Logger(subsystem: "sideBar", category: "NotesStoreOffline")
     }
 
+    /// Returns a cached note payload for the provided note path when available.
     public func cachedNotePayload(path: String) -> NotePayload? {
         notePayload(forPath: path)
     }
 
+    /// Attaches the write queue used for enqueueing offline note operations.
     public func attachWriteQueue(_ writeQueue: WriteQueue) {
         self.writeQueue = writeQueue
     }
 
+    /// Loads the notes tree from offline storage into in-memory state.
     public func loadFromOffline() async {
         guard let offline = offlineStore?.get(key: cacheKey, as: FileTree.self) else { return }
         applyTreeUpdate(offline, persist: false)
     }
 
+    /// Persists current notes tree, archived tree, and active note snapshots to offline storage.
     public func saveOfflineSnapshot() async {
         if let tree {
             let lastSyncAt = offlineStore?.lastSyncAt(for: cacheKey)
@@ -66,6 +70,7 @@ extension NotesStore {
         }
     }
 
+    /// Enqueues an offline note-content update operation.
     public func enqueueUpdate(noteId: String, content: String) async throws {
         let snapshot = makeServerSnapshot(noteId: noteId, notePath: nil)
         try await enqueueOfflineOperation(
@@ -78,6 +83,7 @@ extension NotesStore {
         )
     }
 
+    /// Enqueues an offline rename operation and applies the rename optimistically.
     public func enqueueRename(noteId: String, notePath: String, newName: String) async throws {
         let snapshot = makeServerSnapshot(noteId: noteId, notePath: notePath)
         try await enqueueOfflineOperation(
@@ -91,6 +97,7 @@ extension NotesStore {
         applyLocalRename(notePath: notePath, newName: newName)
     }
 
+    /// Enqueues an offline move operation and applies the move optimistically.
     public func enqueueMove(notePath: String, folder: String) async throws {
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)
         try await enqueueOfflineOperation(
@@ -104,6 +111,7 @@ extension NotesStore {
         applyLocalMove(notePath: notePath, folder: folder)
     }
 
+    /// Enqueues an offline pin toggle operation and applies it optimistically.
     public func enqueuePin(notePath: String, pinned: Bool) async throws {
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)
         try await enqueueOfflineOperation(
@@ -117,6 +125,7 @@ extension NotesStore {
         applyLocalPin(notePath: notePath, pinned: pinned)
     }
 
+    /// Enqueues an offline archive toggle operation and applies it optimistically.
     public func enqueueArchive(notePath: String, archived: Bool) async throws {
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)
         try await enqueueOfflineOperation(
@@ -130,6 +139,7 @@ extension NotesStore {
         applyLocalArchive(notePath: notePath, archived: archived)
     }
 
+    /// Enqueues an offline delete operation and applies deletion optimistically.
     public func enqueueDelete(notePath: String) async throws {
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)
         try await enqueueOfflineOperation(
@@ -143,6 +153,7 @@ extension NotesStore {
         applyLocalDelete(notePath: notePath)
     }
 
+    /// Resolves a note sync conflict by keeping local content or restoring server content.
     public func resolveConflict(_ conflict: SyncConflict<NotePayload>, keepLocal: Bool) async {
         guard let writeQueue else { return }
         await writeQueue.deleteWrites(entityType: .note, entityId: conflict.entityId)

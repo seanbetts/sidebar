@@ -4,6 +4,7 @@ import sideBarShared
 // MARK: - Realtime + Local Updates
 
 extension IngestionStore {
+    /// Applies a realtime ingested-file event to the merged ingestion list state.
     public func applyIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) {
         let fileId = payload.record?.id ?? payload.oldRecord?.id
         switch payload.eventType {
@@ -41,6 +42,7 @@ extension IngestionStore {
         }
     }
 
+    /// Applies a realtime file-job update to existing remote or local ingestion items.
     public func applyFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>) {
         guard let record = payload.record else {
             return
@@ -63,6 +65,7 @@ extension IngestionStore {
         persistListCache()
     }
 
+    /// Updates pinned state for an ingestion item across remote, local, and active metadata caches.
     public func updatePinned(fileId: String, pinned: Bool) {
         if let index = remoteItems.firstIndex(where: { $0.file.id == fileId }) {
             let existing = remoteItems[index]
@@ -108,6 +111,7 @@ extension IngestionStore {
         persistListCache()
     }
 
+    /// Updates a file name for an ingestion item across remote, local, and active metadata caches.
     public func updateFilename(fileId: String, filename: String) {
         if let index = remoteItems.firstIndex(where: { $0.file.id == fileId }) {
             let existing = remoteItems[index]
@@ -153,6 +157,7 @@ extension IngestionStore {
         persistListCache()
     }
 
+    /// Updates ingestion job details for a file across remote, local, and active metadata caches.
     public func updateJob(fileId: String, job: IngestionJob, recommendedViewer: String?) {
         if let index = remoteItems.firstIndex(where: { $0.file.id == fileId }) {
             let existing = remoteItems[index]
@@ -195,6 +200,7 @@ extension IngestionStore {
         persistListCache()
     }
 
+    /// Removes an ingestion item from remote/local lists and clears related cache entries.
     public func removeItem(fileId: String) {
         remoteItems.removeAll { $0.file.id == fileId }
         removeLocalUploadRecord(fileId: fileId)
@@ -208,16 +214,19 @@ extension IngestionStore {
         removeFileFromSpotlight(id: fileId)
     }
 
+    /// Adds a local upload item without bookmark data and refreshes merged list state.
     public func addLocalUpload(_ item: IngestionListItem) {
         setLocalUpload(item: item, bookmarkData: nil)
         items = mergeItems(remoteItems)
     }
 
+    /// Adds a local upload item with optional bookmark data and refreshes merged list state.
     public func addLocalUpload(_ item: IngestionListItem, bookmarkData: Data?) {
         setLocalUpload(item: item, bookmarkData: bookmarkData)
         items = mergeItems(remoteItems)
     }
 
+    /// Updates status fields for an existing local upload item.
     public func updateLocalUpload(
         fileId: String,
         status: String? = nil,
@@ -245,6 +254,7 @@ extension IngestionStore {
         items = mergeItems(remoteItems)
     }
 
+    /// Replaces a temporary local upload identifier with a persisted server file identifier.
     public func replaceLocalUpload(
         tempId: String,
         fileId: String,
@@ -290,6 +300,7 @@ extension IngestionStore {
         items = mergeItems(remoteItems)
     }
 
+    /// Removes a local upload item and refreshes merged list state.
     public func removeLocalUpload(fileId: String) {
         removeLocalUploadRecord(fileId: fileId)
         items = mergeItems(remoteItems)
