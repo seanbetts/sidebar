@@ -46,16 +46,13 @@ extension FilesPanelView {
     var content: some View {
         let base = mainContent
             .frame(maxHeight: .infinity)
-            .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
-                Button("Delete", role: .destructive) {
-                    confirmDelete()
-                }
-                Button("Cancel", role: .cancel) {
-                    clearDeleteTarget()
-                }
-            } message: {
-                Text("This will remove the file and cannot be undone.")
-            }
+            .deleteConfirmationAlert(
+                title: deleteDialogTitle,
+                isPresented: $isDeleteAlertPresented,
+                message: "This will remove the file and cannot be undone.",
+                onConfirm: confirmDelete,
+                onCancel: clearDeleteTarget
+            )
             .sheet(
                 isPresented: $isRenameSheetPresented,
                 onDismiss: clearRenameTarget,

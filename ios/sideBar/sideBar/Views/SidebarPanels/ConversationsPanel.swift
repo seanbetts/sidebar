@@ -59,11 +59,12 @@ struct ConversationsPanelView: View {
                 clearRenameTarget()
             }
         }
-        .alert(
-            "Delete conversation",
-            isPresented: isDeleteDialogPresented
-        ) {
-            Button("Delete", role: .destructive) {
+        .deleteConfirmationAlert(
+            title: "Delete conversation",
+            isPresented: isDeleteDialogPresented,
+            message: deleteDialogTitle,
+            confirmAsDefaultAction: true,
+            onConfirm: {
                 let targetId = deleteConversationId
                 clearDeleteTarget()
                 Task {
@@ -71,14 +72,9 @@ struct ConversationsPanelView: View {
                         await viewModel.deleteConversation(id: id)
                     }
                 }
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) {
-                clearDeleteTarget()
-            }
-        } message: {
-            Text(deleteDialogTitle)
-        }
+            },
+            onCancel: clearDeleteTarget
+        )
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .chat else { return }
             switch event.action {

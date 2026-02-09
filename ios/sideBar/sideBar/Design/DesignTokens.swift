@@ -61,6 +61,8 @@ enum DesignTokens {
         static let errorBackground = Color.red.opacity(0.1)
         static let errorSurface = Color.red.opacity(0.12)
         static let errorBorder = Color.red.opacity(0.2)
+        static let actionPrimary = Color.blue
+        static let actionDestructive = Color.red
 
         static var sidebarRowBackground: Color {
             .clear

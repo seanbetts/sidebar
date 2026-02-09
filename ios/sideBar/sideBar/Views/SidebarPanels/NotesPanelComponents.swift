@@ -159,24 +159,11 @@ struct NotesTreeRow: View {
                 row
             }
         }
-        #if os(iOS)
-        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-            if let onRename {
-                Button("Rename") {
-                    onRename()
-                }
-                .tint(.blue)
-            }
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if let onDelete {
-                Button("Delete") {
-                    onDelete()
-                }
-                .tint(.red)
-            }
-        }
-        #endif
+        .sidebarListSwipeActions(
+            leadingTitle: onRename == nil ? nil : "Rename",
+            onLeading: onRename,
+            onDelete: onDelete
+        )
     }
 
     private var primaryTextColor: Color {

@@ -69,20 +69,11 @@ extension ConversationsPanelView {
                         .onTapGesture {
                             Task { await viewModel.selectConversation(id: conversation.id) }
                         }
-                        #if os(iOS)
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button("Rename") {
-                                beginRename(conversation)
-                            }
-                            .tint(.blue)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button("Delete") {
-                                presentDelete(conversation)
-                            }
-                            .tint(.red)
-                        }
-                        #endif
+                        .sidebarListSwipeActions(
+                            leadingTitle: "Rename",
+                            onLeading: { beginRename(conversation) },
+                            onDelete: { presentDelete(conversation) }
+                        )
                     }
                 }
             }

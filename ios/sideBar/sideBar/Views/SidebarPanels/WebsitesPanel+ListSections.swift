@@ -53,31 +53,16 @@ extension WebsitesPanelView {
         row
         #else
         row
-            .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                if allowArchive {
-                    Button {
-                        Task { await viewModel.setArchived(id: item.id, archived: true) }
-                    } label: {
-                        Label("Archive", systemImage: "archivebox")
-                    }
-                    .tint(.blue)
-                } else {
-                    Button {
-                        Task { await viewModel.setArchived(id: item.id, archived: false) }
-                    } label: {
-                        Label("Unarchive", systemImage: "tray.and.arrow.up")
-                    }
-                    .tint(.blue)
-                }
-            }
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                Button(role: .destructive) {
+            .sidebarListSwipeActions(
+                leadingTitle: allowArchive ? "Archive" : "Unarchive",
+                leadingSystemImage: allowArchive ? "archivebox" : "tray.and.arrow.up",
+                onLeading: {
+                    Task { await viewModel.setArchived(id: item.id, archived: allowArchive) }
+                },
+                onDelete: {
                     deleteTarget = item
-                } label: {
-                    Label("Delete", systemImage: "trash")
                 }
-                .tint(.red)
-            }
+            )
         #endif
     }
 

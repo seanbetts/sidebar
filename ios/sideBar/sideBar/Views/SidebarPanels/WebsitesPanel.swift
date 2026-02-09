@@ -98,18 +98,19 @@ struct WebsitesPanelView: View {
         } message: {
             Text(saveErrorMessage ?? "Failed to save website. Please try again.")
         }
-        .alert("Delete website", isPresented: isDeleteAlertPresented) {
-            Button("Delete", role: .destructive) {
+        .deleteConfirmationAlert(
+            title: "Delete website",
+            isPresented: isDeleteAlertPresented,
+            message: "This will remove the website and cannot be undone.",
+            onConfirm: {
                 guard let item = deleteTarget else { return }
                 deleteTarget = nil
                 Task { await viewModel.deleteWebsite(id: item.id) }
-            }
-            Button("Cancel", role: .cancel) {
+            },
+            onCancel: {
                 deleteTarget = nil
             }
-        } message: {
-            Text("This will remove the website and cannot be undone.")
-        }
+        )
         .alert("Rename website", isPresented: $isRenameDialogPresented) {
             TextField("Website name", text: $renameValue)
                 .submitLabel(.done)

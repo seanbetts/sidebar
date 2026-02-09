@@ -62,25 +62,11 @@ struct FilesIngestionRow: View, Equatable {
                 Spacer()
             }
         }
-        #if os(iOS)
-        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-            if let onPinToggle {
-                let title = (item.file.pinned ?? false) ? "Unpin" : "Pin"
-                Button(title) {
-                    onPinToggle()
-                }
-                .tint(.blue)
-            }
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if let onDelete {
-                Button("Delete") {
-                    onDelete()
-                }
-                .tint(.red)
-            }
-        }
-        #endif
+        .sidebarListSwipeActions(
+            leadingTitle: onPinToggle == nil ? nil : ((item.file.pinned ?? false) ? "Unpin" : "Pin"),
+            onLeading: onPinToggle,
+            onDelete: onDelete
+        )
     }
 
     private var iconName: String {

@@ -127,8 +127,12 @@ struct NotesPanelView: View {
                 renameValue = ""
             }
         }
-        .alert(deleteDialogTitle, isPresented: isDeleteDialogPresented) {
-            Button("Delete", role: .destructive) {
+        .deleteConfirmationAlert(
+            title: deleteDialogTitle,
+            isPresented: isDeleteDialogPresented,
+            message: deleteDialogMessage,
+            confirmAsDefaultAction: true,
+            onConfirm: {
                 let target = deleteTarget
                 deleteTarget = nil
                 Task {
@@ -144,14 +148,11 @@ struct NotesPanelView: View {
                         }
                     }
                 }
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) {
+            },
+            onCancel: {
                 deleteTarget = nil
             }
-        } message: {
-            Text(deleteDialogMessage)
-        }
+        )
         .fileExporter(
             isPresented: $isExporting,
             document: exportDocument,

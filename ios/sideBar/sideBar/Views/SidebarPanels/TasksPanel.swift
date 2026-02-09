@@ -29,7 +29,6 @@ private struct TasksPanelView: View {
     @State private var renameValue: String = ""
     @State private var deleteTarget: TaskListTarget?
     @FocusState private var isSearchFocused: Bool
-
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -83,12 +82,13 @@ private struct TasksPanelView: View {
         } message: {
             Text(renameAlertMessage)
         }
-        .alert(deleteAlertTitle, isPresented: deleteAlertBinding) {
-            Button("Delete", role: .destructive) { handleDeleteTarget() }
-            Button("Cancel", role: .cancel) { clearDeleteState() }
-        } message: {
-            Text(deleteAlertMessage)
-        }
+        .deleteConfirmationAlert(
+            title: deleteAlertTitle,
+            isPresented: deleteAlertBinding,
+            message: deleteAlertMessage,
+            onConfirm: handleDeleteTarget,
+            onCancel: clearDeleteState
+        )
         .confirmationDialog("Choose group", isPresented: $showProjectGroupDialog, titleVisibility: .visible) {
             Button("No group") { handleCreateProject(groupId: nil) }
             let sortedGroups = viewModel.groups.sorted {
