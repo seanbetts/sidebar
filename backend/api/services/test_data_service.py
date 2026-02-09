@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from api.models.conversation import Conversation
@@ -326,7 +327,10 @@ class TestDataService:
             db.query(UserMemory)
             .filter(
                 UserMemory.user_id == user_id,
-                UserMemory.path.startswith(f"/memories/seed/{seed_tag}"),
+                or_(
+                    UserMemory.path.startswith(f"memories/seed/{seed_tag}"),
+                    UserMemory.path.startswith(f"/memories/seed/{seed_tag}"),
+                ),
             )
             .all()
         )

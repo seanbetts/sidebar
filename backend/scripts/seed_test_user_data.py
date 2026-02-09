@@ -6,17 +6,22 @@ Usage:
     uv run backend/scripts/seed_test_user_data.py --user-id <uuid> --dry-run
     uv run backend/scripts/seed_test_user_data.py --user-id <uuid> --delete
     uv run backend/scripts/seed_test_user_data.py --user-id <uuid> --delete --dry-run
+    uv run backend/scripts/seed_test_user_data.py --user-id <uuid> --reset
+    uv run backend/scripts/seed_test_user_data.py --user-id <uuid> --now 2026-02-09T00:00:00Z
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 import uuid
 from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import urlparse
 
 SCRIPTS_ROOT = Path(__file__).resolve().parent
 if str(SCRIPTS_ROOT) not in sys.path:
@@ -47,10 +52,16 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Preview actions without modifying the database.",
     )
-    parser.add_argument(
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
         "--delete",
         action="store_true",
         help="Delete seeded data instead of creating it.",
+    )
+    mode_group.add_argument(
+        "--reset",
+        action="store_true",
+        help="Delete then reseed in one run.",
     )
     parser.add_argument(
         "--database-url",
@@ -60,6 +71,15 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         "--supabase",
         action="store_true",
         help="Force building DATABASE_URL from Supabase env vars.",
+    )
+    parser.add_argument(
+        "--now",
+        help="Optional deterministic timestamp (ISO-8601). Example: 2026-02-09T00:00:00Z",
+    )
+    parser.add_argument(
+        "--allow-production",
+        action="store_true",
+        help="Allow execution when APP_ENV is production.",
     )
     return parser.parse_args(argv)
 
@@ -89,6 +109,51 @@ def log_summary(prefix: str, summary: object) -> None:
     )
 
 
+def parse_now(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ValueError(
+            "Invalid --now timestamp. Use ISO-8601, e.g. 2026-02-09T00:00:00Z."
+        ) from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def assert_safe_environment(*, allow_production: bool) -> None:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    if app_env in {"prod", "production"} and not allow_production:
+        db_url = os.getenv("DATABASE_URL", "")
+        parsed = urlparse(db_url) if db_url else None
+        host = parsed.hostname if parsed else None
+        db_name = parsed.path.lstrip("/") if parsed and parsed.path else None
+        raise RuntimeError(
+            "Refusing to run seed script in production environment "
+            f"(APP_ENV={app_env!r}, host={host!r}, database={db_name!r}). "
+            "Re-run with --allow-production only if this is intentional."
+        )
+
+
+def plan_summary(plan: object) -> SimpleNamespace:
+    return SimpleNamespace(
+        notes=len(getattr(plan, "notes")),
+        websites=len(getattr(plan, "websites")),
+        conversations=len(getattr(plan, "conversations")),
+        memories=len(getattr(plan, "memories")),
+        task_groups=len(getattr(plan, "task_groups")),
+        task_projects=len(getattr(plan, "task_projects")),
+        tasks=len(getattr(plan, "tasks")),
+        settings=1,
+        scratchpad=1,
+    )
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     args = parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -99,30 +164,41 @@ def main(argv: Iterable[str] | None = None) -> int:
         logger.error(str(exc))
         return 2
 
-    plan = build_seed_plan(args.seed_tag)
+    try:
+        now = parse_now(args.now)
+    except ValueError as exc:
+        logger.error(str(exc))
+        return 2
 
-    if args.dry_run and not args.delete:
-        summary = SimpleNamespace(
-            notes=len(plan.notes),
-            websites=len(plan.websites),
-            conversations=len(plan.conversations),
-            memories=len(plan.memories),
-            task_groups=len(plan.task_groups),
-            task_projects=len(plan.task_projects),
-            tasks=len(plan.tasks),
-            settings=1,
-            scratchpad=1,
-        )
-        log_summary("Dry-run seed plan:", summary)
+    plan = build_seed_plan(args.seed_tag, now=now)
+
+    if args.dry_run and not args.delete and not args.reset:
+        log_summary("Dry-run seed plan:", plan_summary(plan))
         return 0
 
     setup_environment(database_url=args.database_url, supabase=args.supabase)
+    try:
+        assert_safe_environment(allow_production=args.allow_production)
+    except RuntimeError as exc:
+        logger.error(str(exc))
+        return 2
 
     from api.db.session import SessionLocal, set_session_user_id  # noqa: E402
     from api.services.test_data_service import TestDataService  # noqa: E402
 
     with SessionLocal() as db:
         set_session_user_id(db, user_id)
+        if args.reset:
+            if args.dry_run:
+                delete_summary = TestDataService.preview_delete(db, user_id, plan)
+                log_summary("Dry-run reset delete:", delete_summary)
+                log_summary("Dry-run reset seed:", plan_summary(plan))
+                return 0
+            deleted = TestDataService.delete_seed_data(db, user_id, plan)
+            log_summary("Reset delete:", deleted)
+            seeded = TestDataService.seed_user_data(db, user_id, plan)
+            log_summary("Reset seed:", seeded)
+            return 0
         if args.delete:
             if args.dry_run:
                 summary = TestDataService.preview_delete(db, user_id, plan)

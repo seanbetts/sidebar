@@ -9,6 +9,7 @@ from api.models.user_memory import UserMemory
 from api.services.notes_service import NotesService
 from api.services.test_data_service import TestDataService
 from api.services.websites_service import WebsitesService
+from sqlalchemy import or_
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
@@ -103,7 +104,10 @@ def test_seed_and_delete_round_trip(db_session):
         db_session.query(UserMemory)
         .filter(
             UserMemory.user_id == user_id,
-            UserMemory.path.startswith("/memories/seed/seed:test-data"),
+            or_(
+                UserMemory.path.startswith("memories/seed/seed:test-data"),
+                UserMemory.path.startswith("/memories/seed/seed:test-data"),
+            ),
         )
         .all()
     )

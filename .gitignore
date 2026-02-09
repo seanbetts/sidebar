@@ -54,6 +54,7 @@ frontend/coverage/
 .env
 .env.*
 !.env.example
+ios/sideBar/.ui-test-secrets.local
 
 # Docker volumes and workspaces
 /workspace/
@@ -86,3 +87,6 @@ ios/**/*.podspec
 # Build artifacts
 ios/**/DerivedData/
 ios/**/build/
+ios/sideBar/sideBarUITests/LocalUploadFixtures/*
+!ios/sideBar/sideBarUITests/LocalUploadFixtures/.gitkeep
+!ios/sideBar/sideBarUITests/LocalUploadFixtures/README.md
