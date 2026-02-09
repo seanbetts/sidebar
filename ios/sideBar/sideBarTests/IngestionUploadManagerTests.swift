@@ -10,9 +10,21 @@ final class IngestionUploadManagerTests: XCTestCase {
     override func setUp() {
         super.setUp()
         Self.protocolIsolationLock.lock()
+        URLProtocol.registerClass(IngestionUploadURLProtocolMock.self)
+        IngestionUploadURLProtocolMock.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url ?? URL(string: "https://example.com/files")!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"file_id\":\"mock-file\"}".utf8))
+        }
     }
 
     override func tearDown() {
+        IngestionUploadURLProtocolMock.requestHandler = nil
+        URLProtocol.unregisterClass(IngestionUploadURLProtocolMock.self)
         Self.protocolIsolationLock.unlock()
         super.tearDown()
     }
@@ -62,6 +74,8 @@ final class IngestionUploadManagerTests: XCTestCase {
         let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("test-upload-\(UUID().uuidString)")
         try? Data("data".utf8).write(to: fileURL)
         defer { try? FileManager.default.removeItem(at: fileURL) }
+        let completionExpectation = expectation(description: "All uploads complete")
+        completionExpectation.expectedFulfillmentCount = 20
 
         let group = DispatchGroup()
         for uploadIndex in 0..<20 {
@@ -77,7 +91,7 @@ final class IngestionUploadManagerTests: XCTestCase {
                         folder: "test"
                     ),
                     onProgress: { _ in },
-                    onCompletion: { _ in }
+                    onCompletion: { _ in completionExpectation.fulfill() }
                 )
                 group.leave()
             }
@@ -90,9 +104,11 @@ final class IngestionUploadManagerTests: XCTestCase {
 
         let result = group.wait(timeout: .now() + 10)
         XCTAssertEqual(result, .success, "Concurrent start+cancel should not crash or deadlock")
+        wait(for: [completionExpectation], timeout: 10)
     }
 
     func testConcurrentStartAndCancelStressIsStableAcrossRuns() {
+        let manager = makeManager()
         let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("stress-upload-\(UUID().uuidString)")
         try? Data("data".utf8).write(to: fileURL)
         defer { try? FileManager.default.removeItem(at: fileURL) }
@@ -101,7 +117,8 @@ final class IngestionUploadManagerTests: XCTestCase {
         let uploadPairsPerRun = 60
 
         for run in 0..<runs {
-            var manager: IngestionUploadManager? = makeManager()
+            let completionExpectation = expectation(description: "Run \(run) uploads complete")
+            completionExpectation.expectedFulfillmentCount = uploadPairsPerRun
             let group = DispatchGroup()
 
             for uploadIndex in 0..<uploadPairsPerRun {
@@ -110,7 +127,7 @@ final class IngestionUploadManagerTests: XCTestCase {
                 group.enter()
                 DispatchQueue.global().async {
                     usleep(UInt32.random(in: 500...3_000))
-                    manager?.startUpload(
+                    manager.startUpload(
                         request: UploadRequest(
                             uploadId: uploadId,
                             fileURL: fileURL,
@@ -119,7 +136,7 @@ final class IngestionUploadManagerTests: XCTestCase {
                             folder: "test"
                         ),
                         onProgress: { _ in },
-                        onCompletion: { _ in }
+                        onCompletion: { _ in completionExpectation.fulfill() }
                     )
                     group.leave()
                 }
@@ -127,7 +144,7 @@ final class IngestionUploadManagerTests: XCTestCase {
                 group.enter()
                 DispatchQueue.global().async {
                     usleep(UInt32.random(in: 500...3_000))
-                    manager?.cancelUpload(uploadId: uploadId)
+                    manager.cancelUpload(uploadId: uploadId)
                     group.leave()
                 }
             }
@@ -138,7 +155,7 @@ final class IngestionUploadManagerTests: XCTestCase {
                 .success,
                 "Run \(run) should complete without deadlock during concurrent start/cancel stress"
             )
-            manager = nil
+            wait(for: [completionExpectation], timeout: 10)
         }
     }
 
@@ -182,5 +199,35 @@ final class IngestionUploadManagerTests: XCTestCase {
             accessTokenProvider: { nil }
         )
         return IngestionUploadManager(config: config)
+    }
+}
+
+class IngestionUploadURLProtocolMock: URLProtocol {
+    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let handler = IngestionUploadURLProtocolMock.requestHandler else {
+            XCTFail("IngestionUploadURLProtocolMock requestHandler not set")
+            return
+        }
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {
     }
 }

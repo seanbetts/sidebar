@@ -167,6 +167,8 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private func handleCompletion(for task: URLSessionTask, error: Error?) {
         let context = takeContext(forTaskId: task.taskIdentifier)
         guard let context else { return }
+        let onCompletion = context.onCompletion
+        let responseData = context.responseData
         defer {
             do {
                 try FileManager.default.removeItem(at: context.bodyFileURL)
@@ -176,28 +178,37 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         }
 
         if let error {
-            DispatchQueue.main.async { context.onCompletion(.failure(error)) }
+            dispatchCompletion(onCompletion, result: .failure(error))
             return
         }
         guard let response = task.response as? HTTPURLResponse else {
-            DispatchQueue.main.async { context.onCompletion(.failure(APIClientError.unknown)) }
+            dispatchCompletion(onCompletion, result: .failure(APIClientError.unknown))
             return
         }
         guard (200...299).contains(response.statusCode) else {
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
-            if let message = APIClient.decodeErrorMessage(data: context.responseData, decoder: decoder) {
-                DispatchQueue.main.async { context.onCompletion(.failure(APIClientError.apiError(message))) }
+            if let message = APIClient.decodeErrorMessage(data: responseData, decoder: decoder) {
+                dispatchCompletion(onCompletion, result: .failure(APIClientError.apiError(message)))
                 return
             }
-            DispatchQueue.main.async { context.onCompletion(.failure(APIClientError.requestFailed(response.statusCode))) }
+            dispatchCompletion(onCompletion, result: .failure(APIClientError.requestFailed(response.statusCode)))
             return
         }
         do {
-            let fileId = try IngestionUploadHelpers.parseUploadResponse(data: context.responseData)
-            DispatchQueue.main.async { context.onCompletion(.success(fileId)) }
+            let fileId = try IngestionUploadHelpers.parseUploadResponse(data: responseData)
+            dispatchCompletion(onCompletion, result: .success(fileId))
         } catch {
-            DispatchQueue.main.async { context.onCompletion(.failure(error)) }
+            dispatchCompletion(onCompletion, result: .failure(error))
+        }
+    }
+
+    private func dispatchCompletion(
+        _ onCompletion: @escaping (Result<String, Error>) -> Void,
+        result: Result<String, Error>
+    ) {
+        DispatchQueue.main.async {
+            onCompletion(result)
         }
     }
 
@@ -351,8 +362,8 @@ extension IngestionUploadManager: URLSessionTaskDelegate, URLSessionDataDelegate
     ) {
         guard totalBytesExpectedToSend > 0 else { return }
         let progress = Double(totalBytesSent) / Double(totalBytesExpectedToSend)
-        guard let context = context(forTaskId: task.taskIdentifier) else { return }
-        DispatchQueue.main.async { context.onProgress(progress) }
+        guard let onProgress = context(forTaskId: task.taskIdentifier)?.onProgress else { return }
+        DispatchQueue.main.async { onProgress(progress) }
     }
 
     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
