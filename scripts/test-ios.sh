@@ -11,6 +11,8 @@ IOS_SCHEME="${IOS_SCHEME:-sideBar}"
 IOS_DESTINATION="${IOS_DESTINATION:-platform=iOS Simulator,name=iPad Pro 13-inch (M5)}"
 IOS_ENABLE_CODE_COVERAGE="${IOS_ENABLE_CODE_COVERAGE:-YES}"
 IOS_RESULT_BUNDLE_PATH="${IOS_RESULT_BUNDLE_PATH:-}"
+IOS_ONLY_TESTING="${IOS_ONLY_TESTING:-}"
+IOS_SKIP_TESTING="${IOS_SKIP_TESTING:-}"
 
 echo "Running iOS tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
 
@@ -26,6 +28,26 @@ if [[ -n "${IOS_RESULT_BUNDLE_PATH}" ]]; then
   XCODEBUILD_ARGS+=(-resultBundlePath "${IOS_RESULT_BUNDLE_PATH}")
 fi
 
+if [[ -n "${IOS_ONLY_TESTING}" ]]; then
+  IFS=',' read -r -a only_testing_specs <<< "${IOS_ONLY_TESTING}"
+  for raw_spec in "${only_testing_specs[@]}"; do
+    spec="$(echo "${raw_spec}" | xargs)"
+    if [[ -n "${spec}" ]]; then
+      XCODEBUILD_ARGS+=("-only-testing:${spec}")
+    fi
+  done
+fi
+
+if [[ -n "${IOS_SKIP_TESTING}" ]]; then
+  IFS=',' read -r -a skip_testing_specs <<< "${IOS_SKIP_TESTING}"
+  for raw_spec in "${skip_testing_specs[@]}"; do
+    spec="$(echo "${raw_spec}" | xargs)"
+    if [[ -n "${spec}" ]]; then
+      XCODEBUILD_ARGS+=("-skip-testing:${spec}")
+    fi
+  done
+fi
+
 if [[ "${IOS_DESTINATION}" == *"platform=macOS"* ]]; then
   # CI macOS runners do not have signing certificates/profiles.
   XCODEBUILD_ARGS+=(
@@ -35,7 +57,9 @@ if [[ "${IOS_DESTINATION}" == *"platform=macOS"* ]]; then
   )
   # macOS UI tests are not reliable in headless CI sessions.
   if [[ "${IOS_SKIP_UI_TESTS_ON_MACOS:-YES}" != "NO" ]]; then
-    XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
+    if [[ " ${XCODEBUILD_ARGS[*]} " != *" -skip-testing:sideBarUITests "* ]]; then
+      XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
+    fi
   fi
 fi
 

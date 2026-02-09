@@ -1,6 +1,18 @@
 name: iOS CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: "Run specific lane"
+        type: choice
+        required: false
+        default: all
+        options:
+          - all
+          - ipad
+          - iphone
+          - mac
   pull_request:
     paths:
       - "ios/**"
@@ -21,6 +33,10 @@ on:
       - "scripts/ios_quality_gates.json"
       - "scripts/test-ios.sh"
       - ".github/workflows/ios-ci.yml"
+
+concurrency:
+  group: ios-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   ios_quality:
@@ -49,32 +65,73 @@ jobs:
             label: "iPad Pro 13-inch (M5) iPadOS 26"
             destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=26.2"
             runs_on: macos-26
+            include_on_pr: true
+            only_testing: sideBarUITests
           - id: iphone
             label: "iPhone 17 Pro iOS 26"
             destination: "platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2"
             runs_on: macos-26
+            include_on_pr: true
+            skip_testing: sideBarUITests
           - id: mac
             label: "macOS 26"
             destination: "platform=macOS,arch=arm64"
             runs_on: macos-26
+            include_on_pr: false
     steps:
       - name: Checkout
+        if: ${{ (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
         uses: actions/checkout@v4
+      - name: Cache Swift Package Manager
+        if: ${{ (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/*/SourcePackages
+          key: ${{ runner.os }}-${{ matrix.runs_on }}-${{ matrix.id }}-spm-${{ hashFiles('ios/sideBar/sideBar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.runs_on }}-${{ matrix.id }}-spm-
+      - name: Cache Xcode DerivedData
+        if: ${{ (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/sideBar-*
+          key: ${{ runner.os }}-${{ matrix.runs_on }}-${{ matrix.id }}-dd-${{ github.ref_name }}-${{ hashFiles('ios/sideBar/sideBar.xcodeproj/project.pbxproj') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.runs_on }}-${{ matrix.id }}-dd-${{ github.ref_name }}-
+            ${{ runner.os }}-${{ matrix.runs_on }}-${{ matrix.id }}-dd-
       - name: Run tests (${{ matrix.label }})
+        if: ${{ (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
         env:
           IOS_DESTINATION: ${{ matrix.destination }}
           IOS_RESULT_BUNDLE_PATH: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult
+          IOS_ONLY_TESTING: ${{ matrix.only_testing }}
+          IOS_SKIP_TESTING: ${{ matrix.skip_testing }}
         run: scripts/test-ios.sh
-      - name: Upload xcresult (${{ matrix.id }})
-        if: always()
+      - name: Package xcresult (${{ matrix.id }})
+        if: ${{ always() && (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
+        run: |
+          bundle_path="ios-test-results/${{ matrix.id }}.xcresult"
+          archive_path="ios-test-results/${{ matrix.id }}.xcresult.zip"
+          if [[ -d "${bundle_path}" ]]; then
+            ditto -c -k --sequesterRsrc --keepParent "${bundle_path}" "${archive_path}"
+          else
+            echo "No xcresult bundle found at ${bundle_path}; skipping archive."
+          fi
+      - name: Upload xcresult archive (${{ matrix.id }})
+        if: ${{ always() && (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
         uses: actions/upload-artifact@v4
         with:
           name: ios-xcresult-${{ matrix.id }}
-          path: ios-test-results/${{ matrix.id }}.xcresult
+          path: ios-test-results/${{ matrix.id }}.xcresult.zip
+          if-no-files-found: ignore
 
   ios_hard_gates:
     needs: ios_test_matrix
-    runs-on: macos-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == 'ipad' }}
+    runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,6 +140,9 @@ jobs:
         with:
           name: ios-xcresult-ipad
           path: ios-test-results
+      - name: Extract iPad xcresult
+        run: |
+          ditto -x -k ios-test-results/ipad.xcresult.zip ios-test-results
       - name: Enforce hard quality gates
         run: |
           python scripts/check_ios_quality_gates.py \
