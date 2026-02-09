@@ -11,7 +11,8 @@ final class TasksViewModelTests: XCTestCase {
         api.applyResult = .failure(APIClientError.apiError("Sync failed"))
 
         let sut = makeSUT(api: api, networkAvailable: true)
-        let viewModel = sut.viewModel; let store = sut.store
+        let viewModel = sut.viewModel
+        let store = sut.store
         await viewModel.load(selection: .today)
 
         await viewModel.completeTask(task: task)
@@ -39,7 +40,8 @@ final class TasksViewModelTests: XCTestCase {
         )
 
         let sut = makeSUT(api: api, networkAvailable: true)
-        let viewModel = sut.viewModel; let store = sut.store
+        let viewModel = sut.viewModel
+        let store = sut.store
         await viewModel.load(selection: .today)
 
         await viewModel.completeTask(task: task)
@@ -79,7 +81,9 @@ final class TasksViewModelTests: XCTestCase {
     func testCreateTaskOfflineQueuesPreviewAndClearsDraft() async {
         let api = TasksViewModelAPIStub()
         let sut = makeSUT(api: api, networkAvailable: false)
-        let viewModel = sut.viewModel; let store = sut.store; let writeQueue = sut.writeQueue
+        let viewModel = sut.viewModel
+        let store = sut.store
+        let writeQueue = sut.writeQueue
         await viewModel.load(selection: .today)
         viewModel.startNewTask()
 
