@@ -5,7 +5,7 @@ import XCTest
 
 @MainActor
 final class DraftStorageTests: XCTestCase {
-    func testSaveAndLoadDraft() throws {
+    func testSaveAndLoadDraft() async throws {
         let persistence = PersistenceController(inMemory: true)
         let storage = DraftStorage(container: persistence.container)
 
@@ -17,7 +17,7 @@ final class DraftStorageTests: XCTestCase {
         XCTAssertNil(draft?.syncedAt)
     }
 
-    func testMarkSyncedSetsDate() throws {
+    func testMarkSyncedSetsDate() async throws {
         let persistence = PersistenceController(inMemory: true)
         let storage = DraftStorage(container: persistence.container)
 
@@ -28,7 +28,7 @@ final class DraftStorageTests: XCTestCase {
         XCTAssertNotNil(draft?.syncedAt)
     }
 
-    func testCleanupSyncedDraftsRemovesOldSyncedEntries() throws {
+    func testCleanupSyncedDraftsRemovesOldSyncedEntries() async throws {
         let persistence = PersistenceController(inMemory: true)
         let storage = DraftStorage(container: persistence.container)
 

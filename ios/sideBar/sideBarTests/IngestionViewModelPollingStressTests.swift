@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class IngestionViewModelPollingStressTests: XCTestCase {
-    func testRepeatedStartAndCancelPollingDoesNotLeakTasksOrTokens() {
+    func testRepeatedStartAndCancelPollingDoesNotLeakTasksOrTokens() async {
         let viewModel = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
 
         for cycle in 0..<40 {

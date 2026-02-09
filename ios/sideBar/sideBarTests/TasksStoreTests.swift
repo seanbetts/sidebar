@@ -39,7 +39,7 @@ final class TasksStoreTests: XCTestCase {
         XCTAssertEqual(api.listCallCount, 0)
     }
 
-    func testApplyLocalAddCreatesPreviewTask() {
+    func testApplyLocalAddCreatesPreviewTask() async {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()

@@ -4,7 +4,7 @@ import sideBarShared
 
 @MainActor
 final class ScratchpadStoreTests: XCTestCase {
-    func testBumpIncrementsVersion() {
+    func testBumpIncrementsVersion() async {
         let store = ScratchpadStore()
         XCTAssertEqual(store.version, 0)
 

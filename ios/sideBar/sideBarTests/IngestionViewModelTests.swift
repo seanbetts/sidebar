@@ -265,7 +265,7 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(toastCenter.toast?.message, "Failed to clear failed upload")
     }
 
-    func testExtractYouTubeVideoIdSupportsCanonicalForms() {
+    func testExtractYouTubeVideoIdSupportsCanonicalForms() async {
         let viewModel = makeViewModelForYouTubeParsing()
 
         XCTAssertEqual(
@@ -290,7 +290,7 @@ final class IngestionViewModelTests: XCTestCase {
         )
     }
 
-    func testExtractYouTubeVideoIdRejectsInvalidHostsAndIds() {
+    func testExtractYouTubeVideoIdRejectsInvalidHostsAndIds() async {
         let viewModel = makeViewModelForYouTubeParsing()
 
         XCTAssertNil(
@@ -303,7 +303,7 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.extractYouTubeVideoId(from: "not a url"))
     }
 
-    func testNormalizeYouTubeUrlCandidateRejectsInvalidHosts() {
+    func testNormalizeYouTubeUrlCandidateRejectsInvalidHosts() async {
         let viewModel = makeViewModelForYouTubeParsing()
 
         XCTAssertNil(
@@ -322,7 +322,7 @@ final class IngestionViewModelTests: XCTestCase {
 
     // MARK: - Concurrency regression (Phase 2.8)
 
-    func testStartJobPollingDoesNotCreateDuplicateTasks() {
+    func testStartJobPollingDoesNotCreateDuplicateTasks() async {
         let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
 
         vm.startJobPollingIfNeeded(fileId: "file-1")
@@ -331,7 +331,7 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(vm.jobPollingTasks.count, 1, "Duplicate polling tasks should be prevented")
     }
 
-    func testCancelJobPollingClearsAllTasksAndTokens() {
+    func testCancelJobPollingClearsAllTasksAndTokens() async {
         let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
 
         vm.startJobPollingIfNeeded(fileId: "file-1")
@@ -344,7 +344,7 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertTrue(vm.jobPollingTaskTokens.isEmpty)
     }
 
-    func testCancelJobPollingByFileIdLeavesOtherTasks() {
+    func testCancelJobPollingByFileIdLeavesOtherTasks() async {
         let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
 
         vm.startJobPollingIfNeeded(fileId: "file-1")
@@ -365,7 +365,7 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNotNil(vm.jobPollingTasks["file-2"])
     }
 
-    func testNewPollingTokenReplacesOldToken() {
+    func testNewPollingTokenReplacesOldToken() async {
         let vm = makePollingViewModel(fileId: "file-1", jobStatus: "processing")
 
         vm.startJobPollingIfNeeded(fileId: "file-1")

@@ -5,7 +5,7 @@ import XCTest
 
 @MainActor
 final class OfflineStoreTests: XCTestCase {
-    func testSetAndGetValue() {
+    func testSetAndGetValue() async {
         let persistence = PersistenceController(inMemory: true)
         let store = OfflineStore(container: persistence.container)
 
@@ -20,7 +20,7 @@ final class OfflineStoreTests: XCTestCase {
         XCTAssertEqual(loaded, payload)
     }
 
-    func testGetAllWithPrefix() {
+    func testGetAllWithPrefix() async {
         let persistence = PersistenceController(inMemory: true)
         let store = OfflineStore(container: persistence.container)
 
@@ -36,7 +36,7 @@ final class OfflineStoreTests: XCTestCase {
         XCTAssertEqual(loaded.count, 2)
     }
 
-    func testLastSyncAtRoundTrip() {
+    func testLastSyncAtRoundTrip() async {
         let persistence = PersistenceController(inMemory: true)
         let store = OfflineStore(container: persistence.container)
 
@@ -51,7 +51,7 @@ final class OfflineStoreTests: XCTestCase {
         XCTAssertNotNil(lastSync)
     }
 
-    func testRemoveDeletesEntry() {
+    func testRemoveDeletesEntry() async {
         let persistence = PersistenceController(inMemory: true)
         let store = OfflineStore(container: persistence.container)
 
@@ -66,7 +66,7 @@ final class OfflineStoreTests: XCTestCase {
         XCTAssertNil(loaded)
     }
 
-    func testClearAllSnapshotsDeletesAllEntries() {
+    func testClearAllSnapshotsDeletesAllEntries() async {
         let persistence = PersistenceController(inMemory: true)
         let store = OfflineStore(container: persistence.container)
 

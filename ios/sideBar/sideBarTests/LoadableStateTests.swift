@@ -4,7 +4,7 @@ import sideBarShared
 
 @MainActor
 final class LoadableStateTests: XCTestCase {
-    func testLoadingStateComputedProperties() {
+    func testLoadingStateComputedProperties() async {
         let idle: LoadingState<String> = .idle
         XCTAssertFalse(idle.isLoading)
         XCTAssertNil(idle.value)

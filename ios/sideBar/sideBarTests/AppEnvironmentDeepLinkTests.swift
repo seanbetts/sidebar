@@ -18,7 +18,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         super.tearDown()
     }
 
-    func testHandleNotesNewDeepLinkSetsPendingFlagAndSelection() {
+    func testHandleNotesNewDeepLinkSetsPendingFlagAndSelection() async {
         let environment = requireEnvironment()
 
         environment.handleDeepLink(URL(string: "sidebar://notes/new")!)
@@ -27,7 +27,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertTrue(environment.pendingNewNoteDeepLink)
     }
 
-    func testHandleTasksNewDeepLinkWhenNotFocusedSetsPendingFlag() {
+    func testHandleTasksNewDeepLinkWhenNotFocusedSetsPendingFlag() async {
         let environment = requireEnvironment()
 
         environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
@@ -37,7 +37,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertNil(environment.tasksViewModel.newTaskDraft)
     }
 
-    func testHandleTasksNewDeepLinkWhenFocusedStartsNewTaskImmediately() {
+    func testHandleTasksNewDeepLinkWhenFocusedStartsNewTaskImmediately() async {
         let environment = requireEnvironment()
         environment.isTasksFocused = true
 
@@ -48,7 +48,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertNotNil(environment.tasksViewModel.newTaskDraft)
     }
 
-    func testConsumeWidgetAddTaskStartsTaskImmediatelyWhenTasksFocused() {
+    func testConsumeWidgetAddTaskStartsTaskImmediatelyWhenTasksFocused() async {
         let environment = requireEnvironment()
         environment.authState = .active
         environment.isTasksFocused = true
@@ -63,7 +63,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertNotNil(environment.tasksViewModel.newTaskDraft)
     }
 
-    func testConsumeWidgetAddNoteSetsPendingFlagAndSelection() {
+    func testConsumeWidgetAddNoteSetsPendingFlagAndSelection() async {
         let environment = requireEnvironment()
         environment.authState = .active
         let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)

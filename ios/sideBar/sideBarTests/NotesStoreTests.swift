@@ -119,7 +119,7 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertEqual(store.tree?.children.first?.name, "Offline")
     }
 
-    func testArchivedNoteOlderThanRetentionDoesNotPersist() {
+    func testArchivedNoteOlderThanRetentionDoesNotPersist() async {
         let archivedNode = FileNode(
             name: "Archived.md",
             path: "n1",
@@ -152,7 +152,7 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertNil(offlineCached)
     }
 
-    func testArchivedNoteRecentPersists() {
+    func testArchivedNoteRecentPersists() async {
         let archivedNode = FileNode(
             name: "Archived.md",
             path: "n2",

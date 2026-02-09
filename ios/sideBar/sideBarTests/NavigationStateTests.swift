@@ -29,7 +29,7 @@ final class NavigationStateTests: XCTestCase {
         super.tearDown()
     }
 
-    func testLastSectionReadsFromStorage() {
+    func testLastSectionReadsFromStorage() async {
         UserDefaults.standard.set(AppSection.notes.rawValue, forKey: AppStorageKeys.lastSelectedSection)
 
         let state = NavigationState()
@@ -37,7 +37,7 @@ final class NavigationStateTests: XCTestCase {
         XCTAssertEqual(state.lastSection, .notes)
     }
 
-    func testLastSectionFallsBackToChat() {
+    func testLastSectionFallsBackToChat() async {
         UserDefaults.standard.set("invalid", forKey: AppStorageKeys.lastSelectedSection)
 
         let state = NavigationState()
@@ -45,7 +45,7 @@ final class NavigationStateTests: XCTestCase {
         XCTAssertEqual(state.lastSection, .chat)
     }
 
-    func testSidebarWidthPersists() {
+    func testSidebarWidthPersists() async {
         UserDefaults.standard.set(420.0, forKey: AppStorageKeys.sidebarWidth)
 
         let state = NavigationState()

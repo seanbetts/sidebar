@@ -70,7 +70,7 @@ final class ChatStoreTests: XCTestCase {
         XCTAssertEqual(api.getCallCount, 0)
     }
 
-    func testUpdateConversationMessagesPersistsMessagesCache() {
+    func testUpdateConversationMessagesPersistsMessagesCache() async {
         let cache = TestCacheClient()
         let api = MockConversationsAPI(listResult: .success([]), getResult: .failure(MockError.forced))
         let store = ChatStore(conversationsAPI: api, cache: cache)

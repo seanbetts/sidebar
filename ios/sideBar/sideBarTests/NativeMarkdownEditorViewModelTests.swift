@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeMarkdownEditorViewModelTests: XCTestCase {
-    func testApplyFormattingBoldTogglesInlineIntentOnSelection() {
+    func testApplyFormattingBoldTogglesInlineIntentOnSelection() async {
         let viewModel = NativeMarkdownEditorViewModel()
         viewModel.loadMarkdown("hello")
         let selectedRange = characterRange(length: 5, in: viewModel.attributedContent)
@@ -20,7 +20,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertFalse(secondIntents.contains(.stronglyEmphasized))
     }
 
-    func testApplyFormattingHeadingSetsBlockKindForCurrentParagraph() {
+    func testApplyFormattingHeadingSetsBlockKindForCurrentParagraph() async {
         let viewModel = NativeMarkdownEditorViewModel()
         viewModel.loadMarkdown("hello\nworld")
         let insertion = viewModel.attributedContent.startIndex

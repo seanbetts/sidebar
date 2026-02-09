@@ -61,7 +61,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         super.tearDown()
     }
 
-    func testJwtExpiryDateUsesExpClaim() {
+    func testJwtExpiryDateUsesExpClaim() async {
         let exp: TimeInterval = 1_800_000_000
         let header = base64UrlEncode(["alg": "none", "typ": "JWT"])
         let payload = base64UrlEncode(["exp": exp, "sub": "user"])
@@ -71,12 +71,12 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertEqual(date, Date(timeIntervalSince1970: exp))
     }
 
-    func testJwtExpiryDateReturnsNilForInvalidToken() {
+    func testJwtExpiryDateReturnsNilForInvalidToken() async {
         let date = SupabaseAuthAdapter.jwtExpiryDate(from: "invalid-token")
         XCTAssertNil(date)
     }
 
-    func testOfflineAccessAllowsStoredCredentialsWithinWindow() {
+    func testOfflineAccessAllowsStoredCredentialsWithinWindow() async {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")
@@ -92,7 +92,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertEqual(adapter.userId, "user")
     }
 
-    func testOfflineAccessRejectsStoredCredentialsOutsideWindow() {
+    func testOfflineAccessRejectsStoredCredentialsOutsideWindow() async {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")
@@ -108,7 +108,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertNil(adapter.userId)
     }
 
-    func testCanRestoreOfflineSessionRespectsWindow() {
+    func testCanRestoreOfflineSessionRespectsWindow() async {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")
@@ -126,7 +126,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertEqual(adapter.userId, "user")
     }
 
-    func testRestoreOfflineSessionFailsOutsideWindow() {
+    func testRestoreOfflineSessionFailsOutsideWindow() async {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")

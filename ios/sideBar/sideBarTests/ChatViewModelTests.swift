@@ -83,7 +83,7 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(toolCall?.status, .pending)
     }
 
-    func testNoteUpdateClearsCache() {
+    func testNoteUpdateClearsCache() async {
         let cache = TestCacheClient()
         let note = NotePayload(id: "note-1", name: "Test.md", content: "Hello", path: "note-1", modified: nil, created: nil)
         cache.set(key: CacheKeys.notesTree, value: FileTree(children: []), ttlSeconds: 60)
@@ -99,7 +99,7 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertNil(cachedTree)
     }
 
-    func testScratchpadUpdateClearsCacheAndBumpsStore() {
+    func testScratchpadUpdateClearsCacheAndBumpsStore() async {
         let cache = TestCacheClient()
         let store = ScratchpadStore()
         let cached = ScratchpadResponse(id: "s1", title: ScratchpadConstants.title, content: "Cached", updatedAt: nil)
@@ -227,7 +227,7 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.conversations.first?.id, created.id)
     }
 
-    func testReconcileMessagesPrefersLocalStreamingContentWhenIDsMatch() {
+    func testReconcileMessagesPrefersLocalStreamingContentWhenIDsMatch() async {
         let cache = TestCacheClient()
         let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
         let localStreaming = Message(
@@ -261,7 +261,7 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(reconciled.first?.content, localStreaming.content)
     }
 
-    func testReconcileMessagesDoesNotAppendLocalStreamWhenServerHasStreamingAssistant() {
+    func testReconcileMessagesDoesNotAppendLocalStreamWhenServerHasStreamingAssistant() async {
         let cache = TestCacheClient()
         let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
         viewModel.streamingConversationId = "conv-1"
