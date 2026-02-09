@@ -31,16 +31,23 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     let archivedListLimit = 500
     var archivedListSyncedAt: String?
     var archivedSyncLoaded = false
+    let archivedRefreshWaitTimeoutNanoseconds: UInt64
+    let archivedRefreshPollIntervalNanoseconds: UInt64
 
     public init(
         api: any WebsitesProviding,
         cache: CacheClient,
         offlineStore: OfflineStore? = nil,
-        networkStatus: (any NetworkStatusProviding)? = nil
+        networkStatus: (any NetworkStatusProviding)? = nil,
+        archivedRefreshWaitTimeoutNanoseconds: UInt64 = 10_000_000_000,
+        archivedRefreshPollIntervalNanoseconds: UInt64 = 50_000_000
     ) {
         self.api = api
         self.offlineStore = offlineStore
         self.networkStatus = networkStatus
+        let pollInterval = max(1, archivedRefreshPollIntervalNanoseconds)
+        self.archivedRefreshPollIntervalNanoseconds = pollInterval
+        self.archivedRefreshWaitTimeoutNanoseconds = max(pollInterval, archivedRefreshWaitTimeoutNanoseconds)
         super.init(cache: cache)
     }
 

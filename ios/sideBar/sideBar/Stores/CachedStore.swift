@@ -98,7 +98,7 @@ open class CachedStoreBase<CachedData: Codable>: ObservableObject {
         nextBackgroundRefreshAllowedAt = nil
     }
 
-    public func enqueueOfflineOperation<Payload: Encodable>(
+    func enqueueOfflineOperation<Payload: Encodable>(
         writeQueue: WriteQueue?,
         operation: WriteOperation,
         entityType: WriteEntityType,

@@ -82,7 +82,7 @@ import Foundation
     var cancellables = Set<AnyCancellable>()
     var attachmentPollTasks: [String: Task<Void, Never>] = [:]
 
-    public init(
+    init(
         network: ChatNetworkCoordinator,
         storage: ChatStorageCoordinator,
         ui: ChatUICoordinator
@@ -117,7 +117,7 @@ import Foundation
     }
 
     deinit {
-        streamClient.disconnect()
+        network.streamClient.disconnect()
         clearActiveToolTask?.cancel()
         refreshTask?.cancel()
         attachmentPollTasks.values.forEach { $0.cancel() }

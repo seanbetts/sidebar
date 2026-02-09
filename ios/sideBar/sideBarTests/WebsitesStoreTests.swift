@@ -84,6 +84,51 @@ final class WebsitesStoreTests: XCTestCase {
         }
     }
 
+    func testConcurrentArchivedRefreshTimesOutInsteadOfWaitingIndefinitely() async {
+        let item = WebsiteItem(
+            id: "w1",
+            title: "Example",
+            url: "https://example.com",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2024-01-01",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let response = WebsitesResponse(items: [item], archivedCount: 1, archivedLastUpdated: "2024-01-01")
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: 60)
+        let api = MockWebsitesAPI(listResult: .success(response), getResult: .failure(MockError.forced))
+        api.archivedListDelay = 0.6
+
+        let store = WebsitesStore(
+            api: api,
+            cache: cache,
+            archivedRefreshWaitTimeoutNanoseconds: 100_000_000,
+            archivedRefreshPollIntervalNanoseconds: 10_000_000
+        )
+
+        let firstRefresh = Task {
+            await store.loadArchivedList(force: true)
+        }
+        try? await Task.sleep(nanoseconds: 30_000_000)
+
+        let start = Date()
+        await store.loadArchivedList()
+        let elapsed = Date().timeIntervalSince(start)
+
+        XCTAssertLessThan(elapsed, 0.35)
+        await firstRefresh.value
+    }
+
     func testApplyRealtimeDeleteRemovesItemAndCache() async {
         let item = WebsiteItem(
             id: "w1",
@@ -172,6 +217,7 @@ private struct TestNetworkStatus: NetworkStatusProviding {
 private final class MockWebsitesAPI: WebsitesProviding {
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
+    var archivedListDelay: TimeInterval?
 
     init(listResult: Result<WebsitesResponse, Error>, getResult: Result<WebsiteDetail, Error>) {
         self.listResult = listResult
@@ -185,6 +231,9 @@ private final class MockWebsitesAPI: WebsitesProviding {
     func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse {
         _ = limit
         _ = offset
+        if let archivedListDelay {
+            try? await Task.sleep(nanoseconds: UInt64(archivedListDelay * 1_000_000_000))
+        }
         return try listResult.get()
     }
 

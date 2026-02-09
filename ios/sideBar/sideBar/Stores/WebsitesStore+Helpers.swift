@@ -58,8 +58,10 @@ extension WebsitesStore {
     }
 
     func waitForArchivedRefresh() async {
-        while isRefreshingArchived {
-            try? await Task.sleep(nanoseconds: 50_000_000)
+        var elapsed: UInt64 = 0
+        while isRefreshingArchived, elapsed < archivedRefreshWaitTimeoutNanoseconds {
+            try? await Task.sleep(nanoseconds: archivedRefreshPollIntervalNanoseconds)
+            elapsed += archivedRefreshPollIntervalNanoseconds
         }
     }
 

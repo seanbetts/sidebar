@@ -5,10 +5,9 @@ import Combine
 
 @MainActor
 /// Manages places autocomplete and reverse geocoding state.
-public final class PlacesViewModel: ObservableObject {
+public final class PlacesViewModel: LoadableViewModel {
     @Published public private(set) var predictions: [PlacePrediction] = []
     @Published public private(set) var reverseLabel: String?
-    @Published public private(set) var errorMessage: String?
 
     private let api: PlacesAPI
 
@@ -17,22 +16,22 @@ public final class PlacesViewModel: ObservableObject {
     }
 
     public func autocomplete(query: String) async {
-        errorMessage = nil
+        clearError()
         do {
             let response = try await api.autocomplete(query: query)
             predictions = response.predictions
         } catch {
-            errorMessage = error.localizedDescription
+            setError(error)
         }
     }
 
     public func reverse(lat: Double, lon: Double) async {
-        errorMessage = nil
+        clearError()
         do {
             let response = try await api.reverse(lat: lat, lon: lon)
             reverseLabel = response.label
         } catch {
-            errorMessage = error.localizedDescription
+            setError(error)
         }
     }
 }
