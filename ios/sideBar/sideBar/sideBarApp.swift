@@ -22,6 +22,10 @@ struct SideBarApp: App {
 
     init() {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
+        let forceInMemoryAuthStore = ProcessInfo.processInfo.environment[
+            "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
+        ] == "1"
+        let useInMemoryAuthStore = isTestMode || forceInMemoryAuthStore
         let launchStart = CFAbsoluteTimeGetCurrent()
         let logger = Logger(subsystem: "sideBar", category: "Startup")
         let logStep: (String, Double, Double) -> Void = { name, start, end in
@@ -48,7 +52,7 @@ struct SideBarApp: App {
         logStep("Config load", configStart, configEnd)
 
         let authStart = CFAbsoluteTimeGetCurrent()
-        let stateStore: AuthStateStore = isTestMode
+        let stateStore: AuthStateStore = useInMemoryAuthStore
             ? InMemoryAuthStateStore()
             : KeychainAuthStateStore(
                 service: AppGroupConfiguration.keychainService,

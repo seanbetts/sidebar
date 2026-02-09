@@ -12,10 +12,10 @@ Single-file source of truth for Apple-platform feature coverage.
 
 | Area | Feature ID | Feature | Risk | Current Coverage | Linked Automated Tests | Seed Profile | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Auth | AUTH-001 | Email/password sign-in | High | Unit + integration | `SupabaseAuthAdapterTests`, `KeychainAuthStateStoreTests` | `clean_user` | Partial |
+| Auth | AUTH-001 | Email/password sign-in | High | Unit + integration + UI deterministic | `SupabaseAuthAdapterTests`, `KeychainAuthStateStoreTests`, `TC-UI-001`, `TC-UI-002` | `clean_user` | Covered |
 | Auth | AUTH-002 | Session restore + biometric lock | High | Unit | `AuthStateStore` tests, `BiometricMonitor` paths | `clean_user` | Planned |
-| Chat | CHAT-001 | Send message in existing conversation | High | Unit + integration | `ChatViewModelTests`, `ChatStoreTests`, `ChatAPITests` | `seeded_user` | Partial |
-| Chat | CHAT-002 | Streaming response lifecycle | High | Unit + integration | `ChatStreamParserTests`, `URLSessionChatStreamClientTests` | `seeded_user` | Partial |
+| Chat | CHAT-001 | Send message in existing conversation | High | Unit + integration + UI deterministic | `ChatViewModelTests`, `ChatStoreTests`, `ChatAPITests`, `TC-UI-003` | `seeded_user` | Partial |
+| Chat | CHAT-002 | Streaming response lifecycle | High | Unit + integration + UI deterministic | `ChatStreamParserTests`, `URLSessionChatStreamClientTests`, `TC-UI-003` | `seeded_user` | Partial |
 | Notes | NOTE-001 | Notes create/edit/delete | High | Unit + integration | `NotesViewModelTests`, `NotesStoreTests`, `NotesAPITests` | `seeded_user` | Partial |
 | Notes | NOTE-002 | Editor formatting + markdown behavior | Medium | Unit | `NotesEditorViewModelTests`, `NativeMarkdownEditorViewModelTests` | `seeded_user` | Partial |
 | Files | FILE-001 | Local file upload flow | High | Unit + integration | `IngestionUploadManagerTests`, `IngestionStoreTests`, `FilesAPITests` | `seeded_user` + upload fixtures | Partial |
@@ -29,7 +29,7 @@ Single-file source of truth for Apple-platform feature coverage.
 | Share Extension | EXT-SHARE-001 | Share extension queue contract | High | Unit | `ShareExtensionQueueContractTests`, `PendingShareStoreTests` | `seeded_user` | Partial |
 | Widgets | EXT-WIDGET-001 | Widget data model/provider behavior | Medium | Unit | `WidgetModelConversionTests`, `WidgetBridgeContractTests` | `seeded_user` | Partial |
 | Safari Extension | EXT-SAFARI-001 | Safari message/deeplink handling | Medium | Unit | `SafariExtensionMessageHandlerTests` | `seeded_user` | Partial |
-| Shell | UI-001 | App launch + navigation shell | High | UI smoke + login journey in progress | `sideBarUITests`, `sideBarUITestsLaunchTests` | `clean_user` | In Progress |
+| Shell | UI-001 | App launch + navigation shell | High | UI smoke + `TC-UI-001` login success | `sideBarUITests`, `sideBarUITestsLaunchTests` | `clean_user` | Partial |
 
 ## UI Journey Cases (Deterministic)
 
@@ -37,9 +37,9 @@ Target: at least 12 stable UI journeys in CI.
 
 | TC ID | Journey | Covers | Priority | State |
 | --- | --- | --- | --- | --- |
-| TC-UI-001 | Login success to signed-in home | `AUTH-001`, `UI-001` | P0 | In Progress |
-| TC-UI-002 | Login failure shows deterministic error | `AUTH-001` | P0 | Planned |
-| TC-UI-003 | Send chat message and receive streamed reply | `CHAT-001`, `CHAT-002` | P0 | Planned |
+| TC-UI-001 | Login success to signed-in home | `AUTH-001`, `UI-001` | P0 | Covered |
+| TC-UI-002 | Login failure shows deterministic error | `AUTH-001` | P0 | Covered |
+| TC-UI-003 | Send chat message and receive streamed reply | `CHAT-001`, `CHAT-002` | P0 | Covered |
 | TC-UI-004 | Create/edit/delete note | `NOTE-001` | P0 | Planned |
 | TC-UI-005 | Upload local file and reach processed state | `FILE-001`, `FILE-002` | P0 | Planned |
 | TC-UI-006 | Create task, complete task, verify filters | `TASK-001`, `TASK-002` | P0 | Planned |
@@ -52,11 +52,11 @@ Target: at least 12 stable UI journeys in CI.
 
 ## Backlog (Next 5)
 
-- [ ] Stabilize `TC-UI-001` in local/CI runs with configured UI-test credentials.
-- [ ] Implement `TC-UI-003` using deterministic seeded chat conversation.
 - [ ] Implement `TC-UI-005` using local upload fixtures.
 - [ ] Implement `TC-UI-006` against seeded overdue/someday/completed task states.
 - [ ] Implement `TC-UI-009` by forcing network off/on during note edit flow.
+- [ ] Implement `TC-UI-004` for end-to-end note create/edit/delete in one deterministic journey.
+- [ ] Implement `TC-UI-008` for end-to-end website save and detail rendering.
 
 ## How To Add New Features
 
