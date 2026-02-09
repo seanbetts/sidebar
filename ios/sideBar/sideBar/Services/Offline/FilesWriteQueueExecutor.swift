@@ -2,11 +2,11 @@ import Foundation
 
 final class FilesWriteQueueExecutor: WriteQueueExecutor {
     private let api: any IngestionProviding
-    private let store: IngestionStore
+    private let store: any FilesWriteQueueApplying
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
-    init(api: any IngestionProviding, store: IngestionStore) {
+    init(api: any IngestionProviding, store: any FilesWriteQueueApplying) {
         self.api = api
         self.store = store
     }

@@ -2,11 +2,11 @@ import Foundation
 
 final class WebsitesWriteQueueExecutor: WriteQueueExecutor {
     private let api: any WebsitesProviding
-    private let store: WebsitesStore
+    private let store: any WebsitesWriteQueueApplying
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
-    init(api: any WebsitesProviding, store: WebsitesStore) {
+    init(api: any WebsitesProviding, store: any WebsitesWriteQueueApplying) {
         self.api = api
         self.store = store
     }

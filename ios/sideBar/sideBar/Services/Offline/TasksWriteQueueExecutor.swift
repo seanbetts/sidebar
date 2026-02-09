@@ -3,11 +3,11 @@ import sideBarShared
 
 final class TasksWriteQueueExecutor: WriteQueueExecutor {
     private let api: any TasksProviding
-    private let store: TasksStore
+    private let store: any TasksWriteQueueApplying
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
-    init(api: any TasksProviding, store: TasksStore) {
+    init(api: any TasksProviding, store: any TasksWriteQueueApplying) {
         self.api = api
         self.store = store
     }

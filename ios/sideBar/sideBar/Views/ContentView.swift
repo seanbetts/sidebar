@@ -6,18 +6,6 @@ import os
 import UIKit
 #endif
 
-public enum AppSection: String, CaseIterable, Identifiable {
-    case chat
-    case notes
-    case files
-    case websites
-    case settings
-    case tasks
-
-    public var id: String { rawValue }
-    public var title: String { rawValue.capitalized }
-}
-
 public struct ContentView: View {
     @EnvironmentObject var environment: AppEnvironment
     #if !os(macOS)

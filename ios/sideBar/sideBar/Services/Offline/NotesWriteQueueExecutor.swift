@@ -4,7 +4,7 @@ import sideBarShared
 
 final class NotesWriteQueueExecutor: WriteQueueExecutor {
     private let api: any NotesProviding
-    private let store: NotesStore
+    private let store: any NotesWriteQueueApplying
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
     private let logger = Logger(subsystem: "sideBar", category: "NotesWriteQueueExecutor")
@@ -17,7 +17,7 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         .delete: handleDelete
     ]
 
-    init(api: any NotesProviding, store: NotesStore) {
+    init(api: any NotesProviding, store: any NotesWriteQueueApplying) {
         self.api = api
         self.store = store
     }
