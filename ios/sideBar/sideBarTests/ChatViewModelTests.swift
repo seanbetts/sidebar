@@ -300,7 +300,7 @@ final class ChatViewModelTests: XCTestCase {
     private func makeViewModel<API: ConversationsProviding & ConversationsAPIProviding>(
         api: API,
         cache: CacheClient,
-        networkStatus: TestNetworkStatus = TestNetworkStatus(isNetworkAvailable: true),
+        networkStatus: TestNetworkStatus? = nil,
         scratchpadStore: ScratchpadStore? = nil
     ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
@@ -310,14 +310,14 @@ final class ChatViewModelTests: XCTestCase {
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
-        let networkStatus = TestNetworkStatus(isNetworkAvailable: true)
+        let effectiveNetworkStatus = networkStatus ?? TestNetworkStatus(isNetworkAvailable: true)
         let viewModel = ChatViewModel(
             network: ChatNetworkCoordinator(
                 chatAPI: chatAPI,
                 conversationsAPI: api,
                 ingestionAPI: ingestionAPI,
                 streamClient: streamClient,
-                networkStatus: networkStatus
+                networkStatus: effectiveNetworkStatus
             ),
             storage: ChatStorageCoordinator(
                 cache: cache,
@@ -342,7 +342,6 @@ private enum MockError: Error {
     case forced
 }
 
-@MainActor
 private struct TestNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
     let isOffline: Bool
