@@ -42,9 +42,8 @@ public enum ExtensionURLMessageHandler {
     public static func normalizeQueuedURL(_ raw: String) -> String? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        let candidate = trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://")
-            ? trimmed
-            : "https://\(trimmed)"
+        let hasExplicitScheme = trimmed.contains("://")
+        let candidate = hasExplicitScheme ? trimmed : "https://\(trimmed)"
         guard var components = URLComponents(string: candidate),
               let scheme = components.scheme?.lowercased(),
               scheme == "http" || scheme == "https" else {

@@ -4,9 +4,16 @@ import sideBarShared
 
 final class APIClientTests: XCTestCase {
     private struct EmptyResponse: Decodable {}
+    private static let protocolIsolationLock = NSLock()
+
+    override func setUp() {
+        super.setUp()
+        Self.protocolIsolationLock.lock()
+    }
 
     override func tearDown() {
         URLProtocolMock.requestHandler = nil
+        Self.protocolIsolationLock.unlock()
         super.tearDown()
     }
 
@@ -245,11 +252,6 @@ final class APIClientTests: XCTestCase {
             }
         )
 
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [URLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
-        let client = APIClient(config: config, session: session)
-
         let waves = 5
         let requestsPerWave = 10
 
@@ -258,6 +260,10 @@ final class APIClientTests: XCTestCase {
             let newToken = "wave-\(wave)-new"
             tokenBox.set(oldToken)
             nextRefreshedToken.set(newToken)
+            let configuration = URLSessionConfiguration.ephemeral
+            configuration.protocolClasses = [URLProtocolMock.self]
+            let session = URLSession(configuration: configuration)
+            let client = APIClient(config: config, session: session)
 
             URLProtocolMock.requestHandler = { request in
                 _ = requestCount.increment()

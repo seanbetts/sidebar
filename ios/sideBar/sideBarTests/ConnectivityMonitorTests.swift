@@ -25,6 +25,7 @@ final class ConnectivityMonitorTests: XCTestCase {
             object: nil,
             userInfo: ["error": URLError(.cannotConnectToHost)]
         )
+        await waitForMainQueueDrain()
 
         XCTAssertTrue(strongMonitor.isNetworkAvailable)
         XCTAssertFalse(strongMonitor.isOffline)
@@ -55,6 +56,7 @@ final class ConnectivityMonitorTests: XCTestCase {
             object: nil,
             userInfo: ["error": URLError(.notConnectedToInternet)]
         )
+        await waitForMainQueueDrain()
 
         XCTAssertFalse(strongMonitor.isNetworkAvailable)
         XCTAssertTrue(strongMonitor.isOffline)

@@ -11,15 +11,22 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         var refreshResult: Result<SupabaseSessionInfo, Error>?
 
         private var continuation: AsyncStream<(SupabaseAuthEvent, SupabaseSessionInfo?)>.Continuation?
+        private var pendingEvents: [(SupabaseAuthEvent, SupabaseSessionInfo?)] = []
 
         var authStateChanges: AsyncStream<(SupabaseAuthEvent, SupabaseSessionInfo?)> {
             AsyncStream { continuation in
                 self.continuation = continuation
+                self.pendingEvents.forEach { continuation.yield($0) }
+                self.pendingEvents.removeAll()
             }
         }
 
         func yield(event: SupabaseAuthEvent, session: SupabaseSessionInfo?) {
-            continuation?.yield((event, session))
+            if let continuation {
+                continuation.yield((event, session))
+            } else {
+                pendingEvents.append((event, session))
+            }
         }
 
         func finish() {
@@ -88,6 +95,8 @@ final class SupabaseAuthAdapterTests: XCTestCase {
             stateStore: store
         )
 
+        XCTAssertTrue(adapter.canRestoreOfflineSession)
+        XCTAssertTrue(adapter.restoreOfflineSession())
         XCTAssertEqual(adapter.accessToken, "token")
         XCTAssertEqual(adapter.userId, "user")
     }

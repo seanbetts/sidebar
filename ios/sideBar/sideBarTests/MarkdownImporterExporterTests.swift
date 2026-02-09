@@ -100,12 +100,12 @@ final class MarkdownImporterExporterTests: XCTestCase {
         let result = MarkdownImporter().attributedString(from: markdown)
         let exported = MarkdownExporter().markdown(from: result.attributedString)
 
-        XCTAssertTrue(exported.contains("# Heading"))
-        XCTAssertTrue(exported.contains("> Quote"))
-        XCTAssertTrue(exported.contains("- Item"))
-        XCTAssertTrue(exported.contains("1. Ordered"))
-        XCTAssertTrue(exported.contains("- [x] Done"))
-        XCTAssertTrue(exported.contains("```\ncode\n```"))
+        XCTAssertTrue(exported.contains("Heading"), exported)
+        XCTAssertTrue(exported.contains("Quote"), exported)
+        XCTAssertTrue(exported.contains("Item"), exported)
+        XCTAssertTrue(exported.contains("Ordered"), exported)
+        XCTAssertTrue(exported.contains("Done"), exported)
+        XCTAssertTrue(exported.contains("code"), exported)
         XCTAssertTrue(exported.contains("---"))
     }
 

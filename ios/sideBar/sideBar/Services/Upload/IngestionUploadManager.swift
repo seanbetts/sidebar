@@ -64,15 +64,24 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
     }()
     private let queue = DispatchQueue(label: "sideBar.ingestion.uploads")
+    private let workQueue = DispatchQueue(label: "sideBar.ingestion.uploads.work", qos: .utility)
+    private let workQueueKey = DispatchSpecificKey<Void>()
     private var contexts: [Int: UploadContext] = [:]
     private var taskIdsByUploadId: [String: Int] = [:]
 
     public init(config: APIClientConfig) {
         self.config = config
         super.init()
+        workQueue.setSpecific(key: workQueueKey, value: ())
+        // Initialize the lazy session on a single thread to avoid first-access races
+        // when start/cancel are called concurrently.
+        _ = self.session
     }
 
     deinit {
+        if DispatchQueue.getSpecific(key: workQueueKey) == nil {
+            workQueue.sync {}
+        }
         session.invalidateAndCancel()
     }
 
@@ -86,7 +95,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         let session = self.session
         let logger = self.logger
 
-        DispatchQueue.global(qos: .utility).async {
+        workQueue.async {
             let boundary = "Boundary-\(UUID().uuidString)"
             var urlRequest = URLRequest(url: baseUrl.appendingPathComponent("files"))
             urlRequest.httpMethod = "POST"

@@ -12,10 +12,12 @@ final class FilesAPITests: XCTestCase {
         let api = FilesAPI(client: makeClient())
         let expected = Data([0x01, 0x02])
         FilesURLProtocolMock.requestHandler = { request in
-            let urlString = request.url?.absoluteString ?? ""
-            XCTAssertTrue(urlString.contains("files/download"))
-            XCTAssertTrue(urlString.contains("basePath=docs"))
-            XCTAssertTrue(urlString.contains("path=folder%2Ffile.txt"))
+            let url = try XCTUnwrap(request.url)
+            XCTAssertTrue(url.path.contains("files/download"))
+            let components = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false))
+            let queryItems = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value) })
+            XCTAssertEqual(queryItems["basePath"], "docs")
+            XCTAssertEqual(queryItems["path"], "folder/file.txt")
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,

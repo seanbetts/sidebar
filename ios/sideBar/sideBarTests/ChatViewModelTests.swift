@@ -193,7 +193,7 @@ final class ChatViewModelTests: XCTestCase {
         let viewModel = makeViewModel(
             api: api,
             cache: cache,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: false)
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
         )
 
         await viewModel.loadConversation(id: "conv-1")

@@ -93,12 +93,13 @@ final class IngestionViewModelTests: XCTestCase {
             value: meta,
             ttlSeconds: 60
         )
+        let networkError = URLError(.notConnectedToInternet)
         let api = MockIngestionAPI(
-            listResult: .failure(MockError.forced),
-            metaResult: .failure(MockError.forced),
-            contentResult: .failure(MockError.forced),
-            pinResult: .failure(MockError.forced),
-            youtubeResult: .failure(MockError.forced)
+            listResult: .failure(networkError),
+            metaResult: .failure(networkError),
+            contentResult: .failure(networkError),
+            pinResult: .failure(networkError),
+            youtubeResult: .failure(networkError)
         )
         let defaults = makeDefaults()
         let store = IngestionStore(api: api, cache: cache, userDefaults: defaults)

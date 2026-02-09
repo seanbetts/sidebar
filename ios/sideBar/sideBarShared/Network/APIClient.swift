@@ -169,15 +169,16 @@ public final class APIClient {
         logger.debug("Response \(http.statusCode) in \(elapsedMs)ms")
         guard (200...299).contains(http.statusCode) else {
             if http.statusCode == 401,
-               shouldAttemptAuthRefresh(for: request),
-               await attemptAuthRefreshIfNeeded() {
-                var retry = request
-                if let token = config.accessTokenProvider() {
-                    retry.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                } else {
-                    retry.setValue(nil, forHTTPHeaderField: "Authorization")
+               shouldAttemptAuthRefresh(for: request) {
+                if await attemptAuthRefreshIfNeeded() || shouldRetryWithUpdatedToken(for: request) {
+                    var retry = request
+                    if let token = config.accessTokenProvider() {
+                        retry.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    } else {
+                        retry.setValue(nil, forHTTPHeaderField: "Authorization")
+                    }
+                    return try await performRequestWithoutAuthRetry(retry)
                 }
-                return try await performRequestWithoutAuthRetry(retry)
             }
 
             if let body = String(data: data, encoding: .utf8), !body.isEmpty {
@@ -245,6 +246,21 @@ public final class APIClient {
         return request.value(forHTTPHeaderField: "Authorization") != nil
     }
 
+    private func shouldRetryWithUpdatedToken(for request: URLRequest) -> Bool {
+        guard let latestToken = config.accessTokenProvider(), !latestToken.isEmpty else {
+            return false
+        }
+        return latestToken != bearerToken(from: request)
+    }
+
+    private func bearerToken(from request: URLRequest) -> String? {
+        guard let header = request.value(forHTTPHeaderField: "Authorization"),
+              header.hasPrefix("Bearer ") else {
+            return nil
+        }
+        return String(header.dropFirst("Bearer ".count))
+    }
+
     private func attemptAuthRefreshIfNeeded() async -> Bool {
         guard let refresh = config.refreshAuthIfNeeded else { return false }
         return await authRefreshCoordinator.refreshIfNeeded(using: refresh)
@@ -256,16 +272,28 @@ public final class APIClient {
             switch decodingError {
             case .keyNotFound(let key, let context):
                 let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
-                logger.error("Missing key '\(key.stringValue, privacy: .public)' at path: \(path.isEmpty ? "(root)" : path, privacy: .public)")
+                let codingPath = path.isEmpty ? "(root)" : path
+                logger.error(
+                    "Missing key '\(key.stringValue, privacy: .public)' at path: \(codingPath, privacy: .public)"
+                )
             case .typeMismatch(let expectedType, let context):
                 let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
-                logger.error("Type mismatch expected \(String(describing: expectedType), privacy: .public) at path: \(path.isEmpty ? "(root)" : path, privacy: .public)")
+                let codingPath = path.isEmpty ? "(root)" : path
+                logger.error(
+                    "Type mismatch expected \(String(describing: expectedType), privacy: .public) at path: \(codingPath, privacy: .public)"
+                )
             case .valueNotFound(let type, let context):
                 let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
-                logger.error("Null value for non-optional \(String(describing: type), privacy: .public) at path: \(path.isEmpty ? "(root)" : path, privacy: .public)")
+                let codingPath = path.isEmpty ? "(root)" : path
+                logger.error(
+                    "Null value for non-optional \(String(describing: type), privacy: .public) at path: \(codingPath, privacy: .public)"
+                )
             case .dataCorrupted(let context):
                 let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
-                logger.error("Data corrupted at path: \(path.isEmpty ? "(root)" : path, privacy: .public) - \(context.debugDescription, privacy: .public)")
+                let codingPath = path.isEmpty ? "(root)" : path
+                logger.error(
+                    "Data corrupted at path: \(codingPath, privacy: .public) - \(context.debugDescription, privacy: .public)"
+                )
             @unknown default:
                 logger.error("Unknown decoding error")
             }

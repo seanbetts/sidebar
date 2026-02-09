@@ -71,7 +71,13 @@ extension ChatViewModel {
     }
 
     func refreshContext(for target: ContextRefreshTarget) {
-        for provider in contextProviders where provider.matches(target) {
+        let matchingProviders = contextProviders.filter { $0.matches(target) }
+        if matchingProviders.isEmpty {
+            invalidateContextCacheFallback(for: target)
+            return
+        }
+
+        for provider in matchingProviders {
             provider.invalidate(target)
             Task {
                 do {
@@ -83,6 +89,18 @@ extension ChatViewModel {
                     )
                 }
             }
+        }
+    }
+
+    private func invalidateContextCacheFallback(for target: ContextRefreshTarget) {
+        switch target {
+        case .notes(let noteId):
+            cache.remove(key: CacheKeys.notesTree)
+            cache.remove(key: CacheKeys.note(id: noteId))
+        case .websites(let id):
+            cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
+        case .ingestion(let fileId):
+            cache.invalidateList(listKey: CacheKeys.ingestionList, detailKey: CacheKeys.ingestionMeta, id: fileId)
         }
     }
 

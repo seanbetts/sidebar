@@ -8,15 +8,19 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     func testApplyFormattingBoldTogglesInlineIntentOnSelection() async {
         let viewModel = NativeMarkdownEditorViewModel()
         viewModel.loadMarkdown("hello")
-        let selectedRange = characterRange(length: 5, in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: selectedRange)
+        let firstSelection = characterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: firstSelection)
 
         viewModel.applyFormatting(.bold)
-        let firstIntents = viewModel.attributedContent[selectedRange].inlinePresentationIntent ?? []
+        let firstRange = characterRange(length: 5, in: viewModel.attributedContent)
+        let firstIntents = viewModel.attributedContent[firstRange].inlinePresentationIntent ?? []
         XCTAssertTrue(firstIntents.contains(.stronglyEmphasized))
 
+        // Re-apply a fresh selection range after mutation so toggling uses valid indices.
+        viewModel.selection = AttributedTextSelection(range: characterRange(length: 5, in: viewModel.attributedContent))
         viewModel.applyFormatting(.bold)
-        let secondIntents = viewModel.attributedContent[selectedRange].inlinePresentationIntent ?? []
+        let secondRange = characterRange(length: 5, in: viewModel.attributedContent)
+        let secondIntents = viewModel.attributedContent[secondRange].inlinePresentationIntent ?? []
         XCTAssertFalse(secondIntents.contains(.stronglyEmphasized))
     }
 
@@ -24,7 +28,8 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         let viewModel = NativeMarkdownEditorViewModel()
         viewModel.loadMarkdown("hello\nworld")
         let insertion = viewModel.attributedContent.startIndex
-        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+        let next = viewModel.attributedContent.index(afterCharacter: insertion)
+        viewModel.selection = AttributedTextSelection(range: insertion..<next)
 
         viewModel.applyFormatting(.heading(level: 2))
         let firstLineRange = firstLine(in: viewModel.attributedContent)
@@ -36,13 +41,21 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         let viewModel = NativeMarkdownEditorViewModel()
         viewModel.autosaveDelay = 0.3
         viewModel.loadMarkdown("hello")
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
         let previous = viewModel.attributedContent
 
         viewModel.attributedContent = AttributedString("hello world")
         viewModel.selection = AttributedTextSelection(range: viewModel.attributedContent.endIndex..<viewModel.attributedContent.endIndex)
         viewModel.handleContentChange(previous: previous)
 
-        try? await Task.sleep(nanoseconds: 450_000_000)
+        for _ in 0..<20 {
+            if viewModel.hasUnsavedChanges, viewModel.autosaveToken > 0 {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
         XCTAssertTrue(viewModel.hasUnsavedChanges)
         XCTAssertGreaterThan(viewModel.autosaveToken, 0)
 

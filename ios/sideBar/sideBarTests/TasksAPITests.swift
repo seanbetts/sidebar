@@ -3,8 +3,16 @@ import sideBarShared
 @testable import sideBar
 
 final class TasksAPITests: XCTestCase {
+    private static let protocolIsolationLock = NSLock()
+
+    override func setUp() {
+        super.setUp()
+        Self.protocolIsolationLock.lock()
+    }
+
     override func tearDown() {
         TasksURLProtocolMock.requestHandler = nil
+        Self.protocolIsolationLock.unlock()
         super.tearDown()
     }
 

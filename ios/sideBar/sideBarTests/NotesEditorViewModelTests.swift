@@ -119,9 +119,10 @@ final class NotesEditorViewModelTests: XCTestCase {
         await Task.yield()
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        try await waitUntil(timeoutSeconds: 1.0) { !nativeViewModel.isUpdatingPrefixVisibility }
         nativeViewModel.attributedContent = AttributedString("Updated")
         nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
-        try? await Task.sleep(nanoseconds: 1_700_000_000)
+        try await waitUntil(timeoutSeconds: 3.0) { nativeViewModel.hasUnsavedChanges }
 
         XCTAssertTrue(nativeViewModel.hasUnsavedChanges)
 
@@ -159,11 +160,18 @@ final class NotesEditorViewModelTests: XCTestCase {
             writeQueue: writeQueue,
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
-        let note = NotePayload(id: "n1", name: "Note", content: "Server", path: "/note.md", modified: nil, created: nil)
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Server",
+            path: "/note.md",
+            modified: Date().addingTimeInterval(-60).timeIntervalSince1970,
+            created: nil
+        )
 
         try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
         store.applyEditorUpdate(note)
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        try await waitUntil(timeoutSeconds: 2.0) { viewModel.content == "Draft" && viewModel.isDirty }
 
         XCTAssertEqual(viewModel.content, "Draft")
         XCTAssertTrue(viewModel.isDirty)
@@ -263,6 +271,17 @@ final class NotesEditorViewModelTests: XCTestCase {
         let pending = try await writeQueue.fetchPendingWrites()
         XCTAssertEqual(pending.count, 1)
     }
+}
+
+private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
+    let timeout = Date().addingTimeInterval(timeoutSeconds)
+    while Date() < timeout {
+        if condition() {
+            return
+        }
+        try await Task.sleep(nanoseconds: 30_000_000)
+    }
+    XCTFail("Timed out waiting for condition")
 }
 
 private enum MockError: Error {
