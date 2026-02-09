@@ -1,10 +1,12 @@
 import Foundation
 
+/// Represents a shortcut list direction enum.
 public enum ShortcutListDirection: String, Hashable {
     case next
     case previous
 }
 
+/// Represents a shortcut action enum.
 public enum ShortcutAction: Hashable {
     case navigate(AppSection)
     case openSettings

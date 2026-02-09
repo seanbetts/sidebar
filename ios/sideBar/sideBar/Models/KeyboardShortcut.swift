@@ -1,13 +1,21 @@
 #if os(iOS)
 import UIKit
 
+/// Represents a keyboard shortcut struct.
 public struct KeyboardShortcut: Identifiable, Hashable {
+    /// The id value.
     public let id: String
+    /// The input value.
     public let input: String
+    /// The modifiers value.
     public let modifiers: UIKeyModifierFlags
+    /// The title value.
     public let title: String
+    /// The description value.
     public let description: String
+    /// The action value.
     public let action: ShortcutAction
+    /// The contexts value.
     public let contexts: Set<ShortcutContext>
 
     public init(
@@ -27,6 +35,7 @@ public struct KeyboardShortcut: Identifiable, Hashable {
         self.id = "\(input)|\(modifiers.rawValue)|\(title)"
     }
 
+    /// The symbol value.
     public var symbol: String {
         let modifierSymbols: [String] = [
             modifiers.contains(.control) ? "⌃" : nil,
@@ -59,6 +68,7 @@ public struct KeyboardShortcut: Identifiable, Hashable {
         return (modifierSymbols + [keySymbol]).joined()
     }
 
+    /// The key signature value.
     public var keySignature: String {
         "\(input)|\(modifiers.rawValue)"
     }

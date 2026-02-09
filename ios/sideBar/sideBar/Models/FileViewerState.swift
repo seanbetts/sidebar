@@ -1,5 +1,6 @@
 import Foundation
 
+/// Represents a file viewer kind enum.
 public enum FileViewerKind: String {
     case pdf
     case image
@@ -99,12 +100,19 @@ public enum FileViewerKind: String {
     }
 }
 
+/// Represents a file viewer state struct.
 public struct FileViewerState {
+    /// The title value.
     public let title: String
+    /// The kind value.
     public let kind: FileViewerKind
+    /// The text value.
     public let text: String?
+    /// The file url value.
     public let fileURL: URL?
+    /// The spreadsheet value.
     public let spreadsheet: SpreadsheetPayload?
+    /// The youtube embed url value.
     public let youtubeEmbedURL: URL?
 
     public init(

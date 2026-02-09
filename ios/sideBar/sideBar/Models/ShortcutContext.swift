@@ -1,5 +1,6 @@
 import Foundation
 
+/// Represents a shortcut context enum.
 public enum ShortcutContext: String, CaseIterable, Identifiable {
     case universal
     case chat
@@ -8,8 +9,10 @@ public enum ShortcutContext: String, CaseIterable, Identifiable {
     case files
     case tasks
 
+    /// The id value.
     public var id: String { rawValue }
 
+    /// The title value.
     public var title: String {
         switch self {
         case .universal:
