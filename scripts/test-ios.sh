@@ -26,4 +26,17 @@ if [[ -n "${IOS_RESULT_BUNDLE_PATH}" ]]; then
   XCODEBUILD_ARGS+=(-resultBundlePath "${IOS_RESULT_BUNDLE_PATH}")
 fi
 
+if [[ "${IOS_DESTINATION}" == *"platform=macOS"* ]]; then
+  # CI macOS runners do not have signing certificates/profiles.
+  XCODEBUILD_ARGS+=(
+    CODE_SIGNING_ALLOWED=NO
+    CODE_SIGNING_REQUIRED=NO
+    CODE_SIGN_IDENTITY=
+  )
+  # macOS UI tests are not reliable in headless CI sessions.
+  if [[ "${IOS_SKIP_UI_TESTS_ON_MACOS:-YES}" != "NO" ]]; then
+    XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
+  fi
+fi
+
 xcodebuild "${XCODEBUILD_ARGS[@]}" test

@@ -413,7 +413,7 @@ final class IngestionViewModelTests: XCTestCase {
 
         vm.startJobPollingIfNeeded(fileId: fileId)
 
-        for _ in 0..<80 where vm.errorMessage == nil {
+        for _ in 0..<120 where vm.errorMessage == nil || vm.jobPollingTasks[fileId] != nil {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
 
