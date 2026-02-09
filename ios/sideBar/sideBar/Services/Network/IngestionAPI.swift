@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import sideBarShared
 
 /// Defines the requirements for IngestionProviding.
@@ -114,8 +115,9 @@ private struct IngestionDeleteRequest: Codable {
 public struct IngestionAPI {
     private let client: APIClient
     private let session: URLSession
+    private let logger = Logger(subsystem: "sideBar", category: "IngestionAPI")
 
-    public init(client: APIClient, session: URLSession = .shared) {
+    public init(client: APIClient, session: URLSession = APIClient.makeDefaultSession()) {
         self.client = client
         self.session = session
     }
@@ -198,6 +200,21 @@ public struct IngestionAPI {
     }
 
     public func upload(fileData: Data, filename: String, mimeType: String, folder: String = "") async throws -> String {
+        let sourceFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ingestion-upload-source-\(UUID().uuidString)")
+        try fileData.write(to: sourceFileURL, options: .atomic)
+        defer {
+            try? FileManager.default.removeItem(at: sourceFileURL)
+        }
+        return try await upload(
+            fileURL: sourceFileURL,
+            filename: filename,
+            mimeType: mimeType,
+            folder: folder
+        )
+    }
+
+    public func upload(fileURL: URL, filename: String, mimeType: String, folder: String = "") async throws -> String {
         let boundary = "Boundary-\(UUID().uuidString)"
         var request = URLRequest(url: client.config.baseUrl.appendingPathComponent("files"))
         request.httpMethod = "POST"
@@ -206,18 +223,24 @@ public struct IngestionAPI {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
-        var body = Data()
-        body.append(Data("--\(boundary)\r\n".utf8))
-        body.append(Data("Content-Disposition: form-data; name=\"folder\"\r\n\r\n".utf8))
-        body.append(Data("\(folder)\r\n".utf8))
-        body.append(Data("--\(boundary)\r\n".utf8))
-        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".utf8))
-        body.append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
-        body.append(fileData)
-        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
-        request.httpBody = body
+        let bodyFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ingestion-upload-body-\(UUID().uuidString)")
+        try IngestionUploadHelpers.writeMultipartBody(
+            to: bodyFileURL,
+            boundary: boundary,
+            payload: UploadPayload(
+                fileURL: fileURL,
+                filename: filename,
+                mimeType: mimeType,
+                folder: folder
+            ),
+            logger: logger
+        )
+        defer {
+            try? FileManager.default.removeItem(at: bodyFileURL)
+        }
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.upload(for: request, fromFile: bodyFileURL)
         guard let http = response as? HTTPURLResponse else {
             throw APIClientError.unknown
         }
@@ -230,11 +253,7 @@ public struct IngestionAPI {
             }
             throw APIClientError.requestFailed(http.statusCode)
         }
-        struct UploadResponse: Codable { let fileId: String }
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        let responsePayload = try decoder.decode(UploadResponse.self, from: data)
-        return responsePayload.fileId
+        return try IngestionUploadHelpers.parseUploadResponse(data: data)
     }
 
     public func ingestYouTube(url: String) async throws -> String {

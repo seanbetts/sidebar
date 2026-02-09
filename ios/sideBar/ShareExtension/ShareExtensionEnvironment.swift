@@ -24,11 +24,22 @@ final class ShareExtensionEnvironment {
         })
         self.apiClient = APIClient(config: config)
         self.websitesAPI = WebsitesAPI(client: apiClient)
-        self.session = URLSession.shared
+        self.session = APIClient.makeDefaultSession()
     }
 
     /// Uploads a file to the ingestion API and returns the file ID.
     func uploadFile(data: Data, filename: String, mimeType: String) async throws -> String {
+        let sourceFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("share-upload-source-\(UUID().uuidString)")
+        try data.write(to: sourceFileURL, options: .atomic)
+        defer {
+            try? FileManager.default.removeItem(at: sourceFileURL)
+        }
+        return try await uploadFile(fileURL: sourceFileURL, filename: filename, mimeType: mimeType)
+    }
+
+    /// Uploads a file URL to the ingestion API and returns the file ID.
+    func uploadFile(fileURL: URL, filename: String, mimeType: String) async throws -> String {
         let boundary = "Boundary-\(UUID().uuidString)"
         var request = URLRequest(url: apiClient.config.baseUrl.appendingPathComponent("files"))
         request.httpMethod = "POST"
@@ -37,18 +48,20 @@ final class ShareExtensionEnvironment {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
-        var body = Data()
-        body.append(Data("--\(boundary)\r\n".utf8))
-        body.append(Data("Content-Disposition: form-data; name=\"folder\"\r\n\r\n".utf8))
-        body.append(Data("\r\n".utf8))
-        body.append(Data("--\(boundary)\r\n".utf8))
-        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".utf8))
-        body.append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
-        body.append(data)
-        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
-        request.httpBody = body
+        let bodyFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("share-upload-body-\(UUID().uuidString)")
+        try writeMultipartBody(
+            to: bodyFileURL,
+            boundary: boundary,
+            sourceFileURL: fileURL,
+            filename: filename,
+            mimeType: mimeType
+        )
+        defer {
+            try? FileManager.default.removeItem(at: bodyFileURL)
+        }
 
-        let (responseData, response) = try await session.data(for: request)
+        let (responseData, response) = try await session.upload(for: request, fromFile: bodyFileURL)
         guard let http = response as? HTTPURLResponse else {
             throw ShareExtensionError.uploadFailed("Invalid response")
         }
@@ -64,6 +77,36 @@ final class ShareExtensionEnvironment {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let uploadResponse = try decoder.decode(UploadResponse.self, from: responseData)
         return uploadResponse.fileId
+    }
+
+    private func writeMultipartBody(
+        to destinationURL: URL,
+        boundary: String,
+        sourceFileURL: URL,
+        filename: String,
+        mimeType: String
+    ) throws {
+        FileManager.default.createFile(atPath: destinationURL.path, contents: nil)
+        let output = try FileHandle(forWritingTo: destinationURL)
+        defer { try? output.close() }
+
+        try output.write(contentsOf: Data("--\(boundary)\r\n".utf8))
+        try output.write(contentsOf: Data("Content-Disposition: form-data; name=\"folder\"\r\n\r\n".utf8))
+        try output.write(contentsOf: Data("\r\n".utf8))
+        try output.write(contentsOf: Data("--\(boundary)\r\n".utf8))
+        try output.write(contentsOf: Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".utf8))
+        try output.write(contentsOf: Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
+
+        let input = try FileHandle(forReadingFrom: sourceFileURL)
+        defer { try? input.close() }
+        while true {
+            let chunk = input.readData(ofLength: 1024 * 1024)
+            if chunk.isEmpty {
+                break
+            }
+            try output.write(contentsOf: chunk)
+        }
+        try output.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
     }
 
     private func parseErrorMessage(from data: Data) -> String? {

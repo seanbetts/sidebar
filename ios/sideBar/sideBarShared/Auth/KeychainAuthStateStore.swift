@@ -64,6 +64,7 @@ public final class KeychainAuthStateStore: AuthStateStore {
     private let encryptionKeyAccount = "authEncryptionKey"
     private let useInMemoryStore: Bool
     private let keychain: KeychainClient
+    private let stateLock = NSRecursiveLock()
     private var memoryStore: [String: String] = [:]
     private var memoryDataStore: [String: Data] = [:]
     private var cachedEncryptionKey: SymmetricKey?
@@ -107,7 +108,9 @@ public final class KeychainAuthStateStore: AuthStateStore {
     /// Saves encrypted session data for a given key.
     public func saveSessionData(_ data: Data, forKey key: String) throws {
         if useInMemoryStore {
-            memoryDataStore[key] = data
+            withStateLock {
+                memoryDataStore[key] = data
+            }
             return
         }
         let encryptedData = try encrypt(data)
@@ -140,7 +143,9 @@ public final class KeychainAuthStateStore: AuthStateStore {
     /// Loads encrypted session data for a given key.
     public func loadSessionData(forKey key: String) throws -> Data? {
         if useInMemoryStore {
-            return memoryDataStore[key]
+            return withStateLock {
+                memoryDataStore[key]
+            }
         }
         var query = baseQuery(account: key)
         query[kSecReturnData as String] = kCFBooleanTrue
@@ -168,10 +173,12 @@ public final class KeychainAuthStateStore: AuthStateStore {
 
     private func saveString(_ value: String?, account: String) throws {
         if useInMemoryStore {
-            if let value {
-                memoryStore[account] = value
-            } else {
-                memoryStore.removeValue(forKey: account)
+            withStateLock {
+                if let value {
+                    memoryStore[account] = value
+                } else {
+                    memoryStore.removeValue(forKey: account)
+                }
             }
             return
         }
@@ -212,7 +219,9 @@ public final class KeychainAuthStateStore: AuthStateStore {
 
     private func loadString(account: String) throws -> String? {
         if useInMemoryStore {
-            return memoryStore[account]
+            return withStateLock {
+                memoryStore[account]
+            }
         }
         var query = baseQuery(account: account)
         query[kSecReturnData as String] = kCFBooleanTrue
@@ -239,7 +248,13 @@ public final class KeychainAuthStateStore: AuthStateStore {
 
     private func deleteItem(account: String) throws {
         if useInMemoryStore {
-            memoryStore.removeValue(forKey: account)
+            withStateLock {
+                memoryStore.removeValue(forKey: account)
+                memoryDataStore.removeValue(forKey: account)
+                if account == encryptionKeyAccount {
+                    cachedEncryptionKey = nil
+                }
+            }
             return
         }
         let query = baseQuery(account: account)
@@ -305,19 +320,21 @@ public final class KeychainAuthStateStore: AuthStateStore {
     }
 
     private func loadOrCreateEncryptionKey() throws -> SymmetricKey {
-        if let cachedEncryptionKey {
-            return cachedEncryptionKey
-        }
-        if let storedKeyData = try loadRawData(account: encryptionKeyAccount) {
-            let key = SymmetricKey(data: storedKeyData)
+        try withStateLock {
+            if let cachedEncryptionKey {
+                return cachedEncryptionKey
+            }
+            if let storedKeyData = try loadRawData(account: encryptionKeyAccount) {
+                let key = SymmetricKey(data: storedKeyData)
+                cachedEncryptionKey = key
+                return key
+            }
+            let key = SymmetricKey(size: .bits256)
+            let keyData = key.withUnsafeBytes { Data($0) }
+            try saveRawData(keyData, account: encryptionKeyAccount)
             cachedEncryptionKey = key
             return key
         }
-        let key = SymmetricKey(size: .bits256)
-        let keyData = key.withUnsafeBytes { Data($0) }
-        try saveRawData(keyData, account: encryptionKeyAccount)
-        cachedEncryptionKey = key
-        return key
     }
 
     private func loadRawData(account: String) throws -> Data? {
@@ -365,5 +382,11 @@ public final class KeychainAuthStateStore: AuthStateStore {
         } else if status != errSecSuccess {
             throw mapStatus(status)
         }
+    }
+
+    private func withStateLock<T>(_ operation: () throws -> T) rethrows -> T {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return try operation()
     }
 }

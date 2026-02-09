@@ -230,52 +230,86 @@ extension WebsitesViewModel {
         let key = Self.transcriptPollingKey(websiteId: websiteId, videoId: videoId)
         guard transcriptPollingTasks[key] == nil else { return }
         transcriptPollingTasks[key] = Task { [weak self] in
+            var consecutiveFailures = 0
             while !Task.isCancelled {
                 guard let self else { return }
                 do {
-                    try await Task.sleep(nanoseconds: self.transcriptPollIntervalNanoseconds)
+                    try await Task.sleep(
+                        nanoseconds: self.transcriptPollingDelayNanoseconds(
+                            key: key,
+                            consecutiveFailures: consecutiveFailures
+                        )
+                    )
                 } catch {
                     return
                 }
-                if await self.pollTranscriptStatus(
+                switch await self.pollTranscriptStatus(
                     websiteId: websiteId,
                     videoId: videoId,
                     key: key
                 ) {
+                case .completed:
+                    return
+                case .pending:
+                    consecutiveFailures = 0
+                case .retryableFailure:
+                    consecutiveFailures += 1
+                    guard consecutiveFailures >= self.transcriptPollMaxConsecutiveFailures else {
+                        continue
+                    }
+                    self.markTranscriptPollingFailed(websiteId: websiteId, videoId: videoId, key: key)
                     return
                 }
             }
         }
     }
 
-    func pollTranscriptStatus(websiteId: String, videoId: String, key: String) async -> Bool {
+    private func pollTranscriptStatus(
+        websiteId: String,
+        videoId: String,
+        key: String
+    ) async -> TranscriptPollingResult {
         guard selectedWebsiteId == websiteId else {
             stopTranscriptPolling(key: key)
-            return true
+            return .completed
         }
         guard networkStatus.isOffline == false else {
-            return false
+            return .retryableFailure
         }
         do {
             try await store.loadDetail(id: websiteId, force: true)
         } catch {
-            return false
+            return .retryableFailure
         }
         guard let current = active, current.id == websiteId else {
-            return false
+            return .retryableFailure
         }
         guard let status = current.youtubeTranscripts?[videoId]?.status?.lowercased() else {
             stopTranscriptPolling(key: key)
-            return true
+            return .completed
         }
         guard Self.isTranscriptStatusPending(status) == false else {
-            return false
+            return .pending
         }
         if status == "failed" || status == "canceled" {
             errorMessage = current.youtubeTranscripts?[videoId]?.error ?? "Transcript failed."
         }
         stopTranscriptPolling(key: key)
-        return true
+        return .completed
+    }
+
+    func markTranscriptPollingFailed(websiteId: String, videoId: String, key: String) {
+        let message = "Could not refresh transcript status. Retry transcription."
+        let currentFileId = active?.youtubeTranscripts?[videoId]?.fileId
+        store.applyTranscriptQueuedUpdate(
+            websiteId: websiteId,
+            videoId: videoId,
+            status: "failed",
+            fileId: currentFileId,
+            error: message
+        )
+        errorMessage = message
+        stopTranscriptPolling(key: key)
     }
 
     func stopTranscriptPolling(
@@ -298,6 +332,40 @@ extension WebsitesViewModel {
             task.cancel()
         }
         transcriptPollingTasks = [:]
+    }
+
+    private enum TranscriptPollingResult {
+        case completed
+        case pending
+        case retryableFailure
+    }
+
+    private func transcriptPollingDelayNanoseconds(
+        key: String,
+        consecutiveFailures: Int
+    ) -> UInt64 {
+        let exponent = min(max(consecutiveFailures, 0), 4)
+        let base = Double(transcriptPollIntervalNanoseconds)
+        let maxValue = Double(transcriptPollMaxIntervalNanoseconds)
+        let scaled = min(base * pow(2, Double(exponent)), maxValue)
+        let jitter = Double(
+            deterministicJitter(
+                seed: "transcript:\(key)",
+                attempt: consecutiveFailures,
+                maxValue: transcriptPollJitterWindowNanoseconds
+            )
+        )
+        return UInt64(scaled + jitter)
+    }
+
+    private func deterministicJitter(seed: String, attempt: Int, maxValue: UInt64) -> UInt64 {
+        guard maxValue > 0 else { return 0 }
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in "\(seed):\(attempt)".utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return UInt64(Double(hash % 1_000) / 1_000 * Double(maxValue))
     }
 
     static func transcriptPollingKey(websiteId: String, videoId: String) -> String {

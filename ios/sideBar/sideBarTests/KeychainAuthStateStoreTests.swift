@@ -139,4 +139,20 @@ final class KeychainAuthStateStoreTests: XCTestCase {
             XCTAssertEqual(error as? KeychainError, .duplicateItem)
         }
     }
+
+    func testInMemorySessionDataRoundTripAndRemove() throws {
+        let store = KeychainAuthStateStore(
+            service: "sideBar.AuthTests.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        Self.retainedStores.append(store)
+        let key = "supabase.session"
+        let payload = Data("session-payload".utf8)
+
+        try store.saveSessionData(payload, forKey: key)
+        XCTAssertEqual(try store.loadSessionData(forKey: key), payload)
+
+        try store.removeSessionData(forKey: key)
+        XCTAssertNil(try store.loadSessionData(forKey: key))
+    }
 }

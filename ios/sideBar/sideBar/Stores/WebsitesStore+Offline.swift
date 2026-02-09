@@ -6,7 +6,8 @@ extension WebsitesStore {
         websiteId: String,
         videoId: String,
         status: String,
-        fileId: String?
+        fileId: String?,
+        error: String? = nil
     ) {
         guard let active, active.id == websiteId else { return }
         var transcripts = active.youtubeTranscripts ?? [:]
@@ -15,7 +16,7 @@ extension WebsitesStore {
             status: status,
             fileId: fileId,
             updatedAt: timestamp,
-            error: nil
+            error: error
         )
 
         let updatedDetail = WebsiteDetail(

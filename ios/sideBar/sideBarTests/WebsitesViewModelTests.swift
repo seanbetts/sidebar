@@ -639,6 +639,60 @@ final class WebsitesViewModelTests: XCTestCase {
             viewModel.active?.content.contains("YOUTUBE_TRANSCRIPT:dQw4w9WgXcQ") == true
         )
     }
+
+    func testTranscriptPollingStopsAfterRepeatedFailuresAndMarksTranscriptFailed() async {
+        let videoId = "dQw4w9WgXcQ"
+        let detail = makeDetail(id: "site-1")
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            getResult: .success(detail),
+            transcribeResult: .success(
+                WebsiteTranscriptResponse(
+                    readyWebsite: nil,
+                    queuedStatus: "queued",
+                    queuedFileId: "file-1"
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true),
+            transcriptPollInterval: 0.01,
+            transcriptPollMaxInterval: 0.01,
+            transcriptPollMaxConsecutiveFailures: 2,
+            transcriptPollJitterWindow: 0
+        )
+
+        await viewModel.selectWebsite(id: "site-1")
+        api.enqueueGetResult(.failure(MockError.forced))
+        api.enqueueGetResult(.failure(MockError.forced))
+
+        await viewModel.requestYouTubeTranscript(
+            websiteId: "site-1",
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+
+        for _ in 0..<100 where viewModel.active?.youtubeTranscripts?[videoId]?.status != "failed" {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertEqual(
+            viewModel.active?.youtubeTranscripts?[videoId]?.status,
+            "failed"
+        )
+        XCTAssertEqual(
+            viewModel.active?.youtubeTranscripts?[videoId]?.error,
+            "Could not refresh transcript status. Retry transcription."
+        )
+        XCTAssertEqual(
+            viewModel.errorMessage,
+            "Could not refresh transcript status. Retry transcription."
+        )
+        XCTAssertTrue(viewModel.transcriptPollingTasks.isEmpty)
+    }
 }
 
 private enum MockError: Error {

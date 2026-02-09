@@ -381,6 +381,46 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNotEqual(firstToken, secondToken, "Restarted polling should get a fresh token")
     }
 
+    func testJobPollingStopsAfterRepeatedFailuresAndSetsTerminalError() async {
+        let fileId = "file-1"
+        let meta = IngestionMetaResponse(
+            file: makeFile(id: fileId),
+            job: makeJob(status: "processing"),
+            derivatives: [],
+            recommendedViewer: nil
+        )
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: makeDefaults())
+        let vm = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter(),
+            jobPollingBaseInterval: 0.01,
+            jobPollingMaxInterval: 0.01,
+            jobPollingMaxConsecutiveFailures: 2,
+            jobPollingJitterWindow: 0
+        )
+        vm.selectedFileId = fileId
+        vm.activeMeta = meta
+
+        vm.startJobPollingIfNeeded(fileId: fileId)
+
+        for _ in 0..<80 where vm.errorMessage == nil {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertEqual(vm.errorMessage, "Could not refresh file status. Re-open the file to retry.")
+        XCTAssertNil(vm.jobPollingTasks[fileId])
+    }
+
     private func makePollingViewModel(fileId: String, jobStatus: String) -> IngestionViewModel {
         let meta = IngestionMetaResponse(
             file: makeFile(id: fileId),

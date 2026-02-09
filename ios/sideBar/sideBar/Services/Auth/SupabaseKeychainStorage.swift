@@ -9,8 +9,8 @@ import sideBarShared
 /// Keychain storage. With unified storage, Supabase will automatically load sessions
 /// from our Keychain on cold launch.
 ///
-/// Marked as `@unchecked Sendable` because KeychainAuthStateStore uses the Security
-/// framework's Keychain APIs, which are thread-safe.
+/// Marked as `@unchecked Sendable` because KeychainAuthStateStore serializes its
+/// mutable in-memory state and Security framework Keychain APIs are thread-safe.
 public final class SupabaseKeychainStorage: AuthLocalStorage, @unchecked Sendable {
   private let stateStore: KeychainAuthStateStore
 

@@ -232,10 +232,9 @@ extension ChatViewModel {
             }
         }
         do {
-            let data = try Data(contentsOf: url)
             let mimeType = mimeTypeFor(url: url)
             let fileId = try await ingestionAPI.upload(
-                fileData: data,
+                fileURL: url,
                 filename: url.lastPathComponent,
                 mimeType: mimeType
             )

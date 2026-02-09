@@ -103,15 +103,86 @@ final class IngestionAPITests: XCTestCase {
         XCTAssertEqual(fileId, "f9")
     }
 
+    func testUploadFromFileUsesMultipartBodyAndAuthHeader() async throws {
+        let (client, session) = makeClientAndSession(accessToken: "token-abc")
+        let api = IngestionAPI(client: client, session: session)
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ingestion-upload-test-\(UUID().uuidString).txt")
+        try Data("hello upload".utf8).write(to: tempURL)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        IngestionURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-abc")
+            XCTAssertTrue(request.value(forHTTPHeaderField: "Content-Type")?.hasPrefix("multipart/form-data; boundary=") == true)
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try XCTUnwrap(String(bytes: bodyData, encoding: .utf8))
+            XCTAssertTrue(body.contains("name=\"folder\""))
+            XCTAssertTrue(body.contains("\r\nchat\r\n"))
+            XCTAssertTrue(body.contains("name=\"file\"; filename=\"hello.txt\""))
+            XCTAssertTrue(body.contains("hello upload"))
+
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"file_id\":\"file-123\"}".utf8))
+        }
+
+        let fileId = try await api.upload(
+            fileURL: tempURL,
+            filename: "hello.txt",
+            mimeType: "text/plain",
+            folder: "chat"
+        )
+
+        XCTAssertEqual(fileId, "file-123")
+    }
+
+    func testUploadFromDataUsesMultipartBody() async throws {
+        let (client, session) = makeClientAndSession()
+        let api = IngestionAPI(client: client, session: session)
+
+        IngestionURLProtocolMock.requestHandler = { request in
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try XCTUnwrap(String(bytes: bodyData, encoding: .utf8))
+            XCTAssertTrue(body.contains("name=\"file\"; filename=\"data.txt\""))
+            XCTAssertTrue(body.contains("payload-data"))
+
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"file_id\":\"file-data\"}".utf8))
+        }
+
+        let fileId = try await api.upload(
+            fileData: Data("payload-data".utf8),
+            filename: "data.txt",
+            mimeType: "text/plain",
+            folder: "docs"
+        )
+
+        XCTAssertEqual(fileId, "file-data")
+    }
+
     private func makeClient() -> APIClient {
+        makeClientAndSession().0
+    }
+
+    private func makeClientAndSession(accessToken: String? = nil) -> (APIClient, URLSession) {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
+            accessTokenProvider: { accessToken }
         )
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [IngestionURLProtocolMock.self]
         let session = URLSession(configuration: configuration)
-        return APIClient(config: config, session: session)
+        return (APIClient(config: config, session: session), session)
     }
 }
 

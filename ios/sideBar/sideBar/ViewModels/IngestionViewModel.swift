@@ -99,6 +99,10 @@ public final class IngestionViewModel: ObservableObject {
     let pendingShareStore: PendingShareStore
     let uploadManager: IngestionUploadManaging
     let networkStatus: (any NetworkStatusProviding)?
+    let jobPollingBaseInterval: TimeInterval
+    let jobPollingMaxInterval: TimeInterval
+    let jobPollingMaxConsecutiveFailures: Int
+    let jobPollingJitterWindow: TimeInterval
     var cancellables = Set<AnyCancellable>()
     var securityScopedURLs: [String: URL] = [:]
     var jobPollingTasks: [String: Task<Void, Never>] = [:] {
@@ -123,7 +127,11 @@ public final class IngestionViewModel: ObservableObject {
         uploadManager: IngestionUploadManaging,
         toastCenter: ToastCenter,
         pendingShareStore: PendingShareStore = .shared,
-        networkStatus: (any NetworkStatusProviding)? = nil
+        networkStatus: (any NetworkStatusProviding)? = nil,
+        jobPollingBaseInterval: TimeInterval = 2,
+        jobPollingMaxInterval: TimeInterval = 20,
+        jobPollingMaxConsecutiveFailures: Int = 6,
+        jobPollingJitterWindow: TimeInterval = 0.4
     ) {
         self.api = api
         self.temporaryStore = temporaryStore
@@ -132,6 +140,10 @@ public final class IngestionViewModel: ObservableObject {
         self.pendingShareStore = pendingShareStore
         self.uploadManager = uploadManager
         self.networkStatus = networkStatus
+        self.jobPollingBaseInterval = max(jobPollingBaseInterval, 0.1)
+        self.jobPollingMaxInterval = max(jobPollingMaxInterval, self.jobPollingBaseInterval)
+        self.jobPollingMaxConsecutiveFailures = max(1, jobPollingMaxConsecutiveFailures)
+        self.jobPollingJitterWindow = max(0, jobPollingJitterWindow)
 
         store.$items
             .sink { [weak self] items in

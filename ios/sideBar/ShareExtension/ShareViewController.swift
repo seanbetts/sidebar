@@ -208,17 +208,10 @@ final class ShareViewController: UIViewController {
     }
 
     private func uploadFileFromURL(_ fileURL: URL, itemProvider: NSItemProvider) async {
-        do {
-            let data = try Data(contentsOf: fileURL)
-            let filename = itemProvider.suggestedName ?? fileURL.lastPathComponent
-            let mimeType = mimeTypeForFilename(filename)
-            await uploadFile(data: data, filename: filename, mimeType: mimeType, isImage: false)
-            try? FileManager.default.removeItem(at: fileURL)
-        } catch {
-            await MainActor.run { [weak self] in
-                self?.showError(ExtensionUserMessageCatalog.message(for: .fileReadFailed))
-            }
-        }
+        let filename = itemProvider.suggestedName ?? fileURL.lastPathComponent
+        let mimeType = mimeTypeForFilename(filename)
+        await uploadFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: false)
+        try? FileManager.default.removeItem(at: fileURL)
     }
 
     // MARK: - Upload
@@ -265,6 +258,55 @@ final class ShareViewController: UIViewController {
             await MainActor.run { [weak self] in
                 if self?.isOfflineError(error) == true {
                     self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)
+                    return
+                }
+                self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))
+            }
+        }
+    }
+
+    private func uploadFile(at fileURL: URL, filename: String, mimeType: String, isImage: Bool) async {
+        guard let environment else {
+            await MainActor.run { [weak self] in
+                self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+            }
+            return
+        }
+
+        await MainActor.run { [weak self] in
+            let progressView = ShareProgressView(
+                message: isImage
+                    ? ExtensionUserMessageCatalog.message(for: .uploadingImage)
+                    : ExtensionUserMessageCatalog.message(for: .uploadingFile)
+            )
+            self?.progressView = progressView
+            self?.setContentView(progressView)
+        }
+
+        do {
+            let fileId = try await environment.uploadFile(
+                fileURL: fileURL,
+                filename: filename,
+                mimeType: mimeType
+            )
+
+            if isImage {
+                ExtensionEventStore.shared.recordImageSaved(fileId: fileId, filename: filename)
+            } else {
+                ExtensionEventStore.shared.recordFileSaved(fileId: fileId, filename: filename)
+            }
+
+            await MainActor.run { [weak self] in
+                self?.showSuccess(
+                    message: isImage
+                        ? ExtensionUserMessageCatalog.message(for: .imageSaved)
+                        : ExtensionUserMessageCatalog.message(for: .fileSaved)
+                )
+            }
+        } catch {
+            await MainActor.run { [weak self] in
+                if self?.isOfflineError(error) == true {
+                    self?.queuePendingFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: isImage)
                     return
                 }
                 self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))

@@ -45,35 +45,7 @@ extension IngestionViewModel {
         guard jobPollingTasks[fileId] == nil else { return }
         let token = UUID()
         jobPollingTaskTokens[fileId] = token
-        jobPollingTasks[fileId] = Task { [weak self] in
-            guard let self else { return }
-            defer {
-                Task { @MainActor [weak self] in
-                    self?.finishJobPolling(fileId: fileId, token: token)
-                }
-            }
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                guard self.selectedFileId == fileId else {
-                    return
-                }
-                do {
-                    try await self.store.loadMeta(fileId: fileId, force: true)
-                    if let meta = self.activeMeta, meta.file.id == fileId {
-                        self.store.updateJob(fileId: fileId, job: meta.job, recommendedViewer: meta.recommendedViewer)
-                        if (meta.job.status ?? "") == "ready" {
-                            await self.ensureViewerReady(for: fileId)
-                            return
-                        }
-                        if (meta.job.status ?? "") == "failed" || (meta.job.status ?? "") == "canceled" {
-                            return
-                        }
-                    }
-                } catch {
-                    // Ignore polling errors; next tick will retry.
-                }
-            }
-        }
+        jobPollingTasks[fileId] = makeJobPollingTask(fileId: fileId, token: token)
     }
 
     func cancelJobPolling(fileId: String? = nil) {
@@ -94,6 +66,73 @@ extension IngestionViewModel {
         guard jobPollingTaskTokens[fileId] == token else { return }
         jobPollingTasks[fileId] = nil
         jobPollingTaskTokens[fileId] = nil
+    }
+
+    private func makeJobPollingTask(fileId: String, token: UUID) -> Task<Void, Never> {
+        Task { [weak self] in
+            guard let self else { return }
+            defer {
+                Task { @MainActor [weak self] in
+                    self?.finishJobPolling(fileId: fileId, token: token)
+                }
+            }
+            var consecutiveFailures = 0
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(
+                        nanoseconds: self.jobPollingDelayNanoseconds(
+                            fileId: fileId,
+                            consecutiveFailures: consecutiveFailures
+                        )
+                    )
+                } catch {
+                    return
+                }
+                guard self.selectedFileId == fileId else {
+                    return
+                }
+                do {
+                    let terminal = try await self.pollJobStatus(fileId: fileId)
+                    if terminal {
+                        return
+                    }
+                    consecutiveFailures = 0
+                } catch {
+                    consecutiveFailures += 1
+                    guard consecutiveFailures >= self.jobPollingMaxConsecutiveFailures else {
+                        continue
+                    }
+                    self.markJobPollingFailed(fileId: fileId)
+                    return
+                }
+            }
+        }
+    }
+
+    private func pollJobStatus(fileId: String) async throws -> Bool {
+        try await store.loadMeta(fileId: fileId, force: true)
+        guard let meta = activeMeta, meta.file.id == fileId else {
+            return false
+        }
+        store.updateJob(fileId: fileId, job: meta.job, recommendedViewer: meta.recommendedViewer)
+        let status = (meta.job.status ?? "").lowercased()
+        if status == "ready" {
+            await ensureViewerReady(for: fileId)
+            return true
+        }
+        return status == "failed" || status == "canceled"
+    }
+
+    private func markJobPollingFailed(fileId: String) {
+        let message = "Could not refresh file status. Re-open the file to retry."
+        errorMessage = message
+        store.updateLocalUpload(
+            fileId: fileId,
+            status: "failed",
+            stage: "failed",
+            progress: nil,
+            errorMessage: message
+        )
     }
 
     func updateListPollingState(items: [IngestionListItem]) {
@@ -206,6 +245,31 @@ extension IngestionViewModel {
             errorMessage = error.localizedDescription
         }
         isLoadingContent = false
+    }
+
+    private func jobPollingDelayNanoseconds(fileId: String, consecutiveFailures: Int) -> UInt64 {
+        let exponent = min(max(consecutiveFailures, 0), 4)
+        let scaled = min(
+            jobPollingBaseInterval * pow(2, Double(exponent)),
+            jobPollingMaxInterval
+        )
+        let jitter = deterministicJitter(
+            seed: "ingestion:\(fileId)",
+            attempt: consecutiveFailures,
+            maxValue: jobPollingJitterWindow
+        )
+        return UInt64((scaled + jitter) * 1_000_000_000)
+    }
+
+    private func deterministicJitter(seed: String, attempt: Int, maxValue: TimeInterval) -> TimeInterval {
+        guard maxValue > 0 else { return 0 }
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in "\(seed):\(attempt)".utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        let bucket = Double(hash % 1_000) / 1_000
+        return bucket * maxValue
     }
 
     func startUpload(url: URL) {

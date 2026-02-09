@@ -17,7 +17,7 @@ public struct SettingsAPI {
     private let client: APIClient
     private let session: URLSession
 
-    public init(client: APIClient, session: URLSession = .shared) {
+    public init(client: APIClient, session: URLSession = APIClient.makeDefaultSession()) {
         self.client = client
         self.session = session
     }

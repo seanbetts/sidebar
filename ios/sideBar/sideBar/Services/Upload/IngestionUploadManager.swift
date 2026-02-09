@@ -52,6 +52,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private let config: APIClientConfig
     private let logger = Logger(subsystem: "sideBar", category: "Upload")
     private let providedSession: URLSession?
+    private let certificatePinningDelegate: CertificatePinningDelegate?
     private lazy var session: URLSession = {
         if let providedSession {
             return providedSession
@@ -81,6 +82,12 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     public init(config: APIClientConfig, session: URLSession? = nil) {
         self.config = config
         self.providedSession = session
+        let pinnedCertificates = PinnedCertificates.loadFromMainBundle()
+        if !pinnedCertificates.isEmpty, !EnvironmentConfig.isRunningTestsOrPreviews() {
+            self.certificatePinningDelegate = CertificatePinningDelegate(pinnedCertificates: pinnedCertificates)
+        } else {
+            self.certificatePinningDelegate = nil
+        }
         super.init()
         workQueue.setSpecific(key: workQueueKey, value: ())
         // Initialize the lazy session on a single thread to avoid first-access races
@@ -319,6 +326,22 @@ private final class UploadContext {
 }
 
 extension IngestionUploadManager: URLSessionTaskDelegate, URLSessionDataDelegate {
+    public func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard let certificatePinningDelegate else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        certificatePinningDelegate.urlSession(
+            session,
+            didReceive: challenge,
+            completionHandler: completionHandler
+        )
+    }
+
     public func urlSession(
         _ session: URLSession,
         task: URLSessionTask,

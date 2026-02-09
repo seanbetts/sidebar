@@ -75,6 +75,9 @@ public final class WebsitesViewModel: ObservableObject {
     let toastCenter: ToastCenter
     let networkStatus: any NetworkStatusProviding
     let transcriptPollIntervalNanoseconds: UInt64
+    let transcriptPollMaxIntervalNanoseconds: UInt64
+    let transcriptPollMaxConsecutiveFailures: Int
+    let transcriptPollJitterWindowNanoseconds: UInt64
     let logger = Logger(subsystem: "sideBar", category: "WebsitesViewModel")
     @Published var inFlightTranscriptRequests: [String: Set<String>] = [:]
     var pendingTranscriptJobs: [String: Set<String>] = [:]
@@ -87,15 +90,24 @@ public final class WebsitesViewModel: ObservableObject {
         ingestionStore: IngestionStore? = nil,
         toastCenter: ToastCenter,
         networkStatus: any NetworkStatusProviding,
-        transcriptPollInterval: TimeInterval = 5
+        transcriptPollInterval: TimeInterval = 5,
+        transcriptPollMaxInterval: TimeInterval = 20,
+        transcriptPollMaxConsecutiveFailures: Int = 6,
+        transcriptPollJitterWindow: TimeInterval = 0.4
     ) {
         self.api = api
         self.store = store
         self.ingestionStore = ingestionStore
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
-        self.transcriptPollIntervalNanoseconds = UInt64(
-            max(transcriptPollInterval, 0.25) * 1_000_000_000
+        let clampedPollInterval = max(transcriptPollInterval, 0.25)
+        self.transcriptPollIntervalNanoseconds = UInt64(clampedPollInterval * 1_000_000_000)
+        self.transcriptPollMaxIntervalNanoseconds = UInt64(
+            max(transcriptPollMaxInterval, clampedPollInterval) * 1_000_000_000
+        )
+        self.transcriptPollMaxConsecutiveFailures = max(1, transcriptPollMaxConsecutiveFailures)
+        self.transcriptPollJitterWindowNanoseconds = UInt64(
+            max(transcriptPollJitterWindow, 0) * 1_000_000_000
         )
 
         store.$items
