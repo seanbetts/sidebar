@@ -136,7 +136,7 @@ public final class WriteQueue: ObservableObject {
         }
 
         try await performBackgroundTask { context in
-            let write = PendingWrite(context: context)
+            let write = PendingWrite.insertNew(in: context)
             write.id = UUID()
             write.operationType = operation.rawValue
             write.entityType = entityType.rawValue

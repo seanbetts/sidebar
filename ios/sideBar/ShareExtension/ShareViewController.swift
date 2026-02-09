@@ -1,4 +1,5 @@
 // swiftlint:disable file_length
+import AppIntents
 import UIKit
 import sideBarShared
 import UniformTypeIdentifiers

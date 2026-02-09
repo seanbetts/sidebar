@@ -5,3 +5,4 @@
 // Usage: import SideBarShared
 
 import Foundation
+import AppIntents

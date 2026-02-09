@@ -150,7 +150,7 @@ public final class OfflineStore {
                 let request = OfflineEntry.fetchRequest()
                 request.fetchLimit = 1
                 request.predicate = NSPredicate(format: "key == %@", key)
-                let entry = try context.fetch(request).first ?? OfflineEntry(context: context)
+                let entry = try context.fetch(request).first ?? OfflineEntry.insertNew(in: context)
                 if entry.objectID.isTemporaryID {
                     entry.id = UUID()
                 }

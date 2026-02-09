@@ -198,7 +198,7 @@ final class WriteQueueTests: XCTestCase {
 
         let writeId = UUID()
         let context = persistence.container.viewContext
-        let write = PendingWrite(context: context)
+        let write = PendingWrite.insertNew(in: context)
         write.id = writeId
         write.operationType = WriteOperation.update.rawValue
         write.entityType = WriteEntityType.note.rawValue
@@ -238,7 +238,7 @@ final class WriteQueueTests: XCTestCase {
 
         let writeId = UUID()
         let context = persistence.container.viewContext
-        let write = PendingWrite(context: context)
+        let write = PendingWrite.insertNew(in: context)
         write.id = writeId
         write.operationType = WriteOperation.update.rawValue
         write.entityType = WriteEntityType.note.rawValue
@@ -271,7 +271,7 @@ final class WriteQueueTests: XCTestCase {
 
         let context = persistence.container.viewContext
         let firstId = UUID()
-        let first = PendingWrite(context: context)
+        let first = PendingWrite.insertNew(in: context)
         first.id = firstId
         first.operationType = WriteOperation.update.rawValue
         first.entityType = WriteEntityType.note.rawValue
@@ -282,7 +282,7 @@ final class WriteQueueTests: XCTestCase {
         first.status = WriteQueueStatus.failed.rawValue
         first.conflictReason = "First conflict"
 
-        let second = PendingWrite(context: context)
+        let second = PendingWrite.insertNew(in: context)
         second.id = UUID()
         second.operationType = WriteOperation.update.rawValue
         second.entityType = WriteEntityType.note.rawValue

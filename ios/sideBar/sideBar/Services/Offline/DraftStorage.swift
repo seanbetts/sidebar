@@ -19,7 +19,7 @@ final class DraftStorage {
         let context = container.viewContext
         let request = LocalDraft.fetchRequest()
         request.predicate = NSPredicate(format: "entityType == %@ AND entityId == %@", entityType, entityId)
-        let draft = (try context.fetch(request).first) ?? LocalDraft(context: context)
+        let draft = (try context.fetch(request).first) ?? LocalDraft.insertNew(in: context)
         if draft.objectID.isTemporaryID {
             draft.id = UUID()
         }
