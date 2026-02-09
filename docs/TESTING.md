@@ -150,7 +150,26 @@ npm run coverage                          # With coverage
 # iOS
 ./scripts/test-ios.sh                     # Xcode scheme tests (unit + UI)
 IOS_DESTINATION='platform=iOS Simulator,name=iPhone 15 Pro' ./scripts/test-ios.sh
+
+# Deterministic CLI verification (recommended when full suite is flaky in parallel)
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+  -parallel-testing-enabled NO \
+  -only-testing:sideBarTests test
+
+# Optional local retry mode for transient simulator/runtime flake triage
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+  -only-testing:sideBarTests \
+  -retry-tests-on-failure -test-iterations 3 test
 ```
+
+### iOS Test Stability
+
+- Parallel full-suite execution can produce intermittent simulator/runtime crashes.
+- For release verification and CI-like confidence, prefer serial execution:
+  - `-parallel-testing-enabled NO`
+- Use retry mode for local triage only; do not treat it as equivalent to a stable serial pass.
 
 ## CI/CD
 
