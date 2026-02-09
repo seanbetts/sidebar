@@ -1,0 +1,59 @@
+import CoreData
+import Foundation
+import sideBarShared
+
+// swiftlint:disable nesting
+extension AppEnvironment {
+    struct CoreDependencyBuilder {
+        private static let testModePersistenceController = PersistenceController(inMemory: true)
+
+        struct Output {
+            let themeManager: ThemeManager
+            let toastCenter: ToastCenter
+            let realtimeClient: RealtimeClient
+            let connectivityMonitor: ConnectivityMonitor
+            let persistenceContainer: NSPersistentContainer
+            let draftStorage: DraftStorage
+            let offlineStore: OfflineStore
+            let spotlightIndexer: SpotlightIndexer
+            let biometricMonitor: BiometricMonitor
+        }
+
+        static func build(
+            container: ServiceContainer,
+            isTestMode: Bool
+        ) -> Output {
+            let themeManager = ThemeManager()
+            let toastCenter = ToastCenter()
+            let realtimeClient = container.makeRealtimeClient(handler: nil)
+            let connectivityMonitor = ConnectivityMonitor(
+                baseUrl: container.apiClient.config.baseUrl,
+                startMonitoring: !isTestMode
+            )
+            let persistenceController = persistenceController(for: isTestMode)
+            let draftStorage = DraftStorage(container: persistenceController.container)
+            let offlineStore = OfflineStore(container: persistenceController.container)
+            let spotlightIndexer = SpotlightIndexer()
+            let biometricMonitor = BiometricMonitor()
+            return Output(
+                themeManager: themeManager,
+                toastCenter: toastCenter,
+                realtimeClient: realtimeClient,
+                connectivityMonitor: connectivityMonitor,
+                persistenceContainer: persistenceController.container,
+                draftStorage: draftStorage,
+                offlineStore: offlineStore,
+                spotlightIndexer: spotlightIndexer,
+                biometricMonitor: biometricMonitor
+            )
+        }
+
+        private static func persistenceController(for isTestMode: Bool) -> PersistenceController {
+            guard isTestMode else {
+                return .shared
+            }
+            return testModePersistenceController
+        }
+    }
+}
+// swiftlint:enable nesting

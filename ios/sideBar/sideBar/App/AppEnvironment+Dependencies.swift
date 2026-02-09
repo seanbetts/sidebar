@@ -29,167 +29,43 @@ extension AppEnvironment {
         let spotlightIndexer: SpotlightIndexer
     }
 
-    // swiftlint:disable:next function_body_length
     static func buildDependencies(
         container: ServiceContainer,
         isTestMode: Bool
     ) -> EnvironmentDependencies {
-        let themeManager = ThemeManager()
-        let toastCenter = ToastCenter()
-        let realtimeClient = container.makeRealtimeClient(handler: nil)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: container.apiClient.config.baseUrl,
-            startMonitoring: !isTestMode
+        let core = CoreDependencyBuilder.build(container: container, isTestMode: isTestMode)
+        let stores = StoreDependencyBuilder.build(container: container, core: core)
+        let viewModels = ViewModelDependencyBuilder.build(
+            container: container,
+            core: core,
+            stores: stores
         )
-        let persistenceController = isTestMode
-            ? PersistenceController(inMemory: true)
-            : PersistenceController.shared
-        let draftStorage = DraftStorage(container: persistenceController.container)
-        let offlineStore = OfflineStore(container: persistenceController.container)
-        let spotlightIndexer = SpotlightIndexer()
-        let chatStore = ChatStore(
-            conversationsAPI: container.conversationsAPI,
-            cache: container.cacheClient,
-            offlineStore: offlineStore,
-            networkStatus: connectivityMonitor
-        )
-        let websitesStore = WebsitesStore(
-            api: container.websitesAPI,
-            cache: container.cacheClient,
-            offlineStore: offlineStore,
-            networkStatus: connectivityMonitor
-        )
-        websitesStore.spotlightIndexer = spotlightIndexer
-        let ingestionStore = IngestionStore(
-            api: container.ingestionAPI,
-            cache: container.cacheClient,
-            offlineStore: offlineStore,
-            networkStatus: connectivityMonitor
-        )
-        ingestionStore.spotlightIndexer = spotlightIndexer
-        let scratchpadStore = ScratchpadStore()
-        let biometricMonitor = BiometricMonitor()
-        let tasksStore = TasksStore(
-            api: container.tasksAPI,
-            cache: container.cacheClient,
-            offlineStore: offlineStore,
-            networkStatus: connectivityMonitor
-        )
-        let notesStore = NotesStore(
-            api: container.notesAPI,
-            cache: container.cacheClient,
-            offlineStore: offlineStore,
-            networkStatus: connectivityMonitor
-        )
-        notesStore.spotlightIndexer = spotlightIndexer
-        let notesExecutor = NotesWriteQueueExecutor(api: container.notesAPI, store: notesStore)
-        let tasksExecutor = TasksWriteQueueExecutor(api: container.tasksAPI, store: tasksStore)
-        let websitesExecutor = WebsitesWriteQueueExecutor(api: container.websitesAPI, store: websitesStore)
-        let filesExecutor = FilesWriteQueueExecutor(api: container.ingestionAPI, store: ingestionStore)
-        let writeQueueExecutor = CompositeWriteQueueExecutor(
-            executors: [
-                .note: notesExecutor,
-                .task: tasksExecutor,
-                .website: websitesExecutor,
-                .file: filesExecutor
-            ]
-        )
-        let writeQueue = WriteQueue(
-            container: persistenceController.container,
-            connectivityMonitor: connectivityMonitor,
-            executor: writeQueueExecutor
-        )
-        notesStore.attachWriteQueue(writeQueue)
-        tasksStore.attachWriteQueue(writeQueue)
-        websitesStore.attachWriteQueue(writeQueue)
-        ingestionStore.attachWriteQueue(writeQueue)
-        let chatViewModel = ChatViewModel(
-            network: ChatNetworkCoordinator(
-                chatAPI: container.chatAPI,
-                conversationsAPI: container.conversationsAPI,
-                ingestionAPI: container.ingestionAPI,
-                streamClient: container.makeChatStreamClient(handler: nil),
-                networkStatus: connectivityMonitor
-            ),
-            storage: ChatStorageCoordinator(
-                cache: container.cacheClient,
-                chatStore: chatStore,
-                notesStore: notesStore,
-                websitesStore: websitesStore,
-                ingestionStore: ingestionStore,
-                scratchpadStore: scratchpadStore
-            ),
-            ui: ChatUICoordinator(
-                themeManager: themeManager,
-                toastCenter: toastCenter
-            )
-        )
-        let temporaryStore = TemporaryFileStore.shared
-        let notesViewModel = NotesViewModel(
-            api: container.notesAPI,
-            store: notesStore,
-            toastCenter: toastCenter,
-            networkStatus: connectivityMonitor
-        )
-        let notesEditorViewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: connectivityMonitor
-        )
-        let ingestionViewModel = IngestionViewModel(
-            api: container.ingestionAPI,
-            store: ingestionStore,
-            temporaryStore: temporaryStore,
-            uploadManager: IngestionUploadManager(config: container.apiClient.config),
-            toastCenter: toastCenter,
-            networkStatus: connectivityMonitor
-        )
-        let websitesViewModel = WebsitesViewModel(
-            api: container.websitesAPI,
-            store: websitesStore,
-            ingestionStore: ingestionStore,
-            toastCenter: toastCenter,
-            networkStatus: connectivityMonitor
-        )
-        let tasksViewModel = TasksViewModel(
-            api: container.tasksAPI,
-            store: tasksStore,
-            toastCenter: toastCenter,
-            networkStatus: connectivityMonitor
-        )
-        let memoriesViewModel = MemoriesViewModel(api: container.memoriesAPI, cache: container.cacheClient)
-        let settingsViewModel = SettingsViewModel(
-            settingsAPI: container.settingsAPI,
-            skillsAPI: container.skillsAPI,
-            cache: container.cacheClient
-        )
-        let weatherViewModel = WeatherViewModel(api: container.weatherAPI)
+
         return EnvironmentDependencies(
-            themeManager: themeManager,
-            chatStore: chatStore,
-            notesStore: notesStore,
-            websitesStore: websitesStore,
-            ingestionStore: ingestionStore,
-            tasksStore: tasksStore,
-            scratchpadStore: scratchpadStore,
-            offlineStore: offlineStore,
-            toastCenter: toastCenter,
-            chatViewModel: chatViewModel,
-            notesViewModel: notesViewModel,
-            notesEditorViewModel: notesEditorViewModel,
-            ingestionViewModel: ingestionViewModel,
-            websitesViewModel: websitesViewModel,
-            tasksViewModel: tasksViewModel,
-            memoriesViewModel: memoriesViewModel,
-            settingsViewModel: settingsViewModel,
-            weatherViewModel: weatherViewModel,
-            realtimeClient: realtimeClient,
-            connectivityMonitor: connectivityMonitor,
-            biometricMonitor: biometricMonitor,
-            writeQueue: writeQueue,
-            draftStorage: draftStorage,
-            spotlightIndexer: spotlightIndexer
+            themeManager: core.themeManager,
+            chatStore: stores.chatStore,
+            notesStore: stores.notesStore,
+            websitesStore: stores.websitesStore,
+            ingestionStore: stores.ingestionStore,
+            tasksStore: stores.tasksStore,
+            scratchpadStore: stores.scratchpadStore,
+            offlineStore: core.offlineStore,
+            toastCenter: core.toastCenter,
+            chatViewModel: viewModels.chatViewModel,
+            notesViewModel: viewModels.notesViewModel,
+            notesEditorViewModel: viewModels.notesEditorViewModel,
+            ingestionViewModel: viewModels.ingestionViewModel,
+            websitesViewModel: viewModels.websitesViewModel,
+            tasksViewModel: viewModels.tasksViewModel,
+            memoriesViewModel: viewModels.memoriesViewModel,
+            settingsViewModel: viewModels.settingsViewModel,
+            weatherViewModel: viewModels.weatherViewModel,
+            realtimeClient: core.realtimeClient,
+            connectivityMonitor: core.connectivityMonitor,
+            biometricMonitor: core.biometricMonitor,
+            writeQueue: stores.writeQueue,
+            draftStorage: core.draftStorage,
+            spotlightIndexer: core.spotlightIndexer
         )
     }
 }
