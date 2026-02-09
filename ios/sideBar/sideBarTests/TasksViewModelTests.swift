@@ -98,6 +98,232 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(store.tasks.first?.isPreview, true)
     }
 
+    // MARK: - Load with different selections
+
+    func testLoadUpcomingSelectionSetsSelectionAndFetchesList() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "t1", title: "Future task", status: "open", deadline: "2025-06-01")
+        api.enqueueListResponse(scope: "upcoming", tasks: [task])
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        let viewModel = sut.viewModel
+        await viewModel.load(selection: .upcoming)
+
+        XCTAssertEqual(viewModel.selection, .upcoming)
+        XCTAssertEqual(api.listCallCount, 1)
+        XCTAssertTrue(sut.store.tasks.contains(where: { $0.id == "t1" }))
+    }
+
+    func testLoadGroupSelectionCallsGroupTasksEndpoint() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "t1", title: "Group task", status: "open", groupId: "g1")
+        api.groupTasksResponse = TaskListResponse(
+            scope: "group", generatedAt: nil, tasks: [task], projects: nil, groups: nil
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .group(id: "g1"))
+
+        XCTAssertEqual(api.groupTasksCallCount, 1)
+        XCTAssertEqual(sut.viewModel.selection, .group(id: "g1"))
+        XCTAssertTrue(sut.store.tasks.contains(where: { $0.id == "t1" }))
+    }
+
+    func testLoadProjectSelectionCallsProjectTasksEndpoint() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "t1", title: "Project task", status: "open", projectId: "p1")
+        api.projectTasksResponse = TaskListResponse(
+            scope: "project", generatedAt: nil, tasks: [task], projects: nil, groups: nil
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .project(id: "p1"))
+
+        XCTAssertEqual(api.projectTasksCallCount, 1)
+        XCTAssertEqual(sut.viewModel.selection, .project(id: "p1"))
+        XCTAssertTrue(sut.store.tasks.contains(where: { $0.id == "t1" }))
+    }
+
+    // MARK: - Task operations error paths
+
+    func testRenameTaskFailureSetsError() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "t1", title: "Old name", status: "open", updatedAt: "u1")
+        api.enqueueListResponse(scope: "today", tasks: [task])
+        api.applyResult = .failure(APIClientError.apiError("Rename failed"))
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+
+        await sut.viewModel.renameTask(task: task, title: "New name")
+
+        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertNotNil(sut.viewModel.errorMessage)
+    }
+
+    func testDeleteTaskSuccessRemovesFromStore() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "t1", title: "Delete me", status: "open", updatedAt: "u1")
+        api.enqueueListResponse(scope: "today", tasks: [task])
+        // After apply, the refresh returns empty
+        api.enqueueListResponse(scope: "today", tasks: [])
+        api.enqueueListResponse(scope: "today", tasks: [])
+        api.applyResult = .success(
+            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+        XCTAssertTrue(sut.store.tasks.contains(where: { $0.id == "t1" }))
+
+        await sut.viewModel.deleteTask(task: task)
+        await eventually {
+            !sut.store.tasks.contains(where: { $0.id == "t1" })
+        }
+
+        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertFalse(sut.store.tasks.contains(where: { $0.id == "t1" }))
+    }
+
+    func testDeferTaskOffsetsDeadline() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "t1", title: "Defer me", status: "open", deadline: "2025-03-15", updatedAt: "u1")
+        api.enqueueListResponse(scope: "today", tasks: [task])
+        api.enqueueListResponse(scope: "today", tasks: [])
+        api.applyResult = .success(
+            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+
+        await sut.viewModel.deferTask(task: task, days: 3)
+
+        XCTAssertEqual(api.applyCallCount, 1)
+        // Verify the payload contains the offset date
+        let sentDueDate = api.lastApplyPayload?.operations.first?.dueDate
+        XCTAssertEqual(sentDueDate, "2025-03-18")
+    }
+
+    // MARK: - New task creation
+
+    func testStartNewTaskSetsDefaultDueDateForTodaySelection() async {
+        let api = TasksViewModelAPIStub()
+        api.enqueueListResponse(scope: "today", tasks: [])
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+        sut.viewModel.startNewTask()
+
+        let draft = sut.viewModel.newTaskDraft
+        XCTAssertNotNil(draft)
+        let today = Calendar.current.startOfDay(for: Date())
+        let draftDay = Calendar.current.startOfDay(for: draft!.dueDate!)
+        XCTAssertEqual(draftDay, today)
+    }
+
+    func testCreateTaskOnlineCallsApplyAndRefreshes() async {
+        let api = TasksViewModelAPIStub()
+        api.enqueueListResponse(scope: "today", tasks: [])
+        // Responses for post-create refresh
+        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Buy milk", status: "open")])
+        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Buy milk", status: "open")])
+        api.applyResult = .success(
+            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+        sut.viewModel.startNewTask()
+
+        await sut.viewModel.createTask(title: "Buy milk", notes: "", dueDate: Date(), listId: nil)
+
+        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertNil(sut.viewModel.newTaskDraft, "Draft should be cleared after success")
+        XCTAssertGreaterThanOrEqual(api.listCallCount, 2, "Should refresh list after create")
+    }
+
+    func testCreateTaskTrimsWhitespaceFromTitle() async {
+        let api = TasksViewModelAPIStub()
+        api.enqueueListResponse(scope: "today", tasks: [])
+        api.enqueueListResponse(scope: "today", tasks: [])
+        api.enqueueListResponse(scope: "today", tasks: [])
+        api.applyResult = .success(
+            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+        sut.viewModel.startNewTask()
+
+        await sut.viewModel.createTask(title: "  Buy milk  ", notes: "", dueDate: nil, listId: nil)
+
+        XCTAssertEqual(api.applyCallCount, 1)
+        let sentTitle = api.lastApplyPayload?.operations.first?.title
+        XCTAssertEqual(sentTitle, "Buy milk")
+    }
+
+    // MARK: - Group/project management
+
+    func testCreateGroupCallsAPIAndRefreshesCounts() async {
+        let api = TasksViewModelAPIStub()
+        api.enqueueListResponse(scope: "today", tasks: [])
+        api.enqueueListResponse(scope: "today", tasks: [])
+        api.createGroupResult = .success(TaskGroup(id: "g1", title: "Work", updatedAt: nil))
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+
+        try? await sut.viewModel.createGroup(title: "Work")
+
+        XCTAssertEqual(api.createGroupCallCount, 1)
+        XCTAssertGreaterThanOrEqual(api.countsCallCount, 1, "Should refresh counts after creating group")
+    }
+
+    func testDeleteGroupFallsBackToNoneSelection() async {
+        let api = TasksViewModelAPIStub()
+        let group = TaskGroup(id: "g1", title: "Work", updatedAt: nil)
+        api.groupTasksResponse = TaskListResponse(
+            scope: "group", generatedAt: nil, tasks: [], projects: nil, groups: [group]
+        )
+        api.deleteGroupResult = .success(())
+        // Response for the post-delete reload (will load .none)
+        api.enqueueListResponse(scope: "today", tasks: [])
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .group(id: "g1"))
+        XCTAssertEqual(sut.viewModel.selection, .group(id: "g1"))
+
+        try? await sut.viewModel.deleteGroup(groupId: "g1")
+
+        // ViewModel should fall back to .none when the viewed group is deleted
+        XCTAssertEqual(sut.viewModel.selection, .none)
+        XCTAssertEqual(api.deleteGroupCallCount, 1)
+    }
+
+    func testDeleteProjectFallsBackToNoneSelection() async {
+        let api = TasksViewModelAPIStub()
+        let project = TaskProject(id: "p1", title: "Alpha", groupId: "g1", status: "active", updatedAt: nil)
+        api.projectTasksResponse = TaskListResponse(
+            scope: "project", generatedAt: nil, tasks: [], projects: [project], groups: nil
+        )
+        api.deleteProjectResult = .success(())
+        // Response for the post-delete reload
+        api.enqueueListResponse(scope: "today", tasks: [])
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .project(id: "p1"))
+        XCTAssertEqual(sut.viewModel.selection, .project(id: "p1"))
+
+        try? await sut.viewModel.deleteProject(projectId: "p1")
+
+        // ViewModel should fall back to .none when the viewed project is deleted
+        XCTAssertEqual(sut.viewModel.selection, .none)
+        XCTAssertEqual(api.deleteProjectCallCount, 1)
+    }
+
+    // MARK: - Helpers
+
     private struct SUT {
         let viewModel: TasksViewModel
         let store: TasksStore
@@ -111,7 +337,7 @@ final class TasksViewModelTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let networkStatus = TestNetworkStatus(isNetworkAvailable: networkAvailable)
+        let networkStatus = TasksTestNetworkStatus(isNetworkAvailable: networkAvailable)
         let store = TasksStore(
             api: api,
             cache: cache,
@@ -150,129 +376,4 @@ final class TasksViewModelTests: XCTestCase {
             try? await Task.sleep(nanoseconds: pollNanoseconds)
         }
     }
-}
-
-@MainActor
-private final class TestNetworkStatus: NetworkStatusProviding {
-    var isNetworkAvailable: Bool
-    var isOffline: Bool { !isNetworkAvailable }
-
-    init(isNetworkAvailable: Bool) {
-        self.isNetworkAvailable = isNetworkAvailable
-    }
-}
-
-@MainActor
-private final class TasksViewModelAPIStub: TasksProviding {
-    var listCallCount = 0
-    var searchCallCount = 0
-    var countsCallCount = 0
-    var applyCallCount = 0
-    var applyResult: Result<TaskSyncResponse, Error> = .success(
-        TaskSyncResponse(
-            applied: [],
-            tasks: [],
-            nextTasks: [],
-            conflicts: [],
-            updates: nil,
-            serverUpdatedSince: nil
-        )
-    )
-    var searchResponse = TaskListResponse(scope: "search", generatedAt: nil, tasks: [], projects: nil, groups: nil)
-    private var queuedListResponsesByScope: [String: [TaskListResponse]] = [:]
-
-    func enqueueListResponse(scope: String, tasks: [TaskItem], groups: [TaskGroup]? = nil, projects: [TaskProject]? = nil) {
-        let response = TaskListResponse(
-            scope: scope,
-            generatedAt: nil,
-            tasks: tasks,
-            projects: projects,
-            groups: groups
-        )
-        queuedListResponsesByScope[scope, default: []].append(response)
-    }
-
-    func list(scope: String) async throws -> TaskListResponse {
-        listCallCount += 1
-        if var responses = queuedListResponsesByScope[scope], !responses.isEmpty {
-            let first = responses.removeFirst()
-            queuedListResponsesByScope[scope] = responses
-            return first
-        }
-        return TaskListResponse(scope: scope, generatedAt: nil, tasks: [], projects: nil, groups: nil)
-    }
-
-    func projectTasks(projectId: String) async throws -> TaskListResponse {
-        _ = projectId
-        throw TestStubError.unused
-    }
-
-    func groupTasks(groupId: String) async throws -> TaskListResponse {
-        _ = groupId
-        throw TestStubError.unused
-    }
-
-    func search(query: String) async throws -> TaskListResponse {
-        _ = query
-        searchCallCount += 1
-        return searchResponse
-    }
-
-    func counts() async throws -> TaskCountsResponse {
-        countsCallCount += 1
-        return TaskCountsResponse(
-            generatedAt: nil,
-            counts: TaskCounts(inbox: 1, today: 1, upcoming: 1, completed: 1),
-            projects: [],
-            groups: []
-        )
-    }
-
-    func createGroup(title: String) async throws -> TaskGroup {
-        _ = title
-        throw TestStubError.unused
-    }
-
-    func renameGroup(groupId: String, title: String) async throws -> TaskGroup {
-        _ = groupId
-        _ = title
-        throw TestStubError.unused
-    }
-
-    func deleteGroup(groupId: String) async throws {
-        _ = groupId
-        throw TestStubError.unused
-    }
-
-    func createProject(title: String, groupId: String?) async throws -> TaskProject {
-        _ = title
-        _ = groupId
-        throw TestStubError.unused
-    }
-
-    func renameProject(projectId: String, title: String) async throws -> TaskProject {
-        _ = projectId
-        _ = title
-        throw TestStubError.unused
-    }
-
-    func deleteProject(projectId: String) async throws {
-        _ = projectId
-        throw TestStubError.unused
-    }
-
-    func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse {
-        _ = payload
-        applyCallCount += 1
-        return try applyResult.get()
-    }
-
-    func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse {
-        _ = payload
-        throw TestStubError.unused
-    }
-}
-
-private enum TestStubError: Error {
-    case unused
 }
