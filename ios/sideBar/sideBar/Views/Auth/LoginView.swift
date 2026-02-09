@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import Combine
 import sideBarShared
 import SwiftUI
@@ -8,7 +7,6 @@ import LocalAuthentication
 
 // MARK: - LoginView
 
-// swiftlint:disable:next type_body_length
 public struct LoginView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -96,86 +94,6 @@ public struct LoginView: View {
                 errorMessage = nil
             }
         }
-    }
-
-    private func updateLockoutState() {
-        if let authAdapter = environment.container.authSession as? SupabaseAuthAdapter {
-            lockoutSecondsRemaining = authAdapter.lockoutRemainingSeconds
-        }
-    }
-
-    private var isLockedOut: Bool {
-        lockoutSecondsRemaining != nil && lockoutSecondsRemaining! > 0
-    }
-
-    private func signIn() async {
-        errorMessage = nil
-        isSigningIn = true
-        defer { isSigningIn = false }
-
-        do {
-            let trimmedEmail = email.trimmed
-            if trimmedEmail != email {
-                email = trimmedEmail
-            }
-            if !environment.isNetworkAvailable {
-                if await attemptOfflineUnlock() {
-                    return
-                }
-                throw AuthAdapterError.networkUnavailable
-            }
-            try await environment.container.authSession.signIn(email: trimmedEmail, password: password)
-            environment.refreshAuthState()
-            #if os(iOS)
-            triggerHaptic(.success)
-            #endif
-            if reduceMotion {
-                showSuccess = true
-            } else {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    showSuccess = true
-                }
-            }
-            Task {
-                try? await Task.sleep(for: .seconds(0.7))
-                await MainActor.run {
-                    showSuccess = false
-                }
-            }
-        } catch {
-            if let authError = error as? AuthAdapterError {
-                errorMessage = authError.errorDescription
-            } else {
-                errorMessage = error.localizedDescription
-            }
-            #if os(iOS)
-            triggerHaptic(.error)
-            #endif
-        }
-    }
-
-    private func attemptOfflineUnlock() async -> Bool {
-        guard let authAdapter = environment.container.authSession as? SupabaseAuthAdapter else {
-            return false
-        }
-        guard authAdapter.canRestoreOfflineSession else {
-            return false
-        }
-        isOfflineUnlocking = true
-        defer { isOfflineUnlocking = false }
-        if biometricUnlockEnabled {
-            let authenticated = await authenticateForOfflineUnlock()
-            guard authenticated else {
-                errorMessage = "Offline unlock failed."
-                return false
-            }
-        }
-        if authAdapter.restoreOfflineSession() {
-            environment.refreshAuthState()
-            return true
-        }
-        errorMessage = "Offline unlock failed."
-        return false
     }
 
     private var headerView: some View {
@@ -499,12 +417,84 @@ public struct LoginView: View {
     #endif
 }
 
-private struct LoginGroupBoxStyle: GroupBoxStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            configuration.label
-            configuration.content
+private extension LoginView {
+    func updateLockoutState() {
+        if let authAdapter = environment.container.authSession as? SupabaseAuthAdapter {
+            lockoutSecondsRemaining = authAdapter.lockoutRemainingSeconds
         }
-        .cardStyle()
+    }
+
+    var isLockedOut: Bool {
+        lockoutSecondsRemaining != nil && lockoutSecondsRemaining! > 0
+    }
+
+    func signIn() async {
+        errorMessage = nil
+        isSigningIn = true
+        defer { isSigningIn = false }
+
+        do {
+            let trimmedEmail = email.trimmed
+            if trimmedEmail != email {
+                email = trimmedEmail
+            }
+            if !environment.isNetworkAvailable {
+                if await attemptOfflineUnlock() {
+                    return
+                }
+                throw AuthAdapterError.networkUnavailable
+            }
+            try await environment.container.authSession.signIn(email: trimmedEmail, password: password)
+            environment.refreshAuthState()
+            #if os(iOS)
+            triggerHaptic(.success)
+            #endif
+            if reduceMotion {
+                showSuccess = true
+            } else {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    showSuccess = true
+                }
+            }
+            Task {
+                try? await Task.sleep(for: .seconds(0.7))
+                await MainActor.run {
+                    showSuccess = false
+                }
+            }
+        } catch {
+            if let authError = error as? AuthAdapterError {
+                errorMessage = authError.errorDescription
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            #if os(iOS)
+            triggerHaptic(.error)
+            #endif
+        }
+    }
+
+    func attemptOfflineUnlock() async -> Bool {
+        guard let authAdapter = environment.container.authSession as? SupabaseAuthAdapter else {
+            return false
+        }
+        guard authAdapter.canRestoreOfflineSession else {
+            return false
+        }
+        isOfflineUnlocking = true
+        defer { isOfflineUnlocking = false }
+        if biometricUnlockEnabled {
+            let authenticated = await authenticateForOfflineUnlock()
+            guard authenticated else {
+                errorMessage = "Offline unlock failed."
+                return false
+            }
+        }
+        if authAdapter.restoreOfflineSession() {
+            environment.refreshAuthState()
+            return true
+        }
+        errorMessage = "Offline unlock failed."
+        return false
     }
 }
