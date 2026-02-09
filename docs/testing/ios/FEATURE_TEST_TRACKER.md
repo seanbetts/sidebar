@@ -29,7 +29,7 @@ Single-file source of truth for Apple-platform feature coverage.
 | Share Extension | EXT-SHARE-001 | Share extension queue contract | High | Unit | `ShareExtensionQueueContractTests`, `PendingShareStoreTests` | `seeded_user` | Partial |
 | Widgets | EXT-WIDGET-001 | Widget data model/provider behavior | Medium | Unit | `WidgetModelConversionTests`, `WidgetBridgeContractTests` | `seeded_user` | Partial |
 | Safari Extension | EXT-SAFARI-001 | Safari message/deeplink handling | Medium | Unit | `SafariExtensionMessageHandlerTests` | `seeded_user` | Partial |
-| Shell | UI-001 | App launch + navigation shell | High | UI smoke only | `sideBarUITests`, `sideBarUITestsLaunchTests` | `clean_user` | Planned |
+| Shell | UI-001 | App launch + navigation shell | High | UI smoke + login journey in progress | `sideBarUITests`, `sideBarUITestsLaunchTests` | `clean_user` | In Progress |
 
 ## UI Journey Cases (Deterministic)
 
@@ -37,7 +37,7 @@ Target: at least 12 stable UI journeys in CI.
 
 | TC ID | Journey | Covers | Priority | State |
 | --- | --- | --- | --- | --- |
-| TC-UI-001 | Login success to signed-in home | `AUTH-001`, `UI-001` | P0 | Planned |
+| TC-UI-001 | Login success to signed-in home | `AUTH-001`, `UI-001` | P0 | In Progress |
 | TC-UI-002 | Login failure shows deterministic error | `AUTH-001` | P0 | Planned |
 | TC-UI-003 | Send chat message and receive streamed reply | `CHAT-001`, `CHAT-002` | P0 | Planned |
 | TC-UI-004 | Create/edit/delete note | `NOTE-001` | P0 | Planned |
@@ -52,7 +52,7 @@ Target: at least 12 stable UI journeys in CI.
 
 ## Backlog (Next 5)
 
-- [ ] Implement `TC-UI-001` with `.ui-test-secrets.local` credentials.
+- [ ] Stabilize `TC-UI-001` in local/CI runs with configured UI-test credentials.
 - [ ] Implement `TC-UI-003` using deterministic seeded chat conversation.
 - [ ] Implement `TC-UI-005` using local upload fixtures.
 - [ ] Implement `TC-UI-006` against seeded overdue/someday/completed task states.

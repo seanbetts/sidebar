@@ -8,35 +8,117 @@
 import XCTest
 
 final class SideBarUITests: XCTestCase {
+    private let uiTestEmailKey = "SIDEBAR_UI_TEST_EMAIL"
+    private let uiTestPasswordKey = "SIDEBAR_UI_TEST_PASSWORD"
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation -
-        // required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
-
-    @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
-        app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-    }
-
-    @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
+        addUIInterruptionMonitor(withDescription: "System alerts") { alert in
+            let buttonLabels = [
+                "Continue",
+                "Allow",
+                "OK",
+                "Don’t Allow",
+                "Don't Allow",
+                "Allow While Using App",
+                "Allow Once",
+                "Not Now"
+            ]
+            for label in buttonLabels where alert.buttons[label].exists {
+                alert.buttons[label].tap()
+                return true
+            }
+            return false
         }
+    }
+
+    @MainActor
+    func testLoginSuccessNavigatesToSignedInHome() throws {
+        let credentials = try loadCredentials()
+        let app = XCUIApplication()
+        app.launchEnvironment[uiTestEmailKey] = credentials.email
+        app.launchEnvironment[uiTestPasswordKey] = credentials.password
+        app.launch()
+        dismissSystemAlertsIfPresent(in: app)
+
+        let emailField = app.textFields["Email"]
+        XCTAssertTrue(
+            emailField.waitForExistence(timeout: 20),
+            "Login screen did not appear."
+        )
+        emailField.tap()
+        emailField.typeText(credentials.email)
+
+        let passwordField = app.secureTextFields["Password"]
+        XCTAssertTrue(
+            passwordField.waitForExistence(timeout: 10),
+            "Password field did not appear."
+        )
+        passwordField.tap()
+        passwordField.typeText(credentials.password)
+
+        let signInButton = app.buttons["Sign In"]
+        XCTAssertTrue(signInButton.exists, "Sign In button is missing.")
+        signInButton.tap()
+        dismissSystemAlertsIfPresent(in: app)
+
+        XCTAssertTrue(
+            waitForSignedInHome(in: app, timeout: 45),
+            "Signed-in shell did not appear after login."
+        )
+        XCTAssertTrue(
+            waitForNonExistence(of: signInButton, timeout: 10),
+            "Sign In button remained visible after successful login."
+        )
+    }
+
+    private struct UITestCredentials {
+        let email: String
+        let password: String
+    }
+
+    private func loadCredentials() throws -> UITestCredentials {
+        let environment = ProcessInfo.processInfo.environment
+        guard let email = environment[uiTestEmailKey], !email.isEmpty else {
+            throw XCTSkip("Missing \(uiTestEmailKey) in test environment.")
+        }
+        guard let password = environment[uiTestPasswordKey], !password.isEmpty else {
+            throw XCTSkip("Missing \(uiTestPasswordKey) in test environment.")
+        }
+        return UITestCredentials(email: email, password: password)
+    }
+
+    private func dismissSystemAlertsIfPresent(in app: XCUIApplication) {
+        app.tap()
+    }
+
+    private func waitForSignedInHome(
+        in app: XCUIApplication,
+        timeout: TimeInterval
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        let indicators = [
+            app.buttons["Settings"],
+            app.buttons["Toggle sidebar"],
+            app.tabBars.buttons["Notes"],
+            app.tabBars.buttons["Tasks"]
+        ]
+
+        while Date() < deadline {
+            if indicators.contains(where: { $0.exists }) {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+        return false
+    }
+
+    private func waitForNonExistence(
+        of element: XCUIElement,
+        timeout: TimeInterval
+    ) -> Bool {
+        let predicate = NSPredicate(format: "exists == false")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 }
