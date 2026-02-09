@@ -70,12 +70,13 @@ extension WebsitesPanelView {
                     .tint(.blue)
                 }
             }
-            .swipeActions(edge: .trailing) {
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     deleteTarget = item
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+                .tint(.red)
             }
         #endif
     }
