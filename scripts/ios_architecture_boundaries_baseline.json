@@ -1,0 +1,46 @@
+{
+  "allowed_violations": [
+    {
+      "file": "ios/sideBar/sideBar/Services/Offline/FilesWriteQueueExecutor.swift",
+      "source_layer": "Services",
+      "token": "IngestionStore",
+      "forbidden_layers": ["Stores"]
+    },
+    {
+      "file": "ios/sideBar/sideBar/Services/Offline/NotesWriteQueueExecutor.swift",
+      "source_layer": "Services",
+      "token": "NotesStore",
+      "forbidden_layers": ["Stores"]
+    },
+    {
+      "file": "ios/sideBar/sideBar/Services/Offline/TasksWriteQueueExecutor.swift",
+      "source_layer": "Services",
+      "token": "TasksStore",
+      "forbidden_layers": ["Stores"]
+    },
+    {
+      "file": "ios/sideBar/sideBar/Services/Offline/WebsitesWriteQueueExecutor.swift",
+      "source_layer": "Services",
+      "token": "WebsitesStore",
+      "forbidden_layers": ["Stores"]
+    },
+    {
+      "file": "ios/sideBar/sideBar/Services/ShortcutActionRouter.swift",
+      "source_layer": "Services",
+      "token": "AppSection",
+      "forbidden_layers": ["Views"]
+    },
+    {
+      "file": "ios/sideBar/sideBar/ViewModels/NativeMarkdownEditorViewModel.swift",
+      "source_layer": "ViewModels",
+      "token": "SideBarMarkdownStyle",
+      "forbidden_layers": ["Views"]
+    },
+    {
+      "file": "ios/sideBar/sideBar/ViewModels/NavigationState.swift",
+      "source_layer": "ViewModels",
+      "token": "AppSection",
+      "forbidden_layers": ["Views"]
+    }
+  ]
+}

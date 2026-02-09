@@ -823,6 +823,15 @@ Doc comment coverage for public ViewModels/Services is enforced via:
 python scripts/check_ios_doc_comments.py
 ```
 
+Layering boundaries for MVVM/store/service architecture are enforced via:
+
+```bash
+python scripts/check_ios_architecture_boundaries.py
+```
+
+Legacy exceptions are tracked in `scripts/ios_architecture_boundaries_baseline.json`.
+CI fails if a new prohibited dependency appears or if the baseline contains stale entries.
+
 Deterministic iOS/macOS test execution is enforced in CI across:
 - iPad Pro 13-inch (M5), iPadOS 26
 - iPhone 17 Pro, iOS 26

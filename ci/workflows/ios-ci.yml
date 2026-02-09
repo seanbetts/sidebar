@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "ios/**"
+      - "scripts/check_ios_architecture_boundaries.py"
+      - "scripts/ios_architecture_boundaries_baseline.json"
       - "scripts/check_ios_doc_comments.py"
       - "scripts/check_ios_quality_gates.py"
       - "scripts/ios_quality_gates.json"
@@ -12,6 +14,8 @@ on:
   push:
     paths:
       - "ios/**"
+      - "scripts/check_ios_architecture_boundaries.py"
+      - "scripts/ios_architecture_boundaries_baseline.json"
       - "scripts/check_ios_doc_comments.py"
       - "scripts/check_ios_quality_gates.py"
       - "scripts/ios_quality_gates.json"
@@ -31,6 +35,8 @@ jobs:
         working-directory: ios/sideBar
       - name: Doc comment coverage
         run: python scripts/check_ios_doc_comments.py
+      - name: Architecture boundaries
+        run: python scripts/check_ios_architecture_boundaries.py
 
   ios_test_matrix:
     needs: ios_quality
