@@ -45,6 +45,7 @@ class SeedConversation:
 
     title: str
     messages: list[dict[str, Any]]
+    archived: bool = False
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,7 @@ class SeedTask:
     repeat_template: bool = False
     repeat_template_key: str | None = None
     next_instance_date: date | None = None
+    complete_on_seed: bool = False
 
 
 @dataclass(frozen=True)
@@ -130,6 +132,7 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
     """Build a deterministic seed plan."""
     timestamp = now or datetime.now(UTC)
     today = timestamp.date()
+    yesterday = today - timedelta(days=1)
     tomorrow = today + timedelta(days=1)
     next_week = today + timedelta(days=7)
     title_prefix = f"[{seed_tag}] "
@@ -200,6 +203,42 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
             folder="Archive/2025",
             tags=[seed_tag, "archive"],
         ),
+        SeedNote(
+            title="QA checklist",
+            content=(
+                "# QA checklist\n\n"
+                "- [x] Login validation\n"
+                "- [x] Notes sync smoke test\n"
+                "- [ ] Upload fixture verification\n\n"
+                "## API checks\n"
+                "| Endpoint | Status |\n"
+                "|---|---|\n"
+                "| /api/v1/notes | OK |\n"
+                "| /api/v1/tasks | OK |\n"
+            ),
+            folder="Projects/sideBar",
+            tags=[seed_tag, "qa", "checklist"],
+        ),
+        SeedNote(
+            title="Long-form UI fixture note",
+            content=(
+                "# Long-form UI fixture note\n\n"
+                "This note exists to test long scrolling, selection, and markdown "
+                "rendering behavior in deterministic UI journeys.\n\n"
+                "## Sections\n"
+                "- Intro\n"
+                "- Midpoint\n"
+                "- Conclusion\n\n"
+                "```swift\n"
+                'let message = "seeded long-form note"\n'
+                "print(message)\n"
+                "```\n\n"
+                + "\n".join(f"- Paragraph line {index}" for index in range(1, 31))
+                + "\n"
+            ),
+            folder="Research",
+            tags=[seed_tag, "longform", "ui-fixture"],
+        ),
     ]
 
     scratchpad = (
@@ -245,6 +284,22 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
             source=seed_tag,
             saved_at=timestamp - timedelta(days=10),
             archived=True,
+        ),
+        SeedWebsite(
+            url="https://developer.apple.com/documentation/xctest",
+            url_full="https://developer.apple.com/documentation/xctest",
+            title=f"{title_prefix}XCTest UI testing reference",
+            content=(
+                "# XCTest UI testing reference\n\n"
+                "Guides for deterministic UI automation, assertions, and stability.\n\n"
+                "## Focus\n"
+                "- launch arguments\n"
+                "- accessibility identifiers\n"
+                "- explicit waits\n"
+            ),
+            source=seed_tag,
+            saved_at=timestamp - timedelta(days=1),
+            archived=False,
         ),
     ]
 
@@ -292,6 +347,25 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
                 ),
             ],
         ),
+        SeedConversation(
+            title=f"{title_prefix}Archived troubleshooting thread",
+            messages=[
+                _message(
+                    "user",
+                    "The upload appears stuck at processing. What should I verify?",
+                    timestamp - timedelta(days=2, minutes=8),
+                ),
+                _message(
+                    "assistant",
+                    (
+                        "Check queue connectivity, confirm signed URL creation, and "
+                        "inspect processing job logs for retries."
+                    ),
+                    timestamp - timedelta(days=2, minutes=7, seconds=30),
+                ),
+            ],
+            archived=True,
+        ),
     ]
 
     memories = [
@@ -329,6 +403,13 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
             group_key="personal",
             notes="Keep weekly maintenance tasks.",
         ),
+        SeedTaskProject(
+            key="experiments",
+            title="Experiments",
+            group_key="work",
+            status="paused",
+            notes="Backlog ideas parked for later.",
+        ),
     ]
 
     daily_rule = {"type": "daily", "interval": 1}
@@ -341,6 +422,14 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
             project_key="launch",
             group_key="work",
             notes="Confirm beta testers list.",
+        ),
+        SeedTask(
+            title="Close regression bug triage",
+            status="inbox",
+            project_key="sidebar_ios",
+            group_key="work",
+            deadline=yesterday,
+            notes="Expected to appear in overdue/today style states.",
         ),
         SeedTask(
             title="Draft beta release notes",
@@ -375,6 +464,26 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
             recurrence_rule=weekly_rule,
             repeating=True,
             next_instance_date=_calculate_next_occurrence(weekly_rule, next_week),
+        ),
+        SeedTask(
+            title="Someday: explore voice dictation",
+            status="someday",
+            project_key="experiments",
+            group_key="work",
+            notes="Used for someday lane filtering in UI tests.",
+        ),
+        SeedTask(
+            title="Completed: review release checklist",
+            status="inbox",
+            project_key="launch",
+            group_key="work",
+            notes="Seeded as inbox, then completed via service.",
+            complete_on_seed=True,
+        ),
+        SeedTask(
+            title="Quick capture without project",
+            status="inbox",
+            notes="Verifies no-project/no-group rendering paths.",
         ),
     ]
 

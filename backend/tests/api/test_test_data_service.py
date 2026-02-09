@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from api.db.base import Base
@@ -46,6 +46,9 @@ def test_build_seed_plan_contains_seed_markers():
         memory.path.startswith("memories/seed/seed:test-data")
         for memory in plan.memories
     )
+    assert any(task.complete_on_seed for task in plan.tasks)
+    assert any(task.status == "someday" for task in plan.tasks)
+    assert any(conversation.archived for conversation in plan.conversations)
 
 
 def test_seed_and_delete_round_trip(db_session):
@@ -85,6 +88,23 @@ def test_seed_and_delete_round_trip(db_session):
         .all()
     )
     assert tasks
+    assert any(task.status == "completed" and task.completed_at is not None for task in tasks)
+    assert any(task.status == "someday" for task in tasks)
+    assert any(
+        task.status == "inbox" and task.deadline and task.deadline < date.today()
+        for task in tasks
+    )
+
+    archived_conversations = (
+        db_session.query(Conversation)
+        .filter(
+            Conversation.user_id == user_id,
+            Conversation.title.startswith(plan.title_prefix),
+            Conversation.is_archived.is_(True),
+        )
+        .all()
+    )
+    assert archived_conversations
 
     deleted = TestDataService.delete_seed_data(db_session, user_id, plan)
     assert deleted.notes == seeded.notes

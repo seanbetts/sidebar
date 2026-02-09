@@ -121,6 +121,10 @@ class TestDataService:
                 ConversationService.add_message(
                     db, user_id, created_conversation.id, message
                 )
+            if conversation.archived:
+                ConversationService.update_conversation(
+                    db, user_id, created_conversation.id, is_archived=True
+                )
 
         memory_ids: list[uuid.UUID] = []
         for memory in plan.memories:
@@ -151,6 +155,7 @@ class TestDataService:
             project_map[project.key] = str(created_project.id)
 
         task_ids: list[uuid.UUID] = []
+        task_seed_entries: list[tuple[uuid.UUID, bool]] = []
         for task in plan.tasks:
             project_id = project_map.get(task.project_key) if task.project_key else None
             group_id = group_map.get(task.group_key) if task.group_key else None
@@ -171,6 +176,12 @@ class TestDataService:
                 source_id=plan.seed_tag,
             )
             task_ids.append(created_task.id)
+            task_seed_entries.append((created_task.id, task.complete_on_seed))
+
+        for task_id, complete_on_seed in task_seed_entries:
+            if not complete_on_seed:
+                continue
+            TaskService.complete_task(db, user_id, str(task_id))
 
         db.commit()
 
