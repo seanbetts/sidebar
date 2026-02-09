@@ -5,6 +5,18 @@ import XCTest
 @testable import sideBar
 
 final class IngestionUploadManagerTests: XCTestCase {
+    private static let protocolIsolationLock = NSLock()
+
+    override func setUp() {
+        super.setUp()
+        Self.protocolIsolationLock.lock()
+    }
+
+    override func tearDown() {
+        Self.protocolIsolationLock.unlock()
+        super.tearDown()
+    }
+
     func testParseUploadResponseUsesTopLevelFileId() throws {
         let data = Data("{\"file_id\":\"f1\"}".utf8)
 
@@ -30,11 +42,7 @@ final class IngestionUploadManagerTests: XCTestCase {
     // MARK: - Concurrency regression (Phase 2.2)
 
     func testConcurrentCancelUploadsDoNotDeadlock() {
-        let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
-        )
-        let manager = IngestionUploadManager(config: config)
+        let manager = makeManager()
         let group = DispatchGroup()
 
         for uploadIndex in 0..<50 {
@@ -50,11 +58,7 @@ final class IngestionUploadManagerTests: XCTestCase {
     }
 
     func testConcurrentStartAndCancelDoNotCrash() {
-        let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
-        )
-        let manager = IngestionUploadManager(config: config)
+        let manager = makeManager()
         let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("test-upload-\(UUID().uuidString)")
         try? Data("data".utf8).write(to: fileURL)
         defer { try? FileManager.default.removeItem(at: fileURL) }
@@ -89,10 +93,6 @@ final class IngestionUploadManagerTests: XCTestCase {
     }
 
     func testConcurrentStartAndCancelStressIsStableAcrossRuns() {
-        let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
-        )
         let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("stress-upload-\(UUID().uuidString)")
         try? Data("data".utf8).write(to: fileURL)
         defer { try? FileManager.default.removeItem(at: fileURL) }
@@ -101,7 +101,7 @@ final class IngestionUploadManagerTests: XCTestCase {
         let uploadPairsPerRun = 60
 
         for run in 0..<runs {
-            let manager = IngestionUploadManager(config: config)
+            var manager: IngestionUploadManager? = makeManager()
             let group = DispatchGroup()
 
             for uploadIndex in 0..<uploadPairsPerRun {
@@ -110,7 +110,7 @@ final class IngestionUploadManagerTests: XCTestCase {
                 group.enter()
                 DispatchQueue.global().async {
                     usleep(UInt32.random(in: 500...3_000))
-                    manager.startUpload(
+                    manager?.startUpload(
                         request: UploadRequest(
                             uploadId: uploadId,
                             fileURL: fileURL,
@@ -127,7 +127,7 @@ final class IngestionUploadManagerTests: XCTestCase {
                 group.enter()
                 DispatchQueue.global().async {
                     usleep(UInt32.random(in: 500...3_000))
-                    manager.cancelUpload(uploadId: uploadId)
+                    manager?.cancelUpload(uploadId: uploadId)
                     group.leave()
                 }
             }
@@ -138,6 +138,7 @@ final class IngestionUploadManagerTests: XCTestCase {
                 .success,
                 "Run \(run) should complete without deadlock during concurrent start/cancel stress"
             )
+            manager = nil
         }
     }
 
@@ -173,5 +174,13 @@ final class IngestionUploadManagerTests: XCTestCase {
         XCTAssertTrue(output.contains("filename=\"hello.txt\""))
         XCTAssertTrue(output.contains("Content-Type: text/plain"))
         XCTAssertTrue(output.contains("Hello"))
+    }
+
+    private func makeManager() -> IngestionUploadManager {
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+        return IngestionUploadManager(config: config)
     }
 }

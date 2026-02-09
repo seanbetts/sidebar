@@ -4,10 +4,18 @@ import XCTest
 @testable import sideBar
 
 final class URLSessionChatStreamClientTests: XCTestCase {
+    private static let protocolIsolationLock = NSLock()
+
+    override func setUp() {
+        super.setUp()
+        Self.protocolIsolationLock.lock()
+    }
+
     override func tearDown() {
         URLProtocolStreamingMock.requestHandler = nil
         URLProtocolStreamingMock.dataChunks = []
         URLProtocolStreamingMock.statusCode = 200
+        Self.protocolIsolationLock.unlock()
         super.tearDown()
     }
 

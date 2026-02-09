@@ -51,11 +51,20 @@ private struct UploadResponseData: Decodable {
 public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private let config: APIClientConfig
     private let logger = Logger(subsystem: "sideBar", category: "Upload")
+    private let providedSession: URLSession?
     private lazy var session: URLSession = {
+        if let providedSession {
+            return providedSession
+        }
         #if os(iOS)
-        let configuration = URLSessionConfiguration.background(withIdentifier: "sideBar.ingestion.uploads")
-        configuration.sessionSendsLaunchEvents = true
-        configuration.isDiscretionary = false
+        let configuration: URLSessionConfiguration
+        if EnvironmentConfig.isRunningTestsOrPreviews() {
+            configuration = URLSessionConfiguration.default
+        } else {
+            configuration = URLSessionConfiguration.background(withIdentifier: "sideBar.ingestion.uploads")
+            configuration.sessionSendsLaunchEvents = true
+            configuration.isDiscretionary = false
+        }
         #else
         let configuration = URLSessionConfiguration.default
         #endif
@@ -69,8 +78,9 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private var contexts: [Int: UploadContext] = [:]
     private var taskIdsByUploadId: [String: Int] = [:]
 
-    public init(config: APIClientConfig) {
+    public init(config: APIClientConfig, session: URLSession? = nil) {
         self.config = config
+        self.providedSession = session
         super.init()
         workQueue.setSpecific(key: workQueueKey, value: ())
         // Initialize the lazy session on a single thread to avoid first-access races
@@ -82,7 +92,9 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         if DispatchQueue.getSpecific(key: workQueueKey) == nil {
             workQueue.sync {}
         }
-        session.invalidateAndCancel()
+        if providedSession == nil {
+            session.invalidateAndCancel()
+        }
     }
 
     public func startUpload(
