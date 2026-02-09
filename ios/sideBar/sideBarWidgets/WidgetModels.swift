@@ -114,8 +114,22 @@ public struct WidgetNoteData: WidgetDataContainer {
 
   public static let placeholder = WidgetNoteData(
     notes: [
-      WidgetNote(id: "1", name: "Meeting Notes", contentPreview: "Discussed project timeline...", path: "/notes/meeting.md", pinned: true, pinnedOrder: 0),
-      WidgetNote(id: "2", name: "Ideas", contentPreview: "New feature concepts", path: "/notes/ideas.md", pinned: true, pinnedOrder: 1)
+      WidgetNote(
+        id: "1",
+        name: "Meeting Notes",
+        contentPreview: "Discussed project timeline...",
+        path: "/notes/meeting.md",
+        pinned: true,
+        pinnedOrder: 0
+      ),
+      WidgetNote(
+        id: "2",
+        name: "Ideas",
+        contentPreview: "New feature concepts",
+        path: "/notes/ideas.md",
+        pinned: true,
+        pinnedOrder: 1
+      )
     ],
     totalCount: 2
   )

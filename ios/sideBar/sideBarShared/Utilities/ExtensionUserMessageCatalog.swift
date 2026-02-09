@@ -29,57 +29,36 @@ public enum ExtensionMessageCode: String, CaseIterable {
 }
 
 public enum ExtensionUserMessageCatalog {
+    private static let messagesByCode: [ExtensionMessageCode: String] = [
+        .savedForLater: "Saved for later.",
+        .websiteSaved: "Website saved.",
+        .imageSaved: "Image saved.",
+        .fileSaved: "File saved.",
+        .savingWebsite: "Saving website...",
+        .preparingImage: "Preparing image...",
+        .preparingFile: "Preparing file...",
+        .uploadingImage: "Uploading image...",
+        .uploadingFile: "Uploading file...",
+        .unsupportedAction: "This action is not supported.",
+        .missingURL: "No active tab URL found.",
+        .invalidURL: "That URL is invalid.",
+        .noActiveURL: "No active tab URL found.",
+        .queueFailed: "Could not save for later.",
+        .notAuthenticated: "Please sign in to sideBar first.",
+        .invalidBaseUrl: "Invalid API base URL.",
+        .invalidSharePayload: "Could not read the shared content.",
+        .unsupportedContent: "This content type is not supported.",
+        .imageLoadFailed: "Could not load the image.",
+        .imageProcessFailed: "Could not process the image.",
+        .fileLoadFailed: "Could not load the file.",
+        .fileReadFailed: "Could not read the file.",
+        .uploadFailed: "Upload failed. Please try again.",
+        .networkError: "Network error. Please try again.",
+        .unknownFailure: "Something went wrong. Please try again."
+    ]
+
     public static func message(for code: ExtensionMessageCode) -> String {
-        switch code {
-        case .savedForLater:
-            return "Saved for later."
-        case .websiteSaved:
-            return "Website saved."
-        case .imageSaved:
-            return "Image saved."
-        case .fileSaved:
-            return "File saved."
-        case .savingWebsite:
-            return "Saving website..."
-        case .preparingImage:
-            return "Preparing image..."
-        case .preparingFile:
-            return "Preparing file..."
-        case .uploadingImage:
-            return "Uploading image..."
-        case .uploadingFile:
-            return "Uploading file..."
-        case .unsupportedAction:
-            return "This action is not supported."
-        case .missingURL, .noActiveURL:
-            return "No active tab URL found."
-        case .invalidURL:
-            return "That URL is invalid."
-        case .queueFailed:
-            return "Could not save for later."
-        case .notAuthenticated:
-            return "Please sign in to sideBar first."
-        case .invalidBaseUrl:
-            return "Invalid API base URL."
-        case .invalidSharePayload:
-            return "Could not read the shared content."
-        case .unsupportedContent:
-            return "This content type is not supported."
-        case .imageLoadFailed:
-            return "Could not load the image."
-        case .imageProcessFailed:
-            return "Could not process the image."
-        case .fileLoadFailed:
-            return "Could not load the file."
-        case .fileReadFailed:
-            return "Could not read the file."
-        case .uploadFailed:
-            return "Upload failed. Please try again."
-        case .networkError:
-            return "Network error. Please try again."
-        case .unknownFailure:
-            return "Something went wrong. Please try again."
-        }
+        messagesByCode[code] ?? "Something went wrong. Please try again."
     }
 
     public static func uploadFailureMessage(detail: String?) -> String {

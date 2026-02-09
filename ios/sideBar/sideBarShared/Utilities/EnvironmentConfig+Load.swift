@@ -103,7 +103,7 @@ private func parseHttpUrl(key: String, value: String) throws -> URL {
     guard
         let url = URL(string: value),
         let scheme = url.scheme?.lowercased(),
-        (scheme == "http" || scheme == "https"),
+        scheme == "http" || scheme == "https",
         let host = url.host,
         !host.isEmpty
     else {
