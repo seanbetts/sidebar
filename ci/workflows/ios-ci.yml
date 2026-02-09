@@ -5,15 +5,21 @@ on:
     paths:
       - "ios/**"
       - "scripts/check_ios_doc_comments.py"
+      - "scripts/check_ios_quality_gates.py"
+      - "scripts/ios_quality_gates.json"
+      - "scripts/test-ios.sh"
       - ".github/workflows/ios-ci.yml"
   push:
     paths:
       - "ios/**"
       - "scripts/check_ios_doc_comments.py"
+      - "scripts/check_ios_quality_gates.py"
+      - "scripts/ios_quality_gates.json"
+      - "scripts/test-ios.sh"
       - ".github/workflows/ios-ci.yml"
 
 jobs:
-  ios:
+  ios_quality:
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -25,3 +31,51 @@ jobs:
         working-directory: ios/sideBar
       - name: Doc comment coverage
         run: python scripts/check_ios_doc_comments.py
+
+  ios_test_matrix:
+    needs: ios_quality
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: ipad
+            label: "iPad Pro 13-inch (M5) iPadOS 26"
+            destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=26.2"
+          - id: iphone
+            label: "iPhone 17 Pro iOS 26"
+            destination: "platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2"
+          - id: mac
+            label: "macOS 26"
+            destination: "platform=macOS,arch=arm64"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run tests (${{ matrix.label }})
+        env:
+          IOS_DESTINATION: ${{ matrix.destination }}
+          IOS_RESULT_BUNDLE_PATH: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult
+        run: scripts/test-ios.sh
+      - name: Upload xcresult (${{ matrix.id }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-xcresult-${{ matrix.id }}
+          path: ios-test-results/${{ matrix.id }}.xcresult
+
+  ios_hard_gates:
+    needs: ios_test_matrix
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download iPad xcresult
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-xcresult-ipad
+          path: ios-test-results
+      - name: Enforce hard quality gates
+        run: |
+          python scripts/check_ios_quality_gates.py \
+            --xcresult ios-test-results/ipad.xcresult \
+            --config scripts/ios_quality_gates.json

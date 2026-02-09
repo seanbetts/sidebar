@@ -1,0 +1,26 @@
+{
+  "coverage_thresholds": {
+    "sideBar.app": 40.0,
+    "sideBarShared.framework": 80.0,
+    "ShareExtension.appex": 20.0,
+    "sideBarWidgetsExtension.appex": 15.0,
+    "sideBar Safari Extension.appex": 15.0
+  },
+  "baseline_coverage_thresholds": {
+    "sideBar.app": 40.0,
+    "sideBarShared.framework": 80.0,
+    "ShareExtension.appex": 20.0,
+    "sideBarWidgetsExtension.appex": 15.0,
+    "sideBar Safari Extension.appex": 15.0
+  },
+  "max_drop_pct_points": 1.0,
+  "minimum_deterministic_ui_journey_tests": 12,
+  "ui_test_paths": [
+    "ios/sideBar/sideBarUITests"
+  ],
+  "excluded_ui_test_names": [
+    "testExample",
+    "testLaunchPerformance",
+    "testLaunch"
+  ]
+}

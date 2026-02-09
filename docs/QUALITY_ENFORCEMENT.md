@@ -813,7 +813,7 @@ interrogate api/ --verbose
 
 ---
 
-## iOS (SwiftLint + Doc Comments)
+## iOS (Hard Gates)
 
 SwiftLint is integrated into the Xcode build and CI. The configuration lives at `ios/sideBar/.swiftlint.yml`.
 
@@ -822,6 +822,26 @@ Doc comment coverage for public ViewModels/Services is enforced via:
 ```bash
 python scripts/check_ios_doc_comments.py
 ```
+
+Deterministic iOS/macOS test execution is enforced in CI across:
+- iPad Pro 13-inch (M5), iPadOS 26
+- iPhone 17 Pro, iOS 26
+- macOS 26
+
+Hard quality gates are enforced via:
+
+```bash
+python scripts/check_ios_quality_gates.py --xcresult <path-to-xcresult>
+```
+
+Current hard thresholds (first-party targets only):
+- `sideBar.app >= 40%`
+- `sideBarShared.framework >= 80%`
+- `ShareExtension.appex >= 20%`
+- `sideBarWidgetsExtension.appex >= 15%`
+- `sideBar Safari Extension.appex >= 15%`
+- minimum `12` deterministic UI journey tests (template launch/example tests excluded)
+- coverage may not regress by more than `1.0` percentage point below baseline
 
 ---
 
