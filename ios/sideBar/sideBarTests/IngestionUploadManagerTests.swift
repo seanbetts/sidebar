@@ -37,10 +37,10 @@ final class IngestionUploadManagerTests: XCTestCase {
         let manager = IngestionUploadManager(config: config)
         let group = DispatchGroup()
 
-        for i in 0..<50 {
+        for uploadIndex in 0..<50 {
             group.enter()
             DispatchQueue.global().async {
-                manager.cancelUpload(uploadId: "upload-\(i)")
+                manager.cancelUpload(uploadId: "upload-\(uploadIndex)")
                 group.leave()
             }
         }
@@ -60,8 +60,8 @@ final class IngestionUploadManagerTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: fileURL) }
 
         let group = DispatchGroup()
-        for i in 0..<20 {
-            let uploadId = "upload-\(i)"
+        for uploadIndex in 0..<20 {
+            let uploadId = "upload-\(uploadIndex)"
             group.enter()
             DispatchQueue.global().async {
                 manager.startUpload(
@@ -86,6 +86,59 @@ final class IngestionUploadManagerTests: XCTestCase {
 
         let result = group.wait(timeout: .now() + 10)
         XCTAssertEqual(result, .success, "Concurrent start+cancel should not crash or deadlock")
+    }
+
+    func testConcurrentStartAndCancelStressIsStableAcrossRuns() {
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("stress-upload-\(UUID().uuidString)")
+        try? Data("data".utf8).write(to: fileURL)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let runs = 4
+        let uploadPairsPerRun = 60
+
+        for run in 0..<runs {
+            let manager = IngestionUploadManager(config: config)
+            let group = DispatchGroup()
+
+            for uploadIndex in 0..<uploadPairsPerRun {
+                let uploadId = "stress-\(run)-\(uploadIndex)"
+
+                group.enter()
+                DispatchQueue.global().async {
+                    usleep(UInt32.random(in: 500...3_000))
+                    manager.startUpload(
+                        request: UploadRequest(
+                            uploadId: uploadId,
+                            fileURL: fileURL,
+                            filename: "stress.txt",
+                            mimeType: "text/plain",
+                            folder: "test"
+                        ),
+                        onProgress: { _ in },
+                        onCompletion: { _ in }
+                    )
+                    group.leave()
+                }
+
+                group.enter()
+                DispatchQueue.global().async {
+                    usleep(UInt32.random(in: 500...3_000))
+                    manager.cancelUpload(uploadId: uploadId)
+                    group.leave()
+                }
+            }
+
+            let result = group.wait(timeout: .now() + 20)
+            XCTAssertEqual(
+                result,
+                .success,
+                "Run \(run) should complete without deadlock during concurrent start/cancel stress"
+            )
+        }
     }
 
     // MARK: - Helpers

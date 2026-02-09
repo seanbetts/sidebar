@@ -1,4 +1,5 @@
 import Foundation
+// swiftlint:disable file_length type_body_length
 import XCTest
 import sideBarShared
 @testable import sideBar
@@ -553,3 +554,4 @@ private final class MockIngestionUploadManager: IngestionUploadManaging {
         _ = uploadId
     }
 }
+// swiftlint:enable file_length type_body_length

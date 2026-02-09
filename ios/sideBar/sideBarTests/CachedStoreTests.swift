@@ -90,6 +90,27 @@ final class CachedStoreTests: XCTestCase {
         XCTAssertEqual(store.backgroundRefreshCallCount, 3)
     }
 
+    func testRepeatedConcurrentCacheLoadsDoNotTriggerDuplicateBackgroundRefreshes() async throws {
+        let cache = TestCacheClient()
+        cache.set(key: "store-key", value: "cached", ttlSeconds: 60)
+        let store = MockCachedStore(cache: cache, fetchResult: "fresh")
+        store.backgroundRefreshDelay = 200_000_000
+        let iterations = 6
+
+        for iteration in 0..<iterations {
+            async let firstLoad: Void = store.loadWithCache()
+            async let secondLoad: Void = store.loadWithCache()
+            _ = try await (firstLoad, secondLoad)
+
+            try? await Task.sleep(nanoseconds: 325_000_000)
+            XCTAssertEqual(
+                store.backgroundRefreshCallCount,
+                iteration + 1,
+                "Iteration \(iteration) should only schedule one background refresh"
+            )
+        }
+    }
+
     private func waitForBackgroundTask() async {
         try? await Task.sleep(nanoseconds: 75_000_000)
     }

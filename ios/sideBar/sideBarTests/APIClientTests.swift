@@ -227,6 +227,83 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(requestCount.value(), 4)
     }
 
+    func testConcurrent401StressCoalescesRefreshAcrossRepeatedRuns() async throws {
+        let tokenBox = SynchronizedTokenBox("wave-0-old")
+        let refreshCalls = SynchronizedCounter()
+        let requestCount = SynchronizedCounter()
+        let unauthorizedCount = SynchronizedCounter()
+        let nextRefreshedToken = SynchronizedStringBox("wave-0-new")
+
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { tokenBox.get() },
+            refreshAuthIfNeeded: {
+                _ = refreshCalls.increment()
+                usleep(UInt32.random(in: 1_000...6_000))
+                tokenBox.set(nextRefreshedToken.get())
+                return true
+            }
+        )
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolMock.self]
+        let session = URLSession(configuration: configuration)
+        let client = APIClient(config: config, session: session)
+
+        let waves = 5
+        let requestsPerWave = 10
+
+        for wave in 0..<waves {
+            let oldToken = "wave-\(wave)-old"
+            let newToken = "wave-\(wave)-new"
+            tokenBox.set(oldToken)
+            nextRefreshedToken.set(newToken)
+
+            URLProtocolMock.requestHandler = { request in
+                _ = requestCount.increment()
+                let authHeader = request.value(forHTTPHeaderField: "Authorization")
+                if authHeader == "Bearer \(oldToken)" {
+                    _ = unauthorizedCount.increment()
+                    usleep(UInt32.random(in: 1_000...4_000))
+                    let response = HTTPURLResponse(
+                        url: request.url!,
+                        statusCode: 401,
+                        httpVersion: nil,
+                        headerFields: nil
+                    )!
+                    return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
+                }
+                XCTAssertEqual(authHeader, "Bearer \(newToken)")
+                let response = HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!
+                return (response, Data("{}".utf8))
+            }
+
+            try await withThrowingTaskGroup(of: EmptyResponse.self) { group in
+                for requestIndex in 0..<requestsPerWave {
+                    group.addTask {
+                        try await client.request("stress-\(wave)-\(requestIndex)", method: "GET")
+                    }
+                }
+                for try await _ in group {}
+            }
+
+            XCTAssertEqual(
+                refreshCalls.value(),
+                wave + 1,
+                "Each wave should coalesce to exactly one refresh"
+            )
+        }
+
+        XCTAssertEqual(refreshCalls.value(), waves)
+        XCTAssertGreaterThanOrEqual(unauthorizedCount.value(), waves)
+        XCTAssertGreaterThanOrEqual(requestCount.value(), waves * requestsPerWave)
+    }
+
     private func makeClient(token: String) -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
@@ -275,6 +352,27 @@ private final class SynchronizedCounter: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return count
+    }
+}
+
+private final class SynchronizedStringBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: String
+
+    init(_ value: String) {
+        self.value = value
+    }
+
+    func get() -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+
+    func set(_ value: String) {
+        lock.lock()
+        self.value = value
+        lock.unlock()
     }
 }
 

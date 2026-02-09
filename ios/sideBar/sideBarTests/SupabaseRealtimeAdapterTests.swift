@@ -88,6 +88,44 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         XCTAssertEqual(payload?.eventType, .delete)
         XCTAssertEqual(payload?.oldRecord?.fileId, "f1")
     }
+
+    func testEnqueueTransitionRunsOperationsSeriallyInSubmissionOrder() async {
+        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting())
+        let executionOrder = SynchronizedIntArray()
+        let operationCount = 8
+
+        for index in 0..<operationCount {
+            _ = adapter.enqueueTransition {
+                usleep(UInt32.random(in: 1_000...5_000))
+                executionOrder.append(index)
+            }
+        }
+
+        await adapter.transitionTask?.value
+        XCTAssertEqual(executionOrder.values(), Array(0..<operationCount))
+    }
+
+    func testStopInternalClearsChannelsAfterRapidStateChurn() async {
+        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting())
+
+        for index in 0..<10 {
+            adapter.currentUserId = "user-\(index)"
+            adapter.notesChannel = adapter.client.realtimeV2.channel("public:notes-\(index)")
+            adapter.websitesChannel = adapter.client.realtimeV2.channel("public:websites-\(index)")
+            adapter.ingestedFilesChannel = adapter.client.realtimeV2.channel("public:files-\(index)")
+            adapter.fileJobsChannel = adapter.client.realtimeV2.channel("public:file-jobs-\(index)")
+            await adapter.stopInternal()
+            XCTAssertNil(adapter.notesChannel)
+            XCTAssertNil(adapter.websitesChannel)
+            XCTAssertNil(adapter.ingestedFilesChannel)
+            XCTAssertNil(adapter.fileJobsChannel)
+            XCTAssertNil(adapter.currentUserId)
+            XCTAssertTrue(adapter.notesSubscriptions.isEmpty)
+            XCTAssertTrue(adapter.websitesSubscriptions.isEmpty)
+            XCTAssertTrue(adapter.ingestedFilesSubscriptions.isEmpty)
+            XCTAssertTrue(adapter.fileJobsSubscriptions.isEmpty)
+        }
+    }
 }
 
 private final class RecordingRealtimeHandler: RealtimeEventHandler {
@@ -156,5 +194,22 @@ private struct MockAction: RealtimeActionDecoding {
             throw RealtimeActionDecodingError.missingOldRecord
         }
         return oldRecord
+    }
+}
+
+private final class SynchronizedIntArray: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [Int] = []
+
+    func append(_ value: Int) {
+        lock.lock()
+        storage.append(value)
+        lock.unlock()
+    }
+
+    func values() -> [Int] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
     }
 }
