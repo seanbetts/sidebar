@@ -9,43 +9,73 @@ import UIKit
 // MARK: - AppEnvironment
 
 @MainActor
+/// Coordinates app-wide stores, view models, and lifecycle wiring for the signed-in experience.
 public final class AppEnvironment: ObservableObject {
     #if os(iOS) || os(macOS)
+    /// Shared process-wide environment reference for app and extension handoff paths.
     public static weak var shared: AppEnvironment?
     #endif
+    /// Shared service container used to construct API clients and core dependencies.
     public let container: ServiceContainer
+    /// Active theme manager used by settings and rendering flows.
     public var themeManager: ThemeManager
+    /// Store backing chat conversations and message state.
     public let chatStore: ChatStore
+    /// Store backing notes tree and note content state.
     public let notesStore: NotesStore
+    /// Store backing website list and detail state.
     public let websitesStore: WebsitesStore
+    /// Store backing ingestion list and metadata state.
     public let ingestionStore: IngestionStore
+    /// Store backing task list and count state.
     public let tasksStore: TasksStore
+    /// Store backing scratchpad content state.
     public let scratchpadStore: ScratchpadStore
+    /// Offline persistence store used for snapshots and queued operations.
     public let offlineStore: OfflineStore
+    /// Central toast presenter used for transient user-facing feedback.
     public let toastCenter: ToastCenter
+    /// View model coordinating chat UI actions and streaming state.
     public let chatViewModel: ChatViewModel
+    /// View model coordinating notes list and selection state.
     public let notesViewModel: NotesViewModel
+    /// View model coordinating note editor behavior.
     public let notesEditorViewModel: NotesEditorViewModel
+    /// View model coordinating ingestion list, uploads, and detail actions.
     public let ingestionViewModel: IngestionViewModel
+    /// View model coordinating website list and detail actions.
     public let websitesViewModel: WebsitesViewModel
+    /// View model coordinating task list, filters, and operations.
     public let tasksViewModel: TasksViewModel
+    /// View model coordinating memories presentation and refresh behavior.
     public let memoriesViewModel: MemoriesViewModel
+    /// View model coordinating app settings state.
     public let settingsViewModel: SettingsViewModel
+    /// View model coordinating weather presentation state.
     public let weatherViewModel: WeatherViewModel
+    /// Navigation coordinator for cross-feature section and deep-link routing state.
     public let navigation: NavigationCoordinator
     let realtimeClient: RealtimeClient
+    /// Environment configuration loading error captured at startup, when present.
     public let configError: EnvironmentConfigLoadError?
     let connectivityMonitor: ConnectivityMonitor
+    /// Biometric monitor used to lock and unlock sensitive content.
     public let biometricMonitor: BiometricMonitor
+    /// Queue that persists and replays offline writes.
     public let writeQueue: WriteQueue
     let draftStorage: DraftStorage
     let spotlightIndexer: SpotlightIndexer
     let syncCoordinator: SyncCoordinator
 
+    /// Current authentication state observed by top-level app routing.
     @Published public internal(set) var authState: AuthState = .signedOut
+    /// Indicates whether offline mode is active due to write/read connectivity constraints.
     @Published public internal(set) var isOffline: Bool = false
+    /// Indicates whether any network path is currently available.
     @Published public internal(set) var isNetworkAvailable: Bool = true
+    /// Indicates whether backend services are currently reachable.
     @Published public internal(set) var isServerReachable: Bool = true
+    /// Sign-out event token used to trigger downstream reset observers.
     @Published public internal(set) var signOutEvent: UUID?
     var cancellables = Set<AnyCancellable>()
     #if os(iOS) || os(macOS)
@@ -54,7 +84,8 @@ public final class AppEnvironment: ObservableObject {
     var lastRegisteredUserId: String?
     #endif
 
-    // swiftlint:disable:next function_body_length
+    // swiftlint:disable function_body_length
+    /// Creates the root app environment and wires all stores, view models, and observers.
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
         #if DEBUG
@@ -166,21 +197,26 @@ public final class AppEnvironment: ObservableObject {
         logStep("Realtime + monitors", initStart)
         #endif
     }
+    // swiftlint:enable function_body_length
 
+    /// Indicates whether the current auth state represents a signed-in user.
     public var isAuthenticated: Bool {
         authState != .signedOut
     }
 
+    /// Selected command palette section routed through the navigation coordinator.
     public var commandSelection: AppSection? {
         get { navigation.commandSelection }
         set { navigation.commandSelection = newValue }
     }
 
+    /// Active sidebar section routed through the navigation coordinator.
     public var activeSection: AppSection? {
         get { navigation.activeSection }
         set { navigation.activeSection = newValue }
     }
 
+    /// Indicates whether task-specific keyboard shortcuts should be active.
     public var isTasksFocused: Bool {
         get { navigation.isTasksFocused }
         set {
@@ -191,26 +227,31 @@ public final class AppEnvironment: ObservableObject {
         }
     }
 
+    /// Pending deep-link flag indicating a new-task flow should run once routing is ready.
     public var pendingNewTaskDeepLink: Bool {
         get { navigation.pendingNewTaskDeepLink }
         set { navigation.pendingNewTaskDeepLink = newValue }
     }
 
+    /// Pending deep-link flag indicating a new-note flow should run once routing is ready.
     public var pendingNewNoteDeepLink: Bool {
         get { navigation.pendingNewNoteDeepLink }
         set { navigation.pendingNewNoteDeepLink = newValue }
     }
 
+    /// Pending deep-link flag indicating scratchpad should open once routing is ready.
     public var pendingScratchpadDeepLink: Bool {
         get { navigation.pendingScratchpadDeepLink }
         set { navigation.pendingScratchpadDeepLink = newValue }
     }
 
+    /// Last keyboard shortcut action routed through global shortcut handling.
     public var shortcutActionEvent: ShortcutActionEvent? {
         get { navigation.shortcutActionEvent }
         set { navigation.shortcutActionEvent = newValue }
     }
 
+    /// Active tasks detail route identifier used for compact phone navigation.
     public var tasksPhoneDetailRouteId: String? {
         get { navigation.tasksPhoneDetailRouteId }
         set { navigation.tasksPhoneDetailRouteId = newValue }
