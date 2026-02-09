@@ -98,18 +98,19 @@ public struct NotesView: View {
                     renameValue = ""
                 }
             }
-            .alert("Delete note", isPresented: $isDeleteAlertPresented) {
-                Button("Delete", role: .destructive) {
+            .deleteConfirmationAlert(
+                title: "Delete note",
+                isPresented: $isDeleteAlertPresented,
+                message: "This will remove the note and cannot be undone.",
+                confirmAsDefaultAction: true,
+                onConfirm: {
                     guard let noteId = environment.notesViewModel.activeNote?.path else { return }
                     Task {
                         await deleteNoteAfterDismissal(id: noteId)
                     }
-                }
-                .keyboardShortcut(.defaultAction)
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("This will remove the note and cannot be undone.")
-            }
+                },
+                onCancel: { }
+            )
             .confirmationDialog("Save changes?", isPresented: $isCloseConfirmPresented, titleVisibility: .visible) {
                 Button("Save changes") {
                     Task {

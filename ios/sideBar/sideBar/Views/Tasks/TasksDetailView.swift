@@ -48,16 +48,17 @@ struct TasksDetailView: View {
                 .keyboardShortcut(.defaultAction)
             Button("Cancel", role: .cancel) { renameTask = nil }
         }
-        .alert("Delete task", isPresented: isDeletePresented) {
-            Button("Delete", role: .destructive) {
+        .deleteConfirmationAlert(
+            title: "Delete task",
+            isPresented: isDeletePresented,
+            message: "This will delete the task and any repeat instances.",
+            onConfirm: {
                 guard let task = deleteTask else { return }
                 Task { await viewModel.deleteTask(task: task) }
                 deleteTask = nil
-            }
-            Button("Cancel", role: .cancel) { deleteTask = nil }
-        } message: {
-            Text("This will delete the task and any repeat instances.")
-        }
+            },
+            onCancel: { deleteTask = nil }
+        )
         .sheet(item: $notesTask) { task in
             NotesSheet(
                 task: task,

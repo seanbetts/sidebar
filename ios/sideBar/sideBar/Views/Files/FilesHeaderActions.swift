@@ -28,14 +28,15 @@ struct FilesHeaderActions: View {
             fileActionsMenu
             closeButton
         }
-        .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
-            Button("Delete", role: .destructive) {
+        .deleteConfirmationAlert(
+            title: deleteDialogTitle,
+            isPresented: $isDeleteAlertPresented,
+            message: "This will remove the file and cannot be undone.",
+            onConfirm: {
                 Task { await deleteActiveFile() }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will remove the file and cannot be undone.")
-        }
+            },
+            onCancel: { }
+        )
         .sheet(isPresented: $isRenameSheetPresented) {
             RenameItemSheet(
                 title: "Rename File",

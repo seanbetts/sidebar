@@ -78,18 +78,19 @@ public struct WebsitesView: View {
                     renameValue = ""
                 }
             }
-            .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
-                Button("Delete", role: .destructive) {
+            .deleteConfirmationAlert(
+                title: deleteDialogTitle,
+                isPresented: $isDeleteAlertPresented,
+                message: "This will remove the website and cannot be undone.",
+                confirmAsDefaultAction: true,
+                onConfirm: {
                     guard let websiteId = environment.websitesViewModel.active?.id else { return }
                     Task {
                         await environment.websitesViewModel.deleteWebsite(id: websiteId)
                     }
-                }
-                .keyboardShortcut(.defaultAction)
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("This will remove the website and cannot be undone.")
-            }
+                },
+                onCancel: { }
+            )
     }
 
     private var websiteTitle: String {
