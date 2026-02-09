@@ -3,6 +3,52 @@ import Foundation
 
 // MARK: - ChatViewModel
 
+private final class ChatViewModelTeardownBag {
+    private let lock = NSLock()
+    private var streamClient: (any ChatStreamClient)?
+    private var clearActiveToolTask: Task<Void, Never>?
+    private var refreshTask: PollingTask?
+    private var attachmentPollTasks: [String: Task<Void, Never>] = [:]
+
+    func setStreamClient(_ streamClient: any ChatStreamClient) {
+        lock.lock()
+        self.streamClient = streamClient
+        lock.unlock()
+    }
+
+    func setClearActiveToolTask(_ task: Task<Void, Never>?) {
+        lock.lock()
+        clearActiveToolTask = task
+        lock.unlock()
+    }
+
+    func setRefreshTask(_ task: PollingTask?) {
+        lock.lock()
+        refreshTask = task
+        lock.unlock()
+    }
+
+    func setAttachmentPollTasks(_ tasks: [String: Task<Void, Never>]) {
+        lock.lock()
+        attachmentPollTasks = tasks
+        lock.unlock()
+    }
+
+    deinit {
+        lock.lock()
+        let streamClient = streamClient
+        let clearActiveToolTask = clearActiveToolTask
+        let refreshTask = refreshTask
+        let attachmentPollTasks = attachmentPollTasks
+        lock.unlock()
+
+        streamClient?.disconnect()
+        clearActiveToolTask?.cancel()
+        refreshTask?.cancel()
+        attachmentPollTasks.values.forEach { $0.cancel() }
+    }
+}
+
 /// Central ViewModel for chat functionality, managing conversations, messages, and real-time streaming.
 ///
 /// This ViewModel coordinates between multiple components:
@@ -73,14 +119,27 @@ import Foundation
     var toastCenter: ToastCenter? { ui.toastCenter }
     var userDefaults: UserDefaults { ui.userDefaults }
     var clock: () -> Date { ui.clock }
+    private let teardownBag = ChatViewModelTeardownBag()
 
     var currentStreamMessageId: String?
     var streamingConversationId: String?
-    var clearActiveToolTask: Task<Void, Never>?
-    var refreshTask: PollingTask?
+    var clearActiveToolTask: Task<Void, Never>? {
+        didSet {
+            teardownBag.setClearActiveToolTask(clearActiveToolTask)
+        }
+    }
+    var refreshTask: PollingTask? {
+        didSet {
+            teardownBag.setRefreshTask(refreshTask)
+        }
+    }
     var generatingTitleIds = Set<String>()
     var cancellables = Set<AnyCancellable>()
-    var attachmentPollTasks: [String: Task<Void, Never>] = [:]
+    var attachmentPollTasks: [String: Task<Void, Never>] = [:] {
+        didSet {
+            teardownBag.setAttachmentPollTasks(attachmentPollTasks)
+        }
+    }
 
     init(
         network: ChatNetworkCoordinator,
@@ -90,6 +149,7 @@ import Foundation
         self.network = network
         self.storage = storage
         self.ui = ui
+        self.teardownBag.setStreamClient(network.streamClient)
         self.streamClient.handler = self
         self.selectedConversationId = nil
 
@@ -114,14 +174,6 @@ import Foundation
                 }
             }
             .store(in: &cancellables)
-    }
-
-    deinit {
-        network.streamClient.disconnect()
-        clearActiveToolTask?.cancel()
-        refreshTask?.cancel()
-        attachmentPollTasks.values.forEach { $0.cancel() }
-        attachmentPollTasks = [:]
     }
 
     public var groupedConversations: [ConversationGroup] {

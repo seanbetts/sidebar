@@ -5,6 +5,34 @@ import sideBarShared
 
 // MARK: - IngestionViewModel
 
+private final class IngestionViewModelTeardownBag {
+    private let lock = NSLock()
+    private var jobPollingTasks: [String: Task<Void, Never>] = [:]
+    private var listPollingTask: PollingTask?
+
+    func setJobPollingTasks(_ tasks: [String: Task<Void, Never>]) {
+        lock.lock()
+        jobPollingTasks = tasks
+        lock.unlock()
+    }
+
+    func setListPollingTask(_ task: PollingTask?) {
+        lock.lock()
+        listPollingTask = task
+        lock.unlock()
+    }
+
+    deinit {
+        lock.lock()
+        let jobPollingTasks = jobPollingTasks
+        let listPollingTask = listPollingTask
+        lock.unlock()
+
+        for task in jobPollingTasks.values { task.cancel() }
+        listPollingTask?.cancel()
+    }
+}
+
 @MainActor
 /// Manages file ingestion, upload tracking, and file viewer state.
 ///
@@ -73,11 +101,20 @@ public final class IngestionViewModel: ObservableObject {
     let networkStatus: (any NetworkStatusProviding)?
     var cancellables = Set<AnyCancellable>()
     var securityScopedURLs: [String: URL] = [:]
-    var jobPollingTasks: [String: Task<Void, Never>] = [:]
+    var jobPollingTasks: [String: Task<Void, Never>] = [:] {
+        didSet {
+            teardownBag.setJobPollingTasks(jobPollingTasks)
+        }
+    }
     var jobPollingTaskTokens: [String: UUID] = [:]
-    var listPollingTask: PollingTask?
+    var listPollingTask: PollingTask? {
+        didSet {
+            teardownBag.setListPollingTask(listPollingTask)
+        }
+    }
     var statusCache: [String: String] = [:]
     let readyMessageTask = ManagedTask()
+    private let teardownBag = IngestionViewModelTeardownBag()
 
     public init(
         api: any IngestionProviding,
@@ -124,10 +161,5 @@ public final class IngestionViewModel: ObservableObject {
                 self?.updatePanelDerivedState()
             }
             .store(in: &cancellables)
-    }
-
-    deinit {
-        for task in jobPollingTasks.values { task.cancel() }
-        listPollingTask?.cancel()
     }
 }

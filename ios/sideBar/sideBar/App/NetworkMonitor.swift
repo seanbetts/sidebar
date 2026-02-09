@@ -13,7 +13,7 @@ final class NetworkMonitor: ObservableObject {
         if startMonitoring {
             monitor.pathUpdateHandler = { [weak self] path in
                 let isOffline = path.status != .satisfied
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
                     self?.isOffline = isOffline
                 }
             }

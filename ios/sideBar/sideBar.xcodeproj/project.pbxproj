@@ -493,21 +493,22 @@
 			productReference = 1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		146EA0582F2FE83C004AE7D1 /* sideBar Safari Extension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 146EA0732F2FE83C004AE7D1 /* Build configuration list for PBXNativeTarget "sideBar Safari Extension" */;
+			146EA0582F2FE83C004AE7D1 /* sideBar Safari Extension */ = {
+				isa = PBXNativeTarget;
+				buildConfigurationList = 146EA0732F2FE83C004AE7D1 /* Build configuration list for PBXNativeTarget "sideBar Safari Extension" */;
 			buildPhases = (
 				146EA0552F2FE83C004AE7D1 /* Sources */,
 				146EA0562F2FE83C004AE7D1 /* Frameworks */,
 				146EA0572F2FE83C004AE7D1 /* Resources */,
 			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				146EA05A2F2FE83C004AE7D1 /* sideBar Safari Extension */,
-			);
+				buildRules = (
+				);
+				dependencies = (
+					1413DE732F2B53B3002495EE /* PBXTargetDependency */,
+				);
+				fileSystemSynchronizedGroups = (
+					146EA05A2F2FE83C004AE7D1 /* sideBar Safari Extension */,
+				);
 			name = "sideBar Safari Extension";
 			packageProductDependencies = (
 			);
@@ -539,21 +540,22 @@
 			productReference = 146EA07A2F2FE877004AE7D1 /* sideBar Safari Extension (macOS).app */;
 			productType = "com.apple.product-type.application";
 		};
-		146EA0952F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 146EA0B12F2FE878004AE7D1 /* Build configuration list for PBXNativeTarget "sideBar Safari Extension (macOS) Extension" */;
+			146EA0952F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */ = {
+				isa = PBXNativeTarget;
+				buildConfigurationList = 146EA0B12F2FE878004AE7D1 /* Build configuration list for PBXNativeTarget "sideBar Safari Extension (macOS) Extension" */;
 			buildPhases = (
 				146EA0922F2FE878004AE7D1 /* Sources */,
 				146EA0932F2FE878004AE7D1 /* Frameworks */,
 				146EA0942F2FE878004AE7D1 /* Resources */,
 			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				146EA09A2F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */,
-			);
+				buildRules = (
+				);
+				dependencies = (
+					1413DE732F2B53B3002495EE /* PBXTargetDependency */,
+				);
+				fileSystemSynchronizedGroups = (
+					146EA09A2F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */,
+				);
 			name = "sideBar Safari Extension (macOS) Extension";
 			packageProductDependencies = (
 			);
@@ -907,16 +909,19 @@
 		};
 		142516B62F1EB96B0072E4F9 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = 142516AC2F1EB96B0072E4F9 /* ShareExtension */;
 			targetProxy = 142516B52F1EB96B0072E4F9 /* PBXContainerItemProxy */;
 		};
 		1448E6DC2F27A6430066EE47 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = 1448E6C62F27A6420066EE47 /* sideBarWidgetsExtension */;
 			targetProxy = 1448E6DB2F27A6430066EE47 /* PBXContainerItemProxy */;
 		};
 		146EA0702F2FE83C004AE7D1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = 146EA0582F2FE83C004AE7D1 /* sideBar Safari Extension */;
 			targetProxy = 146EA06F2F2FE83C004AE7D1 /* PBXContainerItemProxy */;
 		};
@@ -1029,11 +1034,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"APP_GROUP_ID[arch=*]" = group.ai.sidebar.sidebar;
-				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ShareExtension/Info.plist;
+					CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+					CODE_SIGN_STYLE = Automatic;
+					CURRENT_PROJECT_VERSION = 1;
+					"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "*.swift";
+					GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -1046,14 +1052,15 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+					PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
+					PRODUCT_NAME = "$(TARGET_NAME)";
+					SDKROOT = iphoneos;
+					SKIP_INSTALL = YES;
+					STRING_CATALOG_GENERATE_SYMBOLS = YES;
+					SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+					SWIFT_APPROACHABLE_CONCURRENCY = YES;
+					SWIFT_EMIT_LOC_STRINGS = YES;
+					SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1063,11 +1070,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"APP_GROUP_ID[arch=*]" = group.ai.sidebar.sidebar;
-				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ShareExtension/Info.plist;
+					CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+					CODE_SIGN_STYLE = Automatic;
+					CURRENT_PROJECT_VERSION = 1;
+					"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "*.swift";
+					GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -1080,14 +1088,15 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+					PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
+					PRODUCT_NAME = "$(TARGET_NAME)";
+					SDKROOT = iphoneos;
+					SKIP_INSTALL = YES;
+					STRING_CATALOG_GENERATE_SYMBOLS = YES;
+					SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+					SWIFT_APPROACHABLE_CONCURRENCY = YES;
+					SWIFT_EMIT_LOC_STRINGS = YES;
+					SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
@@ -1121,7 +1130,7 @@
 					SDKROOT = auto;
 					SKIP_INSTALL = YES;
 					STRING_CATALOG_GENERATE_SYMBOLS = YES;
-					SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+						SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 					SWIFT_APPROACHABLE_CONCURRENCY = YES;
 					SWIFT_EMIT_LOC_STRINGS = YES;
 					SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -1157,7 +1166,7 @@
 					SDKROOT = auto;
 					SKIP_INSTALL = YES;
 					STRING_CATALOG_GENERATE_SYMBOLS = YES;
-					SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+						SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 					SWIFT_APPROACHABLE_CONCURRENCY = YES;
 					SWIFT_EMIT_LOC_STRINGS = YES;
 					SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -1191,14 +1200,15 @@
 					"-framework",
 					SafariServices,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "ai.sidebar.sidebar.sideBar-Safari-Extension";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+					PRODUCT_BUNDLE_IDENTIFIER = "ai.sidebar.sidebar.sideBar-Safari-Extension";
+					PRODUCT_NAME = "$(TARGET_NAME)";
+					SDKROOT = iphoneos;
+					SKIP_INSTALL = YES;
+					STRING_CATALOG_GENERATE_SYMBOLS = YES;
+					SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+					SWIFT_APPROACHABLE_CONCURRENCY = YES;
+					SWIFT_EMIT_LOC_STRINGS = YES;
+					SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1228,14 +1238,15 @@
 					"-framework",
 					SafariServices,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "ai.sidebar.sidebar.sideBar-Safari-Extension";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+					PRODUCT_BUNDLE_IDENTIFIER = "ai.sidebar.sidebar.sideBar-Safari-Extension";
+					PRODUCT_NAME = "$(TARGET_NAME)";
+					SDKROOT = iphoneos;
+					SKIP_INSTALL = YES;
+					STRING_CATALOG_GENERATE_SYMBOLS = YES;
+					SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+					SWIFT_APPROACHABLE_CONCURRENCY = YES;
+					SWIFT_EMIT_LOC_STRINGS = YES;
+					SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
@@ -1320,12 +1331,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS)/sideBar Safari Extension (macOS).entitlements";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = YOURTEAMID;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "sideBar Safari Extension (macOS)/Info.plist";
+					CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS)/sideBar Safari Extension (macOS).entitlements";
+					CODE_SIGN_STYLE = Automatic;
+					CURRENT_PROJECT_VERSION = 1;
+					DEVELOPMENT_TEAM = YOURTEAMID;
+					"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Base.lproj/Main.storyboard Base.lproj/LaunchScreen.storyboard";
+					GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_FILE = "sideBar Safari Extension (macOS)/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -1362,12 +1374,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS)/sideBar Safari Extension (macOS).entitlements";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = YOURTEAMID;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "sideBar Safari Extension (macOS)/Info.plist";
+					CODE_SIGN_ENTITLEMENTS = "sideBar Safari Extension (macOS)/sideBar Safari Extension (macOS).entitlements";
+					CODE_SIGN_STYLE = Automatic;
+					CURRENT_PROJECT_VERSION = 1;
+					DEVELOPMENT_TEAM = YOURTEAMID;
+					"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "Base.lproj/Main.storyboard Base.lproj/LaunchScreen.storyboard";
+					GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_FILE = "sideBar Safari Extension (macOS)/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;

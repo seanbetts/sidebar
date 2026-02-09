@@ -5,10 +5,10 @@
 //  Created by Sean Betts on 01/02/2026.
 //
 
+#if canImport(UIKit)
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-
     var window: UIWindow?
 
     func scene(
@@ -16,7 +16,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         willConnectTo session: UISceneSession,
         options connectionOptions: UIScene.ConnectionOptions
     ) {
+        _ = session
+        _ = connectionOptions
         guard scene is UIWindowScene else { return }
     }
-
 }
+#endif
