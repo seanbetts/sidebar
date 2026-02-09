@@ -17,7 +17,7 @@ public enum EnvironmentConfigLoadError: LocalizedError, Equatable {
 
 public extension EnvironmentConfig {
     static func load() throws -> EnvironmentConfig {
-        let apiBaseUrlString = defaultApiBaseUrlString()
+        let apiBaseUrlString = try loadString(key: "API_BASE_URL")
         let supabaseUrlString = try loadString(key: "SUPABASE_URL")
         let supabaseAnonKey = try loadString(key: "SUPABASE_ANON_KEY")
         let r2EndpointString = loadOptionalString(key: "R2_ENDPOINT")
@@ -61,17 +61,6 @@ public extension EnvironmentConfig {
         }
         return false
     }
-}
-
-private func defaultApiBaseUrlString() -> String {
-    if let override = loadOptionalString(key: "API_BASE_URL") {
-        return override
-    }
-    #if targetEnvironment(simulator)
-    return "http://127.0.0.1:8001/api/v1"
-    #else
-    return "https://sidebar-api.fly.dev/api/v1"
-    #endif
 }
 
 private func loadString(key: String) throws -> String {

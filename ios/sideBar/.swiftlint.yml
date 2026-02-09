@@ -1,7 +1,11 @@
 included:
   - sideBar
   - sideBarTests
+  - sideBarUITests
   - ShareExtension
+  - "sideBar Safari Extension"
+  - "sideBar Safari Extension (macOS)"
+  - "sideBar Safari Extension (macOS) Extension"
   - sideBarShared
   - sideBarWidgets
 
@@ -13,10 +17,6 @@ excluded:
   - Carthage
   - Pods
   - Config
-  - sideBarUITests
-  - "sideBar Safari Extension"
-  - "sideBar Safari Extension (macOS)"
-  - "sideBar Safari Extension (macOS) Extension"
 
 disabled_rules:
   - function_parameter_count

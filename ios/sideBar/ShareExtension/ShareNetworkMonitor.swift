@@ -66,11 +66,34 @@ enum ShareNetworkMonitor {
 
     private static func apiHealthProbeURL() -> URL? {
         if let value = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String,
-           let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
-           let baseURL = URL(string: normalized) {
+           let normalized = normalizeConfigValue(value),
+           let baseURL = parseHTTPURL(from: normalized) {
             return baseURL.appendingPathComponent("health")
         }
-        return URL(string: "https://sidebar-api.fly.dev/api/v1/health")
+        return nil
+    }
+
+    private static func normalizeConfigValue(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("$(") && trimmed.hasSuffix(")") {
+            return nil
+        }
+        if trimmed.hasPrefix("${") && trimmed.hasSuffix("}") {
+            return nil
+        }
+        return trimmed.replacingOccurrences(of: "\\/", with: "/")
+    }
+
+    private static func parseHTTPURL(from value: String) -> URL? {
+        guard let url = URL(string: value),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host = url.host,
+              !host.isEmpty else {
+            return nil
+        }
+        return url
     }
 
     private static func unique(_ urls: [URL]) -> [URL] {
@@ -83,11 +106,5 @@ enum ShareNetworkMonitor {
             seen.insert(key)
             return true
         }
-    }
-}
-
-private extension String {
-    var nilIfEmpty: String? {
-        isEmpty ? nil : self
     }
 }
