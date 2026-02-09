@@ -52,6 +52,11 @@ class TestDataService:
     """Service to seed and clear demo content for a user."""
 
     @staticmethod
+    def _seed_source_id(seed_tag: str, run_id: str, entity: str, key: str) -> str:
+        """Build a per-entity source id scoped to a single seed run."""
+        return f"{seed_tag}:run:{run_id}:{entity}:{key}"
+
+    @staticmethod
     def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
         """Build a deterministic seed plan."""
         return build_seed_plan(seed_tag, now=now)
@@ -59,6 +64,8 @@ class TestDataService:
     @staticmethod
     def seed_user_data(db: Session, user_id: str, plan: SeedPlan) -> SeedSummary:
         """Seed database content for a user."""
+        seed_run_id = uuid.uuid4().hex
+
         for folder in plan.folders:
             NotesWorkspaceService.create_folder(db, user_id, folder)
 
@@ -94,7 +101,7 @@ class TestDataService:
 
         website_ids: list[uuid.UUID] = []
         for website in plan.websites:
-            created_website = WebsitesService.save_website(
+            created_website = WebsitesService.upsert_website(
                 db,
                 user_id,
                 url=website.url,
@@ -137,7 +144,12 @@ class TestDataService:
         project_map: dict[str, str] = {}
         for group in plan.task_groups:
             created_group = TaskService.create_task_group(
-                db, user_id, group.title, source_id=plan.seed_tag
+                db,
+                user_id,
+                group.title,
+                source_id=TestDataService._seed_source_id(
+                    plan.seed_tag, seed_run_id, "task-group", group.key
+                ),
             )
             group_map[group.key] = str(created_group.id)
 
@@ -150,13 +162,15 @@ class TestDataService:
                 group_id=group_id,
                 status=project.status,
                 notes=project.notes,
-                source_id=plan.seed_tag,
+                source_id=TestDataService._seed_source_id(
+                    plan.seed_tag, seed_run_id, "task-project", project.key
+                ),
             )
             project_map[project.key] = str(created_project.id)
 
         task_ids: list[uuid.UUID] = []
         task_seed_entries: list[tuple[uuid.UUID, bool]] = []
-        for task in plan.tasks:
+        for index, task in enumerate(plan.tasks, start=1):
             project_id = project_map.get(task.project_key) if task.project_key else None
             group_id = group_map.get(task.group_key) if task.group_key else None
             created_task = TaskService.create_task(
@@ -173,7 +187,9 @@ class TestDataService:
                 repeat_template=task.repeat_template,
                 repeat_template_id=None,
                 next_instance_date=task.next_instance_date,
-                source_id=plan.seed_tag,
+                source_id=TestDataService._seed_source_id(
+                    plan.seed_tag, seed_run_id, "task", str(index)
+                ),
             )
             task_ids.append(created_task.id)
             task_seed_entries.append((created_task.id, task.complete_on_seed))
@@ -348,17 +364,38 @@ class TestDataService:
 
         task_groups = (
             db.query(TaskGroup)
-            .filter(TaskGroup.user_id == user_id, TaskGroup.source_id == seed_tag)
+            .filter(
+                TaskGroup.user_id == user_id,
+                TaskGroup.deleted_at.is_(None),
+                or_(
+                    TaskGroup.source_id == seed_tag,
+                    TaskGroup.source_id.startswith(f"{seed_tag}:"),
+                ),
+            )
             .all()
         )
         task_projects = (
             db.query(TaskProject)
-            .filter(TaskProject.user_id == user_id, TaskProject.source_id == seed_tag)
+            .filter(
+                TaskProject.user_id == user_id,
+                TaskProject.deleted_at.is_(None),
+                or_(
+                    TaskProject.source_id == seed_tag,
+                    TaskProject.source_id.startswith(f"{seed_tag}:"),
+                ),
+            )
             .all()
         )
         tasks = (
             db.query(Task)
-            .filter(Task.user_id == user_id, Task.source_id == seed_tag)
+            .filter(
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None),
+                or_(
+                    Task.source_id == seed_tag,
+                    Task.source_id.startswith(f"{seed_tag}:"),
+                ),
+            )
             .all()
         )
 

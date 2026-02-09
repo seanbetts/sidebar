@@ -5,6 +5,8 @@ import pytest
 from api.db.base import Base
 from api.models.conversation import Conversation
 from api.models.task import Task
+from api.models.task_group import TaskGroup
+from api.models.task_project import TaskProject
 from api.models.user_memory import UserMemory
 from api.services.notes_service import NotesService
 from api.services.test_data_service import TestDataService
@@ -84,16 +86,50 @@ def test_seed_and_delete_round_trip(db_session):
 
     tasks = (
         db_session.query(Task)
-        .filter(Task.user_id == user_id, Task.source_id == plan.seed_tag)
+        .filter(
+            Task.user_id == user_id,
+            or_(
+                Task.source_id == plan.seed_tag,
+                Task.source_id.startswith(f"{plan.seed_tag}:"),
+            ),
+        )
         .all()
     )
     assert tasks
+    assert all(task.source_id for task in tasks)
+    assert len({task.source_id for task in tasks}) == len(tasks)
     assert any(task.status == "completed" and task.completed_at is not None for task in tasks)
     assert any(task.status == "someday" for task in tasks)
     assert any(
         task.status == "inbox" and task.deadline and task.deadline < date.today()
         for task in tasks
     )
+    task_groups = (
+        db_session.query(TaskGroup)
+        .filter(
+            TaskGroup.user_id == user_id,
+            TaskGroup.deleted_at.is_(None),
+            or_(
+                TaskGroup.source_id == plan.seed_tag,
+                TaskGroup.source_id.startswith(f"{plan.seed_tag}:"),
+            ),
+        )
+        .all()
+    )
+    assert len(task_groups) == len(plan.task_groups)
+    task_projects = (
+        db_session.query(TaskProject)
+        .filter(
+            TaskProject.user_id == user_id,
+            TaskProject.deleted_at.is_(None),
+            or_(
+                TaskProject.source_id == plan.seed_tag,
+                TaskProject.source_id.startswith(f"{plan.seed_tag}:"),
+            ),
+        )
+        .all()
+    )
+    assert len(task_projects) == len(plan.task_projects)
 
     archived_conversations = (
         db_session.query(Conversation)
@@ -136,9 +172,16 @@ def test_seed_and_delete_round_trip(db_session):
         db_session.query(Task)
         .filter(
             Task.user_id == user_id,
-            Task.source_id == plan.seed_tag,
+            or_(
+                Task.source_id == plan.seed_tag,
+                Task.source_id.startswith(f"{plan.seed_tag}:"),
+            ),
             Task.deleted_at.is_(None),
         )
         .all()
     )
     assert not tasks_after
+
+    reseeded = TestDataService.seed_user_data(db_session, user_id, plan)
+    assert reseeded.notes > 0
+    assert reseeded.websites == len(plan.websites)
