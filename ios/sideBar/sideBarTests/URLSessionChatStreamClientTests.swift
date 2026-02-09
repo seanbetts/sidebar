@@ -3,6 +3,8 @@ import sideBarShared
 import XCTest
 @testable import sideBar
 
+
+@MainActor
 final class URLSessionChatStreamClientTests: XCTestCase {
     private static let protocolIsolationLock = NSLock()
 

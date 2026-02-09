@@ -2,6 +2,8 @@ import XCTest
 import sideBarShared
 @testable import sideBar
 
+
+@MainActor
 final class NotesAPITests: XCTestCase {
     override func tearDown() {
         NotesURLProtocolMock.requestHandler = nil

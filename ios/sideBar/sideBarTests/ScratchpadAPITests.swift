@@ -2,6 +2,8 @@ import XCTest
 import sideBarShared
 @testable import sideBar
 
+
+@MainActor
 final class ScratchpadAPITests: XCTestCase {
     override func tearDown() {
         ScratchpadURLProtocolMock.requestHandler = nil

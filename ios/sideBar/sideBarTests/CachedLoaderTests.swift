@@ -2,6 +2,8 @@ import XCTest
 import sideBarShared
 @testable import sideBar
 
+
+@MainActor
 final class CachedLoaderTests: XCTestCase {
     func testLoadReturnsCachedDataAndRefreshes() async throws {
         let cache = TestCacheClient()

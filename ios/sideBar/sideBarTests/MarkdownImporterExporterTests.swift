@@ -3,6 +3,8 @@ import sideBarShared
 @testable import sideBar
 
 @available(iOS 26.0, macOS 26.0, *)
+
+@MainActor
 final class MarkdownImporterExporterTests: XCTestCase {
     func testImportExtractsFrontmatter() {
         let markdown = "---\ntitle: Test\n---\nHello"
