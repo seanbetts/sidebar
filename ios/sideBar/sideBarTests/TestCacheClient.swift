@@ -38,7 +38,7 @@ final class TestCacheClient: CacheClient, @unchecked Sendable {
 
     func remove(key: String) {
         storage.withLock { store in
-            store.removeValue(forKey: key)
+            _ = store.removeValue(forKey: key)
         }
     }
 
