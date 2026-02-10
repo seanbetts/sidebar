@@ -134,21 +134,21 @@ jobs:
 
   ios_hard_gates:
     needs: ios_test_matrix
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == 'ipad' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == 'iphone' }}
     runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download iPad xcresult
+      - name: Download iPhone xcresult
         uses: actions/download-artifact@v4
         with:
-          name: ios-xcresult-ipad
+          name: ios-xcresult-iphone
           path: ios-test-results
-      - name: Extract iPad xcresult
+      - name: Extract iPhone xcresult
         run: |
-          ditto -x -k ios-test-results/ipad.xcresult.zip ios-test-results
+          ditto -x -k ios-test-results/iphone.xcresult.zip ios-test-results
       - name: Enforce hard quality gates
         run: |
           python scripts/check_ios_quality_gates.py \
-            --xcresult ios-test-results/ipad.xcresult \
+            --xcresult ios-test-results/iphone.xcresult \
             --config scripts/ios_quality_gates.json

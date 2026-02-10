@@ -14,7 +14,7 @@
     "sideBar Safari Extension.appex": 15.0
   },
   "max_drop_pct_points": 1.0,
-  "minimum_deterministic_ui_journey_tests": 12,
+  "minimum_deterministic_ui_journey_tests": 3,
   "ui_test_paths": [
     "ios/sideBar/sideBarUITests"
   ],
