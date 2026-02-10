@@ -42,6 +42,7 @@
       {
         "group": "iOS",
         "pages": [
+          "IOS_ENGINEERING_HANDBOOK",
           "IOS_ARCHITECTURE"
         ]
       }

@@ -130,9 +130,9 @@ See [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md) for the full guide 
 ## iOS App
 
 - **Project**: `ios/sideBar/sideBar.xcodeproj`
-- **Requirements**: Xcode 15+, iOS 17+ simulator
+- **Requirements**: Xcode with iOS 26 simulator runtime support
 - **Local config**: update `ios/sideBar/Config/SideBar.local.xcconfig`, then set the Debug base configuration to `Config/SideBar.xcconfig`.
-- **Docs**: see `docs/IOS_ARCHITECTURE.md` for the SwiftUI architecture overview.
+- **Docs**: see `docs/IOS_ENGINEERING_HANDBOOK.md` for canonical iOS setup, architecture, and operations guidance (`docs/IOS_ARCHITECTURE.md` is a deprecated compatibility pointer).
 
 Run tests from CLI:
 

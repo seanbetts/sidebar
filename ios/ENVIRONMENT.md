@@ -1,5 +1,10 @@
 # iOS Environment Configuration
 
+Canonical source of truth:
+- `/Users/sean/Coding/sideBar/docs/IOS_ENGINEERING_HANDBOOK.md`
+
+This file keeps a focused reference for environment keys and local setup.
+
 The Apple app and extensions require runtime configuration from build settings
 (`.xcconfig`) that is exposed via Info.plist keys.
 
