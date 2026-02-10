@@ -123,6 +123,36 @@ final class SideBarUITests: XCTestCase {
     }
 
     @MainActor
+    func testCreateEditDeleteNoteInSeededAccount() throws {
+        let credentials = try loadCredentials()
+        let app = launchApp(with: credentials)
+        attemptLogin(
+            in: app,
+            email: credentials.email,
+            password: credentials.password
+        )
+
+        XCTAssertTrue(
+            waitForSignedInHome(in: app, timeout: 45),
+            "Signed-in shell did not appear after login."
+        )
+
+        let noteSuffix = String(UUID().uuidString.prefix(8))
+        let noteTitle = "TC-UI-004 \(noteSuffix)"
+        let renamedNoteTitle = "\(noteTitle) revised"
+
+        openNotesTab(in: app)
+        createNote(named: noteTitle, in: app)
+        renameActiveNote(to: renamedNoteTitle, in: app)
+        deleteActiveNote(in: app)
+
+        XCTAssertTrue(
+            waitForNonExistence(of: app.staticTexts[renamedNoteTitle], timeout: 20),
+            "Renamed note remained visible after delete flow."
+        )
+    }
+
+    @MainActor
     private func openChatDetail(in app: XCUIApplication) -> XCUIElement {
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
         let chatTab = app.tabBars.buttons["Chat"]
@@ -296,7 +326,7 @@ final class SideBarUITests: XCTestCase {
         return "[seed:test-data] Onboarding flow review"
     }
 
-    private func dismissSystemAlertsIfPresent(
+    fileprivate func dismissSystemAlertsIfPresent(
         in app: XCUIApplication,
         timeout: TimeInterval = 2
     ) {
@@ -391,67 +421,4 @@ final class SideBarUITests: XCTestCase {
         return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 
-    private func waitForAny(
-        _ elements: [XCUIElement],
-        timeout: TimeInterval
-    ) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if elements.contains(where: { $0.exists }) {
-                return true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
-        }
-        return false
-    }
-
-    private func waitForHittable(
-        _ element: XCUIElement,
-        timeout: TimeInterval
-    ) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if element.exists && element.isHittable {
-                return true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
-        }
-        return element.exists && element.isHittable
-    }
-
-}
-
-private extension SideBarUITests {
-    func waitForAssistantReply(
-        after sentMessage: XCUIElement,
-        in app: XCUIApplication,
-        timeout: TimeInterval
-    ) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if hasAssistantLabelBelowMessage(sentMessage, in: app) {
-                return true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
-        }
-        return hasAssistantLabelBelowMessage(sentMessage, in: app)
-    }
-
-    func hasAssistantLabelBelowMessage(
-        _ sentMessage: XCUIElement,
-        in app: XCUIApplication
-    ) -> Bool {
-        guard sentMessage.exists else {
-            return false
-        }
-        let baselineY = sentMessage.frame.maxY
-        let assistantLabels = app.staticTexts.matching(NSPredicate(format: "label == %@", "sideBar"))
-        for index in 0..<assistantLabels.count {
-            let label = assistantLabels.element(boundBy: index)
-            if label.exists, label.frame.minY >= baselineY - 1 {
-                return true
-            }
-        }
-        return false
-    }
 }

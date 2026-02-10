@@ -16,7 +16,7 @@ Single-file source of truth for Apple-platform feature coverage.
 | Auth | AUTH-002 | Session restore + biometric lock | High | Unit | `AuthStateStore` tests, `BiometricMonitor` paths | `clean_user` | Planned |
 | Chat | CHAT-001 | Send message in existing conversation | High | Unit + integration + UI deterministic | `ChatViewModelTests`, `ChatStoreTests`, `ChatAPITests`, `TC-UI-003` | `seeded_user` | Partial |
 | Chat | CHAT-002 | Streaming response lifecycle | High | Unit + integration + UI deterministic | `ChatStreamParserTests`, `URLSessionChatStreamClientTests`, `TC-UI-003` | `seeded_user` | Partial |
-| Notes | NOTE-001 | Notes create/edit/delete | High | Unit + integration | `NotesViewModelTests`, `NotesStoreTests`, `NotesAPITests` | `seeded_user` | Partial |
+| Notes | NOTE-001 | Notes create/edit/delete | High | Unit + integration + UI deterministic | `NotesViewModelTests`, `NotesStoreTests`, `NotesAPITests`, `TC-UI-004` | `seeded_user` | Partial |
 | Notes | NOTE-002 | Editor formatting + markdown behavior | Medium | Unit | `NotesEditorViewModelTests`, `NativeMarkdownEditorViewModelTests` | `seeded_user` | Partial |
 | Files | FILE-001 | Local file upload flow | High | Unit + integration | `IngestionUploadManagerTests`, `IngestionStoreTests`, `FilesAPITests` | `seeded_user` + upload fixtures | Partial |
 | Files | FILE-002 | Upload polling, retry, and failure states | High | Unit | `IngestionViewModelTests`, `IngestionViewModelPollingStressTests` | `seeded_user` + upload fixtures | Partial |
@@ -40,7 +40,7 @@ Target: at least 12 stable UI journeys in CI.
 | TC-UI-001 | Login success to signed-in home | `AUTH-001`, `UI-001` | P0 | Covered |
 | TC-UI-002 | Login failure shows deterministic error | `AUTH-001` | P0 | Covered |
 | TC-UI-003 | Send chat message and receive streamed reply | `CHAT-001`, `CHAT-002` | P0 | Covered |
-| TC-UI-004 | Create/edit/delete note | `NOTE-001` | P0 | Planned |
+| TC-UI-004 | Create/edit/delete note | `NOTE-001` | P0 | Covered |
 | TC-UI-005 | Upload local file and reach processed state | `FILE-001`, `FILE-002` | P0 | Planned |
 | TC-UI-006 | Create task, complete task, verify filters | `TASK-001`, `TASK-002` | P0 | Planned |
 | TC-UI-007 | Overdue/someday/completed lanes render correctly | `TASK-002` | P1 | Planned |
@@ -55,8 +55,8 @@ Target: at least 12 stable UI journeys in CI.
 - [ ] Implement `TC-UI-005` using local upload fixtures.
 - [ ] Implement `TC-UI-006` against seeded overdue/someday/completed task states.
 - [ ] Implement `TC-UI-009` by forcing network off/on during note edit flow.
-- [ ] Implement `TC-UI-004` for end-to-end note create/edit/delete in one deterministic journey.
 - [ ] Implement `TC-UI-008` for end-to-end website save and detail rendering.
+- [ ] Implement `TC-UI-010` for deterministic offline task create/reconnect sync.
 
 ## How To Add New Features
 
