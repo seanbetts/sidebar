@@ -63,6 +63,7 @@ jobs:
         include:
           - id: ipad
             label: "iPad Pro 13-inch (M5) iPadOS 26"
+            scheme: sideBar
             destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=26.2"
             runs_on: macos-26
             include_on_pr: true
@@ -71,6 +72,7 @@ jobs:
             retry_tests_on_failure: "YES"
           - id: iphone
             label: "iPhone 17 Pro iOS 26"
+            scheme: sideBar
             destination: "platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2"
             runs_on: macos-26
             include_on_pr: true
@@ -78,9 +80,11 @@ jobs:
             retry_tests_on_failure: "YES"
           - id: mac
             label: "macOS 26"
+            scheme: sideBarMacTests
             destination: "platform=macOS,arch=arm64"
             runs_on: macos-26
             include_on_pr: false
+            only_testing: sideBarTests
             skip_testing: sideBarUITests,ShareExtensionTests
     steps:
       - name: Checkout
@@ -109,6 +113,7 @@ jobs:
       - name: Run tests (${{ matrix.label }})
         if: ${{ (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
         env:
+          IOS_SCHEME: ${{ matrix.scheme }}
           IOS_DESTINATION: ${{ matrix.destination }}
           IOS_RESULT_BUNDLE_PATH: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult
           IOS_ONLY_TESTING: ${{ matrix.only_testing }}
