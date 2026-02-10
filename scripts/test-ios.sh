@@ -9,12 +9,15 @@ fi
 IOS_PROJECT="${IOS_PROJECT:-ios/sideBar/sideBar.xcodeproj}"
 IOS_SCHEME="${IOS_SCHEME:-sideBar}"
 IOS_DESTINATION="${IOS_DESTINATION:-platform=iOS Simulator,name=iPad Pro 13-inch (M5)}"
+IOS_DESTINATION_TIMEOUT="${IOS_DESTINATION_TIMEOUT:-120}"
 IOS_ENABLE_CODE_COVERAGE="${IOS_ENABLE_CODE_COVERAGE:-YES}"
 IOS_RESULT_BUNDLE_PATH="${IOS_RESULT_BUNDLE_PATH:-}"
 IOS_ONLY_TESTING="${IOS_ONLY_TESTING:-}"
 IOS_SKIP_TESTING="${IOS_SKIP_TESTING:-}"
 IOS_RETRY_TESTS_ON_FAILURE="${IOS_RETRY_TESTS_ON_FAILURE:-NO}"
 IOS_TEST_ITERATIONS="${IOS_TEST_ITERATIONS:-2}"
+IOS_PARALLEL_TESTING_ENABLED="${IOS_PARALLEL_TESTING_ENABLED:-YES}"
+IOS_MAXIMUM_PARALLEL_TESTING_WORKERS="${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS:-}"
 
 echo "Running iOS tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
 
@@ -22,6 +25,7 @@ XCODEBUILD_ARGS=(
   -project "${IOS_PROJECT}"
   -scheme "${IOS_SCHEME}"
   -destination "${IOS_DESTINATION}"
+  -destination-timeout "${IOS_DESTINATION_TIMEOUT}"
   -enableCodeCoverage "${IOS_ENABLE_CODE_COVERAGE}"
 )
 
@@ -55,6 +59,14 @@ if [[ "${IOS_RETRY_TESTS_ON_FAILURE}" == "YES" ]]; then
     -retry-tests-on-failure
     -test-iterations "${IOS_TEST_ITERATIONS}"
   )
+fi
+
+if [[ "${IOS_PARALLEL_TESTING_ENABLED}" == "NO" ]]; then
+  XCODEBUILD_ARGS+=(-parallel-testing-enabled NO)
+fi
+
+if [[ -n "${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS}" ]]; then
+  XCODEBUILD_ARGS+=(-maximum-parallel-testing-workers "${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS}")
 fi
 
 if [[ "${IOS_DESTINATION}" == *"platform=macOS"* ]]; then

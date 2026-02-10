@@ -71,7 +71,10 @@ jobs:
             include_on_pr: true
             only_testing: sideBarUITests
             skip_testing: sideBarUITests/SideBarUITestsLaunchTests
-            retry_tests_on_failure: "YES"
+            retry_tests_on_failure: "NO"
+            parallel_testing_enabled: "NO"
+            max_parallel_test_workers: "1"
+            destination_timeout: "180"
           - id: iphone
             label: "iPhone 17 Pro iOS 26"
             scheme: sideBar
@@ -80,6 +83,7 @@ jobs:
             include_on_pr: true
             skip_testing: sideBarUITests
             retry_tests_on_failure: "YES"
+            destination_timeout: "180"
           - id: mac
             label: "macOS 26"
             scheme: sideBarMacTests
@@ -88,6 +92,7 @@ jobs:
             include_on_pr: false
             only_testing: sideBarTests
             skip_testing: sideBarUITests,ShareExtensionTests
+            destination_timeout: "180"
     steps:
       - name: Checkout
         if: ${{ (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
@@ -127,10 +132,13 @@ jobs:
         env:
           IOS_SCHEME: ${{ matrix.scheme }}
           IOS_DESTINATION: ${{ matrix.destination }}
+          IOS_DESTINATION_TIMEOUT: ${{ matrix.destination_timeout }}
           IOS_RESULT_BUNDLE_PATH: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult
           IOS_ONLY_TESTING: ${{ matrix.only_testing }}
           IOS_SKIP_TESTING: ${{ matrix.skip_testing }}
           IOS_RETRY_TESTS_ON_FAILURE: ${{ matrix.retry_tests_on_failure }}
+          IOS_PARALLEL_TESTING_ENABLED: ${{ matrix.parallel_testing_enabled }}
+          IOS_MAXIMUM_PARALLEL_TESTING_WORKERS: ${{ matrix.max_parallel_test_workers }}
         run: scripts/test-ios.sh
       - name: Package xcresult (${{ matrix.id }})
         if: ${{ always() && (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
