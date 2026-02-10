@@ -142,47 +142,7 @@ extension ShareViewController {
             return
         }
 
-        await MainActor.run { [weak self] in
-            let progress = ShareProgressView(
-                message: isImage
-                    ? ExtensionUserMessageCatalog.message(for: .uploadingImage)
-                    : ExtensionUserMessageCatalog.message(for: .uploadingFile)
-            )
-            self?.progressView = progress
-            self?.setContentView(progress)
-        }
-
-        do {
-            let fileId = try await environment.uploadFile(
-                data: data,
-                filename: filename,
-                mimeType: mimeType
-            )
-            if isImage {
-                ExtensionEventStore.shared.recordImageSaved(fileId: fileId, filename: filename)
-            } else {
-                ExtensionEventStore.shared.recordFileSaved(fileId: fileId, filename: filename)
-            }
-            await MainActor.run { [weak self] in
-                self?.showSuccess(
-                    message: isImage
-                        ? ExtensionUserMessageCatalog.message(for: .imageSaved)
-                        : ExtensionUserMessageCatalog.message(for: .fileSaved)
-                )
-            }
-        } catch {
-            await MainActor.run { [weak self] in
-                if self?.isOfflineError(error) == true {
-                    self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)
-                    return
-                }
-                self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))
-            }
-        }
-    }
-
-    func uploadFile(at fileURL: URL, filename: String, mimeType: String, isImage: Bool) async {
-        guard let environment else {
+        guard await environment.ensureValidAccessToken() else {
             await MainActor.run { [weak self] in
                 self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
             }
@@ -199,12 +159,15 @@ extension ShareViewController {
             self?.setContentView(progress)
         }
 
-        do {
-            let fileId = try await environment.uploadFile(
-                fileURL: fileURL,
+        func uploadNow() async throws -> String {
+            try await environment.uploadFile(
+                data: data,
                 filename: filename,
                 mimeType: mimeType
             )
+        }
+
+        func handleSuccess(fileId: String) async {
             if isImage {
                 ExtensionEventStore.shared.recordImageSaved(fileId: fileId, filename: filename)
             } else {
@@ -217,14 +180,119 @@ extension ShareViewController {
                         : ExtensionUserMessageCatalog.message(for: .fileSaved)
                 )
             }
+        }
+
+        func handleFailure(_ error: Error) async {
+            await MainActor.run { [weak self] in
+                if self?.isOfflineError(error) == true {
+                    self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)
+                    return
+                }
+                if environment.isUnauthorized(error) {
+                    self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                    return
+                }
+                self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))
+            }
+        }
+
+        do {
+            let fileId = try await uploadNow()
+            await handleSuccess(fileId: fileId)
         } catch {
+            if environment.isUnauthorized(error),
+               await environment.ensureValidAccessToken(forceRefresh: true) {
+                do {
+                    let fileId = try await uploadNow()
+                    await handleSuccess(fileId: fileId)
+                    return
+                } catch {
+                    await handleFailure(error)
+                    return
+                }
+            }
+            await handleFailure(error)
+        }
+    }
+
+    func uploadFile(at fileURL: URL, filename: String, mimeType: String, isImage: Bool) async {
+        guard let environment else {
+            await MainActor.run { [weak self] in
+                self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+            }
+            return
+        }
+
+        guard await environment.ensureValidAccessToken() else {
+            await MainActor.run { [weak self] in
+                self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+            }
+            return
+        }
+
+        await MainActor.run { [weak self] in
+            let progress = ShareProgressView(
+                message: isImage
+                    ? ExtensionUserMessageCatalog.message(for: .uploadingImage)
+                    : ExtensionUserMessageCatalog.message(for: .uploadingFile)
+            )
+            self?.progressView = progress
+            self?.setContentView(progress)
+        }
+
+        func uploadNow() async throws -> String {
+            try await environment.uploadFile(
+                fileURL: fileURL,
+                filename: filename,
+                mimeType: mimeType
+            )
+        }
+
+        func handleSuccess(fileId: String) async {
+            if isImage {
+                ExtensionEventStore.shared.recordImageSaved(fileId: fileId, filename: filename)
+            } else {
+                ExtensionEventStore.shared.recordFileSaved(fileId: fileId, filename: filename)
+            }
+            await MainActor.run { [weak self] in
+                self?.showSuccess(
+                    message: isImage
+                        ? ExtensionUserMessageCatalog.message(for: .imageSaved)
+                        : ExtensionUserMessageCatalog.message(for: .fileSaved)
+                )
+            }
+        }
+
+        func handleFailure(_ error: Error) async {
             await MainActor.run { [weak self] in
                 if self?.isOfflineError(error) == true {
                     self?.queuePendingFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: isImage)
                     return
                 }
+                if environment.isUnauthorized(error) {
+                    self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                    return
+                }
                 self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))
             }
+        }
+
+        do {
+            let fileId = try await uploadNow()
+            await handleSuccess(fileId: fileId)
+        } catch {
+            if environment.isUnauthorized(error),
+               await environment.ensureValidAccessToken(forceRefresh: true) {
+                do {
+                    let fileId = try await uploadNow()
+                    await handleSuccess(fileId: fileId)
+                    return
+                } catch {
+                    await handleFailure(error)
+                    return
+                }
+            }
+            await handleFailure(error)
         }
     }
 }

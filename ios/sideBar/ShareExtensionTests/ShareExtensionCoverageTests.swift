@@ -24,6 +24,37 @@ final class ShareExtensionCoverageTests: XCTestCase {
         )
     }
 
+    func testErrorMessageMapsUnauthorizedApiStatusToNotAuthenticated() {
+        let message = ShareExtensionMessageMapper.errorMessage(for: APIClientError.requestFailed(401))
+
+        XCTAssertEqual(
+            message,
+            ExtensionUserMessageCatalog.message(for: .notAuthenticated)
+        )
+    }
+
+    func testErrorMessageMapsUnauthorizedApiDetailToNotAuthenticated() {
+        let message = ShareExtensionMessageMapper.errorMessage(
+            for: APIClientError.apiError("JWT expired or unauthorized")
+        )
+
+        XCTAssertEqual(
+            message,
+            ExtensionUserMessageCatalog.message(for: .notAuthenticated)
+        )
+    }
+
+    func testErrorMessageFallsBackToUnknownFailureForUnclassifiedError() {
+        let message = ShareExtensionMessageMapper.errorMessage(
+            for: NSError(domain: "ShareExtensionCoverageTests", code: -99)
+        )
+
+        XCTAssertEqual(
+            message,
+            ExtensionUserMessageCatalog.message(for: .unknownFailure)
+        )
+    }
+
     func testQueueMessageReflectsQueueResult() {
         let queued = PendingShareItem(
             id: UUID(),
@@ -57,7 +88,10 @@ final class ShareExtensionCoverageTests: XCTestCase {
     func testMimeTypeForFilenameUsesKnownAndFallbackMappings() {
         let controller = ShareViewController()
 
-        XCTAssertEqual(controller.mimeTypeForFilename("presentation.pptx"), "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+        XCTAssertEqual(
+            controller.mimeTypeForFilename("presentation.pptx"),
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        )
         XCTAssertEqual(controller.mimeTypeForFilename("unknown.custom"), "application/octet-stream")
     }
 }

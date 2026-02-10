@@ -97,13 +97,16 @@ final class ShareExtensionEnvironment {
 
         let (responseData, response) = try await session.upload(for: request, fromFile: bodyFileURL)
         guard let http = response as? HTTPURLResponse else {
-            throw ShareExtensionError.uploadFailed("Invalid response")
+            throw APIClientError.unknown
         }
         guard (200...299).contains(http.statusCode) else {
-            if let errorMessage = parseErrorMessage(from: responseData) {
-                throw ShareExtensionError.uploadFailed(errorMessage)
+            if http.statusCode == 401 || http.statusCode == 403 {
+                throw APIClientError.requestFailed(http.statusCode)
             }
-            throw ShareExtensionError.uploadFailed("HTTP \(http.statusCode)")
+            if let errorMessage = Self.parseErrorMessage(from: responseData) {
+                throw APIClientError.apiError(errorMessage)
+            }
+            throw APIClientError.requestFailed(http.statusCode)
         }
 
         struct UploadResponse: Codable { let fileId: String }
@@ -143,11 +146,10 @@ final class ShareExtensionEnvironment {
         try output.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
     }
 
-    private func parseErrorMessage(from data: Data) -> String? {
-        struct ErrorResponse: Codable { let error: String? }
+    private static func parseErrorMessage(from data: Data) -> String? {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try? decoder.decode(ErrorResponse.self, from: data).error
+        return APIClient.decodeErrorMessage(data: data, decoder: decoder)
     }
 
     private static func apiBaseURL() throws -> URL {
