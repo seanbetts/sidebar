@@ -6,12 +6,16 @@ final class ShareExtensionEnvironment {
     let apiClient: APIClient
     let websitesAPI: WebsitesAPI
     private let session: URLSession
+    private let keychain: KeychainAuthStateStore
+    private let authRefresher: ShareExtensionAuthRefresher?
 
     init() throws {
         let keychain = KeychainAuthStateStore(
             service: AppGroupConfiguration.keychainService,
             accessGroup: AppGroupConfiguration.keychainAccessGroup
         )
+        self.keychain = keychain
+        self.authRefresher = ShareExtensionAuthRefresher(keychain: keychain)
         // Validate token exists at init (fail fast if not authenticated)
         guard let initialToken = try keychain.loadAccessToken(), !initialToken.isEmpty else {
             throw ShareExtensionError.notAuthenticated
@@ -25,6 +29,36 @@ final class ShareExtensionEnvironment {
         self.apiClient = APIClient(config: config)
         self.websitesAPI = WebsitesAPI(client: apiClient)
         self.session = APIClient.makeDefaultSession()
+    }
+
+    func ensureValidAccessToken(forceRefresh: Bool = false) async -> Bool {
+        if let authRefresher {
+            return await authRefresher.ensureValidSession(forceRefresh: forceRefresh)
+        }
+        do {
+            guard let token = try keychain.loadAccessToken(), !token.isEmpty else {
+                return false
+            }
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func isUnauthorized(_ error: Error) -> Bool {
+        if let apiError = error as? APIClientError {
+            switch apiError {
+            case .requestFailed(401):
+                return true
+            case .apiError(let message):
+                let lowered = message.lowercased()
+                return lowered.contains("unauthorized") || lowered.contains("forbidden")
+            default:
+                return false
+            }
+        }
+        let description = error.localizedDescription.lowercased()
+        return description.contains("unauthorized") || description.contains("forbidden")
     }
 
     /// Uploads a file to the ingestion API and returns the file ID.

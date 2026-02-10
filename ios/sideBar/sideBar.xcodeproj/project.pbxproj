@@ -24,6 +24,7 @@
 		14DFA3342F110406001DAF5B /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3332F110406001DAF5B /* Realtime */; };
 		14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
 		14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+		A7C1D2E32B01000100A1B2C3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		14F1A0B82F31000000BEEF03 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0B92F31000000BEEF03 /* Markdown */; };
 		9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
@@ -293,6 +294,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A7C1D2E32B01000100A1B2C3 /* Supabase in Frameworks */,
 				1413DE702F2B53B3002495EE /* sideBarShared.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -481,6 +483,7 @@
 			);
 			name = ShareExtension;
 			packageProductDependencies = (
+				14DFA3382F116F2C001DAF5B /* Supabase */,
 			);
 			productName = ShareExtension;
 			productReference = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */;
@@ -1106,6 +1109,8 @@
 					GENERATE_INFOPLIST_FILE = YES;
 					INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
+				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
+				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
@@ -1142,6 +1147,8 @@
 					GENERATE_INFOPLIST_FILE = YES;
 					INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
+				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
+				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;

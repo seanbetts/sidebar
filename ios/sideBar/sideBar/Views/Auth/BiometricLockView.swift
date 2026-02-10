@@ -99,19 +99,8 @@ public struct BiometricLockView: View {
         .onAppear {
             updateBiometryType()
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            // Auto-trigger biometric when app becomes active
-            if newPhase == .active && !hasAttemptedAutoAuth && !isAuthenticating {
-                hasAttemptedAutoAuth = true
-                authenticate()
-            }
-        }
-        .task {
-            // Initial auto-trigger if app is already active when view appears
-            if scenePhase == .active && !hasAttemptedAutoAuth {
-                hasAttemptedAutoAuth = true
-                authenticate()
-            }
+        .onChange(of: scenePhase, initial: true) { _, newPhase in
+            triggerAutoAuthenticateIfNeeded(for: newPhase)
         }
     }
 
@@ -135,6 +124,14 @@ public struct BiometricLockView: View {
         default:
             return "Biometric Unlock"
         }
+    }
+
+    private func triggerAutoAuthenticateIfNeeded(for phase: ScenePhase) {
+        guard phase == .active else { return }
+        guard !hasAttemptedAutoAuth else { return }
+        guard !isAuthenticating else { return }
+        hasAttemptedAutoAuth = true
+        authenticate()
     }
 
     private func updateBiometryType() {

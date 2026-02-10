@@ -40,13 +40,44 @@ extension ShareViewController {
                 queuePendingWebsite(url)
                 return
             }
-            do {
+
+            guard await environment.ensureValidAccessToken() else {
+                showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                return
+            }
+
+            func saveWebsiteNow() async throws {
                 _ = try await environment.websitesAPI.quickSave(url: url.absoluteString, title: nil)
+            }
+
+            do {
+                try await saveWebsiteNow()
                 ExtensionEventStore.shared.recordWebsiteSaved(url: url.absoluteString)
                 showSuccess(message: ExtensionUserMessageCatalog.message(for: .websiteSaved))
             } catch {
+                if environment.isUnauthorized(error),
+                   await environment.ensureValidAccessToken(forceRefresh: true) {
+                    do {
+                        try await saveWebsiteNow()
+                        ExtensionEventStore.shared.recordWebsiteSaved(url: url.absoluteString)
+                        showSuccess(message: ExtensionUserMessageCatalog.message(for: .websiteSaved))
+                        return
+                    } catch {
+                        if isOfflineError(error) {
+                            queuePendingWebsite(url)
+                        } else if environment.isUnauthorized(error) {
+                            showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                        } else {
+                            showError(ShareExtensionMessageMapper.errorMessage(for: error))
+                        }
+                        return
+                    }
+                }
+
                 if isOfflineError(error) {
                     queuePendingWebsite(url)
+                } else if environment.isUnauthorized(error) {
+                    showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
                 } else {
                     showError(ShareExtensionMessageMapper.errorMessage(for: error))
                 }
