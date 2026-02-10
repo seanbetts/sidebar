@@ -19,6 +19,7 @@ on:
       - "scripts/check_ios_architecture_boundaries.py"
       - "scripts/ios_architecture_boundaries_baseline.json"
       - "scripts/check_ios_doc_comments.py"
+      - "scripts/validate_ios_test_lane.py"
       - "scripts/check_ios_quality_gates.py"
       - "scripts/ios_quality_gates.json"
       - "scripts/test-ios.sh"
@@ -29,6 +30,7 @@ on:
       - "scripts/check_ios_architecture_boundaries.py"
       - "scripts/ios_architecture_boundaries_baseline.json"
       - "scripts/check_ios_doc_comments.py"
+      - "scripts/validate_ios_test_lane.py"
       - "scripts/check_ios_quality_gates.py"
       - "scripts/ios_quality_gates.json"
       - "scripts/test-ios.sh"
@@ -101,6 +103,16 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.runs_on }}-${{ matrix.id }}-spm-${{ hashFiles('ios/sideBar/sideBar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.runs_on }}-${{ matrix.id }}-spm-
+      - name: Validate lane configuration (${{ matrix.label }})
+        if: ${{ (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
+        run: |
+          python scripts/validate_ios_test_lane.py \
+            --project ios/sideBar/sideBar.xcodeproj \
+            --scheme "${{ matrix.scheme }}" \
+            --destination "${{ matrix.destination }}" \
+            --only-testing "${{ matrix.only_testing }}" \
+            --skip-testing "${{ matrix.skip_testing }}" \
+            --allowed-macos-targets "sideBarTests"
       - name: Cache Xcode DerivedData
         if: ${{ (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
         uses: actions/cache@v4
