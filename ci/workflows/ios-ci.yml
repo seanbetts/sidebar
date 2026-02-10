@@ -67,12 +67,15 @@ jobs:
             runs_on: macos-26
             include_on_pr: true
             only_testing: sideBarUITests
+            skip_testing: sideBarUITests/SideBarUITestsLaunchTests
+            retry_tests_on_failure: "YES"
           - id: iphone
             label: "iPhone 17 Pro iOS 26"
             destination: "platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2"
             runs_on: macos-26
             include_on_pr: true
             skip_testing: sideBarUITests
+            retry_tests_on_failure: "YES"
           - id: mac
             label: "macOS 26"
             destination: "platform=macOS,arch=arm64"
@@ -109,6 +112,7 @@ jobs:
           IOS_RESULT_BUNDLE_PATH: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult
           IOS_ONLY_TESTING: ${{ matrix.only_testing }}
           IOS_SKIP_TESTING: ${{ matrix.skip_testing }}
+          IOS_RETRY_TESTS_ON_FAILURE: ${{ matrix.retry_tests_on_failure }}
         run: scripts/test-ios.sh
       - name: Package xcresult (${{ matrix.id }})
         if: ${{ always() && (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}

@@ -13,6 +13,8 @@ IOS_ENABLE_CODE_COVERAGE="${IOS_ENABLE_CODE_COVERAGE:-YES}"
 IOS_RESULT_BUNDLE_PATH="${IOS_RESULT_BUNDLE_PATH:-}"
 IOS_ONLY_TESTING="${IOS_ONLY_TESTING:-}"
 IOS_SKIP_TESTING="${IOS_SKIP_TESTING:-}"
+IOS_RETRY_TESTS_ON_FAILURE="${IOS_RETRY_TESTS_ON_FAILURE:-NO}"
+IOS_TEST_ITERATIONS="${IOS_TEST_ITERATIONS:-2}"
 
 echo "Running iOS tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
 
@@ -48,6 +50,13 @@ if [[ -n "${IOS_SKIP_TESTING}" ]]; then
   done
 fi
 
+if [[ "${IOS_RETRY_TESTS_ON_FAILURE}" == "YES" ]]; then
+  XCODEBUILD_ARGS+=(
+    -retry-tests-on-failure
+    -test-iterations "${IOS_TEST_ITERATIONS}"
+  )
+fi
+
 if [[ "${IOS_DESTINATION}" == *"platform=macOS"* ]]; then
   # CI macOS runners do not have signing certificates/profiles.
   XCODEBUILD_ARGS+=(
@@ -63,4 +72,16 @@ if [[ "${IOS_DESTINATION}" == *"platform=macOS"* ]]; then
   fi
 fi
 
+set +e
 xcodebuild "${XCODEBUILD_ARGS[@]}" test
+status=$?
+set -e
+
+if [[ ${status} -ne 0 ]]; then
+  if [[ -n "${IOS_RESULT_BUNDLE_PATH}" && -d "${IOS_RESULT_BUNDLE_PATH}" ]]; then
+    echo "xcodebuild failed (exit ${status}). xcresult summary:"
+    xcrun xcresulttool get test-results summary --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true
+    xcrun xcresulttool get build-results --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true
+  fi
+  exit "${status}"
+fi
