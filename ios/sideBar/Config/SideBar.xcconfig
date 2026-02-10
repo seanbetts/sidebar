@@ -19,7 +19,7 @@ R2_FAVICON_BUCKET =
 R2_FAVICON_PUBLIC_BASE_URL =
 
 // App group + keychain sharing configuration
-APP_GROUP_ID =
+APP_GROUP_ID = group.ai.sidebar.sidebar
 KEYCHAIN_ACCESS_GROUP =
 KEYCHAIN_SERVICE =
 

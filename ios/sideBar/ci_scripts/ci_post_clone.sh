@@ -7,9 +7,10 @@
 #   - API_BASE_URL
 #   - SUPABASE_URL
 #   - SUPABASE_ANON_KEY
-#   - APP_GROUP_ID
 #   - KEYCHAIN_ACCESS_GROUP
 #   - KEYCHAIN_SERVICE
+# Optional (defaults to group.ai.sidebar.sidebar):
+#   - APP_GROUP_ID
 
 set -euo pipefail
 
@@ -19,13 +20,19 @@ brew install swiftlint
 echo "=== ci_post_clone.sh: Generating SideBar.local.xcconfig ==="
 
 # Validate required environment variables
-required_vars=("API_BASE_URL" "SUPABASE_URL" "SUPABASE_ANON_KEY" "APP_GROUP_ID" "KEYCHAIN_ACCESS_GROUP" "KEYCHAIN_SERVICE")
+required_vars=("API_BASE_URL" "SUPABASE_URL" "SUPABASE_ANON_KEY" "KEYCHAIN_ACCESS_GROUP" "KEYCHAIN_SERVICE")
 for var in "${required_vars[@]}"; do
     if [[ -z "${!var:-}" ]]; then
         echo "Error: Required environment variable $var is not set"
         exit 1
     fi
 done
+
+APP_GROUP_ID="${APP_GROUP_ID:-group.ai.sidebar.sidebar}"
+if ! [[ "$APP_GROUP_ID" =~ ^(group\.[A-Za-z0-9.-]+|[A-Z0-9]{10}\.[A-Za-z0-9.-]+)$ ]]; then
+    echo "Error: APP_GROUP_ID must be a valid app group identifier (got: '$APP_GROUP_ID')"
+    exit 1
+fi
 
 # Escape forward slashes for xcconfig format (// is treated as comment)
 escape_url() {
