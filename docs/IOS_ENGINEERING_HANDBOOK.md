@@ -25,8 +25,8 @@ This is the canonical iOS/macOS engineering document for sideBar.
 
 - Xcode with iOS/macOS 26 SDK support.
 - Apple simulator runtimes used in CI:
-  - `iPad Pro 13-inch (M5)` (iPadOS 26.2)
-  - `iPhone 17 Pro` (iOS 26.2)
+  - `iPad Pro 13-inch (M5)` (iPadOS 26.0)
+  - `iPhone 17 Pro` (iOS 26.0)
   - `macOS` (arm64, macOS 26)
 - Swift toolchain version from project settings: `Swift 5`.
 
@@ -89,30 +89,58 @@ Local validation commands:
 
 ```bash
 swiftlint --config ios/sideBar/.swiftlint.yml
-python scripts/check_ios_doc_comments.py
-python scripts/check_ios_architecture_boundaries.py
+python3 scripts/check_ios_doc_comments.py
+python3 scripts/check_ios_architecture_boundaries.py
 scripts/test-ios.sh
 ```
 
-CI workflow:
+CI workflow (`.github/workflows/ios-ci.yml`):
 
-- Workflow: `.github/workflows/ios-ci.yml`
-- Quality job:
+- Runs on two self-hosted runners on the developer machine:
+  - `ios` runner: iPad and iPhone simulator test lanes (sequential).
+  - `mac` runner: macOS native test lane, quality checks, and hard gates.
+- Triggers: push to `dev` branch only (path-filtered to `ios/**` and CI scripts), plus manual `workflow_dispatch`.
+- Quality job (parallel with test matrix):
   - SwiftLint
   - iOS doc-comment coverage check
   - Architecture boundary check
-- Test matrix:
-  - iPad lane
-  - iPhone lane
-  - macOS lane
-- Hard gates:
-  - Per-target coverage thresholds and baseline-drop enforcement via `scripts/check_ios_quality_gates.py`
+- Test matrix (parallel with quality job):
+  - iPad lane: UI tests only, coverage disabled.
+  - iPhone lane: all tests except UI tests, coverage enabled.
+  - macOS lane: unit tests only, coverage disabled.
+- Hard gates (runs after both quality and test matrix complete):
+  - Per-target coverage thresholds and baseline-drop enforcement via `scripts/check_ios_quality_gates.py`.
+  - Uses iPhone lane xcresult only.
+
+Pre-push hook (`.git/hooks/pre-push`):
+
+- Blocks pushes to `main` unless `scripts/test-ios.sh` passes locally.
+- Pushes to `dev` and other branches are unblocked.
+- Guards against broken builds reaching Xcode Cloud.
+
+## Self-Hosted Runner Setup
+
+Two GitHub Actions runners run locally on the developer machine:
+
+1. `ios-runner` (label: `ios`, installed at `~/Coding/actions-runner-ios`): handles iPad and iPhone simulator lanes.
+2. `mac-runner` (label: `mac`, installed at `~/Coding/actions-runner-mac`): handles macOS lane, quality checks, and hard gates.
+
+Management:
+
+```bash
+# Start/stop runners
+cd ~/Coding/actions-runner-ios && ./svc.sh start   # or stop, status
+cd ~/Coding/actions-runner-mac && ./svc.sh start   # or stop, status
+```
+
+Runners only need to be active when you want CI to process pushes to `dev`.
 
 ## Xcode Cloud Notes
 
 - Script: `ios/sideBar/ci_scripts/ci_post_clone.sh`
 - It generates `SideBar.local.xcconfig` from environment variables.
 - Missing required values fail the build early.
+- Xcode Cloud handles `main` branch builds for distribution.
 
 ## Extension Reliability Expectations
 
