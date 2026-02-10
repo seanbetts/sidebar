@@ -70,6 +70,10 @@ public enum ExtensionUserMessageCatalog {
         return "\(base) \(detail)"
     }
 
+    public static func sharedStorageUnavailableMessage() -> String {
+        "Could not access shared storage. Open sideBar and try again."
+    }
+
     public static func sanitizedDetail(_ detail: String?) -> String? {
         guard var detail else { return nil }
         detail = detail.trimmingCharacters(in: .whitespacesAndNewlines)

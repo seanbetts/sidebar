@@ -33,6 +33,23 @@ final class ShareExtensionCoverageTests: XCTestCase {
         )
     }
 
+    func testErrorMessageMapsForbiddenApiStatusToNotAuthenticated() {
+        let message = ShareExtensionMessageMapper.errorMessage(for: APIClientError.requestFailed(403))
+
+        XCTAssertEqual(
+            message,
+            ExtensionUserMessageCatalog.message(for: .notAuthenticated)
+        )
+    }
+
+    func testErrorMessageMapsRateLimitAndServerStatusesToUploadFailed() {
+        let rateLimitMessage = ShareExtensionMessageMapper.errorMessage(for: APIClientError.requestFailed(429))
+        let serverMessage = ShareExtensionMessageMapper.errorMessage(for: APIClientError.requestFailed(500))
+
+        XCTAssertEqual(rateLimitMessage, ExtensionUserMessageCatalog.message(for: .uploadFailed))
+        XCTAssertEqual(serverMessage, ExtensionUserMessageCatalog.message(for: .uploadFailed))
+    }
+
     func testErrorMessageMapsUnauthorizedApiDetailToNotAuthenticated() {
         let message = ShareExtensionMessageMapper.errorMessage(
             for: APIClientError.apiError("JWT expired or unauthorized")
@@ -52,6 +69,30 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(
             message,
             ExtensionUserMessageCatalog.message(for: .unknownFailure)
+        )
+    }
+
+    func testErrorMessageMapsTimeoutToNetworkMessage() {
+        let message = ShareExtensionMessageMapper.errorMessage(for: URLError(.timedOut))
+
+        XCTAssertEqual(
+            message,
+            ExtensionUserMessageCatalog.message(for: .networkError)
+        )
+    }
+
+    func testErrorMessageMapsItemProviderUnsupportedDetailToUnsupportedContent() {
+        let itemProviderError = NSError(
+            domain: NSItemProvider.errorDomain,
+            code: -1,
+            userInfo: [NSLocalizedDescriptionKey: "unsupported type identifier"]
+        )
+
+        let message = ShareExtensionMessageMapper.errorMessage(for: itemProviderError)
+
+        XCTAssertEqual(
+            message,
+            ExtensionUserMessageCatalog.message(for: .unsupportedContent)
         )
     }
 

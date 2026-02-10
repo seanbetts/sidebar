@@ -58,24 +58,43 @@ public final class PendingShareStore {
     private let fileManager: FileManager
     private let baseDirectory: URL?
     private let userDefaults: UserDefaults?
+    private let allowAppGroupFallback: Bool
     private let accessLock = NSRecursiveLock()
 
     /// Creates a pending-share store with injectable storage dependencies for tests.
     public init(
         baseDirectory: URL? = nil,
         userDefaults: UserDefaults? = nil,
+        allowAppGroupFallback: Bool = true,
         fileManager: FileManager = .default
     ) {
         self.baseDirectory = baseDirectory
         self.userDefaults = userDefaults
+        self.allowAppGroupFallback = allowAppGroupFallback
         self.fileManager = fileManager
+    }
+
+    /// Returns whether website/youtube queue metadata can be persisted.
+    public func canQueueURLItems() -> Bool {
+        withAccessLock {
+            hasRequiredStorage(needsFileContainer: false, context: "canQueueURLItems")
+        }
+    }
+
+    /// Returns whether file/image queue payloads can be persisted.
+    public func canQueueFileItems() -> Bool {
+        withAccessLock {
+            hasRequiredStorage(needsFileContainer: true, context: "canQueueFileItems")
+        }
     }
 
     @discardableResult
     /// Enqueues a website URL share if not already present.
     public func enqueueWebsite(url: String) -> PendingShareItem? {
         withAccessLock {
-            logMissingAppGroupIfNeeded(context: "enqueueWebsite")
+            guard hasRequiredStorage(needsFileContainer: false, context: "enqueueWebsite") else {
+                return nil
+            }
             let existingItems = loadAll()
             if let existing = existingItems.first(where: { $0.kind == .website && $0.url == url }) {
                 os_log(.default, log: Self.log, "Website share already queued %{public}@", url)
@@ -99,7 +118,9 @@ public final class PendingShareStore {
     /// Enqueues a YouTube URL share if not already present.
     public func enqueueYouTube(url: String) -> PendingShareItem? {
         withAccessLock {
-            logMissingAppGroupIfNeeded(context: "enqueueYouTube")
+            guard hasRequiredStorage(needsFileContainer: false, context: "enqueueYouTube") else {
+                return nil
+            }
             let existingItems = loadAll()
             if let existing = existingItems.first(where: { $0.kind == .youtube && $0.url == url }) {
                 os_log(.default, log: Self.log, "YouTube share already queued %{public}@", url)
@@ -128,6 +149,9 @@ public final class PendingShareStore {
         kind: PendingShareKind
     ) -> PendingShareItem? {
         withAccessLock {
+            guard hasRequiredStorage(needsFileContainer: true, context: "enqueueFile(data)") else {
+                return nil
+            }
             let itemId = UUID()
             guard let filePath = writeFile(
                 data: data,
@@ -158,6 +182,9 @@ public final class PendingShareStore {
         kind: PendingShareKind
     ) -> PendingShareItem? {
         withAccessLock {
+            guard hasRequiredStorage(needsFileContainer: true, context: "enqueueFile(url)") else {
+                return nil
+            }
             let itemId = UUID()
             guard let filePath = copyFile(
                 from: url,
@@ -334,12 +361,14 @@ public final class PendingShareStore {
 
     private var defaults: UserDefaults? {
         if let userDefaults { return userDefaults }
+        guard allowAppGroupFallback else { return nil }
         guard let suiteName = AppGroupConfiguration.appGroupId else { return nil }
         return UserDefaults(suiteName: suiteName)
     }
 
     private var rootDirectory: URL? {
         if let baseDirectory { return baseDirectory }
+        guard allowAppGroupFallback else { return nil }
         guard let suiteName = AppGroupConfiguration.appGroupId else { return nil }
         return fileManager.containerURL(forSecurityApplicationGroupIdentifier: suiteName)
     }
@@ -356,6 +385,16 @@ public final class PendingShareStore {
             bundleId,
             groupId
         )
+    }
+
+    private func hasRequiredStorage(needsFileContainer: Bool, context: String) -> Bool {
+        let hasDefaults = defaults != nil
+        let hasRootDirectory = rootDirectory != nil
+        if hasDefaults && (!needsFileContainer || hasRootDirectory) {
+            return true
+        }
+        logMissingAppGroupIfNeeded(context: context)
+        return false
     }
 
     private static func makeEncoder() -> JSONEncoder {

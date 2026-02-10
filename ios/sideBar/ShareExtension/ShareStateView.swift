@@ -5,9 +5,19 @@ class ShareStateView: UIView {
     private let messageLabel = UILabel()
     private let logoImageView = UIImageView()
 
-    init(message: String, accessoryView: UIView, spacingAfterTitle: CGFloat = 8) {
+    init(
+        message: String,
+        accessoryView: UIView,
+        spacingAfterTitle: CGFloat = 8,
+        footerView: UIView? = nil
+    ) {
         super.init(frame: .zero)
-        setup(message: message, accessoryView: accessoryView, spacingAfterTitle: spacingAfterTitle)
+        setup(
+            message: message,
+            accessoryView: accessoryView,
+            spacingAfterTitle: spacingAfterTitle,
+            footerView: footerView
+        )
     }
 
     required init?(coder: NSCoder) {
@@ -18,7 +28,12 @@ class ShareStateView: UIView {
         messageLabel.text = message
     }
 
-    private func setup(message: String, accessoryView: UIView, spacingAfterTitle: CGFloat) {
+    private func setup(
+        message: String,
+        accessoryView: UIView,
+        spacingAfterTitle: CGFloat,
+        footerView: UIView?
+    ) {
         backgroundColor = .systemBackground
 
         titleLabel.text = "sideBar"
@@ -42,12 +57,20 @@ class ShareStateView: UIView {
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
 
-        let content = UIStackView(arrangedSubviews: [logoImageView, titleLabel, accessoryView, messageLabel])
+        var arrangedSubviews: [UIView] = [logoImageView, titleLabel, accessoryView, messageLabel]
+        if let footerView {
+            arrangedSubviews.append(footerView)
+        }
+
+        let content = UIStackView(arrangedSubviews: arrangedSubviews)
         content.axis = .vertical
         content.alignment = .center
         content.spacing = 8
         if spacingAfterTitle != content.spacing {
             content.setCustomSpacing(spacingAfterTitle, after: titleLabel)
+        }
+        if footerView != nil {
+            content.setCustomSpacing(20, after: messageLabel)
         }
         content.translatesAutoresizingMaskIntoConstraints = false
         addSubview(content)

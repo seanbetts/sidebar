@@ -1,16 +1,26 @@
 import UIKit
 
+struct ShareItemProviderLoadResult<Value> {
+    let value: Value?
+    let error: Error?
+}
+
 extension ShareViewController {
     // MARK: - URL Parsing Helpers
 
-    func loadURL(from itemProvider: NSItemProvider, typeIdentifier: String) async -> URL? {
-        if let item = await loadItem(from: itemProvider, typeIdentifier: typeIdentifier),
+    func loadURL(from itemProvider: NSItemProvider, typeIdentifier: String) async throws -> URL? {
+        let itemResult = await loadItemResult(from: itemProvider, typeIdentifier: typeIdentifier)
+        if let item = itemResult.value,
            let url = urlFromTextPayload(item) {
             return url
         }
-        if let data = await loadData(from: itemProvider, typeIdentifier: typeIdentifier),
+        let dataResult = await loadDataResult(from: itemProvider, typeIdentifier: typeIdentifier)
+        if let data = dataResult.value,
            let url = urlFromTextPayload(data) {
             return url
+        }
+        if let error = itemResult.error ?? dataResult.error {
+            throw error
         }
         return nil
     }
@@ -82,18 +92,28 @@ extension ShareViewController {
 
     // MARK: - Item Loading Helpers
 
-    func loadItem(from itemProvider: NSItemProvider, typeIdentifier: String) async -> Any? {
+    func loadItemResult(from itemProvider: NSItemProvider, typeIdentifier: String) async -> ShareItemProviderLoadResult<Any> {
         await withCheckedContinuation { continuation in
-            itemProvider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { item, _ in
-                continuation.resume(returning: item)
+            itemProvider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { item, error in
+                continuation.resume(
+                    returning: ShareItemProviderLoadResult(
+                        value: item,
+                        error: error
+                    )
+                )
             }
         }
     }
 
-    func loadData(from itemProvider: NSItemProvider, typeIdentifier: String) async -> Data? {
+    func loadDataResult(from itemProvider: NSItemProvider, typeIdentifier: String) async -> ShareItemProviderLoadResult<Data> {
         await withCheckedContinuation { continuation in
-            itemProvider.loadDataRepresentation(forTypeIdentifier: typeIdentifier) { data, _ in
-                continuation.resume(returning: data)
+            itemProvider.loadDataRepresentation(forTypeIdentifier: typeIdentifier) { data, error in
+                continuation.resume(
+                    returning: ShareItemProviderLoadResult(
+                        value: data,
+                        error: error
+                    )
+                )
             }
         }
     }

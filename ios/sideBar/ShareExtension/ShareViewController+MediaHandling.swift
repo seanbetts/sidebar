@@ -14,20 +14,25 @@ extension ShareViewController {
         let filename: String
         let mimeType: String
 
-        if let image = await loadImage(from: itemProvider) {
+        let imageResult = await loadImageResult(from: itemProvider)
+        if let image = imageResult.value {
             imageData = image.jpegData(compressionQuality: 0.9)
             filename = "shared_image_\(Int(Date().timeIntervalSince1970)).jpg"
             mimeType = "image/jpeg"
-        } else if let data = await loadData(from: itemProvider, typeIdentifier: UTType.image.identifier) {
-            imageData = data
-            let suggestedName = itemProvider.suggestedName ?? "shared_image"
-            filename = suggestedName.contains(".") ? suggestedName : "\(suggestedName).jpg"
-            mimeType = mimeTypeForFilename(filename)
         } else {
-            await MainActor.run { [weak self] in
-                self?.showError(ExtensionUserMessageCatalog.message(for: .imageLoadFailed))
+            let dataResult = await loadDataResult(from: itemProvider, typeIdentifier: UTType.image.identifier)
+            if let data = dataResult.value {
+                imageData = data
+                let suggestedName = itemProvider.suggestedName ?? "shared_image"
+                filename = suggestedName.contains(".") ? suggestedName : "\(suggestedName).jpg"
+                mimeType = mimeTypeForFilename(filename)
+            } else {
+                let sourceError = imageResult.error ?? dataResult.error
+                await MainActor.run { [weak self] in
+                    self?.showProviderLoadError(sourceError, fallback: .imageLoadFailed)
+                }
+                return
             }
-            return
         }
 
         guard let data = imageData else {
@@ -47,10 +52,15 @@ extension ShareViewController {
         await uploadFile(data: data, filename: filename, mimeType: mimeType, isImage: true)
     }
 
-    func loadImage(from itemProvider: NSItemProvider) async -> UIImage? {
+    func loadImageResult(from itemProvider: NSItemProvider) async -> ShareItemProviderLoadResult<UIImage> {
         await withCheckedContinuation { continuation in
-            itemProvider.loadObject(ofClass: UIImage.self) { object, _ in
-                continuation.resume(returning: object as? UIImage)
+            itemProvider.loadObject(ofClass: UIImage.self) { object, error in
+                continuation.resume(
+                    returning: ShareItemProviderLoadResult(
+                        value: object as? UIImage,
+                        error: error
+                    )
+                )
             }
         }
     }
@@ -63,7 +73,8 @@ extension ShareViewController {
         }
 
         let typeIdentifier = preferredType.identifier
-        if let fileURL = await loadFileURL(from: itemProvider, typeIdentifier: typeIdentifier) {
+        let fileURLResult = await loadFileURLResult(from: itemProvider, typeIdentifier: typeIdentifier)
+        if let fileURL = fileURLResult.value {
             let suggestedName = itemProvider.suggestedName ?? fileURL.lastPathComponent
             let filename = suggestedName.isEmpty ? fileURL.lastPathComponent : suggestedName
             let mimeType = mimeTypeForFilename(filename)
@@ -78,9 +89,11 @@ extension ShareViewController {
             return
         }
 
-        guard let data = await loadData(from: itemProvider, typeIdentifier: typeIdentifier) else {
+        let dataResult = await loadDataResult(from: itemProvider, typeIdentifier: typeIdentifier)
+        guard let data = dataResult.value else {
+            let sourceError = fileURLResult.error ?? dataResult.error
             await MainActor.run { [weak self] in
-                self?.showError(ExtensionUserMessageCatalog.message(for: .fileLoadFailed))
+                self?.showProviderLoadError(sourceError, fallback: .fileLoadFailed)
             }
             return
         }
@@ -105,11 +118,11 @@ extension ShareViewController {
         await uploadFile(data: data, filename: filename, mimeType: mimeType, isImage: false)
     }
 
-    func loadFileURL(from itemProvider: NSItemProvider, typeIdentifier: String) async -> URL? {
+    func loadFileURLResult(from itemProvider: NSItemProvider, typeIdentifier: String) async -> ShareItemProviderLoadResult<URL> {
         await withCheckedContinuation { continuation in
-            itemProvider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { url, _ in
+            itemProvider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { url, loadError in
                 guard let url else {
-                    continuation.resume(returning: nil)
+                    continuation.resume(returning: ShareItemProviderLoadResult(value: nil, error: loadError))
                     return
                 }
                 let tempURL = FileManager.default.temporaryDirectory
@@ -117,9 +130,9 @@ extension ShareViewController {
                     .appendingPathExtension(url.pathExtension)
                 do {
                     try FileManager.default.copyItem(at: url, to: tempURL)
-                    continuation.resume(returning: tempURL)
+                    continuation.resume(returning: ShareItemProviderLoadResult(value: tempURL, error: nil))
                 } catch {
-                    continuation.resume(returning: nil)
+                    continuation.resume(returning: ShareItemProviderLoadResult(value: nil, error: error))
                 }
             }
         }

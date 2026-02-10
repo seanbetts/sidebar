@@ -5,7 +5,7 @@ import sideBarShared
 extension ShareViewController {
     // MARK: - URL Handling
 
-    func extractURL(from itemProvider: NSItemProvider) async -> URL? {
+    func extractURL(from itemProvider: NSItemProvider) async throws -> URL? {
         let urlTypes: [UTType] = [.url, .plainText, .text, .html]
         let candidateIdentifiers = itemProvider.registeredTypeIdentifiers.compactMap { identifier -> String? in
             guard let type = UTType(identifier) else { return nil }
@@ -21,10 +21,20 @@ extension ShareViewController {
             ? urlTypes.map(\.identifier)
             : candidateIdentifiers
 
+        var loadError: Error?
         for identifier in identifiersToTry where itemProvider.hasItemConformingToTypeIdentifier(identifier) {
-            if let url = await loadURL(from: itemProvider, typeIdentifier: identifier) {
-                return url
+            do {
+                if let url = try await loadURL(from: itemProvider, typeIdentifier: identifier) {
+                    return url
+                }
+            } catch {
+                if loadError == nil {
+                    loadError = error
+                }
             }
+        }
+        if let loadError {
+            throw loadError
         }
         return nil
     }
@@ -87,6 +97,10 @@ extension ShareViewController {
 
     @MainActor
     func queuePendingWebsite(_ url: URL) {
+        guard pendingShareStore.canQueueURLItems() else {
+            showError(ExtensionUserMessageCatalog.sharedStorageUnavailableMessage())
+            return
+        }
         let item = ShareExtensionURLQueueHandler.enqueueURLForLater(
             url,
             pendingStore: pendingShareStore
@@ -96,6 +110,10 @@ extension ShareViewController {
 
     @MainActor
     func queuePendingFile(data: Data, filename: String, mimeType: String, isImage: Bool) {
+        guard pendingShareStore.canQueueFileItems() else {
+            showError(ExtensionUserMessageCatalog.sharedStorageUnavailableMessage())
+            return
+        }
         let kind: PendingShareKind = isImage ? .image : .file
         let item = pendingShareStore.enqueueFile(
             data: data,
@@ -108,6 +126,10 @@ extension ShareViewController {
 
     @MainActor
     func queuePendingFile(at url: URL, filename: String, mimeType: String, isImage: Bool) {
+        guard pendingShareStore.canQueueFileItems() else {
+            showError(ExtensionUserMessageCatalog.sharedStorageUnavailableMessage())
+            return
+        }
         let kind: PendingShareKind = isImage ? .image : .file
         let item = pendingShareStore.enqueueFile(
             at: url,

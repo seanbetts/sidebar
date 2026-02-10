@@ -76,6 +76,13 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         XCTAssertEqual(detail?.count, 120)
     }
 
+    func testSharedStorageUnavailableMessageIsActionable() {
+        XCTAssertEqual(
+            ExtensionUserMessageCatalog.sharedStorageUnavailableMessage(),
+            "Could not access shared storage. Open sideBar and try again."
+        )
+    }
+
     func testSafariPopupResourcesMatchAcrossTargets() throws {
         let iosResources = extensionResourcesDirectory(
             targetDirectory: "sideBar Safari Extension/Resources"

@@ -33,6 +33,11 @@ enum ShareExtensionMessageMapper {
             return message(for: apiError)
         }
 
+        let nsError = error as NSError
+        if let code = messageCode(forNSError: nsError) {
+            return ExtensionUserMessageCatalog.message(for: code)
+        }
+
         if let code = ExtensionNetworkErrorClassifier.messageCode(for: error) {
             return ExtensionUserMessageCatalog.message(for: code)
         }
@@ -43,14 +48,7 @@ enum ShareExtensionMessageMapper {
     private static func message(for error: APIClientError) -> String {
         switch error {
         case .requestFailed(let statusCode):
-            switch statusCode {
-            case 401, 403:
-                return ExtensionUserMessageCatalog.message(for: .notAuthenticated)
-            case 408:
-                return ExtensionUserMessageCatalog.message(for: .networkError)
-            default:
-                return ExtensionUserMessageCatalog.message(for: .uploadFailed)
-            }
+            return message(forStatusCode: statusCode)
         case .apiError(let message):
             if let code = messageCode(forDetail: message) {
                 return ExtensionUserMessageCatalog.message(for: code)
@@ -61,6 +59,21 @@ enum ShareExtensionMessageMapper {
             return ExtensionUserMessageCatalog.message(for: .notAuthenticated)
         case .invalidUrl, .decodingFailed, .unknown:
             return ExtensionUserMessageCatalog.message(for: .unknownFailure)
+        @unknown default:
+            return ExtensionUserMessageCatalog.message(for: .unknownFailure)
+        }
+    }
+
+    private static func message(forStatusCode statusCode: Int) -> String {
+        switch statusCode {
+        case 401, 403:
+            return ExtensionUserMessageCatalog.message(for: .notAuthenticated)
+        case 408:
+            return ExtensionUserMessageCatalog.message(for: .networkError)
+        case 429, 500...599:
+            return ExtensionUserMessageCatalog.message(for: .uploadFailed)
+        default:
+            return ExtensionUserMessageCatalog.message(for: .uploadFailed)
         }
     }
 
@@ -81,6 +94,16 @@ enum ShareExtensionMessageMapper {
             return .notAuthenticated
         }
 
+        let unsupportedSignals = [
+            "unsupported",
+            "type identifier",
+            "unavailable coercion",
+            "cannot load representation"
+        ]
+        if unsupportedSignals.contains(where: lowered.contains) {
+            return .unsupportedContent
+        }
+
         let networkSignals = [
             "timed out",
             "timeout",
@@ -92,6 +115,28 @@ enum ShareExtensionMessageMapper {
         ]
         if networkSignals.contains(where: lowered.contains) {
             return .networkError
+        }
+
+        return nil
+    }
+
+    private static func messageCode(forNSError nsError: NSError) -> ExtensionMessageCode? {
+        if nsError.domain == NSItemProvider.errorDomain {
+            if let code = messageCode(forDetail: nsError.localizedDescription) {
+                return code
+            }
+            return .invalidSharePayload
+        }
+
+        if nsError.domain == NSCocoaErrorDomain {
+            switch nsError.code {
+            case NSFileReadNoSuchFileError, NSFileReadNoPermissionError, NSFileReadCorruptFileError:
+                return .fileLoadFailed
+            case NSUserCancelledError:
+                return .invalidSharePayload
+            default:
+                break
+            }
         }
 
         return nil

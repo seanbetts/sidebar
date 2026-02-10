@@ -1,4 +1,5 @@
 import UIKit
+import OSLog
 import sideBarShared
 import UniformTypeIdentifiers
 
@@ -7,6 +8,7 @@ final class ShareViewController: UIViewController {
     var environment: ShareExtensionEnvironment?
     var progressView: ShareProgressView?
     let pendingShareStore = PendingShareStore.shared
+    let logger = Logger(subsystem: "sideBar", category: "ShareExtension")
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -23,56 +25,80 @@ final class ShareViewController: UIViewController {
     // MARK: - Content Processing
 
     func processSharedContent() {
-        guard let extensionItems = extensionContext?.inputItems as? [NSExtensionItem] else {
-            showError(ExtensionUserMessageCatalog.message(for: .invalidSharePayload))
-            return
-        }
-
-        let itemProviders = extensionItems.flatMap { $0.attachments ?? [] }
-        guard !itemProviders.isEmpty else {
+        guard let itemProviders = sharedItemProviders() else {
             showError(ExtensionUserMessageCatalog.message(for: .invalidSharePayload))
             return
         }
 
         Task { [weak self] in
             guard let self else { return }
+            if await self.handlePreferredContent(from: itemProviders) {
+                return
+            }
+            await self.handleURLFallback(from: itemProviders)
+        }
+    }
 
-            // Try to find content in priority order: images, files, URLs
-            for itemProvider in itemProviders {
-                // Check for images first
-                if itemProvider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-                    await self.handleImage(itemProvider)
-                    return
-                }
+    private func sharedItemProviders() -> [NSItemProvider]? {
+        guard let extensionItems = extensionContext?.inputItems as? [NSExtensionItem] else {
+            return nil
+        }
+        let itemProviders = extensionItems.flatMap { $0.attachments ?? [] }
+        return itemProviders.isEmpty ? nil : itemProviders
+    }
 
-                // Check for PDFs
-                if itemProvider.hasItemConformingToTypeIdentifier(UTType.pdf.identifier) {
-                    await self.handleFile(itemProvider, preferredType: .pdf)
-                    return
-                }
-
-                // Check for other file types
-                if itemProvider.hasItemConformingToTypeIdentifier(UTType.data.identifier) &&
-                   !itemProvider.hasItemConformingToTypeIdentifier(UTType.url.identifier) &&
-                   !itemProvider.hasItemConformingToTypeIdentifier(UTType.text.identifier) {
-                    await self.handleFile(itemProvider, preferredType: .data)
-                    return
-                }
+    private func handlePreferredContent(from itemProviders: [NSItemProvider]) async -> Bool {
+        for itemProvider in itemProviders {
+            if itemProvider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                await handleImage(itemProvider)
+                return true
             }
 
-            // Fall back to URL extraction
-            for itemProvider in itemProviders {
-                if let url = await self.extractURL(from: itemProvider) {
+            if itemProvider.hasItemConformingToTypeIdentifier(UTType.pdf.identifier) {
+                await handleFile(itemProvider, preferredType: .pdf)
+                return true
+            }
+
+            if hasBinaryFileContent(itemProvider) {
+                await handleFile(itemProvider, preferredType: .data)
+                return true
+            }
+        }
+        return false
+    }
+
+    private func hasBinaryFileContent(_ itemProvider: NSItemProvider) -> Bool {
+        itemProvider.hasItemConformingToTypeIdentifier(UTType.data.identifier) &&
+        !itemProvider.hasItemConformingToTypeIdentifier(UTType.url.identifier) &&
+        !itemProvider.hasItemConformingToTypeIdentifier(UTType.text.identifier)
+    }
+
+    private func handleURLFallback(from itemProviders: [NSItemProvider]) async {
+        var extractionError: Error?
+        for itemProvider in itemProviders {
+            do {
+                if let url = try await extractURL(from: itemProvider) {
                     await MainActor.run { [weak self] in
                         self?.saveURL(url)
                     }
                     return
                 }
+            } catch {
+                if extractionError == nil {
+                    extractionError = error
+                }
+                logger.error(
+                    "Failed to extract URL from shared content: \(error.localizedDescription, privacy: .public)"
+                )
             }
+        }
 
-            await MainActor.run { [weak self] in
-                self?.showError(ExtensionUserMessageCatalog.message(for: .unsupportedContent))
+        await MainActor.run { [weak self] in
+            if let extractionError {
+                self?.showError(ShareExtensionMessageMapper.errorMessage(for: extractionError))
+                return
             }
+            self?.showError(ExtensionUserMessageCatalog.message(for: .unsupportedContent))
         }
     }
 }

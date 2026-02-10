@@ -54,6 +54,38 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(store.loadAll().count, 1)
     }
 
+    func testEnqueueWebsiteFailsWhenDefaultsUnavailable() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = PendingShareStore(
+            baseDirectory: directory,
+            userDefaults: nil,
+            allowAppGroupFallback: false
+        )
+
+        let item = store.enqueueWebsite(url: "https://example.com")
+
+        XCTAssertNil(item)
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
+    func testCanQueueItemChecksReflectStorageAvailability() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let withStorage = PendingShareStore(
+            baseDirectory: directory,
+            userDefaults: UserDefaults(suiteName: suiteName)
+        )
+        let withoutDefaults = PendingShareStore(
+            baseDirectory: directory,
+            userDefaults: nil,
+            allowAppGroupFallback: false
+        )
+
+        XCTAssertTrue(withStorage.canQueueURLItems())
+        XCTAssertTrue(withStorage.canQueueFileItems())
+        XCTAssertFalse(withoutDefaults.canQueueURLItems())
+        XCTAssertFalse(withoutDefaults.canQueueFileItems())
+    }
+
     func testEnqueueFileWritesData() throws {
         let store = makeStore()
         let payload = Data("hello".utf8)
