@@ -140,6 +140,7 @@
 		14C84A482F10562300FE0C16 /* sideBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sideBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A552F10562500FE0C16 /* sideBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3E12F40000200ABCDEF /* ShareExtensionTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShareExtensionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14DFA3272F10F45E001DAF5B /* SideBarCache.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = SideBarCache.xcdatamodel; sourceTree = "<group>"; };
 		14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/SideBar.xcconfig; sourceTree = "<group>"; };
 		4F1D2A6D2FF2A6A100A0B2C3 /* sideBar/sideBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = sideBar/sideBar.entitlements; sourceTree = "<group>"; };
@@ -273,6 +274,11 @@
 			path = sideBarUITests;
 			sourceTree = "<group>";
 		};
+		A1B2C3E22F40000200ABCDEF /* ShareExtensionTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ShareExtensionTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -353,6 +359,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A1B2C3E32F40000200ABCDEF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -376,6 +389,7 @@
 				14C84A4A2F10562300FE0C16 /* sideBar */,
 				14C84A582F10562500FE0C16 /* sideBarTests */,
 				14C84A622F10562500FE0C16 /* sideBarUITests */,
+				A1B2C3E22F40000200ABCDEF /* ShareExtensionTests */,
 				142516AE2F1EB96B0072E4F9 /* ShareExtension */,
 				1448E6CD2F27A6420066EE47 /* sideBarWidgets */,
 				1413DE472F2B514C002495EE /* sideBarShared */,
@@ -395,6 +409,7 @@
 				14C84A482F10562300FE0C16 /* sideBar.app */,
 				14C84A552F10562500FE0C16 /* sideBarTests.xctest */,
 				14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */,
+				A1B2C3E12F40000200ABCDEF /* ShareExtensionTests.xctest */,
 				142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */,
 				1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */,
 				1413DE462F2B514C002495EE /* sideBarShared.framework */,
@@ -647,6 +662,31 @@
 			productReference = 14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		A1B2C3E62F40000200ABCDEF /* ShareExtensionTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B2C3EA2F40000200ABCDEF /* Build configuration list for PBXNativeTarget "ShareExtensionTests" */;
+			buildPhases = (
+				A1B2C3E52F40000200ABCDEF /* Sources */,
+				A1B2C3E32F40000200ABCDEF /* Frameworks */,
+				A1B2C3E42F40000200ABCDEF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1B2C3E72F40000200ABCDEF /* PBXTargetDependency */,
+				1448E6DC2F27A6430066EE47 /* PBXTargetDependency */,
+				146EA0702F2FE83C004AE7D1 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A1B2C3E22F40000200ABCDEF /* ShareExtensionTests */,
+			);
+			name = ShareExtensionTests;
+			packageProductDependencies = (
+			);
+			productName = ShareExtensionTests;
+			productReference = A1B2C3E12F40000200ABCDEF /* ShareExtensionTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -691,6 +731,10 @@
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 14C84A472F10562300FE0C16;
 					};
+					A1B2C3E62F40000200ABCDEF = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 142516AC2F1EB96B0072E4F9;
+					};
 				};
 			};
 			buildConfigurationList = 14C84A432F10562300FE0C16 /* Build configuration list for PBXProject "sideBar" */;
@@ -721,6 +765,7 @@
 				146EA0582F2FE83C004AE7D1 /* sideBar Safari Extension */,
 				146EA0792F2FE877004AE7D1 /* sideBar Safari Extension (macOS) */,
 				146EA0952F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension */,
+				A1B2C3E62F40000200ABCDEF /* ShareExtensionTests */,
 			);
 		};
 /* End PBXProject section */
@@ -783,6 +828,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		14C84A5D2F10562500FE0C16 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1B2C3E42F40000200ABCDEF /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -894,6 +946,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A1B2C3E52F40000200ABCDEF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -939,6 +998,12 @@
 			isa = PBXTargetDependency;
 			target = 14C84A472F10562300FE0C16 /* sideBar */;
 			targetProxy = 14C84A602F10562500FE0C16 /* PBXContainerItemProxy */;
+		};
+		A1B2C3E72F40000200ABCDEF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = ios;
+			target = 142516AC2F1EB96B0072E4F9 /* ShareExtension */;
+			targetProxy = 142516B52F1EB96B0072E4F9 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1795,6 +1860,82 @@
 			};
 			name = Release;
 		};
+		A1B2C3E82F40000200ABCDEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+					"@executable_path/PlugIns/ShareExtension.appex",
+					"@executable_path/PlugIns/sideBarWidgetsExtension.appex",
+					"@executable_path/PlugIns/sideBar\\ Safari\\ Extension.appex",
+				);
+				MARKETING_VERSION = 0.1;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/ShareExtension.appex/ShareExtension.debug.dylib",
+					"$(BUILT_PRODUCTS_DIR)/sideBarWidgetsExtension.appex/sideBarWidgetsExtension.debug.dylib",
+					"$(BUILT_PRODUCTS_DIR)/sideBar\\ Safari\\ Extension.appex/sideBar\\ Safari\\ Extension.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = seanbetts.ShareExtensionTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/sideBar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/sideBar";
+				TEST_TARGET_NAME = sideBar;
+			};
+			name = Debug;
+		};
+		A1B2C3E92F40000200ABCDEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+					"@executable_path/PlugIns/ShareExtension.appex",
+					"@executable_path/PlugIns/sideBarWidgetsExtension.appex",
+					"@executable_path/PlugIns/sideBar\\ Safari\\ Extension.appex",
+				);
+				MARKETING_VERSION = 0.1;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/ShareExtension.appex/ShareExtension.debug.dylib",
+					"$(BUILT_PRODUCTS_DIR)/sideBarWidgetsExtension.appex/sideBarWidgetsExtension.debug.dylib",
+					"$(BUILT_PRODUCTS_DIR)/sideBar\\ Safari\\ Extension.appex/sideBar\\ Safari\\ Extension.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = seanbetts.ShareExtensionTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/sideBar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/sideBar";
+				TEST_TARGET_NAME = sideBar;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1884,6 +2025,15 @@
 			buildConfigurations = (
 				14C84A702F10562500FE0C16 /* Debug */,
 				14C84A712F10562500FE0C16 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B2C3EA2F40000200ABCDEF /* Build configuration list for PBXNativeTarget "ShareExtensionTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3E82F40000200ABCDEF /* Debug */,
+				A1B2C3E92F40000200ABCDEF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

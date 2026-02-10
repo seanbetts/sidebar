@@ -53,6 +53,17 @@
                ReferencedContainer = "container:sideBar.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A1B2C3E62F40000200ABCDEF"
+               BuildableName = "ShareExtensionTests.xctest"
+               BlueprintName = "ShareExtensionTests"
+               ReferencedContainer = "container:sideBar.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

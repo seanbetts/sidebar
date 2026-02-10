@@ -81,6 +81,7 @@ jobs:
             destination: "platform=macOS,arch=arm64"
             runs_on: macos-26
             include_on_pr: false
+            skip_testing: sideBarUITests,ShareExtensionTests
     steps:
       - name: Checkout
         if: ${{ (github.event_name != 'pull_request' || matrix.include_on_pr) && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
