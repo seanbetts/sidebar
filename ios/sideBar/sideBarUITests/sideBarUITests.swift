@@ -326,7 +326,7 @@ final class SideBarUITests: XCTestCase {
         return "[seed:test-data] Onboarding flow review"
     }
 
-    fileprivate func dismissSystemAlertsIfPresent(
+    func dismissSystemAlertsIfPresent(
         in app: XCUIApplication,
         timeout: TimeInterval = 2
     ) {
