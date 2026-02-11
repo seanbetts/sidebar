@@ -1,6 +1,10 @@
 import UIKit
 
 final class ShareErrorView: ShareStateView {
+    private enum Layout {
+        static let iconSize: CGFloat = 44
+    }
+
     init(
         message: String,
         retryAction: (() -> Void)?,
@@ -9,11 +13,11 @@ final class ShareErrorView: ShareStateView {
     ) {
         let iconImageView = UIImageView()
         iconImageView.image = UIImage(systemName: "xmark.circle.fill")
-        iconImageView.tintColor = .label
+        iconImageView.tintColor = .systemRed
         iconImageView.contentMode = .scaleAspectFit
         iconImageView.translatesAutoresizingMaskIntoConstraints = false
-        iconImageView.heightAnchor.constraint(equalToConstant: 36).isActive = true
-        iconImageView.widthAnchor.constraint(equalToConstant: 36).isActive = true
+        iconImageView.heightAnchor.constraint(equalToConstant: Layout.iconSize).isActive = true
+        iconImageView.widthAnchor.constraint(equalToConstant: Layout.iconSize).isActive = true
 
         let actionsStack = UIStackView()
         actionsStack.axis = .vertical
@@ -65,7 +69,7 @@ final class ShareErrorView: ShareStateView {
         super.init(
             message: message,
             accessoryView: iconImageView,
-            spacingAfterTitle: 72,
+            spacingAfterTitle: 20,
             footerView: actionsStack
         )
     }
