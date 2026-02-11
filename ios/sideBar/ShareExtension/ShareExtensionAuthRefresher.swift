@@ -1,6 +1,6 @@
 import Foundation
 import Supabase
-import sideBarShared
+@preconcurrency import sideBarShared
 
 struct ShareExtensionSupabaseConfig {
     let url: URL
@@ -143,7 +143,10 @@ final class ShareExtensionAuthRefresher {
 }
 
 /// Bridges KeychainAuthStateStore to Supabase AuthLocalStorage for the share extension.
-private final class ShareExtensionSupabaseKeychainStorage: AuthLocalStorage {
+///
+/// Marked as `@unchecked Sendable` because KeychainAuthStateStore serializes
+/// its mutable in-memory state and Security framework Keychain APIs are thread-safe.
+private final class ShareExtensionSupabaseKeychainStorage: AuthLocalStorage, @unchecked Sendable {
     private let stateStore: KeychainAuthStateStore
 
     init(stateStore: KeychainAuthStateStore) {
