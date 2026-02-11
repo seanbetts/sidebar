@@ -675,11 +675,12 @@
 			);
 			buildRules = (
 			);
-			dependencies = (
-				A1B2C3E72F40000200ABCDEF /* PBXTargetDependency */,
-				1448E6DC2F27A6430066EE47 /* PBXTargetDependency */,
-				146EA0702F2FE83C004AE7D1 /* PBXTargetDependency */,
-			);
+				dependencies = (
+					14C84A572F10562500FE0C16 /* PBXTargetDependency */,
+					A1B2C3E72F40000200ABCDEF /* PBXTargetDependency */,
+					1448E6DC2F27A6430066EE47 /* PBXTargetDependency */,
+					146EA0702F2FE83C004AE7D1 /* PBXTargetDependency */,
+				);
 			fileSystemSynchronizedGroups = (
 				A1B2C3E22F40000200ABCDEF /* ShareExtensionTests */,
 			);
