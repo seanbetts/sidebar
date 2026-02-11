@@ -32,6 +32,8 @@ struct FilesPanelView: View {
     @State var isYouTubeAlertPresented = false
     @State var newYouTubeUrl: String = ""
     @State var knownFileIds: Set<String> = []
+    @State var hasKnownFileIdsBaseline = false
+    @State var isAwaitingInitialLoad = false
     @State var renameTarget: IngestionListItem?
     @State var renameValue: String = ""
     @State var isRenameSheetPresented = false
@@ -91,26 +93,32 @@ extension FilesPanelView {
             .onAppear {
                 if !hasLoaded {
                     hasLoaded = true
-                    Task { await viewModel.load() }
+                    isAwaitingInitialLoad = true
+                    Task {
+                        await viewModel.load()
+                        isAwaitingInitialLoad = false
+                        initializeKnownFileIdsBaselineIfNeeded()
+                    }
                 }
                 initializeExpandedCategoriesIfNeeded()
-                knownFileIds = Set(viewModel.items.map { $0.file.id })
+                initializeKnownFileIdsBaselineIfNeeded()
+            }
+            .onChange(of: viewModel.isLoading) { _, _ in
+                initializeKnownFileIdsBaselineIfNeeded()
             }
             .onChange(of: categoriesWithItems) { _, _ in
                 initializeExpandedCategoriesIfNeeded()
             }
             .onChange(of: viewModel.itemsVersion) { _, _ in
-                let newIdSet = Set(viewModel.items.map { $0.file.id })
-                let addedIds = newIdSet.subtracting(knownFileIds)
-                if !addedIds.isEmpty {
-                    for item in viewModel.items where addedIds.contains(item.file.id) {
-                        if item.file.mimeOriginal.lowercased().contains("youtube") {
-                            expandedCategories.insert("video")
-                            break
-                        }
-                    }
+                initializeKnownFileIdsBaselineIfNeeded()
+                if FilesPanelExpansionPolicy.shouldAutoExpandVideo(
+                    hasBaseline: hasKnownFileIdsBaseline,
+                    previousKnownFileIds: knownFileIds,
+                    items: viewModel.items
+                ) {
+                    expandedCategories.insert("video")
                 }
-                knownFileIds = newIdSet
+                knownFileIds = FilesPanelExpansionPolicy.currentFileIds(from: viewModel.items)
             }
             .onReceive(appEnvironment.navigation.$shortcutActionEvent) { event in
                 guard let event, event.section == .files else { return }

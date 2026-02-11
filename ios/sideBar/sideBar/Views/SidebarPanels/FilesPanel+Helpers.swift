@@ -139,6 +139,18 @@ extension FilesPanelView {
         }
     }
 
+    func initializeKnownFileIdsBaselineIfNeeded() {
+        guard FilesPanelExpansionPolicy.shouldInitializeBaseline(
+            isLoading: viewModel.isLoading,
+            awaitingInitialLoad: isAwaitingInitialLoad,
+            hasBaseline: hasKnownFileIdsBaseline
+        ) else {
+            return
+        }
+        knownFileIds = FilesPanelExpansionPolicy.currentFileIds(from: viewModel.items)
+        hasKnownFileIdsBaseline = true
+    }
+
     var filteredItems: [IngestionListItem] {
         viewModel.panelFilteredItems
     }
