@@ -45,7 +45,7 @@ jobs:
         run: python3 scripts/check_ios_architecture_boundaries.py
 
   ios_test_matrix:
-    runs-on: [self-hosted, '${{ matrix.runner_label }}']
+    runs-on: [self-hosted, ${{ matrix.runner_label }}]
     strategy:
       fail-fast: false
       matrix:
