@@ -55,7 +55,7 @@ jobs:
           - id: ipad
             label: "iPad Pro 13-inch (M5) iPadOS 26"
             scheme: sideBar
-            destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=26.0"
+            destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
             runner_label: ios
             only_testing: sideBarUITests
             skip_testing: sideBarUITests/SideBarUITestsLaunchTests
@@ -67,7 +67,7 @@ jobs:
           - id: iphone
             label: "iPhone 17 Pro iOS 26"
             scheme: sideBar
-            destination: "platform=iOS Simulator,name=iPhone 17 Pro,OS=26.0"
+            destination: "platform=iOS Simulator,name=iPhone 17 Pro"
             runner_label: ios
             skip_testing: sideBarUITests
             retry_tests_on_failure: "YES"
@@ -76,7 +76,7 @@ jobs:
           - id: mac
             label: "macOS 26"
             scheme: sideBarMacTests
-            destination: "platform=macOS,arch=arm64"
+            destination: "platform=macOS"
             runner_label: mac
             only_testing: sideBarTests
             skip_testing: sideBarUITests,ShareExtensionTests
