@@ -58,7 +58,7 @@ extension AppEnvironment {
             },
             saveWebsite: { [weak self] url in
                 guard let self else { return false }
-                return await self.websitesViewModel.saveWebsite(url: url)
+                return await self.websitesViewModel.saveWebsite(url: url, selectAfterSave: false)
             },
             ingestYouTube: { [weak self] url in
                 guard let self else { return "Environment released." }

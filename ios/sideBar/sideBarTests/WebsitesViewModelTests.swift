@@ -252,6 +252,41 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.pendingWebsite)
     }
 
+    func testSaveWebsiteWithoutSelectionPreservesCurrentDetail() async {
+        let existing = makeItem(id: "site-existing")
+        let existingDetail = makeDetail(id: "site-existing")
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [existing])),
+            getResult: .success(existingDetail),
+            saveResult: .success(WebsiteSaveResponse(
+                success: true,
+                data: WebsiteSaveData(
+                    id: "site-new",
+                    title: "New Site",
+                    url: "https://new.example",
+                    domain: "new.example"
+                )
+            ))
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.load()
+        await viewModel.selectWebsite(id: "site-existing")
+        let saved = await viewModel.saveWebsite(url: "https://new.example", selectAfterSave: false)
+
+        XCTAssertTrue(saved)
+        XCTAssertEqual(viewModel.selectedWebsiteId, "site-existing")
+        XCTAssertEqual(viewModel.active?.id, "site-existing")
+        XCTAssertTrue(viewModel.items.contains(where: { $0.id == "site-new" }))
+    }
+
     func testLoadArchivedTracksLoadingState() async {
         let cache = InMemoryCacheClient()
         let api = ControlledArchivedWebsitesAPI()

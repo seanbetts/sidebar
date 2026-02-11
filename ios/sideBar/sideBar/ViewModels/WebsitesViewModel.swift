@@ -208,10 +208,29 @@ public final class WebsitesViewModel: ObservableObject {
         store.clearActive()
     }
 
-    public func saveWebsite(url: String) async -> Bool {
+    public func saveWebsite(url: String, selectAfterSave: Bool = true) async -> Bool {
         guard let normalized = normalizedWebsiteURL(from: url) else { return false }
         if networkStatus.isOffline {
-            return enqueueOfflineWebsiteSave(for: normalized)
+            if selectAfterSave {
+                return enqueueOfflineWebsiteSave(for: normalized)
+            }
+            return false
+        }
+
+        if !selectAfterSave {
+            saveErrorMessage = nil
+            do {
+                let response = try await api.save(url: normalized.absoluteString)
+                guard response.success, let data = response.data else {
+                    saveErrorMessage = "Failed to save website"
+                    return false
+                }
+                applySavedWebsiteWithoutSelection(data)
+                return true
+            } catch {
+                saveErrorMessage = ErrorMapping.message(for: error)
+                return false
+            }
         }
         let previousSelectedId = beginWebsiteSave(for: normalized)
         defer { endWebsiteSave() }

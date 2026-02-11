@@ -84,6 +84,32 @@ extension WebsitesViewModel {
         }
     }
 
+    func applySavedWebsiteWithoutSelection(_ data: WebsiteSaveData) {
+        store.insertItemAtTop(
+            WebsiteItem(
+                id: data.id,
+                title: data.title,
+                url: data.url,
+                domain: data.domain,
+                savedAt: nil,
+                publishedAt: nil,
+                pinned: false,
+                pinnedOrder: nil,
+                archived: false,
+                faviconUrl: nil,
+                faviconR2Key: nil,
+                youtubeTranscripts: nil,
+                readingTime: nil,
+                updatedAt: nil,
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            persist: true
+        )
+        pendingWebsite = nil
+        store.invalidateList()
+    }
+
     func failWebsiteSave(previousSelectedId: String?, message: String) {
         pendingWebsite = nil
         selectedWebsiteId = previousSelectedId
