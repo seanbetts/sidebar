@@ -16,7 +16,12 @@ IOS_ONLY_TESTING="${IOS_ONLY_TESTING:-}"
 IOS_SKIP_TESTING="${IOS_SKIP_TESTING:-}"
 IOS_RETRY_TESTS_ON_FAILURE="${IOS_RETRY_TESTS_ON_FAILURE:-NO}"
 IOS_TEST_ITERATIONS="${IOS_TEST_ITERATIONS:-2}"
-IOS_PARALLEL_TESTING_ENABLED="${IOS_PARALLEL_TESTING_ENABLED:-YES}"
+if [[ -n "${IOS_PARALLEL_TESTING_ENABLED+x}" ]]; then
+  ios_parallel_testing_setting_supplied="YES"
+else
+  ios_parallel_testing_setting_supplied="NO"
+fi
+IOS_PARALLEL_TESTING_ENABLED="${IOS_PARALLEL_TESTING_ENABLED:-}"
 IOS_MAXIMUM_PARALLEL_TESTING_WORKERS="${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS:-}"
 
 echo "Running iOS tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
@@ -54,6 +59,46 @@ if [[ -n "${IOS_SKIP_TESTING}" ]]; then
   done
 fi
 
+lane_includes_ui_tests="NO"
+if [[ "${IOS_SCHEME}" == "sideBar" ]]; then
+  if [[ -n "${IOS_ONLY_TESTING}" ]]; then
+    IFS=',' read -r -a only_testing_specs_for_ui <<< "${IOS_ONLY_TESTING}"
+    for raw_spec in "${only_testing_specs_for_ui[@]}"; do
+      spec="$(echo "${raw_spec}" | xargs)"
+      target="${spec%%/*}"
+      if [[ "${target}" == "sideBarUITests" ]]; then
+        lane_includes_ui_tests="YES"
+        break
+      fi
+    done
+  else
+    lane_includes_ui_tests="YES"
+  fi
+
+  if [[ "${lane_includes_ui_tests}" == "YES" && -n "${IOS_SKIP_TESTING}" ]]; then
+    IFS=',' read -r -a skip_testing_specs_for_ui <<< "${IOS_SKIP_TESTING}"
+    for raw_spec in "${skip_testing_specs_for_ui[@]}"; do
+      spec="$(echo "${raw_spec}" | xargs)"
+      if [[ "${spec}" == "sideBarUITests" ]]; then
+        lane_includes_ui_tests="NO"
+        break
+      fi
+    done
+  fi
+fi
+
+if [[ -z "${IOS_PARALLEL_TESTING_ENABLED}" ]]; then
+  if [[ "${lane_includes_ui_tests}" == "YES" ]]; then
+    IOS_PARALLEL_TESTING_ENABLED="NO"
+  else
+    IOS_PARALLEL_TESTING_ENABLED="YES"
+  fi
+fi
+
+if [[ "${lane_includes_ui_tests}" == "YES" && -z "${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS}" && "${ios_parallel_testing_setting_supplied}" == "NO" ]]; then
+  IOS_MAXIMUM_PARALLEL_TESTING_WORKERS="1"
+fi
+
 if [[ "${IOS_RETRY_TESTS_ON_FAILURE}" == "YES" ]]; then
   XCODEBUILD_ARGS+=(
     -retry-tests-on-failure
@@ -62,6 +107,9 @@ if [[ "${IOS_RETRY_TESTS_ON_FAILURE}" == "YES" ]]; then
 fi
 
 if [[ "${IOS_PARALLEL_TESTING_ENABLED}" == "NO" ]]; then
+  if [[ "${lane_includes_ui_tests}" == "YES" ]]; then
+    echo "UI tests detected in lane; running serially for simulator stability."
+  fi
   XCODEBUILD_ARGS+=(-parallel-testing-enabled NO)
 fi
 

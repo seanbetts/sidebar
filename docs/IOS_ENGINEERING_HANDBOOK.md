@@ -94,6 +94,8 @@ python3 scripts/check_ios_architecture_boundaries.py
 scripts/test-ios.sh
 ```
 
+`scripts/test-ios.sh` defaults to serial execution when the lane includes `sideBarUITests` (for simulator stability), unless `IOS_PARALLEL_TESTING_ENABLED` is explicitly set.
+
 CI workflow (`.github/workflows/ios-ci.yml`):
 
 - Runs on two self-hosted runners on the developer machine:
