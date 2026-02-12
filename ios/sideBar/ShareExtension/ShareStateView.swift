@@ -1,6 +1,11 @@
 import UIKit
 
 class ShareStateView: UIView {
+    enum Style {
+        case card
+        case minimal
+    }
+
     private enum Layout {
         static let cardCornerRadius: CGFloat = 20
         static let defaultSpacing: CGFloat = 12
@@ -15,13 +20,16 @@ class ShareStateView: UIView {
     private let messageLabel = UILabel()
     private let logoImageView = UIImageView()
     private let brandStack = UIStackView()
+    private let style: Style
 
     init(
         message: String,
         accessoryView: UIView,
         spacingAfterTitle: CGFloat = Layout.defaultSpacing,
-        footerView: UIView? = nil
+        footerView: UIView? = nil,
+        style: Style = .card
     ) {
+        self.style = style
         super.init(frame: .zero)
         setup(
             message: message,
@@ -35,8 +43,28 @@ class ShareStateView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle {
+            refreshBrandLogo()
+        }
+    }
+
     func updateMessage(_ message: String) {
         messageLabel.text = message
+    }
+
+    private func refreshBrandLogo() {
+        logoImageView.image = brandLogoImage()
+        logoImageView.isHidden = logoImageView.image == nil
+    }
+
+    private func brandLogoImage() -> UIImage? {
+        let preferredName = traitCollection.userInterfaceStyle == .dark ? "logo-dark" : "logo-light"
+        if let image = UIImage(named: preferredName, in: Bundle.main, compatibleWith: traitCollection) {
+            return image
+        }
+        return UIImage(named: "AppLogo", in: Bundle.main, compatibleWith: traitCollection)
     }
 
     private func setup(
@@ -48,12 +76,11 @@ class ShareStateView: UIView {
         backgroundColor = .systemGroupedBackground
 
         titleLabel.text = "sideBar"
-        titleLabel.font = .systemFont(ofSize: 30, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: style == .minimal ? 28 : 30, weight: .semibold)
         titleLabel.textColor = .label
         titleLabel.textAlignment = .center
 
-        logoImageView.image = UIImage(named: "AppLogo", in: Bundle.main, compatibleWith: nil)
-        logoImageView.isHidden = logoImageView.image == nil
+        refreshBrandLogo()
         logoImageView.contentMode = .scaleAspectFit
         logoImageView.accessibilityIdentifier = "share-brand-logo"
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
@@ -61,14 +88,17 @@ class ShareStateView: UIView {
         logoImageView.widthAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
 
         messageLabel.text = message
-        messageLabel.font = .preferredFont(forTextStyle: .subheadline)
+        messageLabel.font = style == .minimal
+            ? .systemFont(ofSize: 15, weight: .regular)
+            : .preferredFont(forTextStyle: .subheadline)
         messageLabel.textColor = .secondaryLabel
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
 
-        brandStack.axis = .horizontal
+        brandStack.axis = style == .minimal ? .vertical : .horizontal
         brandStack.alignment = .center
-        brandStack.spacing = 10
+        brandStack.spacing = style == .minimal ? 8 : 10
+        brandStack.accessibilityIdentifier = "share-brand-stack"
         brandStack.addArrangedSubview(logoImageView)
         brandStack.addArrangedSubview(titleLabel)
 
@@ -87,17 +117,22 @@ class ShareStateView: UIView {
         if footerView != nil {
             content.setCustomSpacing(16, after: messageLabel)
         }
-        content.isLayoutMarginsRelativeArrangement = true
-        content.directionalLayoutMargins = NSDirectionalEdgeInsets(
-            top: Layout.cardVerticalPadding,
-            leading: Layout.cardHorizontalPadding,
-            bottom: Layout.cardVerticalPadding,
-            trailing: Layout.cardHorizontalPadding
-        )
-        content.backgroundColor = .secondarySystemBackground
-        content.layer.cornerRadius = Layout.cardCornerRadius
-        content.layer.cornerCurve = .continuous
-        content.accessibilityIdentifier = "share-state-card"
+        if style == .card {
+            content.isLayoutMarginsRelativeArrangement = true
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(
+                top: Layout.cardVerticalPadding,
+                leading: Layout.cardHorizontalPadding,
+                bottom: Layout.cardVerticalPadding,
+                trailing: Layout.cardHorizontalPadding
+            )
+            content.backgroundColor = .secondarySystemBackground
+            content.layer.cornerRadius = Layout.cardCornerRadius
+            content.layer.cornerCurve = .continuous
+            content.accessibilityIdentifier = "share-state-card"
+        } else {
+            content.isLayoutMarginsRelativeArrangement = false
+            content.backgroundColor = .clear
+        }
         content.translatesAutoresizingMaskIntoConstraints = false
         addSubview(content)
 

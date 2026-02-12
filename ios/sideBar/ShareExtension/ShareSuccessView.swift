@@ -3,7 +3,7 @@ import UIKit
 final class ShareSuccessView: ShareStateView {
     private enum Layout {
         static let iconSize: CGFloat = 44
-        static let checkmarkSize: CGFloat = 24
+        static let checkmarkSize: CGFloat = 28
     }
 
     init(message: String) {
@@ -28,7 +28,12 @@ final class ShareSuccessView: ShareStateView {
             checkmarkImageView.centerYAnchor.constraint(equalTo: iconContainerView.centerYAnchor)
         ])
 
-        super.init(message: message, accessoryView: iconContainerView, spacingAfterTitle: 20)
+        super.init(
+            message: message,
+            accessoryView: iconContainerView,
+            spacingAfterTitle: 10,
+            style: .minimal
+        )
     }
 
     required init?(coder: NSCoder) {

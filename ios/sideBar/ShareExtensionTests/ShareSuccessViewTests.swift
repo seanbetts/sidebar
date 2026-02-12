@@ -42,8 +42,28 @@ final class ShareSuccessViewTests: XCTestCase {
             return
         }
 
-        let hasBundledLogo = UIImage(named: "AppLogo", in: Bundle.main, compatibleWith: nil) != nil
+        let hasAdaptiveLogo = UIImage(named: "logo-light", in: Bundle.main, compatibleWith: nil) != nil
+            || UIImage(named: "logo-dark", in: Bundle.main, compatibleWith: nil) != nil
+        let hasBundledLogo = hasAdaptiveLogo || UIImage(named: "AppLogo", in: Bundle.main, compatibleWith: nil) != nil
         XCTAssertEqual(!logoView.isHidden, hasBundledLogo)
+    }
+
+    func testSuccessViewUsesMinimalBrandStackAndNoCardContainer() {
+        let subject = ShareSuccessView(message: "Saved")
+
+        let cardContainer = subject.firstSubview(where: {
+            $0.accessibilityIdentifier == "share-state-card"
+        })
+        XCTAssertNil(cardContainer)
+
+        guard let brandStack = subject.firstSubview(where: {
+            ($0 as? UIStackView)?.accessibilityIdentifier == "share-brand-stack"
+        }) as? UIStackView else {
+            XCTFail("Expected brand stack in view hierarchy.")
+            return
+        }
+
+        XCTAssertEqual(brandStack.axis, .vertical)
     }
 
     private func colorsEqual(
