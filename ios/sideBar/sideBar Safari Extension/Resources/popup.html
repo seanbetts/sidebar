@@ -8,12 +8,13 @@
 <body>
     <div class="shell">
         <div class="container">
-            <img class="logo" src="images/icon-64.png" alt="sideBar logo">
-            <div class="title-wrap">
-                <div class="title">sideBar</div>
-                <div class="subtitle">Quick Save</div>
-            </div>
-            <div id="status" class="status tone-pending" role="status" aria-live="polite"></div>
+            <picture class="logo-wrap">
+                <source srcset="images/logo-dark.png" media="(prefers-color-scheme: dark)">
+                <img class="logo" src="images/logo-light.png" alt="sideBar logo">
+            </picture>
+            <div class="title">sideBar</div>
+            <div id="state-icon" class="state-icon tone-pending" aria-hidden="true">…</div>
+            <div id="status" class="status tone-pending" role="status" aria-live="polite">Saving...</div>
         </div>
     </div>
 </body>

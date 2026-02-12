@@ -35,19 +35,21 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             profile?.uuidString ?? "none"
         )
 
-        let responsePayload = SafariExtensionMessageHandler.responsePayload(
-            for: message,
-            pendingStore: .shared
-        )
-        os_log(.default, "SafariWebExtensionHandler response=%@", String(describing: responsePayload))
+        Task {
+            let responsePayload = await SafariExtensionMessageHandler.responsePayload(
+                for: message,
+                pendingStore: .shared
+            )
+            os_log(.default, "SafariWebExtensionHandler response=%@", String(describing: responsePayload))
 
-        let response = NSExtensionItem()
-        if #available(iOS 15.0, macOS 11.0, *) {
-            response.userInfo = [ SFExtensionMessageKey: responsePayload ]
-        } else {
-            response.userInfo = [ "message": responsePayload ]
+            let response = NSExtensionItem()
+            if #available(iOS 15.0, macOS 11.0, *) {
+                response.userInfo = [ SFExtensionMessageKey: responsePayload ]
+            } else {
+                response.userInfo = [ "message": responsePayload ]
+            }
+
+            context.completeRequest(returningItems: [ response ], completionHandler: nil)
         }
-
-        context.completeRequest(returningItems: [ response ], completionHandler: nil)
     }
 }

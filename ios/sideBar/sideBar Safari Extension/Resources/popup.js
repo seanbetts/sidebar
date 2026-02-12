@@ -1,25 +1,44 @@
 const status = document.getElementById("status");
+const stateIcon = document.getElementById("state-icon");
 const STATUS_TONES = ["tone-pending", "tone-success", "tone-error"];
+const TONE_TO_GLYPH = {
+    pending: "…",
+    success: "✓",
+    error: "!"
+};
 
 const setStatus = (text, tone = "pending") => {
     STATUS_TONES.forEach((className) => status.classList.remove(className));
-    status.classList.add(`tone-${tone}`);
+    STATUS_TONES.forEach((className) => stateIcon.classList.remove(className));
+    const toneClass = `tone-${tone}`;
+    status.classList.add(toneClass);
+    stateIcon.classList.add(toneClass);
+    stateIcon.textContent = TONE_TO_GLYPH[tone] ?? TONE_TO_GLYPH.pending;
     status.textContent = text;
 };
 
 const CODE_TO_MESSAGE = {
     saved_for_later: "Saved for later.",
+    website_saved: "Website saved.",
     unsupported_action: "This action is not supported.",
     missing_url: "No active tab URL found.",
     invalid_url: "That URL is invalid.",
     no_active_url: "No active tab URL found.",
     queue_failed: "Could not save for later.",
     not_authenticated: "Please sign in to sideBar first.",
+    invalid_base_url: "Invalid API base URL.",
+    upload_failed: "Upload failed. Please try again.",
     network_error: "Network error. Please try again.",
     unknown_failure: "Something went wrong. Please try again."
 };
 
 const messageFromResponse = (response, fallbackCode = "unknown_failure") => {
+    if (typeof response?.message === "string" && response.message.trim().length > 0) {
+        return response.message;
+    }
+    if (typeof response?.error === "string" && response.error.trim().length > 0) {
+        return response.error;
+    }
     const responseCode = typeof response?.code === "string" ? response.code : fallbackCode;
     return CODE_TO_MESSAGE[responseCode] ?? CODE_TO_MESSAGE.unknown_failure;
 };

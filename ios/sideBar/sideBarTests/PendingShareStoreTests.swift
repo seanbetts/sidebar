@@ -304,9 +304,9 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(keep)
     }
 
-    func testExtensionURLMessageHandlerRejectsUnsupportedAction() {
+    func testExtensionURLMessageHandlerRejectsUnsupportedAction() async {
         let store = makeStore()
-        let response = ExtensionURLMessageHandler.handleSaveURLMessage(
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "other_action",
             urlString: "https://example.com",
             pendingStore: store
@@ -317,9 +317,9 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(response["error"] as? String, ExtensionUserMessageCatalog.message(for: .unsupportedAction))
     }
 
-    func testExtensionURLMessageHandlerRejectsMissingURL() {
+    func testExtensionURLMessageHandlerRejectsMissingURL() async {
         let store = makeStore()
-        let response = ExtensionURLMessageHandler.handleSaveURLMessage(
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "save_url",
             urlString: nil,
             pendingStore: store
@@ -330,12 +330,15 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(response["error"] as? String, ExtensionUserMessageCatalog.message(for: .missingURL))
     }
 
-    func testExtensionURLMessageHandlerQueuesWebsiteForYouTubeURL() {
+    func testExtensionURLMessageHandlerQueuesWebsiteForYouTubeURL() async {
         let store = makeStore()
-        let response = ExtensionURLMessageHandler.handleSaveURLMessage(
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "save_url",
             urlString: "https://www.youtube.com/watch?v=abc123xyzAA",
-            pendingStore: store
+            pendingStore: store,
+            saveWebsite: { _ in
+                throw URLError(.notConnectedToInternet)
+            }
         )
 
         XCTAssertEqual(response["ok"] as? Bool, true)
@@ -349,12 +352,15 @@ final class PendingShareStoreTests: XCTestCase {
         )
     }
 
-    func testExtensionURLMessageHandlerCanonicalizesYouTubeShortURL() {
+    func testExtensionURLMessageHandlerCanonicalizesYouTubeShortURL() async {
         let store = makeStore()
-        let response = ExtensionURLMessageHandler.handleSaveURLMessage(
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "save_url",
             urlString: "https://youtu.be/abc123xyzAA?t=22",
-            pendingStore: store
+            pendingStore: store,
+            saveWebsite: { _ in
+                throw URLError(.notConnectedToInternet)
+            }
         )
 
         XCTAssertEqual(response["ok"] as? Bool, true)
@@ -364,9 +370,9 @@ final class PendingShareStoreTests: XCTestCase {
         )
     }
 
-    func testExtensionURLMessageHandlerRejectsIncompleteYouTubeWatchURL() {
+    func testExtensionURLMessageHandlerRejectsIncompleteYouTubeWatchURL() async {
         let store = makeStore()
-        let response = ExtensionURLMessageHandler.handleSaveURLMessage(
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "save_url",
             urlString: "https://www.youtube.com/watch",
             pendingStore: store

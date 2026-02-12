@@ -4,15 +4,17 @@ import Foundation
 public enum SafariExtensionMessageHandler {
     public static func responsePayload(
         for message: Any?,
-        pendingStore: PendingShareStore = .shared
-    ) -> [String: Any] {
+        pendingStore: PendingShareStore = .shared,
+        saveWebsite: ((String) async throws -> Void)? = nil
+    ) async -> [String: Any] {
         let payload = message as? [String: Any]
         let action = payload?["action"] as? String
         let urlString = payload?["url"] as? String
-        return ExtensionURLMessageHandler.handleSaveURLMessage(
+        return await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: action,
             urlString: urlString,
-            pendingStore: pendingStore
+            pendingStore: pendingStore,
+            saveWebsite: saveWebsite
         )
     }
 }
