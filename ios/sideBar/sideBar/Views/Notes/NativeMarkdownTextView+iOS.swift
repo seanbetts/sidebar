@@ -52,9 +52,7 @@ struct NativeMarkdownTextView: UIViewRepresentable {
                 textView.selectedRange = desiredRange
             }
         }
-        DispatchQueue.main.async {
-            context.coordinator.isUpdating = false
-        }
+        context.coordinator.isUpdating = false
     }
 
     func makeCoordinator() -> Coordinator {
@@ -76,21 +74,25 @@ struct NativeMarkdownTextView: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isUpdating else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, !self.isUpdating else { return }
-                self.parent.text = AttributedString(textView.attributedText)
-                textView.setNeedsDisplay()
+            let snapshot = AttributedString(textView.attributedText)
+            if parent.text != snapshot {
+                parent.text = snapshot
             }
+            if parent.syncSelection {
+                parent.selection = selectionFromRange(textView.selectedRange, in: snapshot)
+            }
+            textView.setNeedsDisplay()
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isUpdating else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, !self.isUpdating else { return }
-                guard self.parent.syncSelection else { return }
-                self.parent.selection = selectionFromRange(textView.selectedRange, in: self.parent.text)
-                textView.setNeedsDisplay()
+            guard parent.syncSelection else { return }
+            let snapshot = AttributedString(textView.attributedText)
+            if parent.text != snapshot {
+                parent.text = snapshot
             }
+            parent.selection = selectionFromRange(textView.selectedRange, in: snapshot)
+            textView.setNeedsDisplay()
         }
     }
 }

@@ -57,9 +57,7 @@ struct NativeMarkdownTextView: NSViewRepresentable {
                 textView.setSelectedRange(desiredRange)
             }
         }
-        DispatchQueue.main.async {
-            context.coordinator.isUpdating = false
-        }
+        context.coordinator.isUpdating = false
     }
 
     func makeCoordinator() -> Coordinator {
@@ -82,22 +80,26 @@ struct NativeMarkdownTextView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard !isUpdating,
                   let textView = notification.object as? NSTextView else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, !self.isUpdating else { return }
-                self.parent.text = AttributedString(textView.attributedString())
-                textView.needsDisplay = true
+            let snapshot = AttributedString(textView.attributedString())
+            if parent.text != snapshot {
+                parent.text = snapshot
             }
+            if parent.syncSelection {
+                parent.selection = selectionFromRange(textView.selectedRange(), in: snapshot)
+            }
+            textView.needsDisplay = true
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
             guard !isUpdating,
                   let textView = notification.object as? NSTextView else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, !self.isUpdating else { return }
-                guard self.parent.syncSelection else { return }
-                self.parent.selection = selectionFromRange(textView.selectedRange(), in: self.parent.text)
-                textView.needsDisplay = true
+            guard parent.syncSelection else { return }
+            let snapshot = AttributedString(textView.attributedString())
+            if parent.text != snapshot {
+                parent.text = snapshot
             }
+            parent.selection = selectionFromRange(textView.selectedRange(), in: snapshot)
+            textView.needsDisplay = true
         }
     }
 }

@@ -247,7 +247,9 @@ public final class NotesEditorViewModel: ObservableObject {
 
     private func syncNativeEditorContent(_ markdown: String) {
         if #available(iOS 26.0, macOS 26.0, *) {
-            nativeEditorViewModel?.loadMarkdown(markdown)
+            guard let nativeEditorViewModel else { return }
+            guard nativeEditorViewModel.currentMarkdown() != markdown else { return }
+            nativeEditorViewModel.loadMarkdown(markdown)
         }
     }
 

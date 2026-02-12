@@ -1,5 +1,6 @@
 import Foundation
 import sideBarShared
+import SwiftUI
 import XCTest
 @testable import sideBar
 
@@ -130,6 +131,55 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         XCTAssertEqual(store.activeNote?.content, "Updated")
         XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
+    }
+
+    func testHandleNoteUpdateWithSameContentPreservesNativeSelection() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: 100, created: nil)
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        let cursor = nativeViewModel.attributedContent.endIndex
+        nativeViewModel.selection = AttributedTextSelection(range: cursor..<cursor)
+        let before = nsRange(from: nativeViewModel.selection, in: nativeViewModel.attributedContent)
+
+        let refreshed = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: 200, created: nil)
+        store.applyEditorUpdate(refreshed)
+        await Task.yield()
+        let after = nsRange(from: nativeViewModel.selection, in: nativeViewModel.attributedContent)
+
+        XCTAssertEqual(after, before)
     }
 
     func testLoadsUnsyncedDraftWhenAvailable() async throws {
