@@ -98,9 +98,7 @@ public struct SiteHeaderBar: View {
                             ProgressView()
                                 .scaleEffect(0.6)
                         } else if environment.ingestionViewModel.lastReadyMessage != nil {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.green)
+                            SuccessCheckBadge(size: 14, symbolSize: 8)
                         } else {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.caption)

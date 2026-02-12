@@ -83,8 +83,7 @@ public struct ToastBanner: View {
 
     public var body: some View {
         HStack(spacing: DesignTokens.Spacing.xsPlus) {
-            Image(systemName: toast.style.iconName)
-                .font(DesignTokens.Typography.labelMd)
+            iconView
             Text(toast.message)
                 .font(DesignTokens.Typography.subheadlineSemibold)
                 .lineLimit(2)
@@ -100,5 +99,42 @@ public struct ToastBanner: View {
         )
         .appShadow(color: Color.black.opacity(0.08), radius: DesignTokens.Spacing.xs, y: DesignTokens.Spacing.xxs)
         .accessibilityLabel(toast.message)
+    }
+
+    @ViewBuilder
+    private var iconView: some View {
+        switch toast.style {
+        case .success:
+            SuccessCheckBadge(size: 16, symbolSize: 9)
+        case .error:
+            Image(systemName: toast.style.iconName)
+                .font(DesignTokens.Typography.labelMd)
+        }
+    }
+}
+
+struct SuccessCheckBadge: View {
+    let size: CGFloat
+    let symbolSize: CGFloat
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(backgroundColor)
+            Image(systemName: "checkmark")
+                .font(.system(size: symbolSize, weight: .bold))
+                .foregroundStyle(foregroundColor)
+        }
+        .frame(width: size, height: size)
+    }
+
+    private var backgroundColor: Color {
+        colorScheme == .dark ? .white : .black
+    }
+
+    private var foregroundColor: Color {
+        colorScheme == .dark ? .black : .white
     }
 }

@@ -42,9 +42,7 @@ public struct LoginView: View {
                             emailFieldRow
                             passwordFieldRow
                         }
-
                         errorView
-
                         signInButton
                     }
                 }
@@ -61,10 +59,8 @@ public struct LoginView: View {
 
             if showSuccess {
                 ZStack {
-                    Color.green.opacity(0.9)
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(DesignTokens.Typography.logo)
-                        .foregroundStyle(.white)
+                    DesignTokens.Colors.background.opacity(0.9)
+                    SuccessCheckBadge(size: 120, symbolSize: 54)
                 }
                 .ignoresSafeArea()
                 .transition(.scale.combined(with: .opacity))
@@ -125,9 +121,13 @@ public struct LoginView: View {
                     focusedField = .password
                 }
             if !email.isEmpty {
-                Image(systemName: isValidEmail ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(isValidEmail ? .green : .orange)
-                    .font(.callout)
+                if isValidEmail {
+                    SuccessCheckBadge(size: 18, symbolSize: 10)
+                } else {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .font(.callout)
+                }
             }
             if !email.isEmpty {
                 Button {

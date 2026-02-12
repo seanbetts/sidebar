@@ -32,8 +32,7 @@ struct ChatActiveToolBanner: View {
                 .progressViewStyle(.circular)
                 .scaleEffect(0.7)
         case .success:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+            SuccessCheckBadge(size: 16, symbolSize: 9)
         case .error:
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(DesignTokens.Colors.error)

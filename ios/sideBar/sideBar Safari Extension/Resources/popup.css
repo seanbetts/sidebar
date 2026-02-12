@@ -4,8 +4,8 @@
     --status-text: #64748b;
     --icon-pending-bg: #e2e8f0;
     --icon-pending-fg: #475569;
-    --icon-success-bg: rgba(16, 185, 129, 0.18);
-    --icon-success-fg: #059669;
+    --icon-success-bg: #111827;
+    --icon-success-fg: #f8fafc;
     --icon-error-bg: rgba(239, 68, 68, 0.18);
     --icon-error-fg: #dc2626;
 }
@@ -92,8 +92,8 @@ body {
         --status-text: #94a3b8;
         --icon-pending-bg: rgba(148, 163, 184, 0.2);
         --icon-pending-fg: #cbd5e1;
-        --icon-success-bg: rgba(16, 185, 129, 0.26);
-        --icon-success-fg: #6ee7b7;
+        --icon-success-bg: #f8fafc;
+        --icon-success-fg: #111827;
         --icon-error-bg: rgba(239, 68, 68, 0.26);
         --icon-error-fg: #fca5a5;
     }

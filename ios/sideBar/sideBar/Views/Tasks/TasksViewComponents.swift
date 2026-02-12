@@ -103,11 +103,17 @@ struct TaskRow<MenuContent: View>: View {
                                     .opacity(1)
                             }
                         } else {
-                            Image(systemName: isCompleting ? "checkmark.circle.fill" : "circle")
-                                .font(.body)
-                                .foregroundStyle(isCompleting ? DesignTokens.Colors.success : DesignTokens.Colors.textSecondary)
-                                .frame(width: 20, height: 20)
-                                .contentTransition(.symbolEffect(.replace))
+                            Group {
+                                if isCompleting {
+                                    SuccessCheckBadge(size: 20, symbolSize: 11)
+                                } else {
+                                    Image(systemName: "circle")
+                                        .font(.body)
+                                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                                }
+                            }
+                            .frame(width: 20, height: 20)
+                            .contentTransition(.symbolEffect(.replace))
                         }
                     }
                     .buttonStyle(.plain)

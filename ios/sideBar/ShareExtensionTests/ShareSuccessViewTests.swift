@@ -3,7 +3,7 @@ import XCTest
 @testable import ShareExtension
 
 final class ShareSuccessViewTests: XCTestCase {
-    func testSuccessViewUsesGreenSuccessIconAndMessageText() {
+    func testSuccessViewUsesInvertedSuccessIconColorsByAppearance() {
         let message = "Website saved."
         let subject = ShareSuccessView(message: message)
 
@@ -14,7 +14,18 @@ final class ShareSuccessViewTests: XCTestCase {
             return
         }
 
-        XCTAssertTrue(colorsEqual(iconView.tintColor, .systemGreen))
+        guard let iconBackgroundColor = iconView.superview?.backgroundColor else {
+            XCTFail("Expected success icon background view.")
+            return
+        }
+
+        let lightTraits = UITraitCollection(userInterfaceStyle: .light)
+        XCTAssertTrue(colorsEqual(iconView.tintColor, .white, traitCollection: lightTraits))
+        XCTAssertTrue(colorsEqual(iconBackgroundColor, .black, traitCollection: lightTraits))
+
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+        XCTAssertTrue(colorsEqual(iconView.tintColor, .black, traitCollection: darkTraits))
+        XCTAssertTrue(colorsEqual(iconBackgroundColor, .white, traitCollection: darkTraits))
 
         let labels = subject.allSubviews(of: UILabel.self)
         XCTAssertTrue(labels.contains(where: { $0.text == "sideBar" }))
