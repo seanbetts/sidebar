@@ -1,6 +1,19 @@
 const status = document.getElementById("status");
+const stateIcon = document.getElementById("state-icon");
+const STATUS_TONES = ["tone-pending", "tone-success", "tone-error"];
+const TONE_TO_GLYPH = {
+    pending: "…",
+    success: "✓",
+    error: "!"
+};
 
-const setStatus = (text) => {
+const setStatus = (text, tone = "pending") => {
+    STATUS_TONES.forEach((className) => status.classList.remove(className));
+    STATUS_TONES.forEach((className) => stateIcon.classList.remove(className));
+    const toneClass = `tone-${tone}`;
+    status.classList.add(toneClass);
+    stateIcon.classList.add(toneClass);
+    stateIcon.textContent = TONE_TO_GLYPH[tone] ?? TONE_TO_GLYPH.pending;
     status.textContent = text;
 };
 
@@ -41,25 +54,25 @@ const saveUrl = async (url) => {
         url
     });
     if (response && response.ok) {
-        setStatus(messageFromResponse(response, "saved_for_later"));
+        setStatus(messageFromResponse(response, "saved_for_later"), "success");
         return true;
     }
-    setStatus(messageFromResponse(response));
+    setStatus(messageFromResponse(response), "error");
     return false;
 };
 
 const saveCurrentTab = async () => {
-    setStatus("Saving...");
+    setStatus("Saving...", "pending");
     try {
         const tab = await getActiveTab();
         const url = tab?.url ?? null;
         if (!url) {
-            setStatus(CODE_TO_MESSAGE.no_active_url);
+            setStatus(CODE_TO_MESSAGE.no_active_url, "error");
             return false;
         }
         return await saveUrl(url);
     } catch (_error) {
-        setStatus(CODE_TO_MESSAGE.network_error);
+        setStatus(CODE_TO_MESSAGE.network_error, "error");
         return false;
     }
 };
@@ -74,16 +87,16 @@ const saveWithRetry = async (retries, delayMs) => {
             return;
         }
     } catch (_error) {
-        setStatus(CODE_TO_MESSAGE.network_error);
+        setStatus(CODE_TO_MESSAGE.network_error, "error");
         setTimeout(() => window.close(), 2600);
         return;
     }
     if (retries <= 0) {
-        setStatus(CODE_TO_MESSAGE.no_active_url);
+        setStatus(CODE_TO_MESSAGE.no_active_url, "error");
         setTimeout(() => window.close(), 2600);
         return;
     }
-    setStatus("Loading tab...");
+    setStatus("Loading tab...", "pending");
     setTimeout(() => {
         saveWithRetry(retries - 1, delayMs);
     }, delayMs);

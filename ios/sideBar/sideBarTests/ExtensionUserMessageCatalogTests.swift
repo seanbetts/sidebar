@@ -117,12 +117,15 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
 
         let expected: [String: String] = [
             ExtensionMessageCode.savedForLater.rawValue: ExtensionUserMessageCatalog.message(for: .savedForLater),
+            ExtensionMessageCode.websiteSaved.rawValue: ExtensionUserMessageCatalog.message(for: .websiteSaved),
             ExtensionMessageCode.unsupportedAction.rawValue: ExtensionUserMessageCatalog.message(for: .unsupportedAction),
             ExtensionMessageCode.missingURL.rawValue: ExtensionUserMessageCatalog.message(for: .missingURL),
             ExtensionMessageCode.invalidURL.rawValue: ExtensionUserMessageCatalog.message(for: .invalidURL),
             ExtensionMessageCode.noActiveURL.rawValue: ExtensionUserMessageCatalog.message(for: .noActiveURL),
             ExtensionMessageCode.queueFailed.rawValue: ExtensionUserMessageCatalog.message(for: .queueFailed),
             ExtensionMessageCode.notAuthenticated.rawValue: ExtensionUserMessageCatalog.message(for: .notAuthenticated),
+            ExtensionMessageCode.invalidBaseUrl.rawValue: ExtensionUserMessageCatalog.message(for: .invalidBaseUrl),
+            ExtensionMessageCode.uploadFailed.rawValue: ExtensionUserMessageCatalog.message(for: .uploadFailed),
             ExtensionMessageCode.networkError.rawValue: ExtensionUserMessageCatalog.message(for: .networkError),
             ExtensionMessageCode.unknownFailure.rawValue: ExtensionUserMessageCatalog.message(for: .unknownFailure)
         ]
