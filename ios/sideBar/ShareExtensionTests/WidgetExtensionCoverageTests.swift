@@ -1,4 +1,5 @@
 import Foundation
+import WidgetKit
 import XCTest
 @testable import sideBarWidgetsExtension
 
@@ -52,6 +53,12 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         manager.recordPendingQuickSave(url: url)
         XCTAssertEqual(manager.consumePendingQuickSave(), url)
         XCTAssertNil(manager.consumePendingQuickSave())
+    }
+
+    func testSavedSitesWidgetUsesSevenItemsForLargeFamily() {
+        XCTAssertEqual(SavedSitesWidgetView.maxSites(for: .systemSmall), 3)
+        XCTAssertEqual(SavedSitesWidgetView.maxSites(for: .systemMedium), 3)
+        XCTAssertEqual(SavedSitesWidgetView.maxSites(for: .systemLarge), 7)
     }
 
     func testWidgetIntentsExecuteWithoutThrowing() async throws {
