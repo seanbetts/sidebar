@@ -22,12 +22,31 @@ final class ShareErrorViewTests: XCTestCase {
         XCTAssertEqual(brandStack.axis, .vertical)
     }
 
+    func testErrorViewUsesMinimalContainerStyling() {
+        let subject = ShareErrorView(message: "Failed")
+        XCTAssertTrue(colorsEqual(subject.backgroundColor ?? .clear, .clear))
+        XCTAssertTrue(colorsEqual(subject.hostBackgroundColor, .clear))
+
+        let cardContainer = subject.firstSubview(where: {
+            $0.accessibilityIdentifier == "share-state-card"
+        })
+        XCTAssertNil(cardContainer)
+    }
+
     func testErrorViewShowsGrabHandle() {
         let subject = ShareErrorView(message: "Failed")
         let grabHandle = subject.firstSubview(where: {
             $0.accessibilityIdentifier == "share-grab-handle"
         })
         XCTAssertNotNil(grabHandle)
+    }
+
+    private func colorsEqual(
+        _ left: UIColor,
+        _ right: UIColor,
+        traitCollection: UITraitCollection = UITraitCollection(userInterfaceStyle: .light)
+    ) -> Bool {
+        left.resolvedColor(with: traitCollection).isEqual(right.resolvedColor(with: traitCollection))
     }
 }
 
