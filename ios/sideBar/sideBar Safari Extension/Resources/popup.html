@@ -6,10 +6,15 @@
     <script type="module" src="popup.js"></script>
 </head>
 <body>
-    <div class="container">
-        <img class="logo" src="images/icon-64.png" alt="sideBar logo">
-        <div class="title">sideBar</div>
-        <div id="status" class="status"></div>
+    <div class="shell">
+        <div class="container">
+            <img class="logo" src="images/icon-64.png" alt="sideBar logo">
+            <div class="title-wrap">
+                <div class="title">sideBar</div>
+                <div class="subtitle">Quick Save</div>
+            </div>
+            <div id="status" class="status tone-pending" role="status" aria-live="polite"></div>
+        </div>
     </div>
 </body>
 </html>
