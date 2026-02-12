@@ -63,6 +63,43 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.hasUnsavedChanges)
     }
 
+    func testSelectionLineSpanCoversInsertionAndMultiLineRanges() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("line1\nline2\nline3")
+
+        let line2Start = viewModel.attributedContent.index(viewModel.attributedContent.startIndex, offsetByCharacters: 6)
+        viewModel.selection = AttributedTextSelection(range: line2Start..<line2Start)
+        XCTAssertEqual(viewModel.selectionLineSpan(in: viewModel.attributedContent), 1...1)
+
+        let line3Start = viewModel.attributedContent.index(viewModel.attributedContent.startIndex, offsetByCharacters: 12)
+        let line3Next = viewModel.attributedContent.index(afterCharacter: line3Start)
+        viewModel.selection = AttributedTextSelection(range: line2Start..<line3Next)
+        XCTAssertEqual(viewModel.selectionLineSpan(in: viewModel.attributedContent), 1...2)
+    }
+
+    func testHandleSelectionChangeTracksSpanTransitions() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("line1\nline2")
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        let line1Start = viewModel.attributedContent.startIndex
+        viewModel.selection = AttributedTextSelection(range: line1Start..<line1Start)
+        viewModel.handleSelectionChange()
+        XCTAssertEqual(viewModel.lastSelectionLineSpan, 0...0)
+
+        let line1Next = viewModel.attributedContent.index(afterCharacter: line1Start)
+        viewModel.selection = AttributedTextSelection(range: line1Next..<line1Next)
+        viewModel.handleSelectionChange()
+        XCTAssertEqual(viewModel.lastSelectionLineSpan, 0...0)
+
+        let line2Start = viewModel.attributedContent.index(viewModel.attributedContent.startIndex, offsetByCharacters: 6)
+        viewModel.selection = AttributedTextSelection(range: line2Start..<line2Start)
+        viewModel.handleSelectionChange()
+        XCTAssertEqual(viewModel.lastSelectionLineSpan, 1...1)
+    }
+
     private func characterRange(
         length: Int,
         in text: AttributedString

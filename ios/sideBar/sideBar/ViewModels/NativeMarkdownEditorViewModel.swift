@@ -47,7 +47,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     var autosaveTask: Task<Void, Never>?
     var isApplyingShortcut = false
     var isUpdatingPrefixVisibility = false
-    var lastSelectionLineIndex: Int?
+    var lastSelectionLineSpan: ClosedRange<Int>?
     static let headingRegex = try? NSRegularExpression(pattern: #"^#{1,6}\s"#)
     static let bulletRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s"#)
     static let orderedRegex = try? NSRegularExpression(pattern: #"^\s*\d+\.\s"#)
@@ -216,13 +216,15 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         scheduleAutosave()
-        lastSelectionLineIndex = lineIndexForSelection(in: attributedContent)
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
         updatePrefixVisibility()
     }
 
     public func handleSelectionChange() {
         guard !isReadOnly, !isUpdatingPrefixVisibility else { return }
-        lastSelectionLineIndex = lineIndexForSelection(in: attributedContent)
+        let selectionSpan = selectionLineSpan(in: attributedContent)
+        guard selectionSpan != lastSelectionLineSpan else { return }
+        lastSelectionLineSpan = selectionSpan
         updatePrefixVisibility()
     }
 

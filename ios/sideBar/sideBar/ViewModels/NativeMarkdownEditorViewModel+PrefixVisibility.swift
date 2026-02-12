@@ -251,25 +251,37 @@ extension NativeMarkdownEditorViewModel {
         return lines
     }
 
-    func lineIndexForSelection(in text: AttributedString) -> Int? {
+    func selectionLineSpan(in text: AttributedString) -> ClosedRange<Int>? {
         let ranges = lineRanges(in: text)
-        let selectionIndex: AttributedString.Index?
+        var coveredLineIndexes = IndexSet()
+
+        func includeLines(containing index: AttributedString.Index) {
+            for (lineIndex, range) in ranges.enumerated() {
+                if range.contains(index) || index == range.upperBound {
+                    coveredLineIndexes.insert(lineIndex)
+                    return
+                }
+            }
+        }
 
         switch selection.indices(in: text) {
         case .insertionPoint(let index):
-            selectionIndex = index
-        case .ranges(let set):
-            selectionIndex = set.ranges.first?.lowerBound
-        }
-
-        guard let selectionIndex else { return nil }
-
-        for (lineIndex, range) in ranges.enumerated() {
-            if range.contains(selectionIndex) || selectionIndex == range.upperBound {
-                return lineIndex
+            includeLines(containing: index)
+        case .ranges(let selectedRanges):
+            for selectedRange in selectedRanges.ranges {
+                if selectedRange.isEmpty {
+                    includeLines(containing: selectedRange.lowerBound)
+                } else {
+                    for (lineIndex, lineRange) in ranges.enumerated() where lineRange.overlaps(selectedRange) {
+                        coveredLineIndexes.insert(lineIndex)
+                    }
+                }
             }
         }
-        return nil
+
+        guard let lower = coveredLineIndexes.first,
+              let upper = coveredLineIndexes.last else { return nil }
+        return lower...upper
     }
 
     func markdownPrefixRange(

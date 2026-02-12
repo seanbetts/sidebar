@@ -174,7 +174,12 @@ extension NativeMarkdownEditorViewModel {
         case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
             return paragraphStyleForHeading(level: headingLevel(for: blockKind) ?? 1)
         case .paragraph:
-            return MarkdownParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
+            let style = MarkdownParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
+            let mutable = style.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+            let lineHeight = platformLineHeight(for: platformBaseFont(for: .paragraph))
+            mutable.minimumLineHeight = lineHeight
+            mutable.maximumLineHeight = lineHeight
+            return mutable
         case .blockquote:
             return paragraphStyle(
                 lineSpacing: em(0.7, fontSize: baseFontSize),
