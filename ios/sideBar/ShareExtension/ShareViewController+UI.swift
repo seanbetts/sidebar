@@ -8,24 +8,8 @@ extension ShareViewController {
         static let value: TimeInterval = 1.2
     }
 
-    func showError(_ message: String, retryAction: (() -> Void)? = nil) {
-        let notAuthenticatedMessage = ExtensionUserMessageCatalog.message(for: .notAuthenticated)
-        let storageMessage = ExtensionUserMessageCatalog.sharedStorageUnavailableMessage()
-        let shouldShowOpenApp = message == notAuthenticatedMessage || message == storageMessage
-        let effectiveRetry = retryAction ?? { [weak self] in
-            self?.processSharedContent()
-        }
-        let errorView = ShareErrorView(
-            message: message,
-            retryAction: effectiveRetry,
-            openAppAction: shouldShowOpenApp ? { [weak self] in
-                self?.openMainApp()
-            } : nil,
-            closeAction: { [weak self] in
-                self?.extensionContext?.completeRequest(returningItems: nil)
-            }
-        )
-        setContentView(errorView)
+    func showError(_ message: String) {
+        setContentView(ShareErrorView(message: message))
     }
 
     func showSuccess(message: String) {
@@ -37,6 +21,11 @@ extension ShareViewController {
 
     func setContentView(_ content: UIView) {
         view.subviews.forEach { $0.removeFromSuperview() }
+        if let stateView = content as? ShareStateView {
+            view.backgroundColor = stateView.hostBackgroundColor
+        } else {
+            view.backgroundColor = .systemBackground
+        }
         content.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(content)
         NSLayoutConstraint.activate([
@@ -62,17 +51,5 @@ extension ShareViewController {
             return
         }
         showError(mapped)
-    }
-
-    func openMainApp() {
-        guard let url = URL(string: "sidebar://") else {
-            extensionContext?.completeRequest(returningItems: nil)
-            return
-        }
-        extensionContext?.open(url) { [weak self] success in
-            if success {
-                self?.extensionContext?.completeRequest(returningItems: nil)
-            }
-        }
     }
 }

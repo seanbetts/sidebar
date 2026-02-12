@@ -5,12 +5,7 @@ final class ShareErrorView: ShareStateView {
         static let iconSize: CGFloat = 44
     }
 
-    init(
-        message: String,
-        retryAction: (() -> Void)?,
-        openAppAction: (() -> Void)?,
-        closeAction: @escaping () -> Void
-    ) {
+    init(message: String) {
         let iconImageView = UIImageView()
         iconImageView.image = UIImage(systemName: "xmark.circle.fill")
         iconImageView.tintColor = .systemRed
@@ -19,58 +14,10 @@ final class ShareErrorView: ShareStateView {
         iconImageView.heightAnchor.constraint(equalToConstant: Layout.iconSize).isActive = true
         iconImageView.widthAnchor.constraint(equalToConstant: Layout.iconSize).isActive = true
 
-        let actionsStack = UIStackView()
-        actionsStack.axis = .vertical
-        actionsStack.alignment = .fill
-        actionsStack.spacing = 10
-        actionsStack.translatesAutoresizingMaskIntoConstraints = false
-        actionsStack.widthAnchor.constraint(equalToConstant: 220).isActive = true
-
-        if let retryAction {
-            let retryButton = UIButton(type: .system)
-            var configuration = UIButton.Configuration.filled()
-            configuration.title = "Try Again"
-            retryButton.configuration = configuration
-            retryButton.addAction(
-                UIAction { _ in
-                    retryAction()
-                },
-                for: .touchUpInside
-            )
-            actionsStack.addArrangedSubview(retryButton)
-        }
-
-        if let openAppAction {
-            let openButton = UIButton(type: .system)
-            var configuration = UIButton.Configuration.filled()
-            configuration.title = "Open App"
-            openButton.configuration = configuration
-            openButton.addAction(
-                UIAction { _ in
-                    openAppAction()
-                },
-                for: .touchUpInside
-            )
-            actionsStack.addArrangedSubview(openButton)
-        }
-
-        let closeButton = UIButton(type: .system)
-        var closeConfiguration = UIButton.Configuration.gray()
-        closeConfiguration.title = "Close"
-        closeButton.configuration = closeConfiguration
-        closeButton.addAction(
-            UIAction { _ in
-                closeAction()
-            },
-            for: .touchUpInside
-        )
-        actionsStack.addArrangedSubview(closeButton)
-
         super.init(
             message: message,
             accessoryView: iconImageView,
-            spacingAfterTitle: 20,
-            footerView: actionsStack
+            spacingAfterTitle: 20
         )
     }
 

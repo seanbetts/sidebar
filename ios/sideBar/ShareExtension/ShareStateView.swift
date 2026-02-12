@@ -7,6 +7,10 @@ class ShareStateView: UIView {
     }
 
     private enum Layout {
+        static let grabHandleWidth: CGFloat = 36
+        static let grabHandleHeight: CGFloat = 5
+        static let grabHandleTopInset: CGFloat = 8
+        static let minimumSpacingBelowGrabHandle: CGFloat = 12
         static let cardCornerRadius: CGFloat = 20
         static let defaultSpacing: CGFloat = 12
         static let cardHorizontalPadding: CGFloat = 22
@@ -19,8 +23,13 @@ class ShareStateView: UIView {
     private let titleLabel = UILabel()
     private let messageLabel = UILabel()
     private let logoImageView = UIImageView()
+    private let grabHandleView = UIView()
     private let brandStack = UIStackView()
     private let style: Style
+
+    var hostBackgroundColor: UIColor {
+        style == .minimal ? .clear : .systemBackground
+    }
 
     init(
         message: String,
@@ -31,6 +40,7 @@ class ShareStateView: UIView {
     ) {
         self.style = style
         super.init(frame: .zero)
+        observeUserInterfaceStyleChanges()
         setup(
             message: message,
             accessoryView: accessoryView,
@@ -43,10 +53,9 @@ class ShareStateView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle {
-            refreshBrandLogo()
+    private func observeUserInterfaceStyleChanges() {
+        _ = registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
+            self.refreshBrandLogo()
         }
     }
 
@@ -73,8 +82,38 @@ class ShareStateView: UIView {
         spacingAfterTitle: CGFloat,
         footerView: UIView?
     ) {
-        backgroundColor = .systemGroupedBackground
+        backgroundColor = style == .minimal ? .clear : .systemGroupedBackground
+        configureGrabHandle()
 
+        configureLabels(message: message)
+        configureBrandStack()
+
+        var arrangedSubviews: [UIView] = [brandStack, accessoryView, messageLabel]
+        if let footerView {
+            arrangedSubviews.append(footerView)
+        }
+
+        let content = UIStackView(arrangedSubviews: arrangedSubviews)
+        configureContentStack(content, spacingAfterTitle: spacingAfterTitle, hasFooter: footerView != nil)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(content)
+        activateLayoutConstraints(for: content)
+    }
+
+    private func configureGrabHandle() {
+        let grabHandleColor = UIColor { traits in
+            let base = UIColor.tertiaryLabel.resolvedColor(with: traits)
+            return base.withAlphaComponent(traits.userInterfaceStyle == .dark ? 0.45 : 0.3)
+        }
+        grabHandleView.backgroundColor = grabHandleColor
+        grabHandleView.layer.cornerRadius = Layout.grabHandleHeight / 2
+        grabHandleView.layer.cornerCurve = .continuous
+        grabHandleView.accessibilityIdentifier = "share-grab-handle"
+        grabHandleView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(grabHandleView)
+    }
+
+    private func configureLabels(message: String) {
         titleLabel.text = "sideBar"
         titleLabel.font = .systemFont(ofSize: style == .minimal ? 28 : 30, weight: .semibold)
         titleLabel.textColor = .label
@@ -94,27 +133,29 @@ class ShareStateView: UIView {
         messageLabel.textColor = .secondaryLabel
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
+    }
 
-        brandStack.axis = style == .minimal ? .vertical : .horizontal
+    private func configureBrandStack() {
+        brandStack.axis = .vertical
         brandStack.alignment = .center
-        brandStack.spacing = style == .minimal ? 8 : 10
+        brandStack.spacing = 8
         brandStack.accessibilityIdentifier = "share-brand-stack"
         brandStack.addArrangedSubview(logoImageView)
         brandStack.addArrangedSubview(titleLabel)
+    }
 
-        var arrangedSubviews: [UIView] = [brandStack, accessoryView, messageLabel]
-        if let footerView {
-            arrangedSubviews.append(footerView)
-        }
-
-        let content = UIStackView(arrangedSubviews: arrangedSubviews)
+    private func configureContentStack(
+        _ content: UIStackView,
+        spacingAfterTitle: CGFloat,
+        hasFooter: Bool
+    ) {
         content.axis = .vertical
         content.alignment = .center
         content.spacing = Layout.defaultSpacing
         if spacingAfterTitle != content.spacing {
             content.setCustomSpacing(spacingAfterTitle, after: brandStack)
         }
-        if footerView != nil {
+        if hasFooter {
             content.setCustomSpacing(16, after: messageLabel)
         }
         if style == .card {
@@ -129,19 +170,30 @@ class ShareStateView: UIView {
             content.layer.cornerRadius = Layout.cardCornerRadius
             content.layer.cornerCurve = .continuous
             content.accessibilityIdentifier = "share-state-card"
-        } else {
-            content.isLayoutMarginsRelativeArrangement = false
-            content.backgroundColor = .clear
+            return
         }
-        content.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(content)
+        content.isLayoutMarginsRelativeArrangement = false
+        content.backgroundColor = .clear
+    }
 
+    private func activateLayoutConstraints(for content: UIView) {
         NSLayoutConstraint.activate([
+            grabHandleView.topAnchor.constraint(
+                equalTo: safeAreaLayoutGuide.topAnchor,
+                constant: Layout.grabHandleTopInset
+            ),
+            grabHandleView.centerXAnchor.constraint(equalTo: safeAreaLayoutGuide.centerXAnchor),
+            grabHandleView.widthAnchor.constraint(equalToConstant: Layout.grabHandleWidth),
+            grabHandleView.heightAnchor.constraint(equalToConstant: Layout.grabHandleHeight),
             content.centerXAnchor.constraint(equalTo: safeAreaLayoutGuide.centerXAnchor),
             content.centerYAnchor.constraint(equalTo: safeAreaLayoutGuide.centerYAnchor),
             content.topAnchor.constraint(
                 greaterThanOrEqualTo: safeAreaLayoutGuide.topAnchor,
                 constant: Layout.contentVerticalInset
+            ),
+            content.topAnchor.constraint(
+                greaterThanOrEqualTo: grabHandleView.bottomAnchor,
+                constant: Layout.minimumSpacingBelowGrabHandle
             ),
             content.bottomAnchor.constraint(
                 lessThanOrEqualTo: safeAreaLayoutGuide.bottomAnchor,

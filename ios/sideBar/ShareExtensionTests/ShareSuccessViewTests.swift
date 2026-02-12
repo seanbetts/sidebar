@@ -50,6 +50,8 @@ final class ShareSuccessViewTests: XCTestCase {
 
     func testSuccessViewUsesMinimalBrandStackAndNoCardContainer() {
         let subject = ShareSuccessView(message: "Saved")
+        XCTAssertTrue(colorsEqual(subject.backgroundColor ?? .clear, .clear))
+        XCTAssertTrue(colorsEqual(subject.hostBackgroundColor, .clear))
 
         let cardContainer = subject.firstSubview(where: {
             $0.accessibilityIdentifier == "share-state-card"
@@ -64,6 +66,14 @@ final class ShareSuccessViewTests: XCTestCase {
         }
 
         XCTAssertEqual(brandStack.axis, .vertical)
+    }
+
+    func testSuccessViewShowsGrabHandle() {
+        let subject = ShareSuccessView(message: "Saved")
+        let grabHandle = subject.firstSubview(where: {
+            $0.accessibilityIdentifier == "share-grab-handle"
+        })
+        XCTAssertNotNil(grabHandle)
     }
 
     private func colorsEqual(
