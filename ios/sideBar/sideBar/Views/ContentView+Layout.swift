@@ -124,6 +124,7 @@ extension ContentView {
 
     func detailView(for section: AppSection?) -> some View {
         detailViewDefinition(for: section)
+            .trackShortcutFocus(section: section)
     }
 
     func swapPrimaryAndSecondary() {

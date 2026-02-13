@@ -218,6 +218,12 @@ public final class AppEnvironment: ObservableObject {
         set { navigation.activeSection = newValue }
     }
 
+    /// Most recently interacted section, used for section-scoped keyboard shortcut routing.
+    public var focusedSection: AppSection? {
+        get { navigation.focusedSection }
+        set { navigation.focusedSection = newValue }
+    }
+
     /// Indicates whether task-specific keyboard shortcuts should be active.
     public var isTasksFocused: Bool {
         get { navigation.isTasksFocused }

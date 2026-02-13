@@ -70,6 +70,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
 
                 if isLeftPanelExpanded {
                     panelView(for: selection)
+                        .trackShortcutFocus(section: selection)
                         .frame(width: widths.leftPanel)
                         .frame(maxHeight: .infinity)
                         .background(panelBackground)

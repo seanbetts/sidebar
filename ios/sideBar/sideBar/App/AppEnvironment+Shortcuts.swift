@@ -4,20 +4,21 @@ import Foundation
 extension AppEnvironment {
     public var activeShortcutContexts: Set<ShortcutContext> {
         var contexts: Set<ShortcutContext> = [.universal]
-        if let activeSection {
-            if activeSection == .tasks {
-                if isTasksFocused {
+        let section = focusedSection ?? activeSection
+        if let section {
+            if section == .tasks {
+                if focusedSection == .tasks || isTasksFocused {
                     contexts.insert(.tasks)
                 }
             } else {
-                contexts.insert(ShortcutContext.from(section: activeSection))
+                contexts.insert(ShortcutContext.from(section: section))
             }
         }
         return contexts
     }
 
     public func emitShortcutAction(_ action: ShortcutAction) {
-        shortcutActionEvent = ShortcutActionEvent(action: action, section: activeSection)
+        shortcutActionEvent = ShortcutActionEvent(action: action, section: focusedSection ?? activeSection)
     }
 }
 #endif

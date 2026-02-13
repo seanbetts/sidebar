@@ -6,6 +6,7 @@ import Foundation
 public final class NavigationCoordinator: ObservableObject {
     @Published public var commandSelection: AppSection?
     @Published public var activeSection: AppSection?
+    @Published public var focusedSection: AppSection?
     @Published public var isTasksFocused: Bool = false
     @Published public var pendingNewTaskDeepLink: Bool = false
     @Published public var pendingNewNoteDeepLink: Bool = false
@@ -19,6 +20,7 @@ public final class NavigationCoordinator: ObservableObject {
     public func resetForSignOut() {
         commandSelection = nil
         activeSection = nil
+        focusedSection = nil
         isTasksFocused = false
         pendingNewTaskDeepLink = false
         pendingNewNoteDeepLink = false

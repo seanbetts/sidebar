@@ -118,12 +118,16 @@ extension ContentView {
             }
         })
         content = AnyView(content.onChange(of: phoneSelection) { _, newValue in
+            environment.focusedSection = newValue
             sidebarSelection = newValue
             primarySection = newValue
             Task { await loadPhoneSectionIfNeeded(newValue) }
             updateActiveSection()
         })
         content = AnyView(content.onChange(of: sidebarSelection) { _, newValue in
+            if let newValue {
+                environment.focusedSection = newValue
+            }
             updateActiveSection()
             #if !os(macOS)
             guard horizontalSizeClass != .compact else { return }
@@ -168,6 +172,7 @@ extension ContentView {
         })
         content = AnyView(content.onChange(of: environment.commandSelection) { _, newValue in
             guard let newValue else { return }
+            environment.focusedSection = newValue
             if newValue == .settings {
                 #if os(macOS)
                 #else

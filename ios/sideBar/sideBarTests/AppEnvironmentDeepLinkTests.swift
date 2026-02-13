@@ -144,10 +144,41 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         assertStorageStateCleared(environment)
     }
 
+    func testEmitShortcutActionUsesFocusedSectionWhenAvailable() async {
+        let environment = requireEnvironment()
+        environment.activeSection = .notes
+        environment.focusedSection = .chat
+
+        environment.emitShortcutAction(.deleteItem)
+
+        XCTAssertEqual(environment.shortcutActionEvent?.section, .chat)
+    }
+
+    func testEmitShortcutActionFallsBackToActiveSectionWhenNoFocusedSection() async {
+        let environment = requireEnvironment()
+        environment.activeSection = .notes
+        environment.focusedSection = nil
+
+        environment.emitShortcutAction(.deleteItem)
+
+        XCTAssertEqual(environment.shortcutActionEvent?.section, .notes)
+    }
+
+    func testActiveShortcutContextsPreferFocusedSection() async {
+        let environment = requireEnvironment()
+        environment.activeSection = .notes
+        environment.focusedSection = .chat
+        environment.isTasksFocused = true
+
+        XCTAssertTrue(environment.activeShortcutContexts.contains(.chat))
+        XCTAssertFalse(environment.activeShortcutContexts.contains(.notes))
+    }
+
     private func primeEnvironmentForSignOutReset(_ environment: AppEnvironment) {
         environment.authState = .active
         environment.commandSelection = .tasks
         environment.activeSection = .chat
+        environment.focusedSection = .files
         environment.shortcutActionEvent = ShortcutActionEvent(action: .openSettings, section: .settings)
         environment.isTasksFocused = true
         environment.pendingNewTaskDeepLink = true
@@ -202,6 +233,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertFalse(environment.isAuthenticated)
         XCTAssertNil(environment.commandSelection)
         XCTAssertNil(environment.activeSection)
+        XCTAssertNil(environment.focusedSection)
         XCTAssertFalse(environment.isTasksFocused)
         XCTAssertNil(environment.shortcutActionEvent)
         XCTAssertEqual(environment.tasksViewModel.selection, .none)
@@ -260,6 +292,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     private func resetDeepLinkState(_ environment: AppEnvironment) {
         environment.authState = .signedOut
         environment.commandSelection = nil
+        environment.focusedSection = nil
         environment.isTasksFocused = false
         environment.pendingNewTaskDeepLink = false
         environment.pendingNewNoteDeepLink = false
