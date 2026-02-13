@@ -10,6 +10,9 @@ public final class WidgetDataManager {
 
   private let authKey = "widgetIsAuthenticated"
   private let migrationKey = "widget_migration_v2"
+  private let faviconR2EndpointKey = "widget_favicon_r2_endpoint"
+  private let faviconR2BucketKey = "widget_favicon_r2_bucket"
+  private let faviconR2PublicBaseUrlKey = "widget_favicon_r2_public_base_url"
 
   // Legacy keys (for migration)
   private let legacyTodayTasksKey = "widgetTodayTasks"
@@ -131,6 +134,20 @@ public final class WidgetDataManager {
     return defaults.bool(forKey: authKey)
   }
 
+  /// Called by main app to share favicon URL configuration with widgets.
+  public func updateFaviconConfiguration(
+    r2Endpoint: URL?,
+    r2FaviconBucket: String?,
+    r2FaviconPublicBaseUrl: URL?
+  ) {
+    guard let defaults = userDefaults else { return }
+    setOptionalString(r2Endpoint?.absoluteString, forKey: faviconR2EndpointKey, in: defaults)
+    setOptionalString(r2FaviconBucket, forKey: faviconR2BucketKey, in: defaults)
+    setOptionalString(r2FaviconPublicBaseUrl?.absoluteString, forKey: faviconR2PublicBaseUrlKey, in: defaults)
+    defaults.synchronize()
+    reloadWidgets(for: .websites)
+  }
+
   // MARK: - Migration
 
   /// Migrates data from legacy keys to new generic keys (call on app startup)
@@ -187,6 +204,15 @@ public final class WidgetDataManager {
   }
 
   // MARK: - Encoder/Decoder
+
+  private func setOptionalString(_ value: String?, forKey key: String, in defaults: UserDefaults) {
+    let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if trimmed.isEmpty {
+      defaults.removeObject(forKey: key)
+      return
+    }
+    defaults.set(trimmed, forKey: key)
+  }
 
   private static func makeEncoder() -> JSONEncoder {
     let encoder = JSONEncoder()

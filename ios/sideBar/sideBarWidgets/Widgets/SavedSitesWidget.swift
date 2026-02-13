@@ -61,7 +61,12 @@ struct SavedSitesWidgetView: View {
     private var sitesList: some View {
         VStack(alignment: .leading, spacing: siteSpacing) {
             ForEach(displayedSites) { site in
-                SiteRowView(site: site, compact: isCompact, showSubtitle: showSubtitle)
+                SiteRowView(
+                    site: site,
+                    faviconData: entry.faviconDataByWebsiteId[site.id],
+                    compact: isCompact,
+                    showSubtitle: showSubtitle
+                )
             }
         }
     }
@@ -151,6 +156,7 @@ struct SavedSitesWidgetView: View {
 
 struct SiteRowView: View {
     let site: WidgetWebsite
+    let faviconData: Data?
     let compact: Bool
     let showSubtitle: Bool
 
@@ -161,7 +167,11 @@ struct SiteRowView: View {
     var body: some View {
         Link(destination: siteURL) {
             HStack(spacing: 8) {
-                WidgetWebsiteFaviconView(site: site, size: compact ? 14 : 16)
+                WidgetWebsiteFaviconView(
+                    site: site,
+                    imageData: faviconData,
+                    size: compact ? 14 : 16
+                )
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(site.title)
@@ -207,7 +217,7 @@ struct SiteRowView: View {
 #Preview("Empty", as: .systemMedium) {
     SavedSitesWidget()
 } timeline: {
-    SavedSitesEntry(date: Date(), data: .empty, isAuthenticated: true)
+    SavedSitesEntry(date: Date(), data: .empty, isAuthenticated: true, faviconDataByWebsiteId: [:])
 }
 
 #Preview("Not Authenticated", as: .systemMedium) {

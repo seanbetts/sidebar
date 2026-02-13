@@ -7,6 +7,9 @@ public final class WidgetDataManager {
   public static let shared = WidgetDataManager()
 
   private let authKey = "widgetIsAuthenticated"
+  private let faviconR2EndpointKey = "widget_favicon_r2_endpoint"
+  private let faviconR2BucketKey = "widget_favicon_r2_bucket"
+  private let faviconR2PublicBaseUrlKey = "widget_favicon_r2_public_base_url"
 
   // Legacy keys (for backward compatibility during transition)
   private let legacyTodayTasksKey = "widgetTodayTasks"
@@ -97,7 +100,39 @@ public final class WidgetDataManager {
     userDefaults?.bool(forKey: authKey) ?? false
   }
 
+  public func faviconConfiguration() -> WidgetFaviconConfigurationValues {
+    let endpoint = optionalHTTPURL(forUserDefaultsKey: faviconR2EndpointKey)
+    let bucket = optionalString(forUserDefaultsKey: faviconR2BucketKey)
+    let publicBaseURL = optionalHTTPURL(forUserDefaultsKey: faviconR2PublicBaseUrlKey)
+    return WidgetFaviconConfigurationValues(
+      r2Endpoint: endpoint,
+      r2FaviconBucket: bucket,
+      r2FaviconPublicBaseUrl: publicBaseURL
+    )
+  }
+
   // MARK: - Encoder/Decoder
+
+  private func optionalString(forUserDefaultsKey key: String) -> String? {
+    guard let raw = userDefaults?.string(forKey: key) else {
+      return nil
+    }
+    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty, !trimmed.contains("$(") else {
+      return nil
+    }
+    return trimmed
+  }
+
+  private func optionalHTTPURL(forUserDefaultsKey key: String) -> URL? {
+    guard let raw = optionalString(forUserDefaultsKey: key),
+          let parsed = URL(string: raw),
+          let scheme = parsed.scheme?.lowercased(),
+          ["http", "https"].contains(scheme) else {
+      return nil
+    }
+    return parsed
+  }
 
   private static func makeEncoder() -> JSONEncoder {
     let encoder = JSONEncoder()
@@ -109,6 +144,22 @@ public final class WidgetDataManager {
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .iso8601
     return decoder
+  }
+}
+
+public struct WidgetFaviconConfigurationValues {
+  public let r2Endpoint: URL?
+  public let r2FaviconBucket: String?
+  public let r2FaviconPublicBaseUrl: URL?
+
+  public init(
+    r2Endpoint: URL?,
+    r2FaviconBucket: String?,
+    r2FaviconPublicBaseUrl: URL?
+  ) {
+    self.r2Endpoint = r2Endpoint
+    self.r2FaviconBucket = r2FaviconBucket
+    self.r2FaviconPublicBaseUrl = r2FaviconPublicBaseUrl
   }
 }
 

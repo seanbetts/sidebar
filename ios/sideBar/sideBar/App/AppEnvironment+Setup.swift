@@ -23,6 +23,11 @@ extension AppEnvironment {
 
         // Sync initial auth state to widgets
         WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)
+        WidgetDataManager.shared.updateFaviconConfiguration(
+            r2Endpoint: container.config.r2Endpoint,
+            r2FaviconBucket: container.config.r2FaviconBucket,
+            r2FaviconPublicBaseUrl: container.config.r2FaviconPublicBaseUrl
+        )
     }
 
     func runOfflineMaintenance() {

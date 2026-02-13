@@ -1,12 +1,22 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 struct WidgetWebsiteFaviconView: View {
     let site: WidgetWebsite
+    let imageData: Data?
     let size: CGFloat
 
     var body: some View {
         Group {
-            if let faviconURL = site.resolvedFaviconURL {
+            if let prefetchedImage {
+                prefetchedImage
+                    .resizable()
+                    .scaledToFit()
+            } else if let faviconURL = site.resolvedFaviconURL {
                 AsyncImage(url: faviconURL) { phase in
                     switch phase {
                     case .success(let image):
@@ -23,6 +33,17 @@ struct WidgetWebsiteFaviconView: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: max(2, size * 0.22), style: .continuous))
+    }
+
+    private var prefetchedImage: Image? {
+        guard let imageData else { return nil }
+        #if os(macOS)
+        guard let image = NSImage(data: imageData) else { return nil }
+        return Image(nsImage: image)
+        #else
+        guard let image = UIImage(data: imageData) else { return nil }
+        return Image(uiImage: image)
+        #endif
     }
 
     private var placeholder: some View {
@@ -66,15 +87,21 @@ extension WidgetWebsite {
     }
 
     var displayDomain: String {
-        Self.extractBaseDomain(domain)
+        let preferredSource = domain.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !preferredSource.isEmpty {
+            return Self.extractBaseDomain(from: preferredSource)
+        }
+        return Self.extractBaseDomain(from: url)
     }
 
-    private static func extractBaseDomain(_ domain: String) -> String {
-        let cleaned = domain.replacingOccurrences(
+    private static func extractBaseDomain(from raw: String) -> String {
+        let normalized = normalizedHost(from: raw)
+        let cleaned = normalized.replacingOccurrences(
             of: "^www\\.",
             with: "",
             options: .regularExpression
         )
+        guard !cleaned.isEmpty else { return "" }
         let parts = cleaned.split(separator: ".").map(String.init)
         guard parts.count > 2 else { return cleaned }
         let secondLevelPrefixes: Set<String> = ["co", "com", "org", "net", "gov", "edu", "ac", "or"]
@@ -85,6 +112,21 @@ extension WidgetWebsite {
         }
         return parts.suffix(2).joined(separator: ".")
     }
+
+    private static func normalizedHost(from raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+
+        if let parsed = URL(string: trimmed), let host = parsed.host {
+            return host.lowercased()
+        }
+
+        if let parsed = URL(string: "https://\(trimmed)"), let host = parsed.host {
+            return host.lowercased()
+        }
+
+        return trimmed.lowercased()
+    }
 }
 
 private enum WidgetFaviconConfiguration {
@@ -94,14 +136,20 @@ private enum WidgetFaviconConfiguration {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
 
-        if let publicBase = optionalHTTPURL(forInfoDictionaryKey: "R2_FAVICON_PUBLIC_BASE_URL") {
+        let sharedConfiguration = WidgetDataManager.shared.faviconConfiguration()
+
+        if let publicBase = sharedConfiguration.r2FaviconPublicBaseUrl
+            ?? optionalHTTPURL(forInfoDictionaryKey: "R2_FAVICON_PUBLIC_BASE_URL") {
             return publicBase.appendingPathComponent(trimmed)
         }
 
-        guard var endpoint = optionalHTTPURL(forInfoDictionaryKey: "R2_ENDPOINT") else {
+        guard var endpoint = sharedConfiguration.r2Endpoint
+            ?? optionalHTTPURL(forInfoDictionaryKey: "R2_ENDPOINT") else {
             return nil
         }
-        if let bucket = optionalString(forInfoDictionaryKey: "R2_FAVICON_BUCKET"), !bucket.isEmpty {
+        if let bucket = sharedConfiguration.r2FaviconBucket
+            ?? optionalString(forInfoDictionaryKey: "R2_FAVICON_BUCKET"),
+           !bucket.isEmpty {
             endpoint = endpoint.appendingPathComponent(bucket)
         }
         return endpoint.appendingPathComponent(trimmed)

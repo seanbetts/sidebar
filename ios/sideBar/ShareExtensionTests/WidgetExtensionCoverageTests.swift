@@ -109,6 +109,32 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(site.resolvedFaviconURL?.absoluteString, "https://example.com/assets/favicon.png")
     }
 
+    func testWidgetWebsiteResolvedFaviconURLUsesSharedPublicBaseWhenR2KeyPresent() {
+        let groupId = appGroupIdForWidgetTests()
+        let defaults = UserDefaults(suiteName: groupId)
+        defaults?.set("https://cdn.example.com/favicons", forKey: "widget_favicon_r2_public_base_url")
+        defaults?.removeObject(forKey: "widget_favicon_r2_endpoint")
+        defaults?.removeObject(forKey: "widget_favicon_r2_bucket")
+        defaults?.synchronize()
+        defer {
+            defaults?.removeObject(forKey: "widget_favicon_r2_public_base_url")
+            defaults?.removeObject(forKey: "widget_favicon_r2_endpoint")
+            defaults?.removeObject(forKey: "widget_favicon_r2_bucket")
+            defaults?.synchronize()
+        }
+
+        let site = WidgetWebsite(
+            id: "site-r2",
+            title: "R2",
+            url: "https://example.com",
+            domain: "example.com",
+            faviconUrl: nil,
+            faviconR2Key: "news/icon.png"
+        )
+
+        XCTAssertEqual(site.resolvedFaviconURL?.absoluteString, "https://cdn.example.com/favicons/news/icon.png")
+    }
+
     func testWidgetWebsiteDisplayDomainMatchesSidebarFormatting() {
         let prefixed = WidgetWebsite(
             id: "site-5",
@@ -125,6 +151,17 @@ final class WidgetExtensionCoverageTests: XCTestCase {
 
         XCTAssertEqual(prefixed.displayDomain, "theguardian.com")
         XCTAssertEqual(plain.displayDomain, "hbr.org")
+    }
+
+    func testWidgetWebsiteDisplayDomainFallsBackToURLWhenDomainMissing() {
+        let site = WidgetWebsite(
+            id: "site-7",
+            title: "Guardian",
+            url: "https://www.theguardian.com/world/2026/feb/13/story",
+            domain: ""
+        )
+
+        XCTAssertEqual(site.displayDomain, "theguardian.com")
     }
 
     func testWidgetIntentsExecuteWithoutThrowing() async throws {
@@ -148,4 +185,19 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         _ = try await OpenWebsiteIntent(websiteId: "site_1").perform()
         _ = try await QuickSaveIntent(url: URL(string: "https://example.com")!).perform()
     }
+}
+
+private func appGroupIdForWidgetTests() -> String {
+    if let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String {
+        let trimmed = configured.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, !trimmed.contains("$(") {
+            return trimmed
+        }
+    }
+
+    let bundleId = Bundle.main.bundleIdentifier ?? "ai.sidebar.sidebar"
+    let normalized = bundleId
+        .replacingOccurrences(of: ".ShareExtension", with: "")
+        .replacingOccurrences(of: ".sideBarWidgets", with: "")
+    return "group.\(normalized)"
 }
