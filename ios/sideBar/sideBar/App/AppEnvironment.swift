@@ -171,6 +171,8 @@ public final class AppEnvironment: ObservableObject {
         #endif
         #if os(iOS)
         AppSceneDelegate.flushQueuedDeepLinks(using: self)
+        #elseif os(macOS)
+        MacAppDelegate.flushQueuedDeepLinks(using: self)
         #endif
         #if DEBUG
         logStep("Stores + view models", storeStart)

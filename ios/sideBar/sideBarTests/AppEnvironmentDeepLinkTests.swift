@@ -48,6 +48,39 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertNotNil(environment.tasksViewModel.newTaskDraft)
     }
 
+    func testHandleTasksTodayDeepLinkSelectsTasksSection() async {
+        let environment = requireEnvironment()
+
+        environment.handleDeepLink(URL(string: "sidebar://tasks/today")!)
+
+        XCTAssertEqual(environment.commandSelection, .tasks)
+    }
+
+    func testHandleNotesRootDeepLinkSelectsNotesSection() async {
+        let environment = requireEnvironment()
+
+        environment.handleDeepLink(URL(string: "sidebar://notes")!)
+
+        XCTAssertEqual(environment.commandSelection, .notes)
+        XCTAssertFalse(environment.pendingNewNoteDeepLink)
+    }
+
+    func testHandleWebsitesRootDeepLinkSelectsWebsitesSection() async {
+        let environment = requireEnvironment()
+
+        environment.handleDeepLink(URL(string: "sidebar://websites")!)
+
+        XCTAssertEqual(environment.commandSelection, .websites)
+    }
+
+    func testHandleFilesRootDeepLinkSelectsFilesSection() async {
+        let environment = requireEnvironment()
+
+        environment.handleDeepLink(URL(string: "sidebar://files")!)
+
+        XCTAssertEqual(environment.commandSelection, .files)
+    }
+
     func testConsumeWidgetAddTaskStartsTaskImmediatelyWhenTasksFocused() async {
         let environment = requireEnvironment()
         environment.authState = .active
@@ -61,6 +94,30 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(environment.commandSelection, .tasks)
         XCTAssertFalse(environment.pendingNewTaskDeepLink)
         XCTAssertNotNil(environment.tasksViewModel.newTaskDraft)
+    }
+
+    func testConsumeWidgetCompletionsPreservesPendingAddTaskOperation() async {
+        let environment = requireEnvironment()
+
+        WidgetDataManager.shared.recordPendingOperation(
+            WidgetPendingOperation(itemId: "task-complete", action: TaskWidgetAction.complete),
+            for: .tasks
+        )
+        WidgetDataManager.shared.recordPendingOperation(
+            WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
+            for: .tasks
+        )
+
+        // Signed out avoids any server completion sync while validating queue behavior.
+        environment.authState = .signedOut
+        await environment.consumeWidgetCompletions()
+
+        environment.authState = .active
+        environment.isTasksFocused = false
+        environment.consumeWidgetAddTask()
+
+        XCTAssertEqual(environment.commandSelection, .tasks)
+        XCTAssertTrue(environment.pendingNewTaskDeepLink)
     }
 
     func testConsumeWidgetAddNoteSetsPendingFlagAndSelection() async {

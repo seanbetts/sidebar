@@ -93,10 +93,10 @@ extension AppEnvironment {
     public func consumeWidgetCompletions() async {
         let operations = WidgetDataManager.shared.consumePendingOperations(
             for: .tasks,
-            actionType: TaskWidgetAction.self
+            actionType: TaskWidgetAction.self,
+            matching: { $0 == .complete }
         )
         let taskIds = operations
-            .filter { $0.action == .complete }
             .map { $0.itemId }
         guard !taskIds.isEmpty, authState == .active else { return }
 
@@ -135,7 +135,8 @@ extension AppEnvironment {
     public func consumeWidgetAddTask() {
         let operations = WidgetDataManager.shared.consumePendingOperations(
             for: .tasks,
-            actionType: TaskWidgetAction.self
+            actionType: TaskWidgetAction.self,
+            matching: { $0 == .addNew }
         )
         guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
 
@@ -157,7 +158,8 @@ extension AppEnvironment {
     public func consumeWidgetAddNote() {
         let operations = WidgetDataManager.shared.consumePendingOperations(
             for: .notes,
-            actionType: NoteWidgetAction.self
+            actionType: NoteWidgetAction.self,
+            matching: { $0 == .addNew }
         )
         guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
 

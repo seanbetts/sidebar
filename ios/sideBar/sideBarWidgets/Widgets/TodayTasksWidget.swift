@@ -59,6 +59,7 @@ struct TodayTasksWidgetView: View {
         .overlay(alignment: .bottomTrailing) {
             addTaskButton
         }
+        .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 
     private var tasksList: some View {
@@ -220,9 +221,6 @@ struct TaskRowView: View {
     let compact: Bool
     let showSubtitle: Bool
     @Environment(\.colorScheme) private var colorScheme
-    private var taskURL: URL {
-        URL(string: "sidebar://tasks/\(task.id)") ?? URL(string: "sidebar://tasks")!
-    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -232,22 +230,19 @@ struct TaskRowView: View {
             }
             .buttonStyle(.plain)
 
-            Link(destination: taskURL) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(task.title)
-                        .font(compact ? .caption : .subheadline)
-                        .lineLimit(1)
-                        .strikethrough(task.isCompleted)
-                        .foregroundStyle(task.isCompleted ? .secondary : .primary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(task.title)
+                    .font(compact ? .caption : .subheadline)
+                    .lineLimit(1)
+                    .strikethrough(task.isCompleted)
+                    .foregroundStyle(task.isCompleted ? .secondary : .primary)
 
-                    if showSubtitle, let subtitle = task.projectName ?? task.groupName {
-                        Text(subtitle)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+                if showSubtitle, let subtitle = task.projectName ?? task.groupName {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
-            .buttonStyle(.plain)
 
             Spacer(minLength: 0)
             if WidgetTasksUtils.isOverdue(task) {

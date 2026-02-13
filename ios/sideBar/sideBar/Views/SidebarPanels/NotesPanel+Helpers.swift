@@ -70,6 +70,21 @@ extension NotesPanelView {
         }
     }
 
+    func createBlankNoteFromDeepLink() {
+        guard !isCreatingNote else { return }
+        isCreatingNote = true
+        Task {
+            let created = await viewModel.createBlankNote()
+            await MainActor.run {
+                isCreatingNote = false
+                guard created == nil else { return }
+                // Fall back to manual naming if auto-creation fails.
+                newNoteName = ""
+                isNewNotePresented = true
+            }
+        }
+    }
+
     func createFolder() {
         let trimmed = newFolderName.trimmed
         guard !trimmed.isEmpty, !isCreatingFolder else { return }

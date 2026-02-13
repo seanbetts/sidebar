@@ -4,6 +4,8 @@ import os
 
 final class MacAppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Logger(subsystem: "sideBar", category: "Push")
+    private let deepLinkLogger = Logger(subsystem: "sideBar", category: "DeepLink")
+    private static var queuedDeepLinks: [URL] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.registerForRemoteNotifications()
@@ -30,6 +32,33 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         didReceiveRemoteNotification userInfo: [String: Any]
     ) {
         AppEnvironment.shared?.handleRemoteNotification(userInfo)
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        _ = application
+        for url in urls where url.scheme == "sidebar" {
+            deepLinkLogger.info("MacAppDelegate handling deep link: \(url.absoluteString, privacy: .public)")
+            handleOrQueueDeepLink(url)
+        }
+    }
+
+    static func flushQueuedDeepLinks(using environment: AppEnvironment) {
+        guard !queuedDeepLinks.isEmpty else { return }
+        let queued = queuedDeepLinks
+        queuedDeepLinks.removeAll()
+        for url in queued {
+            environment.handleDeepLink(url)
+        }
+    }
+
+    private func handleOrQueueDeepLink(_ url: URL) {
+        guard let environment = AppEnvironment.shared else {
+            Self.queuedDeepLinks.append(url)
+            deepLinkLogger.info("MacAppDelegate queued deep link until environment is ready")
+            return
+        }
+        Self.flushQueuedDeepLinks(using: environment)
+        environment.handleDeepLink(url)
     }
 }
 #endif

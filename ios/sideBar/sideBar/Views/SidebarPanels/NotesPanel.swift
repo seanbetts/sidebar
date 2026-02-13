@@ -234,8 +234,7 @@ struct NotesPanelView: View {
     private func consumePendingNewNoteDeepLinkIfNeeded() {
         guard environment.pendingNewNoteDeepLink else { return }
         environment.pendingNewNoteDeepLink = false
-        newNoteName = ""
-        isNewNotePresented = true
+        createBlankNoteFromDeepLink()
     }
 
 }

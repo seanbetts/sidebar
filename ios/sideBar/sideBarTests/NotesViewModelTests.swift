@@ -236,6 +236,40 @@ final class NotesViewModelTests: XCTestCase {
 
         XCTAssertFalse(viewModel.isLoadingArchived)
     }
+
+    func testCreateBlankNoteCreatesUntitledNoteAndSelectsIt() async throws {
+        let api = NotesAPISpy()
+        api.createNoteResult = .success(
+            NotePayload(
+                id: "note-blank",
+                name: "Untitled 2026-02-12 101500.md",
+                content: "",
+                path: "Untitled 2026-02-12 101500.md",
+                modified: nil,
+                created: nil
+            )
+        )
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let created = await viewModel.createBlankNote()
+
+        let request = try XCTUnwrap(api.createRequests.first)
+        let title = try XCTUnwrap(request.title)
+        let path = try XCTUnwrap(request.path)
+        XCTAssertTrue(title.hasPrefix("Untitled "))
+        XCTAssertTrue(path.hasPrefix("Untitled "))
+        XCTAssertTrue(path.hasSuffix(".md"))
+        XCTAssertEqual(created?.id, "note-blank")
+        XCTAssertEqual(viewModel.selectedNoteId, created?.path)
+    }
 }
 
 private enum MockError: Error {
@@ -256,6 +290,8 @@ private struct TestNetworkStatus: NetworkStatusProviding {
 @MainActor
 private final class NotesAPISpy: NotesProviding {
     private(set) var getNoteCallCount = 0
+    private(set) var createRequests: [NoteCreateRequest] = []
+    var createNoteResult: Result<NotePayload, Error> = .failure(MockError.forced)
 
     func listTree() async throws -> FileTree {
         throw MockError.forced
@@ -286,8 +322,8 @@ private final class NotesAPISpy: NotesProviding {
     }
 
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {
-        _ = request
-        throw MockError.forced
+        createRequests.append(request)
+        return try createNoteResult.get()
     }
 
     func renameNote(id: String, newName: String) async throws -> NotePayload {

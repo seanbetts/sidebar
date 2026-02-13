@@ -82,6 +82,28 @@ public final class WidgetDataManager {
     return pending
   }
 
+  /// Consumes matching pending operations and preserves non-matching operations.
+  public func consumePendingOperations<A: Codable & Equatable>(
+    for contentType: WidgetContentType,
+    actionType: A.Type,
+    matching: (A) -> Bool
+  ) -> [WidgetPendingOperation<A>] {
+    guard let defaults = userDefaults else { return [] }
+    let pending = loadPendingOperations(for: contentType, actionType: actionType)
+    guard !pending.isEmpty else { return [] }
+
+    let matchingOperations = pending.filter { matching($0.action) }
+    let remainingOperations = pending.filter { !matching($0.action) }
+
+    if remainingOperations.isEmpty {
+      defaults.removeObject(forKey: contentType.pendingKey)
+    } else if let encoded = try? Self.makeEncoder().encode(remainingOperations) {
+      defaults.set(encoded, forKey: contentType.pendingKey)
+    }
+    defaults.synchronize()
+    return matchingOperations
+  }
+
   private func loadPendingOperations<A: Codable & Equatable>(
     for contentType: WidgetContentType,
     actionType: A.Type
