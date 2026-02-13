@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
@@ -6,33 +7,51 @@ import AppKit
 #endif
 
 struct WidgetWebsiteFaviconView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let site: WidgetWebsite
     let imageData: Data?
     let size: CGFloat
 
     var body: some View {
-        Group {
-            if let prefetchedImage {
-                prefetchedImage
-                    .resizable()
-                    .scaledToFit()
-            } else if let faviconURL = site.resolvedFaviconURL {
-                AsyncImage(url: faviconURL) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFit()
-                    default:
-                        placeholder
+        ZStack {
+            Circle()
+                .fill(FaviconChipStyle.backgroundColor(for: colorScheme))
+
+            Group {
+                if let prefetchedImage {
+                    prefetchedImage
+                        .renderingMode(.original)
+                        .resizable()
+                        .widgetAccentedRenderingMode(.fullColor)
+                        .scaledToFit()
+                } else if let faviconURL = site.resolvedFaviconURL {
+                    AsyncImage(url: faviconURL) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .renderingMode(.original)
+                                .resizable()
+                                .widgetAccentedRenderingMode(.fullColor)
+                                .scaledToFit()
+                        default:
+                            placeholder
+                        }
                     }
+                } else {
+                    placeholder
                 }
-            } else {
-                placeholder
             }
+            .frame(
+                width: FaviconChipStyle.iconSize(for: size),
+                height: FaviconChipStyle.iconSize(for: size)
+            )
         }
+        .overlay(
+            Circle()
+                .strokeBorder(FaviconChipStyle.borderColor(for: colorScheme), lineWidth: 1)
+        )
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: max(2, size * 0.22), style: .continuous))
+        .clipShape(Circle())
     }
 
     private var prefetchedImage: Image? {
@@ -48,8 +67,36 @@ struct WidgetWebsiteFaviconView: View {
 
     private var placeholder: some View {
         Image(systemName: "globe")
-            .font(.system(size: max(6, size * 0.8)))
+            .font(.system(size: FaviconChipStyle.placeholderFontSize(for: size)))
             .foregroundStyle(.secondary)
+    }
+}
+
+private enum FaviconChipStyle {
+    static func iconSize(for size: CGFloat) -> CGFloat {
+        max(8, size * 0.78)
+    }
+
+    static func placeholderFontSize(for size: CGFloat) -> CGFloat {
+        max(6, size * 0.58)
+    }
+
+    static func backgroundColor(for scheme: ColorScheme) -> Color {
+        switch scheme {
+        case .dark:
+            return Color.white.opacity(0.12)
+        default:
+            return Color.black.opacity(0.06)
+        }
+    }
+
+    static func borderColor(for scheme: ColorScheme) -> Color {
+        switch scheme {
+        case .dark:
+            return Color.white.opacity(0.22)
+        default:
+            return Color.black.opacity(0.12)
+        }
     }
 }
 

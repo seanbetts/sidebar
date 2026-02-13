@@ -115,8 +115,7 @@ struct WebsiteRow: View, Equatable {
                     r2Endpoint: faviconBaseUrl,
                     r2FaviconBucket: r2FaviconBucket,
                     r2FaviconPublicBaseUrl: r2FaviconPublicBaseUrl,
-                    size: 16,
-                    placeholderTint: isSelected ? selectedTextColor : secondaryTextColor
+                    size: 16
                 )
                 VStack(alignment: .leading, spacing: 4) {
                     Text(titleText)
