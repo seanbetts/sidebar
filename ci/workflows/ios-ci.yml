@@ -135,20 +135,34 @@ jobs:
       - name: Enforce hard quality gates
         run: |
           xcresult_path=""
-          if [[ -d "ios-test-results/iphone.xcresult" && -f "ios-test-results/iphone.xcresult/Info.plist" ]]; then
-            xcresult_path="ios-test-results/iphone.xcresult"
-          elif [[ -f "ios-test-results/Info.plist" ]]; then
-            # Downloaded artifact may be flattened to bundle contents.
-            xcresult_path="ios-test-results"
-          else
-            candidate="$(find ios-test-results -maxdepth 4 -type d -name '*.xcresult' | head -n 1 || true)"
-            if [[ -n "${candidate}" && -f "${candidate}/Info.plist" ]]; then
-              xcresult_path="${candidate}"
-            fi
+          candidates=()
+
+          if [[ -d "ios-test-results/iphone.xcresult" ]]; then
+            candidates+=("ios-test-results/iphone.xcresult")
           fi
+
+          while IFS= read -r candidate; do
+            if [[ "${candidate}" != "ios-test-results/iphone.xcresult" ]]; then
+              candidates+=("${candidate}")
+            fi
+          done < <(find ios-test-results -maxdepth 6 -type d -name '*.xcresult' | sort)
+
+          if [[ -d "ios-test-results/Data" && -f "ios-test-results/Info.plist" ]]; then
+            # Some artifact extraction layouts flatten the bundle root.
+            candidates+=("ios-test-results")
+          fi
+
+          for candidate in "${candidates[@]}"; do
+            if xcrun xccov view --report --json "${candidate}" >/dev/null 2>&1; then
+              xcresult_path="${candidate}"
+              break
+            fi
+          done
 
           if [[ -z "${xcresult_path}" ]]; then
             echo "Could not locate a valid .xcresult bundle under ios-test-results"
+            echo "Candidates checked:"
+            printf ' - %s\n' "${candidates[@]:-<none>}"
             find ios-test-results -maxdepth 4 -print || true
             exit 1
           fi
