@@ -7,11 +7,16 @@ import sideBarShared
 
 final class SafariExtensionCoverageTests: XCTestCase {
     private let suiteName = "SafariExtensionCoverageTests"
+    private var temporaryBundles: [URL] = []
 
     override func tearDown() {
         if let defaults = UserDefaults(suiteName: suiteName) {
             defaults.removePersistentDomain(forName: suiteName)
         }
+        for bundleURL in temporaryBundles {
+            try? FileManager.default.removeItem(at: bundleURL)
+        }
+        temporaryBundles.removeAll()
         super.tearDown()
     }
 
@@ -109,9 +114,168 @@ final class SafariExtensionCoverageTests: XCTestCase {
         }
     }
 
+    func testSafariAuthRefresherInitRejectsPlaceholderConfigValues() throws {
+        let store = KeychainAuthStateStore(
+            service: "SafariExtensionCoverage.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        let bundle = try makeConfigBundle(
+            supabaseURL: "$(SUPABASE_URL)",
+            anonKey: "anon-key"
+        )
+
+        XCTAssertNil(SafariExtensionAuthRefresher(keychain: store, bundle: bundle))
+    }
+
+    func testSafariAuthRefresherInitAcceptsEscapedConfigValues() throws {
+        let store = KeychainAuthStateStore(
+            service: "SafariExtensionCoverage.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        let bundle = try makeConfigBundle(
+            supabaseURL: " https:\\/\\/example.supabase.co ",
+            anonKey: " anon-key "
+        )
+
+        XCTAssertNotNil(SafariExtensionAuthRefresher(keychain: store, bundle: bundle))
+    }
+
+    func testSafariAuthRefresherReturnsFalseWhenTokenMissing() async throws {
+        let store = KeychainAuthStateStore(
+            service: "SafariExtensionCoverage.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        let bundle = try makeConfigBundle(
+            supabaseURL: "https://example.supabase.co",
+            anonKey: "anon-key"
+        )
+        let refresher = try XCTUnwrap(
+            SafariExtensionAuthRefresher(keychain: store, bundle: bundle)
+        )
+
+        let isValid = await refresher.ensureValidSession()
+        XCTAssertFalse(isValid)
+    }
+
+    func testSafariAuthRefresherSkipsRefreshWhenJwtExpiryIsHealthy() async throws {
+        let store = KeychainAuthStateStore(
+            service: "SafariExtensionCoverage.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        try store.saveAccessToken(makeJWT(expClaim: .number(4_102_444_800)))
+
+        let bundle = try makeConfigBundle(
+            supabaseURL: "https://example.supabase.co",
+            anonKey: "anon-key"
+        )
+        let refresher = try XCTUnwrap(
+            SafariExtensionAuthRefresher(keychain: store, bundle: bundle)
+        )
+
+        let isValid = await refresher.ensureValidSession()
+        XCTAssertTrue(isValid)
+    }
+
+    func testSafariAuthRefresherSupportsStringExpClaims() async throws {
+        let store = KeychainAuthStateStore(
+            service: "SafariExtensionCoverage.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        try store.saveAccessToken(makeJWT(expClaim: .string("4102444800")))
+
+        let bundle = try makeConfigBundle(
+            supabaseURL: "https://example.supabase.co",
+            anonKey: "anon-key"
+        )
+        let refresher = try XCTUnwrap(
+            SafariExtensionAuthRefresher(keychain: store, bundle: bundle)
+        )
+
+        let isValid = await refresher.ensureValidSession()
+        XCTAssertTrue(isValid)
+    }
+
+    func testSafariAuthRefresherReturnsFalseWhenRefreshFails() async throws {
+        let store = KeychainAuthStateStore(
+            service: "SafariExtensionCoverage.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        try store.saveAccessToken("invalid-token")
+
+        let bundle = try makeConfigBundle(
+            supabaseURL: "http://127.0.0.1:1",
+            anonKey: "anon-key"
+        )
+        let refresher = try XCTUnwrap(
+            SafariExtensionAuthRefresher(keychain: store, bundle: bundle)
+        )
+
+        let isValid = await refresher.ensureValidSession()
+        XCTAssertFalse(isValid)
+    }
+
+    func testSafariAuthCoordinatorReturnsFalseWithoutStoredSession() async {
+        let isValid = await SafariExtensionAuthCoordinator.forceRefreshAccessToken()
+        XCTAssertFalse(isValid)
+    }
+
     private func makeStore() -> PendingShareStore {
         let defaults = UserDefaults(suiteName: suiteName)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         return PendingShareStore(baseDirectory: directory, userDefaults: defaults)
+    }
+
+    private func makeConfigBundle(
+        supabaseURL: String,
+        anonKey: String
+    ) throws -> Bundle {
+        let bundleURL = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "SafariExtensionCoverage.\(UUID().uuidString).bundle",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: bundleURL, withIntermediateDirectories: true)
+
+        let plistURL = bundleURL.appendingPathComponent("Info.plist")
+        let payload: [String: Any] = [
+            "CFBundleIdentifier": "ai.sidebar.tests.safari-extension-coverage.\(UUID().uuidString)",
+            "CFBundleName": "SafariExtensionCoverage",
+            "CFBundlePackageType": "BNDL",
+            "SUPABASE_URL": supabaseURL,
+            "SUPABASE_ANON_KEY": anonKey
+        ]
+        let data = try PropertyListSerialization.data(
+            fromPropertyList: payload,
+            format: .xml,
+            options: 0
+        )
+        try data.write(to: plistURL)
+        temporaryBundles.append(bundleURL)
+
+        return try XCTUnwrap(Bundle(url: bundleURL))
+    }
+
+    private enum JWTExpClaim {
+        case number(TimeInterval)
+        case string(String)
+    }
+
+    private func makeJWT(expClaim: JWTExpClaim) -> String {
+        let header = #"{"alg":"HS256","typ":"JWT"}"#
+        let payload: String
+        switch expClaim {
+        case .number(let exp):
+            payload = #"{"exp":\#(Int(exp))}"#
+        case .string(let exp):
+            payload = #"{"exp":"\#(exp)"}"#
+        }
+        return "\(base64URL(header)).\(base64URL(payload)).signature"
+    }
+
+    private func base64URL(_ value: String) -> String {
+        Data(value.utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
