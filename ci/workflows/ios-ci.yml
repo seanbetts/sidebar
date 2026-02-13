@@ -131,38 +131,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ios-xcresult-iphone
-          path: ios-test-results
+          path: ios-test-results/iphone.xcresult
       - name: Enforce hard quality gates
         run: |
-          xcresult_path=""
-          candidates=()
-
-          if [[ -d "ios-test-results/iphone.xcresult" ]]; then
-            candidates+=("ios-test-results/iphone.xcresult")
+          xcresult_path="ios-test-results/iphone.xcresult"
+          if [[ ! -f "${xcresult_path}/Info.plist" ]]; then
+            echo "Missing ${xcresult_path}/Info.plist after artifact download."
+            find ios-test-results -maxdepth 4 -print || true
+            exit 1
           fi
 
-          while IFS= read -r candidate; do
-            if [[ "${candidate}" != "ios-test-results/iphone.xcresult" ]]; then
-              candidates+=("${candidate}")
-            fi
-          done < <(find ios-test-results -maxdepth 6 -type d -name '*.xcresult' | sort)
-
-          if [[ -d "ios-test-results/Data" && -f "ios-test-results/Info.plist" ]]; then
-            # Some artifact extraction layouts flatten the bundle root.
-            candidates+=("ios-test-results")
-          fi
-
-          for candidate in "${candidates[@]}"; do
-            if xcrun xccov view --report --json "${candidate}" >/dev/null 2>&1; then
-              xcresult_path="${candidate}"
-              break
-            fi
-          done
-
-          if [[ -z "${xcresult_path}" ]]; then
-            echo "Could not locate a valid .xcresult bundle under ios-test-results"
-            echo "Candidates checked:"
-            printf ' - %s\n' "${candidates[@]:-<none>}"
+          if ! xcrun xccov view --report --json "${xcresult_path}" >/dev/null 2>&1; then
+            echo "Primary xcresult path is unreadable by xccov: ${xcresult_path}"
             find ios-test-results -maxdepth 4 -print || true
             exit 1
           fi
