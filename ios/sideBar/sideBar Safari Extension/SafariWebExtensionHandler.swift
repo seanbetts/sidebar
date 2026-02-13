@@ -39,7 +39,10 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         Task {
             let responsePayload = await SafariExtensionMessageHandler.responsePayload(
                 for: message,
-                pendingStore: .shared
+                pendingStore: .shared,
+                refreshAccessToken: {
+                    await SafariExtensionAuthCoordinator.forceRefreshAccessToken()
+                }
             )
             os_log(.default, "SafariWebExtensionHandler response=%@", String(describing: responsePayload))
 

@@ -330,6 +330,64 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertEqual(response["error"] as? String, ExtensionUserMessageCatalog.message(for: .missingURL))
     }
 
+    func testExtensionURLMessageHandlerRefreshesTokenAndRetriesOnUnauthorized() async {
+        let store = makeStore()
+        var attempts = 0
+        var refreshCalled = false
+
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: "https://example.com",
+            pendingStore: store,
+            saveWebsite: { _ in
+                attempts += 1
+                if attempts == 1 {
+                    throw APIClientError.requestFailed(401)
+                }
+            },
+            refreshAccessToken: {
+                refreshCalled = true
+                return true
+            }
+        )
+
+        XCTAssertTrue(refreshCalled)
+        XCTAssertEqual(attempts, 2)
+        XCTAssertEqual(response["ok"] as? Bool, true)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
+    func testExtensionURLMessageHandlerReturnsNotAuthenticatedWhenRefreshFails() async {
+        let store = makeStore()
+        var attempts = 0
+        var refreshCalled = false
+
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: "https://example.com",
+            pendingStore: store,
+            saveWebsite: { _ in
+                attempts += 1
+                throw APIClientError.requestFailed(401)
+            },
+            refreshAccessToken: {
+                refreshCalled = true
+                return false
+            }
+        )
+
+        XCTAssertTrue(refreshCalled)
+        XCTAssertEqual(attempts, 1)
+        XCTAssertEqual(response["ok"] as? Bool, false)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.notAuthenticated.rawValue)
+        XCTAssertEqual(
+            response["error"] as? String,
+            ExtensionUserMessageCatalog.message(for: .notAuthenticated)
+        )
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
     func testExtensionURLMessageHandlerQueuesWebsiteForYouTubeURL() async {
         let store = makeStore()
         let response = await ExtensionURLMessageHandler.handleSaveURLMessage(

@@ -197,6 +197,33 @@ public enum ExtensionURLMessageHandler {
         return mapped(.unknownFailure)
     }
 
+    private static func isUnauthorized(_ error: Error) -> Bool {
+        if let apiError = error as? APIClientError {
+            switch apiError {
+            case .requestFailed(let statusCode):
+                return statusCode == 401 || statusCode == 403
+            case .apiError(let detail):
+                return messageCode(forDetail: detail) == .notAuthenticated
+            case .missingToken:
+                return true
+            default:
+                return false
+            }
+        }
+
+        let lowered = error.localizedDescription.lowercased()
+        let authSignals = [
+            "unauthorized",
+            "forbidden",
+            "access denied",
+            "not authenticated",
+            "invalid token",
+            "token expired",
+            "jwt"
+        ]
+        return authSignals.contains(where: lowered.contains)
+    }
+
     private static func normalizeConfigValue(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -256,7 +283,8 @@ public enum ExtensionURLMessageHandler {
         action: String?,
         urlString: String?,
         pendingStore: PendingShareStore = .shared,
-        saveWebsite: ((String) async throws -> Void)? = nil
+        saveWebsite: ((String) async throws -> Void)? = nil,
+        refreshAccessToken: (() async -> Bool)? = nil
     ) async -> [String: Any] {
         guard action == "save_url" else {
             return failureResponse(.unsupportedAction)
@@ -273,6 +301,26 @@ public enum ExtensionURLMessageHandler {
             try await saveOperation(normalized)
             return successResponse(.websiteSaved)
         } catch {
+            if isUnauthorized(error),
+               let refreshAccessToken,
+               await refreshAccessToken() {
+                do {
+                    try await saveOperation(normalized)
+                    return successResponse(.websiteSaved)
+                } catch {
+                    if ExtensionNetworkErrorClassifier.isOfflineLike(error) {
+                        if pendingStore.enqueueWebsite(url: normalized) != nil {
+                            var payload = successResponse(.savedForLater)
+                            payload["queued"] = "website"
+                            return payload
+                        }
+                        return failureResponse(.queueFailed)
+                    }
+                    let mapped = mapError(error)
+                    return failureResponse(code: mapped.code, message: mapped.message)
+                }
+            }
+
             if ExtensionNetworkErrorClassifier.isOfflineLike(error) {
                 if pendingStore.enqueueWebsite(url: normalized) != nil {
                     var payload = successResponse(.savedForLater)

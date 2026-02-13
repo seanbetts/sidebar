@@ -271,7 +271,7 @@ public final class KeychainAuthStateStore: AuthStateStore {
             kSecAttrAccount as String: account,
             kSecAttrSynchronizable as String: kCFBooleanFalse as Any
         ]
-        #if os(iOS)
+        #if os(iOS) || os(macOS)
         if let accessGroup {
             query[kSecAttrAccessGroup as String] = accessGroup
         }

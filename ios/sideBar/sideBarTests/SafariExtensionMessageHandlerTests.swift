@@ -81,6 +81,36 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
+    func testResponsePayloadRefreshesAndRetriesOnUnauthorized() async {
+        let store = makeStore()
+        let message: [String: Any] = [
+            "action": "save_url",
+            "url": "https://example.com/article"
+        ]
+        var attempts = 0
+        var refreshCalled = false
+
+        let payload = await SafariExtensionMessageHandler.responsePayload(
+            for: message,
+            pendingStore: store,
+            saveWebsite: { _ in
+                attempts += 1
+                if attempts == 1 {
+                    throw APIClientError.requestFailed(401)
+                }
+            },
+            refreshAccessToken: {
+                refreshCalled = true
+                return true
+            }
+        )
+
+        XCTAssertTrue(refreshCalled)
+        XCTAssertEqual(attempts, 2)
+        XCTAssertEqual(payload["ok"] as? Bool, true)
+        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
+    }
+
     private func makeStore() -> PendingShareStore {
         let defaults = UserDefaults(suiteName: suiteName)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

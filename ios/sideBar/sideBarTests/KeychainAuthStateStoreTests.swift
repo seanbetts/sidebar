@@ -12,6 +12,8 @@ final class KeychainAuthStateStoreTests: XCTestCase {
         var nextUpdateStatus: OSStatus?
         var nextAddStatus: OSStatus?
         var nextDeleteStatus: OSStatus?
+        var lastUpdateQuery: NSDictionary?
+        var lastAddAttributes: NSDictionary?
 
         func copyMatching(_ query: CFDictionary, result: UnsafeMutablePointer<AnyObject?>?) -> OSStatus {
             if let status = nextCopyStatus {
@@ -29,6 +31,7 @@ final class KeychainAuthStateStoreTests: XCTestCase {
         }
 
         func add(_ attributes: CFDictionary, result: UnsafeMutablePointer<AnyObject?>?) -> OSStatus {
+            lastAddAttributes = attributes as NSDictionary
             if let status = nextAddStatus {
                 nextAddStatus = nil
                 return status
@@ -47,6 +50,7 @@ final class KeychainAuthStateStoreTests: XCTestCase {
         }
 
         func update(_ query: CFDictionary, attributes: CFDictionary) -> OSStatus {
+            lastUpdateQuery = query as NSDictionary
             if let status = nextUpdateStatus {
                 nextUpdateStatus = nil
                 return status
@@ -154,5 +158,48 @@ final class KeychainAuthStateStoreTests: XCTestCase {
 
         try store.removeSessionData(forKey: key)
         XCTAssertNil(try store.loadSessionData(forKey: key))
+    }
+
+    func testSaveIncludesProvidedAccessGroupInKeychainQuery() throws {
+        let client = TestKeychainClient()
+        client.storage["authEncryptionKey"] = Data(repeating: 0x2A, count: 32)
+        client.nextUpdateStatus = errSecItemNotFound
+        let accessGroup = "TEAMID.ai.sidebar.sidebar"
+        let store = KeychainAuthStateStore(
+            service: "sideBar.AuthTests.\(UUID().uuidString)",
+            accessGroup: accessGroup,
+            keychain: client,
+            useInMemoryStore: false
+        )
+        Self.retainedStores.append(store)
+
+        try store.saveAccessToken("token-123")
+
+        let updateAccessGroup = keychainStringValue(client.lastUpdateQuery, for: kSecAttrAccessGroup)
+        let addAccessGroup = keychainStringValue(client.lastAddAttributes, for: kSecAttrAccessGroup)
+
+        XCTAssertEqual(
+            updateAccessGroup,
+            accessGroup,
+            "update query=\(String(describing: client.lastUpdateQuery))"
+        )
+        XCTAssertEqual(
+            addAccessGroup,
+            accessGroup,
+            "add attrs=\(String(describing: client.lastAddAttributes))"
+        )
+    }
+
+    private func keychainStringValue(_ dictionary: NSDictionary?, for key: CFString) -> String? {
+        guard let dictionary else {
+            return nil
+        }
+        if let value = dictionary[key as String] as? String {
+            return value
+        }
+        if let value = dictionary[key] as? String {
+            return value
+        }
+        return nil
     }
 }

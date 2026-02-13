@@ -5,7 +5,8 @@ public enum SafariExtensionMessageHandler {
     public static func responsePayload(
         for message: Any?,
         pendingStore: PendingShareStore = .shared,
-        saveWebsite: ((String) async throws -> Void)? = nil
+        saveWebsite: ((String) async throws -> Void)? = nil,
+        refreshAccessToken: (() async -> Bool)? = nil
     ) async -> [String: Any] {
         let payload = message as? [String: Any]
         let action = payload?["action"] as? String
@@ -14,7 +15,8 @@ public enum SafariExtensionMessageHandler {
             action: action,
             urlString: urlString,
             pendingStore: pendingStore,
-            saveWebsite: saveWebsite
+            saveWebsite: saveWebsite,
+            refreshAccessToken: refreshAccessToken
         )
     }
 }

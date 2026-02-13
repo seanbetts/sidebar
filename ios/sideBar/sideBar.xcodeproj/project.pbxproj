@@ -28,6 +28,8 @@
 		9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		A7C1D2E32B01000100A1B2C3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+		B1F100012F50000100ABC001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+		B1F100022F50000100ABC001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -312,6 +314,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B1F100012F50000100ABC001 /* Supabase in Frameworks */,
 				9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -327,6 +330,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B1F100022F50000100ABC001 /* Supabase in Frameworks */,
 				9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -529,6 +533,7 @@
 			);
 			name = "sideBar Safari Extension";
 			packageProductDependencies = (
+				14DFA3382F116F2C001DAF5B /* Supabase */,
 			);
 			productName = "sideBar Safari Extension";
 			productReference = 146EA0592F2FE83C004AE7D1 /* sideBar Safari Extension.appex */;
@@ -576,6 +581,7 @@
 			);
 			name = "sideBar Safari Extension (macOS) Extension";
 			packageProductDependencies = (
+				14DFA3382F116F2C001DAF5B /* Supabase */,
 			);
 			productName = "sideBar Safari Extension (macOS) Extension";
 			productReference = 146EA0962F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex */;
@@ -1260,9 +1266,14 @@
 				DEVELOPMENT_TEAM = YOURTEAMID;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension/Info.plist";
+				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
+				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
+				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1298,9 +1309,14 @@
 				DEVELOPMENT_TEAM = YOURTEAMID;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension/Info.plist";
+				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
+				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
+				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1336,9 +1352,14 @@
 				DEVELOPMENT_TEAM = YOURTEAMID;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS) Extension/Info.plist";
+				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
+				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
+				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1372,9 +1393,14 @@
 				DEVELOPMENT_TEAM = YOURTEAMID;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS) Extension/Info.plist";
+				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
+				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
+				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
