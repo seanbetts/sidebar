@@ -1,5 +1,6 @@
 import XCTest
 import sideBarShared
+import Supabase
 @testable import sideBar
 
 @MainActor
@@ -81,6 +82,20 @@ final class SupabaseAuthAdapterTests: XCTestCase {
     func testJwtExpiryDateReturnsNilForInvalidToken() async {
         let date = SupabaseAuthAdapter.jwtExpiryDate(from: "invalid-token")
         XCTAssertNil(date)
+    }
+
+    func testMakeAuthOptionsUsesInMemoryStorageForNonKeychainStore() {
+        let options = SupabaseAuthAdapter.makeAuthOptions(stateStore: InMemoryAuthStateStore())
+        XCTAssertTrue(options.storage is SupabaseInMemoryStorage)
+    }
+
+    func testMakeAuthOptionsUsesKeychainStorageForKeychainStore() {
+        let store = KeychainAuthStateStore(
+            service: "sideBar.AuthTests.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        let options = SupabaseAuthAdapter.makeAuthOptions(stateStore: store)
+        XCTAssertTrue(options.storage is SupabaseKeychainStorage)
     }
 
     func testOfflineAccessAllowsStoredCredentialsWithinWindow() async {

@@ -101,21 +101,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         stateStore: AuthStateStore,
         startAuthStateTask: Bool = true
     ) {
-        // Create Supabase storage adapter using our Keychain store.
-        // This eliminates the race condition between Supabase's internal storage
-        // and our separate Keychain storage by making them the same.
-        let authOptions: SupabaseClientOptions.AuthOptions
-        if let keychainStore = stateStore as? KeychainAuthStateStore {
-            authOptions = SupabaseClientOptions.AuthOptions(
-                storage: SupabaseKeychainStorage(stateStore: keychainStore),
-                emitLocalSessionAsInitialSession: true
-            )
-        } else {
-            authOptions = SupabaseClientOptions.AuthOptions(
-                emitLocalSessionAsInitialSession: true
-            )
-        }
-
+        let authOptions = Self.makeAuthOptions(stateStore: stateStore)
         let supabase = SupabaseClient(
             supabaseURL: config.supabaseUrl,
             supabaseKey: config.supabaseAnonKey,
@@ -124,6 +110,22 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         self.stateStore = stateStore
         self.authClient = SupabaseAuthClient(supabase: supabase)
         commonInit(startAuthStateTask: startAuthStateTask)
+    }
+
+    static func makeAuthOptions(stateStore: AuthStateStore) -> SupabaseClientOptions.AuthOptions {
+        // Keep Supabase session storage aligned with the injected auth store.
+        // Non-keychain stores must use in-memory storage so tests/previews never
+        // accidentally load an existing device keychain session.
+        if let keychainStore = stateStore as? KeychainAuthStateStore {
+            return SupabaseClientOptions.AuthOptions(
+                storage: SupabaseKeychainStorage(stateStore: keychainStore),
+                emitLocalSessionAsInitialSession: true
+            )
+        }
+        return SupabaseClientOptions.AuthOptions(
+            storage: SupabaseInMemoryStorage(),
+            emitLocalSessionAsInitialSession: true
+        )
     }
 
     init(
