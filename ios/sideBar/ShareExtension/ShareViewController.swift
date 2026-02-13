@@ -1,9 +1,9 @@
-import UIKit
+import Foundation
 import OSLog
 import sideBarShared
 import UniformTypeIdentifiers
 
-final class ShareViewController: UIViewController {
+final class ShareViewController: SharePlatformViewController {
     // Stored properties are intentionally module-scoped so extension files can share logic.
     var environment: ShareExtensionEnvironment?
     var progressView: ShareProgressView?
@@ -12,7 +12,7 @@ final class ShareViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        shareApplyDefaultHostBackground(to: view)
         do {
             environment = try ShareExtensionEnvironment()
         } catch {

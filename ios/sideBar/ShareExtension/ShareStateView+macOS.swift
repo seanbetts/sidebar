@@ -1,0 +1,299 @@
+#if canImport(AppKit)
+import AppKit
+
+class ShareStateView: NSView {
+    enum Style {
+        case card
+        case minimal
+    }
+
+    private enum Layout {
+        static let cardCornerRadius: CGFloat = 18
+        static let defaultSpacing: CGFloat = 12
+        static let cardHorizontalPadding: CGFloat = 20
+        static let cardVerticalPadding: CGFloat = 22
+        static let contentHorizontalInset: CGFloat = 20
+        static let contentVerticalInset: CGFloat = 16
+        static let logoSize: CGFloat = 34
+    }
+
+    private let titleLabel = NSTextField(labelWithString: "sideBar")
+    private let messageLabel = NSTextField(wrappingLabelWithString: "")
+    private let logoImageView = NSImageView()
+    private let brandStack = NSStackView()
+    private let style: Style
+
+    private var hostBackgroundColor: NSColor {
+        style == .minimal ? .clear : .windowBackgroundColor
+    }
+
+    init(
+        message: String,
+        accessoryView: NSView,
+        spacingAfterTitle: CGFloat = Layout.defaultSpacing,
+        footerView: NSView? = nil,
+        style: Style = .card
+    ) {
+        self.style = style
+        super.init(frame: .zero)
+        setup(
+            message: message,
+            accessoryView: accessoryView,
+            spacingAfterTitle: spacingAfterTitle,
+            footerView: footerView
+        )
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refreshBrandLogo()
+    }
+
+    func applyHostBackground(to hostView: SharePlatformView) {
+        hostView.wantsLayer = true
+        hostView.layer?.backgroundColor = hostBackgroundColor.cgColor
+    }
+
+    func updateMessage(_ message: String) {
+        messageLabel.stringValue = message
+    }
+
+    private func setup(
+        message: String,
+        accessoryView: NSView,
+        spacingAfterTitle: CGFloat,
+        footerView: NSView?
+    ) {
+        wantsLayer = true
+        layer?.backgroundColor = (style == .minimal ? NSColor.clear : NSColor.controlBackgroundColor).cgColor
+
+        configureLabels(message: message)
+        configureBrandStack()
+
+        let content = NSStackView()
+        content.orientation = .vertical
+        content.alignment = .centerX
+        content.spacing = Layout.defaultSpacing
+        content.translatesAutoresizingMaskIntoConstraints = false
+
+        content.addArrangedSubview(brandStack)
+        content.addArrangedSubview(accessoryView)
+        content.addArrangedSubview(messageLabel)
+        if let footerView {
+            content.addArrangedSubview(footerView)
+            content.setCustomSpacing(16, after: messageLabel)
+        }
+        if spacingAfterTitle != content.spacing {
+            content.setCustomSpacing(spacingAfterTitle, after: brandStack)
+        }
+
+        addSubview(content)
+
+        if style == .card {
+            content.wantsLayer = true
+            content.layer?.backgroundColor = NSColor.controlColor.cgColor
+            content.layer?.cornerRadius = Layout.cardCornerRadius
+            content.edgeInsets = NSEdgeInsets(
+                top: Layout.cardVerticalPadding,
+                left: Layout.cardHorizontalPadding,
+                bottom: Layout.cardVerticalPadding,
+                right: Layout.cardHorizontalPadding
+            )
+        }
+
+        NSLayoutConstraint.activate([
+            content.centerXAnchor.constraint(equalTo: safeAreaLayoutGuide.centerXAnchor),
+            content.centerYAnchor.constraint(equalTo: safeAreaLayoutGuide.centerYAnchor),
+            content.topAnchor.constraint(
+                greaterThanOrEqualTo: safeAreaLayoutGuide.topAnchor,
+                constant: Layout.contentVerticalInset
+            ),
+            content.bottomAnchor.constraint(
+                lessThanOrEqualTo: safeAreaLayoutGuide.bottomAnchor,
+                constant: -Layout.contentVerticalInset
+            ),
+            content.leadingAnchor.constraint(
+                greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor,
+                constant: Layout.contentHorizontalInset
+            ),
+            content.trailingAnchor.constraint(
+                lessThanOrEqualTo: safeAreaLayoutGuide.trailingAnchor,
+                constant: -Layout.contentHorizontalInset
+            ),
+            content.widthAnchor.constraint(lessThanOrEqualToConstant: 380)
+        ])
+    }
+
+    private func configureLabels(message: String) {
+        titleLabel.font = NSFont.systemFont(ofSize: style == .minimal ? 25 : 28, weight: .semibold)
+        titleLabel.textColor = .labelColor
+        titleLabel.alignment = .center
+        titleLabel.setContentHuggingPriority(.required, for: .vertical)
+
+        refreshBrandLogo()
+        logoImageView.imageScaling = .scaleProportionallyUpOrDown
+        logoImageView.translatesAutoresizingMaskIntoConstraints = false
+        logoImageView.heightAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
+        logoImageView.widthAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
+
+        messageLabel.stringValue = message
+        messageLabel.font = NSFont.systemFont(ofSize: style == .minimal ? 14 : 13)
+        messageLabel.textColor = .secondaryLabelColor
+        messageLabel.alignment = .center
+        messageLabel.lineBreakMode = .byWordWrapping
+        messageLabel.maximumNumberOfLines = 0
+        messageLabel.preferredMaxLayoutWidth = 320
+    }
+
+    private func configureBrandStack() {
+        brandStack.orientation = .vertical
+        brandStack.alignment = .centerX
+        brandStack.spacing = 8
+        brandStack.addArrangedSubview(logoImageView)
+        brandStack.addArrangedSubview(titleLabel)
+    }
+
+    private func refreshBrandLogo() {
+        logoImageView.image = brandLogoImage()
+        logoImageView.isHidden = logoImageView.image == nil
+    }
+
+    private func brandLogoImage() -> NSImage? {
+        let isDarkMode = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let preferredName = isDarkMode ? "logo-dark" : "logo-light"
+        if let image = Bundle.main.image(forResource: NSImage.Name(preferredName)) {
+            return image
+        }
+        return Bundle.main.image(forResource: NSImage.Name("AppLogo"))
+    }
+}
+
+final class ShareLoadingView: ShareStateView {
+    init(message: String) {
+        let activityIndicator = NSProgressIndicator()
+        activityIndicator.style = .spinning
+        activityIndicator.controlSize = .regular
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        activityIndicator.startAnimation(nil)
+        super.init(message: message, accessoryView: activityIndicator)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+final class ShareErrorView: ShareStateView {
+    private enum Layout {
+        static let iconSize: CGFloat = 44
+    }
+
+    init(message: String) {
+        let iconImageView = NSImageView()
+        iconImageView.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: nil)
+        iconImageView.contentTintColor = .systemRed
+        iconImageView.imageScaling = .scaleProportionallyUpOrDown
+        iconImageView.translatesAutoresizingMaskIntoConstraints = false
+        iconImageView.heightAnchor.constraint(equalToConstant: Layout.iconSize).isActive = true
+        iconImageView.widthAnchor.constraint(equalToConstant: Layout.iconSize).isActive = true
+
+        super.init(
+            message: message,
+            accessoryView: iconImageView,
+            spacingAfterTitle: 20,
+            style: .minimal
+        )
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+final class ShareSuccessView: ShareStateView {
+    private enum Layout {
+        static let iconSize: CGFloat = 44
+        static let checkmarkSize: CGFloat = 28
+    }
+
+    init(message: String) {
+        let iconContainerView = NSView()
+        iconContainerView.wantsLayer = true
+        iconContainerView.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+        iconContainerView.layer?.cornerRadius = Layout.iconSize / 2
+        iconContainerView.translatesAutoresizingMaskIntoConstraints = false
+        iconContainerView.heightAnchor.constraint(equalToConstant: Layout.iconSize).isActive = true
+        iconContainerView.widthAnchor.constraint(equalToConstant: Layout.iconSize).isActive = true
+
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: Layout.checkmarkSize, weight: .bold)
+        let checkmarkImageView = NSImageView()
+        let checkmark = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)?
+            .withSymbolConfiguration(symbolConfig)
+        checkmarkImageView.image = checkmark
+        checkmarkImageView.contentTintColor = .white
+        checkmarkImageView.imageScaling = .scaleProportionallyUpOrDown
+        checkmarkImageView.translatesAutoresizingMaskIntoConstraints = false
+        iconContainerView.addSubview(checkmarkImageView)
+        NSLayoutConstraint.activate([
+            checkmarkImageView.centerXAnchor.constraint(equalTo: iconContainerView.centerXAnchor),
+            checkmarkImageView.centerYAnchor.constraint(equalTo: iconContainerView.centerYAnchor)
+        ])
+
+        super.init(
+            message: message,
+            accessoryView: iconContainerView,
+            spacingAfterTitle: 10,
+            style: .minimal
+        )
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+final class ShareProgressView: ShareStateView {
+    private let progressView = NSProgressIndicator()
+
+    private(set) var progress: Float = 0
+
+    init(message: String) {
+        progressView.style = .bar
+        progressView.isIndeterminate = false
+        progressView.minValue = 0
+        progressView.maxValue = 1
+        progressView.doubleValue = 0
+        progressView.controlSize = .regular
+        progressView.translatesAutoresizingMaskIntoConstraints = false
+
+        let progressContainer = NSView()
+        progressContainer.translatesAutoresizingMaskIntoConstraints = false
+        progressContainer.addSubview(progressView)
+        NSLayoutConstraint.activate([
+            progressView.leadingAnchor.constraint(equalTo: progressContainer.leadingAnchor),
+            progressView.trailingAnchor.constraint(equalTo: progressContainer.trailingAnchor),
+            progressView.centerYAnchor.constraint(equalTo: progressContainer.centerYAnchor),
+            progressContainer.widthAnchor.constraint(equalToConstant: 220),
+            progressContainer.heightAnchor.constraint(equalToConstant: 30)
+        ])
+
+        super.init(message: message, accessoryView: progressContainer)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func updateProgress(_ value: Float, message: String? = nil) {
+        progress = value
+        progressView.doubleValue = Double(value)
+        if let message {
+            updateMessage(message)
+        }
+    }
+}
+#endif

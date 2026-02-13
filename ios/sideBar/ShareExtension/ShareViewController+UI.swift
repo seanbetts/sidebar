@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 import sideBarShared
 
 extension ShareViewController {
@@ -19,12 +19,12 @@ extension ShareViewController {
         }
     }
 
-    func setContentView(_ content: UIView) {
+    func setContentView(_ content: SharePlatformView) {
         view.subviews.forEach { $0.removeFromSuperview() }
         if let stateView = content as? ShareStateView {
-            view.backgroundColor = stateView.hostBackgroundColor
+            stateView.applyHostBackground(to: view)
         } else {
-            view.backgroundColor = .systemBackground
+            shareApplyDefaultHostBackground(to: view)
         }
         content.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(content)

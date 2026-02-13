@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 import UniformTypeIdentifiers
 import sideBarShared
 
@@ -15,8 +15,9 @@ extension ShareViewController {
         let mimeType: String
 
         let imageResult = await loadImageResult(from: itemProvider)
-        if let image = imageResult.value {
-            imageData = image.jpegData(compressionQuality: 0.9)
+        if let image = imageResult.value,
+           let encodedImageData = shareJPEGData(from: image, compressionQuality: 0.9) {
+            imageData = encodedImageData
             filename = "shared_image_\(Int(Date().timeIntervalSince1970)).jpg"
             mimeType = "image/jpeg"
         } else {
@@ -52,12 +53,12 @@ extension ShareViewController {
         await uploadFile(data: data, filename: filename, mimeType: mimeType, isImage: true)
     }
 
-    func loadImageResult(from itemProvider: NSItemProvider) async -> ShareItemProviderLoadResult<UIImage> {
+    func loadImageResult(from itemProvider: NSItemProvider) async -> ShareItemProviderLoadResult<SharePlatformImage> {
         await withCheckedContinuation { continuation in
-            itemProvider.loadObject(ofClass: UIImage.self) { object, error in
+            itemProvider.loadObject(ofClass: SharePlatformImage.self) { object, error in
                 continuation.resume(
                     returning: ShareItemProviderLoadResult(
-                        value: object as? UIImage,
+                        value: object as? SharePlatformImage,
                         error: error
                     )
                 )

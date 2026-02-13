@@ -11,7 +11,7 @@
 		1413DE4E2F2B514C002495EE /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		1413DE4F2F2B514C002495EE /* sideBarShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1413DE702F2B53B3002495EE /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
-		142516B72F1EB96B0072E4F9 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		142516B72F1EB96B0072E4F9 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6C92F27A6420066EE47 /* WidgetKit.framework */; };
 		1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6CB2F27A6420066EE47 /* SwiftUI.framework */; };
 		1448E6DD2F27A6430066EE47 /* sideBarWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -1112,7 +1112,6 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "*.swift";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
@@ -1121,6 +1120,7 @@
 				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
 				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				"KEYCHAIN_ACCESS_GROUP[arch=*]" = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				"KEYCHAIN_SERVICE[arch=*]" = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1131,10 +1131,10 @@
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
+				SDKROOT = auto;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -1150,7 +1150,6 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = "*.swift";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
@@ -1159,6 +1158,7 @@
 				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
 				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				"KEYCHAIN_ACCESS_GROUP[arch=*]" = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				"KEYCHAIN_SERVICE[arch=*]" = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1169,10 +1169,10 @@
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
+				SDKROOT = auto;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;

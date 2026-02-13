@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import UIKit
 
 final class ShareLoadingView: ShareStateView {
@@ -12,3 +13,4 @@ final class ShareLoadingView: ShareStateView {
         fatalError("init(coder:) has not been implemented")
     }
 }
+#endif

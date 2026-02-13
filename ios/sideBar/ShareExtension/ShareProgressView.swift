@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import UIKit
 
 final class ShareProgressView: ShareStateView {
@@ -37,3 +38,4 @@ final class ShareProgressView: ShareStateView {
         }
     }
 }
+#endif

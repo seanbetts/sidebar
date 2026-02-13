@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import UIKit
 
 class ShareStateView: UIView {
@@ -29,6 +30,10 @@ class ShareStateView: UIView {
 
     var hostBackgroundColor: UIColor {
         style == .minimal ? .clear : .systemBackground
+    }
+
+    func applyHostBackground(to hostView: SharePlatformView) {
+        hostView.backgroundColor = hostBackgroundColor
     }
 
     init(
@@ -211,3 +216,4 @@ class ShareStateView: UIView {
         ])
     }
 }
+#endif
