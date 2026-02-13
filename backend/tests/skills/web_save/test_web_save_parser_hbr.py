@@ -62,6 +62,40 @@ def test_extract_hbr_body_html_from_structured_data():
     assert metadata["published"] == "2026-02-01T12:00:00Z"
 
 
+def test_extract_hbr_body_html_splits_flattened_text_into_paragraphs():
+    article_body = " ".join(
+        [
+            "Leaders need to communicate impact clearly.",
+            "Teams rely on context to align efforts.",
+            "Clear narrative improves decision quality.",
+            "Cross-functional partners need concrete signals.",
+            "Operational details must connect to strategy.",
+            "Execution quality depends on shared understanding.",
+            "Ambiguity creates unnecessary rework.",
+            "Regular framing keeps work on track.",
+            "Stakeholders need confidence in tradeoffs.",
+            "Transparent updates improve trust.",
+            "Strong communication shortens feedback loops.",
+            "Consistent messaging improves outcomes.",
+        ]
+    )
+    html = f"""
+    <html>
+      <head>
+        <script type="application/ld+json">
+          {json.dumps({"@type": "Article", "articleBody": article_body})}
+        </script>
+      </head>
+      <body><article id="main"><p>Teaser only.</p></article></body>
+    </html>
+    """
+    payload = extract_hbr_body_html(html)
+    assert payload is not None
+    article_html, _metadata = payload
+    assert article_html.count("<p>") >= 2
+    assert "Teaser only." not in article_html
+
+
 def test_hbr_rules_remove_related_topics_and_match_host():
     html = """
     <html>

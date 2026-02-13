@@ -23,6 +23,7 @@ _SECTION_HEADING_RE = re.compile(
     rf"(?:(?<=[.!?])|(?<=[.!?][\"'”]))\s+"
     rf"(({_HEADING_START}(?:\s+{_HEADING_WORD}){{1,6}}))\s+(?=[A-Z])"
 )
+_SENTENCE_BOUNDARY_RE = re.compile(r'([.!?]["\'”]?)\s+(?=[A-Z“"])')
 
 
 def _normalize_text(value: str | None) -> str | None:
@@ -133,6 +134,59 @@ def _build_body_html(article_body: str) -> str:
     if not blocks:
         return f"<div><p>{escape(article_body)}</p></div>"
 
+    def _split_sentences(text: str) -> list[str]:
+        sentences: list[str] = []
+        start = 0
+        for match in _SENTENCE_BOUNDARY_RE.finditer(text):
+            end = match.end(1)
+            sentence = text[start:end].strip()
+            if sentence:
+                sentences.append(sentence)
+            start = match.end()
+        tail = text[start:].strip()
+        if tail:
+            sentences.append(tail)
+        return sentences
+
+    def _split_oversized_sentence(sentence: str, *, max_words: int = 90) -> list[str]:
+        words = sentence.split()
+        if len(words) <= max_words:
+            return [sentence]
+        return [
+            " ".join(words[index : index + max_words])
+            for index in range(0, len(words), max_words)
+        ]
+
+    def _paragraphize_block(text: str) -> list[str]:
+        raw_sentences = _split_sentences(text)
+        sentences: list[str] = []
+        for sentence in raw_sentences:
+            sentences.extend(_split_oversized_sentence(sentence))
+        if not sentences:
+            return [text]
+
+        paragraphs: list[str] = []
+        current: list[str] = []
+        current_words = 0
+        target_words = 55
+        min_words = 25
+        for sentence in sentences:
+            words = len(sentence.split())
+            if (
+                current
+                and current_words >= min_words
+                and current_words + words > target_words
+            ):
+                paragraphs.append(" ".join(current).strip())
+                current = [sentence]
+                current_words = words
+                continue
+            current.append(sentence)
+            current_words += words
+        if current:
+            paragraphs.append(" ".join(current).strip())
+        return [paragraph for paragraph in paragraphs if paragraph]
+
     html_parts: list[str] = ["<div>"]
     for block in blocks:
         if block.startswith(_HEADING_MARKER):
@@ -140,7 +194,8 @@ def _build_body_html(article_body: str) -> str:
             if heading:
                 html_parts.append(f"<h2>{escape(heading)}</h2>")
             continue
-        html_parts.append(f"<p>{escape(block)}</p>")
+        for paragraph in _paragraphize_block(block):
+            html_parts.append(f"<p>{escape(paragraph)}</p>")
     html_parts.append("</div>")
     return "".join(html_parts)
 
