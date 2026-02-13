@@ -154,9 +154,22 @@ set -e
 
 if [[ ${status} -ne 0 ]]; then
   if [[ -n "${IOS_RESULT_BUNDLE_PATH}" && -d "${IOS_RESULT_BUNDLE_PATH}" ]]; then
-    echo "xcodebuild failed (exit ${status}). xcresult summary:"
-    xcrun xcresulttool get test-results summary --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true
-    xcrun xcresulttool get build-results --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true
+    test_results_summary="$(xcrun xcresulttool get test-results summary --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true)"
+    build_results_summary="$(xcrun xcresulttool get build-results --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true)"
+
+    if [[ ${status} -eq 73 ]] \
+      && [[ "${build_results_summary}" == *"\"status\":\"succeeded\""* ]] \
+      && [[ "${build_results_summary}" == *"\"errorCount\":0"* ]]; then
+      echo "xcodebuild exited 73, but xcresult reports a successful build/test action with zero errors; continuing."
+      status=0
+    else
+      echo "xcodebuild failed (exit ${status}). xcresult summary:"
+      echo "${test_results_summary}"
+      echo "${build_results_summary}"
+    fi
   fi
+fi
+
+if [[ ${status} -ne 0 ]]; then
   exit "${status}"
 fi

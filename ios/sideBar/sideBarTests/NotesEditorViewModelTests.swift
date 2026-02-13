@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import sideBarShared
 import SwiftUI
@@ -322,7 +323,6 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(pending.count, 1)
     }
 }
-
 private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
     let timeout = Date().addingTimeInterval(timeoutSeconds)
     while Date() < timeout {

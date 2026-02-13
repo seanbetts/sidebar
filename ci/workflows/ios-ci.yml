@@ -112,22 +112,12 @@ jobs:
           IOS_PARALLEL_TESTING_ENABLED: ${{ matrix.parallel_testing_enabled }}
           IOS_MAXIMUM_PARALLEL_TESTING_WORKERS: ${{ matrix.max_parallel_test_workers }}
         run: scripts/test-ios.sh
-      - name: Package xcresult (${{ matrix.id }})
-        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
-        run: |
-          bundle_path="ios-test-results/${{ matrix.id }}.xcresult"
-          archive_path="ios-test-results/${{ matrix.id }}.xcresult.zip"
-          if [[ -d "${bundle_path}" ]]; then
-            ditto -c -k --sequesterRsrc --keepParent "${bundle_path}" "${archive_path}"
-          else
-            echo "No xcresult bundle found at ${bundle_path}; skipping archive."
-          fi
-      - name: Upload xcresult archive (${{ matrix.id }})
+      - name: Upload xcresult bundle (${{ matrix.id }})
         if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
         uses: actions/upload-artifact@v4
         with:
           name: ios-xcresult-${{ matrix.id }}
-          path: ios-test-results/${{ matrix.id }}.xcresult.zip
+          path: ios-test-results/${{ matrix.id }}.xcresult
           if-no-files-found: ignore
 
   ios_hard_gates:
@@ -142,9 +132,6 @@ jobs:
         with:
           name: ios-xcresult-iphone
           path: ios-test-results
-      - name: Extract iPhone xcresult
-        run: |
-          ditto -x -k ios-test-results/iphone.xcresult.zip ios-test-results
       - name: Enforce hard quality gates
         run: |
           python3 scripts/check_ios_quality_gates.py \
