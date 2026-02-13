@@ -134,6 +134,26 @@ jobs:
           path: ios-test-results
       - name: Enforce hard quality gates
         run: |
+          xcresult_path=""
+          if [[ -d "ios-test-results/iphone.xcresult" && -f "ios-test-results/iphone.xcresult/Info.plist" ]]; then
+            xcresult_path="ios-test-results/iphone.xcresult"
+          elif [[ -f "ios-test-results/Info.plist" ]]; then
+            # Downloaded artifact may be flattened to bundle contents.
+            xcresult_path="ios-test-results"
+          else
+            candidate="$(find ios-test-results -maxdepth 4 -type d -name '*.xcresult' | head -n 1 || true)"
+            if [[ -n "${candidate}" && -f "${candidate}/Info.plist" ]]; then
+              xcresult_path="${candidate}"
+            fi
+          fi
+
+          if [[ -z "${xcresult_path}" ]]; then
+            echo "Could not locate a valid .xcresult bundle under ios-test-results"
+            find ios-test-results -maxdepth 4 -print || true
+            exit 1
+          fi
+
+          echo "Using xcresult bundle at: ${xcresult_path}"
           python3 scripts/check_ios_quality_gates.py \
-            --xcresult ios-test-results/iphone.xcresult \
+            --xcresult "${xcresult_path}" \
             --config scripts/ios_quality_gates.json
