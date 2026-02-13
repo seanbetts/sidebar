@@ -49,9 +49,20 @@ public struct WebsitesView: View {
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if isCompact, environment.websitesViewModel.active != nil, !isPhone {
+                if isCompact {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        websiteToolbarMenu
+                        if environment.websitesViewModel.active != nil, !isPhone {
+                            websiteToolbarMenu
+                        }
+                        if isPhone {
+                            Button {
+                                environment.emitShortcutAction(.openScratchpad)
+                            } label: {
+                                Image(systemName: "square.and.pencil")
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Scratchpad")
+                        }
                     }
                 }
             }

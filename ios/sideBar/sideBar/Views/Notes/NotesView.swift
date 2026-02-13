@@ -44,9 +44,20 @@ public struct NotesView: View {
             .navigationTitle(noteTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if isCompact, environment.notesViewModel.activeNote != nil, !isPhone {
+                if isCompact {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        noteToolbarMenu
+                        if environment.notesViewModel.activeNote != nil, !isPhone {
+                            noteToolbarMenu
+                        }
+                        if isPhone {
+                            Button {
+                                environment.emitShortcutAction(.openScratchpad)
+                            } label: {
+                                Image(systemName: "square.and.pencil")
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Scratchpad")
+                        }
                     }
                 }
             }

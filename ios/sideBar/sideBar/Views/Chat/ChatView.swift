@@ -2,6 +2,9 @@ import SwiftUI
 import sideBarShared
 import UniformTypeIdentifiers
 import Combine
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - ChatView
 
@@ -21,7 +24,7 @@ public struct ChatView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if isCompact {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
                         Button {
                             Task {
                                 await environment.chatViewModel.startNewConversation()
@@ -31,6 +34,15 @@ public struct ChatView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("New chat")
+                        if isPhone {
+                            Button {
+                                environment.emitShortcutAction(.openScratchpad)
+                            } label: {
+                                Image(systemName: "square.and.pencil")
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Scratchpad")
+                        }
                     }
                 }
             }
@@ -60,18 +72,24 @@ public struct ChatView: View {
         return horizontalSizeClass == .compact
         #endif
     }
+
+    private var isPhone: Bool {
+        #if os(iOS)
+        return UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        return false
+        #endif
+    }
 }
 
 private struct ChatDetailView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var draftMessage: String = ""
-    private let inputBarHeight: CGFloat = 60
     private let contentMaxWidth: CGFloat = ChatLayout.maxContentWidth
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var isScratchpadPresented = false
     #endif
     @State private var inputMeasuredHeight: CGFloat = 0
     @State private var attachmentsHeight: CGFloat = 0
@@ -162,35 +180,6 @@ private struct ChatDetailView: View {
                 break
             }
         }
-        #if !os(macOS)
-        .overlay(alignment: .bottomTrailing) {
-            if isCompact {
-                Button {
-                    isScratchpadPresented = true
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(DesignTokens.Typography.titleLg)
-                        .frame(width: 48, height: 48)
-                }
-                .buttonStyle(.plain)
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay(
-                    Circle()
-                        .stroke(DesignTokens.Colors.border, lineWidth: 1)
-                )
-                .accessibilityLabel("Scratchpad")
-                .padding(.trailing, DesignTokens.Spacing.md)
-                .padding(.bottom, inputBarHeight + DesignTokens.Spacing.xl)
-            }
-        }
-        .sheet(isPresented: $isScratchpadPresented) {
-            ScratchpadPopoverView(
-                api: environment.container.scratchpadAPI,
-                cache: environment.container.cacheClient,
-                scratchpadStore: environment.scratchpadStore
-            )
-        }
-        #endif
     }
 
     private var messageListBottomInset: CGFloat {

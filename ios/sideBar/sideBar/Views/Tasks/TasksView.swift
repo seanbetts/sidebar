@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 public struct TasksView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -40,8 +43,15 @@ public struct TasksView: View {
             .navigationTitle("Tasks")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if isCompact {
-                    ToolbarItem(placement: .navigationBarLeading) {
+                if isCompact, isPhone {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            environment.emitShortcutAction(.openScratchpad)
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Scratchpad")
                     }
                 }
             }
@@ -53,6 +63,14 @@ public struct TasksView: View {
         return false
         #else
         return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private var isPhone: Bool {
+        #if os(iOS)
+        return UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        return false
         #endif
     }
 

@@ -2,6 +2,9 @@ import SwiftUI
 import sideBarShared
 import Combine
 import UniformTypeIdentifiers
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - FilesView
 
@@ -35,6 +38,15 @@ public struct FilesView: View {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     if hasActiveSelection {
                         FilesHeaderActions(viewModel: environment.ingestionViewModel)
+                    }
+                    if isPhone {
+                        Button {
+                            environment.emitShortcutAction(.openScratchpad)
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Scratchpad")
                     }
                 }
             }
@@ -94,6 +106,14 @@ public struct FilesView: View {
 
     private var hasActiveSelection: Bool {
         environment.ingestionViewModel.selectedFileId != nil
+    }
+
+    private var isPhone: Bool {
+        #if os(iOS)
+        return UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        return false
+        #endif
     }
 
     private var shouldShowPdfControls: Bool {

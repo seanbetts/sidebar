@@ -83,36 +83,6 @@ extension ContentView {
             }
         }
         .tint(tabBarTint)
-        .overlay(alignment: .bottomTrailing) {
-            if phoneSelection != .chat {
-                GeometryReader { proxy in
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            Button {
-                                isPhoneScratchpadPresented = true
-                            } label: {
-                                Image(systemName: "square.and.pencil")
-                                    .font(DesignTokens.Typography.titleLg)
-                                    .frame(width: 48, height: 48)
-                            }
-                            .buttonStyle(.plain)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .overlay(
-                                Circle()
-                                    .stroke(separatorColor, lineWidth: 1)
-                            )
-                            .accessibilityLabel("Scratchpad")
-                            .padding(.trailing, DesignTokens.Spacing.md)
-                            .padding(.bottom, proxy.safeAreaInsets.bottom + DesignTokens.Spacing.xxl)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .ignoresSafeArea(.keyboard, edges: .bottom)
-            }
-        }
         .sheet(isPresented: $isPhoneScratchpadPresented) {
             ScratchpadPopoverView(
                 api: environment.container.scratchpadAPI,

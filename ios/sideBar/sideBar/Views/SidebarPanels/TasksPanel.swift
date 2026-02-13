@@ -11,12 +11,12 @@ public struct TasksPanel: View {
     }
 }
 
-private struct TasksPanelView: View {
+struct TasksPanelView: View {
     @ObservedObject var viewModel: TasksViewModel
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.colorScheme) private var colorScheme
     #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
     @State private var hasLoaded = false
     @State private var showNewGroupAlert: Bool = false
@@ -129,6 +129,17 @@ extension TasksPanelView {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add")
+                    if isCompactPhone {
+                        Button {
+                            environment.emitShortcutAction(.openScratchpad)
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(DesignTokens.Typography.labelMd)
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Scratchpad")
+                    }
                     if isCompact {
                         SettingsAvatarButton()
                     }
@@ -272,48 +283,6 @@ extension TasksPanelView {
         }
     }
 
-    private var groupsSorted: [TaskGroup] {
-        viewModel.panelGroupsSorted
-    }
-
-    /// Use filtered count for Upcoming (excludes undated tasks).
-    /// When Upcoming is selected, use the live viewState count.
-    /// Otherwise, use the cached filtered count from the last Upcoming load.
-    private var upcomingCount: Int? {
-        if case .upcoming = viewModel.selection {
-            return viewModel.viewState.totalCount
-        }
-        // Use cached filtered count if available, otherwise fall back to server count
-        return viewModel.filteredUpcomingCount ?? viewModel.counts?.counts.upcoming
-    }
-
-    private var projectsByGroup: [String: [TaskProject]] {
-        viewModel.panelProjectsByGroup
-    }
-
-    private var orphanProjects: [TaskProject] {
-        viewModel.panelOrphanProjects
-    }
-
-    private var groupCounts: [String: Int] {
-        viewModel.panelGroupCounts
-    }
-
-    private var projectCounts: [String: Int] {
-        viewModel.panelProjectCounts
-    }
-
-    private var panelBackground: Color {
-        DesignTokens.Colors.sidebar
-    }
-
-    private var isCompact: Bool {
-        #if os(macOS)
-        return false
-        #else
-        return horizontalSizeClass == .compact
-        #endif
-    }
 }
 
 private extension TasksPanelView {

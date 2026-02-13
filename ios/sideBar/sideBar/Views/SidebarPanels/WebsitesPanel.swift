@@ -1,6 +1,9 @@
 import Foundation
 import sideBarShared
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - WebsitesPanel
 
@@ -166,6 +169,17 @@ extension WebsitesPanelView {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add website")
+                    if isCompactPhone {
+                        Button {
+                            appEnvironment.emitShortcutAction(.openScratchpad)
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(DesignTokens.Typography.labelMd)
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Scratchpad")
+                    }
                     if isCompact {
                         SettingsAvatarButton()
                     }
