@@ -42,6 +42,7 @@ from api.services.web_save_parser_cleanup import (
     wrap_gallery_blocks,
 )
 from api.services.web_save_parser_github import cleanup_github_markdown
+from api.services.web_save_parser_hbr import extract_hbr_body_html
 from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
 from api.services.web_save_parser_openai import cleanup_openai_markdown
 from api.services.web_save_parser_substack import cleanup_substack_markdown
@@ -593,6 +594,13 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             if blog_google_html:
                 article_html = blog_google_html
                 used_blog_google_ordered_extraction = True
+        elif urlparse(final_url).netloc.endswith("hbr.org"):
+            hbr_payload = extract_hbr_body_html(raw_html_original)
+            if hbr_payload:
+                article_html, hbr_meta = hbr_payload
+                metadata.update(
+                    {key: value for key, value in hbr_meta.items() if value}
+                )
     logger.debug(
         "web-save readability url=%s article_len=%s",
         final_url,

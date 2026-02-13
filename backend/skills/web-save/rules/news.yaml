@@ -70,6 +70,41 @@
     - ".inline-newsletter"
     - ".paywall"
 
+- id: hbr-article-override
+  phase: pre
+  priority: 85
+  trigger:
+    host:
+      ends_with: "hbr.org"
+  selector_overrides:
+    article: "article#main, article.ArticleWrapper_wrapper__yWBsB, article"
+  remove:
+    - "header"
+    - "footer"
+    - "nav"
+    - "[id*='ad']"
+    - ".content-rec-wrapper"
+
+- id: hbr-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "hbr.org"
+  remove:
+    - "[class*='RelatedTopics_']"
+    - "[class*='AuthorBio']"
+    - "[class*='PartnerCenter']"
+    - "[class*='Standard_right-rail-content']"
+    - ".content-rec-wrapper"
+    - "#paywall-creative-container"
+    - "[class*='Summary_summary-header']"
+  actions:
+    - op: remove_children
+      selector: "[class^='Subheader']"
+  metadata:
+    author:
+      selector: "[class*='Byline_author']"
+
 - id: openai-article-override
   phase: pre
   priority: 80
