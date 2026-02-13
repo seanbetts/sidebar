@@ -170,7 +170,7 @@ struct SiteRowView: View {
                         .foregroundStyle(.primary)
 
                     if showSubtitle {
-                        Text(site.domain)
+                        Text(site.displayDomain)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)

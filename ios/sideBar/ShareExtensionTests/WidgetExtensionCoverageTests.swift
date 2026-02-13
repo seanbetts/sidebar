@@ -97,6 +97,36 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertNil(site.resolvedFaviconURL)
     }
 
+    func testWidgetWebsiteResolvedFaviconURLResolvesRelativeMetadataValue() {
+        let site = WidgetWebsite(
+            id: "site-4",
+            title: "Relative",
+            url: "https://example.com/articles/1",
+            domain: "example.com",
+            faviconUrl: "/assets/favicon.png"
+        )
+
+        XCTAssertEqual(site.resolvedFaviconURL?.absoluteString, "https://example.com/assets/favicon.png")
+    }
+
+    func testWidgetWebsiteDisplayDomainMatchesSidebarFormatting() {
+        let prefixed = WidgetWebsite(
+            id: "site-5",
+            title: "Guardian",
+            url: "https://www.theguardian.com",
+            domain: "www.theguardian.com"
+        )
+        let plain = WidgetWebsite(
+            id: "site-6",
+            title: "HBR",
+            url: "https://hbr.org",
+            domain: "hbr.org"
+        )
+
+        XCTAssertEqual(prefixed.displayDomain, "theguardian.com")
+        XCTAssertEqual(plain.displayDomain, "hbr.org")
+    }
+
     func testWidgetIntentsExecuteWithoutThrowing() async throws {
         _ = try await OpenScratchpadIntent().perform()
         _ = try await StartChatIntent().perform()

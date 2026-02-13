@@ -52,6 +52,7 @@ final class WidgetModelConversionTests: XCTestCase {
 
     func testWidgetWebsiteInitFromWebsiteItemCopiesWidgetFields() {
         let faviconUrl = "https://openai.com/favicon.ico"
+        let faviconR2Key = "openai.com.png"
         let website = WebsiteItem(
             id: "site-1",
             title: "OpenAI",
@@ -63,7 +64,7 @@ final class WidgetModelConversionTests: XCTestCase {
             pinnedOrder: 1,
             archived: false,
             faviconUrl: faviconUrl,
-            faviconR2Key: nil,
+            faviconR2Key: faviconR2Key,
             youtubeTranscripts: nil,
             readingTime: nil,
             updatedAt: nil,
@@ -78,6 +79,7 @@ final class WidgetModelConversionTests: XCTestCase {
         XCTAssertEqual(widgetWebsite.url, "https://openai.com")
         XCTAssertEqual(widgetWebsite.domain, "openai.com")
         XCTAssertEqual(widgetWebsite.faviconUrl, faviconUrl)
+        XCTAssertEqual(widgetWebsite.faviconR2Key, faviconR2Key)
         XCTAssertTrue(widgetWebsite.pinned)
         XCTAssertEqual(widgetWebsite.pinnedOrder, 1)
         XCTAssertFalse(widgetWebsite.archived)

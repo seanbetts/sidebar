@@ -144,6 +144,7 @@ public struct WidgetWebsite: WidgetStorable {
   public let url: String
   public let domain: String
   public let faviconUrl: String?
+  public let faviconR2Key: String?
   public let pinned: Bool
   public let pinnedOrder: Int?
   public let archived: Bool
@@ -154,6 +155,7 @@ public struct WidgetWebsite: WidgetStorable {
     url: String,
     domain: String,
     faviconUrl: String? = nil,
+    faviconR2Key: String? = nil,
     pinned: Bool = false,
     pinnedOrder: Int? = nil,
     archived: Bool = false
@@ -163,6 +165,7 @@ public struct WidgetWebsite: WidgetStorable {
     self.url = url
     self.domain = domain
     self.faviconUrl = faviconUrl
+    self.faviconR2Key = faviconR2Key
     self.pinned = pinned
     self.pinnedOrder = pinnedOrder
     self.archived = archived
