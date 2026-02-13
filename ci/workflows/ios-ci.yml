@@ -103,6 +103,8 @@ jobs:
           IOS_DESTINATION: ${{ matrix.destination }}
           IOS_DESTINATION_TIMEOUT: ${{ matrix.destination_timeout }}
           IOS_RESULT_BUNDLE_PATH: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult
+          IOS_DERIVED_DATA_PATH: ${{ runner.temp }}/sidebar-deriveddata-${{ matrix.id }}
+          IOS_CLEAN_DERIVED_DATA: "YES"
           IOS_ONLY_TESTING: ${{ matrix.only_testing }}
           IOS_SKIP_TESTING: ${{ matrix.skip_testing }}
           IOS_RETRY_TESTS_ON_FAILURE: ${{ matrix.retry_tests_on_failure }}
