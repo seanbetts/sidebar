@@ -13,6 +13,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
 
         private var continuation: AsyncStream<(SupabaseAuthEvent, SupabaseSessionInfo?)>.Continuation?
         private var pendingEvents: [(SupabaseAuthEvent, SupabaseSessionInfo?)] = []
+        var hasSubscriber: Bool { continuation != nil }
 
         var authStateChanges: AsyncStream<(SupabaseAuthEvent, SupabaseSessionInfo?)> {
             AsyncStream { continuation in
@@ -199,9 +200,11 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: true)
 
         XCTAssertEqual(adapter.authState, .active)
+        try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
         client.yield(event: .initialSession, session: nil)
 
-        try await waitUntil(timeoutSeconds: 1.0) { adapter.authState == .active }
+        // Ensure the event has a chance to be processed before asserting state remains active.
+        try await Task.sleep(nanoseconds: 50_000_000)
         XCTAssertEqual(adapter.authState, .active)
     }
 
@@ -216,9 +219,10 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: true)
 
         XCTAssertEqual(adapter.authState, .active)
+        try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
         client.yield(event: .other("TOKEN_REFRESHED"), session: nil)
 
-        try await waitUntil(timeoutSeconds: 2.0) { adapter.authState == .stale }
+        try await waitUntil(timeoutSeconds: 5.0) { adapter.authState != .active }
         XCTAssertEqual(adapter.authState, .stale)
     }
 
@@ -235,9 +239,10 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: true)
 
         XCTAssertEqual(adapter.authState, .active)
+        try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
         client.yield(event: .other("TOKEN_REFRESHED"), session: nil)
 
-        try await waitUntil(timeoutSeconds: 2.0) { adapter.authState == .signedOut }
+        try await waitUntil(timeoutSeconds: 5.0) { adapter.authState != .active }
         XCTAssertEqual(adapter.authState, .signedOut)
     }
 
