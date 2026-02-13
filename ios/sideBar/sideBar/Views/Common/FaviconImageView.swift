@@ -7,13 +7,13 @@ import AppKit
 
 struct FaviconImageView: View {
     @EnvironmentObject private var environment: AppEnvironment
-    @Environment(\.colorScheme) private var colorScheme
     let faviconUrl: String?
     let faviconR2Key: String?
     let r2Endpoint: URL?
     let r2FaviconBucket: String?
     let r2FaviconPublicBaseUrl: URL?
     let size: CGFloat
+    let placeholderTint: Color
     @State private var cachedImage: Image?
     @State private var currentUrlString: String?
 
@@ -37,29 +37,15 @@ struct FaviconImageView: View {
     }
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(FaviconChipStyle.backgroundColor(for: colorScheme))
-
-            Group {
-                if let cachedImage {
-                    cachedImage
-                        .renderingMode(.original)
-                        .resizable()
-                        .scaledToFit()
-                } else {
-                    placeholderIcon
-                }
+        Group {
+            if let cachedImage {
+                cachedImage
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                placeholderIcon
             }
-            .frame(
-                width: FaviconChipStyle.iconSize(for: size),
-                height: FaviconChipStyle.iconSize(for: size)
-            )
         }
-        .overlay(
-            Circle()
-                .strokeBorder(FaviconChipStyle.borderColor(for: colorScheme), lineWidth: 1)
-        )
         .frame(width: size, height: size)
         .clipShape(Circle())
         .task(id: resolvedUrl?.absoluteString) {
@@ -69,8 +55,7 @@ struct FaviconImageView: View {
 
     private var placeholderIcon: some View {
         Image(systemName: "globe")
-            .font(.system(size: FaviconChipStyle.placeholderFontSize(for: size)))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(placeholderTint)
     }
 
     @MainActor
@@ -127,33 +112,5 @@ struct FaviconImageView: View {
         guard let image = UIImage(data: data) else { return nil }
         return Image(uiImage: image)
         #endif
-    }
-}
-
-private enum FaviconChipStyle {
-    static func iconSize(for size: CGFloat) -> CGFloat {
-        max(8, size * 0.78)
-    }
-
-    static func placeholderFontSize(for size: CGFloat) -> CGFloat {
-        max(6, size * 0.58)
-    }
-
-    static func backgroundColor(for scheme: ColorScheme) -> Color {
-        switch scheme {
-        case .dark:
-            return Color.white.opacity(0.12)
-        default:
-            return Color.black.opacity(0.06)
-        }
-    }
-
-    static func borderColor(for scheme: ColorScheme) -> Color {
-        switch scheme {
-        case .dark:
-            return Color.white.opacity(0.22)
-        default:
-            return Color.black.opacity(0.12)
-        }
     }
 }

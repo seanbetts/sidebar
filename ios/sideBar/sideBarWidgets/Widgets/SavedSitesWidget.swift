@@ -79,7 +79,7 @@ struct SavedSitesWidgetView: View {
         Self.maxSites(for: family)
     }
 
-    static func maxSites(for family: WidgetFamily) -> Int {
+    nonisolated static func maxSites(for family: WidgetFamily) -> Int {
         switch family {
         case .systemSmall: return 3
         case .systemMedium: return 3

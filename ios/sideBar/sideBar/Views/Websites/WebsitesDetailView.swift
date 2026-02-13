@@ -223,7 +223,8 @@ extension WebsitesDetailView {
                 r2Endpoint: environment.container.config.r2Endpoint,
                 r2FaviconBucket: environment.container.config.r2FaviconBucket,
                 r2FaviconPublicBaseUrl: environment.container.config.r2FaviconPublicBaseUrl,
-                size: 24
+                size: 24,
+                placeholderTint: DesignTokens.Colors.textPrimary
             )
             return AnyView(faviconView)
         }
