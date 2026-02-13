@@ -4,6 +4,15 @@ import sideBarShared
 import UIKit
 #endif
 
+struct MacInitialSelectionPlan {
+    let primarySection: AppSection?
+    let secondarySection: AppSection?
+    let lastNonChatSection: AppSection?
+    let sidebarSelection: AppSection
+    let focusedSection: AppSection?
+    let shouldConsumeCommandSelection: Bool
+}
+
 extension ContentView {
     func refreshWeatherIfPossible() async {
         guard environment.authState == .active else { return }
@@ -90,10 +99,15 @@ extension ContentView {
             isLeftPanelExpanded = false
         }
 #else
-        primarySection = .notes
-        secondarySection = .chat
-        lastNonChatSection = .notes
-        sidebarSelection = .notes
+        let plan = Self.makeMacInitialSelectionPlan(pendingSelection: environment.commandSelection)
+        primarySection = plan.primarySection
+        secondarySection = plan.secondarySection
+        lastNonChatSection = plan.lastNonChatSection
+        sidebarSelection = plan.sidebarSelection
+        if plan.shouldConsumeCommandSelection {
+            environment.focusedSection = plan.focusedSection
+            environment.commandSelection = nil
+        }
         isLeftPanelExpanded = true
 #endif
         DispatchQueue.main.async {
@@ -151,5 +165,27 @@ extension ContentView {
         #else
         return DesignTokens.Colors.border
         #endif
+    }
+
+    static func makeMacInitialSelectionPlan(pendingSelection: AppSection?) -> MacInitialSelectionPlan {
+        guard let pendingSelection, pendingSelection != .settings else {
+            return MacInitialSelectionPlan(
+                primarySection: .notes,
+                secondarySection: .chat,
+                lastNonChatSection: .notes,
+                sidebarSelection: .notes,
+                focusedSection: nil,
+                shouldConsumeCommandSelection: false
+            )
+        }
+
+        return MacInitialSelectionPlan(
+            primarySection: pendingSelection == .chat ? nil : pendingSelection,
+            secondarySection: .chat,
+            lastNonChatSection: pendingSelection == .chat ? nil : pendingSelection,
+            sidebarSelection: pendingSelection,
+            focusedSection: pendingSelection,
+            shouldConsumeCommandSelection: true
+        )
     }
 }
