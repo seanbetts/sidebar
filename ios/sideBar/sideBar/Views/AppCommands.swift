@@ -2,7 +2,11 @@
 import SwiftUI
 
 struct SidebarCommands: Commands {
-    @EnvironmentObject private var environment: AppEnvironment
+    private let environment: AppEnvironment
+
+    init(environment: AppEnvironment) {
+        self.environment = environment
+    }
 
     var body: some Commands {
         CommandMenu("Navigate") {

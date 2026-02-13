@@ -103,7 +103,7 @@ struct SideBarApp: App {
         #endif
         #if os(macOS)
         .commands {
-            SidebarCommands()
+            SidebarCommands(environment: environment)
         }
         #endif
         #if os(macOS)
