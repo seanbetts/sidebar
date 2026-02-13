@@ -61,6 +61,42 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(SavedSitesWidgetView.maxSites(for: .systemLarge), 7)
     }
 
+    func testWidgetWebsiteResolvedFaviconURLPrefersMetadataValue() {
+        let site = WidgetWebsite(
+            id: "site-1",
+            title: "OpenAI",
+            url: "https://openai.com/research",
+            domain: "openai.com",
+            faviconUrl: "https://cdn.openai.com/favicon.ico"
+        )
+
+        XCTAssertEqual(site.resolvedFaviconURL?.absoluteString, "https://cdn.openai.com/favicon.ico")
+    }
+
+    func testWidgetWebsiteResolvedFaviconURLFallsBackToWebsiteDomain() {
+        let site = WidgetWebsite(
+            id: "site-2",
+            title: "Example",
+            url: "https://sub.example.com/path/page",
+            domain: "sub.example.com",
+            faviconUrl: nil
+        )
+
+        XCTAssertEqual(site.resolvedFaviconURL?.absoluteString, "https://sub.example.com/favicon.ico")
+    }
+
+    func testWidgetWebsiteResolvedFaviconURLReturnsNilForInvalidURLs() {
+        let site = WidgetWebsite(
+            id: "site-3",
+            title: "Broken",
+            url: "not-a-url",
+            domain: "example.com",
+            faviconUrl: "ftp://example.com/favicon.ico"
+        )
+
+        XCTAssertNil(site.resolvedFaviconURL)
+    }
+
     func testWidgetIntentsExecuteWithoutThrowing() async throws {
         _ = try await OpenScratchpadIntent().perform()
         _ = try await StartChatIntent().perform()

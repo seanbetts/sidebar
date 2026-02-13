@@ -161,9 +161,7 @@ struct SiteRowView: View {
     var body: some View {
         Link(destination: siteURL) {
             HStack(spacing: 8) {
-                Image(systemName: "globe")
-                    .font(.system(size: compact ? 14 : 16))
-                    .foregroundStyle(.secondary)
+                WidgetWebsiteFaviconView(site: site, size: compact ? 14 : 16)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(site.title)

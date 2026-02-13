@@ -80,8 +80,7 @@ struct LockScreenSitePreviewView: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(entry.data.websites.prefix(2)) { site in
                     HStack(spacing: 4) {
-                        Image(systemName: "globe")
-                            .font(.system(size: 8))
+                        WidgetWebsiteFaviconView(site: site, size: 8)
                         Text(site.title)
                             .font(.caption)
                             .lineLimit(1)
