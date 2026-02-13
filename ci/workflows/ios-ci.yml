@@ -45,6 +45,7 @@ jobs:
         run: python3 scripts/check_ios_architecture_boundaries.py
 
   ios_test_matrix:
+    needs: [ios_quality]
     runs-on:
       - self-hosted
       - ${{ matrix.runner_label }}
@@ -121,7 +122,7 @@ jobs:
           if-no-files-found: ignore
 
   ios_hard_gates:
-    needs: [ios_quality, ios_test_matrix]
+    needs: [ios_test_matrix]
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == 'iphone' }}
     runs-on: [self-hosted, mac]
     steps:
