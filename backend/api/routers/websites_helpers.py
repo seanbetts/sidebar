@@ -15,7 +15,11 @@ from api.db.session import SessionLocal, set_session_user_id
 from api.models.website import Website
 from api.services.favicon_service import FaviconService
 from api.services.jina_service import JinaService
-from api.services.web_save_parser import extract_favicon_url, parse_url_local
+from api.services.web_save_parser import (
+    LocalParseFallbackError,
+    extract_favicon_url,
+    parse_url_local,
+)
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_reading_time import (
     extract_reading_time_from_frontmatter,
@@ -54,6 +58,17 @@ def run_quick_save(
                         local_parsed.title,
                         len(local_parsed.content),
                     )
+                except LocalParseFallbackError as exc:
+                    logger.info(
+                        (
+                            "web-save local parse requested fallback url=%s "
+                            "fallback=%s rule=%s"
+                        ),
+                        url,
+                        exc.fallback,
+                        exc.rule_id,
+                    )
+                    local_parsed = None
                 except Exception as exc:
                     logger.info(
                         "web-save local parse failed url=%s error=%s", url, str(exc)
