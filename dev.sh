@@ -389,14 +389,16 @@ stop_pid() {
 }
 
 cleanup_restart_processes() {
+  local pid
+  local proc_command
   if ! command -v pgrep >/dev/null 2>&1; then
     return
   fi
   while read -r pid; do
     [[ -z "${pid}" ]] && continue
     [[ "${pid}" == "$$" ]] && continue
-    command=$(pid_command "${pid}")
-    if [[ "${command}" == *"./dev.sh restart"* ]]; then
+    proc_command=$(pid_command "${pid}")
+    if [[ "${proc_command}" == *"./dev.sh restart"* ]]; then
       echo "Cleaning stale restart process (PID ${pid})..."
       stop_pid "${pid}"
     fi
@@ -495,15 +497,20 @@ start_backend() {
     fi
   }) >"${BACKEND_LOG}" 2>&1 </dev/null &
   echo $! >"${BACKEND_PID}"
+  local started=0
   for _ in {1..10}; do
     local pid
     pid=$(resolve_pid_for_port 8001 backend || true)
     if [[ -n "${pid}" ]]; then
       echo "${pid}" >"${BACKEND_PID}"
+      started=1
       break
     fi
     sleep 0.5
   done
+  if [[ "${started}" -ne 1 ]]; then
+    echo "Backend failed to bind to port 8001. Check logs: ${BACKEND_LOG}"
+  fi
 }
 
 start_frontend() {
@@ -519,20 +526,25 @@ start_frontend() {
   ensure_port_available 3000 frontend
   echo "Starting frontend..."
   if [[ ${use_doppler} -eq 1 ]]; then
-    (cd frontend && doppler run --preserve-env="SUPABASE_URL" -- npm run dev) >"${FRONTEND_LOG}" 2>&1 </dev/null &
+    (cd frontend && doppler run --preserve-env="SUPABASE_URL" -- npm run dev -- --host 0.0.0.0 --port 3000 --strictPort) >"${FRONTEND_LOG}" 2>&1 </dev/null &
   else
-    (cd frontend && npm run dev) >"${FRONTEND_LOG}" 2>&1 </dev/null &
+    (cd frontend && npm run dev -- --host 0.0.0.0 --port 3000 --strictPort) >"${FRONTEND_LOG}" 2>&1 </dev/null &
   fi
   echo $! >"${FRONTEND_PID}"
+  local started=0
   for _ in {1..10}; do
     local pid
     pid=$(resolve_pid_for_port 3000 frontend || true)
     if [[ -n "${pid}" ]]; then
       echo "${pid}" >"${FRONTEND_PID}"
+      started=1
       break
     fi
     sleep 0.5
   done
+  if [[ "${started}" -ne 1 ]]; then
+    echo "Frontend failed to bind to port 3000. Check logs: ${FRONTEND_LOG}"
+  fi
 }
 
 start_ingestion_worker() {
@@ -563,15 +575,20 @@ start_ingestion_worker() {
     fi
   }) >"${INGESTION_LOG}" 2>&1 </dev/null &
   echo $! >"${INGESTION_PID}"
+  local started=0
   for _ in {1..10}; do
     local pid
     pid=$(resolve_ingestion_pid || true)
     if [[ -n "${pid}" ]]; then
       echo "${pid}" >"${INGESTION_PID}"
+      started=1
       break
     fi
     sleep 0.5
   done
+  if [[ "${started}" -ne 1 ]]; then
+    echo "Ingestion worker did not stay running. Check logs: ${INGESTION_LOG}"
+  fi
 }
 
 cleanup_ingestion_workers() {
