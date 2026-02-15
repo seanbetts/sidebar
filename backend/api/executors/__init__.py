@@ -1,5 +1,5 @@
 """Skill execution modules."""
 
-from api.executors.skill_executor import SkillExecutor
+from api.services.agent.skills.executor import SkillExecutor
 
 __all__ = ["SkillExecutor"]
