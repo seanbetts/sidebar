@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from api.services.claude_streaming import stream_with_tools
+from api.services.agent.orchestrator.stream_runner import stream_with_tools
 
 
 class FakeStream:

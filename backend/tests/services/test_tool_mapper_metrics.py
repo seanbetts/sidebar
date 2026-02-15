@@ -1,6 +1,6 @@
 import pytest
 from api.metrics import tool_execution_duration_seconds, tool_executions_total
-from api.services.tool_mapper import ToolMapper
+from api.services.agent.tools.mapper import ToolMapper
 
 
 def _counter_value(counter, *labels: str) -> float:

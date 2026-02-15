@@ -1,4 +1,4 @@
-from api.services.tools.definitions import get_tool_definitions
+from api.services.agent.tools.registry import get_tool_definitions
 from api.services.tools.definitions_fs import get_fs_definitions
 from api.services.tools.definitions_misc import get_misc_definitions
 from api.services.tools.definitions_notes import get_notes_definitions

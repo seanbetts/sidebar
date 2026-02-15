@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 from api.config import settings
-from api.executors.skill_executor import SkillExecutor
+from api.services.agent.skills.executor import SkillExecutor
 
 
 @pytest.fixture

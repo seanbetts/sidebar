@@ -5,7 +5,7 @@ from api.models.conversation import Conversation
 from api.models.note import Note
 from api.models.user_settings import UserSettings
 from api.models.website import Website
-from api.services.prompt_context_service import PromptContextService
+from api.services.agent.prompt.composer import PromptContextService
 
 
 def test_prompt_context_service_order_and_truncation(test_db):
