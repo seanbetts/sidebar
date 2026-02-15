@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
@@ -13,16 +14,12 @@ struct WidgetWebsiteFaviconView: View {
     var body: some View {
         Group {
             if let prefetchedImage {
-                prefetchedImage
-                    .resizable()
-                    .scaledToFit()
+                faviconImage(prefetchedImage)
             } else if let faviconURL = site.resolvedFaviconURL {
                 AsyncImage(url: faviconURL) { phase in
                     switch phase {
                     case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFit()
+                        faviconImage(image)
                     default:
                         placeholder
                     }
@@ -50,6 +47,15 @@ struct WidgetWebsiteFaviconView: View {
         Image(systemName: "globe")
             .font(.system(size: max(6, size * 0.8)))
             .foregroundStyle(.secondary)
+    }
+
+    @ViewBuilder
+    private func faviconImage(_ image: Image) -> some View {
+        image
+            .renderingMode(.original)
+            .resizable()
+            .scaledToFit()
+            .widgetAccentable(false)
     }
 }
 
