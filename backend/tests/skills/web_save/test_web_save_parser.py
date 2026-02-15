@@ -455,6 +455,64 @@ def test_parse_url_local_archiveis_captcha_requests_fallback(monkeypatch):
     assert exc_info.value.rule_id == "archiveis-captcha-discard"
 
 
+def test_airbnb_listing_rule_matches_pre_phase():
+    html = """
+    <html>
+      <head>
+        <meta name="application-name" content="Airbnb"/>
+      </head>
+      <body>
+        <script>
+          window.__bootstrap = {"pdpPresentation": {"node": {"__typename": "DemandStayListing"}}};
+        </script>
+      </body>
+    </html>
+    """
+    engine = web_save_parser.get_rule_engine()
+    matched = engine.match_rules(
+        "https://www.airbnb.co.uk/rooms/29759249?viralityEntryPoint=1&s=76",
+        html,
+        phase="pre",
+    )
+    matched_ids = {rule.id for rule in matched}
+    assert "airbnb-listing-fallback-co-uk" in matched_ids
+
+
+def test_parse_url_local_airbnb_listing_requests_fallback(monkeypatch):
+    html = """
+    <html>
+      <head><title>Airbnb</title></head>
+      <body>
+        <script>
+          window.__bootstrap = {"pdpPresentation": {"node": {"__typename": "DemandStayListing"}}};
+        </script>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html,
+            "https://www.airbnb.co.uk/rooms/29759249?viralityEntryPoint=1&s=76",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+
+    with pytest.raises(web_save_parser.LocalParseFallbackError) as exc_info:
+        web_save_parser.parse_url_local(
+            "https://www.airbnb.co.uk/rooms/29759249?viralityEntryPoint=1&s=76"
+        )
+
+    assert exc_info.value.fallback == "jina"
+    assert exc_info.value.rule_id == "airbnb-listing-fallback-co-uk"
+
+
 def test_parse_url_local_includes_reinserted_nodes(monkeypatch):
     html = """
     <html>
