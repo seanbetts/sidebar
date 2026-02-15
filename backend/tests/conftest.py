@@ -54,6 +54,7 @@ if not TEST_USER_ID:
     raise RuntimeError("TEST_USER_ID must be set for tests to avoid production data.")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key-12345")
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key-12345")
+os.environ.setdefault("BEARER_TOKEN", "test-bearer-token")
 os.environ.setdefault("SUPABASE_POSTGRES_PSWD", "test-supabase-postgres-password")
 os.environ.setdefault("WORKSPACE_BASE", "/tmp/test-workspace")
 os.environ.setdefault(
