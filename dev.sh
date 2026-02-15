@@ -34,7 +34,10 @@ TEST_DB_HOST="localhost"
 TEST_DB_PORT="5433"
 TEST_DB_NAME="sidebar_test"
 TEST_DB_USER="sidebar"
+TEST_DB_PASSWORD="sidebar_dev"
 TEST_DB_URL="postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test"
+TEST_DB_DATA_DIR="${HOME}/.sidebar/test-postgres"
+TEST_DB_LOG="/tmp/sidebar-test-postgres.log"
 use_doppler=0
 RESTART_LOCK="/tmp/sidebar-dev-restart.lock"
 
@@ -117,41 +120,113 @@ wait_for_test_db() {
   return 1
 }
 
-run_test_db_start_command() {
-  local command="$1"
-  local label="$2"
-  echo "Attempting to start local test DB via ${label}..."
-  if ! bash -lc "${command}" >/dev/null 2>&1; then
-    return 1
-  fi
-  if ! wait_for_test_db; then
-    return 1
-  fi
-  echo "Local test DB started (${TEST_DB_URL})."
-  return 0
+has_postgres_tools() {
+  command -v initdb >/dev/null 2>&1 &&
+    command -v pg_ctl >/dev/null 2>&1 &&
+    command -v psql >/dev/null 2>&1 &&
+    command -v pg_isready >/dev/null 2>&1
 }
 
-start_test_db_native() {
+ensure_postgres_tools() {
+  if has_postgres_tools; then
+    return 0
+  fi
+
   if command -v brew >/dev/null 2>&1; then
     local formula
+    local bin_dir
     for formula in postgresql@17 postgresql@16 postgresql@15 postgresql@14 postgresql; do
       if brew list --formula "${formula}" >/dev/null 2>&1; then
-        if run_test_db_start_command "brew services start ${formula}" "brew services (${formula})"; then
-          return 0
+        bin_dir="$(brew --prefix "${formula}")/bin"
+        if [[ -d "${bin_dir}" ]]; then
+          export PATH="${bin_dir}:${PATH}"
+          break
         fi
       fi
     done
   fi
 
-  if command -v pg_ctl >/dev/null 2>&1 && [[ -n "${PGDATA:-}" ]]; then
-    if run_test_db_start_command \
-      "pg_ctl -D \"${PGDATA}\" -l /tmp/sidebar-test-db.log start" \
-      "pg_ctl (PGDATA=${PGDATA})"; then
+  has_postgres_tools
+}
+
+detect_test_db_admin_user() {
+  local candidate
+  for candidate in "${TEST_DB_USER}" "$(id -un)" postgres; do
+    if psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${candidate}" -d postgres \
+      -tAc "SELECT 1" >/dev/null 2>&1; then
+      echo "${candidate}"
       return 0
     fi
+  done
+  return 1
+}
+
+bootstrap_test_db_objects() {
+  local admin_user="$1"
+  local role_exists
+  local db_exists
+
+  role_exists=$(
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -tAc "SELECT 1 FROM pg_roles WHERE rolname='${TEST_DB_USER}'" | tr -d '[:space:]'
+  )
+  if [[ "${role_exists}" != "1" ]]; then
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -c "CREATE ROLE ${TEST_DB_USER} WITH LOGIN PASSWORD '${TEST_DB_PASSWORD}';" >/dev/null
+  else
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -c "ALTER ROLE ${TEST_DB_USER} WITH LOGIN PASSWORD '${TEST_DB_PASSWORD}';" >/dev/null
   fi
 
-  return 1
+  db_exists=$(
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -tAc "SELECT 1 FROM pg_database WHERE datname='${TEST_DB_NAME}'" | tr -d '[:space:]'
+  )
+  if [[ "${db_exists}" != "1" ]]; then
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -c "CREATE DATABASE ${TEST_DB_NAME} OWNER ${TEST_DB_USER};" >/dev/null
+  fi
+}
+
+start_test_db_native() {
+  local admin_user
+
+  if ! ensure_postgres_tools; then
+    echo "PostgreSQL tools not found (initdb/pg_ctl/psql/pg_isready)."
+    echo "Install with: brew install postgresql@16"
+    return 1
+  fi
+
+  mkdir -p "$(dirname "${TEST_DB_DATA_DIR}")"
+  if [[ ! -f "${TEST_DB_DATA_DIR}/PG_VERSION" ]]; then
+    echo "Initializing local test DB cluster at ${TEST_DB_DATA_DIR}..."
+    initdb -D "${TEST_DB_DATA_DIR}" --username="${TEST_DB_USER}" --auth=trust >/dev/null
+  fi
+
+  if pg_ctl -D "${TEST_DB_DATA_DIR}" status >/dev/null 2>&1; then
+    pg_ctl -D "${TEST_DB_DATA_DIR}" -m fast stop >/dev/null 2>&1 || true
+  fi
+
+  echo "Starting local test DB cluster on port ${TEST_DB_PORT}..."
+  if ! pg_ctl -D "${TEST_DB_DATA_DIR}" -l "${TEST_DB_LOG}" -o "-p ${TEST_DB_PORT}" start >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if ! wait_for_test_db; then
+    return 1
+  fi
+
+  if ! admin_user="$(detect_test_db_admin_user)"; then
+    return 1
+  fi
+
+  bootstrap_test_db_objects "${admin_user}"
+  wait_for_test_db
+}
+
+print_native_test_db_help() {
+  echo "Run native local PostgreSQL on localhost:${TEST_DB_PORT} (${TEST_DB_NAME})."
+  echo "If PostgreSQL is missing, install with: brew install postgresql@16"
 }
 
 ensure_test_db() {
@@ -171,7 +246,7 @@ ensure_test_db() {
 
   echo "Local test DB not detected at ${TEST_DB_URL}."
   echo "Could not auto-start it. DB-backed tests may skip."
-  echo "Run native local Postgres on localhost:${TEST_DB_PORT} (${TEST_DB_NAME})."
+  print_native_test_db_help
 }
 
 port_in_use() {
@@ -675,7 +750,9 @@ status_test_db() {
 
   echo "✗ Local test DB not running"
   echo "  Expected: ${TEST_DB_URL}"
-  echo "  Run native local PostgreSQL on localhost:${TEST_DB_PORT} (${TEST_DB_NAME})."
+  echo "  Start the dedicated local test cluster with: ./dev.sh restart"
+  echo "  (It will auto-bootstrap when PostgreSQL tools are installed.)"
+  echo "  Install package if needed: brew install postgresql@16"
 }
 
 show_logs() {
