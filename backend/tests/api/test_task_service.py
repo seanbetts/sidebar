@@ -184,7 +184,12 @@ def test_set_task_recurrence_sets_anchor(db_session):
 
     refreshed = TaskService.get_task(db_session, "user", str(task.id))
     assert refreshed.repeating is True
-    assert refreshed.recurrence_rule == {"type": "weekly", "interval": 2, "weekday": 1}
+    assert refreshed.recurrence_rule == {
+        "type": "weekly",
+        "interval": 2,
+        "weekday": 1,
+        "anchor_date": "2026-01-05",
+    }
     assert refreshed.repeat_template_id == task.id
     assert refreshed.deadline == date(2026, 1, 5)
 

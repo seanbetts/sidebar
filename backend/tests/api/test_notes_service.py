@@ -34,7 +34,13 @@ def db_session(test_db_engine):
 
 def test_create_and_read_note(db_session):
     content = "# Test Note\n\nBody"
-    note = NotesService.create_note(db_session, "test_user", content, folder="Work")
+    note = NotesService.create_note(
+        db_session,
+        "test_user",
+        content,
+        title="Test Note",
+        folder="Work",
+    )
 
     assert note.title == "Test Note"
     fetched = NotesService.get_note(db_session, "test_user", note.id, mark_opened=True)
@@ -45,9 +51,18 @@ def test_create_and_read_note(db_session):
 
 
 def test_update_note_title(db_session):
-    note = NotesService.create_note(db_session, "test_user", "# Old Title\n\nBody")
+    note = NotesService.create_note(
+        db_session,
+        "test_user",
+        "# Old Title\n\nBody",
+        title="Old Title",
+    )
     updated = NotesService.update_note(
-        db_session, "test_user", note.id, "# New Title\n\nBody"
+        db_session,
+        "test_user",
+        note.id,
+        "# New Title\n\nBody",
+        title="New Title",
     )
 
     assert updated.title == "New Title"
@@ -81,10 +96,18 @@ def test_list_notes_filters(db_session):
     earlier = now - timedelta(days=2)
 
     note_a = NotesService.create_note(
-        db_session, "test_user", "# Alpha\n\nBody", folder="Work"
+        db_session,
+        "test_user",
+        "# Alpha\n\nBody",
+        title="Alpha",
+        folder="Work",
     )
     note_b = NotesService.create_note(
-        db_session, "test_user", "# Beta\n\nBody", folder="Archive/Old"
+        db_session,
+        "test_user",
+        "# Beta\n\nBody",
+        title="Beta",
+        folder="Archive/Old",
     )
     NotesService.update_pinned(db_session, "test_user", note_a.id, True)
 
@@ -131,7 +154,9 @@ def test_archived_summary(db_session):
     summary = NotesService.archived_summary(db_session, "test_user")
 
     assert summary["archived_count"] == 1
-    assert summary["archived_last_updated"] == archived_at.isoformat()
+    assert summary["archived_last_updated"] is not None
+    summary_ts = datetime.fromisoformat(summary["archived_last_updated"])
+    assert summary_ts.astimezone(UTC) == archived_at
 
 
 def test_update_note_conflict(db_session):

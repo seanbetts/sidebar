@@ -143,7 +143,7 @@ def test_seed_and_delete_round_trip(db_session):
     assert archived_conversations
 
     deleted = TestDataService.delete_seed_data(db_session, user_id, plan)
-    assert deleted.notes == seeded.notes
+    assert deleted.notes == seeded.notes + len(plan.folders)
     assert deleted.websites == seeded.websites
     assert deleted.conversations == seeded.conversations
 

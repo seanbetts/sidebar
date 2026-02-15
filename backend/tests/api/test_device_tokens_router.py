@@ -21,7 +21,8 @@ def test_device_tokens_register_and_disable(test_client):
     assert payload["platform"] == "ios"
     assert payload["environment"] == "dev"
 
-    disable = test_client.delete(
+    disable = test_client.request(
+        "DELETE",
         "/api/v1/device-tokens",
         headers=_auth_headers(),
         json={"token": "device-token-123"},

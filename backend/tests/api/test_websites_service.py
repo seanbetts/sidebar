@@ -222,7 +222,9 @@ def test_archived_summary(db_session):
     summary = WebsitesService.archived_summary(db_session, "test_user")
 
     assert summary["archived_count"] == 1
-    assert summary["archived_last_updated"] == archived_at.isoformat()
+    assert summary["archived_last_updated"] is not None
+    summary_ts = datetime.fromisoformat(summary["archived_last_updated"])
+    assert summary_ts.astimezone(UTC) == archived_at
 
 
 def test_update_website_conflict(db_session):

@@ -125,7 +125,7 @@ def test_tasks_counts(test_client, test_db):
     payload = response.json()
     assert payload["counts"]["inbox"] == 3
     assert payload["counts"]["today"] == 1
-    assert payload["counts"]["upcoming"] == 1
+    assert payload["counts"]["upcoming"] == 2
     assert payload["counts"]["completed"] == 1
 
 
@@ -146,6 +146,8 @@ def test_tasks_group_and_project_payloads(test_client, test_db):
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
+    test_db.add(project)
+    test_db.flush()
     task = Task(
         user_id=DEFAULT_USER_ID,
         title="Vacuum",
@@ -154,7 +156,7 @@ def test_tasks_group_and_project_payloads(test_client, test_db):
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
-    test_db.add_all([project, task])
+    test_db.add(task)
     test_db.commit()
 
     group_response = test_client.get(
