@@ -3,8 +3,10 @@ import XCTest
 @testable import sideBarShared
 @testable import sideBar
 
+private let pendingShareStoreTestSuiteName = "PendingShareStoreTests"
+
 final class PendingShareStoreTests: XCTestCase {
-    private let suiteName = "PendingShareStoreTests"
+    private let suiteName = pendingShareStoreTestSuiteName
 
     override func tearDown() {
         if let defaults = UserDefaults(suiteName: suiteName) {
@@ -473,9 +475,10 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
-    private func makeStore() -> PendingShareStore {
-        let defaults = UserDefaults(suiteName: suiteName)
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        return PendingShareStore(baseDirectory: directory, userDefaults: defaults)
-    }
+}
+
+private func makeStore() -> PendingShareStore {
+    let defaults = UserDefaults(suiteName: pendingShareStoreTestSuiteName)
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    return PendingShareStore(baseDirectory: directory, userDefaults: defaults)
 }
