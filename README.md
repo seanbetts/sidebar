@@ -247,7 +247,7 @@ USE_SUPABASE_TEST_DB=1 UV_NATIVE_TLS=1 uv run python scripts/check_test_db_conne
 USE_SUPABASE_TEST_DB=1 UV_NATIVE_TLS=1 uv run pytest -q -rs
 ```
 
-When `USE_SUPABASE_TEST_DB=1` is set, provide dedicated non-placeholder test credentials.
+When `USE_SUPABASE_TEST_DB=1` is set, provide dedicated non-placeholder test credentials in `backend/.env.test`.
 Preflight validation checks for common misconfiguration and runs `SELECT 1` before pytest.
 
 ### Frontend Tests

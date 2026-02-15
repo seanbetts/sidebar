@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Mapping
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 LOCAL_TEST_DATABASE_URL = "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test"
 _TRUTHY_VALUES = {"1", "true", "yes", "on"}
@@ -95,3 +95,25 @@ def validate_supabase_test_env(env: Mapping[str, str]) -> list[str]:
         )
 
     return errors
+
+
+def build_supabase_test_database_url(env: Mapping[str, str]) -> str | None:
+    """Build hosted test DB URL from explicit Supabase env configuration."""
+    configured_url = (env.get("DATABASE_URL") or "").strip()
+    if configured_url and is_supabase_database_url(configured_url):
+        return configured_url
+
+    host = (env.get("SUPABASE_POOLER_HOST") or "").strip()
+    user = (env.get("SUPABASE_POOLER_USER") or "").strip()
+    db_name = (env.get("SUPABASE_DB_NAME") or "postgres").strip()
+    sslmode = (env.get("SUPABASE_SSLMODE") or "require").strip()
+    password = (
+        (env.get("SUPABASE_APP_PSWD") or "").strip()
+        or (env.get("SUPABASE_POSTGRES_PSWD") or "").strip()
+    )
+
+    if not host or not user or not password:
+        return None
+
+    encoded_password = quote_plus(password)
+    return f"postgresql://{user}:{encoded_password}@{host}:6543/{db_name}?sslmode={sslmode}"
