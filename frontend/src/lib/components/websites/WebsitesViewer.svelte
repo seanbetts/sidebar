@@ -369,6 +369,7 @@
 		display: block !important;
 		margin-left: auto;
 		margin-right: auto;
+		width: min(100%, 720px);
 		max-width: 720px;
 		max-height: 500px;
 	}
