@@ -1,4 +1,25 @@
 #!/bin/bash
+# sideBar local dev orchestrator.
+#
+# Run from repository root:
+#   ./dev.sh start
+#
+# Common commands:
+#   ./dev.sh start
+#     Start backend (http://localhost:8001), frontend (http://localhost:3000),
+#     and ingestion worker.
+#   ./dev.sh stop
+#     Stop all services managed by this script.
+#   ./dev.sh restart
+#     Restart all services.
+#   ./dev.sh status
+#     Show running status, URLs, and log file locations.
+#   ./dev.sh logs [backend|frontend|ingestion]
+#     Tail logs for one service or all services.
+#
+# Notes:
+# - If .env and/or .env.local exist, they are loaded automatically.
+# - If Doppler is installed and configured, services run through doppler.
 set -euo pipefail
 
 BACKEND_LOG="/tmp/sidebar-backend.log"
@@ -21,6 +42,24 @@ load_env() {
     set -a
     source .env.local
     set +a
+  fi
+}
+
+normalize_runtime_paths() {
+  local default_skills_dir="${REPO_ROOT}/backend/skills"
+
+  if [[ ! -d "${default_skills_dir}" ]]; then
+    return
+  fi
+
+  if [[ -n "${SKILLS_DIR:-}" && ! -d "${SKILLS_DIR}" ]]; then
+    echo "SKILLS_DIR does not exist (${SKILLS_DIR}); using ${default_skills_dir}."
+    export SKILLS_DIR="${default_skills_dir}"
+    return
+  fi
+
+  if [[ -z "${SKILLS_DIR:-}" ]]; then
+    export SKILLS_DIR="${default_skills_dir}"
   fi
 }
 
@@ -546,6 +585,7 @@ show_logs() {
 command="${1:-start}"
 
 load_env
+normalize_runtime_paths
 detect_doppler
 ensure_restart_lock
 
