@@ -10,10 +10,7 @@ final class ShareExtensionEnvironment {
     private let authRefresher: ShareExtensionAuthRefresher?
 
     init() throws {
-        let keychain = KeychainAuthStateStore(
-            service: AppGroupConfiguration.keychainService,
-            accessGroup: AppGroupConfiguration.keychainAccessGroup
-        )
+        let keychain = ExtensionAuthStateStoreFactory.makeSharedStore()
         self.keychain = keychain
         self.authRefresher = ShareExtensionAuthRefresher(keychain: keychain)
         // Validate token exists at init (fail fast if not authenticated)

@@ -219,10 +219,43 @@ final class SafariExtensionCoverageTests: XCTestCase {
         XCTAssertFalse(isValid)
     }
 
+    func testSafariExtensionEntitlementsUseUnprefixedKeychainAccessGroupTemplate() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let entitlementsPaths = [
+            repositoryRoot
+                .appendingPathComponent("ios/sideBar/sideBar Safari Extension/sideBar Safari Extension.entitlements")
+                .path,
+            repositoryRoot
+                .appendingPathComponent(
+                    "ios/sideBar/sideBar Safari Extension (macOS) Extension/sideBar Safari Extension (macOS) Extension.entitlements"
+                )
+                .path
+        ]
+
+        for entitlementsPath in entitlementsPaths {
+            let content = try String(contentsOfFile: entitlementsPath, encoding: .utf8)
+            XCTAssertTrue(content.contains("<string>$(KEYCHAIN_ACCESS_GROUP)</string>"))
+            XCTAssertFalse(content.contains("$(AppIdentifierPrefix)$(KEYCHAIN_ACCESS_GROUP)"))
+        }
+    }
+
     private func makeStore() -> PendingShareStore {
         let defaults = UserDefaults(suiteName: suiteName)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         return PendingShareStore(baseDirectory: directory, userDefaults: defaults)
+    }
+
+    private func findRepositoryRoot(filePath: String = #filePath) throws -> URL {
+        var candidate = URL(fileURLWithPath: filePath).deletingLastPathComponent()
+        while candidate.path != "/" {
+            let projectFile = candidate
+                .appendingPathComponent("ios/sideBar/sideBar.xcodeproj/project.pbxproj")
+            if FileManager.default.fileExists(atPath: projectFile.path) {
+                return candidate
+            }
+            candidate.deleteLastPathComponent()
+        }
+        throw NSError(domain: "SafariExtensionCoverageTests", code: 1)
     }
 
     private func makeConfigBundle(
