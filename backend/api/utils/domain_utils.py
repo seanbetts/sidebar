@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 try:
-    from publicsuffix2 import get_sld as _get_sld  # type: ignore[import-not-found]
+    from publicsuffix2 import get_sld as _get_sld
 except Exception:  # pragma: no cover - optional dependency
     _get_sld = None
 
