@@ -17,14 +17,41 @@ class ShareStateView: NSView {
         static let logoSize: CGFloat = 34
     }
 
+    private struct ColorPalette {
+        let hostBackground: NSColor
+        let stateBackground: NSColor
+        let cardBackground: NSColor
+
+        static func make(for style: Style) -> ColorPalette {
+            switch style {
+            case .card:
+                return ColorPalette(
+                    hostBackground: .windowBackgroundColor,
+                    stateBackground: .controlBackgroundColor,
+                    cardBackground: .controlColor
+                )
+            case .minimal:
+                return ColorPalette(
+                    hostBackground: .clear,
+                    stateBackground: .clear,
+                    cardBackground: .clear
+                )
+            }
+        }
+    }
+
     private let titleLabel = NSTextField(labelWithString: "sideBar")
     private let messageLabel = NSTextField(wrappingLabelWithString: "")
     private let logoImageView = NSImageView()
     private let brandStack = NSStackView()
     private let style: Style
 
+    private var colorPalette: ColorPalette {
+        ColorPalette.make(for: style)
+    }
+
     private var hostBackgroundColor: NSColor {
-        style == .minimal ? .clear : .windowBackgroundColor
+        colorPalette.hostBackground
     }
 
     init(
@@ -69,7 +96,7 @@ class ShareStateView: NSView {
         footerView: NSView?
     ) {
         wantsLayer = true
-        layer?.backgroundColor = (style == .minimal ? NSColor.clear : NSColor.controlBackgroundColor).cgColor
+        layer?.backgroundColor = colorPalette.stateBackground.cgColor
 
         configureLabels(message: message)
         configureBrandStack()
@@ -95,7 +122,7 @@ class ShareStateView: NSView {
 
         if style == .card {
             content.wantsLayer = true
-            content.layer?.backgroundColor = NSColor.controlColor.cgColor
+            content.layer?.backgroundColor = colorPalette.cardBackground.cgColor
             content.layer?.cornerRadius = Layout.cardCornerRadius
             content.edgeInsets = NSEdgeInsets(
                 top: Layout.cardVerticalPadding,
