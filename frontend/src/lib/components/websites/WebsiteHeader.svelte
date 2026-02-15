@@ -59,6 +59,7 @@
 						href={getWebsiteSourceUrl(website)}
 						target="_blank"
 						rel="noopener noreferrer"
+						title={getWebsiteDisplayTitle(website)}
 					>
 						{getWebsiteDisplayTitle(website)}
 					</a>
@@ -345,12 +346,14 @@
 		justify-content: space-between;
 		gap: 1rem;
 		width: 100%;
+		min-width: 0;
 	}
 
 	.title-row {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: 0;
+		flex: 1;
 		min-width: 0;
 	}
 
@@ -362,10 +365,11 @@
 	}
 
 	.title-stack {
-		display: inline-flex;
+		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
 		gap: 0rem;
+		flex: 1;
 		min-width: 0;
 	}
 
@@ -376,11 +380,10 @@
 	}
 
 	.subtitle {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
+		display: block;
 		font-size: 0.8rem;
 		color: var(--color-muted-foreground);
+		max-width: 100%;
 		min-width: 0;
 		white-space: nowrap;
 		overflow: hidden;
@@ -422,9 +425,11 @@
 	}
 
 	.title-text {
+		display: block;
 		font-size: 1rem;
 		font-weight: 600;
 		color: var(--color-foreground);
+		max-width: 100%;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
