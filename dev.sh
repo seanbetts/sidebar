@@ -7,7 +7,7 @@
 # Common commands:
 #   ./dev.sh start
 #     Start backend (http://localhost:8001), frontend (http://localhost:3000),
-#     ingestion worker, and verify local test Postgres availability.
+#     ingestion worker, and ensure local test Postgres availability.
 #   ./dev.sh stop
 #     Stop all services managed by this script.
 #   ./dev.sh restart
@@ -20,7 +20,7 @@
 # Notes:
 # - If .env and/or .env.local exist, they are loaded automatically.
 # - If Doppler is installed and configured, services run through doppler.
-# - Set SIDEBAR_DEV_TEST_DB=0 to skip local test DB checks.
+# - Set SIDEBAR_DEV_TEST_DB=0 to skip local test DB setup/checks.
 set -euo pipefail
 
 BACKEND_LOG="/tmp/sidebar-backend.log"
@@ -107,9 +107,56 @@ is_test_db_running() {
   return 1
 }
 
-check_test_db() {
+wait_for_test_db() {
+  for _ in {1..30}; do
+    if is_test_db_running; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+run_test_db_start_command() {
+  local command="$1"
+  local label="$2"
+  echo "Attempting to start local test DB via ${label}..."
+  if ! bash -lc "${command}" >/dev/null 2>&1; then
+    return 1
+  fi
+  if ! wait_for_test_db; then
+    return 1
+  fi
+  echo "Local test DB started (${TEST_DB_URL})."
+  return 0
+}
+
+start_test_db_native() {
+  if command -v brew >/dev/null 2>&1; then
+    local formula
+    for formula in postgresql@17 postgresql@16 postgresql@15 postgresql@14 postgresql; do
+      if brew list --formula "${formula}" >/dev/null 2>&1; then
+        if run_test_db_start_command "brew services start ${formula}" "brew services (${formula})"; then
+          return 0
+        fi
+      fi
+    done
+  fi
+
+  if command -v pg_ctl >/dev/null 2>&1 && [[ -n "${PGDATA:-}" ]]; then
+    if run_test_db_start_command \
+      "pg_ctl -D \"${PGDATA}\" -l /tmp/sidebar-test-db.log start" \
+      "pg_ctl (PGDATA=${PGDATA})"; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+ensure_test_db() {
   if ! is_test_db_enabled; then
-    echo "Skipping local test DB checks (SIDEBAR_DEV_TEST_DB=${SIDEBAR_DEV_TEST_DB:-1})."
+    echo "Skipping local test DB setup/checks (SIDEBAR_DEV_TEST_DB=${SIDEBAR_DEV_TEST_DB:-1})."
     return
   fi
 
@@ -118,8 +165,13 @@ check_test_db() {
     return
   fi
 
+  if start_test_db_native; then
+    return
+  fi
+
   echo "Local test DB not detected at ${TEST_DB_URL}."
-  echo "DB-backed tests may skip unless a local Postgres test database is running."
+  echo "Could not auto-start it. DB-backed tests may skip."
+  echo "Run native local Postgres on localhost:${TEST_DB_PORT} (${TEST_DB_NAME})."
 }
 
 port_in_use() {
@@ -612,7 +664,7 @@ status_service() {
 
 status_test_db() {
   if ! is_test_db_enabled; then
-    echo "- Local test DB checks disabled (SIDEBAR_DEV_TEST_DB=${SIDEBAR_DEV_TEST_DB:-1})."
+    echo "- Local test DB setup/checks disabled (SIDEBAR_DEV_TEST_DB=${SIDEBAR_DEV_TEST_DB:-1})."
     return
   fi
 
@@ -623,7 +675,7 @@ status_test_db() {
 
   echo "✗ Local test DB not running"
   echo "  Expected: ${TEST_DB_URL}"
-  echo "  Start a local PostgreSQL instance or set DATABASE_URL before running tests."
+  echo "  Run native local PostgreSQL on localhost:${TEST_DB_PORT} (${TEST_DB_NAME})."
 }
 
 show_logs() {
@@ -658,7 +710,7 @@ ensure_restart_lock
 
 case "${command}" in
   start)
-    check_test_db
+    ensure_test_db
     start_backend
     start_frontend
     start_ingestion_worker
@@ -673,7 +725,7 @@ case "${command}" in
     stop_service "${BACKEND_PID}" "backend" "backend" "8001"
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
-    check_test_db
+    ensure_test_db
     start_backend
     start_frontend
     start_ingestion_worker
