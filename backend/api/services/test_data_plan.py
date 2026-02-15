@@ -521,7 +521,7 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
 
 def _select_seed_skills() -> list[str] | None:
     try:
-        from api.services.skill_catalog_service import SkillCatalogService
+        from api.services.agent.skills.catalog import SkillCatalogService
     except ImportError:
         return None
     skills_dir_value = os.getenv("SKILLS_DIR")

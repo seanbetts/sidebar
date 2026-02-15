@@ -9,8 +9,8 @@ from anthropic import AsyncAnthropic
 
 from api.config import Settings
 from api.schemas.tool_context import ToolExecutionContext
-from api.services.claude_streaming import stream_with_tools
-from api.services.tool_mapper import ToolMapper
+from api.services.agent.orchestrator.stream_runner import stream_with_tools
+from api.services.agent.tools.mapper import ToolMapper
 
 
 class ClaudeClient:

@@ -18,7 +18,6 @@ from sqlalchemy.exc import DBAPIError, OperationalError
 
 from api.config import settings
 from api.exceptions import APIError
-from api.executors.skill_executor import SkillExecutor
 from api.mcp.tools import register_mcp_tools
 from api.middleware.deprecation import DeprecationMiddleware
 from api.middleware.error_handler import (
@@ -48,6 +47,7 @@ from api.routers import (
 )
 from api.routers import settings as user_settings
 from api.security.path_validator import PathValidator
+from api.services.agent.skills.executor import SkillExecutor
 from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
 sentry_fastapi_module: ModuleType | None

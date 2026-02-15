@@ -8,7 +8,7 @@ import secrets
 from fastapi import HTTPException
 
 from api.config import settings
-from api.services.skill_catalog_service import SkillCatalogService
+from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.storage.service import get_storage_backend
 from api.services.user_settings_service import UserSettingsService
 
@@ -22,13 +22,15 @@ Always use markdown formatting in your response
 
 Never use em dashes.
 
-Follow explicit user constraints strictly (for example, if asked for two sentences, produce exactly two sentences).
+Follow explicit user constraints strictly
+(for example, if asked for two sentences, produce exactly two sentences).
 
 Default to a casual, colleague style.
 
 Use minimal formatting by default. Prefer prose and paragraphs over headings and lists.
 
-Avoid bullet points and numbered lists unless I explicitly ask for a list or the response is genuinely complex.
+Avoid bullet points and numbered lists unless I explicitly ask for a list
+or the response is genuinely complex.
 
 Do not use emojis unless I use one immediately before."""
 
@@ -38,7 +40,9 @@ Help with brainstorming questions, simplifying complex topics, and polishing pro
 
 Critique drafts and use Socratic dialogue to surface blind spots.
 
-Any non obvious claim, statistic, or figure must be backed by an authentic published source. Never fabricate citations. If you cannot source it, say you do not know."""
+Any non obvious claim, statistic, or figure must be backed by an authentic
+published source. Never fabricate citations. If you cannot source it,
+say you do not know."""
 
 MAX_STYLE_CHARS = 4000
 MAX_PROFILE_FIELD_CHARS = 200
