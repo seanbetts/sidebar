@@ -7,7 +7,7 @@
 # Common commands:
 #   ./dev.sh start
 #     Start backend (http://localhost:8001), frontend (http://localhost:3000),
-#     and ingestion worker.
+#     ingestion worker, and verify local test Postgres availability.
 #   ./dev.sh stop
 #     Stop all services managed by this script.
 #   ./dev.sh restart
@@ -20,6 +20,7 @@
 # Notes:
 # - If .env and/or .env.local exist, they are loaded automatically.
 # - If Doppler is installed and configured, services run through doppler.
+# - Set SIDEBAR_DEV_TEST_DB=0 to skip local test DB checks.
 set -euo pipefail
 
 BACKEND_LOG="/tmp/sidebar-backend.log"
@@ -29,6 +30,11 @@ BACKEND_PID="/tmp/sidebar-backend.pid"
 FRONTEND_PID="/tmp/sidebar-frontend.pid"
 INGESTION_PID="/tmp/sidebar-ingestion-worker.pid"
 REPO_ROOT="$(pwd)"
+TEST_DB_HOST="localhost"
+TEST_DB_PORT="5433"
+TEST_DB_NAME="sidebar_test"
+TEST_DB_USER="sidebar"
+TEST_DB_URL="postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test"
 use_doppler=0
 RESTART_LOCK="/tmp/sidebar-dev-restart.lock"
 
@@ -69,6 +75,51 @@ detect_doppler() {
       use_doppler=1
     fi
   fi
+}
+
+is_test_db_enabled() {
+  case "${SIDEBAR_DEV_TEST_DB:-1}" in
+    0|false|FALSE|no|NO|off|OFF)
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+is_test_db_running() {
+  if command -v pg_isready >/dev/null 2>&1; then
+    pg_isready -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${TEST_DB_USER}" -d "${TEST_DB_NAME}" >/dev/null 2>&1
+    return $?
+  fi
+
+  if command -v nc >/dev/null 2>&1; then
+    nc -z "${TEST_DB_HOST}" "${TEST_DB_PORT}" >/dev/null 2>&1
+    return $?
+  fi
+
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"${TEST_DB_PORT}" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+
+  return 1
+}
+
+check_test_db() {
+  if ! is_test_db_enabled; then
+    echo "Skipping local test DB checks (SIDEBAR_DEV_TEST_DB=${SIDEBAR_DEV_TEST_DB:-1})."
+    return
+  fi
+
+  if is_test_db_running; then
+    echo "Local test DB detected (${TEST_DB_URL})."
+    return
+  fi
+
+  echo "Local test DB not detected at ${TEST_DB_URL}."
+  echo "DB-backed tests may skip unless a local Postgres test database is running."
 }
 
 port_in_use() {
@@ -559,6 +610,22 @@ status_service() {
   echo "✗ ${name} not running"
 }
 
+status_test_db() {
+  if ! is_test_db_enabled; then
+    echo "- Local test DB checks disabled (SIDEBAR_DEV_TEST_DB=${SIDEBAR_DEV_TEST_DB:-1})."
+    return
+  fi
+
+  if is_test_db_running; then
+    echo "✓ Local test DB running (${TEST_DB_URL})"
+    return
+  fi
+
+  echo "✗ Local test DB not running"
+  echo "  Expected: ${TEST_DB_URL}"
+  echo "  Start a local PostgreSQL instance or set DATABASE_URL before running tests."
+}
+
 show_logs() {
   local target="$1"
   case "${target}" in
@@ -591,6 +658,7 @@ ensure_restart_lock
 
 case "${command}" in
   start)
+    check_test_db
     start_backend
     start_frontend
     start_ingestion_worker
@@ -605,6 +673,7 @@ case "${command}" in
     stop_service "${BACKEND_PID}" "backend" "backend" "8001"
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
+    check_test_db
     start_backend
     start_frontend
     start_ingestion_worker
@@ -616,6 +685,7 @@ case "${command}" in
     status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}" "backend"
     status_service "${FRONTEND_PID}" "Frontend" "http://localhost:3000" "${FRONTEND_LOG}" "frontend"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}" "ingestion"
+    status_test_db
     ;;
   logs)
     show_logs "${2:-}"
