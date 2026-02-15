@@ -221,6 +221,32 @@ sideBar uses pytest for backend tests and vitest for frontend unit/component tes
 CLEANUP_TEST_DB=1 ./backend/scripts/run_tests.sh
 ```
 
+#### DB-backed test lanes
+
+Backend tests now default to a local test database:
+
+```bash
+cd backend
+DATABASE_URL=postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test UV_NATIVE_TLS=1 uv run pytest -q -rs
+```
+
+If you use the Docker test database:
+
+```bash
+docker compose -f docker-compose.test.yml up -d postgres-test
+./backend/scripts/setup_test_db.sh
+cd backend && UV_NATIVE_TLS=1 uv run pytest -q -rs
+```
+
+To run the hosted Supabase integration lane (explicit opt-in):
+
+```bash
+cd backend
+USE_SUPABASE_TEST_DB=1 UV_NATIVE_TLS=1 uv run pytest -q -rs
+```
+
+When `USE_SUPABASE_TEST_DB=1` is set, provide valid Supabase DB credentials in your environment.
+
 ### Frontend Tests
 
 ```bash
