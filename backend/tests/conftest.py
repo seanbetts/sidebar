@@ -12,6 +12,7 @@ from tests.db_config import (
     LOCAL_TEST_DATABASE_URL,
     resolve_default_test_database_url,
     use_supabase_test_db,
+    validate_supabase_test_env,
 )
 
 # CRITICAL: Set TESTING=1 before any application imports
@@ -113,6 +114,14 @@ if not auth_dev_mode and not os.getenv("BEARER_TOKEN"):
 
 use_supabase_db = use_supabase_test_db(os.environ)
 if use_supabase_db:
+    supabase_config_errors = validate_supabase_test_env(os.environ)
+    if supabase_config_errors:
+        formatted_errors = "\n".join(f"- {error}" for error in supabase_config_errors)
+        raise RuntimeError(
+            "USE_SUPABASE_TEST_DB=1 requires dedicated hosted test DB credentials.\n"
+            f"{formatted_errors}"
+        )
+
     database_url = os.getenv("DATABASE_URL", "")
     if "localhost" in database_url or "127.0.0.1" in database_url or not database_url:
         if not os.getenv("SUPABASE_POSTGRES_PSWD") and os.getenv("DOPPLER_TOKEN"):

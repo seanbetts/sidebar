@@ -3,9 +3,11 @@
 from tests.db_config import (
     LOCAL_TEST_DATABASE_URL,
     is_supabase_database_url,
+    is_placeholder_value,
     is_truthy,
     resolve_default_test_database_url,
     use_supabase_test_db,
+    validate_supabase_test_env,
 )
 
 
@@ -62,3 +64,38 @@ def test_resolve_default_keeps_supabase_url_with_opt_in() -> None:
 def test_resolve_default_keeps_non_supabase_custom_url() -> None:
     env = {"DATABASE_URL": "postgresql://tester:pass@127.0.0.1:15432/sidebar_test"}
     assert resolve_default_test_database_url(env) == env["DATABASE_URL"]
+
+
+def test_is_placeholder_value_detects_common_test_values() -> None:
+    assert is_placeholder_value("test-password")
+    assert is_placeholder_value("example-secret")
+    assert not is_placeholder_value("real-secret-value")
+
+
+def test_validate_supabase_test_env_accepts_supabase_database_url() -> None:
+    env = {
+        "DATABASE_URL": "postgresql://postgres.real:secure-pass@aws-1-eu-west-1.pooler.supabase.com:6543/postgres"
+    }
+    assert validate_supabase_test_env(env) == []
+
+
+def test_validate_supabase_test_env_rejects_placeholder_database_url_password() -> None:
+    env = {
+        "DATABASE_URL": "postgresql://postgres.real:test-password@aws-1-eu-west-1.pooler.supabase.com:6543/postgres"
+    }
+    errors = validate_supabase_test_env(env)
+    assert errors
+    assert "DATABASE_URL password appears to be a placeholder." in errors
+
+
+def test_validate_supabase_test_env_requires_non_placeholder_supabase_settings() -> None:
+    env = {
+        "SUPABASE_URL": "https://project.supabase.co",
+        "SUPABASE_PROJECT_ID": "project",
+        "SUPABASE_POOLER_HOST": "aws-1-eu-west-1.pooler.supabase.com",
+        "SUPABASE_POOLER_USER": "postgres.project",
+        "SUPABASE_POSTGRES_PSWD": "test-placeholder-password",
+    }
+    errors = validate_supabase_test_env(env)
+    assert errors
+    assert any("must be set to a non-placeholder value" in message for message in errors)

@@ -227,6 +227,7 @@ Backend tests now default to a local test database:
 
 ```bash
 cd backend
+UV_NATIVE_TLS=1 uv run python scripts/check_test_db_connectivity.py
 DATABASE_URL=postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test UV_NATIVE_TLS=1 uv run pytest -q -rs
 ```
 
@@ -242,10 +243,12 @@ To run the hosted Supabase integration lane (explicit opt-in):
 
 ```bash
 cd backend
+USE_SUPABASE_TEST_DB=1 UV_NATIVE_TLS=1 uv run python scripts/check_test_db_connectivity.py
 USE_SUPABASE_TEST_DB=1 UV_NATIVE_TLS=1 uv run pytest -q -rs
 ```
 
-When `USE_SUPABASE_TEST_DB=1` is set, provide valid Supabase DB credentials in your environment.
+When `USE_SUPABASE_TEST_DB=1` is set, provide dedicated non-placeholder test credentials.
+Preflight validation checks for common misconfiguration and runs `SELECT 1` before pytest.
 
 ### Frontend Tests
 
