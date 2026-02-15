@@ -48,12 +48,14 @@ class FakeDB:
 
 def _note(title="Title", content="Body", folder="", pinned=False):
     is_archived = folder == "Archive" or folder.startswith("Archive/")
+    timestamp = datetime(2024, 1, 1, tzinfo=UTC)
     return SimpleNamespace(
         id="note-1",
         title=title,
         content=content,
         metadata_={"folder": folder, "pinned": pinned},
-        updated_at=datetime(2024, 1, 1, tzinfo=UTC),
+        updated_at=timestamp,
+        created_at=timestamp,
         deleted_at=None,
         is_archived=is_archived,
     )
