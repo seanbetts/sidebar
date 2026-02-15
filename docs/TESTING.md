@@ -173,6 +173,8 @@ xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
 The default backend lane targets local Postgres on `localhost:5433/sidebar_test`.
 Hosted Supabase runs require `USE_SUPABASE_TEST_DB=1` plus dedicated non-placeholder test credentials.
 Hosted credentials are read from `backend/.env.test` for test runs.
+If `.env.test` keeps `SUPABASE_POSTGRES_PSWD` as a placeholder, Doppler-backed runs can hydrate the real value at runtime via `DOPPLER_TOKEN`.
+`SUPABASE_APP_PSWD` is only a legacy fallback and is not required in `backend/.env.test`.
 The preflight command validates lane configuration and runs `SELECT 1` before pytest.
 
 ### iOS Test Stability

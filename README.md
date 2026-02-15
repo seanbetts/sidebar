@@ -66,7 +66,7 @@ SUPABASE_DB_NAME=postgres
 SUPABASE_DB_PORT=5432
 SUPABASE_SSLMODE=require
 SUPABASE_POSTGRES_PSWD=your_postgres_password
-SUPABASE_APP_PSWD=your_app_password_optional
+SUPABASE_APP_PSWD=legacy_fallback_optional
 
 # AI APIs (loaded via Doppler or set directly)
 ANTHROPIC_API_KEY=sk-ant-...
@@ -247,7 +247,9 @@ USE_SUPABASE_TEST_DB=1 UV_NATIVE_TLS=1 uv run python scripts/check_test_db_conne
 USE_SUPABASE_TEST_DB=1 UV_NATIVE_TLS=1 uv run pytest -q -rs
 ```
 
-When `USE_SUPABASE_TEST_DB=1` is set, provide dedicated non-placeholder test credentials in `backend/.env.test`.
+When `USE_SUPABASE_TEST_DB=1` is set, keep hosted project/user settings in `backend/.env.test`.
+You can keep `SUPABASE_POSTGRES_PSWD` as a placeholder there when Doppler is configured (`DOPPLER_TOKEN`); the hosted lane fetches the real DB password at runtime.
+`SUPABASE_APP_PSWD` is supported only as a legacy fallback and is not required in `backend/.env.test`.
 Preflight validation checks for common misconfiguration and runs `SELECT 1` before pytest.
 
 ### Frontend Tests

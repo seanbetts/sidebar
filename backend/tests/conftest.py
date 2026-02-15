@@ -3,6 +3,7 @@
 
 import json
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import pytest
 from tests.db_config import (
     LOCAL_TEST_DATABASE_URL,
     build_supabase_test_database_url,
+    is_placeholder_value,
     resolve_default_test_database_url,
     use_supabase_test_db,
     validate_supabase_test_env,
@@ -40,8 +42,45 @@ def _load_env_file(
             os.environ[key] = value.strip()
 
 
+def _read_doppler_secret(name: str) -> str:
+    """Best-effort read of a Doppler secret."""
+    try:
+        return subprocess.check_output(
+            ["doppler", "secrets", "get", name, "--plain"],
+            text=True,
+        ).strip()
+    except Exception:
+        return ""
+
+
+def _hydrate_supabase_password_from_doppler() -> None:
+    """Populate hosted test DB password from Doppler when placeholders are present."""
+    if not os.getenv("DOPPLER_TOKEN"):
+        return
+
+    postgres_password = (os.getenv("SUPABASE_POSTGRES_PSWD") or "").strip()
+    if not is_placeholder_value(postgres_password):
+        return
+
+    legacy_app_password = (os.getenv("SUPABASE_APP_PSWD") or "").strip()
+    if not is_placeholder_value(legacy_app_password):
+        os.environ["SUPABASE_POSTGRES_PSWD"] = legacy_app_password
+        return
+
+    for key in ("SUPABASE_POSTGRES_TEST_PSWD", "SUPABASE_POSTGRES_PSWD", "SUPABASE_APP_PSWD"):
+        value = _read_doppler_secret(key)
+        if not is_placeholder_value(value):
+            os.environ["SUPABASE_POSTGRES_PSWD"] = value
+            break
+
+
 env_test_path = Path(__file__).resolve().parents[1] / ".env.test"
+env_local_path = Path(__file__).resolve().parents[2] / ".env.local"
 _load_env_file(env_test_path)
+_load_env_file(
+    env_local_path,
+    allowed_prefixes=("DOPPLER_",),
+)
 
 # Also set individual env vars as a fallback
 # These are mock values - never use real secrets in tests
@@ -91,6 +130,7 @@ if use_supabase_db:
         allowed_prefixes=("SUPABASE_", "DATABASE_URL"),
         override=True,
     )
+    _hydrate_supabase_password_from_doppler()
 
     supabase_config_errors = validate_supabase_test_env(os.environ)
     if supabase_config_errors:

@@ -16,6 +16,20 @@ _PLACEHOLDER_SUBSTRINGS = {
 }
 
 
+def resolve_supabase_db_password(env: Mapping[str, str]) -> str:
+    """Resolve Supabase DB password with placeholder-aware precedence."""
+    postgres_password = (env.get("SUPABASE_POSTGRES_PSWD") or "").strip()
+    app_password = (env.get("SUPABASE_APP_PSWD") or "").strip()
+
+    if not is_placeholder_value(postgres_password):
+        return postgres_password
+    if not is_placeholder_value(app_password):
+        return app_password
+
+    # Keep legacy behavior for error reporting paths where both are placeholder-ish.
+    return postgres_password or app_password
+
+
 def is_truthy(value: str | None) -> bool:
     """Return whether a string value should be treated as true."""
     if value is None:
@@ -79,7 +93,7 @@ def validate_supabase_test_env(env: Mapping[str, str]) -> list[str]:
     project_id = (env.get("SUPABASE_PROJECT_ID") or "").strip()
     pooler_host = (env.get("SUPABASE_POOLER_HOST") or "").strip()
     pooler_user = (env.get("SUPABASE_POOLER_USER") or "").strip()
-    db_password = (env.get("SUPABASE_APP_PSWD") or env.get("SUPABASE_POSTGRES_PSWD") or "").strip()
+    db_password = resolve_supabase_db_password(env)
 
     if not supabase_url or "supabase.co" not in supabase_url:
         errors.append("SUPABASE_URL must be set to a valid Supabase project URL.")
@@ -91,7 +105,7 @@ def validate_supabase_test_env(env: Mapping[str, str]) -> list[str]:
         errors.append("SUPABASE_POOLER_USER must be set.")
     if is_placeholder_value(db_password):
         errors.append(
-            "SUPABASE_APP_PSWD or SUPABASE_POSTGRES_PSWD must be set to a non-placeholder value."
+            "SUPABASE_POSTGRES_PSWD must be non-placeholder (SUPABASE_APP_PSWD is legacy fallback)."
         )
 
     return errors
@@ -107,10 +121,7 @@ def build_supabase_test_database_url(env: Mapping[str, str]) -> str | None:
     user = (env.get("SUPABASE_POOLER_USER") or "").strip()
     db_name = (env.get("SUPABASE_DB_NAME") or "postgres").strip()
     sslmode = (env.get("SUPABASE_SSLMODE") or "require").strip()
-    password = (
-        (env.get("SUPABASE_APP_PSWD") or "").strip()
-        or (env.get("SUPABASE_POSTGRES_PSWD") or "").strip()
-    )
+    password = resolve_supabase_db_password(env)
 
     if not host or not user or not password:
         return None

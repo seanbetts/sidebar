@@ -6,6 +6,7 @@ from tests.db_config import (
     is_supabase_database_url,
     is_placeholder_value,
     is_truthy,
+    resolve_supabase_db_password,
     resolve_default_test_database_url,
     use_supabase_test_db,
     validate_supabase_test_env,
@@ -73,6 +74,22 @@ def test_is_placeholder_value_detects_common_test_values() -> None:
     assert not is_placeholder_value("real-secret-value")
 
 
+def test_resolve_supabase_db_password_prefers_postgres_secret() -> None:
+    env = {
+        "SUPABASE_POSTGRES_PSWD": "postgres-secret",
+        "SUPABASE_APP_PSWD": "app-secret",
+    }
+    assert resolve_supabase_db_password(env) == "postgres-secret"
+
+
+def test_resolve_supabase_db_password_falls_back_to_legacy_app_secret() -> None:
+    env = {
+        "SUPABASE_POSTGRES_PSWD": "test-password",
+        "SUPABASE_APP_PSWD": "app-secret",
+    }
+    assert resolve_supabase_db_password(env) == "app-secret"
+
+
 def test_validate_supabase_test_env_accepts_supabase_database_url() -> None:
     env = {
         "DATABASE_URL": "postgresql://postgres.real:secure-pass@aws-1-eu-west-1.pooler.supabase.com:6543/postgres"
@@ -99,7 +116,19 @@ def test_validate_supabase_test_env_requires_non_placeholder_supabase_settings()
     }
     errors = validate_supabase_test_env(env)
     assert errors
-    assert any("must be set to a non-placeholder value" in message for message in errors)
+    assert any("must be non-placeholder" in message for message in errors)
+
+
+def test_validate_supabase_test_env_accepts_legacy_app_password_fallback() -> None:
+    env = {
+        "SUPABASE_URL": "https://project.supabase.co",
+        "SUPABASE_PROJECT_ID": "project",
+        "SUPABASE_POOLER_HOST": "aws-1-eu-west-1.pooler.supabase.com",
+        "SUPABASE_POOLER_USER": "sidebar_app.project",
+        "SUPABASE_POSTGRES_PSWD": "test-placeholder-password",
+        "SUPABASE_APP_PSWD": "secure pass",
+    }
+    assert validate_supabase_test_env(env) == []
 
 
 def test_build_supabase_test_database_url_uses_supabase_database_url() -> None:
@@ -120,4 +149,19 @@ def test_build_supabase_test_database_url_builds_from_pooler_env() -> None:
     assert (
         build_supabase_test_database_url(env)
         == "postgresql://sidebar_app.project:secure+pass@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require"
+    )
+
+
+def test_build_supabase_test_database_url_prefers_postgres_password() -> None:
+    env = {
+        "SUPABASE_POOLER_HOST": "aws-1-eu-west-1.pooler.supabase.com",
+        "SUPABASE_POOLER_USER": "sidebar_app.project",
+        "SUPABASE_POSTGRES_PSWD": "postgres pass",
+        "SUPABASE_APP_PSWD": "app pass",
+        "SUPABASE_DB_NAME": "postgres",
+        "SUPABASE_SSLMODE": "require",
+    }
+    assert (
+        build_supabase_test_database_url(env)
+        == "postgresql://sidebar_app.project:postgres+pass@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require"
     )
