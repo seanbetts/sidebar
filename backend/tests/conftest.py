@@ -434,6 +434,9 @@ def test_db(test_db_engine):
         autocommit=False, autoflush=False, bind=test_db_engine
     )
     db = TestSessionLocal()
+    # Re-apply public search_path on every new transaction to avoid
+    # pooled-connection search_path drift between tests.
+    db.info["force_public_search_path"] = True
     db.execute(text("SET search_path TO public"))
     Base.metadata.create_all(bind=db.connection())
 
