@@ -10,7 +10,8 @@ from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import requests
-from PIL import Image  # type: ignore[import-untyped]
+from PIL import Image
+from PIL.Image import Resampling
 
 from api.services.storage.service import get_favicon_storage_backend
 from api.services.web_save_constants import USER_AGENT
@@ -140,11 +141,12 @@ class FaviconService:
             return None
 
         try:
-            image = Image.open(io.BytesIO(raw_bytes))
-            image.load()
+            loaded_image = Image.open(io.BytesIO(raw_bytes))
+            loaded_image.load()
         except Exception:
             return None
 
+        image: Image.Image = loaded_image
         if getattr(image, "is_animated", False):
             with suppress(Exception):
                 image.seek(0)
@@ -152,7 +154,10 @@ class FaviconService:
         if image.mode not in {"RGB", "RGBA"}:
             image = image.convert("RGBA")
 
-        image.thumbnail((MAX_FAVICON_DIMENSION, MAX_FAVICON_DIMENSION), Image.LANCZOS)
+        image.thumbnail(
+            (MAX_FAVICON_DIMENSION, MAX_FAVICON_DIMENSION),
+            Resampling.LANCZOS,
+        )
 
         output = io.BytesIO()
         image.save(output, format="PNG", optimize=True)

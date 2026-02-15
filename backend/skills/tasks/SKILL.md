@@ -1,3 +1,14 @@
+---
+name: tasks
+description: Create, complete, defer, and organize tasks and projects.
+metadata:
+  capabilities:
+    reads: true
+    writes: true
+    network: false
+    external_apis: false
+---
+
 # Tasks Skill
 
 Manage user tasks including creating, completing, deferring, and organizing tasks into projects and groups.

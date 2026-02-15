@@ -21,6 +21,29 @@ class ShareStateView: UIView {
         static let logoSize: CGFloat = 34
     }
 
+    private struct ColorPalette {
+        let hostBackground: UIColor
+        let stateBackground: UIColor
+        let cardBackground: UIColor
+
+        static func make(for style: Style) -> ColorPalette {
+            switch style {
+            case .card:
+                return ColorPalette(
+                    hostBackground: .systemBackground,
+                    stateBackground: .systemBackground,
+                    cardBackground: .secondarySystemBackground
+                )
+            case .minimal:
+                return ColorPalette(
+                    hostBackground: .clear,
+                    stateBackground: .clear,
+                    cardBackground: .clear
+                )
+            }
+        }
+    }
+
     private let titleLabel = UILabel()
     private let messageLabel = UILabel()
     private let logoImageView = UIImageView()
@@ -28,8 +51,12 @@ class ShareStateView: UIView {
     private let brandStack = UIStackView()
     private let style: Style
 
+    private var colorPalette: ColorPalette {
+        ColorPalette.make(for: style)
+    }
+
     var hostBackgroundColor: UIColor {
-        style == .minimal ? .clear : .systemBackground
+        colorPalette.hostBackground
     }
 
     func applyHostBackground(to hostView: SharePlatformView) {
@@ -87,7 +114,7 @@ class ShareStateView: UIView {
         spacingAfterTitle: CGFloat,
         footerView: UIView?
     ) {
-        backgroundColor = style == .minimal ? .clear : .systemGroupedBackground
+        backgroundColor = colorPalette.stateBackground
         configureGrabHandle()
 
         configureLabels(message: message)
@@ -171,7 +198,7 @@ class ShareStateView: UIView {
                 bottom: Layout.cardVerticalPadding,
                 trailing: Layout.cardHorizontalPadding
             )
-            content.backgroundColor = .secondarySystemBackground
+            content.backgroundColor = colorPalette.cardBackground
             content.layer.cornerRadius = Layout.cardCornerRadius
             content.layer.cornerCurve = .continuous
             content.accessibilityIdentifier = "share-state-card"

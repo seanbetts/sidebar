@@ -1,6 +1,6 @@
 import pytest
-from api.services import tool_mapper as tool_mapper_module
-from api.services.tool_mapper import ToolMapper
+from api.services.agent.tools import mapper as tool_mapper_module
+from api.services.agent.tools.mapper import ToolMapper
 
 
 class DummyExecutor:

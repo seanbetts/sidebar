@@ -211,6 +211,7 @@ def test_website_summary_does_not_lazy_load_deferred_content(test_db):
     )
     test_db.add(website)
     test_db.commit()
+    test_db.expunge_all()
 
     listed = (
         test_db.query(Website)

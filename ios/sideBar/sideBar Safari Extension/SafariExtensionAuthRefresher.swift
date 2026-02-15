@@ -163,10 +163,7 @@ private final class SafariExtensionSupabaseKeychainStorage: AuthLocalStorage, @u
 
 enum SafariExtensionAuthCoordinator {
     static func forceRefreshAccessToken() async -> Bool {
-        let keychain = KeychainAuthStateStore(
-            service: AppGroupConfiguration.keychainService,
-            accessGroup: AppGroupConfiguration.keychainAccessGroup
-        )
+        let keychain = ExtensionAuthStateStoreFactory.makeSharedStore()
         guard let refresher = SafariExtensionAuthRefresher(keychain: keychain) else {
             return false
         }

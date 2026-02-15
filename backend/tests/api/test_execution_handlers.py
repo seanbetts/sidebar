@@ -1,4 +1,4 @@
-from api.services.tools import execution_handlers
+from api.services.agent.tools import execution as execution_handlers
 
 
 def test_handle_ui_theme_rejects_invalid():
@@ -25,7 +25,7 @@ def test_handle_prompt_preview_requires_db_and_user():
 
 
 def test_handle_prompt_preview_uses_prompt_context_service(monkeypatch):
-    from api.services import prompt_context_service
+    from api.services.agent.prompt import composer as prompt_context_service
 
     captured = {}
 

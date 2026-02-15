@@ -5,16 +5,16 @@ import time
 from typing import Any
 
 from api.config import settings
-from api.executors.skill_executor import SkillExecutor
 from api.metrics import tool_execution_duration_seconds, tool_executions_total
 from api.security.audit_logger import AuditLogger
 from api.security.path_validator import PathValidator
-from api.services.tools.definitions import get_tool_definitions
-from api.services.tools.execution_handlers import (
+from api.services.agent.skills.executor import SkillExecutor
+from api.services.agent.tools.execution import (
     handle_memory_tool,
     handle_prompt_preview,
     handle_ui_theme,
 )
+from api.services.agent.tools.registry import get_tool_definitions
 
 SKILLS_REQUIRING_USER_ID = {
     "fs",

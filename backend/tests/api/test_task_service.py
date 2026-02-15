@@ -2,34 +2,14 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
-from api.db.base import Base
 from api.exceptions import TaskNotFoundError
 from api.services.task_service import TaskService
 from api.services.task_sync_service import TaskSyncService
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture
-def db_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(
-        isolation_level="AUTOCOMMIT"
-    )
-    schema = f"test_{uuid.uuid4().hex}"
-
-    connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-    connection.execute(text(f'SET search_path TO "{schema}"'))
-    Base.metadata.create_all(bind=connection)
-
-    Session = sessionmaker(bind=connection)
-    session = Session()
-
-    try:
-        yield session
-    finally:
-        session.close()
-        connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-        connection.close()
+def db_session(test_db):
+    return test_db
 
 
 def test_create_task_group_project_task(db_session):
@@ -184,7 +164,12 @@ def test_set_task_recurrence_sets_anchor(db_session):
 
     refreshed = TaskService.get_task(db_session, "user", str(task.id))
     assert refreshed.repeating is True
-    assert refreshed.recurrence_rule == {"type": "weekly", "interval": 2, "weekday": 1}
+    assert refreshed.recurrence_rule == {
+        "type": "weekly",
+        "interval": 2,
+        "weekday": 1,
+        "anchor_date": "2026-01-05",
+    }
     assert refreshed.repeat_template_id == task.id
     assert refreshed.deadline == date(2026, 1, 5)
 

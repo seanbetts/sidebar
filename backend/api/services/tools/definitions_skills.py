@@ -32,7 +32,7 @@ def get_skills_definitions() -> dict:
                 "properties": {
                     "eval_file": {
                         "type": "string",
-                        "description": "Path to evaluation YAML",
+                        "description": "Path to evaluation XML",
                     },
                     "transport": {"type": "string"},
                     "model": {"type": "string"},
@@ -46,7 +46,7 @@ def get_skills_definitions() -> dict:
                 "required": ["eval_file"],
             },
             "skill": "mcp-builder",
-            "script": "evaluate_mcp.py",
+            "script": "evaluation.py",
             "build_args": pm.build_mcp_evaluation_args,
         },
     }

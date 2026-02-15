@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from api.services import web_save_includes, web_save_parser
 from bs4 import BeautifulSoup
 from lxml import html as lxml_html
+import pytest
 
 
 def test_parse_url_local_builds_frontmatter(monkeypatch):
@@ -376,6 +377,140 @@ def test_parse_url_local_discard_rule(monkeypatch):
     data = web_save_parser.yaml.safe_load(frontmatter)
     assert data["discarded"] is True
     assert data["rule_id"] == "discard-it"
+
+
+def test_parse_url_local_raises_fallback_error_for_discard_rule(monkeypatch):
+    html = "<html><head><title>Fallback</title></head><body><article>Skip</article></body></html>"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/fallback", False
+
+    rule = web_save_parser.Rule(
+        id="discard-fallback",
+        phase="pre",
+        priority=0,
+        trigger={"dom": {"any": ["article"]}},
+        discard=True,
+        fallback="jina",
+    )
+    engine = web_save_parser.RuleEngine([rule])
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+
+    with pytest.raises(web_save_parser.LocalParseFallbackError) as exc_info:
+        web_save_parser.parse_url_local("example.com/fallback")
+
+    assert exc_info.value.fallback == "jina"
+    assert exc_info.value.rule_id == "discard-fallback"
+
+
+def test_archive_family_captcha_rules_match_pre_phase():
+    html = """
+    <html>
+      <body>
+        <h1>One more step</h1>
+        <div id="g-recaptcha"></div>
+      </body>
+    </html>
+    """
+    engine = web_save_parser.get_rule_engine()
+    cases = [
+        ("https://archive.is/QSErS", "archiveis-captcha-discard"),
+        ("https://archive.ph/QSErS", "archiveph-captcha-discard"),
+        ("https://archive.today/QSErS", "archivetoday-captcha-discard"),
+        ("https://archive.md/QSErS", "archivemd-captcha-discard"),
+    ]
+
+    for url, rule_id in cases:
+        matched = engine.match_rules(url, html, phase="pre")
+        matched_ids = {rule.id for rule in matched}
+        assert rule_id in matched_ids
+
+
+def test_parse_url_local_archiveis_captcha_requests_fallback(monkeypatch):
+    html = """
+    <html>
+      <head><title>archive.is</title></head>
+      <body>
+        <h1>One more step</h1>
+        <div id="g-recaptcha"></div>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://archive.is/QSErS", True
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+
+    with pytest.raises(web_save_parser.LocalParseFallbackError) as exc_info:
+        web_save_parser.parse_url_local("https://archive.is/QSErS")
+
+    assert exc_info.value.fallback == "jina"
+    assert exc_info.value.rule_id == "archiveis-captcha-discard"
+
+
+def test_airbnb_listing_rule_matches_pre_phase():
+    html = """
+    <html>
+      <head>
+        <meta name="application-name" content="Airbnb"/>
+      </head>
+      <body>
+        <script>
+          window.__bootstrap = {"pdpPresentation": {"node": {"__typename": "DemandStayListing"}}};
+        </script>
+      </body>
+    </html>
+    """
+    engine = web_save_parser.get_rule_engine()
+    matched = engine.match_rules(
+        "https://www.airbnb.co.uk/rooms/29759249?viralityEntryPoint=1&s=76",
+        html,
+        phase="pre",
+    )
+    matched_ids = {rule.id for rule in matched}
+    assert "airbnb-listing-fallback-co-uk" in matched_ids
+
+
+def test_parse_url_local_airbnb_listing_requests_fallback(monkeypatch):
+    html = """
+    <html>
+      <head><title>Airbnb</title></head>
+      <body>
+        <script>
+          window.__bootstrap = {"pdpPresentation": {"node": {"__typename": "DemandStayListing"}}};
+        </script>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html,
+            "https://www.airbnb.co.uk/rooms/29759249?viralityEntryPoint=1&s=76",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+
+    with pytest.raises(web_save_parser.LocalParseFallbackError) as exc_info:
+        web_save_parser.parse_url_local(
+            "https://www.airbnb.co.uk/rooms/29759249?viralityEntryPoint=1&s=76"
+        )
+
+    assert exc_info.value.fallback == "jina"
+    assert exc_info.value.rule_id == "airbnb-listing-fallback-co-uk"
 
 
 def test_parse_url_local_includes_reinserted_nodes(monkeypatch):

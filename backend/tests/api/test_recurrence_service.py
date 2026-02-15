@@ -1,28 +1,9 @@
-import uuid
 from datetime import date
 
 import plistlib
-from api.db.base import Base
 from api.models.task import Task
 from api.services.recurrence_service import RecurrenceService
 from api.services.recurrence_plist_parser import RecurrencePlistParser
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
-
-
-def _build_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(
-        isolation_level="AUTOCOMMIT"
-    )
-    schema = f"test_{uuid.uuid4().hex}"
-
-    connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-    connection.execute(text(f'SET search_path TO "{schema}"'))
-    Base.metadata.create_all(bind=connection)
-
-    Session = sessionmaker(bind=connection)
-    session = Session()
-    return session, connection, schema
 
 
 def test_parse_plist_recurrence_rule():
@@ -54,63 +35,51 @@ def test_calculate_next_occurrence_monthly_clamps():
     assert next_date == date(2026, 2, 28)
 
 
-def test_complete_repeating_task_is_idempotent(test_db_engine):
-    session, connection, schema = _build_session(test_db_engine)
-    try:
-        task = Task(
-            user_id="user",
-            title="Repeat",
-            status="today",
-            recurrence_rule={"type": "daily", "interval": 1},
-            repeating=True,
-            repeat_template=True,
-        )
-        session.add(task)
-        session.commit()
-        session.refresh(task)
+def test_complete_repeating_task_is_idempotent(test_db):
+    task = Task(
+        user_id="user",
+        title="Repeat",
+        status="today",
+        recurrence_rule={"type": "daily", "interval": 1},
+        repeating=True,
+        repeat_template=True,
+    )
+    test_db.add(task)
+    test_db.commit()
+    test_db.refresh(task)
 
-        first = RecurrenceService.complete_repeating_task(session, task)
-        session.commit()
-        assert first is not None
+    first = RecurrenceService.complete_repeating_task(test_db, task)
+    test_db.commit()
+    assert first is not None
 
-        second = RecurrenceService.complete_repeating_task(session, task)
-        session.commit()
-        assert second is not None
-        assert first.id == second.id
-    finally:
-        session.close()
-        connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-        connection.close()
+    second = RecurrenceService.complete_repeating_task(test_db, task)
+    test_db.commit()
+    assert second is not None
+    assert first.id == second.id
 
 
-def test_complete_repeating_task_uses_next_instance_date(test_db_engine):
-    session, connection, schema = _build_session(test_db_engine)
-    try:
-        task = Task(
-            user_id="user",
-            title="Repeat",
-            status="today",
-            deadline=date(2026, 1, 1),
-            recurrence_rule={"type": "daily", "interval": 1},
-            repeating=True,
-            repeat_template=True,
-            next_instance_date=date(2026, 1, 2),
-        )
-        session.add(task)
-        session.commit()
-        session.refresh(task)
+def test_complete_repeating_task_uses_next_instance_date(test_db):
+    task = Task(
+        user_id="user",
+        title="Repeat",
+        status="today",
+        deadline=date(2026, 1, 1),
+        recurrence_rule={"type": "daily", "interval": 1},
+        repeating=True,
+        repeat_template=True,
+        next_instance_date=date(2026, 1, 2),
+    )
+    test_db.add(task)
+    test_db.commit()
+    test_db.refresh(task)
 
-        task.deadline = date(2026, 1, 10)
-        session.commit()
-        session.refresh(task)
+    task.deadline = date(2026, 1, 10)
+    test_db.commit()
+    test_db.refresh(task)
 
-        next_task = RecurrenceService.complete_repeating_task(session, task)
-        session.commit()
+    next_task = RecurrenceService.complete_repeating_task(test_db, task)
+    test_db.commit()
 
-        assert next_task is not None
-        assert next_task.deadline == date(2026, 1, 2)
-        assert next_task.next_instance_date == date(2026, 1, 3)
-    finally:
-        session.close()
-        connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-        connection.close()
+    assert next_task is not None
+    assert next_task.deadline == date(2026, 1, 2)
+    assert next_task.next_instance_date == date(2026, 1, 3)

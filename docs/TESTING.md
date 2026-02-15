@@ -137,10 +137,16 @@ def test_pin():
 
 ```bash
 # Backend
-pytest                                    # All tests
-pytest backend/tests/test_notes_service.py  # Specific file
-pytest -k "pin_note"                      # Pattern matching
-pytest --cov=api --cov-report=term-missing  # With coverage
+cd backend
+UV_NATIVE_TLS=1 uv run python scripts/check_test_db_connectivity.py
+DATABASE_URL=postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test UV_NATIVE_TLS=1 uv run pytest -q -rs
+UV_NATIVE_TLS=1 uv run pytest tests/api/test_notes_service.py  # Specific file
+UV_NATIVE_TLS=1 uv run pytest -k "pin_note"                # Pattern matching
+UV_NATIVE_TLS=1 uv run pytest --cov=api --cov-report=term-missing  # With coverage
+
+# Hosted Supabase integration lane (explicit opt-in)
+USE_SUPABASE_TEST_DB=1 UV_NATIVE_TLS=1 uv run python scripts/check_test_db_connectivity.py
+USE_SUPABASE_TEST_DB=1 UV_NATIVE_TLS=1 uv run pytest -q -rs
 
 # Frontend
 npm test                                  # All tests
@@ -163,6 +169,13 @@ xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
   -only-testing:sideBarTests \
   -retry-tests-on-failure -test-iterations 3 test
 ```
+
+The default backend lane targets local Postgres on `localhost:5433/sidebar_test`.
+Hosted Supabase runs require `USE_SUPABASE_TEST_DB=1` plus dedicated non-placeholder test credentials.
+Hosted credentials are read from `backend/.env.test` for test runs.
+If `.env.test` keeps `SUPABASE_POSTGRES_PSWD` as a placeholder, Doppler-backed runs can hydrate the real value at runtime via `DOPPLER_TOKEN`.
+`SUPABASE_APP_PSWD` is only a legacy fallback and is not required in `backend/.env.test`.
+The preflight command validates lane configuration and runs `SELECT 1` before pytest.
 
 ### iOS Test Stability
 

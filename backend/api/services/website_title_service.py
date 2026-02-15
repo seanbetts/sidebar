@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Mapping
 from urllib.parse import quote_plus
 
 import requests
@@ -77,6 +78,21 @@ def _iter_jsonld_titles(raw_html: str) -> list[str]:
     return titles
 
 
+def _meta_content(soup: BeautifulSoup, attrs: Mapping[str, str]) -> str | None:
+    """Return a string meta content value when present."""
+    node = soup.find("meta", attrs=dict(attrs))
+    if node is None:
+        return None
+    value = node.get("content")
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, str):
+                return item
+    return None
+
+
 def extract_youtube_title_from_html(raw_html: str) -> str | None:
     """Extract a best-effort YouTube title from HTML/meta/json-ld."""
     if not raw_html:
@@ -84,21 +100,9 @@ def extract_youtube_title_from_html(raw_html: str) -> str | None:
 
     soup = BeautifulSoup(raw_html, "html.parser")
     candidates: list[str | None] = [
-        (
-            soup.find("meta", attrs={"property": "og:title"}).get("content")
-            if soup.find("meta", attrs={"property": "og:title"})
-            else None
-        ),
-        (
-            soup.find("meta", attrs={"name": "twitter:title"}).get("content")
-            if soup.find("meta", attrs={"name": "twitter:title"})
-            else None
-        ),
-        (
-            soup.find("meta", attrs={"itemprop": "name"}).get("content")
-            if soup.find("meta", attrs={"itemprop": "name"})
-            else None
-        ),
+        _meta_content(soup, {"property": "og:title"}),
+        _meta_content(soup, {"name": "twitter:title"}),
+        _meta_content(soup, {"itemprop": "name"}),
         soup.title.string if soup.title and soup.title.string else None,
     ]
 

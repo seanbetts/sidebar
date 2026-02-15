@@ -1,4 +1,6 @@
-from api.services.tools.definitions import get_tool_definitions
+from pathlib import Path
+
+from api.services.agent.tools.registry import get_tool_definitions
 from api.services.tools.definitions_fs import get_fs_definitions
 from api.services.tools.definitions_misc import get_misc_definitions
 from api.services.tools.definitions_notes import get_notes_definitions
@@ -55,3 +57,18 @@ def test_tool_definitions_have_no_duplicate_names():
     expected_total = sum(len(group) for group in groups)
     merged = get_tool_definitions()
     assert len(merged) == expected_total
+
+
+def test_skill_tool_scripts_exist_on_disk():
+    skills_root = Path(__file__).resolve().parents[2] / "skills"
+    assert skills_root.exists()
+
+    for definition in get_tool_definitions().values():
+        skill = definition.get("skill")
+        script = definition.get("script")
+        if not skill or not script:
+            continue
+
+        direct_path = skills_root / skill / script
+        scripts_path = skills_root / skill / "scripts" / script
+        assert direct_path.exists() or scripts_path.exists()

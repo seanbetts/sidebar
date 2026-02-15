@@ -101,6 +101,18 @@ class ParsedPage:
     favicon_url: str | None = None
 
 
+class LocalParseFallbackError(RuntimeError):
+    """Signal that local parsing should hand off to an upstream fallback."""
+
+    def __init__(self, *, fallback: str, rule_id: str):
+        """Initialize fallback context used by upstream save flows."""
+        self.fallback = fallback
+        self.rule_id = rule_id
+        super().__init__(
+            f"Local parser requested fallback='{fallback}' via rule '{rule_id}'"
+        )
+
+
 def ensure_url(value: str) -> str:
     """Ensure URL has a scheme."""
     if value.startswith(("http://", "https://")):
@@ -222,6 +234,21 @@ def _paywall_frontmatter(
         "Unable to save content. This site appears to be behind a paywall.",
         meta=frontmatter_meta,
     )
+
+
+def _raise_fallback_for_discard_rule(*, rule: Rule, phase: str, url: str) -> None:
+    """Raise when a discard rule explicitly requests upstream fallback."""
+    fallback = (rule.fallback or "").strip().lower()
+    if fallback != "jina":
+        return
+    logger.info(
+        "web-save fallback requested url=%s phase=%s rule=%s fallback=%s",
+        url,
+        phase,
+        rule.id,
+        fallback,
+    )
+    raise LocalParseFallbackError(fallback=fallback, rule_id=rule.id)
 
 
 def extract_metadata(html: str, url: str) -> dict:
@@ -534,6 +561,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         html = engine.apply_rules(html, pre_rules)
     discard_rule = next((rule for rule in pre_rules if rule.discard), None)
     if discard_rule:
+        _raise_fallback_for_discard_rule(
+            rule=discard_rule,
+            phase="pre",
+            url=metadata.get("canonical") or final_url,
+        )
         content = _discard_frontmatter(
             source=metadata.get("canonical") or final_url,
             domain=urlparse(final_url).netloc,
@@ -623,6 +655,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         article_html = _safe_html_tostring(post_tree, article_html)
     discard_rule = next((rule for rule in post_rules if rule.discard), None)
     if discard_rule:
+        _raise_fallback_for_discard_rule(
+            rule=discard_rule,
+            phase="post",
+            url=metadata.get("canonical") or final_url,
+        )
         content = _discard_frontmatter(
             source=metadata.get("canonical") or final_url,
             domain=urlparse(final_url).netloc,

@@ -36,7 +36,7 @@ def handle_prompt_preview(context: dict[str, Any] | None) -> dict[str, Any]:
     if not db or not user_id:
         return {"success": False, "error": "Missing database or user context"}
 
-    from api.services.prompt_context_service import PromptContextService
+    from api.services.agent.prompt.composer import PromptContextService
 
     system_prompt, first_message_prompt = PromptContextService.build_prompts(
         db=db,

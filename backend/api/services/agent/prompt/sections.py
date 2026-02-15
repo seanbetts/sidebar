@@ -6,7 +6,14 @@ import re
 from datetime import datetime
 from typing import Any
 
-from api.prompt_config import (
+from api.prompt_formatters import (
+    calculate_age,
+    detect_operating_system,
+    format_location_levels,
+    format_weather,
+    truncate_content,
+)
+from api.services.agent.prompt.templates import (
     CONTEXT_GUIDANCE_TEMPLATE,
     CURRENT_OPEN_ATTACHMENTS_HEADER,
     CURRENT_OPEN_CONTENT_HEADER,
@@ -26,13 +33,6 @@ from api.prompt_config import (
     RECENT_ACTIVITY_WRAPPER_TEMPLATE,
     SUPPORTED_VARIABLES,
     SYSTEM_PROMPT_TEMPLATE,
-)
-from api.prompt_formatters import (
-    calculate_age,
-    detect_operating_system,
-    format_location_levels,
-    format_weather,
-    truncate_content,
 )
 
 # Re-export shared prompt helpers/constants for callers/tests.

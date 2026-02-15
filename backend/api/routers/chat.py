@@ -1,4 +1,5 @@
 """Chat router with SSE streaming support."""
+# ruff: noqa: B008
 
 import asyncio
 import hashlib
@@ -27,10 +28,10 @@ from api.metrics import (
     chat_streaming_duration_seconds,
 )
 from api.schemas.tool_context import ToolExecutionContext
+from api.services.agent.prompt.composer import PromptContextService
+from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.claude_client import ClaudeClient
 from api.services.conversation_service import ConversationService
-from api.services.prompt_context_service import PromptContextService
-from api.services.skill_catalog_service import SkillCatalogService
 from api.services.user_settings_service import UserSettingsService
 from api.utils.validation import parse_uuid
 

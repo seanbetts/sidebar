@@ -8,6 +8,14 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from tests.db_config import (
+    LOCAL_TEST_DATABASE_URL,
+    build_supabase_test_database_url,
+    is_placeholder_value,
+    resolve_default_test_database_url,
+    use_supabase_test_db,
+    validate_supabase_test_env,
+)
 
 # CRITICAL: Set TESTING=1 before any application imports
 # This ensures Settings loads from .env.test instead of .env
@@ -15,7 +23,12 @@ os.environ["TESTING"] = "1"
 
 
 # Load TEST_USER_ID from .env.test if not already set.
-def _load_env_file(path: Path, allowed_prefixes: tuple[str, ...] | None = None) -> None:
+def _load_env_file(
+    path: Path,
+    allowed_prefixes: tuple[str, ...] | None = None,
+    *,
+    override: bool = False,
+) -> None:
     if not path.exists():
         return
     for line in path.read_text().splitlines():
@@ -25,13 +38,49 @@ def _load_env_file(path: Path, allowed_prefixes: tuple[str, ...] | None = None) 
         key = key.strip()
         if allowed_prefixes and not key.startswith(allowed_prefixes):
             continue
-        os.environ.setdefault(key, value.strip())
+        if override or key not in os.environ:
+            os.environ[key] = value.strip()
+
+
+def _read_doppler_secret(name: str) -> str:
+    """Best-effort read of a Doppler secret."""
+    try:
+        return subprocess.check_output(
+            ["doppler", "secrets", "get", name, "--plain"],
+            text=True,
+        ).strip()
+    except Exception:
+        return ""
+
+
+def _hydrate_supabase_password_from_doppler() -> None:
+    """Populate hosted test DB password from Doppler when placeholders are present."""
+    if not os.getenv("DOPPLER_TOKEN"):
+        return
+
+    postgres_password = (os.getenv("SUPABASE_POSTGRES_PSWD") or "").strip()
+    if not is_placeholder_value(postgres_password):
+        return
+
+    legacy_app_password = (os.getenv("SUPABASE_APP_PSWD") or "").strip()
+    if not is_placeholder_value(legacy_app_password):
+        os.environ["SUPABASE_POSTGRES_PSWD"] = legacy_app_password
+        return
+
+    for key in ("SUPABASE_POSTGRES_TEST_PSWD", "SUPABASE_POSTGRES_PSWD", "SUPABASE_APP_PSWD"):
+        value = _read_doppler_secret(key)
+        if not is_placeholder_value(value):
+            os.environ["SUPABASE_POSTGRES_PSWD"] = value
+            break
 
 
 env_test_path = Path(__file__).resolve().parents[1] / ".env.test"
 env_local_path = Path(__file__).resolve().parents[2] / ".env.local"
 _load_env_file(env_test_path)
-_load_env_file(env_local_path, allowed_prefixes=("SUPABASE_", "DOPPLER_"))
+_load_env_file(
+    env_local_path,
+    allowed_prefixes=("DOPPLER_",),
+)
 
 # Also set individual env vars as a fallback
 # These are mock values - never use real secrets in tests
@@ -41,37 +90,13 @@ if not TEST_USER_ID:
     raise RuntimeError("TEST_USER_ID must be set for tests to avoid production data.")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key-12345")
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key-12345")
+os.environ.setdefault("BEARER_TOKEN", "test-bearer-token")
+os.environ.setdefault("SUPABASE_POSTGRES_PSWD", "test-supabase-postgres-password")
 os.environ.setdefault("WORKSPACE_BASE", "/tmp/test-workspace")
 os.environ.setdefault(
     "SKILLS_DIR",
     str(Path(__file__).resolve().parents[1] / "skills"),
 )
-
-if os.getenv("DOPPLER_TOKEN"):
-    anon_key = os.getenv("SUPABASE_ANON_KEY", "")
-    if not anon_key or anon_key.startswith("test-"):
-        try:
-            value = subprocess.check_output(
-                ["doppler", "secrets", "get", "SUPABASE_ANON_KEY", "--plain"],
-                text=True,
-            ).strip()
-            if value:
-                os.environ["SUPABASE_ANON_KEY"] = value
-        except Exception:
-            pass
-
-if not os.getenv("SUPABASE_SERVICE_ROLE_KEY") and os.getenv("DOPPLER_TOKEN"):
-    for key in ("SUPABASE_SERVICE_ROLE_TEST_KEY", "SUPABASE_SERVICE_ROLE_KEY"):
-        try:
-            value = subprocess.check_output(
-                ["doppler", "secrets", "get", key, "--plain"],
-                text=True,
-            ).strip()
-            if value:
-                os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", value)
-                break
-        except Exception:
-            continue
 
 auth_dev_mode = os.getenv("AUTH_DEV_MODE", "").lower() in {"1", "true", "yes", "on"}
 if not auth_dev_mode and not os.getenv("BEARER_TOKEN"):
@@ -96,48 +121,33 @@ if not auth_dev_mode and not os.getenv("BEARER_TOKEN"):
         except Exception:
             pass
 
-database_url = os.getenv("DATABASE_URL", "")
-if "localhost" in database_url or "127.0.0.1" in database_url or not database_url:
-    if not os.getenv("SUPABASE_POSTGRES_PSWD") and os.getenv("DOPPLER_TOKEN"):
-        for key in ("SUPABASE_POSTGRES_TEST_PSWD", "SUPABASE_POSTGRES_PSWD"):
-            try:
-                password = subprocess.check_output(
-                    ["doppler", "secrets", "get", key, "--plain"],
-                    text=True,
-                ).strip()
-                if password:
-                    os.environ.setdefault("SUPABASE_POSTGRES_PSWD", password)
-                    break
-            except Exception:
-                continue
-
-    if os.getenv("SUPABASE_POOLER_USER", "").startswith(
-        "sidebar_app"
-    ) and not os.getenv("SUPABASE_APP_PSWD"):
-        try:
-            password = subprocess.check_output(
-                ["doppler", "secrets", "get", "SUPABASE_APP_PSWD", "--plain"],
-                text=True,
-            ).strip()
-            if password:
-                os.environ.setdefault("SUPABASE_APP_PSWD", password)
-        except Exception:
-            pass
-
-    if os.getenv("SUPABASE_POSTGRES_PSWD") and os.getenv("SUPABASE_PROJECT_ID"):
-        try:
-            from api.config import _build_database_url
-
-            os.environ.pop("DATABASE_URL", None)
-            os.environ["DATABASE_URL"] = _build_database_url()
-        except Exception:
-            pass
-
-if not os.getenv("SUPABASE_PROJECT_ID"):
-    os.environ.setdefault(
-        "DATABASE_URL",
-        "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test",
+use_supabase_db = use_supabase_test_db(os.environ)
+if use_supabase_db:
+    # Hosted test lane must use explicit test credentials from .env.test rather
+    # than inheriting workstation-local Supabase settings.
+    _load_env_file(
+        env_test_path,
+        allowed_prefixes=("SUPABASE_", "DATABASE_URL"),
+        override=True,
     )
+    _hydrate_supabase_password_from_doppler()
+
+    supabase_config_errors = validate_supabase_test_env(os.environ)
+    if supabase_config_errors:
+        formatted_errors = "\n".join(f"- {error}" for error in supabase_config_errors)
+        raise RuntimeError(
+            "USE_SUPABASE_TEST_DB=1 requires dedicated hosted test DB credentials.\n"
+            f"{formatted_errors}"
+        )
+
+    hosted_url = build_supabase_test_database_url(os.environ)
+    if not hosted_url:
+        raise RuntimeError(
+            "USE_SUPABASE_TEST_DB=1 requires a Supabase DATABASE_URL or pooler env config."
+        )
+    os.environ["DATABASE_URL"] = hosted_url
+else:
+    os.environ["DATABASE_URL"] = resolve_default_test_database_url(os.environ)
 
 # Ensure all SQLAlchemy models are registered before metadata operations.
 from api.models.conversation import Conversation  # noqa: F401, E402
@@ -379,9 +389,7 @@ def test_db_engine():
     from sqlalchemy import create_engine, text
 
     # Use the test database URL
-    test_db_url = os.getenv(
-        "DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test"
-    )
+    test_db_url = os.getenv("DATABASE_URL", LOCAL_TEST_DATABASE_URL)
 
     # Create engine
     engine = create_engine(test_db_url, pool_pre_ping=True)
@@ -393,17 +401,19 @@ def test_db_engine():
         engine.dispose()
         pytest.skip(f"Test database unavailable: {exc}")
 
-    # Create all tables in public schema
-    with engine.connect() as connection:
-        connection.execute(text("SET search_path TO public"))
-        Base.metadata.create_all(bind=connection)
+    if not use_supabase_db:
+        # Local lane owns table lifecycle for deterministic setup.
+        with engine.connect() as connection:
+            connection.execute(text("SET search_path TO public"))
+            Base.metadata.create_all(bind=connection)
 
     yield engine
 
-    # Cleanup: Drop all tables after all tests
-    with engine.connect() as connection:
-        connection.execute(text("SET search_path TO public"))
-        Base.metadata.drop_all(bind=connection)
+    if not use_supabase_db:
+        # Local lane cleans up after the suite; hosted lane must not drop tables.
+        with engine.connect() as connection:
+            connection.execute(text("SET search_path TO public"))
+            Base.metadata.drop_all(bind=connection)
     engine.dispose()
 
 
@@ -418,26 +428,42 @@ def test_db(test_db_engine):
     from sqlalchemy import text
     from sqlalchemy.orm import sessionmaker
 
-    # Create session
-    TestSessionLocal = sessionmaker(
-        autocommit=False, autoflush=False, bind=test_db_engine
-    )
+    if use_supabase_db:
+        connection = test_db_engine.connect()
+        transaction = connection.begin()
+        TestSessionLocal = sessionmaker(
+            autocommit=False,
+            autoflush=False,
+            bind=connection,
+            join_transaction_mode="create_savepoint",
+        )
+        db = TestSessionLocal()
+        db.info["force_public_search_path"] = True
+        db.execute(text("SET search_path TO public"))
+
+        try:
+            yield db
+        finally:
+            db.close()
+            transaction.rollback()
+            connection.close()
+        return
+
+    # Local lane keeps deterministic table cleanup between tests because API
+    # requests run in separate sessions and can otherwise leak state.
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_db_engine)
     db = TestSessionLocal()
+    db.info["force_public_search_path"] = True
     db.execute(text("SET search_path TO public"))
     Base.metadata.create_all(bind=db.connection())
 
     try:
         yield db
     finally:
-        # Rollback any uncommitted changes
         db.rollback()
-
-        # Clean up all data from tables (but keep schema)
-        # This ensures each test starts with a clean state
         for table in reversed(Base.metadata.sorted_tables):
             db.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
         db.commit()
-
         db.close()
 
 

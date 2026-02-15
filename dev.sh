@@ -1,4 +1,26 @@
 #!/bin/bash
+# sideBar local dev orchestrator.
+#
+# Run from repository root:
+#   ./dev.sh start
+#
+# Common commands:
+#   ./dev.sh start
+#     Start backend (http://localhost:8001), frontend (http://localhost:3000),
+#     ingestion worker, and ensure local test Postgres availability.
+#   ./dev.sh stop
+#     Stop all services managed by this script.
+#   ./dev.sh restart
+#     Restart all services.
+#   ./dev.sh status
+#     Show running status, URLs, and log file locations.
+#   ./dev.sh logs [backend|frontend|ingestion]
+#     Tail logs for one service or all services.
+#
+# Notes:
+# - If .env and/or .env.local exist, they are loaded automatically.
+# - If Doppler is installed and configured, services run through doppler.
+# - Set SIDEBAR_DEV_TEST_DB=0 to skip local test DB setup/checks.
 set -euo pipefail
 
 BACKEND_LOG="/tmp/sidebar-backend.log"
@@ -8,6 +30,14 @@ BACKEND_PID="/tmp/sidebar-backend.pid"
 FRONTEND_PID="/tmp/sidebar-frontend.pid"
 INGESTION_PID="/tmp/sidebar-ingestion-worker.pid"
 REPO_ROOT="$(pwd)"
+TEST_DB_HOST="localhost"
+TEST_DB_PORT="5433"
+TEST_DB_NAME="sidebar_test"
+TEST_DB_USER="sidebar"
+TEST_DB_PASSWORD="sidebar_dev"
+TEST_DB_URL="postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test"
+TEST_DB_DATA_DIR="${HOME}/.sidebar/test-postgres"
+TEST_DB_LOG="/tmp/sidebar-test-postgres.log"
 use_doppler=0
 RESTART_LOCK="/tmp/sidebar-dev-restart.lock"
 
@@ -24,12 +54,199 @@ load_env() {
   fi
 }
 
+normalize_runtime_paths() {
+  local default_skills_dir="${REPO_ROOT}/backend/skills"
+
+  if [[ ! -d "${default_skills_dir}" ]]; then
+    return
+  fi
+
+  if [[ -n "${SKILLS_DIR:-}" && ! -d "${SKILLS_DIR}" ]]; then
+    echo "SKILLS_DIR does not exist (${SKILLS_DIR}); using ${default_skills_dir}."
+    export SKILLS_DIR="${default_skills_dir}"
+    return
+  fi
+
+  if [[ -z "${SKILLS_DIR:-}" ]]; then
+    export SKILLS_DIR="${default_skills_dir}"
+  fi
+}
+
 detect_doppler() {
   if command -v doppler >/dev/null 2>&1; then
     if [[ -n "${DOPPLER_TOKEN:-}" || -n "${DOPPLER_PROJECT:-}" || -n "${DOPPLER_CONFIG:-}" ]]; then
       use_doppler=1
     fi
   fi
+}
+
+is_test_db_enabled() {
+  case "${SIDEBAR_DEV_TEST_DB:-1}" in
+    0|false|FALSE|no|NO|off|OFF)
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+is_test_db_running() {
+  if command -v pg_isready >/dev/null 2>&1; then
+    pg_isready -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${TEST_DB_USER}" -d "${TEST_DB_NAME}" >/dev/null 2>&1
+    return $?
+  fi
+
+  if command -v nc >/dev/null 2>&1; then
+    nc -z "${TEST_DB_HOST}" "${TEST_DB_PORT}" >/dev/null 2>&1
+    return $?
+  fi
+
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"${TEST_DB_PORT}" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+
+  return 1
+}
+
+wait_for_test_db() {
+  for _ in {1..30}; do
+    if is_test_db_running; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+has_postgres_tools() {
+  command -v initdb >/dev/null 2>&1 &&
+    command -v pg_ctl >/dev/null 2>&1 &&
+    command -v psql >/dev/null 2>&1 &&
+    command -v pg_isready >/dev/null 2>&1
+}
+
+ensure_postgres_tools() {
+  if has_postgres_tools; then
+    return 0
+  fi
+
+  if command -v brew >/dev/null 2>&1; then
+    local formula
+    local bin_dir
+    for formula in postgresql@17 postgresql@16 postgresql@15 postgresql@14 postgresql; do
+      if brew list --formula "${formula}" >/dev/null 2>&1; then
+        bin_dir="$(brew --prefix "${formula}")/bin"
+        if [[ -d "${bin_dir}" ]]; then
+          export PATH="${bin_dir}:${PATH}"
+          break
+        fi
+      fi
+    done
+  fi
+
+  has_postgres_tools
+}
+
+detect_test_db_admin_user() {
+  local candidate
+  for candidate in "${TEST_DB_USER}" "$(id -un)" postgres; do
+    if psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${candidate}" -d postgres \
+      -tAc "SELECT 1" >/dev/null 2>&1; then
+      echo "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+bootstrap_test_db_objects() {
+  local admin_user="$1"
+  local role_exists
+  local db_exists
+
+  role_exists=$(
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -tAc "SELECT 1 FROM pg_roles WHERE rolname='${TEST_DB_USER}'" | tr -d '[:space:]'
+  )
+  if [[ "${role_exists}" != "1" ]]; then
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -c "CREATE ROLE ${TEST_DB_USER} WITH LOGIN PASSWORD '${TEST_DB_PASSWORD}';" >/dev/null
+  else
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -c "ALTER ROLE ${TEST_DB_USER} WITH LOGIN PASSWORD '${TEST_DB_PASSWORD}';" >/dev/null
+  fi
+
+  db_exists=$(
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -tAc "SELECT 1 FROM pg_database WHERE datname='${TEST_DB_NAME}'" | tr -d '[:space:]'
+  )
+  if [[ "${db_exists}" != "1" ]]; then
+    psql -h "${TEST_DB_HOST}" -p "${TEST_DB_PORT}" -U "${admin_user}" -d postgres \
+      -c "CREATE DATABASE ${TEST_DB_NAME} OWNER ${TEST_DB_USER};" >/dev/null
+  fi
+}
+
+start_test_db_native() {
+  local admin_user
+
+  if ! ensure_postgres_tools; then
+    echo "PostgreSQL tools not found (initdb/pg_ctl/psql/pg_isready)."
+    echo "Install with: brew install postgresql@16"
+    return 1
+  fi
+
+  mkdir -p "$(dirname "${TEST_DB_DATA_DIR}")"
+  if [[ ! -f "${TEST_DB_DATA_DIR}/PG_VERSION" ]]; then
+    echo "Initializing local test DB cluster at ${TEST_DB_DATA_DIR}..."
+    initdb -D "${TEST_DB_DATA_DIR}" --username="${TEST_DB_USER}" --auth=trust >/dev/null
+  fi
+
+  if pg_ctl -D "${TEST_DB_DATA_DIR}" status >/dev/null 2>&1; then
+    pg_ctl -D "${TEST_DB_DATA_DIR}" -m fast stop >/dev/null 2>&1 || true
+  fi
+
+  echo "Starting local test DB cluster on port ${TEST_DB_PORT}..."
+  if ! pg_ctl -D "${TEST_DB_DATA_DIR}" -l "${TEST_DB_LOG}" -o "-p ${TEST_DB_PORT}" start >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if ! wait_for_test_db; then
+    return 1
+  fi
+
+  if ! admin_user="$(detect_test_db_admin_user)"; then
+    return 1
+  fi
+
+  bootstrap_test_db_objects "${admin_user}"
+  wait_for_test_db
+}
+
+print_native_test_db_help() {
+  echo "Run native local PostgreSQL on localhost:${TEST_DB_PORT} (${TEST_DB_NAME})."
+  echo "If PostgreSQL is missing, install with: brew install postgresql@16"
+}
+
+ensure_test_db() {
+  if ! is_test_db_enabled; then
+    echo "Skipping local test DB setup/checks (SIDEBAR_DEV_TEST_DB=${SIDEBAR_DEV_TEST_DB:-1})."
+    return
+  fi
+
+  if is_test_db_running; then
+    echo "Local test DB detected (${TEST_DB_URL})."
+    return
+  fi
+
+  if start_test_db_native; then
+    return
+  fi
+
+  echo "Local test DB not detected at ${TEST_DB_URL}."
+  echo "Could not auto-start it. DB-backed tests may skip."
+  print_native_test_db_help
 }
 
 port_in_use() {
@@ -172,14 +389,16 @@ stop_pid() {
 }
 
 cleanup_restart_processes() {
+  local pid
+  local proc_command
   if ! command -v pgrep >/dev/null 2>&1; then
     return
   fi
   while read -r pid; do
     [[ -z "${pid}" ]] && continue
     [[ "${pid}" == "$$" ]] && continue
-    command=$(pid_command "${pid}")
-    if [[ "${command}" == *"./dev.sh restart"* ]]; then
+    proc_command=$(pid_command "${pid}")
+    if [[ "${proc_command}" == *"./dev.sh restart"* ]]; then
       echo "Cleaning stale restart process (PID ${pid})..."
       stop_pid "${pid}"
     fi
@@ -278,15 +497,20 @@ start_backend() {
     fi
   }) >"${BACKEND_LOG}" 2>&1 </dev/null &
   echo $! >"${BACKEND_PID}"
+  local started=0
   for _ in {1..10}; do
     local pid
     pid=$(resolve_pid_for_port 8001 backend || true)
     if [[ -n "${pid}" ]]; then
       echo "${pid}" >"${BACKEND_PID}"
+      started=1
       break
     fi
     sleep 0.5
   done
+  if [[ "${started}" -ne 1 ]]; then
+    echo "Backend failed to bind to port 8001. Check logs: ${BACKEND_LOG}"
+  fi
 }
 
 start_frontend() {
@@ -302,20 +526,25 @@ start_frontend() {
   ensure_port_available 3000 frontend
   echo "Starting frontend..."
   if [[ ${use_doppler} -eq 1 ]]; then
-    (cd frontend && doppler run --preserve-env="SUPABASE_URL" -- npm run dev) >"${FRONTEND_LOG}" 2>&1 </dev/null &
+    (cd frontend && doppler run --preserve-env="SUPABASE_URL" -- npm run dev -- --host 0.0.0.0 --port 3000 --strictPort) >"${FRONTEND_LOG}" 2>&1 </dev/null &
   else
-    (cd frontend && npm run dev) >"${FRONTEND_LOG}" 2>&1 </dev/null &
+    (cd frontend && npm run dev -- --host 0.0.0.0 --port 3000 --strictPort) >"${FRONTEND_LOG}" 2>&1 </dev/null &
   fi
   echo $! >"${FRONTEND_PID}"
+  local started=0
   for _ in {1..10}; do
     local pid
     pid=$(resolve_pid_for_port 3000 frontend || true)
     if [[ -n "${pid}" ]]; then
       echo "${pid}" >"${FRONTEND_PID}"
+      started=1
       break
     fi
     sleep 0.5
   done
+  if [[ "${started}" -ne 1 ]]; then
+    echo "Frontend failed to bind to port 3000. Check logs: ${FRONTEND_LOG}"
+  fi
 }
 
 start_ingestion_worker() {
@@ -346,15 +575,20 @@ start_ingestion_worker() {
     fi
   }) >"${INGESTION_LOG}" 2>&1 </dev/null &
   echo $! >"${INGESTION_PID}"
+  local started=0
   for _ in {1..10}; do
     local pid
     pid=$(resolve_ingestion_pid || true)
     if [[ -n "${pid}" ]]; then
       echo "${pid}" >"${INGESTION_PID}"
+      started=1
       break
     fi
     sleep 0.5
   done
+  if [[ "${started}" -ne 1 ]]; then
+    echo "Ingestion worker did not stay running. Check logs: ${INGESTION_LOG}"
+  fi
 }
 
 cleanup_ingestion_workers() {
@@ -520,6 +754,24 @@ status_service() {
   echo "✗ ${name} not running"
 }
 
+status_test_db() {
+  if ! is_test_db_enabled; then
+    echo "- Local test DB setup/checks disabled (SIDEBAR_DEV_TEST_DB=${SIDEBAR_DEV_TEST_DB:-1})."
+    return
+  fi
+
+  if is_test_db_running; then
+    echo "✓ Local test DB running (${TEST_DB_URL})"
+    return
+  fi
+
+  echo "✗ Local test DB not running"
+  echo "  Expected: ${TEST_DB_URL}"
+  echo "  Start the dedicated local test cluster with: ./dev.sh restart"
+  echo "  (It will auto-bootstrap when PostgreSQL tools are installed.)"
+  echo "  Install package if needed: brew install postgresql@16"
+}
+
 show_logs() {
   local target="$1"
   case "${target}" in
@@ -546,11 +798,13 @@ show_logs() {
 command="${1:-start}"
 
 load_env
+normalize_runtime_paths
 detect_doppler
 ensure_restart_lock
 
 case "${command}" in
   start)
+    ensure_test_db
     start_backend
     start_frontend
     start_ingestion_worker
@@ -565,6 +819,7 @@ case "${command}" in
     stop_service "${BACKEND_PID}" "backend" "backend" "8001"
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
+    ensure_test_db
     start_backend
     start_frontend
     start_ingestion_worker
@@ -576,6 +831,7 @@ case "${command}" in
     status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}" "backend"
     status_service "${FRONTEND_PID}" "Frontend" "http://localhost:3000" "${FRONTEND_LOG}" "frontend"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}" "ingestion"
+    status_test_db
     ;;
   logs)
     show_logs "${2:-}"

@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from api.services.claude_streaming import stream_with_tools
+from api.services.agent.orchestrator.stream_runner import stream_with_tools
 
 
 class FakeStream:
@@ -26,15 +26,32 @@ class FakeMessages:
     def __init__(self, events):
         self._events = events
         self.called_args = None
+        self.called_args_history = []
 
     def stream(self, **kwargs):
         self.called_args = kwargs
+        self.called_args_history.append(kwargs)
         return FakeStream(self._events)
 
 
 class FakeClient:
-    def __init__(self, events):
-        self.messages = FakeMessages(events)
+    def __init__(self, events, messages=None):
+        self.messages = messages or FakeMessages(events)
+
+
+class FailThenStreamMessages(FakeMessages):
+    def __init__(self, events, message="Connection error."):
+        super().__init__(events)
+        self._failed = False
+        self._message = message
+
+    def stream(self, **kwargs):
+        self.called_args = kwargs
+        self.called_args_history.append(kwargs)
+        if not self._failed:
+            self._failed = True
+            raise RuntimeError(self._message)
+        return FakeStream(self._events)
 
 
 class DummyToolMapper:
@@ -313,3 +330,68 @@ async def test_stream_with_tools_emits_error_on_exception():
     assert output[-1]["type"] == "error"
     assert output[-1]["error"] == "boom"
     assert dummy_db.rolled_back is True
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_retries_without_optional_features_on_connection_error():
+    events = [
+        SimpleNamespace(
+            type="content_block_start", content_block=SimpleNamespace(type="text")
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(type="text_delta", text="Hello"),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+    messages = FailThenStreamMessages(events)
+    client = FakeClient(events, messages=messages)
+    tool_mapper = DummyToolMapper()
+
+    output = []
+    async for event in stream_with_tools(
+        client=client,
+        tool_mapper=tool_mapper,
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+    ):
+        output.append(event)
+
+    assert [item for item in output if item.get("type") == "token"] == [
+        {"type": "token", "content": "Hello"}
+    ]
+    assert len(messages.called_args_history) == 2
+
+    first_call = messages.called_args_history[0]
+    second_call = messages.called_args_history[1]
+
+    assert first_call["extra_headers"] == {
+        "anthropic-beta": "context-management-2025-06-27"
+    }
+    assert any(tool.get("type") == "web_search_20250305" for tool in first_call["tools"])
+    assert "extra_headers" not in second_call
+    assert not any(
+        tool.get("type") == "web_search_20250305" for tool in second_call["tools"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_does_not_retry_without_optional_features():
+    messages = FailThenStreamMessages([])
+    client = FakeClient([], messages=messages)
+    tool_mapper = DummyToolMapper()
+
+    output = []
+    async for event in stream_with_tools(
+        client=client,
+        tool_mapper=tool_mapper,
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert output == [{"type": "error", "error": "Connection error."}]
+    assert len(messages.called_args_history) == 1

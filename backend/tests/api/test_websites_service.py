@@ -1,36 +1,15 @@
-import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from api.db.base import Base
 from api.exceptions import ConflictError
 from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
 from api.services.websites_service import WebsitesService
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture
-def db_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(
-        isolation_level="AUTOCOMMIT"
-    )
-    schema = f"test_{uuid.uuid4().hex}"
-
-    connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-    connection.execute(text(f'SET search_path TO "{schema}"'))
-    Base.metadata.create_all(bind=connection)
-
-    Session = sessionmaker(bind=connection)
-    session = Session()
-
-    try:
-        yield session
-    finally:
-        session.close()
-        connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-        connection.close()
+def db_session(test_db):
+    return test_db
 
 
 def test_save_and_read_website(db_session):
@@ -222,7 +201,9 @@ def test_archived_summary(db_session):
     summary = WebsitesService.archived_summary(db_session, "test_user")
 
     assert summary["archived_count"] == 1
-    assert summary["archived_last_updated"] == archived_at.isoformat()
+    assert summary["archived_last_updated"] is not None
+    summary_ts = datetime.fromisoformat(summary["archived_last_updated"])
+    assert summary_ts.astimezone(UTC) == archived_at
 
 
 def test_update_website_conflict(db_session):

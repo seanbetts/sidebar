@@ -257,10 +257,7 @@ public enum ExtensionURLMessageHandler {
     }
 
     private static func saveWebsiteNow(url: String) async throws {
-        let keychain = KeychainAuthStateStore(
-            service: AppGroupConfiguration.keychainService,
-            accessGroup: AppGroupConfiguration.keychainAccessGroup
-        )
+        let keychain = ExtensionAuthStateStoreFactory.makeSharedStore()
         guard let token = try? keychain.loadAccessToken(), !token.isEmpty else {
             throw APIClientError.missingToken
         }

@@ -4,10 +4,10 @@ from fastmcp import FastMCP
 
 from api.config import settings
 from api.db.dependencies import DEFAULT_USER_ID
-from api.executors.skill_executor import SkillExecutor
 from api.mcp.fs_tools import register_fs_tools
 from api.mcp.notes_tools import register_notes_tools
 from api.security.path_validator import PathValidator
+from api.services.agent.skills.executor import SkillExecutor
 
 
 def register_mcp_tools(mcp: FastMCP) -> None:

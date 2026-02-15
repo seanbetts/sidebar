@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-_PROMPT_CONFIG_PATH = Path(__file__).resolve().parent / "config" / "prompts.yaml"
+_PROMPT_CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "prompts.yaml"
 
 
 def load_prompt_config() -> dict[str, Any]:

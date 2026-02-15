@@ -1,7 +1,7 @@
 # sideBar Skills Catalog
 
-**Last Updated:** 2026-01-07 15:58:45
-**Total Skills:** 11
+**Last Updated:** 2026-02-15 22:01:39
+**Total Skills:** 12
 
 This file is auto-generated from skill frontmatter. Do not edit manually.
 
@@ -53,3 +53,6 @@ Guide for creating effective skills. This skill should be used when users want t
 
 #### [prompt-preview](./skills/prompt-preview/SKILL.md)
 Generate the current system prompt output with injected variables for preview or debugging.
+
+#### [tasks](./skills/tasks/SKILL.md) `[reads, writes]`
+Create, complete, defer, and organize tasks and projects.

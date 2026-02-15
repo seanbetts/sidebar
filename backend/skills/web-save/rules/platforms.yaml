@@ -189,6 +189,65 @@
   remove:
     - ".swiper-slide-duplicate"
 
+# Archive.today family CAPTCHA challenge page
+- id: archiveis-captcha-discard
+  phase: pre
+  priority: 95
+  trigger:
+    host:
+      ends_with: "archive.is"
+    dom:
+      any: ["#g-recaptcha"]
+  discard: true
+  fallback: "jina"
+
+- id: archiveph-captcha-discard
+  phase: pre
+  priority: 95
+  trigger:
+    host:
+      ends_with: "archive.ph"
+    dom:
+      any: ["#g-recaptcha"]
+  discard: true
+  fallback: "jina"
+
+- id: archivetoday-captcha-discard
+  phase: pre
+  priority: 95
+  trigger:
+    host:
+      ends_with: "archive.today"
+    dom:
+      any: ["#g-recaptcha"]
+  discard: true
+  fallback: "jina"
+
+- id: archivemd-captcha-discard
+  phase: pre
+  priority: 95
+  trigger:
+    host:
+      ends_with: "archive.md"
+    dom:
+      any: ["#g-recaptcha"]
+  discard: true
+  fallback: "jina"
+
+# Airbnb listing pages are SPA-heavy; local readability extraction is unreliable.
+- id: airbnb-listing-fallback-co-uk
+  phase: pre
+  priority: 90
+  trigger:
+    host:
+      ends_with: "airbnb.co.uk"
+    dom:
+      any_text_contains:
+        - "pdppresentation"
+        - "demandstaylisting"
+  discard: true
+  fallback: "jina"
+
 # Mintlify Documentation Platform
 # Detection: mintcdn.com assets, .mintlify.app subdomain, or generator meta tag
 - id: mintlify-detect-cdn

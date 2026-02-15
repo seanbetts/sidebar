@@ -25,6 +25,7 @@ class Rule:
     actions: list[dict] = field(default_factory=list)
     rendering: dict = field(default_factory=dict)
     discard: bool = False
+    fallback: str | None = None
 
 
 def _normalize_host(value: str) -> str:
@@ -86,6 +87,7 @@ class RuleEngine:
                         actions=item.get("actions", []) or [],
                         rendering=item.get("rendering", {}) or {},
                         discard=bool(item.get("discard", False)),
+                        fallback=item.get("fallback"),
                     )
                 )
         rules.sort(key=lambda rule: rule.priority, reverse=True)

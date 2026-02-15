@@ -14,7 +14,7 @@ from api.models.conversation import Conversation
 from api.models.file_ingestion import IngestedFile
 from api.models.note import Note
 from api.models.website import Website
-from api.prompts import (
+from api.services.agent.prompt.sections import (
     CONTEXT_GUIDANCE_TEMPLATE,
     build_first_message_prompt,
     build_open_context_block,
