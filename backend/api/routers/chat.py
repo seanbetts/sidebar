@@ -224,7 +224,7 @@ async def stream_chat(
     settings_record = UserSettingsService.get_settings(db, user_id)
     user_agent = request.headers.get("user-agent")
     now = datetime.now(UTC)
-    system_prompt, first_message_prompt = PromptContextService.build_prompts(
+    prompt_bundle = PromptContextService.build_prompts(
         db=db,
         user_id=user_id,
         open_context=open_context,
@@ -235,6 +235,8 @@ async def stream_chat(
         current_weather=current_weather,
         now=now,
     )
+    system_prompt = prompt_bundle["system_prompt"]["text"]
+    first_message_prompt = prompt_bundle["first_message_prompt"]["text"]
     enabled_skills = _resolve_enabled_skills(settings_record)
     if not history:
         history = [{"role": "user", "content": first_message_prompt}]

@@ -2,6 +2,7 @@
  * SSE (Server-Sent Events) client for streaming chat
  */
 import { logError } from '$lib/utils/errorHandling';
+import type { PromptPreviewPayload } from '$lib/types/promptPreview';
 
 export interface SSECallbacks {
 	onToken?: (content: string) => void;
@@ -25,7 +26,7 @@ export interface SSECallbacks {
 	onThemeSet?: (data: { theme?: string }) => void;
 	onScratchpadUpdated?: () => void;
 	onScratchpadCleared?: () => void;
-	onPromptPreview?: (data: { system_prompt?: string; first_message_prompt?: string }) => void;
+	onPromptPreview?: (data: PromptPreviewPayload) => void;
 	onToolStart?: (data: { name?: string; status?: string; input?: Record<string, any> }) => void;
 	onToolEnd?: (data: { name?: string; status?: string }) => void;
 	onMemoryCreated?: (data: { result?: any }) => void;

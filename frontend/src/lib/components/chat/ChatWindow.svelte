@@ -5,6 +5,7 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import MessageList from './MessageList.svelte';
 	import ChatInput from './ChatInput.svelte';
+	import PromptPreviewBanner from './PromptPreviewBanner.svelte';
 	import { toast } from 'svelte-sonner';
 	import { get } from 'svelte/store';
 	import { websitesStore } from '$lib/stores/websites';
@@ -403,15 +404,13 @@
 					</div>
 				{/if}
 				{#if $chatStore.promptPreview}
-					<div class="chat-preview-banner">
-						<div class="chat-preview-label">Prompt Preview</div>
-						{#if $chatStore.promptPreview.systemPrompt}
-							<p class="chat-preview-text">{$chatStore.promptPreview.systemPrompt}</p>
-						{/if}
-						{#if $chatStore.promptPreview.firstMessagePrompt}
-							<p class="chat-preview-text">{$chatStore.promptPreview.firstMessagePrompt}</p>
-						{/if}
-					</div>
+					<PromptPreviewBanner
+						systemPrompt={$chatStore.promptPreview.systemPrompt}
+						firstMessagePrompt={$chatStore.promptPreview.firstMessagePrompt}
+						systemPromptSections={$chatStore.promptPreview.systemPromptSections}
+						firstMessagePromptSections={$chatStore.promptPreview.firstMessagePromptSections}
+						promptReport={$chatStore.promptPreview.promptReport}
+					/>
 				{/if}
 			</div>
 		{/if}
@@ -603,30 +602,6 @@
 	.chat-status-subtitle {
 		font-size: 0.72rem;
 		color: var(--color-muted-foreground);
-	}
-
-	.chat-preview-banner {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		padding: 0.4rem 0.55rem;
-		border: 1px solid var(--color-border);
-		border-radius: 0.6rem;
-		background: color-mix(in oklab, var(--color-card) 82%, transparent);
-	}
-
-	.chat-preview-label {
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-muted-foreground);
-	}
-
-	.chat-preview-text {
-		font-size: 0.76rem;
-		color: var(--color-foreground);
-		white-space: pre-wrap;
-		margin: 0;
 	}
 
 	.spin {

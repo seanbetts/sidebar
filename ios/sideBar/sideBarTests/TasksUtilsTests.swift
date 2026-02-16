@@ -283,4 +283,31 @@ final class TasksUtilsTests: XCTestCase {
         )
         XCTAssertEqual(subtitle, "Due 2025-06-15")
     }
+
+    // MARK: - List options
+
+    func testBuildListOptionsUsesPlainProjectTitlesWithoutHyphenPrefix() async {
+        let group = TaskGroup(id: "g1", title: "Work", updatedAt: nil)
+        let groupedProject = TaskProject(
+            id: "p1",
+            title: "Launch",
+            groupId: "g1",
+            status: "active",
+            updatedAt: nil
+        )
+        let orphanProject = TaskProject(
+            id: "p2",
+            title: "Personal",
+            groupId: nil,
+            status: "active",
+            updatedAt: nil
+        )
+
+        let options = buildListOptions(groups: [group], projects: [groupedProject, orphanProject])
+        let labelsById = Dictionary(uniqueKeysWithValues: options.map { ($0.id, $0.label) })
+
+        XCTAssertEqual(labelsById["g1"], "Work")
+        XCTAssertEqual(labelsById["p1"], "Launch")
+        XCTAssertEqual(labelsById["p2"], "Personal")
+    }
 }

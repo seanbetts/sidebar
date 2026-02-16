@@ -25,6 +25,10 @@
 
 	let communicationStyle = '';
 	let workingRelationship = '';
+	let assistantIdentityName = '';
+	let assistantIdentityTone = '';
+	let assistantIdentityValues = '';
+	let assistantIdentityBoundaries = '';
 	let name = '';
 	let jobTitle = '';
 	let employer = '';
@@ -122,6 +126,11 @@
 			const data = await fetchSettings();
 			communicationStyle = data?.communication_style ?? '';
 			workingRelationship = data?.working_relationship ?? '';
+			const assistantIdentity = data?.assistant_identity ?? {};
+			assistantIdentityName = assistantIdentity?.name ?? '';
+			assistantIdentityTone = assistantIdentity?.tone ?? '';
+			assistantIdentityValues = assistantIdentity?.values ?? '';
+			assistantIdentityBoundaries = assistantIdentity?.boundaries ?? '';
 			name = data?.name ?? '';
 			jobTitle = data?.job_title ?? '';
 			employer = data?.employer ?? '';
@@ -173,6 +182,11 @@
 
 			communicationStyle = data?.communication_style ?? '';
 			workingRelationship = data?.working_relationship ?? '';
+			const assistantIdentity = data?.assistant_identity ?? {};
+			assistantIdentityName = assistantIdentity?.name ?? '';
+			assistantIdentityTone = assistantIdentity?.tone ?? '';
+			assistantIdentityValues = assistantIdentity?.values ?? '';
+			assistantIdentityBoundaries = assistantIdentity?.boundaries ?? '';
 			name = data?.name ?? '';
 			jobTitle = data?.job_title ?? '';
 			employer = data?.employer ?? '';
@@ -437,6 +451,10 @@
 	{settingsError}
 	bind:communicationStyle
 	bind:workingRelationship
+	bind:assistantIdentityName
+	bind:assistantIdentityTone
+	bind:assistantIdentityValues
+	bind:assistantIdentityBoundaries
 	bind:weatherUnit
 	{setWeatherUnit}
 	{isLoadingSkills}

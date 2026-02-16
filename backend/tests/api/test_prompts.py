@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime
 
 from api.services.agent.prompt.sections import (
     CONTEXT_GUIDANCE_TEMPLATE,
+    build_assistant_identity_block,
     build_first_message_prompt,
     build_open_context_block,
     build_recent_activity_block,
@@ -22,6 +23,7 @@ class DummySettings:
         communication_style: str | None = None,
         working_relationship: str | None = None,
         location: str | None = None,
+        assistant_identity: dict | None = None,
     ):
         self.name = name
         self.gender = gender
@@ -32,6 +34,7 @@ class DummySettings:
         self.communication_style = communication_style
         self.working_relationship = working_relationship
         self.location = location
+        self.assistant_identity = assistant_identity
 
 
 def test_resolve_template_keeps_unknown_tokens() -> None:
@@ -75,6 +78,30 @@ def test_build_first_message_prompt_includes_profile() -> None:
     assert "I am 25 years old." in prompt
     assert "I use macOS." in prompt
     assert "I am the Engineer at Acme." in prompt
+
+
+def test_build_assistant_identity_block_defaults() -> None:
+    settings = DummySettings()
+    block = build_assistant_identity_block(settings)
+    assert "<assistant_identity>" in block
+    assert "Name: sideBar" in block
+    assert "Tone: Pragmatic, direct, and collaborative." in block
+
+
+def test_build_assistant_identity_block_uses_overrides() -> None:
+    settings = DummySettings(
+        assistant_identity={
+            "name": "Navigator",
+            "tone": "Calm and technical.",
+            "values": "Accuracy and speed.",
+            "boundaries": "Never hallucinate.",
+        }
+    )
+    block = build_assistant_identity_block(settings)
+    assert "Name: Navigator" in block
+    assert "Tone: Calm and technical." in block
+    assert "Values: Accuracy and speed." in block
+    assert "Boundaries: Never hallucinate." in block
 
 
 def test_build_recent_activity_block() -> None:

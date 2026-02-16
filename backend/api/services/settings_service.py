@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+from typing import Any
 
 from fastapi import HTTPException
 
@@ -46,6 +47,18 @@ say you do not know."""
 
 MAX_STYLE_CHARS = 4000
 MAX_PROFILE_FIELD_CHARS = 200
+MAX_ASSISTANT_IDENTITY_NAME_CHARS = 120
+MAX_ASSISTANT_IDENTITY_TEXT_CHARS = 2000
+
+DEFAULT_ASSISTANT_IDENTITY = {
+    "name": "sideBar",
+    "tone": "Pragmatic, direct, and collaborative.",
+    "boundaries": (
+        "Never fabricate facts or citations, never reveal secrets, and "
+        "defer to user intent when requests are ambiguous."
+    ),
+    "values": "Clarity, pragmatism, and rigor.",
+}
 
 storage_backend = get_storage_backend()
 
@@ -54,6 +67,20 @@ class SettingsService:
     """High-level settings operations for the API layer."""
 
     SHORTCUTS_PAT_PREFIX = "sb_pat_"
+    ASSISTANT_IDENTITY_FIELDS = ("name", "tone", "boundaries", "values")
+    USER_SETTINGS_FIELDS = (
+        "communication_style",
+        "working_relationship",
+        "name",
+        "job_title",
+        "employer",
+        "date_of_birth",
+        "gender",
+        "pronouns",
+        "location",
+        "enabled_skills",
+    )
+    AGENT_SETTINGS_FIELDS = ("assistant_identity",)
 
     @staticmethod
     def _generate_shortcuts_pat() -> str:
@@ -116,6 +143,36 @@ class SettingsService:
         return enabled
 
     @staticmethod
+    def _resolve_assistant_identity(settings_record) -> dict[str, str]:
+        """Resolve assistant identity settings with defaults.
+
+        Args:
+            settings_record: User settings record or None.
+
+        Returns:
+            Assistant identity payload.
+        """
+        raw = (
+            getattr(settings_record, "assistant_identity", None)
+            if settings_record
+            else None
+        )
+        if not isinstance(raw, dict):
+            raw = {}
+
+        resolved: dict[str, str] = {}
+        for field_name in SettingsService.ASSISTANT_IDENTITY_FIELDS:
+            default = DEFAULT_ASSISTANT_IDENTITY[field_name]
+            value = raw.get(field_name)
+            if isinstance(value, str):
+                trimmed = value.strip()
+                resolved[field_name] = trimmed if trimmed else default
+            else:
+                resolved[field_name] = default
+
+        return resolved
+
+    @staticmethod
     def _clean_text_field(
         value: str | None, field_name: str, max_length: int
     ) -> str | None:
@@ -143,6 +200,70 @@ class SettingsService:
                 detail=f"{field_name} exceeds max length ({max_length} characters)",
             )
         return trimmed
+
+    @staticmethod
+    def _clean_assistant_identity(value: Any) -> dict[str, str] | None:
+        """Validate and normalize the assistant identity payload."""
+        if value is None:
+            return None
+        if not isinstance(value, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="assistant_identity must be an object",
+            )
+
+        unknown_fields = sorted(
+            field
+            for field in value
+            if field not in SettingsService.ASSISTANT_IDENTITY_FIELDS
+        )
+        if unknown_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "assistant_identity has invalid fields: "
+                    f"{', '.join(unknown_fields)}"
+                ),
+            )
+
+        cleaned = {
+            "name": SettingsService._clean_text_field(
+                value.get("name"),
+                "assistant_identity.name",
+                MAX_ASSISTANT_IDENTITY_NAME_CHARS,
+            ),
+            "tone": SettingsService._clean_text_field(
+                value.get("tone"),
+                "assistant_identity.tone",
+                MAX_ASSISTANT_IDENTITY_TEXT_CHARS,
+            ),
+            "boundaries": SettingsService._clean_text_field(
+                value.get("boundaries"),
+                "assistant_identity.boundaries",
+                MAX_ASSISTANT_IDENTITY_TEXT_CHARS,
+            ),
+            "values": SettingsService._clean_text_field(
+                value.get("values"),
+                "assistant_identity.values",
+                MAX_ASSISTANT_IDENTITY_TEXT_CHARS,
+            ),
+        }
+        compact = {key: item for key, item in cleaned.items() if item is not None}
+        return compact or None
+
+    @staticmethod
+    def _reject_unknown_fields(
+        updates: dict, *, allowed_fields: tuple[str, ...], scope_name: str
+    ) -> None:
+        """Reject unknown fields in a scoped settings update payload."""
+        unknown_fields = sorted(
+            field for field in updates if field not in allowed_fields
+        )
+        if unknown_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{scope_name} has invalid fields: {', '.join(unknown_fields)}",
+            )
 
     @staticmethod
     def build_response(settings_record, user_id: str) -> dict:
@@ -174,6 +295,9 @@ class SettingsService:
             "location": settings_record.location if settings_record else None,
             "profile_image_url": SettingsService._profile_image_url(settings_record),
             "enabled_skills": SettingsService._resolve_enabled_skills(settings_record),
+            "assistant_identity": SettingsService._resolve_assistant_identity(
+                settings_record
+            ),
         }
 
     @staticmethod
@@ -189,6 +313,12 @@ class SettingsService:
         Raises:
             HTTPException: 400 for invalid values or skills.
         """
+        SettingsService._reject_unknown_fields(
+            updates,
+            allowed_fields=SettingsService.USER_SETTINGS_FIELDS,
+            scope_name="settings",
+        )
+
         if "communication_style" in updates:
             updates["communication_style"] = SettingsService._clean_text_field(
                 updates.get("communication_style"),
@@ -251,6 +381,20 @@ class SettingsService:
         return updates
 
     @staticmethod
+    def clean_agent_updates(updates: dict) -> dict:
+        """Normalize and validate agent-managed settings payload."""
+        SettingsService._reject_unknown_fields(
+            updates,
+            allowed_fields=SettingsService.AGENT_SETTINGS_FIELDS,
+            scope_name="agent_settings",
+        )
+        if "assistant_identity" in updates:
+            updates["assistant_identity"] = SettingsService._clean_assistant_identity(
+                updates.get("assistant_identity")
+            )
+        return updates
+
+    @staticmethod
     def get_settings(db, user_id: str) -> dict:
         """Fetch settings for a user.
 
@@ -277,6 +421,13 @@ class SettingsService:
             Updated settings response payload.
         """
         cleaned = SettingsService.clean_updates(updates)
+        user_settings = UserSettingsService.upsert_settings(db, user_id, **cleaned)
+        return SettingsService.build_response(user_settings, user_id)
+
+    @staticmethod
+    def update_agent_settings(db, user_id: str, updates: dict) -> dict:
+        """Update agent-managed settings fields for a user."""
+        cleaned = SettingsService.clean_agent_updates(updates)
         user_settings = UserSettingsService.upsert_settings(db, user_id, **cleaned)
         return SettingsService.build_response(user_settings, user_id)
 

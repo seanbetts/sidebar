@@ -1,6 +1,7 @@
 """User settings model for per-user prompts and preferences."""
 
 from datetime import UTC, date, datetime
+from typing import Any
 
 from sqlalchemy import Date, DateTime, Text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -28,6 +29,9 @@ class UserSettings(Base):
     location: Mapped[str | None] = mapped_column(Text, nullable=True)
     profile_image_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     enabled_skills: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    assistant_identity: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
     shortcuts_pat: Mapped[str | None] = mapped_column(Text, nullable=True)
     tasks_ai_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -38,3 +38,17 @@ def test_update_settings_rejects_invalid_skills(test_client):
     )
     assert response.status_code == 400
     assert "Invalid skills" in error_message(response)
+
+
+def test_update_settings_rejects_agent_owned_fields(test_client):
+    response = test_client.patch(
+        "/api/settings",
+        headers=_auth_headers(),
+        json={
+            "assistant_identity": {
+                "name": "  Navigator  ",
+                "tone": "  Calm and technical.  ",
+            }
+        },
+    )
+    assert response.status_code == 422

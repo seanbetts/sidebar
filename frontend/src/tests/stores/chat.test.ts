@@ -241,8 +241,73 @@ describe('chatStore', () => {
 		chatStore.setPromptPreview('System text', 'First message text');
 		expect(get(chatStore).promptPreview).toEqual({
 			systemPrompt: 'System text',
-			firstMessagePrompt: 'First message text'
+			firstMessagePrompt: 'First message text',
+			systemPromptSections: [],
+			firstMessagePromptSections: [],
+			promptReport: null
 		});
+
+		chatStore.setPromptPreview('System text', 'First message text', {
+			systemPromptSections: [{ id: 'context', title: 'Context', source: 'template', chars: 120 }],
+			firstMessagePromptSections: [
+				{ id: 'first_message', title: 'First Message', source: 'template', chars: 50 }
+			],
+			promptReport: {
+				system_prompt: {
+					total_chars: 120,
+					max_chars: 40000,
+					truncated: false,
+					sections: [{ id: 'context', title: 'Context', source: 'template', chars: 120 }]
+				},
+				first_message_prompt: {
+					total_chars: 50,
+					max_chars: 8000,
+					truncated: false,
+					sections: [{ id: 'first_message', title: 'First Message', source: 'template', chars: 50 }]
+				}
+			}
+		});
+		expect(get(chatStore).promptPreview?.systemPromptSections).toHaveLength(1);
+		expect(get(chatStore).promptPreview?.promptReport?.system_prompt?.total_chars).toBe(120);
+
+		chatStore.clearPromptPreview();
+		expect(get(chatStore).promptPreview).toBeNull();
+	});
+
+	it('stores prompt preview diagnostics from SSE payload fields', () => {
+		chatStore.setPromptPreview('System text', 'First message text', {
+			systemPromptSections: [
+				{ id: 'message_context', title: 'Message Context', source: 'system', chars: 500 }
+			],
+			firstMessagePromptSections: [
+				{ id: 'first_message', title: 'First Message', source: 'first', chars: 200 }
+			],
+			promptReport: {
+				system_prompt: {
+					total_chars: 1200,
+					max_chars: 40000,
+					truncated: false,
+					sections: [
+						{
+							id: 'message_context',
+							title: 'Message Context',
+							source: 'system',
+							chars: 500
+						}
+					]
+				},
+				first_message_prompt: {
+					total_chars: 200,
+					max_chars: 8000,
+					truncated: false,
+					sections: [{ id: 'first_message', title: 'First Message', source: 'first', chars: 200 }]
+				}
+			}
+		});
+		const preview = get(chatStore).promptPreview;
+		expect(preview?.systemPromptSections[0].id).toBe('message_context');
+		expect(preview?.firstMessagePromptSections[0].chars).toBe(200);
+		expect(preview?.promptReport?.first_message_prompt?.max_chars).toBe(8000);
 
 		chatStore.clearPromptPreview();
 		expect(get(chatStore).promptPreview).toBeNull();

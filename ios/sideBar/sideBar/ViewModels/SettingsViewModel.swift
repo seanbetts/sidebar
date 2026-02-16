@@ -193,7 +193,7 @@ public final class SettingsViewModel: LoadableViewModel {
         isSavingProfile = false
     }
 
-    public func saveSystemSettings(
+    public func saveUserSettings(
         communicationStyle: String,
         workingRelationship: String
     ) async {
@@ -266,6 +266,7 @@ public final class SettingsViewModel: LoadableViewModel {
                 pronouns: current.pronouns,
                 location: current.location,
                 profileImageUrl: current.profileImageUrl,
+                assistantIdentity: current.assistantIdentity,
                 enabledSkills: enabledSkills
             )
         }

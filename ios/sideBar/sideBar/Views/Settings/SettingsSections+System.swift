@@ -1,7 +1,7 @@
 import SwiftUI
 import sideBarShared
 
-struct SystemSettingsView: View {
+struct UserSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @EnvironmentObject private var environment: AppEnvironment
     @State private var isPendingWritesPresented = false
@@ -28,12 +28,12 @@ struct SystemSettingsView: View {
                 }
             }
             Section {
-                Text("Customize the prompts that guide sideBar")
+                Text("Customize how the assistant should collaborate with you")
                     .foregroundStyle(.secondary)
             }
             Section("Communication Style") {
                 TextEditor(text: $communicationStyle)
-                    .frame(minHeight: 120)
+                .frame(minHeight: 120)
             }
             Section("Working Relationship") {
                 TextEditor(text: $workingRelationship)
@@ -96,7 +96,10 @@ struct SystemSettingsView: View {
     }
 
     private var systemAutosaveSignature: String {
-        [communicationStyle, workingRelationship].joined(separator: "|")
+        [
+            communicationStyle,
+            workingRelationship
+        ].joined(separator: "|")
     }
 
     private var isDraftDirty: Bool {
@@ -124,7 +127,7 @@ struct SystemSettingsView: View {
         autosaveTask = Task {
             try? await Task.sleep(nanoseconds: Self.systemAutosaveDelayNs)
             guard !Task.isCancelled else { return }
-            await viewModel.saveSystemSettings(
+            await viewModel.saveUserSettings(
                 communicationStyle: communicationStyle,
                 workingRelationship: workingRelationship
             )
@@ -136,5 +139,47 @@ struct SystemSettingsView: View {
             return "Syncing \(environment.writeQueue.pendingCount) changes"
         }
         return "\(environment.writeQueue.pendingCount) pending changes"
+    }
+}
+
+struct AgentSettingsView: View {
+    @ObservedObject var viewModel: SettingsViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                Text("Managed by the assistant. User edits are disabled for these fields.")
+                    .foregroundStyle(.secondary)
+            }
+            Section("Assistant Name") {
+                Text(resolvedText(viewModel.settings?.assistantIdentity?.name))
+                    .textSelection(.enabled)
+            }
+            Section("Assistant Tone") {
+                Text(resolvedText(viewModel.settings?.assistantIdentity?.tone))
+                    .textSelection(.enabled)
+            }
+            Section("Assistant Values") {
+                Text(resolvedText(viewModel.settings?.assistantIdentity?.values))
+                    .textSelection(.enabled)
+            }
+            Section("Assistant Boundaries") {
+                Text(resolvedText(viewModel.settings?.assistantIdentity?.boundaries))
+                    .textSelection(.enabled)
+            }
+        }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
+        .overlay {
+            if viewModel.isLoading && viewModel.settings == nil {
+                ProgressView()
+            }
+        }
+    }
+
+    private func resolvedText(_ value: String?) -> String {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? "Not set" : trimmed
     }
 }

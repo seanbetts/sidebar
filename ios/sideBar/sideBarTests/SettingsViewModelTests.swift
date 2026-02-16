@@ -129,7 +129,7 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.profileImageData, cachedData)
     }
 
-    func testSaveSystemSettingsSkipsUnchangedPayload() async throws {
+    func testSaveUserSettingsSkipsUnchangedPayload() async throws {
         let initial = UserSettings(
             userId: "user-1",
             communicationStyle: "Concise",
@@ -142,6 +142,12 @@ final class SettingsViewModelTests: XCTestCase {
             pronouns: nil,
             location: nil,
             profileImageUrl: nil,
+            assistantIdentity: AssistantIdentitySettings(
+                name: "sideBar",
+                tone: "direct",
+                values: "clarity",
+                boundaries: "no guessing"
+            ),
             enabledSkills: []
         )
         let recorder = UpdateRecorder()
@@ -157,12 +163,78 @@ final class SettingsViewModelTests: XCTestCase {
         )
 
         await viewModel.load()
-        await viewModel.saveSystemSettings(
+        await viewModel.saveUserSettings(
             communicationStyle: "Concise",
             workingRelationship: "Direct"
         )
 
         XCTAssertEqual(recorder.callCount, 0)
+    }
+
+    func testSaveUserSettingsSendsPromptUpdates() async throws {
+        let initial = UserSettings(
+            userId: "user-1",
+            communicationStyle: "Concise",
+            workingRelationship: "Direct",
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            assistantIdentity: AssistantIdentitySettings(
+                name: "sideBar",
+                tone: "direct",
+                values: "clarity",
+                boundaries: "no guessing"
+            ),
+            enabledSkills: []
+        )
+        let updated = UserSettings(
+            userId: "user-1",
+            communicationStyle: "Detailed",
+            workingRelationship: "Direct",
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            assistantIdentity: AssistantIdentitySettings(
+                name: "Navigator",
+                tone: "direct",
+                values: "clarity",
+                boundaries: "no guessing"
+            ),
+            enabledSkills: []
+        )
+        let recorder = UpdateRecorder()
+        let cache = TestCacheClient()
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(initial),
+                updateResult: .success(updated),
+                updateRecorder: recorder
+            ),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: cache
+        )
+
+        await viewModel.load()
+        await viewModel.saveUserSettings(
+            communicationStyle: "Detailed",
+            workingRelationship: "Direct"
+        )
+
+        XCTAssertEqual(recorder.callCount, 1)
+        let update = try XCTUnwrap(recorder.lastUpdate)
+        let payload = try encodedPayload(update)
+        XCTAssertEqual(payload["communication_style"] as? String, "Detailed")
+        XCTAssertFalse(payload.keys.contains("assistant_identity"))
     }
 
     func testSaveProfileSettingsClearingDateEncodesNullDate() async throws {

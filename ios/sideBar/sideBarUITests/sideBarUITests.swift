@@ -289,13 +289,27 @@ final class SideBarUITests: XCTestCase {
         }
 
         guard
-            let apiBaseUrl = resolveValue(primaryKey: SideBarUITestConstants.uiTestApiBaseUrlKey, fallbackKey: "API_BASE_URL"),
-            let supabaseUrl = resolveValue(primaryKey: SideBarUITestConstants.uiTestSupabaseUrlKey, fallbackKey: "SUPABASE_URL"),
-            let supabaseAnonKey = resolveValue(primaryKey: SideBarUITestConstants.uiTestSupabaseAnonKey, fallbackKey: "SUPABASE_ANON_KEY")
+            let apiBaseUrl = resolveValue(
+                primaryKey: SideBarUITestConstants.uiTestApiBaseUrlKey,
+                fallbackKey: "API_BASE_URL"
+            ),
+            let supabaseUrl = resolveValue(
+                primaryKey: SideBarUITestConstants.uiTestSupabaseUrlKey,
+                fallbackKey: "SUPABASE_URL"
+            ),
+            let supabaseAnonKey = resolveValue(
+                primaryKey: SideBarUITestConstants.uiTestSupabaseAnonKey,
+                fallbackKey: "SUPABASE_ANON_KEY"
+            )
         else {
+            let requiredKeys = [
+                SideBarUITestConstants.uiTestApiBaseUrlKey,
+                SideBarUITestConstants.uiTestSupabaseUrlKey,
+                SideBarUITestConstants.uiTestSupabaseAnonKey
+            ].joined(separator: "/")
             throw XCTSkip(
                 "Missing UI test backend configuration. Set " +
-                "\(SideBarUITestConstants.uiTestApiBaseUrlKey)/\(SideBarUITestConstants.uiTestSupabaseUrlKey)/\(SideBarUITestConstants.uiTestSupabaseAnonKey) " +
+                "\(requiredKeys) " +
                 "or API_BASE_URL/SUPABASE_URL/SUPABASE_ANON_KEY for UI tests."
             )
         }
@@ -347,36 +361,6 @@ final class SideBarUITests: XCTestCase {
         XCTAssertTrue(signInButton.exists, "Sign In button is missing.")
         signInButton.tap()
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
-    }
-
-    private func seededConversationTitle() -> String {
-        let environment = ProcessInfo.processInfo.environment
-        if let title = environment[SideBarUITestConstants.uiTestChatConversationTitleKey]?.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ), !title.isEmpty {
-            return title
-        }
-        return "[seed:test-data] Onboarding flow review"
-    }
-
-    private func loadSecretsValues(from filePath: String) -> [String: String]? {
-        guard let content = try? String(contentsOfFile: filePath, encoding: .utf8) else {
-            return nil
-        }
-        var values: [String: String] = [:]
-        for line in content.split(separator: "\n", omittingEmptySubsequences: false) {
-            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmedLine.isEmpty || trimmedLine.hasPrefix("#") || !trimmedLine.contains("=") {
-                continue
-            }
-            let parts = trimmedLine.split(separator: "=", maxSplits: 1)
-            guard parts.count == 2 else { continue }
-            let key = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
-            let rawValue = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-            let value = rawValue.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
-            values[key] = value
-        }
-        return values
     }
 
     func dismissSystemAlertsIfPresent(
@@ -463,15 +447,6 @@ final class SideBarUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
         return false
-    }
-
-    private func waitForNonExistence(
-        of element: XCUIElement,
-        timeout: TimeInterval
-    ) -> Bool {
-        let predicate = NSPredicate(format: "exists == false")
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
-        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 
 }

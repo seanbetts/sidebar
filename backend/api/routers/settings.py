@@ -5,7 +5,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
@@ -15,6 +15,15 @@ from api.exceptions import BadRequestError
 from api.services.settings_service import SettingsService
 
 router = APIRouter(prefix="/settings", tags=["settings"])
+
+
+class AssistantIdentityPayload(BaseModel):
+    """Assistant identity payload for tone, values, and boundaries."""
+
+    name: str | None = None
+    tone: str | None = None
+    boundaries: str | None = None
+    values: str | None = None
 
 
 class SettingsResponse(BaseModel):
@@ -32,10 +41,13 @@ class SettingsResponse(BaseModel):
     location: str | None = None
     profile_image_url: str | None = None
     enabled_skills: list[str] = []
+    assistant_identity: AssistantIdentityPayload | None = None
 
 
 class SettingsUpdate(BaseModel):
     """Request payload for updating user settings."""
+
+    model_config = ConfigDict(extra="forbid")
 
     communication_style: str | None = None
     working_relationship: str | None = None

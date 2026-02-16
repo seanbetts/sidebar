@@ -122,9 +122,25 @@ extension ChatViewModel {
     }
 
     func handlePromptPreview(_ event: ChatStreamEvent) {
-        let systemPrompt = stringValue(from: event.data, key: "system_prompt")
-        let firstMessagePrompt = stringValue(from: event.data, key: "first_message_prompt")
-        promptPreview = ChatPromptPreview(systemPrompt: systemPrompt, firstMessagePrompt: firstMessagePrompt)
+        let payload = dictionaryValue(from: event.data) ?? [:]
+        let systemPrompt = payload["system_prompt"] as? String
+        let firstMessagePrompt = payload["first_message_prompt"] as? String
+        let systemPromptSections = promptSectionsValue(
+            from: payload,
+            key: "system_prompt_sections"
+        )
+        let firstMessagePromptSections = promptSectionsValue(
+            from: payload,
+            key: "first_message_prompt_sections"
+        )
+        let promptReport = promptReportValue(from: payload, key: "prompt_report")
+        promptPreview = ChatPromptPreview(
+            systemPrompt: systemPrompt,
+            firstMessagePrompt: firstMessagePrompt,
+            systemPromptSections: systemPromptSections,
+            firstMessagePromptSections: firstMessagePromptSections,
+            promptReport: promptReport
+        )
     }
 
     func handleToolStart(_ event: ChatStreamEvent) {
@@ -219,6 +235,78 @@ extension ChatViewModel {
             return nil
         }
         return payload[key] as? String
+    }
+
+    func promptSectionsValue(from payload: [String: Any], key: String) -> [ChatPromptSection] {
+        guard let sectionItems = payload[key] as? [[String: Any]] else {
+            return []
+        }
+        return sectionItems.compactMap { section in
+            guard let id = section["id"] as? String,
+                  let title = section["title"] as? String,
+                  let source = section["source"] as? String,
+                  let chars = intValue(from: section["chars"]) else {
+                return nil
+            }
+            return ChatPromptSection(id: id, title: title, source: source, chars: chars)
+        }
+    }
+
+    func promptReportValue(from payload: [String: Any], key: String) -> ChatPromptReport? {
+        guard let reportPayload = payload[key] as? [String: Any] else {
+            return nil
+        }
+        let systemPrompt = promptReportDocumentValue(from: reportPayload["system_prompt"])
+        let firstMessagePrompt = promptReportDocumentValue(
+            from: reportPayload["first_message_prompt"]
+        )
+        if systemPrompt == nil && firstMessagePrompt == nil {
+            return nil
+        }
+        return ChatPromptReport(
+            systemPrompt: systemPrompt,
+            firstMessagePrompt: firstMessagePrompt
+        )
+    }
+
+    func promptReportDocumentValue(from value: Any?) -> ChatPromptReportDocument? {
+        guard let document = value as? [String: Any],
+              let totalChars = intValue(from: document["total_chars"]),
+              let maxChars = intValue(from: document["max_chars"]),
+              let truncated = document["truncated"] as? Bool else {
+            return nil
+        }
+
+        let sectionsRaw = document["sections"] as? [[String: Any]] ?? []
+        let sections: [ChatPromptSection] = sectionsRaw.compactMap { section in
+            guard let id = section["id"] as? String,
+                  let title = section["title"] as? String,
+                  let source = section["source"] as? String,
+                  let chars = intValue(from: section["chars"]) else {
+                return nil
+            }
+            return ChatPromptSection(id: id, title: title, source: source, chars: chars)
+        }
+
+        return ChatPromptReportDocument(
+            totalChars: totalChars,
+            maxChars: maxChars,
+            truncated: truncated,
+            sections: sections
+        )
+    }
+
+    func intValue(from value: Any?) -> Int? {
+        if let intValue = value as? Int {
+            return intValue
+        }
+        if let number = value as? NSNumber {
+            return number.intValue
+        }
+        if let stringValue = value as? String {
+            return Int(stringValue)
+        }
+        return nil
     }
 
     func anyCodableValue(_ value: Any?) -> AnyCodable? {

@@ -18,8 +18,8 @@
 	}
 </script>
 
-<h3>System</h3>
-<p>Customize the prompts that guide your assistant.</p>
+<h3>User</h3>
+<p>Customize how the assistant should collaborate with you.</p>
 <div class="settings-form">
 	<label class="settings-label">
 		<span>Communication style</span>
