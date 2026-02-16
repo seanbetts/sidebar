@@ -4,10 +4,6 @@
 
 	export let communicationStyle = '';
 	export let workingRelationship = '';
-	export let assistantIdentityName = '';
-	export let assistantIdentityTone = '';
-	export let assistantIdentityValues = '';
-	export let assistantIdentityBoundaries = '';
 	export let weatherUnit: WeatherUnit = 'celsius';
 	export let setWeatherUnit: (unit: WeatherUnit) => void;
 	export let isLoadingSettings = false;
@@ -22,44 +18,9 @@
 	}
 </script>
 
-<h3>System</h3>
-<p>Customize the prompts that guide your assistant.</p>
+<h3>User</h3>
+<p>Customize how the assistant should collaborate with you.</p>
 <div class="settings-form">
-	<label class="settings-label">
-		<span>Assistant name</span>
-		<input
-			class="settings-input"
-			bind:value={assistantIdentityName}
-			placeholder="How the assistant should refer to itself."
-		/>
-	</label>
-	<label class="settings-label">
-		<span>Assistant tone</span>
-		<textarea
-			class="settings-textarea"
-			bind:value={assistantIdentityTone}
-			placeholder="Core interaction tone and demeanor."
-			rows="4"
-		></textarea>
-	</label>
-	<label class="settings-label">
-		<span>Assistant values</span>
-		<textarea
-			class="settings-textarea"
-			bind:value={assistantIdentityValues}
-			placeholder="Principles the assistant should optimize for."
-			rows="4"
-		></textarea>
-	</label>
-	<label class="settings-label">
-		<span>Assistant boundaries</span>
-		<textarea
-			class="settings-textarea"
-			bind:value={assistantIdentityBoundaries}
-			placeholder="Hard limits and non-negotiable constraints."
-			rows="4"
-		></textarea>
-	</label>
 	<label class="settings-label">
 		<span>Communication style</span>
 		<textarea

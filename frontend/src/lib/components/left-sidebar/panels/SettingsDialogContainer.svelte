@@ -38,10 +38,6 @@
 	let location = '';
 	let initialCommunicationStyle = '';
 	let initialWorkingRelationship = '';
-	let initialAssistantIdentityName = '';
-	let initialAssistantIdentityTone = '';
-	let initialAssistantIdentityValues = '';
-	let initialAssistantIdentityBoundaries = '';
 	let initialName = '';
 	let initialJobTitle = '';
 	let initialEmployer = '';
@@ -146,10 +142,6 @@
 			enabledSkills = Array.isArray(data?.enabled_skills) ? data.enabled_skills : [];
 			initialCommunicationStyle = communicationStyle;
 			initialWorkingRelationship = workingRelationship;
-			initialAssistantIdentityName = assistantIdentityName;
-			initialAssistantIdentityTone = assistantIdentityTone;
-			initialAssistantIdentityValues = assistantIdentityValues;
-			initialAssistantIdentityBoundaries = assistantIdentityBoundaries;
 			initialName = name;
 			initialJobTitle = jobTitle;
 			initialEmployer = employer;
@@ -176,12 +168,6 @@
 			const payload = {
 				communication_style: communicationStyle,
 				working_relationship: workingRelationship,
-				assistant_identity: {
-					name: assistantIdentityName,
-					tone: assistantIdentityTone,
-					values: assistantIdentityValues,
-					boundaries: assistantIdentityBoundaries
-				},
 				name,
 				job_title: jobTitle,
 				employer,
@@ -212,10 +198,6 @@
 
 			initialCommunicationStyle = communicationStyle;
 			initialWorkingRelationship = workingRelationship;
-			initialAssistantIdentityName = assistantIdentityName;
-			initialAssistantIdentityTone = assistantIdentityTone;
-			initialAssistantIdentityValues = assistantIdentityValues;
-			initialAssistantIdentityBoundaries = assistantIdentityBoundaries;
 			initialName = name;
 			initialJobTitle = jobTitle;
 			initialEmployer = employer;
@@ -406,10 +388,6 @@
 		settingsLoaded &&
 		(communicationStyle !== initialCommunicationStyle ||
 			workingRelationship !== initialWorkingRelationship ||
-			assistantIdentityName !== initialAssistantIdentityName ||
-			assistantIdentityTone !== initialAssistantIdentityTone ||
-			assistantIdentityValues !== initialAssistantIdentityValues ||
-			assistantIdentityBoundaries !== initialAssistantIdentityBoundaries ||
 			name !== initialName ||
 			jobTitle !== initialJobTitle ||
 			employer !== initialEmployer ||

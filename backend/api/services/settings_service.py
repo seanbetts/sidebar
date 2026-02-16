@@ -68,6 +68,19 @@ class SettingsService:
 
     SHORTCUTS_PAT_PREFIX = "sb_pat_"
     ASSISTANT_IDENTITY_FIELDS = ("name", "tone", "boundaries", "values")
+    USER_SETTINGS_FIELDS = (
+        "communication_style",
+        "working_relationship",
+        "name",
+        "job_title",
+        "employer",
+        "date_of_birth",
+        "gender",
+        "pronouns",
+        "location",
+        "enabled_skills",
+    )
+    AGENT_SETTINGS_FIELDS = ("assistant_identity",)
 
     @staticmethod
     def _generate_shortcuts_pat() -> str:
@@ -239,6 +252,20 @@ class SettingsService:
         return compact or None
 
     @staticmethod
+    def _reject_unknown_fields(
+        updates: dict, *, allowed_fields: tuple[str, ...], scope_name: str
+    ) -> None:
+        """Reject unknown fields in a scoped settings update payload."""
+        unknown_fields = sorted(
+            field for field in updates if field not in allowed_fields
+        )
+        if unknown_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{scope_name} has invalid fields: {', '.join(unknown_fields)}",
+            )
+
+    @staticmethod
     def build_response(settings_record, user_id: str) -> dict:
         """Build a settings response payload.
 
@@ -286,6 +313,12 @@ class SettingsService:
         Raises:
             HTTPException: 400 for invalid values or skills.
         """
+        SettingsService._reject_unknown_fields(
+            updates,
+            allowed_fields=SettingsService.USER_SETTINGS_FIELDS,
+            scope_name="settings",
+        )
+
         if "communication_style" in updates:
             updates["communication_style"] = SettingsService._clean_text_field(
                 updates.get("communication_style"),
@@ -334,10 +367,6 @@ class SettingsService:
                 "location",
                 MAX_PROFILE_FIELD_CHARS,
             )
-        if "assistant_identity" in updates:
-            updates["assistant_identity"] = SettingsService._clean_assistant_identity(
-                updates.get("assistant_identity")
-            )
         if "enabled_skills" in updates and updates["enabled_skills"] is not None:
             catalog = SkillCatalogService.list_skills(settings.skills_dir)
             allowed = {skill["id"] for skill in catalog}
@@ -349,6 +378,20 @@ class SettingsService:
                     status_code=400,
                     detail=f"Invalid skills: {', '.join(invalid)}",
                 )
+        return updates
+
+    @staticmethod
+    def clean_agent_updates(updates: dict) -> dict:
+        """Normalize and validate agent-managed settings payload."""
+        SettingsService._reject_unknown_fields(
+            updates,
+            allowed_fields=SettingsService.AGENT_SETTINGS_FIELDS,
+            scope_name="agent_settings",
+        )
+        if "assistant_identity" in updates:
+            updates["assistant_identity"] = SettingsService._clean_assistant_identity(
+                updates.get("assistant_identity")
+            )
         return updates
 
     @staticmethod
@@ -378,6 +421,13 @@ class SettingsService:
             Updated settings response payload.
         """
         cleaned = SettingsService.clean_updates(updates)
+        user_settings = UserSettingsService.upsert_settings(db, user_id, **cleaned)
+        return SettingsService.build_response(user_settings, user_id)
+
+    @staticmethod
+    def update_agent_settings(db, user_id: str, updates: dict) -> dict:
+        """Update agent-managed settings fields for a user."""
+        cleaned = SettingsService.clean_agent_updates(updates)
         user_settings = UserSettingsService.upsert_settings(db, user_id, **cleaned)
         return SettingsService.build_response(user_settings, user_id)
 

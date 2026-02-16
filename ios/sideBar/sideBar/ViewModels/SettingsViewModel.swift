@@ -193,13 +193,9 @@ public final class SettingsViewModel: LoadableViewModel {
         isSavingProfile = false
     }
 
-    public func saveSystemSettings(
+    public func saveUserSettings(
         communicationStyle: String,
-        workingRelationship: String,
-        assistantIdentityName: String,
-        assistantIdentityTone: String,
-        assistantIdentityValues: String,
-        assistantIdentityBoundaries: String
+        workingRelationship: String
     ) async {
         guard let current = settings else { return }
 
@@ -209,23 +205,8 @@ public final class SettingsViewModel: LoadableViewModel {
         let workingRelationshipUpdate = workingRelationship != (current.workingRelationship ?? "")
             ? workingRelationship
             : nil
-        let currentAssistantIdentity = current.assistantIdentity
-        let didUpdateAssistantIdentity = assistantIdentityName != (currentAssistantIdentity?.name ?? "")
-            || assistantIdentityTone != (currentAssistantIdentity?.tone ?? "")
-            || assistantIdentityValues != (currentAssistantIdentity?.values ?? "")
-            || assistantIdentityBoundaries != (currentAssistantIdentity?.boundaries ?? "")
-        let assistantIdentityUpdate: AssistantIdentitySettings? = didUpdateAssistantIdentity
-            ? AssistantIdentitySettings(
-                name: assistantIdentityName,
-                tone: assistantIdentityTone,
-                values: assistantIdentityValues,
-                boundaries: assistantIdentityBoundaries
-            )
-            : nil
 
-        if communicationStyleUpdate == nil,
-           workingRelationshipUpdate == nil,
-           assistantIdentityUpdate == nil {
+        if communicationStyleUpdate == nil, workingRelationshipUpdate == nil {
             return
         }
 
@@ -235,8 +216,7 @@ public final class SettingsViewModel: LoadableViewModel {
             let response = try await settingsAPI.updateSettings(
                 SettingsUpdate(
                     communicationStyle: communicationStyleUpdate,
-                    workingRelationship: workingRelationshipUpdate,
-                    assistantIdentity: assistantIdentityUpdate
+                    workingRelationship: workingRelationshipUpdate
                 )
             )
             settings = response

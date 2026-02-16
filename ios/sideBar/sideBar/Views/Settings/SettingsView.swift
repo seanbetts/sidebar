@@ -52,7 +52,8 @@ public struct SettingsView: View {
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case profile
     case settings
-    case system
+    case user
+    case agent
     case skills
     case memories
 
@@ -64,8 +65,10 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
             return "Profile"
         case .settings:
             return "Settings"
-        case .system:
-            return "System"
+        case .user:
+            return "User"
+        case .agent:
+            return "Agent"
         case .skills:
             return "Skills"
         case .memories:
@@ -79,8 +82,10 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
             return "person.crop.circle"
         case .settings:
             return "gearshape"
-        case .system:
+        case .user:
             return "bubble"
+        case .agent:
+            return "cpu"
         case .skills:
             return "hammer.circle"
         case .memories:
@@ -141,8 +146,10 @@ private struct SettingsSplitView: View {
             ProfileSettingsView(viewModel: viewModel)
         case .settings:
             GeneralSettingsView()
-        case .system:
-            SystemSettingsView(viewModel: viewModel)
+        case .user:
+            UserSettingsView(viewModel: viewModel)
+        case .agent:
+            AgentSettingsView(viewModel: viewModel)
         case .skills:
             SkillsSettingsView(viewModel: viewModel)
         case .memories:
@@ -187,9 +194,13 @@ private struct SettingsTabsView: View {
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")
                 }
-            SystemSettingsView(viewModel: viewModel)
+            UserSettingsView(viewModel: viewModel)
                 .tabItem {
-                    Label("System", systemImage: "bubble")
+                    Label("User", systemImage: "bubble")
+                }
+            AgentSettingsView(viewModel: viewModel)
+                .tabItem {
+                    Label("Agent", systemImage: "cpu")
                 }
             SkillsSettingsView(viewModel: viewModel)
                 .tabItem {

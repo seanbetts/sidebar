@@ -1,16 +1,12 @@
 import SwiftUI
 import sideBarShared
 
-struct SystemSettingsView: View {
+struct UserSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @EnvironmentObject private var environment: AppEnvironment
     @State private var isPendingWritesPresented = false
     @State private var communicationStyle: String = ""
     @State private var workingRelationship: String = ""
-    @State private var assistantIdentityName: String = ""
-    @State private var assistantIdentityTone: String = ""
-    @State private var assistantIdentityValues: String = ""
-    @State private var assistantIdentityBoundaries: String = ""
     @State private var hasLoadedDrafts = false
     @State private var isSyncingDrafts = false
     @State private var autosaveTask: Task<Void, Never>?
@@ -32,29 +28,8 @@ struct SystemSettingsView: View {
                 }
             }
             Section {
-                Text("Customize the prompts that guide sideBar")
+                Text("Customize how the assistant should collaborate with you")
                     .foregroundStyle(.secondary)
-            }
-            Section("Assistant Name") {
-                TextField(
-                    "How the assistant should refer to itself.",
-                    text: $assistantIdentityName
-                )
-                #if os(iOS)
-                .textInputAutocapitalization(.words)
-                #endif
-            }
-            Section("Assistant Tone") {
-                TextEditor(text: $assistantIdentityTone)
-                    .frame(minHeight: 96)
-            }
-            Section("Assistant Values") {
-                TextEditor(text: $assistantIdentityValues)
-                    .frame(minHeight: 96)
-            }
-            Section("Assistant Boundaries") {
-                TextEditor(text: $assistantIdentityBoundaries)
-                    .frame(minHeight: 96)
             }
             Section("Communication Style") {
                 TextEditor(text: $communicationStyle)
@@ -115,10 +90,6 @@ struct SystemSettingsView: View {
             return "none"
         }
         return [
-            settings.assistantIdentity?.name ?? "",
-            settings.assistantIdentity?.tone ?? "",
-            settings.assistantIdentity?.values ?? "",
-            settings.assistantIdentity?.boundaries ?? "",
             settings.communicationStyle ?? "",
             settings.workingRelationship ?? ""
         ].joined(separator: "|")
@@ -126,10 +97,6 @@ struct SystemSettingsView: View {
 
     private var systemAutosaveSignature: String {
         [
-            assistantIdentityName,
-            assistantIdentityTone,
-            assistantIdentityValues,
-            assistantIdentityBoundaries,
             communicationStyle,
             workingRelationship
         ].joined(separator: "|")
@@ -137,11 +104,7 @@ struct SystemSettingsView: View {
 
     private var isDraftDirty: Bool {
         guard let settings = viewModel.settings else { return false }
-        return assistantIdentityName != (settings.assistantIdentity?.name ?? "")
-            || assistantIdentityTone != (settings.assistantIdentity?.tone ?? "")
-            || assistantIdentityValues != (settings.assistantIdentity?.values ?? "")
-            || assistantIdentityBoundaries != (settings.assistantIdentity?.boundaries ?? "")
-            || communicationStyle != (settings.communicationStyle ?? "")
+        return communicationStyle != (settings.communicationStyle ?? "")
             || workingRelationship != (settings.workingRelationship ?? "")
     }
 
@@ -151,10 +114,6 @@ struct SystemSettingsView: View {
             return
         }
         isSyncingDrafts = true
-        assistantIdentityName = settings.assistantIdentity?.name ?? ""
-        assistantIdentityTone = settings.assistantIdentity?.tone ?? ""
-        assistantIdentityValues = settings.assistantIdentity?.values ?? ""
-        assistantIdentityBoundaries = settings.assistantIdentity?.boundaries ?? ""
         communicationStyle = settings.communicationStyle ?? ""
         workingRelationship = settings.workingRelationship ?? ""
         hasLoadedDrafts = true
@@ -168,13 +127,9 @@ struct SystemSettingsView: View {
         autosaveTask = Task {
             try? await Task.sleep(nanoseconds: Self.systemAutosaveDelayNs)
             guard !Task.isCancelled else { return }
-            await viewModel.saveSystemSettings(
+            await viewModel.saveUserSettings(
                 communicationStyle: communicationStyle,
-                workingRelationship: workingRelationship,
-                assistantIdentityName: assistantIdentityName,
-                assistantIdentityTone: assistantIdentityTone,
-                assistantIdentityValues: assistantIdentityValues,
-                assistantIdentityBoundaries: assistantIdentityBoundaries
+                workingRelationship: workingRelationship
             )
         }
     }
@@ -184,5 +139,47 @@ struct SystemSettingsView: View {
             return "Syncing \(environment.writeQueue.pendingCount) changes"
         }
         return "\(environment.writeQueue.pendingCount) pending changes"
+    }
+}
+
+struct AgentSettingsView: View {
+    @ObservedObject var viewModel: SettingsViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                Text("Managed by the assistant. User edits are disabled for these fields.")
+                    .foregroundStyle(.secondary)
+            }
+            Section("Assistant Name") {
+                Text(resolvedText(viewModel.settings?.assistantIdentity?.name))
+                    .textSelection(.enabled)
+            }
+            Section("Assistant Tone") {
+                Text(resolvedText(viewModel.settings?.assistantIdentity?.tone))
+                    .textSelection(.enabled)
+            }
+            Section("Assistant Values") {
+                Text(resolvedText(viewModel.settings?.assistantIdentity?.values))
+                    .textSelection(.enabled)
+            }
+            Section("Assistant Boundaries") {
+                Text(resolvedText(viewModel.settings?.assistantIdentity?.boundaries))
+                    .textSelection(.enabled)
+            }
+        }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
+        .overlay {
+            if viewModel.isLoading && viewModel.settings == nil {
+                ProgressView()
+            }
+        }
+    }
+
+    private func resolvedText(_ value: String?) -> String {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? "Not set" : trimmed
     }
 }

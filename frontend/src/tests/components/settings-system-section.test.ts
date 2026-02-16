@@ -8,10 +8,6 @@ describe('SettingsSystemSection', () => {
 		render(SettingsSystemSection, {
 			communicationStyle: '',
 			workingRelationship: '',
-			assistantIdentityName: '',
-			assistantIdentityTone: '',
-			assistantIdentityValues: '',
-			assistantIdentityBoundaries: '',
 			weatherUnit: 'celsius',
 			setWeatherUnit,
 			isLoadingSettings: false,

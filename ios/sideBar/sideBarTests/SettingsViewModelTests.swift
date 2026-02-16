@@ -129,7 +129,7 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.profileImageData, cachedData)
     }
 
-    func testSaveSystemSettingsSkipsUnchangedPayload() async throws {
+    func testSaveUserSettingsSkipsUnchangedPayload() async throws {
         let initial = UserSettings(
             userId: "user-1",
             communicationStyle: "Concise",
@@ -163,19 +163,15 @@ final class SettingsViewModelTests: XCTestCase {
         )
 
         await viewModel.load()
-        await viewModel.saveSystemSettings(
+        await viewModel.saveUserSettings(
             communicationStyle: "Concise",
-            workingRelationship: "Direct",
-            assistantIdentityName: "sideBar",
-            assistantIdentityTone: "direct",
-            assistantIdentityValues: "clarity",
-            assistantIdentityBoundaries: "no guessing"
+            workingRelationship: "Direct"
         )
 
         XCTAssertEqual(recorder.callCount, 0)
     }
 
-    func testSaveSystemSettingsSendsAssistantIdentityUpdates() async throws {
+    func testSaveUserSettingsSendsPromptUpdates() async throws {
         let initial = UserSettings(
             userId: "user-1",
             communicationStyle: "Concise",
@@ -198,7 +194,7 @@ final class SettingsViewModelTests: XCTestCase {
         )
         let updated = UserSettings(
             userId: "user-1",
-            communicationStyle: "Concise",
+            communicationStyle: "Detailed",
             workingRelationship: "Direct",
             name: nil,
             jobTitle: nil,
@@ -229,20 +225,16 @@ final class SettingsViewModelTests: XCTestCase {
         )
 
         await viewModel.load()
-        await viewModel.saveSystemSettings(
-            communicationStyle: "Concise",
-            workingRelationship: "Direct",
-            assistantIdentityName: "Navigator",
-            assistantIdentityTone: "direct",
-            assistantIdentityValues: "clarity",
-            assistantIdentityBoundaries: "no guessing"
+        await viewModel.saveUserSettings(
+            communicationStyle: "Detailed",
+            workingRelationship: "Direct"
         )
 
         XCTAssertEqual(recorder.callCount, 1)
         let update = try XCTUnwrap(recorder.lastUpdate)
         let payload = try encodedPayload(update)
-        let assistantIdentity = try XCTUnwrap(payload["assistant_identity"] as? [String: Any])
-        XCTAssertEqual(assistantIdentity["name"] as? String, "Navigator")
+        XCTAssertEqual(payload["communication_style"] as? String, "Detailed")
+        XCTAssertFalse(payload.keys.contains("assistant_identity"))
     }
 
     func testSaveProfileSettingsClearingDateEncodesNullDate() async throws {

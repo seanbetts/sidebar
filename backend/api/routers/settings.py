@@ -5,7 +5,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
@@ -47,6 +47,8 @@ class SettingsResponse(BaseModel):
 class SettingsUpdate(BaseModel):
     """Request payload for updating user settings."""
 
+    model_config = ConfigDict(extra="forbid")
+
     communication_style: str | None = None
     working_relationship: str | None = None
     name: str | None = None
@@ -57,7 +59,6 @@ class SettingsUpdate(BaseModel):
     pronouns: str | None = None
     location: str | None = None
     enabled_skills: list[str] | None = None
-    assistant_identity: AssistantIdentityPayload | None = None
 
 
 class ShortcutsPatResponse(BaseModel):

@@ -10,7 +10,22 @@ from api.services.settings_service import (
 )
 
 
-def test_clean_updates_trims_assistant_identity_fields() -> None:
+def test_clean_updates_rejects_agent_owned_fields() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_updates(
+            {
+                "assistant_identity": {
+                    "name": "Navigator",
+                }
+            }
+        )
+    assert exc_info.value.status_code == 400
+    assert "settings has invalid fields: assistant_identity" in str(
+        exc_info.value.detail
+    )
+
+
+def test_clean_agent_updates_trims_assistant_identity_fields() -> None:
     updates = {
         "assistant_identity": {
             "name": "  Navigator  ",
@@ -18,14 +33,14 @@ def test_clean_updates_trims_assistant_identity_fields() -> None:
         }
     }
 
-    cleaned = SettingsService.clean_updates(updates)
+    cleaned = SettingsService.clean_agent_updates(updates)
     assert cleaned["assistant_identity"]["name"] == "Navigator"
     assert cleaned["assistant_identity"]["tone"] == "Calm and clear."
 
 
-def test_clean_updates_rejects_unknown_assistant_identity_fields() -> None:
+def test_clean_agent_updates_rejects_unknown_assistant_identity_fields() -> None:
     with pytest.raises(HTTPException) as exc_info:
-        SettingsService.clean_updates(
+        SettingsService.clean_agent_updates(
             {
                 "assistant_identity": {
                     "name": "Navigator",
@@ -37,9 +52,9 @@ def test_clean_updates_rejects_unknown_assistant_identity_fields() -> None:
     assert "assistant_identity has invalid fields" in str(exc_info.value.detail)
 
 
-def test_clean_updates_rejects_long_assistant_identity_name() -> None:
+def test_clean_agent_updates_rejects_long_assistant_identity_name() -> None:
     with pytest.raises(HTTPException) as exc_info:
-        SettingsService.clean_updates(
+        SettingsService.clean_agent_updates(
             {
                 "assistant_identity": {
                     "name": "a" * (MAX_ASSISTANT_IDENTITY_NAME_CHARS + 1)
@@ -48,6 +63,15 @@ def test_clean_updates_rejects_long_assistant_identity_name() -> None:
         )
     assert exc_info.value.status_code == 400
     assert "assistant_identity.name exceeds" in str(exc_info.value.detail)
+
+
+def test_clean_agent_updates_rejects_user_owned_fields() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_agent_updates({"communication_style": "brief"})
+    assert exc_info.value.status_code == 400
+    assert "agent_settings has invalid fields: communication_style" in str(
+        exc_info.value.detail
+    )
 
 
 def test_build_response_resolves_default_assistant_identity() -> None:

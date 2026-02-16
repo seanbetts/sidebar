@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import MemorySettings from '$lib/components/settings/MemorySettings.svelte';
 	import SettingsAccountSection from '$lib/components/left-sidebar/panels/settings/SettingsAccountSection.svelte';
+	import SettingsAgentSection from '$lib/components/left-sidebar/panels/settings/SettingsAgentSection.svelte';
 	import SettingsSystemSection from '$lib/components/left-sidebar/panels/settings/SettingsSystemSection.svelte';
 	import SettingsSkillsSection from '$lib/components/left-sidebar/panels/settings/SettingsSkillsSection.svelte';
 	import SettingsShortcutsSection from '$lib/components/left-sidebar/panels/settings/SettingsShortcutsSection.svelte';
@@ -123,18 +124,21 @@
 						{isLoadingSettings}
 						{settingsError}
 					/>
-				{:else if activeSettingsSection === 'system'}
+				{:else if activeSettingsSection === 'user'}
 					<SettingsSystemSection
 						bind:communicationStyle
 						bind:workingRelationship
-						bind:assistantIdentityName
-						bind:assistantIdentityTone
-						bind:assistantIdentityValues
-						bind:assistantIdentityBoundaries
 						bind:weatherUnit
 						{setWeatherUnit}
 						{isLoadingSettings}
 						{settingsError}
+					/>
+				{:else if activeSettingsSection === 'agent'}
+					<SettingsAgentSection
+						{assistantIdentityName}
+						{assistantIdentityTone}
+						{assistantIdentityValues}
+						{assistantIdentityBoundaries}
 					/>
 				{:else if activeSettingsSection === 'storage'}
 					<SettingsStorageSection />
