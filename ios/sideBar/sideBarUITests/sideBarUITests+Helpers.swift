@@ -5,9 +5,49 @@
 //  Created by Sean Betts on 08/01/2026.
 //
 
+import Foundation
 import XCTest
 
 extension SideBarUITests {
+    func seededConversationTitle() -> String {
+        let environment = ProcessInfo.processInfo.environment
+        if let title = environment[SideBarUITestConstants.uiTestChatConversationTitleKey]?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ), !title.isEmpty {
+            return title
+        }
+        return "[seed:test-data] Onboarding flow review"
+    }
+
+    func loadSecretsValues(from filePath: String) -> [String: String]? {
+        guard let content = try? String(contentsOfFile: filePath, encoding: .utf8) else {
+            return nil
+        }
+        var values: [String: String] = [:]
+        for line in content.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedLine.isEmpty || trimmedLine.hasPrefix("#") || !trimmedLine.contains("=") {
+                continue
+            }
+            let parts = trimmedLine.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+            let rawValue = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+            let value = rawValue.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            values[key] = value
+        }
+        return values
+    }
+
+    func waitForNonExistence(
+        of element: XCUIElement,
+        timeout: TimeInterval
+    ) -> Bool {
+        let predicate = NSPredicate(format: "exists == false")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
     @MainActor
     func testStreamingReplyKeepsBottomAnchorVisible() throws {
         let config = try loadLaunchConfig()
