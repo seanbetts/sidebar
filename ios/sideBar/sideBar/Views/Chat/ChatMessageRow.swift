@@ -75,6 +75,10 @@ struct ChatMessageRow: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+            if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
+                ToolCallListView(toolCalls: toolCalls)
+            }
+
             if message.status == .error, let error = message.error {
                 Text(error)
                     .font(.caption)

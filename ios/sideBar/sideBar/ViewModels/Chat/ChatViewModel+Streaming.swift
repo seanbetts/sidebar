@@ -12,8 +12,11 @@ extension ChatViewModel {
         streamingConversationId = request.conversationId ?? selectedConversationId
         do {
             try await streamClient.connect(request: request)
+        } catch is CancellationError {
+            // Stream cancellation is user-initiated; avoid surfacing as an error.
         } catch {
             errorMessage = error.localizedDescription
+            finalizeStreaming(status: .error)
         }
         isStreaming = false
     }
@@ -101,9 +104,15 @@ extension ChatViewModel {
             .toolEnd: { [weak self] (event: ChatStreamEvent) in
                 self?.handleToolEnd(event)
             },
-            .memoryCreated: { (_: ChatStreamEvent) in },
-            .memoryUpdated: { (_: ChatStreamEvent) in },
-            .memoryDeleted: { (_: ChatStreamEvent) in }
+            .memoryCreated: { [weak self] (_: ChatStreamEvent) in
+                self?.refreshMemories()
+            },
+            .memoryUpdated: { [weak self] (_: ChatStreamEvent) in
+                self?.refreshMemories()
+            },
+            .memoryDeleted: { [weak self] (_: ChatStreamEvent) in
+                self?.refreshMemories()
+            }
         ]
         return handlers
     }
@@ -111,6 +120,10 @@ extension ChatViewModel {
     private func refreshScratchpad() {
         cache.remove(key: CacheKeys.scratchpad)
         scratchpadStore?.bump()
+    }
+
+    private func refreshMemories() {
+        cache.remove(key: CacheKeys.memoriesList)
     }
 
     func applySelectionIfNeeded(using items: [Conversation]) {
@@ -443,7 +456,9 @@ extension ChatViewModel {
             Task { [weak self] in
                 await self?.persistMessage(conversationId: conversationId, message: assistantMessage)
                 await self?.refreshConversations(silent: true)
-                await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
+                if status == .complete {
+                    await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
+                }
             }
         }
         isStreaming = false
