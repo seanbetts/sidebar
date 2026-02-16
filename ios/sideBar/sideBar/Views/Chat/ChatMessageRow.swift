@@ -72,6 +72,7 @@ struct ChatMessageRow: View {
             }
 
             SideBarMarkdown(text: message.content, style: .chat)
+                .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if message.status == .error, let error = message.error {
