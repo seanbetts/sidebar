@@ -32,6 +32,12 @@ final class SettingsAPITests: XCTestCase {
               "pronouns": null,
               "location": null,
               "profile_image_url": null,
+              "assistant_identity": {
+                "name": "sideBar",
+                "tone": "direct",
+                "values": "clarity",
+                "boundaries": "no guessing"
+              },
               "enabled_skills": []
             }
             """
@@ -42,6 +48,7 @@ final class SettingsAPITests: XCTestCase {
 
         XCTAssertEqual(settings.userId, "u1")
         XCTAssertEqual(settings.communicationStyle, "friendly")
+        XCTAssertEqual(settings.assistantIdentity?.name, "sideBar")
     }
 
     func testUpdateSettingsUsesPatchWithSnakeCaseKeys() async throws {
@@ -55,6 +62,9 @@ final class SettingsAPITests: XCTestCase {
             )
             XCTAssertEqual(body["communication_style"] as? String, "brief")
             XCTAssertEqual(body["enabled_skills"] as? [String], ["s1"])
+            let assistantIdentity = try XCTUnwrap(body["assistant_identity"] as? [String: Any])
+            XCTAssertEqual(assistantIdentity["name"] as? String, "sideBar")
+            XCTAssertEqual(assistantIdentity["tone"] as? String, "direct")
             XCTAssertNil(body["communicationStyle"])
             XCTAssertNil(body["enabledSkills"])
             let response = HTTPURLResponse(
@@ -76,6 +86,12 @@ final class SettingsAPITests: XCTestCase {
               "pronouns": null,
               "location": null,
               "profile_image_url": null,
+              "assistant_identity": {
+                "name": "sideBar",
+                "tone": "direct",
+                "values": "clarity",
+                "boundaries": "no guessing"
+              },
               "enabled_skills": ["s1"]
             }
             """
@@ -85,12 +101,19 @@ final class SettingsAPITests: XCTestCase {
         let settings = try await api.updateSettings(
             SettingsUpdate(
                 communicationStyle: "brief",
+                assistantIdentity: AssistantIdentitySettings(
+                    name: "sideBar",
+                    tone: "direct",
+                    values: "clarity",
+                    boundaries: "no guessing"
+                ),
                 enabledSkills: ["s1"]
             )
         )
 
         XCTAssertEqual(settings.communicationStyle, "brief")
         XCTAssertEqual(settings.enabledSkills, ["s1"])
+        XCTAssertEqual(settings.assistantIdentity?.boundaries, "no guessing")
     }
 
     func testUpdateSettingsEncodesNullDateOfBirthWhenIncluded() async throws {
@@ -121,6 +144,7 @@ final class SettingsAPITests: XCTestCase {
               "pronouns": null,
               "location": null,
               "profile_image_url": null,
+              "assistant_identity": null,
               "enabled_skills": []
             }
             """

@@ -1,6 +1,18 @@
 import Foundation
 import Combine
 
+/// Represents assistant identity guidance settings.
+public struct AssistantIdentitySettings: Codable, Equatable {
+    /// The assistant's preferred self-name.
+    public let name: String?
+    /// The assistant's default interaction tone.
+    public let tone: String?
+    /// The assistant's core values.
+    public let values: String?
+    /// The assistant's hard boundaries.
+    public let boundaries: String?
+}
+
 /// Represents an user settings struct.
 public struct UserSettings: Codable {
     /// The user id value.
@@ -25,8 +37,40 @@ public struct UserSettings: Codable {
     public let location: String?
     /// The profile image url value.
     public let profileImageUrl: String?
+    /// The assistant identity value.
+    public let assistantIdentity: AssistantIdentitySettings?
     /// The enabled skills value.
     public let enabledSkills: [String]
+
+    public init(
+        userId: String,
+        communicationStyle: String?,
+        workingRelationship: String?,
+        name: String?,
+        jobTitle: String?,
+        employer: String?,
+        dateOfBirth: String?,
+        gender: String?,
+        pronouns: String?,
+        location: String?,
+        profileImageUrl: String?,
+        assistantIdentity: AssistantIdentitySettings? = nil,
+        enabledSkills: [String]
+    ) {
+        self.userId = userId
+        self.communicationStyle = communicationStyle
+        self.workingRelationship = workingRelationship
+        self.name = name
+        self.jobTitle = jobTitle
+        self.employer = employer
+        self.dateOfBirth = dateOfBirth
+        self.gender = gender
+        self.pronouns = pronouns
+        self.location = location
+        self.profileImageUrl = profileImageUrl
+        self.assistantIdentity = assistantIdentity
+        self.enabledSkills = enabledSkills
+    }
 }
 
 /// Represents a settings update struct.
@@ -49,6 +93,8 @@ public struct SettingsUpdate: Encodable {
     public let pronouns: String?
     /// The location value.
     public let location: String?
+    /// The assistant identity value.
+    public let assistantIdentity: AssistantIdentitySettings?
     /// The enabled skills value.
     public let enabledSkills: [String]?
     /// Includes `date_of_birth` even when nil so callers can clear it.
@@ -64,6 +110,7 @@ public struct SettingsUpdate: Encodable {
         gender: String? = nil,
         pronouns: String? = nil,
         location: String? = nil,
+        assistantIdentity: AssistantIdentitySettings? = nil,
         enabledSkills: [String]? = nil,
         includeDateOfBirth: Bool = false
     ) {
@@ -76,6 +123,7 @@ public struct SettingsUpdate: Encodable {
         self.gender = gender
         self.pronouns = pronouns
         self.location = location
+        self.assistantIdentity = assistantIdentity
         self.enabledSkills = enabledSkills
         self.includeDateOfBirth = includeDateOfBirth
     }
@@ -90,6 +138,7 @@ public struct SettingsUpdate: Encodable {
         case gender
         case pronouns
         case location
+        case assistantIdentity = "assistant_identity"
         case enabledSkills = "enabled_skills"
     }
 
@@ -108,6 +157,7 @@ public struct SettingsUpdate: Encodable {
         try container.encodeIfPresent(gender, forKey: .gender)
         try container.encodeIfPresent(pronouns, forKey: .pronouns)
         try container.encodeIfPresent(location, forKey: .location)
+        try container.encodeIfPresent(assistantIdentity, forKey: .assistantIdentity)
         try container.encodeIfPresent(enabledSkills, forKey: .enabledSkills)
     }
 }

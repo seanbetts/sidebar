@@ -7,6 +7,10 @@ struct SystemSettingsView: View {
     @State private var isPendingWritesPresented = false
     @State private var communicationStyle: String = ""
     @State private var workingRelationship: String = ""
+    @State private var assistantIdentityName: String = ""
+    @State private var assistantIdentityTone: String = ""
+    @State private var assistantIdentityValues: String = ""
+    @State private var assistantIdentityBoundaries: String = ""
     @State private var hasLoadedDrafts = false
     @State private var isSyncingDrafts = false
     @State private var autosaveTask: Task<Void, Never>?
@@ -31,9 +35,30 @@ struct SystemSettingsView: View {
                 Text("Customize the prompts that guide sideBar")
                     .foregroundStyle(.secondary)
             }
+            Section("Assistant Name") {
+                TextField(
+                    "How the assistant should refer to itself.",
+                    text: $assistantIdentityName
+                )
+                #if os(iOS)
+                .textInputAutocapitalization(.words)
+                #endif
+            }
+            Section("Assistant Tone") {
+                TextEditor(text: $assistantIdentityTone)
+                    .frame(minHeight: 96)
+            }
+            Section("Assistant Values") {
+                TextEditor(text: $assistantIdentityValues)
+                    .frame(minHeight: 96)
+            }
+            Section("Assistant Boundaries") {
+                TextEditor(text: $assistantIdentityBoundaries)
+                    .frame(minHeight: 96)
+            }
             Section("Communication Style") {
                 TextEditor(text: $communicationStyle)
-                    .frame(minHeight: 120)
+                .frame(minHeight: 120)
             }
             Section("Working Relationship") {
                 TextEditor(text: $workingRelationship)
@@ -90,18 +115,33 @@ struct SystemSettingsView: View {
             return "none"
         }
         return [
+            settings.assistantIdentity?.name ?? "",
+            settings.assistantIdentity?.tone ?? "",
+            settings.assistantIdentity?.values ?? "",
+            settings.assistantIdentity?.boundaries ?? "",
             settings.communicationStyle ?? "",
             settings.workingRelationship ?? ""
         ].joined(separator: "|")
     }
 
     private var systemAutosaveSignature: String {
-        [communicationStyle, workingRelationship].joined(separator: "|")
+        [
+            assistantIdentityName,
+            assistantIdentityTone,
+            assistantIdentityValues,
+            assistantIdentityBoundaries,
+            communicationStyle,
+            workingRelationship
+        ].joined(separator: "|")
     }
 
     private var isDraftDirty: Bool {
         guard let settings = viewModel.settings else { return false }
-        return communicationStyle != (settings.communicationStyle ?? "")
+        return assistantIdentityName != (settings.assistantIdentity?.name ?? "")
+            || assistantIdentityTone != (settings.assistantIdentity?.tone ?? "")
+            || assistantIdentityValues != (settings.assistantIdentity?.values ?? "")
+            || assistantIdentityBoundaries != (settings.assistantIdentity?.boundaries ?? "")
+            || communicationStyle != (settings.communicationStyle ?? "")
             || workingRelationship != (settings.workingRelationship ?? "")
     }
 
@@ -111,6 +151,10 @@ struct SystemSettingsView: View {
             return
         }
         isSyncingDrafts = true
+        assistantIdentityName = settings.assistantIdentity?.name ?? ""
+        assistantIdentityTone = settings.assistantIdentity?.tone ?? ""
+        assistantIdentityValues = settings.assistantIdentity?.values ?? ""
+        assistantIdentityBoundaries = settings.assistantIdentity?.boundaries ?? ""
         communicationStyle = settings.communicationStyle ?? ""
         workingRelationship = settings.workingRelationship ?? ""
         hasLoadedDrafts = true
@@ -126,7 +170,11 @@ struct SystemSettingsView: View {
             guard !Task.isCancelled else { return }
             await viewModel.saveSystemSettings(
                 communicationStyle: communicationStyle,
-                workingRelationship: workingRelationship
+                workingRelationship: workingRelationship,
+                assistantIdentityName: assistantIdentityName,
+                assistantIdentityTone: assistantIdentityTone,
+                assistantIdentityValues: assistantIdentityValues,
+                assistantIdentityBoundaries: assistantIdentityBoundaries
             )
         }
     }
