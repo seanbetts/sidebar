@@ -51,7 +51,7 @@ struct ChatMessageRow: View {
                     if copyFeedback.isCopied {
                         Text("Copied")
                             .font(DesignTokens.Typography.caption2Semibold)
-                            .foregroundStyle(DesignTokens.Colors.success)
+                            .foregroundStyle(.secondary)
                             .transition(.opacity)
                     }
                     Button {
@@ -60,9 +60,9 @@ struct ChatMessageRow: View {
                     } label: {
                         Image(systemName: copyFeedback.iconName)
                             .font(.caption)
-                            .foregroundStyle(copyFeedback.isCopied ? DesignTokens.Colors.success : .secondary)
+                            .foregroundStyle(copyFeedback.isCopied ? copiedIconForeground : .secondary)
                             .padding(DesignTokens.Spacing.xxs)
-                            .background(copyFeedback.isCopied ? DesignTokens.Colors.successBackground : .clear)
+                            .background(copyFeedback.isCopied ? copiedIconBackground : .clear)
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
@@ -142,6 +142,14 @@ struct ChatMessageRow: View {
 
     private var pillBorderColor: Color {
         DesignTokens.Colors.border
+    }
+
+    private var copiedIconForeground: Color {
+        colorScheme == .dark ? Color.black : Color.white
+    }
+
+    private var copiedIconBackground: Color {
+        colorScheme == .dark ? Color.white : Color.black
     }
 
     private func copyMessage() {
