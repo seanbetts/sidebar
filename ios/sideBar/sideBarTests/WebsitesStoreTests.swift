@@ -203,6 +203,165 @@ final class WebsitesStoreTests: XCTestCase {
         let cached: WebsiteDetail? = cache.get(key: CacheKeys.websiteDetail(id: "w1"))
         XCTAssertNil(cached)
     }
+
+    func testApplyRealtimeUpdatePreservesPinnedAndArchivedWhenMetadataMissing() async {
+        let existing = WebsiteItem(
+            id: "w1",
+            title: "Original",
+            url: "https://example.com/original",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: true,
+            pinnedOrder: 7,
+            archived: true,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2024-01-01",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
+        let store = WebsitesStore(api: api, cache: TestCacheClient())
+        store.updateListItem(existing, persist: false)
+
+        let payload = RealtimePayload<WebsiteRealtimeRecord>(
+            eventType: .update,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "w1",
+                title: "Updated",
+                url: "https://example.com/updated",
+                domain: "example.com",
+                metadata: nil,
+                savedAt: "2024-01-02",
+                publishedAt: nil,
+                readingTime: "5 min",
+                updatedAt: "2024-01-02",
+                lastOpenedAt: "2024-01-02",
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        store.applyRealtimeEvent(payload)
+
+        XCTAssertEqual(store.items.count, 1)
+        XCTAssertEqual(store.items[0].title, "Updated")
+        XCTAssertEqual(store.items[0].pinned, true)
+        XCTAssertEqual(store.items[0].pinnedOrder, 7)
+        XCTAssertEqual(store.items[0].archived, true)
+    }
+
+    func testApplyRealtimeUpdateUsesExplicitPinnedMetadataAndPreservesArchivedWhenMissing() async {
+        let existing = WebsiteItem(
+            id: "w1",
+            title: "Original",
+            url: "https://example.com/original",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: true,
+            pinnedOrder: 3,
+            archived: true,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2024-01-01",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
+        let store = WebsitesStore(api: api, cache: TestCacheClient())
+        store.updateListItem(existing, persist: false)
+
+        let payload = RealtimePayload<WebsiteRealtimeRecord>(
+            eventType: .update,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "w1",
+                title: "Updated",
+                url: "https://example.com/updated",
+                domain: "example.com",
+                metadata: [
+                    "pinned": AnyCodable(false),
+                    "pinned_order": AnyCodable(NSNull())
+                ],
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2024-01-02",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        store.applyRealtimeEvent(payload)
+
+        XCTAssertEqual(store.items.count, 1)
+        XCTAssertEqual(store.items[0].pinned, false)
+        XCTAssertNil(store.items[0].pinnedOrder)
+        XCTAssertEqual(store.items[0].archived, true)
+    }
+
+    func testApplyRealtimeUpdateUsesExplicitArchivedMetadata() async {
+        let existing = WebsiteItem(
+            id: "w1",
+            title: "Original",
+            url: "https://example.com/original",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: true,
+            pinnedOrder: 3,
+            archived: true,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2024-01-01",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
+        let store = WebsitesStore(api: api, cache: TestCacheClient())
+        store.updateListItem(existing, persist: false)
+
+        let payload = RealtimePayload<WebsiteRealtimeRecord>(
+            eventType: .update,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "w1",
+                title: "Updated",
+                url: "https://example.com/updated",
+                domain: "example.com",
+                metadata: [
+                    "archived": AnyCodable(false)
+                ],
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2024-01-02",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        store.applyRealtimeEvent(payload)
+
+        XCTAssertEqual(store.items.count, 1)
+        XCTAssertEqual(store.items[0].pinned, true)
+        XCTAssertEqual(store.items[0].pinnedOrder, 3)
+        XCTAssertEqual(store.items[0].archived, false)
+    }
 }
 
 private enum MockError: Error {
