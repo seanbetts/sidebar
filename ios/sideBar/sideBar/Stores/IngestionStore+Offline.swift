@@ -76,17 +76,21 @@ extension IngestionStore {
         }
         if let index = remoteItems.firstIndex(where: { $0.file.id == file.id }) {
             let existing = remoteItems[index]
+            let mergedFile = mergeFile(existing: existing.file, incoming: file)
             remoteItems[index] = IngestionListItem(
-                file: mergeFile(existing: existing.file, incoming: file),
+                file: mergedFile,
                 job: existing.job,
                 recommendedViewer: existing.recommendedViewer
+                    ?? fallbackRecommendedViewer(for: mergedFile)
             )
         } else if let local = localItems[file.id] {
+            let mergedFile = mergeFile(existing: local.file, incoming: file)
             remoteItems.append(
                 IngestionListItem(
-                    file: mergeFile(existing: local.file, incoming: file),
+                    file: mergedFile,
                     job: local.job,
                     recommendedViewer: local.recommendedViewer
+                        ?? fallbackRecommendedViewer(for: mergedFile)
                 )
             )
         } else {
@@ -104,7 +108,7 @@ extension IngestionStore {
                 IngestionListItem(
                     file: file,
                     job: job,
-                    recommendedViewer: nil
+                    recommendedViewer: fallbackRecommendedViewer(for: file)
                 )
             )
         }
