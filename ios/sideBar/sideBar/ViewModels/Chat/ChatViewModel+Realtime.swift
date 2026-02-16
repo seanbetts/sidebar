@@ -10,6 +10,15 @@ extension ChatViewModel {
         Logger(subsystem: "sideBar", category: "ChatViewModelRealtime")
     }
 
+    func refreshScratchpad() {
+        cache.remove(key: CacheKeys.scratchpad)
+        scratchpadStore?.bump()
+    }
+
+    func refreshMemories() {
+        cache.remove(key: CacheKeys.memoriesList)
+    }
+
     func handleNoteCreate(_ event: ChatStreamEvent) {
         guard let id = stringValue(from: event.data, key: "id") else {
             return
@@ -149,7 +158,7 @@ extension ChatViewModel {
         guard let messageId = activeStreamingMessageId else {
             return
         }
-        updateMessage(id: messageId) { message in
+        updateMessage(id: messageId, persist: false) { message in
             Message(
                 id: message.id,
                 role: message.role,
@@ -163,14 +172,17 @@ extension ChatViewModel {
         }
     }
 
-    func updateMessage(id: String, transform: (Message) -> Message) {
+    func updateMessage(id: String, persist: Bool = true, transform: (Message) -> Message) {
         messages = messages.map { message in
             guard message.id == id else {
                 return message
             }
             return transform(message)
         }
-        syncMessagesToStore(conversationId: streamingConversationId ?? selectedConversationId)
+        syncMessagesToStore(
+            conversationId: streamingConversationId ?? selectedConversationId,
+            persist: persist
+        )
     }
 
     func upsertToolCall(existing: [ToolCall]?, newValue: ToolCall) -> [ToolCall] {

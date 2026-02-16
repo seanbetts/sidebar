@@ -815,7 +815,6 @@ const codeBlockEndDecoration = Decoration.line({ class: 'cm-code-block cm-code-b
 const mediaDecoration = Decoration.line({ class: 'cm-media-line' });
 const blankLineDecoration = Decoration.line({ class: 'cm-blank-line' });
 const livePreviewHideDecoration = Decoration.mark({ class: 'cm-live-hide' });
-const listMarkerDecoration = Decoration.mark({ class: 'cm-list-marker' });
 const listDepthDecoration = (depth: number) =>
 	Decoration.line({
 		attributes: { class: 'cm-list-depth', style: `--cm-list-depth: ${Math.max(depth, 1)}` }
@@ -1018,6 +1017,8 @@ const _markdownLinePlugin = ViewPlugin.fromClass(
 				};
 				const tree = syntaxTree(view.state);
 				const doc = view.state.doc;
+				const selection = view.state.selection;
+				const isReadOnly = view.state.facet(EditorState.readOnly);
 				const codeBlockRanges: Array<{
 					from: number;
 					to: number;

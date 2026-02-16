@@ -39,6 +39,48 @@ final class IngestionStoreTests: XCTestCase {
         XCTAssertEqual(cached?.items.first?.file.id, "f1")
     }
 
+    func testApplyIngestedFileEventPreservesRecommendedViewerForExistingFile() async {
+        let cache = TestCacheClient()
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let existing = makeItem(
+            id: "f1",
+            mimeOriginal: "application/pdf",
+            pinned: true,
+            status: "ready",
+            stage: "ready",
+            recommendedViewer: "viewer_pdf"
+        )
+        store.applyListUpdate([existing], persist: false)
+
+        let payload = RealtimePayload<IngestedFileRealtimeRecord>(
+            eventType: .update,
+            table: RealtimeTable.ingestedFiles,
+            schema: "public",
+            record: IngestedFileRealtimeRecord(
+                id: "f1",
+                filenameOriginal: "doc-v2.pdf",
+                path: "/doc-v2.pdf",
+                mimeOriginal: "application/pdf",
+                sizeBytes: 20,
+                sha256: nil,
+                sourceUrl: nil,
+                sourceMetadata: nil,
+                pinned: true,
+                pinnedOrder: 0,
+                createdAt: "2024-01-01T12:00:00Z",
+                updatedAt: "2024-01-01T12:01:00Z",
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        store.applyIngestedFileEvent(payload)
+
+        XCTAssertEqual(store.items.first?.recommendedViewer, "viewer_pdf")
+        XCTAssertEqual(store.items.first?.file.pinned, true)
+    }
+
     func testApplyFileJobEventUpdatesJobStatus() async {
         let cache = TestCacheClient()
         let defaults = makeDefaults()
@@ -269,6 +311,32 @@ final class IngestionStoreTests: XCTestCase {
 
         XCTAssertEqual(store.items.map(\.file.id), ["keep-cached"])
     }
+
+    func testApplySyncFileInfersRecommendedViewerWhenMissing() async {
+        let cache = TestCacheClient()
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let file = IngestedFileMeta(
+            id: "f-sync",
+            filenameOriginal: "sync.pdf",
+            path: "/sync.pdf",
+            mimeOriginal: "application/pdf",
+            sizeBytes: 12,
+            sha256: nil,
+            pinned: true,
+            pinnedOrder: 0,
+            category: nil,
+            sourceUrl: nil,
+            sourceMetadata: nil,
+            createdAt: "2024-01-01T12:00:00Z",
+            updatedAt: "2024-01-01T12:00:00Z",
+            deletedAt: nil
+        )
+
+        store.applySyncFile(file)
+
+        XCTAssertEqual(store.items.first?.recommendedViewer, "viewer_pdf")
+    }
 }
 
 private struct MockIngestionAPI: IngestionProviding {
@@ -342,7 +410,14 @@ private func makeItem(
     id: String,
     filename: String = "doc.txt",
     path: String = "/doc.txt",
+    mimeOriginal: String = "text/plain",
     sourceMetadata: [String: AnyCodable]? = nil,
+    sourceUrl: String? = nil,
+    pinned: Bool? = nil,
+    pinnedOrder: Int? = nil,
+    status: String = "processing",
+    stage: String = "extracting",
+    recommendedViewer: String? = nil,
     deletedAt: String? = nil
 ) -> IngestionListItem {
     IngestionListItem(
@@ -350,21 +425,21 @@ private func makeItem(
             id: id,
             filenameOriginal: filename,
             path: path,
-            mimeOriginal: "text/plain",
+            mimeOriginal: mimeOriginal,
             sizeBytes: 12,
             sha256: nil,
-            pinned: nil,
-            pinnedOrder: nil,
+            pinned: pinned,
+            pinnedOrder: pinnedOrder,
             category: nil,
-            sourceUrl: nil,
+            sourceUrl: sourceUrl,
             sourceMetadata: sourceMetadata,
             createdAt: "2024-01-01T12:00:00Z",
             updatedAt: "2024-01-01T12:00:00Z",
             deletedAt: deletedAt
         ),
         job: IngestionJob(
-            status: "processing",
-            stage: "extracting",
+            status: status,
+            stage: stage,
             errorCode: nil,
             errorMessage: nil,
             userMessage: nil,
@@ -372,6 +447,6 @@ private func makeItem(
             attempts: 0,
             updatedAt: "2024-01-01T12:00:00Z"
         ),
-        recommendedViewer: nil
+        recommendedViewer: recommendedViewer
     )
 }

@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 extension View {
     @ViewBuilder
@@ -23,6 +26,17 @@ extension View {
     func submitLabelDone() -> some View {
         #if os(iOS)
         self.submitLabel(.done)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func phoneSheetGrabBarVisible() -> some View {
+        #if os(iOS)
+        self.presentationDragIndicator(
+            UIDevice.current.userInterfaceIdiom == .phone ? .visible : .automatic
+        )
         #else
         self
         #endif

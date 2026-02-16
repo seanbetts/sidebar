@@ -122,7 +122,9 @@ def list_ingestions(
     db: Session = Depends(get_db),
 ):
     """List ingestion records for the current user."""
-    records = FileIngestionService.list_ingestions(db, user_id, limit=50)
+    records = FileIngestionService.list_ingestions_for_sidebar(
+        db, user_id, limit=50, active_limit=20
+    )
 
     items = []
     for record in records:

@@ -205,6 +205,43 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(sentDueDate, "2025-03-18")
     }
 
+    func testAutosaveNotesCallsApplyWithoutRefreshingSelectionOrCounts() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Old", updatedAt: "u1")
+        api.enqueueListResponse(scope: "today", tasks: [task])
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+        XCTAssertEqual(api.listCallCount, 1)
+        XCTAssertEqual(api.countsCallCount, 0)
+
+        await sut.viewModel.autosaveNotes(task: task, notes: "Updated")
+
+        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertEqual(api.listCallCount, 1, "Autosave should avoid full list refresh")
+        XCTAssertEqual(api.countsCallCount, 0, "Autosave should avoid counts refresh")
+        let operation = api.lastApplyPayload?.operations.first
+        XCTAssertEqual(operation?.op, "notes")
+        XCTAssertEqual(operation?.notes, "Updated")
+    }
+
+    func testUpdateNotesRefreshesSelectionAndCounts() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Old", updatedAt: "u1")
+        api.enqueueListResponse(scope: "today", tasks: [task])
+        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Draft", status: "open", notes: "Updated", updatedAt: "u2")])
+        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Draft", status: "open", notes: "Updated", updatedAt: "u2")])
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+
+        await sut.viewModel.updateNotes(task: task, notes: "Updated")
+
+        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertGreaterThanOrEqual(api.listCallCount, 3, "Manual save should refresh list and widget data")
+        XCTAssertGreaterThanOrEqual(api.countsCallCount, 1, "Manual save should refresh counts")
+    }
+
     // MARK: - New task creation
 
     func testStartNewTaskSetsDefaultDueDateForTodaySelection() async {

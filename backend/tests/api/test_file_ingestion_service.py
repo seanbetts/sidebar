@@ -130,3 +130,61 @@ def test_update_filename_conflict(db_session):
             "renamed.pdf",
             client_updated_at=stale,
         )
+
+
+def test_list_ingestions_for_sidebar_includes_ready_when_active_is_capped(db_session):
+    for i in range(6):
+        record = FileIngestionService.create_ingestion(
+            db_session,
+            "user-1",
+            filename_original=f"active-{i}.txt",
+            path=f"active-{i}.txt",
+            mime_original="text/plain",
+            size_bytes=10,
+        )[0]
+        FileIngestionService.update_job_status(
+            db_session, record.id, status="processing", stage="validating"
+        )
+
+    for i in range(4):
+        record = FileIngestionService.create_ingestion(
+            db_session,
+            "user-1",
+            filename_original=f"ready-{i}.txt",
+            path=f"ready-{i}.txt",
+            mime_original="text/plain",
+            size_bytes=10,
+        )[0]
+        FileIngestionService.update_job_status(
+            db_session, record.id, status="ready", stage="ready"
+        )
+
+    records = FileIngestionService.list_ingestions_for_sidebar(
+        db_session, "user-1", limit=6, active_limit=2
+    )
+    statuses = [FileIngestionService.get_job(db_session, item.id).status for item in records]
+
+    assert len(records) == 6
+    assert statuses.count("processing") == 2
+    assert statuses.count("ready") == 4
+
+
+def test_list_ingestions_for_sidebar_backfills_active_when_no_completed_items(db_session):
+    for i in range(5):
+        record = FileIngestionService.create_ingestion(
+            db_session,
+            "user-1",
+            filename_original=f"active-only-{i}.txt",
+            path=f"active-only-{i}.txt",
+            mime_original="text/plain",
+            size_bytes=10,
+        )[0]
+        FileIngestionService.update_job_status(
+            db_session, record.id, status="processing", stage="validating"
+        )
+
+    records = FileIngestionService.list_ingestions_for_sidebar(
+        db_session, "user-1", limit=4, active_limit=2
+    )
+
+    assert len(records) == 4

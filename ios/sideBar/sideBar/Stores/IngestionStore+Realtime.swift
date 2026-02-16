@@ -28,7 +28,9 @@ extension IngestionStore {
             guard let mapped = RealtimeMappers.mapIngestedFile(record) else {
                 return
             }
-            let job = remoteItems.first(where: { $0.file.id == mapped.id })?.job ?? IngestionJob(
+            let existingItem = remoteItems.first(where: { $0.file.id == mapped.id })
+                ?? localItems[mapped.id]
+            let job = existingItem?.job ?? IngestionJob(
                 status: nil,
                 stage: nil,
                 errorCode: nil,
@@ -38,7 +40,22 @@ extension IngestionStore {
                 attempts: 0,
                 updatedAt: nil
             )
-            upsertRemoteItem(IngestionListItem(file: mapped, job: job, recommendedViewer: nil))
+            let activeRecommendedViewer: String? = {
+                guard let meta = activeMeta, meta.file.id == mapped.id else {
+                    return nil
+                }
+                return meta.recommendedViewer
+            }()
+            let recommendedViewer = existingItem?.recommendedViewer
+                ?? activeRecommendedViewer
+                ?? fallbackRecommendedViewer(for: mapped)
+            upsertRemoteItem(
+                IngestionListItem(
+                    file: mapped,
+                    job: job,
+                    recommendedViewer: recommendedViewer
+                )
+            )
         }
     }
 

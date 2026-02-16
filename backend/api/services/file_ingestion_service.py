@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -148,6 +148,108 @@ class FileIngestionService:
         Returns:
             List of ingested file records.
         """
+        query = FileIngestionService._ingestions_base_query(
+            db, user_id, include_deleted=include_deleted
+        )
+        if updated_after is not None:
+            query = query.filter(IngestedFile.updated_at >= updated_after)
+            query = query.order_by(IngestedFile.updated_at.asc())
+        else:
+            query = query.order_by(IngestedFile.created_at.desc())
+        if limit is not None:
+            query = query.limit(limit)
+        return query.all()
+
+    @staticmethod
+    def list_ingestions_for_sidebar(
+        db: Session,
+        user_id: str,
+        *,
+        limit: int = 50,
+        active_limit: int = 20,
+    ) -> list[IngestedFile]:
+        """List ingestions for sidebar display with balanced active/ready results.
+
+        The sidebar should not be dominated by active uploads when many are queued.
+        This prioritizes a bounded set of active jobs, then fills with non-active
+        items (ready/failed/canceled/no-job). If there are still open slots, it
+        backfills with additional active items.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            limit: Total max records to return.
+            active_limit: Max active-status records to prioritize first.
+
+        Returns:
+            Ordered ingestion records for sidebar display.
+        """
+        if limit <= 0:
+            return []
+        if active_limit < 0:
+            active_limit = 0
+        active_limit = min(active_limit, limit)
+        terminal_statuses = {"ready", "failed", "canceled"}
+
+        base_query = FileIngestionService._ingestions_base_query(
+            db, user_id, include_deleted=False
+        )
+        active_query = (
+            base_query.outerjoin(
+                FileProcessingJob, FileProcessingJob.file_id == IngestedFile.id
+            )
+            .filter(
+                func.coalesce(FileProcessingJob.status, "") != "",
+                ~func.coalesce(FileProcessingJob.status, "").in_(terminal_statuses),
+            )
+            .order_by(IngestedFile.created_at.desc())
+        )
+        prioritized_active = (
+            active_query.limit(active_limit).all() if active_limit > 0 else []
+        )
+        selected: list[IngestedFile] = list(prioritized_active)
+        selected_ids = {item.id for item in selected}
+        remaining = limit - len(selected)
+
+        if remaining > 0:
+            completed_query = (
+                base_query.outerjoin(
+                    FileProcessingJob, FileProcessingJob.file_id == IngestedFile.id
+                )
+                .filter(
+                    or_(
+                        FileProcessingJob.status.is_(None),
+                        FileProcessingJob.status.in_(terminal_statuses),
+                    )
+                )
+                .order_by(IngestedFile.created_at.desc())
+            )
+            if selected_ids:
+                completed_query = completed_query.filter(
+                    ~IngestedFile.id.in_(list(selected_ids))
+                )
+            completed_items = completed_query.limit(remaining).all()
+            selected.extend(completed_items)
+            selected_ids.update(item.id for item in completed_items)
+            remaining = limit - len(selected)
+
+        if remaining > 0:
+            backfill_active_query = active_query
+            if selected_ids:
+                backfill_active_query = backfill_active_query.filter(
+                    ~IngestedFile.id.in_(list(selected_ids))
+                )
+            selected.extend(backfill_active_query.limit(remaining).all())
+
+        return selected
+
+    @staticmethod
+    def _ingestions_base_query(
+        db: Session,
+        user_id: str,
+        *,
+        include_deleted: bool,
+    ):
         query = db.query(IngestedFile).filter(
             IngestedFile.user_id == user_id,
             func.coalesce(
@@ -159,14 +261,7 @@ class FileIngestionService:
         )
         if not include_deleted:
             query = query.filter(IngestedFile.deleted_at.is_(None))
-        if updated_after is not None:
-            query = query.filter(IngestedFile.updated_at >= updated_after)
-            query = query.order_by(IngestedFile.updated_at.asc())
-        else:
-            query = query.order_by(IngestedFile.created_at.desc())
-        if limit is not None:
-            query = query.limit(limit)
-        return query.all()
+        return query
 
     @staticmethod
     def list_derivatives(db: Session, file_id: uuid.UUID) -> list[FileDerivative]:

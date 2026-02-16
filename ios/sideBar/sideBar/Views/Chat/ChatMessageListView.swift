@@ -1,11 +1,33 @@
 import SwiftUI
 
+struct ChatStreamingAutoScrollController {
+    private(set) var lastAutoScrollAt: Date = .distantPast
+    let throttleSeconds: TimeInterval
+
+    init(throttleSeconds: TimeInterval = 0.08) {
+        self.throttleSeconds = throttleSeconds
+    }
+
+    mutating func reset() {
+        lastAutoScrollAt = .distantPast
+    }
+
+    mutating func shouldScroll(now: Date) -> Bool {
+        guard now.timeIntervalSince(lastAutoScrollAt) >= throttleSeconds else {
+            return false
+        }
+        lastAutoScrollAt = now
+        return true
+    }
+}
+
 struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
     let bottomInset: CGFloat
     @State private var shouldScrollToBottom = false
     @State private var visibleMessageCount: Int = 40
     @State private var isAutoLoadingMore = false
+    @State private var streamingAutoScrollController = ChatStreamingAutoScrollController()
     private let pageSize: Int = 40
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -39,9 +61,7 @@ struct ChatMessageListView: View {
                         ChatMessageRow(message: message)
                             .id(message.id)
                     }
-                    Color.clear
-                        .frame(height: max(bottomInset, 1))
-                        .id("bottom")
+                    chatBottomAnchor
                 }
                 .padding(DesignTokens.Spacing.md)
                 .frame(maxWidth: ChatLayout.maxContentWidth)
@@ -51,6 +71,7 @@ struct ChatMessageListView: View {
                 if oldToken.selectedConversationId != newToken.selectedConversationId {
                     visibleMessageCount = pageSize
                     isAutoLoadingMore = false
+                    streamingAutoScrollController.reset()
                     shouldScrollToBottom = true
                     scrollToBottom(proxy: proxy, animated: false)
                     Task { @MainActor in
@@ -62,6 +83,7 @@ struct ChatMessageListView: View {
                 }
 
                 if oldToken.messageCount != newToken.messageCount {
+                    streamingAutoScrollController.reset()
                     let oldValue = oldToken.messageCount
                     let newValue = newToken.messageCount
                     if oldValue == 0 {
@@ -84,6 +106,12 @@ struct ChatMessageListView: View {
                 }
 
                 if oldToken.lastMessageSignature != newToken.lastMessageSignature {
+                    if viewModel.isStreaming {
+                        if streamingAutoScrollController.shouldScroll(now: Date()) {
+                            scrollToBottom(proxy: proxy, animated: false)
+                        }
+                        return
+                    }
                     scrollToBottom(proxy: proxy, animated: shouldScrollToBottom == false)
                     return
                 }
@@ -167,6 +195,25 @@ struct ChatMessageListView: View {
             }
             completion()
         }
+    }
+
+    @ViewBuilder
+    private var chatBottomAnchor: some View {
+        if shouldExposeBottomAnchorForUITests {
+            Color.clear
+                .frame(height: max(bottomInset, 1))
+                .id("bottom")
+                .accessibilityElement()
+                .accessibilityIdentifier("chat-scroll-bottom-anchor")
+        } else {
+            Color.clear
+                .frame(height: max(bottomInset, 1))
+                .id("bottom")
+        }
+    }
+
+    private var shouldExposeBottomAnchorForUITests: Bool {
+        ProcessInfo.processInfo.environment["SIDEBAR_UI_TEST_EXPOSE_CHAT_SCROLL_ANCHOR"] == "1"
     }
 }
 

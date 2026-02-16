@@ -98,6 +98,7 @@ struct NotesPanelView: View {
                 isSaving: isCreatingFolder,
                 onCreate: createFolder
             )
+            .phoneSheetGrabBarVisible()
         }
         .sheet(isPresented: $isMoveSheetPresented) {
             NoteFolderPickerSheet(
@@ -111,6 +112,7 @@ struct NotesPanelView: View {
                     }
                 }
             )
+            .phoneSheetGrabBarVisible()
         }
         .alert(renameDialogTitle, isPresented: isRenameDialogPresented) {
             TextField(renameDialogPlaceholder, text: $renameValue)

@@ -244,13 +244,46 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             }
         case .insert, .update:
             if let record = payload.record, let mapped = RealtimeMappers.mapWebsite(record) {
-                updateListItem(mapped, persist: true)
+                let merged = mergePinnedAndArchivedFields(for: mapped, metadata: record.metadata)
+                updateListItem(merged, persist: true)
                 if let active, active.id == mapped.id {
-                    let updated = updateDetail(active, with: mapped)
+                    let updated = updateDetail(active, with: merged)
                     applyDetailUpdate(updated, persist: true)
                 }
             }
         }
+    }
+
+    func mergePinnedAndArchivedFields(
+        for incoming: WebsiteItem,
+        metadata: [String: AnyCodable]?
+    ) -> WebsiteItem {
+        guard let current = itemForDetail(id: incoming.id) else {
+            return incoming
+        }
+
+        let hasPinned = metadata?["pinned"] != nil
+        let hasPinnedOrder = metadata?["pinned_order"] != nil
+        let hasArchived = metadata?["archived"] != nil
+
+        return WebsiteItem(
+            id: incoming.id,
+            title: incoming.title,
+            url: incoming.url,
+            domain: incoming.domain,
+            savedAt: incoming.savedAt,
+            publishedAt: incoming.publishedAt,
+            pinned: hasPinned ? incoming.pinned : current.pinned,
+            pinnedOrder: hasPinnedOrder ? incoming.pinnedOrder : current.pinnedOrder,
+            archived: hasArchived ? incoming.archived : current.archived,
+            faviconUrl: incoming.faviconUrl,
+            faviconR2Key: incoming.faviconR2Key,
+            youtubeTranscripts: incoming.youtubeTranscripts,
+            readingTime: incoming.readingTime,
+            updatedAt: incoming.updatedAt,
+            lastOpenedAt: incoming.lastOpenedAt,
+            deletedAt: incoming.deletedAt
+        )
     }
 
 }

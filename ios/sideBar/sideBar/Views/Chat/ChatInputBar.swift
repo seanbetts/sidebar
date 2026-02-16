@@ -1,5 +1,14 @@
 import SwiftUI
 
+enum ChatInputReturnIntent: Equatable {
+    case insertNewline
+    case send
+}
+
+func chatInputReturnIntent(commandPressed: Bool) -> ChatInputReturnIntent {
+    commandPressed ? .send : .insertNewline
+}
+
 struct ChatInputBar: View {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat

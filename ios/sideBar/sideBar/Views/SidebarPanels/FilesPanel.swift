@@ -61,7 +61,10 @@ extension FilesPanelView {
             .sheet(
                 isPresented: $isRenameSheetPresented,
                 onDismiss: clearRenameTarget,
-                content: renameSheet
+                content: {
+                    renameSheet()
+                        .phoneSheetGrabBarVisible()
+                }
             )
         return base
             .fileImporter(

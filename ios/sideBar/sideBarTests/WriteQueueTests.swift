@@ -109,6 +109,103 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertEqual(pending.first?.entityType, WriteEntityType.note.rawValue)
     }
 
+    func testEnqueueTaskNotesUpdateCoalescesLatestPendingWrite() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+
+        let first = TaskOperationPayload(
+            operationId: "op-1",
+            op: "notes",
+            id: "task-1",
+            notes: "First",
+            clientUpdatedAt: "u1"
+        )
+        let second = TaskOperationPayload(
+            operationId: "op-2",
+            op: "notes",
+            id: "task-1",
+            notes: "Second",
+            clientUpdatedAt: "u1"
+        )
+
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: "task-1",
+            payload: first
+        )
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: "task-1",
+            payload: second
+        )
+
+        let request = PendingWrite.fetchRequest()
+        let writes = try persistence.container.viewContext.fetch(request)
+        XCTAssertEqual(writes.count, 1)
+        XCTAssertEqual(queue.pendingCount, 1)
+
+        let saved = try XCTUnwrap(writes.first)
+        let decoded = try JSONDecoder().decode(TaskOperationPayload.self, from: saved.payload)
+        XCTAssertEqual(decoded.operationId, "op-2")
+        XCTAssertEqual(decoded.notes, "Second")
+    }
+
+    func testEnqueueTaskNonNotesUpdateDoesNotCoalesce() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+
+        let first = TaskOperationPayload(
+            operationId: "op-1",
+            op: "rename",
+            id: "task-1",
+            title: "One",
+            clientUpdatedAt: "u1"
+        )
+        let second = TaskOperationPayload(
+            operationId: "op-2",
+            op: "rename",
+            id: "task-1",
+            title: "Two",
+            clientUpdatedAt: "u1"
+        )
+
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: "task-1",
+            payload: first
+        )
+        try await queue.enqueue(
+            operation: .update,
+            entityType: .task,
+            entityId: "task-1",
+            payload: second
+        )
+
+        let request = PendingWrite.fetchRequest()
+        let writes = try persistence.container.viewContext.fetch(request)
+        XCTAssertEqual(writes.count, 2)
+        XCTAssertEqual(queue.pendingCount, 2)
+    }
+
     func testQueueRespectsMaxPendingWrites() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(

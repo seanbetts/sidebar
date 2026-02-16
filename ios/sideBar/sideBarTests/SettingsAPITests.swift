@@ -44,6 +44,94 @@ final class SettingsAPITests: XCTestCase {
         XCTAssertEqual(settings.communicationStyle, "friendly")
     }
 
+    func testUpdateSettingsUsesPatchWithSnakeCaseKeys() async throws {
+        let api = SettingsAPI(client: makeClient())
+        SettingsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PATCH")
+            XCTAssertTrue(request.url?.absoluteString.contains("settings") == true)
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+            )
+            XCTAssertEqual(body["communication_style"] as? String, "brief")
+            XCTAssertEqual(body["enabled_skills"] as? [String], ["s1"])
+            XCTAssertNil(body["communicationStyle"])
+            XCTAssertNil(body["enabledSkills"])
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "user_id": "u1",
+              "communication_style": "brief",
+              "working_relationship": null,
+              "name": null,
+              "job_title": null,
+              "employer": null,
+              "date_of_birth": null,
+              "gender": null,
+              "pronouns": null,
+              "location": null,
+              "profile_image_url": null,
+              "enabled_skills": ["s1"]
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        let settings = try await api.updateSettings(
+            SettingsUpdate(
+                communicationStyle: "brief",
+                enabledSkills: ["s1"]
+            )
+        )
+
+        XCTAssertEqual(settings.communicationStyle, "brief")
+        XCTAssertEqual(settings.enabledSkills, ["s1"])
+    }
+
+    func testUpdateSettingsEncodesNullDateOfBirthWhenIncluded() async throws {
+        let api = SettingsAPI(client: makeClient())
+        SettingsURLProtocolMock.requestHandler = { request in
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+            )
+            XCTAssertTrue(body.keys.contains("date_of_birth"))
+            XCTAssertTrue(body["date_of_birth"] is NSNull)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "user_id": "u1",
+              "communication_style": null,
+              "working_relationship": null,
+              "name": null,
+              "job_title": null,
+              "employer": null,
+              "date_of_birth": null,
+              "gender": null,
+              "pronouns": null,
+              "location": null,
+              "profile_image_url": null,
+              "enabled_skills": []
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        _ = try await api.updateSettings(
+            SettingsUpdate(dateOfBirth: nil, includeDateOfBirth: true)
+        )
+    }
+
     func testRotateShortcutsTokenUsesPost() async throws {
         let api = SettingsAPI(client: makeClient())
         SettingsURLProtocolMock.requestHandler = { request in

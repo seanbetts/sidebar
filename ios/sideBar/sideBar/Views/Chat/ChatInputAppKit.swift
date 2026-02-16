@@ -215,7 +215,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
             guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
                 return false
             }
-            if NSEvent.modifierFlags.contains(.shift) {
+            if chatInputReturnIntent(commandPressed: NSEvent.modifierFlags.contains(.command)) == .insertNewline {
                 return false
             }
             onSend()

@@ -208,6 +208,36 @@ extension IngestionStore {
         )
     }
 
+    func fallbackRecommendedViewer(for file: IngestedFileMeta) -> String? {
+        let normalizedMime = normalizedMimeType(file.mimeOriginal)
+        if normalizedMime == "application/pdf" {
+            return "viewer_pdf"
+        }
+        if normalizedMime.hasPrefix("video/"), file.sourceUrl?.isEmpty == false {
+            return "viewer_video"
+        }
+        if normalizedMime.hasPrefix("image/") {
+            return "image_original"
+        }
+        if normalizedMime.hasPrefix("audio/") {
+            return "audio_original"
+        }
+        if normalizedMime.hasPrefix("text/")
+            || normalizedMime == "application/json"
+            || normalizedMime.contains("json") {
+            return "text_original"
+        }
+        return nil
+    }
+
+    private func normalizedMimeType(_ mimeType: String) -> String {
+        mimeType
+            .split(separator: ";")
+            .first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? mimeType.lowercased()
+    }
+
     func applyMetaUpdate(_ incoming: IngestionMetaResponse, persist: Bool) {
         guard shouldUpdateMeta(incoming) else {
             return

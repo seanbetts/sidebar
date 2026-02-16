@@ -1,9 +1,34 @@
 import Foundation
 import SwiftUI
 
+struct ChatMessageCopyFeedbackState {
+    static let resetDelayNanoseconds: UInt64 = 1_500_000_000
+
+    private(set) var isCopied = false
+
+    mutating func markCopied() {
+        isCopied = true
+    }
+
+    mutating func reset() {
+        isCopied = false
+    }
+
+    var iconName: String {
+        isCopied ? "checkmark.circle.fill" : "doc.on.doc"
+    }
+
+    var accessibilityLabel: String {
+        isCopied ? "Copied message" : "Copy message"
+    }
+}
+
 struct ChatMessageRow: View {
     let message: Message
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var copyFeedback = ChatMessageCopyFeedbackState()
+    @State private var resetCopyFeedbackTask: Task<Void, Never>?
     private let maxBubbleWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
 
     var body: some View {
@@ -22,18 +47,37 @@ struct ChatMessageRow: View {
                     .overlay(rolePillBorder)
                     .clipShape(Capsule())
                 Spacer()
-                Button {
-                    copyMessage()
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: DesignTokens.Spacing.xxs) {
+                    if copyFeedback.isCopied {
+                        Text("Copied")
+                            .font(DesignTokens.Typography.caption2Semibold)
+                            .foregroundStyle(.secondary)
+                            .transition(.opacity)
+                    }
+                    Button {
+                        copyMessage()
+                        showCopyFeedback()
+                    } label: {
+                        Image(systemName: copyFeedback.iconName)
+                            .font(.caption)
+                            .foregroundStyle(copyFeedback.isCopied ? copiedIconForeground : .secondary)
+                            .padding(DesignTokens.Spacing.xxs)
+                            .background(copyFeedback.isCopied ? copiedIconBackground : .clear)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(copyFeedback.accessibilityLabel)
                 }
-                .buttonStyle(.plain)
+                .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
 
             SideBarMarkdown(text: message.content, style: .chat)
+                .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
+                ToolCallListView(toolCalls: toolCalls)
+            }
 
             if message.status == .error, let error = message.error {
                 Text(error)
@@ -58,6 +102,10 @@ struct ChatMessageRow: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.mdPlus, style: .continuous))
         .frame(maxWidth: maxBubbleWidth)
         .frame(maxWidth: .infinity, alignment: .center)
+        .onDisappear {
+            resetCopyFeedbackTask?.cancel()
+            resetCopyFeedbackTask = nil
+        }
     }
 
     private var formattedTimestamp: String {
@@ -101,6 +149,14 @@ struct ChatMessageRow: View {
         DesignTokens.Colors.border
     }
 
+    private var copiedIconForeground: Color {
+        colorScheme == .dark ? Color.black : Color.white
+    }
+
+    private var copiedIconBackground: Color {
+        colorScheme == .dark ? Color.white : Color.black
+    }
+
     private func copyMessage() {
         let text = message.content
         #if os(iOS)
@@ -123,6 +179,16 @@ struct ChatMessageRow: View {
                 pasteboard.string = ""
             }
             #endif
+        }
+    }
+
+    private func showCopyFeedback() {
+        copyFeedback.markCopied()
+        resetCopyFeedbackTask?.cancel()
+        resetCopyFeedbackTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: ChatMessageCopyFeedbackState.resetDelayNanoseconds)
+            copyFeedback.reset()
+            resetCopyFeedbackTask = nil
         }
     }
 }

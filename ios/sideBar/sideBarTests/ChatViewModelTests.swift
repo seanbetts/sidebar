@@ -119,6 +119,24 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(store.version, initialVersion + 1)
     }
 
+    func testMemoryEventClearsMemoriesCache() async {
+        let cache = TestCacheClient()
+        let memory = MemoryItem(
+            id: "memory-1",
+            path: "memory.md",
+            content: "Remember this",
+            createdAt: "2026-01-02T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:00Z"
+        )
+        cache.set(key: CacheKeys.memoriesList, value: [memory], ttlSeconds: 60)
+        let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
+
+        viewModel.handle(event: ChatStreamEvent(type: .memoryCreated, data: AnyCodable(["id": "memory-1"])))
+
+        let cachedMemories: [MemoryItem]? = cache.get(key: CacheKeys.memoriesList)
+        XCTAssertNil(cachedMemories)
+    }
+
     func testLoadConversationSortsMessagesByTimestamp() async {
         let cache = TestCacheClient()
         let messages = [
@@ -305,7 +323,6 @@ final class ChatViewModelTests: XCTestCase {
     ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
         let themeManager = Self.sharedThemeManager
-        let streamClient = MockChatStreamClient()
         let defaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
@@ -316,7 +333,7 @@ final class ChatViewModelTests: XCTestCase {
                 chatAPI: chatAPI,
                 conversationsAPI: api,
                 ingestionAPI: ingestionAPI,
-                streamClient: streamClient,
+                streamClient: MockChatStreamClient(),
                 networkStatus: effectiveNetworkStatus
             ),
             storage: ChatStorageCoordinator(

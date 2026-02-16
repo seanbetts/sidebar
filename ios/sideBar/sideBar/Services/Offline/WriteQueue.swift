@@ -2,7 +2,6 @@ import Combine
 import CoreData
 import Foundation
 import OSLog
-
 @MainActor
 /// Queues offline write operations and retries them when online.
 public final class WriteQueue: ObservableObject {
@@ -10,7 +9,6 @@ public final class WriteQueue: ObservableObject {
     @Published private(set) var isProcessing: Bool = false
     @Published private(set) var isPausedForConflict: Bool = false
     public let maxPendingWrites: Int
-
     private let container: NSPersistentContainer
     private let connectivityMonitor: ConnectivityMonitor
     private let executor: WriteQueueExecutor?
@@ -18,7 +16,6 @@ public final class WriteQueue: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let encoder = JSONEncoder()
     private let logger = Logger(subsystem: "sideBar", category: "WriteQueue")
-
     init(
         container: NSPersistentContainer,
         connectivityMonitor: ConnectivityMonitor,
@@ -50,6 +47,16 @@ public final class WriteQueue: ObservableObject {
            entityType == .note,
            let entityId,
            try await coalesceNoteUpdate(entityId: entityId, payload: payloadData) {
+            await loadPendingCount()
+            if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
+                Task { [weak self] in
+                    await self?.processQueue()
+                }
+            }
+            return
+        }
+        if operation == .update, entityType == .task, let entityId,
+           try await coalesceTaskNotesUpdate(entityId: entityId, payload: payloadData) {
             await loadPendingCount()
             if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
                 Task { [weak self] in
@@ -352,6 +359,27 @@ private extension WriteQueue {
         }
     }
 
+    private func coalesceTaskNotesUpdate(entityId: String, payload: Data) async throws -> Bool {
+        let decoder = JSONDecoder()
+        guard let incoming = try? decoder.decode(TaskOperationPayload.self, from: payload),
+              incoming.op.lowercased() == "notes" else { return false }
+        return try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.predicate = NSPredicate(
+                format: "operationType == %@ AND entityType == %@ AND entityId == %@ AND (status == %@ OR status == %@)",
+                WriteOperation.update.rawValue, WriteEntityType.task.rawValue, entityId,
+                WriteQueueStatus.pending.rawValue, WriteQueueStatus.failed.rawValue
+            )
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: false)]
+            request.fetchLimit = 1
+            guard let write = try context.fetch(request).first,
+                  let existing = try? decoder.decode(TaskOperationPayload.self, from: write.payload),
+                  existing.op.lowercased() == "notes" else { return false }
+            write.payload = payload; write.createdAt = Date(); write.status = WriteQueueStatus.pending.rawValue
+            write.attempts = 0; write.lastError = nil; write.lastAttemptAt = nil
+            return true
+        }
+    }
     private func markWriteFailed(
         id: UUID,
         error: Error,

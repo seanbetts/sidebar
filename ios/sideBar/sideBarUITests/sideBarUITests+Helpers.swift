@@ -9,6 +9,46 @@ import XCTest
 
 extension SideBarUITests {
     @MainActor
+    func testStreamingReplyKeepsBottomAnchorVisible() throws {
+        let credentials = try loadCredentials()
+        let app = launchApp(with: credentials)
+        attemptLogin(
+            in: app,
+            email: credentials.email,
+            password: credentials.password
+        )
+
+        XCTAssertTrue(
+            waitForSignedInHome(in: app, timeout: 45),
+            "Signed-in shell did not appear after login."
+        )
+
+        let sendButton = openChatDetail(in: app)
+        let messageField = resolveChatMessageField(in: app)
+
+        let outboundMessage = "TC-UI-006 stream test \(String(UUID().uuidString.prefix(8))). "
+            + "Respond with 30 numbered lines, each line at least six words."
+        messageField.tap()
+        messageField.typeText(outboundMessage)
+        XCTAssertTrue(sendButton.isEnabled, "Send message button should be enabled after typing.")
+        sendButton.tap()
+
+        let sentMessageText = app.staticTexts[outboundMessage]
+        XCTAssertTrue(
+            sentMessageText.waitForExistence(timeout: 20),
+            "Sent user message did not appear in chat."
+        )
+        XCTAssertTrue(
+            waitForAssistantReply(after: sentMessageText, in: app, timeout: 45),
+            "Expected assistant streamed reply row after sending."
+        )
+        XCTAssertTrue(
+            waitForBottomAnchorToRemainVisible(in: app, duration: 6),
+            "Chat bottom anchor left the visible viewport during streaming updates."
+        )
+    }
+
+    @MainActor
     func openNotesTab(in app: XCUIApplication) {
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
         let notesTab = app.tabBars.buttons["Notes"]
@@ -161,5 +201,28 @@ extension SideBarUITests {
             }
         }
         return false
+    }
+
+    func waitForBottomAnchorToRemainVisible(
+        in app: XCUIApplication,
+        duration: TimeInterval
+    ) -> Bool {
+        let anchor = app.otherElements["chat-scroll-bottom-anchor"]
+        guard anchor.waitForExistence(timeout: 10) else {
+            return false
+        }
+        let deadline = Date().addingTimeInterval(duration)
+        var observedSample = false
+        while Date() < deadline {
+            guard anchor.exists else {
+                return false
+            }
+            observedSample = true
+            if !anchor.isHittable {
+                return false
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+        return observedSample
     }
 }

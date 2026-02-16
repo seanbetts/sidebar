@@ -298,6 +298,9 @@ async def stream_chat(
                     "prompt_preview",
                     "tool_start",
                     "tool_end",
+                    "memory_created",
+                    "memory_updated",
+                    "memory_deleted",
                 }:
                     data = json.dumps(event.get("data", {}))
                     yield f"event: {event_type}\ndata: {data}\n\n"

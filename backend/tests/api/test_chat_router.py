@@ -36,6 +36,29 @@ def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
     assert "event: complete" in body
 
 
+def test_stream_chat_forwards_memory_events(test_client, monkeypatch):
+    class FakeMemoryClaudeClient:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def stream_with_tools(self, *_args, **_kwargs):
+            yield {"type": "memory_created", "data": {"id": "memory-1"}}
+
+    monkeypatch.setattr(chat_router, "ClaudeClient", FakeMemoryClaudeClient)
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+
+    body = response.text
+    assert "event: memory_created" in body
+    assert 'data: {"id": "memory-1"}' in body
+    assert "event: complete" in body
+
+
 def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
     user_id = "user-1"
     conversation = ConversationService.create_conversation(

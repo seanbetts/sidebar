@@ -66,8 +66,12 @@ struct TasksDetailView: View {
                 onSave: { value in
                     Task { await viewModel.updateNotes(task: task, notes: value) }
                 },
+                onAutosave: { value in
+                    Task { await viewModel.autosaveNotes(task: task, notes: value) }
+                },
                 onDismiss: { notesTask = nil }
             )
+            .phoneSheetGrabBarVisible()
         }
         .sheet(item: $dueTask) { task in
             DueDateSheet(
@@ -81,6 +85,7 @@ struct TasksDetailView: View {
                 },
                 onDismiss: { dueTask = nil }
             )
+            .phoneSheetGrabBarVisible()
         }
         .sheet(item: $moveTask) { task in
             MoveTaskSheet(
@@ -93,6 +98,7 @@ struct TasksDetailView: View {
                 },
                 onDismiss: { moveTask = nil }
             )
+            .phoneSheetGrabBarVisible()
         }
         .sheet(item: $repeatTask) { task in
             RepeatTaskSheet(
@@ -106,6 +112,7 @@ struct TasksDetailView: View {
                 },
                 onDismiss: { repeatTask = nil }
             )
+            .phoneSheetGrabBarVisible()
         }
         .sheet(isPresented: isNewTaskPresented) {
             if let draft = viewModel.newTaskDraft {
@@ -120,6 +127,7 @@ struct TasksDetailView: View {
                     },
                     onDismiss: { viewModel.cancelNewTask() }
                 )
+                .phoneSheetGrabBarVisible()
             }
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
