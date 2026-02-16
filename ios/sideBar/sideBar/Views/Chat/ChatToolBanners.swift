@@ -49,6 +49,33 @@ struct PromptPreviewView: View {
                 .font(DesignTokens.Typography.captionSemibold)
                 .foregroundStyle(.secondary)
 
+            if let report = promptPreview.promptReport {
+                if let system = report.systemPrompt {
+                    Text("System: \(reportSummary(system))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                if let first = report.firstMessagePrompt {
+                    Text("First: \(reportSummary(first))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if !promptPreview.systemPromptSections.isEmpty {
+                sectionList(
+                    title: "System sections",
+                    sections: promptPreview.systemPromptSections
+                )
+            }
+
+            if !promptPreview.firstMessagePromptSections.isEmpty {
+                sectionList(
+                    title: "First-message sections",
+                    sections: promptPreview.firstMessagePromptSections
+                )
+            }
+
             if let system = promptPreview.systemPrompt, !system.isEmpty {
                 Text(system)
                     .font(.caption)
@@ -68,5 +95,24 @@ struct PromptPreviewView: View {
 
     private var promptBackground: Color {
         DesignTokens.Colors.surface
+    }
+
+    private func reportSummary(_ document: ChatPromptReportDocument) -> String {
+        let base = "\(document.totalChars)/\(document.maxChars) chars"
+        return document.truncated ? "\(base) (truncated)" : base
+    }
+
+    @ViewBuilder
+    private func sectionList(title: String, sections: [ChatPromptSection]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(DesignTokens.Typography.captionSemibold)
+                .foregroundStyle(.secondary)
+            ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
+                Text("• \(section.id) (\(section.chars))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }

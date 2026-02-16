@@ -172,14 +172,70 @@ public enum ToolActivityStatus: String {
     case error
 }
 
+/// Represents a structured prompt section summary.
+public struct ChatPromptSection: Equatable {
+    public let id: String
+    public let title: String
+    public let source: String
+    public let chars: Int
+
+    public init(id: String, title: String, source: String, chars: Int) {
+        self.id = id
+        self.title = title
+        self.source = source
+        self.chars = chars
+    }
+}
+
+/// Represents prompt report metrics for a single prompt document.
+public struct ChatPromptReportDocument: Equatable {
+    public let totalChars: Int
+    public let maxChars: Int
+    public let truncated: Bool
+    public let sections: [ChatPromptSection]
+
+    public init(totalChars: Int, maxChars: Int, truncated: Bool, sections: [ChatPromptSection]) {
+        self.totalChars = totalChars
+        self.maxChars = maxChars
+        self.truncated = truncated
+        self.sections = sections
+    }
+}
+
+/// Represents prompt diagnostics for both prompt documents.
+public struct ChatPromptReport: Equatable {
+    public let systemPrompt: ChatPromptReportDocument?
+    public let firstMessagePrompt: ChatPromptReportDocument?
+
+    public init(
+        systemPrompt: ChatPromptReportDocument?,
+        firstMessagePrompt: ChatPromptReportDocument?
+    ) {
+        self.systemPrompt = systemPrompt
+        self.firstMessagePrompt = firstMessagePrompt
+    }
+}
+
 /// Represents ChatPromptPreview.
 public struct ChatPromptPreview: Equatable {
     public let systemPrompt: String?
     public let firstMessagePrompt: String?
+    public let systemPromptSections: [ChatPromptSection]
+    public let firstMessagePromptSections: [ChatPromptSection]
+    public let promptReport: ChatPromptReport?
 
-    public init(systemPrompt: String?, firstMessagePrompt: String?) {
+    public init(
+        systemPrompt: String?,
+        firstMessagePrompt: String?,
+        systemPromptSections: [ChatPromptSection] = [],
+        firstMessagePromptSections: [ChatPromptSection] = [],
+        promptReport: ChatPromptReport? = nil
+    ) {
         self.systemPrompt = systemPrompt
         self.firstMessagePrompt = firstMessagePrompt
+        self.systemPromptSections = systemPromptSections
+        self.firstMessagePromptSections = firstMessagePromptSections
+        self.promptReport = promptReport
     }
 }
 
