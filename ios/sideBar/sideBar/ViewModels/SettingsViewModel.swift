@@ -17,6 +17,10 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var isRotatingShortcuts: Bool = false
     @Published public private(set) var profileImageData: Data?
     @Published public private(set) var isLoadingProfileImage: Bool = false
+    @Published public private(set) var isSavingProfile: Bool = false
+    @Published public private(set) var profileSaveError: String?
+    @Published public private(set) var isSavingSystem: Bool = false
+    @Published public private(set) var systemSaveError: String?
 
     private let settingsAPI: any SettingsProviding
     private let skillsAPI: any SkillsProviding
@@ -31,6 +35,8 @@ public final class SettingsViewModel: LoadableViewModel {
 
     public func load() async {
         clearError()
+        profileSaveError = nil
+        systemSaveError = nil
         setLoading(true)
         let loader = CachedLoader(
             cache: cache,
@@ -129,6 +135,102 @@ public final class SettingsViewModel: LoadableViewModel {
         }
     }
 
+    public func saveProfileSettings(
+        name: String,
+        jobTitle: String,
+        employer: String,
+        dateOfBirth: Date?,
+        dateOfBirthEnabled: Bool,
+        gender: String,
+        pronouns: String,
+        location: String
+    ) async {
+        guard let current = settings else { return }
+
+        let nextDateOfBirth = dateOfBirthEnabled ? dateOfBirth.map(Self.dateOnlyString(from:)) : nil
+        let nameUpdate = name != (current.name ?? "") ? name : nil
+        let jobTitleUpdate = jobTitle != (current.jobTitle ?? "") ? jobTitle : nil
+        let employerUpdate = employer != (current.employer ?? "") ? employer : nil
+        let genderUpdate = gender != (current.gender ?? "") ? gender : nil
+        let pronounsUpdate = pronouns != (current.pronouns ?? "") ? pronouns : nil
+        let locationUpdate = location != (current.location ?? "") ? location : nil
+        let didChangeDateOfBirth = nextDateOfBirth != current.dateOfBirth
+
+        if nameUpdate == nil,
+           jobTitleUpdate == nil,
+           employerUpdate == nil,
+           genderUpdate == nil,
+           pronounsUpdate == nil,
+           locationUpdate == nil,
+           !didChangeDateOfBirth {
+            return
+        }
+
+        isSavingProfile = true
+        profileSaveError = nil
+        do {
+            let response = try await settingsAPI.updateSettings(
+                SettingsUpdate(
+                    name: nameUpdate,
+                    jobTitle: jobTitleUpdate,
+                    employer: employerUpdate,
+                    dateOfBirth: didChangeDateOfBirth ? nextDateOfBirth : nil,
+                    gender: genderUpdate,
+                    pronouns: pronounsUpdate,
+                    location: locationUpdate,
+                    includeDateOfBirth: didChangeDateOfBirth
+                )
+            )
+            settings = response
+            cache.set(
+                key: CacheKeys.userSettings,
+                value: response,
+                ttlSeconds: CachePolicy.userSettings
+            )
+        } catch {
+            profileSaveError = error.localizedDescription
+        }
+        isSavingProfile = false
+    }
+
+    public func saveSystemSettings(
+        communicationStyle: String,
+        workingRelationship: String
+    ) async {
+        guard let current = settings else { return }
+
+        let communicationStyleUpdate = communicationStyle != (current.communicationStyle ?? "")
+            ? communicationStyle
+            : nil
+        let workingRelationshipUpdate = workingRelationship != (current.workingRelationship ?? "")
+            ? workingRelationship
+            : nil
+
+        if communicationStyleUpdate == nil, workingRelationshipUpdate == nil {
+            return
+        }
+
+        isSavingSystem = true
+        systemSaveError = nil
+        do {
+            let response = try await settingsAPI.updateSettings(
+                SettingsUpdate(
+                    communicationStyle: communicationStyleUpdate,
+                    workingRelationship: workingRelationshipUpdate
+                )
+            )
+            settings = response
+            cache.set(
+                key: CacheKeys.userSettings,
+                value: response,
+                ttlSeconds: CachePolicy.userSettings
+            )
+        } catch {
+            systemSaveError = error.localizedDescription
+        }
+        isSavingSystem = false
+    }
+
     public func setSkillEnabled(id: String, enabled: Bool) async {
         guard let settings else { return }
         var next = settings.enabledSkills
@@ -169,15 +271,6 @@ public final class SettingsViewModel: LoadableViewModel {
         }
         do {
             let update = SettingsUpdate(
-                communicationStyle: nil,
-                workingRelationship: nil,
-                name: nil,
-                jobTitle: nil,
-                employer: nil,
-                dateOfBirth: nil,
-                gender: nil,
-                pronouns: nil,
-                location: nil,
                 enabledSkills: enabledSkills
             )
             let response = try await settingsAPI.updateSettings(update)
@@ -188,5 +281,13 @@ public final class SettingsViewModel: LoadableViewModel {
             skillsError = error.localizedDescription
         }
         isSavingSkills = false
+    }
+
+    private static func dateOnlyString(from date: Date) -> String {
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        let year = components.year ?? 1970
+        let month = components.month ?? 1
+        let day = components.day ?? 1
+        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 }

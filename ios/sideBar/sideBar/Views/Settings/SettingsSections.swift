@@ -16,6 +16,25 @@ struct ProfileSettingsView: View {
     @State private var isProfileImageImporterPresented = false
     @State private var isUploadingProfileImage = false
     @State private var profileImageError: String?
+    @State private var name: String = ""
+    @State private var jobTitle: String = ""
+    @State private var employer: String = ""
+    @State private var gender: String = ""
+    @State private var pronouns: String = ""
+    @State private var location: String = ""
+    @State private var dateOfBirthEnabled: Bool = false
+    @State private var dateOfBirth: Date = Date()
+    @State private var hasLoadedDrafts = false
+    @State private var isSyncingDrafts = false
+    @State private var autosaveTask: Task<Void, Never>?
+
+    private static let profileAutosaveDelayNs: UInt64 = 800_000_000
+    private static let dateParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 
     var body: some View {
         Form {
@@ -37,7 +56,18 @@ struct ProfileSettingsView: View {
                     isImagePickerPresented = true
                 }
                 .sheet(isPresented: $isImagePickerPresented) {
-                    ImagePicker(selectedImage: $profileImage)
+                    ImagePicker(
+                        selectedImage: $profileImage,
+                        onImageDataPicked: { data, contentType, filename in
+                            Task {
+                                await uploadSelectedProfileImage(
+                                    data: data,
+                                    contentType: contentType,
+                                    filename: filename
+                                )
+                            }
+                        }
+                    )
                 }
 #endif
 #if os(macOS)
@@ -52,7 +82,6 @@ struct ProfileSettingsView: View {
                 .accessibilityAddTraits(.isButton)
             }
 
-            #if os(macOS)
             if let profileImageError {
                 Section {
                     Text(profileImageError)
@@ -60,14 +89,45 @@ struct ProfileSettingsView: View {
                         .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
-            #endif
 
-            Section {
-                LabeledContent("Name", value: displayValue(viewModel.settings?.name))
-                LabeledContent("Job Title", value: displayValue(viewModel.settings?.jobTitle))
-                LabeledContent("Employer", value: displayValue(viewModel.settings?.employer))
-                LabeledContent("Pronouns", value: displayValue(viewModel.settings?.pronouns))
-                LabeledContent("Location", value: displayValue(viewModel.settings?.location))
+            if let saveError = viewModel.profileSaveError {
+                Section {
+                    Text(saveError)
+                        .font(.caption)
+                        .foregroundStyle(DesignTokens.Colors.error)
+                }
+            }
+
+            if viewModel.isSavingProfile {
+                Section {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Saving profile...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Section("Profile") {
+                TextField("Name", text: $name)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.words)
+                    #endif
+                TextField("Job Title", text: $jobTitle)
+                TextField("Employer", text: $employer)
+                TextField("Gender", text: $gender)
+                TextField("Pronouns", text: $pronouns)
+                TextField("Location", text: $location)
+                Toggle("Date of Birth", isOn: $dateOfBirthEnabled)
+                if dateOfBirthEnabled {
+                    DatePicker(
+                        "Date of Birth",
+                        selection: $dateOfBirth,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.compact)
+                }
             }
 
             Section {
@@ -97,6 +157,18 @@ struct ProfileSettingsView: View {
             }
         }
         #endif
+        .onAppear {
+            syncDraftsFromSettings(viewModel.settings)
+        }
+        .onChange(of: profileAutosaveSignature) { _, _ in
+            scheduleAutosave()
+        }
+        .onChange(of: settingsSignature) { _, _ in
+            syncDraftsFromSettings(viewModel.settings)
+        }
+        .onDisappear {
+            autosaveTask?.cancel()
+        }
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
                 ProgressView()
@@ -131,6 +203,9 @@ struct ProfileSettingsView: View {
     }
 
     private var photoSubtitle: String {
+        if isUploadingProfileImage {
+            return "Uploading..."
+        }
         #if os(macOS)
         return "Choose an image to update your profile photo."
         #else
@@ -146,12 +221,10 @@ struct ProfileSettingsView: View {
             let data = try Data(contentsOf: url)
             let contentType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "image/png"
             let filename = url.lastPathComponent.isEmpty ? "profile-image" : url.lastPathComponent
-            isUploadingProfileImage = true
-            defer { isUploadingProfileImage = false }
             if let image = NSImage(contentsOf: url) {
                 profileImage = Image(nsImage: image)
             }
-            try await viewModel.uploadProfileImage(
+            await uploadSelectedProfileImage(
                 data: data,
                 contentType: contentType,
                 filename: filename
@@ -162,9 +235,23 @@ struct ProfileSettingsView: View {
     }
 #endif
 
-    private func displayValue(_ value: String?) -> String {
-        let trimmed = value?.trimmed ?? ""
-        return trimmed.isEmpty ? "Not set" : trimmed
+    private func uploadSelectedProfileImage(
+        data: Data,
+        contentType: String,
+        filename: String
+    ) async {
+        profileImageError = nil
+        isUploadingProfileImage = true
+        defer { isUploadingProfileImage = false }
+        do {
+            try await viewModel.uploadProfileImage(
+                data: data,
+                contentType: contentType,
+                filename: filename
+            )
+        } catch {
+            profileImageError = error.localizedDescription
+        }
     }
 
     private func loadProfileImage(from data: Data) -> Image? {
@@ -175,6 +262,104 @@ struct ProfileSettingsView: View {
         guard let image = UIImage(data: data) else { return nil }
         return Image(uiImage: image)
         #endif
+    }
+
+    private var settingsSignature: String {
+        guard let settings = viewModel.settings else {
+            return "none"
+        }
+        return [
+            settings.name ?? "",
+            settings.jobTitle ?? "",
+            settings.employer ?? "",
+            settings.gender ?? "",
+            settings.pronouns ?? "",
+            settings.location ?? "",
+            settings.dateOfBirth ?? ""
+        ].joined(separator: "|")
+    }
+
+    private var profileAutosaveSignature: String {
+        [
+            name,
+            jobTitle,
+            employer,
+            gender,
+            pronouns,
+            location,
+            dateOfBirthEnabled ? Self.dateString(from: dateOfBirth) : "nil"
+        ].joined(separator: "|")
+    }
+
+    private var isDraftDirty: Bool {
+        guard let settings = viewModel.settings else { return false }
+        let currentDate = settings.dateOfBirth
+        let nextDate = dateOfBirthEnabled ? Self.dateString(from: dateOfBirth) : nil
+        return name != (settings.name ?? "")
+            || jobTitle != (settings.jobTitle ?? "")
+            || employer != (settings.employer ?? "")
+            || gender != (settings.gender ?? "")
+            || pronouns != (settings.pronouns ?? "")
+            || location != (settings.location ?? "")
+            || nextDate != currentDate
+    }
+
+    private func syncDraftsFromSettings(_ settings: UserSettings?) {
+        guard let settings else { return }
+        if hasLoadedDrafts && isDraftDirty {
+            return
+        }
+        isSyncingDrafts = true
+        name = settings.name ?? ""
+        jobTitle = settings.jobTitle ?? ""
+        employer = settings.employer ?? ""
+        gender = settings.gender ?? ""
+        pronouns = settings.pronouns ?? ""
+        location = settings.location ?? ""
+        if let parsedDate = Self.parseDate(settings.dateOfBirth) {
+            dateOfBirthEnabled = true
+            dateOfBirth = parsedDate
+        } else {
+            dateOfBirthEnabled = false
+            dateOfBirth = Date()
+        }
+        hasLoadedDrafts = true
+        isSyncingDrafts = false
+    }
+
+    private func scheduleAutosave() {
+        guard hasLoadedDrafts, !isSyncingDrafts else { return }
+        autosaveTask?.cancel()
+        guard isDraftDirty else { return }
+        autosaveTask = Task {
+            try? await Task.sleep(nanoseconds: Self.profileAutosaveDelayNs)
+            guard !Task.isCancelled else { return }
+            await viewModel.saveProfileSettings(
+                name: name,
+                jobTitle: jobTitle,
+                employer: employer,
+                dateOfBirth: dateOfBirthEnabled ? dateOfBirth : nil,
+                dateOfBirthEnabled: dateOfBirthEnabled,
+                gender: gender,
+                pronouns: pronouns,
+                location: location
+            )
+        }
+    }
+
+    private static func parseDate(_ value: String?) -> Date? {
+        guard let value, !value.isEmpty else {
+            return nil
+        }
+        return dateParser.date(from: value)
+    }
+
+    private static func dateString(from date: Date) -> String {
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        let year = components.year ?? 1970
+        let month = components.month ?? 1
+        let day = components.day ?? 1
+        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 }
 
@@ -231,66 +416,5 @@ struct GeneralSettingsView: View {
         canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         biometryType = context.biometryType
-    }
-}
-
-struct SystemSettingsView: View {
-    @ObservedObject var viewModel: SettingsViewModel
-    @EnvironmentObject private var environment: AppEnvironment
-    @State private var isPendingWritesPresented = false
-
-    var body: some View {
-        Form {
-            if environment.writeQueue.pendingCount > 0 || environment.writeQueue.isProcessing {
-                Section("Sync Status") {
-                    HStack(spacing: 8) {
-                        SyncStatusIndicator()
-                        Text(pendingStatusText)
-                            .font(DesignTokens.Typography.labelMd)
-                    }
-                    Button("View pending changes") {
-                        isPendingWritesPresented = true
-                    }
-                }
-            }
-            Section {
-                Text("Customize the prompts that guide sideBar")
-                    .foregroundStyle(.secondary)
-            }
-            Section("Communication Style") {
-                Text(displayValue(viewModel.settings?.communicationStyle))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            Section("Working Relationship") {
-                Text(displayValue(viewModel.settings?.workingRelationship))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        #if os(macOS)
-        .formStyle(.grouped)
-        #endif
-        .sheet(isPresented: $isPendingWritesPresented) {
-            NavigationStack {
-                PendingWritesView()
-            }
-            .phoneSheetGrabBarVisible()
-        }
-        .overlay {
-            if viewModel.isLoading && viewModel.settings == nil {
-                ProgressView()
-            }
-        }
-    }
-
-    private func displayValue(_ value: String?) -> String {
-        let trimmed = value?.trimmed ?? ""
-        return trimmed.isEmpty ? "Not set" : trimmed
-    }
-
-    private var pendingStatusText: String {
-        if environment.writeQueue.isProcessing {
-            return "Syncing \(environment.writeQueue.pendingCount) changes"
-        }
-        return "\(environment.writeQueue.pendingCount) pending changes"
     }
 }

@@ -128,6 +128,109 @@ final class SettingsViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.profileImageData, cachedData)
     }
+
+    func testSaveSystemSettingsSkipsUnchangedPayload() async throws {
+        let initial = UserSettings(
+            userId: "user-1",
+            communicationStyle: "Concise",
+            workingRelationship: "Direct",
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let recorder = UpdateRecorder()
+        let cache = TestCacheClient()
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(initial),
+                updateResult: .success(initial),
+                updateRecorder: recorder
+            ),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: cache
+        )
+
+        await viewModel.load()
+        await viewModel.saveSystemSettings(
+            communicationStyle: "Concise",
+            workingRelationship: "Direct"
+        )
+
+        XCTAssertEqual(recorder.callCount, 0)
+    }
+
+    func testSaveProfileSettingsClearingDateEncodesNullDate() async throws {
+        let initial = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Sam",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: "1990-04-12",
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let updated = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Sam",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let recorder = UpdateRecorder()
+        let cache = TestCacheClient()
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(initial),
+                updateResult: .success(updated),
+                updateRecorder: recorder
+            ),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: cache
+        )
+
+        await viewModel.load()
+        await viewModel.saveProfileSettings(
+            name: "Sam",
+            jobTitle: "",
+            employer: "",
+            dateOfBirth: nil,
+            dateOfBirthEnabled: false,
+            gender: "",
+            pronouns: "",
+            location: ""
+        )
+
+        XCTAssertEqual(recorder.callCount, 1)
+        let update = try XCTUnwrap(recorder.lastUpdate)
+        let payload = try encodedPayload(update)
+        XCTAssertTrue(payload.keys.contains("date_of_birth"))
+        XCTAssertTrue(payload["date_of_birth"] is NSNull)
+        XCTAssertNil(payload["dateOfBirth"])
+        XCTAssertNil(viewModel.settings?.dateOfBirth)
+    }
+
+    private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {
+        let data = try JSONEncoder().encode(update)
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
 }
 
 private enum MockError: Error {
@@ -140,17 +243,20 @@ private struct MockSettingsAPI: SettingsProviding {
     let tokenResult: Result<ShortcutsTokenResponse, Error>
     let updateResult: Result<UserSettings, Error>
     let profileImageResult: Result<Data, Error>
+    let updateRecorder: UpdateRecorder?
 
     init(
         result: Result<UserSettings, Error>,
         tokenResult: Result<ShortcutsTokenResponse, Error> = .failure(MockError.forced),
         updateResult: Result<UserSettings, Error> = .failure(MockError.forced),
-        profileImageResult: Result<Data, Error> = .failure(MockError.forced)
+        profileImageResult: Result<Data, Error> = .failure(MockError.forced),
+        updateRecorder: UpdateRecorder? = nil
     ) {
         self.result = result
         self.tokenResult = tokenResult
         self.updateResult = updateResult
         self.profileImageResult = profileImageResult
+        self.updateRecorder = updateRecorder
     }
 
     func getSettings() async throws -> UserSettings {
@@ -166,7 +272,8 @@ private struct MockSettingsAPI: SettingsProviding {
     }
 
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
-        _ = update
+        updateRecorder?.callCount += 1
+        updateRecorder?.lastUpdate = update
         return try updateResult.get()
     }
 
@@ -190,4 +297,9 @@ private struct MockSkillsAPI: SkillsProviding {
     func list() async throws -> SkillsResponse {
         try result.get()
     }
+}
+
+private final class UpdateRecorder {
+    var callCount: Int = 0
+    var lastUpdate: SettingsUpdate?
 }
