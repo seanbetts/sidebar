@@ -1,5 +1,14 @@
 import SwiftUI
 
+enum NotesEditorReturnIntent: Equatable {
+    case insertNewline
+    case submit
+}
+
+func notesEditorReturnIntent(commandPressed: Bool) -> NotesEditorReturnIntent {
+    commandPressed ? .submit : .insertNewline
+}
+
 struct NotesSheet: View {
     let task: TaskItem
     let notes: String
@@ -122,9 +131,10 @@ private final class NotesTextView: NSTextView {
     override func keyDown(with event: NSEvent) {
         let isReturnKey = event.keyCode == 36 || event.keyCode == 76
         if isReturnKey {
-            if event.modifierFlags.contains(.shift) {
+            switch notesEditorReturnIntent(commandPressed: event.modifierFlags.contains(.command)) {
+            case .insertNewline:
                 insertNewline(nil)
-            } else {
+            case .submit:
                 onSubmit?()
             }
             return
@@ -188,35 +198,24 @@ private struct NotesTextEditor: UIViewRepresentable {
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-            guard text == "\n" else { return true }
-            if let notesView = textView as? NotesTextView, notesView.allowNextNewline {
-                notesView.allowNextNewline = false
-                return true
-            }
-            parent.onSubmit()
-            return false
+            true
         }
     }
 }
 
 private final class NotesTextView: UITextView {
     var onSubmit: (() -> Void)?
-    var allowNextNewline: Bool = false
 
     override var keyCommands: [UIKeyCommand]? {
         [
-            UIKeyCommand(input: "\r", modifierFlags: [], action: #selector(handleReturn)),
-            UIKeyCommand(input: "\r", modifierFlags: [.shift], action: #selector(handleShiftReturn))
+            UIKeyCommand(input: "\r", modifierFlags: [.command], action: #selector(handleCommandReturn))
         ]
     }
 
-    @objc private func handleReturn() {
-        onSubmit?()
-    }
-
-    @objc private func handleShiftReturn() {
-        allowNextNewline = true
-        insertText("\n")
+    @objc private func handleCommandReturn() {
+        if notesEditorReturnIntent(commandPressed: true) == .submit {
+            onSubmit?()
+        }
     }
 }
 #endif
