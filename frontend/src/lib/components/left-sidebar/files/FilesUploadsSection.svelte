@@ -7,6 +7,7 @@
 	import FilesListItem from '$lib/components/left-sidebar/files/FilesListItem.svelte';
 
 	export let processingItems: IngestionListItem[] = [];
+	export let processingTotalCount = processingItems.length;
 	export let failedItems: IngestionListItem[] = [];
 	export let readyItems: IngestionListItem[] = [];
 	export let openMenuKey: string | null = null;
@@ -23,7 +24,7 @@
 
 {#if processingItems.length > 0}
 	<div class="files-uploads uploads-block">
-		<IngestionQueue items={processingItems} />
+		<IngestionQueue items={processingItems} totalCount={processingTotalCount} />
 	</div>
 {/if}
 

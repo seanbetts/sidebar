@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Folder } from 'lucide-svelte';
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { filesSearchStore } from '$lib/stores/files-search';
 	import { ingestionStore } from '$lib/stores/ingestion';
 	import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
@@ -13,6 +13,7 @@
 	import FilesCategorySection from '$lib/components/left-sidebar/files/FilesCategorySection.svelte';
 	import FilesUploadsSection from '$lib/components/left-sidebar/files/FilesUploadsSection.svelte';
 	import {
+		buildFilesPanelBuckets,
 		categoryLabels,
 		categoryOrder,
 		iconForCategory,
@@ -23,32 +24,16 @@
 	import type { IngestionListItem } from '$lib/types/ingestion';
 	const { deleteIngestion, updatePinned, updatePinnedOrder, downloadFile, renameFile } =
 		useIngestionActions();
+	const PROCESSING_UPLOADS_LIMIT = 20;
 
 	$: searchQuery = $filesSearchStore;
 	$: loading = $ingestionStore.loading && !$ingestionStore.loaded;
-	$: normalizedQuery = searchQuery.trim().toLowerCase();
-	$: processingItems = ($ingestionStore.items || []).filter(
-		(item) => !['ready', 'failed', 'canceled'].includes(item.job.status || '')
-	);
-	$: failedItems = ($ingestionStore.items || []).filter((item) => item.job.status === 'failed');
-	$: readyItems = ($ingestionStore.items || []).filter(
-		(item) => item.job.status === 'ready' && item.recommended_viewer
-	);
-	$: filteredProcessingItems = normalizedQuery
-		? processingItems.filter((item) =>
-				(item.file.filename_original || '').toLowerCase().includes(normalizedQuery)
-			)
-		: processingItems;
-	$: filteredFailedItems = normalizedQuery
-		? failedItems.filter((item) =>
-				(item.file.filename_original || '').toLowerCase().includes(normalizedQuery)
-			)
-		: failedItems;
-	$: filteredReadyItems = normalizedQuery
-		? readyItems.filter((item) =>
-				(item.file.filename_original || '').toLowerCase().includes(normalizedQuery)
-			)
-		: readyItems;
+	$: panelBuckets = buildFilesPanelBuckets($ingestionStore.items || [], searchQuery);
+	$: filteredProcessingItems = panelBuckets.filteredProcessingItems;
+	$: filteredFailedItems = panelBuckets.filteredFailedItems;
+	$: filteredReadyItems = panelBuckets.filteredReadyItems;
+	$: filteredMainItems = panelBuckets.filteredMainItems;
+	$: displayedProcessingItems = filteredProcessingItems.slice(0, PROCESSING_UPLOADS_LIMIT);
 	$: pinnedItems = filteredReadyItems.filter((item) => item.file.pinned);
 	$: pinnedItemsSorted = [...pinnedItems].sort((a, b) => {
 		const aOrder =
@@ -58,8 +43,8 @@
 		if (aOrder !== bOrder) return aOrder - bOrder;
 		return (a.file.created_at || '').localeCompare(b.file.created_at || '');
 	});
-	$: unpinnedReadyItems = filteredReadyItems.filter((item) => !item.file.pinned);
-	$: categorizedItems = unpinnedReadyItems.reduce<Record<string, IngestionListItem[]>>(
+	$: unpinnedMainItems = filteredMainItems.filter((item) => !item.file.pinned);
+	$: categorizedItems = unpinnedMainItems.reduce<Record<string, IngestionListItem[]>>(
 		(acc, item) => {
 			const category = item.file.category || 'other';
 			if (!acc[category]) acc[category] = [];
@@ -69,7 +54,7 @@
 		{}
 	);
 
-	$: showPinnedSection = normalizedQuery.length === 0 && pinnedItems.length > 0;
+	$: showPinnedSection = searchQuery.trim().length === 0 && pinnedItems.length > 0;
 	let expandedCategories = new Set<string>();
 	let openMenuKey: string | null = null;
 	let isRenameOpen = false;
@@ -238,7 +223,7 @@
 	<SidebarLoading message="Loading files..." />
 {:else if $ingestionStore.error}
 	<SidebarEmptyState icon={Folder} title="Service unavailable" subtitle="Please try again later." />
-{:else if filteredProcessingItems.length === 0 && filteredFailedItems.length === 0 && filteredReadyItems.length === 0}
+{:else if filteredMainItems.length === 0 && filteredFailedItems.length === 0}
 	<SidebarEmptyState
 		icon={Folder}
 		title="No files yet"
@@ -276,8 +261,8 @@
 				{expandedCategories}
 				{stripExtension}
 				{iconForCategory}
-				hasReadyItems={filteredReadyItems.length > 0}
-				hasSearchResults={filteredReadyItems.length > 0}
+				hasItems={filteredMainItems.length > 0}
+				hasSearchResults={filteredMainItems.length > 0}
 				onToggleCategory={toggleCategory}
 				onOpen={openViewer}
 				onToggleMenu={toggleMenu}
@@ -289,9 +274,10 @@
 			/>
 		</div>
 		<FilesUploadsSection
-			processingItems={filteredProcessingItems}
+			processingItems={displayedProcessingItems}
+			processingTotalCount={filteredProcessingItems.length}
 			failedItems={filteredFailedItems}
-			{readyItems}
+			readyItems={filteredReadyItems}
 			{openMenuKey}
 			{iconForCategory}
 			{stripExtension}

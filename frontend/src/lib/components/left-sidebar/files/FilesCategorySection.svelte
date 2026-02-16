@@ -8,7 +8,7 @@
 	export let categoryOrder: string[] = [];
 	export let categoryLabels: Record<string, string> = {};
 	export let categorizedItems: Record<string, IngestionListItem[]> = {};
-	export let hasReadyItems = false;
+	export let hasItems = false;
 	export let hasSearchResults = false;
 	export let expandedCategories: Set<string>;
 	export let stripExtension: (name: string) => string;
@@ -98,7 +98,7 @@
 	{/if}
 	{#if searchQuery && !hasSearchResults}
 		<div class="files-empty">No matching files</div>
-	{:else if !searchQuery && !hasReadyItems}
+	{:else if !searchQuery && !hasItems}
 		<div class="files-empty">No files yet</div>
 	{/if}
 </div>

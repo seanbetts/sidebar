@@ -7,6 +7,7 @@
 	import { logError } from '$lib/utils/errorHandling';
 
 	export let items: IngestionListItem[] = [];
+	export let totalCount: number = items.length;
 
 	const stageOrder = [
 		'uploading',
@@ -74,7 +75,12 @@
 </script>
 
 <div class="ingestion-queue">
-	<div class="ingestion-title">Processing uploads</div>
+	<div class="ingestion-title">
+		Processing uploads
+		{#if totalCount > items.length}
+			<span class="ingestion-count">({items.length} of {totalCount})</span>
+		{/if}
+	</div>
 	{#each items as item (item.file.id)}
 		<div class="ingestion-item">
 			<div class="ingestion-header">
@@ -122,6 +128,12 @@
 		color: var(--color-muted-foreground);
 		font-weight: 600;
 		margin-bottom: 0.5rem;
+	}
+
+	.ingestion-count {
+		text-transform: none;
+		font-weight: 500;
+		letter-spacing: normal;
 	}
 
 	.ingestion-item {

@@ -2,6 +2,7 @@
 	import { MoreHorizontal, Pencil, Pin, PinOff, Download, Trash2 } from 'lucide-svelte';
 	import type { ComponentType } from 'svelte';
 	import type { IngestionListItem } from '$lib/types/ingestion';
+	import { buildIngestionStatusMessage } from '$lib/utils/ingestionStatus';
 
 	export let item: IngestionListItem;
 	export let icon: ComponentType;
@@ -15,6 +16,9 @@
 	export let onPinToggle: (item: IngestionListItem) => void;
 	export let onDownload: (item: IngestionListItem) => void;
 	export let onDelete: (item: IngestionListItem, event?: MouseEvent) => void;
+
+	$: status = (item.job.status || '').trim().toLowerCase();
+	$: statusText = status && status !== 'ready' ? buildIngestionStatusMessage(item.job) : null;
 </script>
 
 <div class="ingested-row" class:ingested-row--nested={nested} data-ingested-menu-root={menuKey}>
@@ -26,7 +30,12 @@
 		<span class="ingested-icon">
 			<svelte:component this={icon} size={16} />
 		</span>
-		<span class="ingested-name">{displayName}</span>
+		<span class="ingested-copy">
+			<span class="ingested-name">{displayName}</span>
+			{#if statusText}
+				<span class="ingested-status">{statusText}</span>
+			{/if}
+		</span>
 	</button>
 	<button
 		class="ingested-menu"
@@ -91,9 +100,24 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		flex: 1;
 		min-width: 0;
 		max-width: 100%;
+	}
+
+	.ingested-copy {
+		display: flex;
+		flex: 1;
+		min-width: 0;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+
+	.ingested-status {
+		font-size: 0.7rem;
+		color: var(--color-muted-foreground);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.ingested-row {
