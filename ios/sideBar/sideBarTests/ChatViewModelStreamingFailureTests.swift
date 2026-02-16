@@ -92,9 +92,167 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(viewModel.messages.first?.content, "Hello")
+        let converged = await waitForCondition {
+            viewModel.messages.first?.content == "Hello"
+        }
+        XCTAssertTrue(converged)
         let cachedMessages: [Message]? = cache.get(key: CacheKeys.conversationMessages(id: "conv-1"))
         XCTAssertEqual(cachedMessages?.first?.content, "")
+    }
+
+    func testTypingRevealConvergesToTargetContent() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingMessage(on: viewModel)
+        viewModel.messages = [initialMessage]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        viewModel.handle(
+            event: ChatStreamEvent(
+                type: .token,
+                data: AnyCodable(["content": "Typing reveal works"])
+            )
+        )
+
+        let converged = await waitForCondition {
+            viewModel.messages.first?.content == "Typing reveal works"
+        }
+        XCTAssertTrue(converged)
+    }
+
+    func testFinalizeStreamingFlushesRemainingRevealContent() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingMessage(on: viewModel)
+        viewModel.messages = [initialMessage]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        let fullContent = String(repeating: "x", count: 120)
+        viewModel.handle(
+            event: ChatStreamEvent(
+                type: .token,
+                data: AnyCodable(["content": fullContent])
+            )
+        )
+        viewModel.finalizeStreaming(status: .complete)
+
+        XCTAssertEqual(viewModel.messages.first?.content, fullContent)
+        XCTAssertEqual(viewModel.messages.first?.status, .complete)
+        let cachedMessages: [Message]? = cache.get(key: CacheKeys.conversationMessages(id: "conv-1"))
+        XCTAssertEqual(cachedMessages?.first?.content, fullContent)
+    }
+
+    func testStopStreamClearsTypingRevealState() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingMessage(on: viewModel)
+        viewModel.messages = [initialMessage]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        viewModel.handle(
+            event: ChatStreamEvent(
+                type: .token,
+                data: AnyCodable(["content": "Hello"])
+            )
+        )
+
+        let taskStarted = await waitForCondition {
+            viewModel.typingRevealTask != nil
+        }
+        XCTAssertTrue(taskStarted)
+
+        viewModel.stopStream()
+
+        XCTAssertNil(viewModel.typingRevealTask)
+        XCTAssertTrue(viewModel.typingRevealTargetsByMessageId.isEmpty)
+    }
+
+    func testFinalizeStreamingErrorClearsTypingRevealState() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingMessage(on: viewModel)
+        viewModel.messages = [initialMessage]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        viewModel.handle(
+            event: ChatStreamEvent(
+                type: .token,
+                data: AnyCodable(["content": "Hello"])
+            )
+        )
+        viewModel.finalizeStreaming(status: .error)
+
+        XCTAssertNil(viewModel.typingRevealTask)
+        XCTAssertTrue(viewModel.typingRevealTargetsByMessageId.isEmpty)
+        XCTAssertEqual(viewModel.messages.first?.status, .error)
+    }
+
+    private func seedStreamingMessage(on viewModel: ChatViewModel) -> Message {
+        let initialMessage = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "",
+            status: .streaming,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:00Z",
+            error: nil
+        )
+        viewModel.chatStore.upsertConversationDetail(
+            ConversationWithMessages(
+                id: "conv-1",
+                title: "Chat",
+                titleGenerated: false,
+                createdAt: "2026-01-02T00:00:00Z",
+                updatedAt: "2026-01-02T00:00:00Z",
+                messageCount: 1,
+                firstMessage: nil,
+                isArchived: nil,
+                messages: [initialMessage]
+            )
+        )
+        viewModel.selectedConversationId = "conv-1"
+        viewModel.streamingConversationId = "conv-1"
+        return initialMessage
+    }
+
+    private func waitForCondition(
+        timeoutNanoseconds: UInt64 = 1_000_000_000,
+        pollNanoseconds: UInt64 = 10_000_000,
+        condition: @escaping () -> Bool
+    ) async -> Bool {
+        let start = DispatchTime.now().uptimeNanoseconds
+        while DispatchTime.now().uptimeNanoseconds - start < timeoutNanoseconds {
+            if condition() {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
+        return condition()
     }
 
     private func makeViewModel(

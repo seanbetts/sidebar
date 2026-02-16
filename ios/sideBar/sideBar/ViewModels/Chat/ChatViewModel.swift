@@ -7,6 +7,7 @@ private final class ChatViewModelTeardownBag {
     private let lock = NSLock()
     private var streamClient: (any ChatStreamClient)?
     private var clearActiveToolTask: Task<Void, Never>?
+    private var typingRevealTask: Task<Void, Never>?
     private var refreshTask: PollingTask?
     private var attachmentPollTasks: [String: Task<Void, Never>] = [:]
 
@@ -19,6 +20,12 @@ private final class ChatViewModelTeardownBag {
     func setClearActiveToolTask(_ task: Task<Void, Never>?) {
         lock.lock()
         clearActiveToolTask = task
+        lock.unlock()
+    }
+
+    func setTypingRevealTask(_ task: Task<Void, Never>?) {
+        lock.lock()
+        typingRevealTask = task
         lock.unlock()
     }
 
@@ -38,12 +45,14 @@ private final class ChatViewModelTeardownBag {
         lock.lock()
         let streamClient = streamClient
         let clearActiveToolTask = clearActiveToolTask
+        let typingRevealTask = typingRevealTask
         let refreshTask = refreshTask
         let attachmentPollTasks = attachmentPollTasks
         lock.unlock()
 
         streamClient?.disconnect()
         clearActiveToolTask?.cancel()
+        typingRevealTask?.cancel()
         refreshTask?.cancel()
         attachmentPollTasks.values.forEach { $0.cancel() }
     }
@@ -126,6 +135,12 @@ private final class ChatViewModelTeardownBag {
     var clearActiveToolTask: Task<Void, Never>? {
         didSet {
             teardownBag.setClearActiveToolTask(clearActiveToolTask)
+        }
+    }
+    var typingRevealTargetsByMessageId: [String: String] = [:]
+    var typingRevealTask: Task<Void, Never>? {
+        didSet {
+            teardownBag.setTypingRevealTask(typingRevealTask)
         }
     }
     var refreshTask: PollingTask? {

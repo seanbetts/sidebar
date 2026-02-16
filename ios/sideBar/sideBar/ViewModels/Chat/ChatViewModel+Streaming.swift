@@ -4,7 +4,6 @@ import Foundation
 import UniformTypeIdentifiers
 
 // MARK: - ChatViewModel+Streaming
-
 extension ChatViewModel {
     public func startStream(request: ChatStreamRequest) async {
         errorMessage = nil
@@ -23,6 +22,7 @@ extension ChatViewModel {
 
     public func stopStream() {
         streamClient.disconnect()
+        clearTypingRevealState(flushDisplayedContent: false)
         isStreaming = false
         streamingConversationId = nil
         currentStreamMessageId = nil
@@ -30,6 +30,11 @@ extension ChatViewModel {
 
     public func beginStreamingMessage(assistantMessageId: String) {
         currentStreamMessageId = assistantMessageId
+        guard TypingRevealTuning.enabled else {
+            return
+        }
+        let startingContent = messages.first(where: { $0.id == assistantMessageId })?.content ?? ""
+        typingRevealTargetsByMessageId = [assistantMessageId: startingContent]
     }
 
     public func handle(event: ChatStreamEvent) {
@@ -117,15 +122,6 @@ extension ChatViewModel {
         return handlers
     }
 
-    private func refreshScratchpad() {
-        cache.remove(key: CacheKeys.scratchpad)
-        scratchpadStore?.bump()
-    }
-
-    private func refreshMemories() {
-        cache.remove(key: CacheKeys.memoriesList)
-    }
-
     func applySelectionIfNeeded(using items: [Conversation]) {
         guard !items.isEmpty else {
             return
@@ -135,6 +131,7 @@ extension ChatViewModel {
             return
         }
         selectedConversationId = nil
+        clearTypingRevealState(flushDisplayedContent: false)
         messages = []
         promptPreview = nil
         activeTool = nil
@@ -151,11 +148,13 @@ extension ChatViewModel {
         if let serverIndex = reconciled.firstIndex(where: { $0.id == currentStreamMessageId }) {
             let serverMessage = reconciled[serverIndex]
             if serverMessage.status != .streaming {
+                clearTypingRevealState(flushDisplayedContent: false)
                 self.currentStreamMessageId = nil
                 self.streamingConversationId = nil
                 return reconciled
             }
-            if streamingMessage.content.count > serverMessage.content.count {
+            let localTargetContent = typingRevealTargetsByMessageId[currentStreamMessageId] ?? streamingMessage.content
+            if localTargetContent.count > serverMessage.content.count {
                 reconciled[serverIndex] = streamingMessage
             }
             return reconciled
@@ -365,20 +364,46 @@ extension ChatViewModel {
         guard let messageId = activeStreamingMessageId else {
             return
         }
-        updateMessage(id: messageId, persist: false) { message in
-            let prefix = prefixForToken(message: message, token: token)
-            let needsNewline = message.needsNewline == true ? false : message.needsNewline
-            return Message(
-                id: message.id,
-                role: message.role,
-                content: message.content + prefix + token,
-                status: message.status,
-                toolCalls: message.toolCalls,
-                needsNewline: needsNewline,
-                timestamp: message.timestamp,
-                error: message.error
-            )
+        guard let currentMessage = messages.first(where: { $0.id == messageId }) else {
+            return
         }
+        let prefix = prefixForToken(message: currentMessage, token: token)
+        let appendedText = prefix + token
+
+        guard TypingRevealTuning.enabled else {
+            updateMessage(id: messageId, persist: false) { message in
+                let needsNewline = message.needsNewline == true ? false : message.needsNewline
+                return Message(
+                    id: message.id,
+                    role: message.role,
+                    content: message.content + appendedText,
+                    status: message.status,
+                    toolCalls: message.toolCalls,
+                    needsNewline: needsNewline,
+                    timestamp: message.timestamp,
+                    error: message.error
+                )
+            }
+            return
+        }
+
+        let existingTarget = typingRevealTargetsByMessageId[messageId] ?? currentMessage.content
+        typingRevealTargetsByMessageId[messageId] = existingTarget + appendedText
+        if currentMessage.needsNewline == true {
+            updateMessage(id: messageId, persist: false) { message in
+                Message(
+                    id: message.id,
+                    role: message.role,
+                    content: message.content,
+                    status: message.status,
+                    toolCalls: message.toolCalls,
+                    needsNewline: false,
+                    timestamp: message.timestamp,
+                    error: message.error
+                )
+            }
+        }
+        startTypingRevealLoopIfNeeded()
     }
 
     func handleToolCall(_ event: ChatStreamEvent) {
@@ -435,9 +460,11 @@ extension ChatViewModel {
 
     func finalizeStreaming(status: MessageStatus) {
         guard let messageId = activeStreamingMessageId else {
+            clearTypingRevealState(flushDisplayedContent: false)
             isStreaming = false
             return
         }
+        flushTypingRevealContent(for: messageId)
         updateMessage(id: messageId, persist: false) { message in
             Message(
                 id: message.id,
@@ -449,6 +476,11 @@ extension ChatViewModel {
                 timestamp: message.timestamp,
                 error: message.error
             )
+        }
+        typingRevealTargetsByMessageId[messageId] = nil
+        if typingRevealTargetsByMessageId.isEmpty {
+            typingRevealTask?.cancel()
+            typingRevealTask = nil
         }
         syncMessagesToStore(conversationId: streamingConversationId ?? selectedConversationId, persist: true)
         if let conversationId = streamingConversationId ?? selectedConversationId,

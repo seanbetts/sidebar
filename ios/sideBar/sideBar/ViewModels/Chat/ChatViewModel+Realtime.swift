@@ -10,6 +10,15 @@ extension ChatViewModel {
         Logger(subsystem: "sideBar", category: "ChatViewModelRealtime")
     }
 
+    func refreshScratchpad() {
+        cache.remove(key: CacheKeys.scratchpad)
+        scratchpadStore?.bump()
+    }
+
+    func refreshMemories() {
+        cache.remove(key: CacheKeys.memoriesList)
+    }
+
     func handleNoteCreate(_ event: ChatStreamEvent) {
         guard let id = stringValue(from: event.data, key: "id") else {
             return

@@ -6,7 +6,9 @@ struct ChatMessageListView: View {
     @State private var shouldScrollToBottom = false
     @State private var visibleMessageCount: Int = 40
     @State private var isAutoLoadingMore = false
+    @State private var lastStreamingAutoScrollAt: Date = .distantPast
     private let pageSize: Int = 40
+    private let streamingScrollThrottleSeconds: TimeInterval = 0.08
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -51,6 +53,7 @@ struct ChatMessageListView: View {
                 if oldToken.selectedConversationId != newToken.selectedConversationId {
                     visibleMessageCount = pageSize
                     isAutoLoadingMore = false
+                    lastStreamingAutoScrollAt = .distantPast
                     shouldScrollToBottom = true
                     scrollToBottom(proxy: proxy, animated: false)
                     Task { @MainActor in
@@ -62,6 +65,7 @@ struct ChatMessageListView: View {
                 }
 
                 if oldToken.messageCount != newToken.messageCount {
+                    lastStreamingAutoScrollAt = .distantPast
                     let oldValue = oldToken.messageCount
                     let newValue = newToken.messageCount
                     if oldValue == 0 {
@@ -84,6 +88,14 @@ struct ChatMessageListView: View {
                 }
 
                 if oldToken.lastMessageSignature != newToken.lastMessageSignature {
+                    if viewModel.isStreaming {
+                        let now = Date()
+                        if now.timeIntervalSince(lastStreamingAutoScrollAt) >= streamingScrollThrottleSeconds {
+                            lastStreamingAutoScrollAt = now
+                            scrollToBottom(proxy: proxy, animated: false)
+                        }
+                        return
+                    }
                     scrollToBottom(proxy: proxy, animated: shouldScrollToBottom == false)
                     return
                 }
