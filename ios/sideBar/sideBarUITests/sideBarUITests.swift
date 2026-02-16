@@ -13,6 +13,7 @@ final class SideBarUITests: XCTestCase {
     private let uiTestPasswordKey = "SIDEBAR_UI_TEST_PASSWORD"
     private let uiTestSecretsFileKey = "SIDEBAR_UI_TEST_SECRETS_FILE"
     private let uiTestInMemoryAuthKey = "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
+    private let uiTestExposeChatScrollAnchorKey = "SIDEBAR_UI_TEST_EXPOSE_CHAT_SCROLL_ANCHOR"
     private let uiTestChatConversationTitleKey = "SIDEBAR_UI_TEST_CHAT_CONVERSATION_TITLE"
 
     override func setUpWithError() throws {
@@ -284,6 +285,7 @@ final class SideBarUITests: XCTestCase {
         app.launchEnvironment[uiTestEmailKey] = credentials.email
         app.launchEnvironment[uiTestPasswordKey] = credentials.password
         app.launchEnvironment[uiTestInMemoryAuthKey] = "1"
+        app.launchEnvironment[uiTestExposeChatScrollAnchorKey] = "1"
         app.launch()
         dismissSystemAlertsIfPresent(in: app, timeout: 4)
         return app
