@@ -10,12 +10,18 @@ func notesEditorReturnIntent(commandPressed: Bool) -> NotesEditorReturnIntent {
 }
 
 struct NotesSheet: View {
+    private static let autosaveDelayNanoseconds: UInt64 = 1_200_000_000
+
     let task: TaskItem
     let notes: String
     let onSave: (String) -> Void
+    let onAutosave: (String) -> Void
     let onDismiss: () -> Void
 
     @State private var value: String = ""
+    @State private var lastSubmittedValue: String = ""
+    @State private var hasLoadedInitialValue: Bool = false
+    @State private var autosaveTask: Task<Void, Never>?
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -54,14 +60,43 @@ struct NotesSheet: View {
             }
             .onAppear {
                 value = notes
+                lastSubmittedValue = notes
+                hasLoadedInitialValue = true
                 isFocused = true
+            }
+            .onChange(of: value) { _, _ in
+                guard hasLoadedInitialValue else { return }
+                scheduleAutosave()
+            }
+            .onDisappear {
+                autosaveTask?.cancel()
+                submitAutosaveIfNeeded()
             }
         }
     }
 
     private func handleSave() {
-        onSave(value)
+        autosaveTask?.cancel()
+        if value != lastSubmittedValue {
+            lastSubmittedValue = value
+            onSave(value)
+        }
         onDismiss()
+    }
+
+    private func scheduleAutosave() {
+        autosaveTask?.cancel()
+        autosaveTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: Self.autosaveDelayNanoseconds)
+            guard !Task.isCancelled else { return }
+            submitAutosaveIfNeeded()
+        }
+    }
+
+    private func submitAutosaveIfNeeded() {
+        guard value != lastSubmittedValue else { return }
+        lastSubmittedValue = value
+        onAutosave(value)
     }
 }
 

@@ -68,6 +68,14 @@ extension TasksViewModel {
     }
 
     public func updateNotes(task: TaskItem, notes: String) async {
+        await applyNotesOperation(task: task, notes: notes, refreshAfterSave: true)
+    }
+
+    public func autosaveNotes(task: TaskItem, notes: String) async {
+        await applyNotesOperation(task: task, notes: notes, refreshAfterSave: false)
+    }
+
+    private func applyNotesOperation(task: TaskItem, notes: String, refreshAfterSave: Bool) async {
         await applyTaskOperation(
             TaskOperationPayload(
                 operationId: TaskOperationId.make(),
@@ -75,7 +83,10 @@ extension TasksViewModel {
                 id: task.id,
                 notes: notes,
                 clientUpdatedAt: task.updatedAt
-            )
+            ),
+            refreshSelection: refreshAfterSave,
+            refreshCounts: refreshAfterSave,
+            refreshWidget: refreshAfterSave
         )
     }
 
@@ -152,7 +163,12 @@ extension TasksViewModel {
         )
     }
 
-    private func applyTaskOperation(_ operation: TaskOperationPayload) async {
+    private func applyTaskOperation(
+        _ operation: TaskOperationPayload,
+        refreshSelection: Bool = true,
+        refreshCounts: Bool = true,
+        refreshWidget: Bool = true
+    ) async {
         setLocalErrorMessage(nil)
         if !networkStatus.isNetworkAvailable {
             await queueOfflineOperation(operation)
@@ -167,9 +183,15 @@ extension TasksViewModel {
                     : "\(count) recurring instances scheduled"
                 toastCenter.show(message: message)
             }
-            await load(selection: selection, force: true)
-            await loadCounts(force: true)
-            await refreshWidgetData()
+            if refreshSelection {
+                await load(selection: selection, force: true)
+            }
+            if refreshCounts {
+                await loadCounts(force: true)
+            }
+            if refreshWidget {
+                await refreshWidgetData()
+            }
         } catch {
             setLocalErrorMessage(ErrorMapping.message(for: error))
         }

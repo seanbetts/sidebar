@@ -66,6 +66,9 @@ struct TasksDetailView: View {
                 onSave: { value in
                     Task { await viewModel.updateNotes(task: task, notes: value) }
                 },
+                onAutosave: { value in
+                    Task { await viewModel.autosaveNotes(task: task, notes: value) }
+                },
                 onDismiss: { notesTask = nil }
             )
             .phoneSheetGrabBarVisible()
