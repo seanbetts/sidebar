@@ -273,6 +273,7 @@ struct SystemSettingsView: View {
             NavigationStack {
                 PendingWritesView()
             }
+            .phoneSheetGrabBarVisible()
         }
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {

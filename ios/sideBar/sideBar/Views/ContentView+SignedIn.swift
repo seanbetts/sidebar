@@ -22,6 +22,7 @@ extension ContentView {
         #if os(iOS)
         content = AnyView(content.sheet(isPresented: $isShortcutsPresented) {
             KeyboardShortcutsView()
+                .phoneSheetGrabBarVisible()
         })
         #endif
         content = AnyView(content.sheet(item: $pendingWriteConflict) { conflict in
@@ -31,6 +32,7 @@ extension ContentView {
                     await refreshPendingWriteConflict()
                 }
             }
+            .phoneSheetGrabBarVisible()
         })
         content = AnyView(content.overlay(alignment: .top) {
             if let toast = environment.toastCenter.toast {
@@ -315,9 +317,7 @@ extension ContentView {
         content = AnyView(content.sheet(isPresented: $isSettingsPresented) {
             SettingsView()
                 .environmentObject(environment)
-                #if os(iOS)
-                .presentationDragIndicator(UIDevice.current.userInterfaceIdiom == .phone ? .visible : .automatic)
-                #endif
+                .phoneSheetGrabBarVisible()
         })
         #endif
         content = AnyView(content.onChange(of: environment.signOutEvent) { _, _ in

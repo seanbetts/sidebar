@@ -45,6 +45,7 @@ struct FilesHeaderActions: View {
             ) { newName in
                 Task { await renameFile(to: newName) }
             }
+            .phoneSheetGrabBarVisible()
         }
         .fileExporter(
             isPresented: $isExporting,

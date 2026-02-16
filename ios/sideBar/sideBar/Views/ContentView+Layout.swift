@@ -89,6 +89,7 @@ extension ContentView {
                 cache: environment.container.cacheClient,
                 scratchpadStore: environment.scratchpadStore
             )
+            .phoneSheetGrabBarVisible()
         }
     }
 

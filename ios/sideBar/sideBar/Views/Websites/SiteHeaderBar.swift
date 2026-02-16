@@ -120,6 +120,7 @@ public struct SiteHeaderBar: View {
                 #else
                 .sheet(isPresented: $isIngestionCenterPresented) {
                     IngestionCenterView(viewModel: environment.ingestionViewModel)
+                        .phoneSheetGrabBarVisible()
                 }
                 #endif
             }

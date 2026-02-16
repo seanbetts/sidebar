@@ -82,6 +82,7 @@ public struct NotesView: View {
                         }
                     }
                 )
+                .phoneSheetGrabBarVisible()
             }
             .alert("Rename note", isPresented: $isRenameDialogPresented) {
                 TextField("Note name", text: $renameValue)
