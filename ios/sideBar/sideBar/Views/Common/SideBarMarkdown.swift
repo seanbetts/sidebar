@@ -115,6 +115,7 @@ struct SideBarMarkdown: View, Equatable {
         }
         #else
         Text(text)
+            .textSelection(.enabled)
         #endif
     }
 
@@ -127,6 +128,7 @@ struct SideBarMarkdown: View, Equatable {
                 UnderlineStyle(.single)
             }
             .markdownImageProvider(CappedImageProvider(maxSize: SideBarMarkdownLayout.maxImageSize))
+            .textSelection(.enabled)
     }
 
     private var markdownTheme: Theme {
