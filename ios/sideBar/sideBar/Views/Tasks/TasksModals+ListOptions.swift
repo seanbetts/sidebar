@@ -18,7 +18,7 @@ func buildListOptions(groups: [TaskGroup], projects: [TaskProject]) -> [TaskList
             $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
         }
         for project in groupProjects {
-            options.append(TaskListOption(id: project.id, label: "- \(project.title)"))
+            options.append(TaskListOption(id: project.id, label: project.title))
         }
     }
 
@@ -26,7 +26,7 @@ func buildListOptions(groups: [TaskGroup], projects: [TaskProject]) -> [TaskList
         $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
     }
     for project in orphanProjects {
-        options.append(TaskListOption(id: project.id, label: "- \(project.title)"))
+        options.append(TaskListOption(id: project.id, label: project.title))
     }
 
     return options
