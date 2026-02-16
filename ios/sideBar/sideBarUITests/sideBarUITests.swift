@@ -154,7 +154,7 @@ final class SideBarUITests: XCTestCase {
     }
 
     @MainActor
-    private func openChatDetail(in app: XCUIApplication) -> XCUIElement {
+    func openChatDetail(in app: XCUIApplication) -> XCUIElement {
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
         let chatTab = app.tabBars.buttons["Chat"]
         XCTAssertTrue(chatTab.waitForExistence(timeout: 20), "Chat tab did not appear.")
@@ -200,7 +200,7 @@ final class SideBarUITests: XCTestCase {
         return sendButton
     }
 
-    private func resolveChatMessageField(in app: XCUIApplication) -> XCUIElement {
+    func resolveChatMessageField(in app: XCUIApplication) -> XCUIElement {
         let labeledMessageField = app.textViews["Message"]
         if labeledMessageField.waitForExistence(timeout: 6) {
             return labeledMessageField
@@ -219,12 +219,12 @@ final class SideBarUITests: XCTestCase {
         return fallbackMessageField
     }
 
-    private struct UITestCredentials {
+    struct UITestCredentials {
         let email: String
         let password: String
     }
 
-    private func loadCredentials() throws -> UITestCredentials {
+    func loadCredentials() throws -> UITestCredentials {
         let environment = ProcessInfo.processInfo.environment
         if
             let email = environment[uiTestEmailKey], !email.isEmpty,
@@ -280,7 +280,7 @@ final class SideBarUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchApp(with credentials: UITestCredentials) -> XCUIApplication {
+    func launchApp(with credentials: UITestCredentials) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment[uiTestEmailKey] = credentials.email
         app.launchEnvironment[uiTestPasswordKey] = credentials.password
@@ -291,7 +291,7 @@ final class SideBarUITests: XCTestCase {
         return app
     }
 
-    private func attemptLogin(
+    func attemptLogin(
         in app: XCUIApplication,
         email: String,
         password: String
@@ -393,7 +393,7 @@ final class SideBarUITests: XCTestCase {
         return false
     }
 
-    private func waitForSignedInHome(
+    func waitForSignedInHome(
         in app: XCUIApplication,
         timeout: TimeInterval
     ) -> Bool {
