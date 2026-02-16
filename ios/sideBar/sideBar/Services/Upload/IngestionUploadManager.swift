@@ -155,7 +155,16 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     }
 
     public func cancelUpload(uploadId: String) {
-        guard let taskId = taskId(forUploadId: uploadId) else { return }
+        let (context, taskId) = takeContext(forUploadId: uploadId)
+        if let context {
+            dispatchCompletion(context.onCompletion, result: .failure(URLError(.cancelled)))
+            do {
+                try FileManager.default.removeItem(at: context.bodyFileURL)
+            } catch {
+                logger.error("Failed to remove canceled upload body file: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        guard let taskId else { return }
         session.getAllTasks { tasks in
             guard let task = tasks.first(where: { $0.taskIdentifier == taskId }) else {
                 return
@@ -244,6 +253,16 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
             }
             taskIdsByUploadId.removeValue(forKey: context.uploadId)
             return context
+        }
+    }
+
+    private func takeContext(forUploadId uploadId: String) -> (UploadContext?, Int?) {
+        queue.sync {
+            guard let taskId = taskIdsByUploadId.removeValue(forKey: uploadId) else {
+                return (nil, nil)
+            }
+            let context = contexts.removeValue(forKey: taskId)
+            return (context, taskId)
         }
     }
 
