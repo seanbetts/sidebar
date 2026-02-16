@@ -10,12 +10,12 @@ import XCTest
 extension SideBarUITests {
     @MainActor
     func testStreamingReplyKeepsBottomAnchorVisible() throws {
-        let credentials = try loadCredentials()
-        let app = launchApp(with: credentials)
+        let config = try loadLaunchConfig()
+        let app = launchApp(with: config)
         attemptLogin(
             in: app,
-            email: credentials.email,
-            password: credentials.password
+            email: config.credentials.email,
+            password: config.credentials.password
         )
 
         XCTAssertTrue(

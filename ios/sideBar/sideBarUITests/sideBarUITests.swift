@@ -9,12 +9,6 @@ import Foundation
 import XCTest
 
 final class SideBarUITests: XCTestCase {
-    private let uiTestEmailKey = "SIDEBAR_UI_TEST_EMAIL"
-    private let uiTestPasswordKey = "SIDEBAR_UI_TEST_PASSWORD"
-    private let uiTestSecretsFileKey = "SIDEBAR_UI_TEST_SECRETS_FILE"
-    private let uiTestInMemoryAuthKey = "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
-    private let uiTestExposeChatScrollAnchorKey = "SIDEBAR_UI_TEST_EXPOSE_CHAT_SCROLL_ANCHOR"
-    private let uiTestChatConversationTitleKey = "SIDEBAR_UI_TEST_CHAT_CONVERSATION_TITLE"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -42,12 +36,12 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testLoginSuccessNavigatesToSignedInHome() throws {
-        let credentials = try loadCredentials()
-        let app = launchApp(with: credentials)
+        let config = try loadLaunchConfig()
+        let app = launchApp(with: config)
         attemptLogin(
             in: app,
-            email: credentials.email,
-            password: credentials.password
+            email: config.credentials.email,
+            password: config.credentials.password
         )
 
         XCTAssertTrue(
@@ -63,12 +57,12 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testLoginFailureShowsErrorAndStaysSignedOut() throws {
-        let credentials = try loadCredentials()
-        let app = launchApp(with: credentials)
+        let config = try loadLaunchConfig()
+        let app = launchApp(with: config)
         attemptLogin(
             in: app,
-            email: credentials.email,
-            password: credentials.password + "x"
+            email: config.credentials.email,
+            password: config.credentials.password + "x"
         )
 
         let authError = app.otherElements["Error"]
@@ -90,12 +84,12 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testSendMessageInSeededConversationShowsStreamingReply() throws {
-        let credentials = try loadCredentials()
-        let app = launchApp(with: credentials)
+        let config = try loadLaunchConfig()
+        let app = launchApp(with: config)
         attemptLogin(
             in: app,
-            email: credentials.email,
-            password: credentials.password
+            email: config.credentials.email,
+            password: config.credentials.password
         )
 
         XCTAssertTrue(
@@ -125,12 +119,12 @@ final class SideBarUITests: XCTestCase {
 
     @MainActor
     func testCreateEditDeleteNoteInSeededAccount() throws {
-        let credentials = try loadCredentials()
-        let app = launchApp(with: credentials)
+        let config = try loadLaunchConfig()
+        let app = launchApp(with: config)
         attemptLogin(
             in: app,
-            email: credentials.email,
-            password: credentials.password
+            email: config.credentials.email,
+            password: config.credentials.password
         )
 
         XCTAssertTrue(
@@ -219,26 +213,28 @@ final class SideBarUITests: XCTestCase {
         return fallbackMessageField
     }
 
-    struct UITestCredentials {
-        let email: String
-        let password: String
+    func loadLaunchConfig() throws -> UITestLaunchConfig {
+        UITestLaunchConfig(
+            credentials: try loadCredentials(),
+            backend: try loadBackendConfig()
+        )
     }
 
-    func loadCredentials() throws -> UITestCredentials {
+    private func loadCredentials() throws -> UITestCredentials {
         let environment = ProcessInfo.processInfo.environment
         if
-            let email = environment[uiTestEmailKey], !email.isEmpty,
-            let password = environment[uiTestPasswordKey], !password.isEmpty {
+            let email = environment[SideBarUITestConstants.uiTestEmailKey], !email.isEmpty,
+            let password = environment[SideBarUITestConstants.uiTestPasswordKey], !password.isEmpty {
             return UITestCredentials(email: email, password: password)
         }
 
-        let secretsFilePath = environment[uiTestSecretsFileKey] ?? defaultSecretsFilePath()
+        let secretsFilePath = environment[SideBarUITestConstants.uiTestSecretsFileKey] ?? defaultSecretsFilePath()
         if let credentials = loadCredentialsFromSecretsFile(at: secretsFilePath) {
             return credentials
         }
 
         throw XCTSkip(
-            "Missing UI test credentials. Set \(uiTestEmailKey)/\(uiTestPasswordKey) " +
+            "Missing UI test credentials. Set \(SideBarUITestConstants.uiTestEmailKey)/\(SideBarUITestConstants.uiTestPasswordKey) " +
             "or add .ui-test-secrets.local at \(defaultSecretsFilePath())."
         )
     }
@@ -254,38 +250,73 @@ final class SideBarUITests: XCTestCase {
     private func loadCredentialsFromSecretsFile(
         at filePath: String
     ) -> UITestCredentials? {
-        guard let content = try? String(contentsOfFile: filePath, encoding: .utf8) else {
-            return nil
-        }
-        var values: [String: String] = [:]
-        for line in content.split(separator: "\n", omittingEmptySubsequences: false) {
-            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmedLine.isEmpty || trimmedLine.hasPrefix("#") || !trimmedLine.contains("=") {
-                continue
-            }
-            let parts = trimmedLine.split(separator: "=", maxSplits: 1)
-            guard parts.count == 2 else { continue }
-            let key = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
-            let rawValue = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-            let value = rawValue.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
-            values[key] = value
-        }
+        guard let values = loadSecretsValues(from: filePath) else { return nil }
         guard
-            let email = values[uiTestEmailKey], !email.isEmpty,
-            let password = values[uiTestPasswordKey], !password.isEmpty
+            let email = values[SideBarUITestConstants.uiTestEmailKey], !email.isEmpty,
+            let password = values[SideBarUITestConstants.uiTestPasswordKey], !password.isEmpty
         else {
             return nil
         }
         return UITestCredentials(email: email, password: password)
     }
 
+    private func loadBackendConfig() throws -> UITestBackendConfig {
+        let environment = ProcessInfo.processInfo.environment
+        let secretsFilePath = environment[SideBarUITestConstants.uiTestSecretsFileKey] ?? defaultSecretsFilePath()
+        let secretValues = loadSecretsValues(from: secretsFilePath) ?? [:]
+
+        func resolveValue(
+            primaryKey: String,
+            fallbackKey: String
+        ) -> String? {
+            if let value = environment[primaryKey]?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !value.isEmpty {
+                return value
+            }
+            if let value = environment[fallbackKey]?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !value.isEmpty {
+                return value
+            }
+            if let value = secretValues[primaryKey]?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !value.isEmpty {
+                return value
+            }
+            if let value = secretValues[fallbackKey]?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !value.isEmpty {
+                return value
+            }
+            return nil
+        }
+
+        guard
+            let apiBaseUrl = resolveValue(primaryKey: SideBarUITestConstants.uiTestApiBaseUrlKey, fallbackKey: "API_BASE_URL"),
+            let supabaseUrl = resolveValue(primaryKey: SideBarUITestConstants.uiTestSupabaseUrlKey, fallbackKey: "SUPABASE_URL"),
+            let supabaseAnonKey = resolveValue(primaryKey: SideBarUITestConstants.uiTestSupabaseAnonKey, fallbackKey: "SUPABASE_ANON_KEY")
+        else {
+            throw XCTSkip(
+                "Missing UI test backend configuration. Set " +
+                "\(SideBarUITestConstants.uiTestApiBaseUrlKey)/\(SideBarUITestConstants.uiTestSupabaseUrlKey)/\(SideBarUITestConstants.uiTestSupabaseAnonKey) " +
+                "or API_BASE_URL/SUPABASE_URL/SUPABASE_ANON_KEY for UI tests."
+            )
+        }
+
+        return UITestBackendConfig(
+            apiBaseUrl: apiBaseUrl,
+            supabaseUrl: supabaseUrl,
+            supabaseAnonKey: supabaseAnonKey
+        )
+    }
+
     @MainActor
-    func launchApp(with credentials: UITestCredentials) -> XCUIApplication {
+    func launchApp(with config: UITestLaunchConfig) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment[uiTestEmailKey] = credentials.email
-        app.launchEnvironment[uiTestPasswordKey] = credentials.password
-        app.launchEnvironment[uiTestInMemoryAuthKey] = "1"
-        app.launchEnvironment[uiTestExposeChatScrollAnchorKey] = "1"
+        app.launchEnvironment[SideBarUITestConstants.uiTestEmailKey] = config.credentials.email
+        app.launchEnvironment[SideBarUITestConstants.uiTestPasswordKey] = config.credentials.password
+        app.launchEnvironment["API_BASE_URL"] = config.backend.apiBaseUrl
+        app.launchEnvironment["SUPABASE_URL"] = config.backend.supabaseUrl
+        app.launchEnvironment["SUPABASE_ANON_KEY"] = config.backend.supabaseAnonKey
+        app.launchEnvironment[SideBarUITestConstants.uiTestInMemoryAuthKey] = "1"
+        app.launchEnvironment[SideBarUITestConstants.uiTestExposeChatScrollAnchorKey] = "1"
         app.launch()
         dismissSystemAlertsIfPresent(in: app, timeout: 4)
         return app
@@ -320,12 +351,32 @@ final class SideBarUITests: XCTestCase {
 
     private func seededConversationTitle() -> String {
         let environment = ProcessInfo.processInfo.environment
-        if let title = environment[uiTestChatConversationTitleKey]?.trimmingCharacters(
+        if let title = environment[SideBarUITestConstants.uiTestChatConversationTitleKey]?.trimmingCharacters(
             in: .whitespacesAndNewlines
         ), !title.isEmpty {
             return title
         }
         return "[seed:test-data] Onboarding flow review"
+    }
+
+    private func loadSecretsValues(from filePath: String) -> [String: String]? {
+        guard let content = try? String(contentsOfFile: filePath, encoding: .utf8) else {
+            return nil
+        }
+        var values: [String: String] = [:]
+        for line in content.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedLine.isEmpty || trimmedLine.hasPrefix("#") || !trimmedLine.contains("=") {
+                continue
+            }
+            let parts = trimmedLine.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+            let rawValue = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+            let value = rawValue.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            values[key] = value
+        }
+        return values
     }
 
     func dismissSystemAlertsIfPresent(
@@ -423,4 +474,32 @@ final class SideBarUITests: XCTestCase {
         return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 
+}
+
+enum SideBarUITestConstants {
+    static let uiTestEmailKey = "SIDEBAR_UI_TEST_EMAIL"
+    static let uiTestPasswordKey = "SIDEBAR_UI_TEST_PASSWORD"
+    static let uiTestSecretsFileKey = "SIDEBAR_UI_TEST_SECRETS_FILE"
+    static let uiTestInMemoryAuthKey = "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
+    static let uiTestExposeChatScrollAnchorKey = "SIDEBAR_UI_TEST_EXPOSE_CHAT_SCROLL_ANCHOR"
+    static let uiTestChatConversationTitleKey = "SIDEBAR_UI_TEST_CHAT_CONVERSATION_TITLE"
+    static let uiTestApiBaseUrlKey = "SIDEBAR_UI_TEST_API_BASE_URL"
+    static let uiTestSupabaseUrlKey = "SIDEBAR_UI_TEST_SUPABASE_URL"
+    static let uiTestSupabaseAnonKey = "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY"
+}
+
+struct UITestCredentials {
+    let email: String
+    let password: String
+}
+
+struct UITestBackendConfig {
+    let apiBaseUrl: String
+    let supabaseUrl: String
+    let supabaseAnonKey: String
+}
+
+struct UITestLaunchConfig {
+    let credentials: UITestCredentials
+    let backend: UITestBackendConfig
 }
