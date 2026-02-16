@@ -315,6 +315,9 @@ extension ContentView {
         content = AnyView(content.sheet(isPresented: $isSettingsPresented) {
             SettingsView()
                 .environmentObject(environment)
+                #if os(iOS)
+                .presentationDragIndicator(UIDevice.current.userInterfaceIdiom == .phone ? .visible : .automatic)
+                #endif
         })
         #endif
         content = AnyView(content.onChange(of: environment.signOutEvent) { _, _ in
