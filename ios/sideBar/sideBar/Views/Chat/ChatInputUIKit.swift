@@ -27,10 +27,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false
         textView.delegate = context.coordinator
-        textView.onShiftEnter = {
-            textView.allowNewlineOnce = true
-            textView.insertText("\n")
-        }
+        textView.onCommandEnter = onSend
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         textView.accessibilityLabel = "Message"
@@ -180,15 +177,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            guard text == "\n" else {
-                return true
-            }
-            if let chatTextView = textView as? ChatInputTextView, chatTextView.allowNewlineOnce {
-                chatTextView.allowNewlineOnce = false
-                return true
-            }
-            onSend()
-            return false
+            true
         }
 
         @objc func didTapSend() {
@@ -202,22 +191,22 @@ struct ChatInputUIKitView: UIViewRepresentable {
 }
 
 final class ChatInputTextView: UITextView {
-    var allowNewlineOnce = false
-    var onShiftEnter: (() -> Void)?
+    var onCommandEnter: (() -> Void)?
 
     override var keyCommands: [UIKeyCommand]? {
         [
             UIKeyCommand(
                 input: "\r",
-                modifierFlags: .shift,
-                action: #selector(handleShiftEnter)
+                modifierFlags: .command,
+                action: #selector(handleCommandEnter)
             )
         ]
     }
 
-    @objc private func handleShiftEnter() {
-        onShiftEnter?()
-        allowNewlineOnce = false
+    @objc private func handleCommandEnter() {
+        if chatInputReturnIntent(commandPressed: true) == .send {
+            onCommandEnter?()
+        }
     }
 }
 #endif
