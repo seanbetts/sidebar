@@ -21,8 +21,9 @@ final class ShareViewController: SharePlatformViewController {
         do {
             environment = try ShareExtensionEnvironment()
         } catch {
-            showError(ShareExtensionMessageMapper.errorMessage(for: error))
-            return
+            logger.notice(
+                "Share extension environment unavailable; falling back to queue-only mode: \(error.localizedDescription, privacy: .public)"
+            )
         }
         processSharedContent()
     }

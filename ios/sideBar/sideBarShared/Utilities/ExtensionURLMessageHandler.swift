@@ -98,6 +98,18 @@ public enum ExtensionURLMessageHandler {
         ]
     }
 
+    private static func queuedWebsiteResponse(
+        for normalizedURL: String,
+        pendingStore: PendingShareStore
+    ) -> [String: Any] {
+        if pendingStore.enqueueWebsite(url: normalizedURL) != nil {
+            var payload = successResponse(.savedForLater)
+            payload["queued"] = "website"
+            return payload
+        }
+        return failureResponse(.queueFailed)
+    }
+
     private static func messageCode(forDetail detail: String?) -> ExtensionMessageCode? {
         guard let detail else { return nil }
         let lowered = detail.lowercased()
@@ -305,26 +317,16 @@ public enum ExtensionURLMessageHandler {
                     try await saveOperation(normalized)
                     return successResponse(.websiteSaved)
                 } catch {
-                    if ExtensionNetworkErrorClassifier.isOfflineLike(error) {
-                        if pendingStore.enqueueWebsite(url: normalized) != nil {
-                            var payload = successResponse(.savedForLater)
-                            payload["queued"] = "website"
-                            return payload
-                        }
-                        return failureResponse(.queueFailed)
+                    if ExtensionNetworkErrorClassifier.isOfflineLike(error) || isUnauthorized(error) {
+                        return queuedWebsiteResponse(for: normalized, pendingStore: pendingStore)
                     }
                     let mapped = mapError(error)
                     return failureResponse(code: mapped.code, message: mapped.message)
                 }
             }
 
-            if ExtensionNetworkErrorClassifier.isOfflineLike(error) {
-                if pendingStore.enqueueWebsite(url: normalized) != nil {
-                    var payload = successResponse(.savedForLater)
-                    payload["queued"] = "website"
-                    return payload
-                }
-                return failureResponse(.queueFailed)
+            if ExtensionNetworkErrorClassifier.isOfflineLike(error) || isUnauthorized(error) {
+                return queuedWebsiteResponse(for: normalized, pendingStore: pendingStore)
             }
 
             let mapped = mapError(error)

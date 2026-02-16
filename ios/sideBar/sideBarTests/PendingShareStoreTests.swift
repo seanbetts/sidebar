@@ -360,7 +360,7 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
-    func testExtensionURLMessageHandlerReturnsNotAuthenticatedWhenRefreshFails() async {
+    func testExtensionURLMessageHandlerQueuesWebsiteWhenRefreshFails() async {
         let store = makeStore()
         var attempts = 0
         var refreshCalled = false
@@ -381,13 +381,37 @@ final class PendingShareStoreTests: XCTestCase {
 
         XCTAssertTrue(refreshCalled)
         XCTAssertEqual(attempts, 1)
-        XCTAssertEqual(response["ok"] as? Bool, false)
-        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.notAuthenticated.rawValue)
+        XCTAssertEqual(response["ok"] as? Bool, true)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
         XCTAssertEqual(
-            response["error"] as? String,
-            ExtensionUserMessageCatalog.message(for: .notAuthenticated)
+            response["message"] as? String,
+            ExtensionUserMessageCatalog.message(for: .savedForLater)
         )
-        XCTAssertTrue(store.loadAll().isEmpty)
+        XCTAssertEqual(response["queued"] as? String, "website")
+        XCTAssertEqual(store.loadAll().count, 1)
+        XCTAssertEqual(store.loadAll().first?.url, "https://example.com")
+    }
+
+    func testExtensionURLMessageHandlerQueuesWebsiteWhenMissingToken() async {
+        let store = makeStore()
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: "https://example.com",
+            pendingStore: store,
+            saveWebsite: { _ in
+                throw APIClientError.missingToken
+            }
+        )
+
+        XCTAssertEqual(response["ok"] as? Bool, true)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
+        XCTAssertEqual(
+            response["message"] as? String,
+            ExtensionUserMessageCatalog.message(for: .savedForLater)
+        )
+        XCTAssertEqual(response["queued"] as? String, "website")
+        XCTAssertEqual(store.loadAll().count, 1)
+        XCTAssertEqual(store.loadAll().first?.url, "https://example.com")
     }
 
     func testExtensionURLMessageHandlerQueuesWebsiteForYouTubeURL() async {
