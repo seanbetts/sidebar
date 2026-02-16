@@ -218,7 +218,15 @@ export function useChatSSE() {
 			},
 
 			onPromptPreview: (data) => {
-				chatStore.setPromptPreview(data?.system_prompt ?? null, data?.first_message_prompt ?? null);
+				chatStore.setPromptPreview(
+					data?.system_prompt ?? null,
+					data?.first_message_prompt ?? null,
+					{
+						systemPromptSections: data?.system_prompt_sections ?? [],
+						firstMessagePromptSections: data?.first_message_prompt_sections ?? [],
+						promptReport: data?.prompt_report ?? null
+					}
+				);
 			},
 
 			onMemoryCreated: async () => {

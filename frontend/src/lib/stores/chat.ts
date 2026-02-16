@@ -4,6 +4,11 @@
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import type { Message, ToolCall } from '$lib/types/chat';
+import type {
+	PromptPreviewPayload,
+	PromptPreviewReport,
+	PromptPreviewSection
+} from '$lib/types/promptPreview';
 import { conversationsAPI } from '$lib/services/api';
 import { conversationListStore, currentConversationId } from './conversations';
 import { generateConversationTitle } from './chat/generateTitle';
@@ -29,6 +34,9 @@ export interface ChatState {
 	promptPreview: {
 		systemPrompt: string | null;
 		firstMessagePrompt: string | null;
+		systemPromptSections: PromptPreviewSection[];
+		firstMessagePromptSections: PromptPreviewSection[];
+		promptReport: PromptPreviewReport | null;
 	} | null;
 	activeTool: {
 		messageId: string;
@@ -453,12 +461,23 @@ function createChatStore() {
 			}
 		},
 
-		setPromptPreview(systemPrompt: string | null, firstMessagePrompt: string | null) {
+		setPromptPreview(
+			systemPrompt: string | null,
+			firstMessagePrompt: string | null,
+			diagnostics?: {
+				systemPromptSections?: PromptPreviewPayload['system_prompt_sections'];
+				firstMessagePromptSections?: PromptPreviewPayload['first_message_prompt_sections'];
+				promptReport?: PromptPreviewPayload['prompt_report'];
+			}
+		) {
 			update((state) => ({
 				...state,
 				promptPreview: {
 					systemPrompt: systemPrompt?.trim() || null,
-					firstMessagePrompt: firstMessagePrompt?.trim() || null
+					firstMessagePrompt: firstMessagePrompt?.trim() || null,
+					systemPromptSections: diagnostics?.systemPromptSections ?? [],
+					firstMessagePromptSections: diagnostics?.firstMessagePromptSections ?? [],
+					promptReport: diagnostics?.promptReport ?? null
 				}
 			}));
 		},
