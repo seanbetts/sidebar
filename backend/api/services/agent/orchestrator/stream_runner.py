@@ -431,6 +431,19 @@ async def stream_with_tools(
                                                 "first_message_prompt": result_data.get(
                                                     "first_message_prompt"
                                                 ),
+                                                "system_prompt_sections": (
+                                                    result_data.get(
+                                                        "system_prompt_sections"
+                                                    )
+                                                ),
+                                                "first_message_prompt_sections": (
+                                                    result_data.get(
+                                                        "first_message_prompt_sections"
+                                                    )
+                                                ),
+                                                "prompt_report": result_data.get(
+                                                    "prompt_report"
+                                                ),
                                             },
                                         }
                                     elif display_name == "Memory Tool":

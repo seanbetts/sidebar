@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy.orm import Session, load_only
 
@@ -28,6 +28,52 @@ from api.services.storage.service import get_storage_backend
 from api.services.user_settings_service import UserSettingsService
 
 logger = logging.getLogger(__name__)
+
+
+class PromptSection(TypedDict):
+    """Structured prompt section with source metadata."""
+
+    id: str
+    title: str
+    source: str
+    content: str
+    chars: int
+
+
+class PromptSectionReport(TypedDict):
+    """Prompt section diagnostics without content payload."""
+
+    id: str
+    title: str
+    source: str
+    chars: int
+
+
+class PromptDocument(TypedDict):
+    """Prompt document payload with flattened text and section list."""
+
+    text: str
+    max_chars: int
+    total_chars: int
+    truncated: bool
+    sections: list[PromptSection]
+
+
+class PromptDocumentReport(TypedDict):
+    """Prompt diagnostics payload for one prompt document."""
+
+    total_chars: int
+    max_chars: int
+    truncated: bool
+    sections: list[PromptSectionReport]
+
+
+class PromptBuildResult(TypedDict):
+    """Structured prompt payload used by chat runtime and tooling."""
+
+    system_prompt: PromptDocument
+    first_message_prompt: PromptDocument
+    report: dict[str, PromptDocumentReport]
 
 
 class PromptContextService:
@@ -53,8 +99,8 @@ class PromptContextService:
         current_location_levels: dict[str, Any] | str | None = None,
         current_weather: dict[str, Any] | str | None = None,
         now: datetime | None = None,
-    ) -> tuple[str, str]:
-        """Build system and first-message prompts.
+    ) -> PromptBuildResult:
+        """Build structured system and first-message prompts.
 
         Args:
             db: Database session.
@@ -68,14 +114,14 @@ class PromptContextService:
             now: Optional timestamp override.
 
         Returns:
-            Tuple of (system_prompt, first_message_prompt).
+            Structured prompt bundle with flattened text and diagnostics.
         """
         timestamp = now or datetime.now(UTC)
         settings_record = UserSettingsService.get_settings(db, user_id)
         resolved_location = current_location or "Current location not available"
         operating_system = detect_operating_system(user_agent)
 
-        system_prompt = build_system_prompt(
+        system_template = build_system_prompt(
             settings_record,
             resolved_location,
             current_location_levels,
@@ -118,30 +164,125 @@ class PromptContextService:
             file_items,
         )
 
-        system_prompt = "\n\n".join(
-            [
-                system_prompt,
-                context_guidance,
-                open_block,
-                recent_activity_block,
-            ]
-        )
-        system_prompt = PromptContextService._truncate_text(
-            system_prompt,
+        system_sections = [
+            PromptContextService._build_section(
+                section_id="message_context",
+                title="Message Context",
+                source="system_template",
+                content=system_template,
+            ),
+            PromptContextService._build_section(
+                section_id="context_guidance",
+                title="Context Guidance",
+                source="context_guidance_template",
+                content=context_guidance,
+            ),
+            PromptContextService._build_section(
+                section_id="current_open",
+                title="Current Open Context",
+                source="open_context",
+                content=open_block,
+            ),
+            PromptContextService._build_section(
+                section_id="recent_activity",
+                title="Recent Activity",
+                source="recent_activity",
+                content=recent_activity_block,
+            ),
+        ]
+        system_prompt_document = PromptContextService._build_prompt_document(
+            system_sections,
             PromptContextService.MAX_SYSTEM_PROMPT_CHARS,
         )
 
-        first_message_prompt = build_first_message_prompt(
+        first_message_text = build_first_message_prompt(
             settings_record,
             operating_system,
             timestamp,
         )
-        first_message_prompt = PromptContextService._truncate_text(
-            first_message_prompt,
+        first_message_sections = [
+            PromptContextService._build_section(
+                section_id="first_message",
+                title="First Message Context",
+                source="first_message_template",
+                content=first_message_text,
+            )
+        ]
+        first_message_document = PromptContextService._build_prompt_document(
+            first_message_sections,
             PromptContextService.MAX_FIRST_MESSAGE_CHARS,
         )
 
-        return system_prompt, first_message_prompt
+        report = {
+            "system_prompt": PromptContextService._build_prompt_report(
+                system_prompt_document
+            ),
+            "first_message_prompt": PromptContextService._build_prompt_report(
+                first_message_document
+            ),
+        }
+
+        return {
+            "system_prompt": system_prompt_document,
+            "first_message_prompt": first_message_document,
+            "report": report,
+        }
+
+    @staticmethod
+    def _build_section(
+        *,
+        section_id: str,
+        title: str,
+        source: str,
+        content: str,
+    ) -> PromptSection:
+        """Create a prompt section structure."""
+        section_text = content or ""
+        return {
+            "id": section_id,
+            "title": title,
+            "source": source,
+            "content": section_text,
+            "chars": len(section_text),
+        }
+
+    @staticmethod
+    def _build_prompt_document(
+        sections: list[PromptSection],
+        max_chars: int,
+    ) -> PromptDocument:
+        """Build a flattened prompt document from ordered sections."""
+        joined = "\n\n".join(
+            section["content"] for section in sections if section["content"]
+        )
+        truncated = len(joined) > max_chars
+        text = PromptContextService._truncate_text(joined, max_chars)
+        return {
+            "text": text,
+            "max_chars": max_chars,
+            "total_chars": len(text),
+            "truncated": truncated,
+            "sections": sections,
+        }
+
+    @staticmethod
+    def _build_prompt_report(document: PromptDocument) -> PromptDocumentReport:
+        """Build prompt diagnostics without section content."""
+        section_reports: list[PromptSectionReport] = [
+            {
+                "id": section["id"],
+                "title": section["title"],
+                "source": section["source"],
+                "chars": section["chars"],
+            }
+            for section in document["sections"]
+        ]
+        return {
+            "total_chars": document["total_chars"],
+            "max_chars": document["max_chars"],
+            "truncated": document["truncated"],
+            "sections": section_reports,
+        }
 
     @staticmethod
     def _resolve_file_context(

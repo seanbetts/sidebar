@@ -31,7 +31,36 @@ def test_handle_prompt_preview_uses_prompt_context_service(monkeypatch):
 
     def fake_build_prompts(**kwargs):
         captured.update(kwargs)
-        return ("system prompt", "first message")
+        return {
+            "system_prompt": {
+                "text": "system prompt",
+                "max_chars": 40000,
+                "total_chars": 13,
+                "truncated": False,
+                "sections": [],
+            },
+            "first_message_prompt": {
+                "text": "first message",
+                "max_chars": 8000,
+                "total_chars": 13,
+                "truncated": False,
+                "sections": [],
+            },
+            "report": {
+                "system_prompt": {
+                    "total_chars": 13,
+                    "max_chars": 40000,
+                    "truncated": False,
+                    "sections": [],
+                },
+                "first_message_prompt": {
+                    "total_chars": 13,
+                    "max_chars": 8000,
+                    "truncated": False,
+                    "sections": [],
+                },
+            },
+        }
 
     monkeypatch.setattr(
         prompt_context_service.PromptContextService,
@@ -52,6 +81,7 @@ def test_handle_prompt_preview_uses_prompt_context_service(monkeypatch):
     assert result["success"] is True
     assert result["data"]["system_prompt"] == "system prompt"
     assert result["data"]["first_message_prompt"] == "first message"
+    assert result["data"]["prompt_report"]["system_prompt"]["truncated"] is False
     assert captured["db"] == context["db"]
     assert captured["user_id"] == "user-123"
     assert captured["current_weather"] == "sunny"

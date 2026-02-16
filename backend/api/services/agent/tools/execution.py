@@ -38,7 +38,7 @@ def handle_prompt_preview(context: dict[str, Any] | None) -> dict[str, Any]:
 
     from api.services.agent.prompt.composer import PromptContextService
 
-    system_prompt, first_message_prompt = PromptContextService.build_prompts(
+    prompt_bundle = PromptContextService.build_prompts(
         db=db,
         user_id=user_id,
         open_context=context.get("open_context"),
@@ -51,8 +51,13 @@ def handle_prompt_preview(context: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "success": True,
         "data": {
-            "system_prompt": system_prompt,
-            "first_message_prompt": first_message_prompt,
+            "system_prompt": prompt_bundle["system_prompt"]["text"],
+            "first_message_prompt": prompt_bundle["first_message_prompt"]["text"],
+            "system_prompt_sections": prompt_bundle["system_prompt"]["sections"],
+            "first_message_prompt_sections": prompt_bundle["first_message_prompt"][
+                "sections"
+            ],
+            "prompt_report": prompt_bundle["report"],
         },
     }
 
