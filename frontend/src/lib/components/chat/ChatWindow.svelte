@@ -417,7 +417,11 @@
 		{/if}
 	</div>
 	<!-- Messages -->
-	<MessageList messages={$chatStore.messages} activeTool={$chatStore.activeTool} />
+	<MessageList
+		messages={$chatStore.messages}
+		conversationId={$chatStore.conversationId}
+		activeTool={$chatStore.activeTool}
+	/>
 
 	{#if pendingAttachments.length > 0}
 		<div class="chat-attachments">
