@@ -4,23 +4,45 @@ import SwiftUI
 
 struct ToolCallListView: View {
     let toolCalls: [ToolCall]
+    @State private var showPopover = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Tool Calls")
-                .font(DesignTokens.Typography.captionSemibold)
-                .foregroundStyle(.secondary)
-            ForEach(toolCalls) { toolCall in
-                ToolCallRow(toolCall: toolCall)
+        Button {
+            showPopover.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "hammer.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(summaryText)
+                    .font(DesignTokens.Typography.captionSemibold)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
+            .padding(DesignTokens.Spacing.xs)
+            .background(toolBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .padding(DesignTokens.Spacing.xs)
-        .background(toolBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .buttonStyle(.plain)
+        .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
+            ToolCallPopoverContent(toolCalls: toolCalls)
+                .presentationCompactAdaptation(.popover)
+        }
     }
 
     private var toolBackground: Color {
         DesignTokens.Colors.surface
+    }
+
+    private var summaryText: String {
+        let count = toolCalls.count
+        if count == 1 {
+            return "1 tool used"
+        }
+        return "\(count) tools used"
     }
 }
 
@@ -40,21 +62,8 @@ struct ToolCallRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            if !toolCall.parameters.isEmpty {
-                Text(formatJSON(toolCall.parameters.mapValues { $0.value }))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-            }
-
-            if let result = toolCall.result {
-                Text(formatJSON(result.value))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-            }
         }
-            .padding(DesignTokens.Spacing.xsPlus)
+        .padding(DesignTokens.Spacing.xsPlus)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(rowBackground)
@@ -75,12 +84,20 @@ struct ToolCallRow: View {
     private var rowBackground: Color {
         DesignTokens.Colors.surface
     }
+}
 
-    private func formatJSON(_ value: Any) -> String {
-        if let data = try? JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted]),
-           let output = String(data: data, encoding: .utf8) {
-            return output
+struct ToolCallPopoverContent: View {
+    let toolCalls: [ToolCall]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Tools Used")
+                .font(DesignTokens.Typography.captionSemibold)
+                .foregroundStyle(.secondary)
+            ForEach(toolCalls) { toolCall in
+                ToolCallRow(toolCall: toolCall)
+            }
         }
-        return String(describing: value)
+        .padding(DesignTokens.Spacing.xsPlus)
     }
 }

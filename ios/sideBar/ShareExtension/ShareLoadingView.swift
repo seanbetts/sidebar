@@ -6,7 +6,7 @@ final class ShareLoadingView: ShareStateView {
         let activityIndicator = UIActivityIndicatorView(style: .large)
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
         activityIndicator.startAnimating()
-        super.init(message: message, accessoryView: activityIndicator)
+        super.init(message: message, accessoryView: activityIndicator, style: .minimal)
     }
 
     required init?(coder: NSCoder) {

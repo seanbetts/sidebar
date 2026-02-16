@@ -3,35 +3,24 @@ import XCTest
 @testable import ShareExtension
 
 final class ShareLoadingViewTests: XCTestCase {
-    func testLoadingViewUsesSystemBackgroundForCardSheet() {
+    func testLoadingViewUsesMinimalSheetBackground() {
         let subject = ShareLoadingView(message: "Saving website...")
         let lightTraits = UITraitCollection(userInterfaceStyle: .light)
         let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
 
-        XCTAssertTrue(colorsEqual(subject.hostBackgroundColor, .systemBackground, traitCollection: lightTraits))
-        XCTAssertTrue(colorsEqual(subject.hostBackgroundColor, .systemBackground, traitCollection: darkTraits))
-        XCTAssertTrue(colorsEqual(subject.backgroundColor ?? .clear, .systemBackground, traitCollection: lightTraits))
-        XCTAssertTrue(colorsEqual(subject.backgroundColor ?? .clear, .systemBackground, traitCollection: darkTraits))
+        XCTAssertTrue(colorsEqual(subject.hostBackgroundColor, .clear, traitCollection: lightTraits))
+        XCTAssertTrue(colorsEqual(subject.hostBackgroundColor, .clear, traitCollection: darkTraits))
+        XCTAssertTrue(colorsEqual(subject.backgroundColor ?? .clear, .clear, traitCollection: lightTraits))
+        XCTAssertTrue(colorsEqual(subject.backgroundColor ?? .clear, .clear, traitCollection: darkTraits))
     }
 
-    func testLoadingViewUsesSecondarySystemBackgroundForCardContainer() {
+    func testLoadingViewDoesNotRenderCardContainer() {
         let subject = ShareLoadingView(message: "Saving website...")
-        let lightTraits = UITraitCollection(userInterfaceStyle: .light)
-        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
 
-        guard let cardContainer = subject.firstSubview(where: {
+        let cardContainer = subject.firstSubview(where: {
             $0.accessibilityIdentifier == "share-state-card"
-        }) else {
-            XCTFail("Expected card container in view hierarchy.")
-            return
-        }
-
-        XCTAssertTrue(
-            colorsEqual(cardContainer.backgroundColor ?? .clear, .secondarySystemBackground, traitCollection: lightTraits)
-        )
-        XCTAssertTrue(
-            colorsEqual(cardContainer.backgroundColor ?? .clear, .secondarySystemBackground, traitCollection: darkTraits)
-        )
+        })
+        XCTAssertNil(cardContainer)
     }
 
     private func colorsEqual(
