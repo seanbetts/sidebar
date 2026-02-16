@@ -7,29 +7,26 @@ struct ToolCallListView: View {
     @State private var showPopover = false
 
     var body: some View {
-        Button {
-            showPopover.toggle()
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "hammer.fill")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text(summaryText)
-                    .font(DesignTokens.Typography.captionSemibold)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+        if toolCalls.count == 1, let toolCall = toolCalls.first {
+            toolPill(
+                text: toolCall.name,
+                showsChevron: false
+            )
+        } else {
+            Button {
+                showPopover.toggle()
+            } label: {
+                toolPill(
+                    text: summaryText,
+                    showsChevron: true
+                )
             }
-            .padding(DesignTokens.Spacing.xs)
-            .background(toolBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
-            ToolCallPopoverContent(toolCalls: toolCalls)
-                .presentationCompactAdaptation(.popover)
+            .buttonStyle(.plain)
+            .fixedSize(horizontal: true, vertical: false)
+            .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
+                ToolCallPopoverContent(toolCalls: toolCalls)
+                    .presentationCompactAdaptation(.popover)
+            }
         }
     }
 
@@ -43,6 +40,33 @@ struct ToolCallListView: View {
             return "1 tool used"
         }
         return "\(count) tools used"
+    }
+
+    @ViewBuilder
+    private func toolPill(
+        text: String,
+        showsChevron: Bool
+    ) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "hammer.fill")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(text)
+                .font(DesignTokens.Typography.captionSemibold)
+                .foregroundStyle(.secondary)
+            if showsChevron {
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.vertical, DesignTokens.Spacing.xs)
+        .background(
+            Capsule(style: .continuous)
+                .fill(toolBackground)
+        )
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
 
