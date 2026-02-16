@@ -365,7 +365,7 @@ extension ChatViewModel {
         guard let messageId = activeStreamingMessageId else {
             return
         }
-        updateMessage(id: messageId) { message in
+        updateMessage(id: messageId, persist: false) { message in
             let prefix = prefixForToken(message: message, token: token)
             let needsNewline = message.needsNewline == true ? false : message.needsNewline
             return Message(
@@ -388,7 +388,7 @@ extension ChatViewModel {
         guard let messageId = activeStreamingMessageId else {
             return
         }
-        updateMessage(id: messageId) { message in
+        updateMessage(id: messageId, persist: false) { message in
             let updatedCalls = upsertToolCall(existing: message.toolCalls, newValue: toolCall)
             return Message(
                 id: message.id,
@@ -410,7 +410,7 @@ extension ChatViewModel {
         guard let messageId = activeStreamingMessageId else {
             return
         }
-        updateMessage(id: messageId) { message in
+        updateMessage(id: messageId, persist: false) { message in
             let existing = message.toolCalls?.first(where: { $0.id == toolCall.id })
             let merged = ToolCall(
                 id: toolCall.id,
@@ -438,7 +438,7 @@ extension ChatViewModel {
             isStreaming = false
             return
         }
-        updateMessage(id: messageId) { message in
+        updateMessage(id: messageId, persist: false) { message in
             Message(
                 id: message.id,
                 role: message.role,

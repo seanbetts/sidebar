@@ -149,7 +149,7 @@ extension ChatViewModel {
         guard let messageId = activeStreamingMessageId else {
             return
         }
-        updateMessage(id: messageId) { message in
+        updateMessage(id: messageId, persist: false) { message in
             Message(
                 id: message.id,
                 role: message.role,
@@ -163,14 +163,17 @@ extension ChatViewModel {
         }
     }
 
-    func updateMessage(id: String, transform: (Message) -> Message) {
+    func updateMessage(id: String, persist: Bool = true, transform: (Message) -> Message) {
         messages = messages.map { message in
             guard message.id == id else {
                 return message
             }
             return transform(message)
         }
-        syncMessagesToStore(conversationId: streamingConversationId ?? selectedConversationId)
+        syncMessagesToStore(
+            conversationId: streamingConversationId ?? selectedConversationId,
+            persist: persist
+        )
     }
 
     func upsertToolCall(existing: [ToolCall]?, newValue: ToolCall) -> [ToolCall] {

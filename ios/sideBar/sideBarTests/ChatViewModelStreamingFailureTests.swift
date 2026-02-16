@@ -48,6 +48,55 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         XCTAssertNil(viewModel.streamingConversationId)
     }
 
+    func testTokenUpdatesDoNotPersistUntilFinalize() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+
+        let initialMessage = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "",
+            status: .streaming,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:00Z",
+            error: nil
+        )
+        viewModel.chatStore.upsertConversationDetail(
+            ConversationWithMessages(
+                id: "conv-1",
+                title: "Chat",
+                titleGenerated: false,
+                createdAt: "2026-01-02T00:00:00Z",
+                updatedAt: "2026-01-02T00:00:00Z",
+                messageCount: 1,
+                firstMessage: nil,
+                isArchived: nil,
+                messages: [initialMessage]
+            )
+        )
+        viewModel.selectedConversationId = "conv-1"
+        viewModel.streamingConversationId = "conv-1"
+        viewModel.messages = [initialMessage]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        viewModel.handle(
+            event: ChatStreamEvent(
+                type: .token,
+                data: AnyCodable(["content": "Hello"])
+            )
+        )
+
+        XCTAssertEqual(viewModel.messages.first?.content, "Hello")
+        let cachedMessages: [Message]? = cache.get(key: CacheKeys.conversationMessages(id: "conv-1"))
+        XCTAssertEqual(cachedMessages?.first?.content, "")
+    }
+
     private func makeViewModel(
         api: StubConversationsAPI,
         cache: CacheClient,
