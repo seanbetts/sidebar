@@ -25,6 +25,10 @@
 
 	let communicationStyle = '';
 	let workingRelationship = '';
+	let assistantIdentityName = '';
+	let assistantIdentityTone = '';
+	let assistantIdentityValues = '';
+	let assistantIdentityBoundaries = '';
 	let name = '';
 	let jobTitle = '';
 	let employer = '';
@@ -34,6 +38,10 @@
 	let location = '';
 	let initialCommunicationStyle = '';
 	let initialWorkingRelationship = '';
+	let initialAssistantIdentityName = '';
+	let initialAssistantIdentityTone = '';
+	let initialAssistantIdentityValues = '';
+	let initialAssistantIdentityBoundaries = '';
 	let initialName = '';
 	let initialJobTitle = '';
 	let initialEmployer = '';
@@ -122,6 +130,11 @@
 			const data = await fetchSettings();
 			communicationStyle = data?.communication_style ?? '';
 			workingRelationship = data?.working_relationship ?? '';
+			const assistantIdentity = data?.assistant_identity ?? {};
+			assistantIdentityName = assistantIdentity?.name ?? '';
+			assistantIdentityTone = assistantIdentity?.tone ?? '';
+			assistantIdentityValues = assistantIdentity?.values ?? '';
+			assistantIdentityBoundaries = assistantIdentity?.boundaries ?? '';
 			name = data?.name ?? '';
 			jobTitle = data?.job_title ?? '';
 			employer = data?.employer ?? '';
@@ -133,6 +146,10 @@
 			enabledSkills = Array.isArray(data?.enabled_skills) ? data.enabled_skills : [];
 			initialCommunicationStyle = communicationStyle;
 			initialWorkingRelationship = workingRelationship;
+			initialAssistantIdentityName = assistantIdentityName;
+			initialAssistantIdentityTone = assistantIdentityTone;
+			initialAssistantIdentityValues = assistantIdentityValues;
+			initialAssistantIdentityBoundaries = assistantIdentityBoundaries;
 			initialName = name;
 			initialJobTitle = jobTitle;
 			initialEmployer = employer;
@@ -159,6 +176,12 @@
 			const payload = {
 				communication_style: communicationStyle,
 				working_relationship: workingRelationship,
+				assistant_identity: {
+					name: assistantIdentityName,
+					tone: assistantIdentityTone,
+					values: assistantIdentityValues,
+					boundaries: assistantIdentityBoundaries
+				},
 				name,
 				job_title: jobTitle,
 				employer,
@@ -173,6 +196,11 @@
 
 			communicationStyle = data?.communication_style ?? '';
 			workingRelationship = data?.working_relationship ?? '';
+			const assistantIdentity = data?.assistant_identity ?? {};
+			assistantIdentityName = assistantIdentity?.name ?? '';
+			assistantIdentityTone = assistantIdentity?.tone ?? '';
+			assistantIdentityValues = assistantIdentity?.values ?? '';
+			assistantIdentityBoundaries = assistantIdentity?.boundaries ?? '';
 			name = data?.name ?? '';
 			jobTitle = data?.job_title ?? '';
 			employer = data?.employer ?? '';
@@ -184,6 +212,10 @@
 
 			initialCommunicationStyle = communicationStyle;
 			initialWorkingRelationship = workingRelationship;
+			initialAssistantIdentityName = assistantIdentityName;
+			initialAssistantIdentityTone = assistantIdentityTone;
+			initialAssistantIdentityValues = assistantIdentityValues;
+			initialAssistantIdentityBoundaries = assistantIdentityBoundaries;
 			initialName = name;
 			initialJobTitle = jobTitle;
 			initialEmployer = employer;
@@ -374,6 +406,10 @@
 		settingsLoaded &&
 		(communicationStyle !== initialCommunicationStyle ||
 			workingRelationship !== initialWorkingRelationship ||
+			assistantIdentityName !== initialAssistantIdentityName ||
+			assistantIdentityTone !== initialAssistantIdentityTone ||
+			assistantIdentityValues !== initialAssistantIdentityValues ||
+			assistantIdentityBoundaries !== initialAssistantIdentityBoundaries ||
 			name !== initialName ||
 			jobTitle !== initialJobTitle ||
 			employer !== initialEmployer ||
@@ -437,6 +473,10 @@
 	{settingsError}
 	bind:communicationStyle
 	bind:workingRelationship
+	bind:assistantIdentityName
+	bind:assistantIdentityTone
+	bind:assistantIdentityValues
+	bind:assistantIdentityBoundaries
 	bind:weatherUnit
 	{setWeatherUnit}
 	{isLoadingSkills}

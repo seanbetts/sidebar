@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+from typing import Any
 
 from fastapi import HTTPException
 
@@ -46,6 +47,18 @@ say you do not know."""
 
 MAX_STYLE_CHARS = 4000
 MAX_PROFILE_FIELD_CHARS = 200
+MAX_ASSISTANT_IDENTITY_NAME_CHARS = 120
+MAX_ASSISTANT_IDENTITY_TEXT_CHARS = 2000
+
+DEFAULT_ASSISTANT_IDENTITY = {
+    "name": "sideBar",
+    "tone": "Pragmatic, direct, and collaborative.",
+    "boundaries": (
+        "Never fabricate facts or citations, never reveal secrets, and "
+        "defer to user intent when requests are ambiguous."
+    ),
+    "values": "Clarity, pragmatism, and rigor.",
+}
 
 storage_backend = get_storage_backend()
 
@@ -54,6 +67,7 @@ class SettingsService:
     """High-level settings operations for the API layer."""
 
     SHORTCUTS_PAT_PREFIX = "sb_pat_"
+    ASSISTANT_IDENTITY_FIELDS = ("name", "tone", "boundaries", "values")
 
     @staticmethod
     def _generate_shortcuts_pat() -> str:
@@ -116,6 +130,36 @@ class SettingsService:
         return enabled
 
     @staticmethod
+    def _resolve_assistant_identity(settings_record) -> dict[str, str]:
+        """Resolve assistant identity settings with defaults.
+
+        Args:
+            settings_record: User settings record or None.
+
+        Returns:
+            Assistant identity payload.
+        """
+        raw = (
+            getattr(settings_record, "assistant_identity", None)
+            if settings_record
+            else None
+        )
+        if not isinstance(raw, dict):
+            raw = {}
+
+        resolved: dict[str, str] = {}
+        for field_name in SettingsService.ASSISTANT_IDENTITY_FIELDS:
+            default = DEFAULT_ASSISTANT_IDENTITY[field_name]
+            value = raw.get(field_name)
+            if isinstance(value, str):
+                trimmed = value.strip()
+                resolved[field_name] = trimmed if trimmed else default
+            else:
+                resolved[field_name] = default
+
+        return resolved
+
+    @staticmethod
     def _clean_text_field(
         value: str | None, field_name: str, max_length: int
     ) -> str | None:
@@ -143,6 +187,56 @@ class SettingsService:
                 detail=f"{field_name} exceeds max length ({max_length} characters)",
             )
         return trimmed
+
+    @staticmethod
+    def _clean_assistant_identity(value: Any) -> dict[str, str] | None:
+        """Validate and normalize the assistant identity payload."""
+        if value is None:
+            return None
+        if not isinstance(value, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="assistant_identity must be an object",
+            )
+
+        unknown_fields = sorted(
+            field
+            for field in value
+            if field not in SettingsService.ASSISTANT_IDENTITY_FIELDS
+        )
+        if unknown_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "assistant_identity has invalid fields: "
+                    f"{', '.join(unknown_fields)}"
+                ),
+            )
+
+        cleaned = {
+            "name": SettingsService._clean_text_field(
+                value.get("name"),
+                "assistant_identity.name",
+                MAX_ASSISTANT_IDENTITY_NAME_CHARS,
+            ),
+            "tone": SettingsService._clean_text_field(
+                value.get("tone"),
+                "assistant_identity.tone",
+                MAX_ASSISTANT_IDENTITY_TEXT_CHARS,
+            ),
+            "boundaries": SettingsService._clean_text_field(
+                value.get("boundaries"),
+                "assistant_identity.boundaries",
+                MAX_ASSISTANT_IDENTITY_TEXT_CHARS,
+            ),
+            "values": SettingsService._clean_text_field(
+                value.get("values"),
+                "assistant_identity.values",
+                MAX_ASSISTANT_IDENTITY_TEXT_CHARS,
+            ),
+        }
+        compact = {key: item for key, item in cleaned.items() if item is not None}
+        return compact or None
 
     @staticmethod
     def build_response(settings_record, user_id: str) -> dict:
@@ -174,6 +268,9 @@ class SettingsService:
             "location": settings_record.location if settings_record else None,
             "profile_image_url": SettingsService._profile_image_url(settings_record),
             "enabled_skills": SettingsService._resolve_enabled_skills(settings_record),
+            "assistant_identity": SettingsService._resolve_assistant_identity(
+                settings_record
+            ),
         }
 
     @staticmethod
@@ -236,6 +333,10 @@ class SettingsService:
                 updates.get("location"),
                 "location",
                 MAX_PROFILE_FIELD_CHARS,
+            )
+        if "assistant_identity" in updates:
+            updates["assistant_identity"] = SettingsService._clean_assistant_identity(
+                updates.get("assistant_identity")
             )
         if "enabled_skills" in updates and updates["enabled_skills"] is not None:
             catalog = SkillCatalogService.list_skills(settings.skills_dir)

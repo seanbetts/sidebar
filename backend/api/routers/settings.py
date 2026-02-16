@@ -17,6 +17,15 @@ from api.services.settings_service import SettingsService
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
+class AssistantIdentityPayload(BaseModel):
+    """Assistant identity payload for tone, values, and boundaries."""
+
+    name: str | None = None
+    tone: str | None = None
+    boundaries: str | None = None
+    values: str | None = None
+
+
 class SettingsResponse(BaseModel):
     """Response payload for user settings."""
 
@@ -32,6 +41,7 @@ class SettingsResponse(BaseModel):
     location: str | None = None
     profile_image_url: str | None = None
     enabled_skills: list[str] = []
+    assistant_identity: AssistantIdentityPayload | None = None
 
 
 class SettingsUpdate(BaseModel):
@@ -47,6 +57,7 @@ class SettingsUpdate(BaseModel):
     pronouns: str | None = None
     location: str | None = None
     enabled_skills: list[str] | None = None
+    assistant_identity: AssistantIdentityPayload | None = None
 
 
 class ShortcutsPatResponse(BaseModel):

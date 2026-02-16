@@ -62,6 +62,7 @@ class UserSettingsService:
         location: Any = UNSET,
         profile_image_path: Any = UNSET,
         enabled_skills: Any = UNSET,
+        assistant_identity: Any = UNSET,
         shortcuts_pat: Any = UNSET,
         tasks_ai_snapshot: Any = UNSET,
     ) -> UserSettings:
@@ -83,6 +84,7 @@ class UserSettingsService:
             location: Optional location.
             profile_image_path: Optional profile image path.
             enabled_skills: Optional list of enabled skills.
+            assistant_identity: Optional assistant identity payload.
             shortcuts_pat: Optional shortcuts PAT token.
             tasks_ai_snapshot: Optional tasks AI snapshot payload.
 
@@ -119,6 +121,9 @@ class UserSettingsService:
             if enabled_skills is not UserSettingsService.UNSET:
                 settings.enabled_skills = enabled_skills
                 flag_modified(settings, "enabled_skills")
+            if assistant_identity is not UserSettingsService.UNSET:
+                settings.assistant_identity = assistant_identity
+                flag_modified(settings, "assistant_identity")
             if shortcuts_pat is not UserSettingsService.UNSET:
                 settings.shortcuts_pat = shortcuts_pat
             if tasks_ai_snapshot is not UserSettingsService.UNSET:
@@ -154,6 +159,9 @@ class UserSettingsService:
                 enabled_skills=None
                 if enabled_skills is UserSettingsService.UNSET
                 else enabled_skills,
+                assistant_identity=None
+                if assistant_identity is UserSettingsService.UNSET
+                else assistant_identity,
                 shortcuts_pat=None
                 if shortcuts_pat is UserSettingsService.UNSET
                 else shortcuts_pat,

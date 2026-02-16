@@ -45,11 +45,22 @@ __all__ = [
     "build_prompt_variables",
     "build_recent_activity_block",
     "build_open_context_block",
+    "build_assistant_identity_block",
     "build_system_prompt",
     "build_first_message_prompt",
 ]
 
 _TOKEN_PATTERN = re.compile(r"\{([a-zA-Z0-9_]+)\}")
+
+DEFAULT_ASSISTANT_IDENTITY = {
+    "name": "sideBar",
+    "tone": "Pragmatic, direct, and collaborative.",
+    "values": "Clarity, pragmatism, and rigor.",
+    "boundaries": (
+        "Never fabricate facts or citations, never reveal secrets, and "
+        "defer to user intent when requests are ambiguous."
+    ),
+}
 
 
 def resolve_template(
@@ -384,6 +395,45 @@ def build_system_prompt(
         now,
     )
     return resolve_template(SYSTEM_PROMPT_TEMPLATE, variables)
+
+
+def build_assistant_identity_block(settings_record: Any) -> str:
+    """Build the assistant identity block for the system prompt."""
+    identity_raw = (
+        getattr(settings_record, "assistant_identity", None)
+        if settings_record
+        else None
+    )
+    identity = identity_raw if isinstance(identity_raw, dict) else {}
+
+    name = identity.get("name")
+    tone = identity.get("tone")
+    values = identity.get("values")
+    boundaries = identity.get("boundaries")
+
+    resolved = {
+        "name": name.strip()
+        if isinstance(name, str) and name.strip()
+        else DEFAULT_ASSISTANT_IDENTITY["name"],
+        "tone": tone.strip()
+        if isinstance(tone, str) and tone.strip()
+        else DEFAULT_ASSISTANT_IDENTITY["tone"],
+        "values": values.strip()
+        if isinstance(values, str) and values.strip()
+        else DEFAULT_ASSISTANT_IDENTITY["values"],
+        "boundaries": boundaries.strip()
+        if isinstance(boundaries, str) and boundaries.strip()
+        else DEFAULT_ASSISTANT_IDENTITY["boundaries"],
+    }
+
+    return (
+        "<assistant_identity>\n"
+        f"Name: {resolved['name']}\n"
+        f"Tone: {resolved['tone']}\n"
+        f"Values: {resolved['values']}\n"
+        f"Boundaries: {resolved['boundaries']}\n"
+        "</assistant_identity>"
+    )
 
 
 def build_first_message_prompt(

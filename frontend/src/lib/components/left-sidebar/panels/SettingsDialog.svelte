@@ -41,6 +41,10 @@
 	export let settingsError = '';
 	export let communicationStyle = '';
 	export let workingRelationship = '';
+	export let assistantIdentityName = '';
+	export let assistantIdentityTone = '';
+	export let assistantIdentityValues = '';
+	export let assistantIdentityBoundaries = '';
 	export let weatherUnit: WeatherUnit = 'celsius';
 	export let setWeatherUnit: (unit: WeatherUnit) => void;
 	export let isLoadingSkills = false;
@@ -123,6 +127,10 @@
 					<SettingsSystemSection
 						bind:communicationStyle
 						bind:workingRelationship
+						bind:assistantIdentityName
+						bind:assistantIdentityTone
+						bind:assistantIdentityValues
+						bind:assistantIdentityBoundaries
 						bind:weatherUnit
 						{setWeatherUnit}
 						{isLoadingSettings}
