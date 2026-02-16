@@ -41,7 +41,7 @@ extension ShareViewController {
 
     func saveURL(_ url: URL) {
         guard let environment else {
-            showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+            queuePendingWebsite(url)
             return
         }
         setContentView(ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .savingWebsite)))
@@ -52,7 +52,7 @@ extension ShareViewController {
             }
 
             guard await environment.ensureValidAccessToken() else {
-                showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                queuePendingWebsite(url)
                 return
             }
 
@@ -76,7 +76,7 @@ extension ShareViewController {
                         if isOfflineError(error) {
                             queuePendingWebsite(url)
                         } else if environment.isUnauthorized(error) {
-                            showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                            queuePendingWebsite(url)
                         } else {
                             showError(ShareExtensionMessageMapper.errorMessage(for: error))
                         }
@@ -84,10 +84,8 @@ extension ShareViewController {
                     }
                 }
 
-                if isOfflineError(error) {
+                if isOfflineError(error) || environment.isUnauthorized(error) {
                     queuePendingWebsite(url)
-                } else if environment.isUnauthorized(error) {
-                    showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
                 } else {
                     showError(ShareExtensionMessageMapper.errorMessage(for: error))
                 }

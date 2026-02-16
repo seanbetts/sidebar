@@ -151,14 +151,14 @@ extension ShareViewController {
     func uploadFile(data: Data, filename: String, mimeType: String, isImage: Bool) async {
         guard let environment else {
             await MainActor.run { [weak self] in
-                self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)
             }
             return
         }
 
         guard await environment.ensureValidAccessToken() else {
             await MainActor.run { [weak self] in
-                self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)
             }
             return
         }
@@ -198,12 +198,8 @@ extension ShareViewController {
 
         func handleFailure(_ error: Error) async {
             await MainActor.run { [weak self] in
-                if self?.isOfflineError(error) == true {
+                if self?.isOfflineError(error) == true || environment.isUnauthorized(error) {
                     self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)
-                    return
-                }
-                if environment.isUnauthorized(error) {
-                    self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
                     return
                 }
                 self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))
@@ -232,14 +228,14 @@ extension ShareViewController {
     func uploadFile(at fileURL: URL, filename: String, mimeType: String, isImage: Bool) async {
         guard let environment else {
             await MainActor.run { [weak self] in
-                self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                self?.queuePendingFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: isImage)
             }
             return
         }
 
         guard await environment.ensureValidAccessToken() else {
             await MainActor.run { [weak self] in
-                self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
+                self?.queuePendingFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: isImage)
             }
             return
         }
@@ -279,12 +275,8 @@ extension ShareViewController {
 
         func handleFailure(_ error: Error) async {
             await MainActor.run { [weak self] in
-                if self?.isOfflineError(error) == true {
+                if self?.isOfflineError(error) == true || environment.isUnauthorized(error) {
                     self?.queuePendingFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: isImage)
-                    return
-                }
-                if environment.isUnauthorized(error) {
-                    self?.showError(ExtensionUserMessageCatalog.message(for: .notAuthenticated))
                     return
                 }
                 self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))
