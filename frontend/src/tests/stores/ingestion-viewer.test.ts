@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 
@@ -13,7 +13,12 @@ vi.mock('$lib/services/api', () => ({ ingestionAPI }));
 describe('ingestionViewerStore', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.spyOn(console, 'error').mockImplementation(() => {});
 		ingestionViewerStore.clearActive();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	it('opens a file and sets active metadata', async () => {

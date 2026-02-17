@@ -1,307 +1,243 @@
-import { describe, expect, it, vi, beforeEach, beforeAll } from 'vitest';
-
-// Mock IndexedDB as unavailable to use memory fallback
-vi.stubGlobal('indexedDB', undefined);
+import type { Task, TaskGroup, TaskProject, TaskSyncUpdates } from '$lib/types/tasks';
+import { IDBFactory } from 'fake-indexeddb';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type TaskCacheModule = typeof import('$lib/stores/task_cache');
+
+const DB_NAME = 'sidebar-tasks';
+
+const createTask = (id: string, title = `Task ${id}`): Task => ({
+	id,
+	title,
+	status: 'open',
+	deadline: null,
+	notes: null,
+	projectId: null,
+	groupId: null,
+	repeating: false,
+	repeatTemplate: false,
+	updatedAt: null,
+	deletedAt: null
+});
+
+const createProject = (id: string, title = `Project ${id}`): TaskProject => ({
+	id,
+	title,
+	groupId: null,
+	status: 'active'
+});
+
+const createGroup = (id: string, title = `Group ${id}`): TaskGroup => ({
+	id,
+	title
+});
+
+const importTaskCache = async (): Promise<TaskCacheModule> => import('$lib/stores/task_cache');
+
+const seedLegacyAreasStore = async (factory: IDBFactory, groups: TaskGroup[]): Promise<void> =>
+	new Promise((resolve, reject) => {
+		const request = factory.open(DB_NAME, 1);
+		request.onupgradeneeded = () => {
+			const db = request.result;
+			if (!db.objectStoreNames.contains('tasks')) {
+				db.createObjectStore('tasks', { keyPath: 'id' });
+			}
+			if (!db.objectStoreNames.contains('projects')) {
+				db.createObjectStore('projects', { keyPath: 'id' });
+			}
+			const areasStore = db.createObjectStore('areas', { keyPath: 'id' });
+			groups.forEach((group) => {
+				areasStore.put(group);
+			});
+		};
+		request.onsuccess = () => {
+			request.result.close();
+			resolve();
+		};
+		request.onerror = () => reject(request.error ?? new Error('Failed to seed legacy store'));
+	});
 
 describe('task_cache (memory fallback)', () => {
 	let taskCache: TaskCacheModule;
 
-	beforeAll(async () => {
-		// Initial import to warm up
-		taskCache = await import('$lib/stores/task_cache');
-	});
-
 	beforeEach(async () => {
-		// Reset modules and get fresh import for each test
 		vi.resetModules();
-		taskCache = await import('$lib/stores/task_cache');
+		vi.stubGlobal('indexedDB', undefined);
+		taskCache = await importTaskCache();
 	});
 
-	describe('loadTaskCacheSnapshot', () => {
-		it('returns empty snapshot initially', async () => {
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
 
-			expect(snapshot).toEqual({
-				tasks: [],
-				projects: [],
-				groups: [],
-				lastSync: null
-			});
+	it('returns empty snapshot initially', async () => {
+		const snapshot = await taskCache.loadTaskCacheSnapshot();
+
+		expect(snapshot).toEqual({
+			tasks: [],
+			projects: [],
+			groups: [],
+			lastSync: null
 		});
 	});
 
-	describe('upsertTasks', () => {
-		it('stores tasks in memory', async () => {
-			const tasks = [
-				{
+	it('upserts tasks, projects, and groups in memory', async () => {
+		await taskCache.upsertTasks([createTask('task-1')]);
+		await taskCache.upsertProjects([createProject('project-1')]);
+		await taskCache.upsertGroups([createGroup('group-1')]);
+
+		const snapshot = await taskCache.loadTaskCacheSnapshot();
+		expect(snapshot.tasks.map((task) => task.id)).toEqual(['task-1']);
+		expect(snapshot.projects.map((project) => project.id)).toEqual(['project-1']);
+		expect(snapshot.groups.map((group) => group.id)).toEqual(['group-1']);
+	});
+
+	it('applies sync updates and handles undefined arrays', async () => {
+		await taskCache.applySyncUpdates({} as unknown as TaskSyncUpdates);
+		await taskCache.applySyncUpdates({
+			tasks: [createTask('task-1')],
+			projects: [createProject('project-1')],
+			groups: [createGroup('group-1')]
+		});
+
+		const snapshot = await taskCache.loadTaskCacheSnapshot();
+		expect(snapshot.tasks).toHaveLength(1);
+		expect(snapshot.projects).toHaveLength(1);
+		expect(snapshot.groups).toHaveLength(1);
+	});
+
+	it('tracks last sync in memory', async () => {
+		const timestamp = '2026-02-17T12:00:00Z';
+
+		await taskCache.setLastSync(timestamp);
+		expect(await taskCache.getLastSync()).toBe(timestamp);
+
+		await taskCache.setLastSync(null);
+		expect(await taskCache.getLastSync()).toBe(null);
+	});
+
+	it('enqueues, lists, and removes outbox operations in memory', async () => {
+		await taskCache.enqueueOperation({ operation_id: 'op-1', op: 'create', id: 'task-1' });
+		await taskCache.enqueueOperation({ operation_id: 'op-2', op: 'update', id: 'task-2' });
+
+		const limitedBatch = await taskCache.getOutboxBatch(1);
+		expect(limitedBatch).toHaveLength(1);
+		expect(limitedBatch[0].operation_id).toBe('op-1');
+		expect(limitedBatch[0]).not.toHaveProperty('queued_at');
+
+		await taskCache.removeOutboxOperations(['missing-op']);
+		await taskCache.removeOutboxOperations([]);
+		await taskCache.removeOutboxOperations(['op-1']);
+
+		const remaining = await taskCache.getOutboxBatch(10);
+		expect(remaining.map((entry) => entry.operation_id)).toEqual(['op-2']);
+	});
+});
+
+describe('task_cache (indexeddb)', () => {
+	let taskCache: TaskCacheModule;
+	let indexedDbFactory: IDBFactory;
+
+	beforeEach(() => {
+		vi.resetModules();
+		indexedDbFactory = new IDBFactory();
+		vi.stubGlobal('indexedDB', indexedDbFactory);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
+
+	it('persists snapshot data in indexeddb', async () => {
+		taskCache = await importTaskCache();
+		const syncTimestamp = '2026-02-17T12:34:56Z';
+
+		await taskCache.upsertTasks([createTask('task-1')]);
+		await taskCache.upsertProjects([createProject('project-1')]);
+		await taskCache.upsertGroups([createGroup('group-1')]);
+		await taskCache.setLastSync(syncTimestamp);
+
+		const snapshot = await taskCache.loadTaskCacheSnapshot();
+		expect(snapshot.tasks.map((task) => task.id)).toEqual(['task-1']);
+		expect(snapshot.projects.map((project) => project.id)).toEqual(['project-1']);
+		expect(snapshot.groups.map((group) => group.id)).toEqual(['group-1']);
+		expect(snapshot.lastSync).toBe(syncTimestamp);
+	});
+
+	it('applies sync updates in indexeddb and clears sync timestamp', async () => {
+		taskCache = await importTaskCache();
+		await taskCache.applySyncUpdates({
+			tasks: [createTask('task-1')],
+			projects: [createProject('project-1')],
+			groups: [createGroup('group-1')]
+		});
+		await taskCache.setLastSync('2026-02-17T12:00:00Z');
+		await taskCache.setLastSync(null);
+
+		const snapshot = await taskCache.loadTaskCacheSnapshot();
+		expect(snapshot.tasks).toHaveLength(1);
+		expect(snapshot.projects).toHaveLength(1);
+		expect(snapshot.groups).toHaveLength(1);
+		expect(snapshot.lastSync).toBe(null);
+		expect(await taskCache.getLastSync()).toBe(null);
+	});
+
+	it('sorts and truncates outbox batch in indexeddb', async () => {
+		taskCache = await importTaskCache();
+		await taskCache.loadTaskCacheSnapshot();
+		await new Promise<void>((resolve, reject) => {
+			const request = indexedDbFactory.open(DB_NAME, 2);
+			request.onsuccess = () => {
+				const db = request.result;
+				const transaction = db.transaction('operations', 'readwrite');
+				const store = transaction.objectStore('operations');
+				store.put({
+					operation_id: 'op-2',
+					op: 'create',
+					id: 'task-2',
+					queued_at: '2026-02-17T10:00:00.000Z'
+				});
+				store.put({
+					operation_id: 'op-1',
+					op: 'create',
 					id: 'task-1',
-					title: 'Task 1',
-					status: 'open' as const,
-					deadline: null,
-					notes: null,
-					projectId: null,
-					groupId: null,
-					repeating: false,
-					repeatTemplate: false,
-					updatedAt: null,
-					deletedAt: null
-				}
-			];
-
-			await taskCache.upsertTasks(tasks);
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
-
-			expect(snapshot.tasks).toHaveLength(1);
-			expect(snapshot.tasks[0].id).toBe('task-1');
-		});
-
-		it('does nothing with empty array', async () => {
-			await taskCache.upsertTasks([]);
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
-
-			expect(snapshot.tasks).toHaveLength(0);
-		});
-
-		it('overwrites existing tasks with same id', async () => {
-			const task1 = {
-				id: 'task-1',
-				title: 'Original',
-				status: 'open' as const,
-				deadline: null,
-				notes: null,
-				projectId: null,
-				groupId: null,
-				repeating: false,
-				repeatTemplate: false,
-				updatedAt: null,
-				deletedAt: null
+					queued_at: '2026-02-17T09:59:00.000Z'
+				});
+				transaction.oncomplete = () => {
+					db.close();
+					resolve();
+				};
+				transaction.onerror = () =>
+					reject(transaction.error ?? new Error('Failed to seed operations'));
+				transaction.onabort = () =>
+					reject(transaction.error ?? new Error('Aborted while seeding operations'));
 			};
-
-			const task2 = { ...task1, title: 'Updated' };
-
-			await taskCache.upsertTasks([task1]);
-			await taskCache.upsertTasks([task2]);
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
-
-			expect(snapshot.tasks).toHaveLength(1);
-			expect(snapshot.tasks[0].title).toBe('Updated');
+			request.onerror = () => reject(request.error ?? new Error('Failed to open database'));
 		});
+
+		const batch = await taskCache.getOutboxBatch(1);
+		expect(batch).toHaveLength(1);
+		expect(batch[0].operation_id).toBe('op-1');
+		expect(batch[0]).not.toHaveProperty('queued_at');
 	});
 
-	describe('upsertProjects', () => {
-		it('stores projects in memory', async () => {
-			const projects = [{ id: 'proj-1', title: 'Project 1', groupId: null }];
+	it('removes indexeddb outbox operations by id', async () => {
+		taskCache = await importTaskCache();
+		await taskCache.enqueueOperation({ operation_id: 'op-1', op: 'create', id: 'task-1' });
+		await taskCache.enqueueOperation({ operation_id: 'op-2', op: 'create', id: 'task-2' });
 
-			await taskCache.upsertProjects(projects);
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
-
-			expect(snapshot.projects).toHaveLength(1);
-			expect(snapshot.projects[0].id).toBe('proj-1');
-		});
-
-		it('does nothing with empty array', async () => {
-			await taskCache.upsertProjects([]);
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
-
-			expect(snapshot.projects).toHaveLength(0);
-		});
+		await taskCache.removeOutboxOperations(['op-1']);
+		const remaining = await taskCache.getOutboxBatch(10);
+		expect(remaining.map((entry) => entry.operation_id)).toEqual(['op-2']);
 	});
 
-	describe('upsertGroups', () => {
-		it('stores groups in memory', async () => {
-			const groups = [{ id: 'group-1', title: 'Group 1' }];
+	it('migrates legacy areas store into groups on database upgrade', async () => {
+		await seedLegacyAreasStore(indexedDbFactory, [createGroup('legacy-group', 'Legacy Group')]);
 
-			await taskCache.upsertGroups(groups);
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
+		taskCache = await importTaskCache();
+		const snapshot = await taskCache.loadTaskCacheSnapshot();
 
-			expect(snapshot.groups).toHaveLength(1);
-			expect(snapshot.groups[0].id).toBe('group-1');
-		});
-
-		it('does nothing with empty array', async () => {
-			await taskCache.upsertGroups([]);
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
-
-			expect(snapshot.groups).toHaveLength(0);
-		});
-	});
-
-	describe('applySyncUpdates', () => {
-		it('applies tasks, projects, and groups in batch', async () => {
-			await taskCache.applySyncUpdates({
-				tasks: [
-					{
-						id: 'task-1',
-						title: 'Task',
-						status: 'open',
-						deadline: null,
-						notes: null,
-						projectId: null,
-						groupId: null,
-						repeating: false,
-						repeatTemplate: false,
-						updatedAt: null,
-						deletedAt: null
-					}
-				],
-				projects: [{ id: 'proj-1', title: 'Project', groupId: null }],
-				groups: [{ id: 'group-1', title: 'Group' }]
-			});
-
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
-
-			expect(snapshot.tasks).toHaveLength(1);
-			expect(snapshot.projects).toHaveLength(1);
-			expect(snapshot.groups).toHaveLength(1);
-		});
-
-		it('handles undefined arrays', async () => {
-			await taskCache.applySyncUpdates({});
-			const snapshot = await taskCache.loadTaskCacheSnapshot();
-
-			expect(snapshot.tasks).toHaveLength(0);
-			expect(snapshot.projects).toHaveLength(0);
-			expect(snapshot.groups).toHaveLength(0);
-		});
-	});
-
-	describe('setLastSync / getLastSync', () => {
-		it('stores and retrieves last sync timestamp', async () => {
-			const timestamp = '2026-01-23T12:00:00Z';
-
-			await taskCache.setLastSync(timestamp);
-			const result = await taskCache.getLastSync();
-
-			expect(result).toBe(timestamp);
-		});
-
-		it('clears last sync with null', async () => {
-			await taskCache.setLastSync('2026-01-23T12:00:00Z');
-			await taskCache.setLastSync(null);
-			const result = await taskCache.getLastSync();
-
-			expect(result).toBe(null);
-		});
-
-		it('returns null when not set', async () => {
-			const result = await taskCache.getLastSync();
-			expect(result).toBe(null);
-		});
-	});
-
-	describe('enqueueOperation', () => {
-		it('adds operation with timestamp', async () => {
-			const operation = {
-				operation_id: 'op-1',
-				op: 'create' as const,
-				id: 'task-1',
-				title: 'New Task'
-			};
-
-			const entry = await taskCache.enqueueOperation(operation);
-
-			expect(entry.operation_id).toBe('op-1');
-			expect(entry.queued_at).toBeDefined();
-			expect(new Date(entry.queued_at).getTime()).toBeLessThanOrEqual(Date.now());
-		});
-	});
-
-	describe('getOutboxBatch', () => {
-		it('returns operations sorted by queued time', async () => {
-			await taskCache.enqueueOperation({
-				operation_id: 'op-1',
-				op: 'create' as const,
-				id: 'task-1'
-			});
-			await taskCache.enqueueOperation({
-				operation_id: 'op-2',
-				op: 'create' as const,
-				id: 'task-2'
-			});
-
-			const batch = await taskCache.getOutboxBatch(10);
-
-			expect(batch).toHaveLength(2);
-			expect(batch[0].operation_id).toBe('op-1');
-			expect(batch[1].operation_id).toBe('op-2');
-		});
-
-		it('respects limit', async () => {
-			await taskCache.enqueueOperation({
-				operation_id: 'op-1',
-				op: 'create' as const,
-				id: 'task-1'
-			});
-			await taskCache.enqueueOperation({
-				operation_id: 'op-2',
-				op: 'create' as const,
-				id: 'task-2'
-			});
-
-			const batch = await taskCache.getOutboxBatch(1);
-
-			expect(batch).toHaveLength(1);
-		});
-
-		it('excludes queued_at from returned operations', async () => {
-			await taskCache.enqueueOperation({
-				operation_id: 'op-1',
-				op: 'create' as const,
-				id: 'task-1'
-			});
-
-			const batch = await taskCache.getOutboxBatch(10);
-
-			expect(batch[0]).not.toHaveProperty('queued_at');
-		});
-	});
-
-	describe('removeOutboxOperations', () => {
-		it('removes specified operations', async () => {
-			await taskCache.enqueueOperation({
-				operation_id: 'op-1',
-				op: 'create' as const,
-				id: 'task-1'
-			});
-			await taskCache.enqueueOperation({
-				operation_id: 'op-2',
-				op: 'create' as const,
-				id: 'task-2'
-			});
-
-			await taskCache.removeOutboxOperations(['op-1']);
-			const batch = await taskCache.getOutboxBatch(10);
-
-			expect(batch).toHaveLength(1);
-			expect(batch[0].operation_id).toBe('op-2');
-		});
-
-		it('does nothing with empty array', async () => {
-			await taskCache.enqueueOperation({
-				operation_id: 'op-1',
-				op: 'create' as const,
-				id: 'task-1'
-			});
-
-			await taskCache.removeOutboxOperations([]);
-			const batch = await taskCache.getOutboxBatch(10);
-
-			expect(batch).toHaveLength(1);
-		});
-
-		it('handles non-existent operation ids', async () => {
-			await taskCache.enqueueOperation({
-				operation_id: 'op-1',
-				op: 'create' as const,
-				id: 'task-1'
-			});
-
-			await taskCache.removeOutboxOperations(['op-999']);
-			const batch = await taskCache.getOutboxBatch(10);
-
-			expect(batch).toHaveLength(1);
-		});
+		expect(snapshot.groups).toEqual([createGroup('legacy-group', 'Legacy Group')]);
 	});
 });

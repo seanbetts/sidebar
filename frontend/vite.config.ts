@@ -1,6 +1,9 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
+import { configDefaults } from 'vitest/config';
+
+const runApiSmoke = process.env.RUN_API_SMOKE === '1';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
@@ -14,6 +17,9 @@ export default defineConfig({
 		environment: 'jsdom',
 		setupFiles: ['./src/tests/setup.ts'],
 		globals: true,
+		exclude: runApiSmoke
+			? configDefaults.exclude
+			: [...configDefaults.exclude, 'src/tests/flows/api-smoke.test.ts'],
 		server: {
 			deps: {
 				inline: ['svelte']

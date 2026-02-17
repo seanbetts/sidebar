@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const storeState = {
 	conversations: [{ id: 'conv-1', titleGenerated: false }],
@@ -22,6 +22,11 @@ describe('generateConversationTitle', () => {
 		storeState.setGeneratingTitle.mockClear();
 		storeState.updateConversationTitle.mockClear();
 		storeState.conversations = [{ id: 'conv-1', titleGenerated: false }];
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	it('skips when already generated', async () => {
@@ -49,6 +54,8 @@ describe('generateConversationTitle', () => {
 	it('clears generating on failure', async () => {
 		vi.spyOn(global, 'fetch').mockResolvedValue({
 			ok: false,
+			status: 500,
+			json: async () => ({ error: 'error' }),
 			statusText: 'error'
 		} as Response);
 		const { generateConversationTitle } = await import('$lib/stores/chat/generateTitle');

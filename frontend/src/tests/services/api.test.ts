@@ -39,6 +39,15 @@ describe('api services', () => {
 		);
 	});
 
+	it('conversationsAPI.create uses default title when none is provided', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson({ id: 'c-default' }));
+
+		await conversationsAPI.create();
+
+		const body = fetchSpy.mock.calls[0]?.[1]?.body;
+		expect(JSON.parse(String(body))).toEqual({ title: 'New Chat' });
+	});
+
 	it('conversationsAPI.get returns conversation data', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(okJson({ id: 'c2', messages: [] }));
 
@@ -252,6 +261,25 @@ describe('api services', () => {
 		expect(JSON.parse(String(body))).toEqual({ title: 'Launch', groupId: null });
 	});
 
+	it('tasksAPI.deleteProject sends delete request', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson({}));
+
+		await tasksAPI.deleteProject('project-1');
+
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/v1/tasks/projects/project-1',
+			expect.objectContaining({ method: 'DELETE' })
+		);
+	});
+
+	it('tasksAPI.deleteProject throws on failure', async () => {
+		vi.spyOn(global, 'fetch').mockReturnValue(failJson());
+
+		await expect(tasksAPI.deleteProject('project-1')).rejects.toThrow(
+			'Failed to delete task project'
+		);
+	});
+
 	it('ingestionAPI.delete ignores 404', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(
 			Promise.resolve({ ok: false, status: 404 } as Response)
@@ -280,6 +308,30 @@ describe('api services', () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(failJson());
 
 		await expect(tasksAPI.apply({ op: 'noop' })).rejects.toThrow('Failed to apply task operation');
+	});
+
+	it('tasksAPI.apply normalizes operation arrays and preserves existing operation ids', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson({}));
+
+		await tasksAPI.apply({
+			operations: [{ op: 'noop' }, { op: 'noop', operation_id: 'existing-op-id' }]
+		});
+
+		const body = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body));
+		expect(body.operations).toHaveLength(2);
+		expect(body.operations[0].operation_id).toBeTruthy();
+		expect(body.operations[1].operation_id).toBe('existing-op-id');
+	});
+
+	it('tasksAPI.counts throws for non-404 failures', async () => {
+		vi.spyOn(global, 'fetch').mockReturnValue(
+			Promise.resolve({
+				ok: false,
+				status: 500
+			} as Response)
+		);
+
+		await expect(tasksAPI.counts()).rejects.toThrow('Failed to load task counts');
 	});
 
 	it('tasksAPI.sync posts operations', async () => {
