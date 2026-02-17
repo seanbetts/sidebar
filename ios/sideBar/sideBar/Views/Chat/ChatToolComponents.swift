@@ -9,33 +9,24 @@ struct ToolCallListView: View {
     @State private var showPopover = false
 
     var body: some View {
-        if toolCalls.count == 1, let toolCall = toolCalls.first {
-            toolPill(
-                text: toolCall.name
-            )
-        } else {
-            Button {
-                showPopover.toggle()
-            } label: {
-                toolPill(
-                    text: summaryText
-                )
-            }
-            .buttonStyle(.plain)
-            .fixedSize(horizontal: true, vertical: false)
-            .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
-                ToolCallPopoverContent(toolCalls: toolCalls)
-                    .presentationCompactAdaptation(.popover)
-            }
+        Button {
+            showPopover = true
+        } label: {
+            toolPill(text: summaryText)
+        }
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: false)
+        .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
+            ToolCallPopoverContent(toolCalls: toolCalls)
+                .presentationCompactAdaptation(.sheet)
         }
     }
 
     private var summaryText: String {
-        let count = toolCalls.count
-        if count == 1 {
-            return "1 skill used"
+        if toolCalls.count == 1, let toolCall = toolCalls.first {
+            return toolCall.name
         }
-        return "\(count) skills used"
+        return "\(toolCalls.count) skills used"
     }
 
     @ViewBuilder
@@ -85,25 +76,33 @@ struct ToolCallListView: View {
 
 struct ToolCallRow: View {
     let toolCall: ToolCall
+    let isSelected: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
-                Text(toolCall.name)
-                    .font(DesignTokens.Typography.subheadlineSemibold)
-                Text(toolCall.status.rawValue.capitalized)
+        HStack(spacing: 6) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 8, height: 8)
+            Text(toolCall.name)
+                .font(DesignTokens.Typography.subheadlineSemibold)
+            Spacer(minLength: 8)
+            Text(toolCall.status.rawValue.capitalized)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
         }
         .padding(DesignTokens.Spacing.xsPlus)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(rowBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(rowBorder, lineWidth: 1)
         )
     }
 
@@ -119,22 +118,143 @@ struct ToolCallRow: View {
     }
 
     private var rowBackground: Color {
-        DesignTokens.Colors.surface
+        isSelected ? DesignTokens.Colors.muted : DesignTokens.Colors.surface
+    }
+
+    private var rowBorder: Color {
+        isSelected ? DesignTokens.Colors.border : .clear
     }
 }
 
 struct ToolCallPopoverContent: View {
     let toolCalls: [ToolCall]
+    @State private var selectedToolCallID: String
+
+    init(toolCalls: [ToolCall]) {
+        self.toolCalls = toolCalls
+        _selectedToolCallID = State(initialValue: toolCalls.first?.id ?? "")
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Skills Used")
+                    .font(DesignTokens.Typography.captionSemibold)
+                    .foregroundStyle(.secondary)
+
+                if toolCalls.count > 1 {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(toolCalls) { toolCall in
+                            Button {
+                                selectedToolCallID = toolCall.id
+                            } label: {
+                                ToolCallRow(
+                                    toolCall: toolCall,
+                                    isSelected: selectedToolCallID == toolCall.id
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    Divider()
+                }
+
+                if let selectedToolCall {
+                    ToolCallDetailView(toolCall: selectedToolCall)
+                } else {
+                    Text("No skill details available.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(DesignTokens.Spacing.xsPlus)
+        }
+        .frame(minWidth: 320, idealWidth: 360, maxWidth: 420, alignment: .topLeading)
+    }
+
+    private var selectedToolCall: ToolCall? {
+        toolCalls.first(where: { $0.id == selectedToolCallID }) ?? toolCalls.first
+    }
+}
+
+struct ToolCallDetailView: View {
+    let toolCall: ToolCall
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Skills Used")
-                .font(DesignTokens.Typography.captionSemibold)
-                .foregroundStyle(.secondary)
-            ForEach(toolCalls) { toolCall in
-                ToolCallRow(toolCall: toolCall)
+            ToolCallRow(toolCall: toolCall, isSelected: true)
+                .allowsHitTesting(false)
+            if let promptPreview = PromptPreviewPayloadParser.parseToolResult(toolCall.result) {
+                PromptPreviewView(promptPreview: promptPreview)
+            } else {
+                fallbackDetail
+            }
+        }
+    }
+
+    private var fallbackDetail: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !toolCall.parameters.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Parameters")
+                        .font(DesignTokens.Typography.captionSemibold)
+                        .foregroundStyle(.secondary)
+                    ForEach(parameterRows, id: \.key) { item in
+                        Text("\(item.key): \(item.value)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+
+            if let summary = resultSummaryText {
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
             }
         }
         .padding(DesignTokens.Spacing.xsPlus)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(DesignTokens.Colors.surface)
+        )
+    }
+
+    private var parameterRows: [(key: String, value: String)] {
+        toolCall.parameters
+            .map { (key: $0.key, value: formattedValue($0.value.value)) }
+            .sorted { $0.key < $1.key }
+    }
+
+    private var resultSummaryText: String? {
+        guard let resultValue = toolCall.result?.value else {
+            return nil
+        }
+        guard let resultPayload = resultValue as? [String: Any] else {
+            return formattedValue(resultValue)
+        }
+        if let error = resultPayload["error"] as? String, !error.isEmpty {
+            return error
+        }
+        if let success = resultPayload["success"] as? Bool {
+            return success ? "Skill completed successfully." : "Skill failed."
+        }
+        if let data = resultPayload["data"] {
+            return formattedValue(data)
+        }
+        return formattedValue(resultPayload)
+    }
+
+    private func formattedValue(_ value: Any) -> String {
+        if let stringValue = value as? String {
+            return stringValue
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted]),
+           let jsonString = String(data: data, encoding: .utf8) {
+            return jsonString
+        }
+        return String(describing: value)
     }
 }
