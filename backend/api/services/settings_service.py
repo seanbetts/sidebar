@@ -122,6 +122,39 @@ class SettingsService:
         return None
 
     @staticmethod
+    def _required_skill_ids(catalog: list[dict[str, str | bool]]) -> list[str]:
+        """Return skill IDs that users are not allowed to disable."""
+        return [
+            str(skill["id"])
+            for skill in catalog
+            if skill.get("user_toggleable", True) is False
+        ]
+
+    @staticmethod
+    def _normalize_enabled_skills(
+        requested: list[str],
+        *,
+        catalog: list[dict[str, str | bool]],
+    ) -> list[str]:
+        """Normalize enabled skills, preserving order and forcing required skills."""
+        allowed = {str(skill["id"]) for skill in catalog}
+        required = SettingsService._required_skill_ids(catalog)
+        normalized: list[str] = []
+        seen: set[str] = set()
+
+        for skill_id in requested:
+            if skill_id in allowed and skill_id not in seen:
+                normalized.append(skill_id)
+                seen.add(skill_id)
+
+        for skill_id in required:
+            if skill_id not in seen:
+                normalized.append(skill_id)
+                seen.add(skill_id)
+
+        return normalized
+
+    @staticmethod
     def _resolve_enabled_skills(settings_record) -> list[str]:
         """Resolve enabled skills against the skill catalog.
 
@@ -132,15 +165,15 @@ class SettingsService:
             List of enabled skill IDs.
         """
         catalog = SkillCatalogService.list_skills(settings.skills_dir)
-        all_ids = [skill["id"] for skill in catalog]
+        all_ids = [str(skill["id"]) for skill in catalog]
         if not settings_record or settings_record.enabled_skills is None:
             return all_ids
-        enabled = [
+        requested = [
             skill_id
             for skill_id in settings_record.enabled_skills
-            if skill_id in all_ids
+            if isinstance(skill_id, str)
         ]
-        return enabled
+        return SettingsService._normalize_enabled_skills(requested, catalog=catalog)
 
     @staticmethod
     def _resolve_assistant_identity(settings_record) -> dict[str, str]:
@@ -369,7 +402,7 @@ class SettingsService:
             )
         if "enabled_skills" in updates and updates["enabled_skills"] is not None:
             catalog = SkillCatalogService.list_skills(settings.skills_dir)
-            allowed = {skill["id"] for skill in catalog}
+            allowed = {str(skill["id"]) for skill in catalog}
             invalid = [
                 skill for skill in updates["enabled_skills"] if skill not in allowed
             ]
@@ -378,6 +411,10 @@ class SettingsService:
                     status_code=400,
                     detail=f"Invalid skills: {', '.join(invalid)}",
                 )
+            updates["enabled_skills"] = SettingsService._normalize_enabled_skills(
+                updates["enabled_skills"],
+                catalog=catalog,
+            )
         return updates
 
     @staticmethod

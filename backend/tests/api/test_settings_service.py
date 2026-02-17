@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
+from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.settings_service import (
     DEFAULT_ASSISTANT_IDENTITY,
     MAX_ASSISTANT_IDENTITY_NAME_CHARS,
@@ -105,8 +106,67 @@ def test_build_response_uses_assistant_identity_overrides(monkeypatch) -> None:
         },
     )
 
-    payload = SettingsService.build_response(settings_record=settings_record, user_id="user-1")
+    payload = SettingsService.build_response(
+        settings_record=settings_record, user_id="user-1"
+    )
     assert payload["assistant_identity"]["name"] == "Navigator"
     assert payload["assistant_identity"]["tone"] == "Calm and technical."
     assert payload["assistant_identity"]["values"] == "Accuracy and focus."
     assert payload["assistant_identity"]["boundaries"] == "No fabricated claims."
+
+
+def test_clean_updates_forces_required_skills(monkeypatch) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {
+                    "id": "fs",
+                    "name": "Files",
+                    "description": "File access",
+                    "category": "Documents",
+                    "user_toggleable": True,
+                },
+                {
+                    "id": "assistant-identity",
+                    "name": "Assistant Identity",
+                    "description": "Assistant identity controls",
+                    "category": "System",
+                    "user_toggleable": False,
+                },
+            ]
+        ),
+    )
+
+    cleaned = SettingsService.clean_updates({"enabled_skills": ["fs"]})
+    assert cleaned["enabled_skills"] == ["fs", "assistant-identity"]
+
+
+def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {
+                    "id": "fs",
+                    "name": "Files",
+                    "description": "File access",
+                    "category": "Documents",
+                    "user_toggleable": True,
+                },
+                {
+                    "id": "assistant-identity",
+                    "name": "Assistant Identity",
+                    "description": "Assistant identity controls",
+                    "category": "System",
+                    "user_toggleable": False,
+                },
+            ]
+        ),
+    )
+    settings_record = SimpleNamespace(enabled_skills=["fs"])
+
+    resolved = SettingsService._resolve_enabled_skills(settings_record)
+    assert resolved == ["fs", "assistant-identity"]

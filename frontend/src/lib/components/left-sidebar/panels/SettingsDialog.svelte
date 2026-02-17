@@ -50,11 +50,33 @@
 	export let setWeatherUnit: (unit: WeatherUnit) => void;
 	export let isLoadingSkills = false;
 	export let skillsError = '';
-	export let skills: Array<{ id: string; name: string; description: string; category?: string }> =
-		[];
+	export let skills: Array<{
+		id: string;
+		name: string;
+		description: string;
+		category?: string;
+		user_toggleable?: boolean;
+	}> = [];
 	export let groupSkills: (
-		list: Array<{ id: string; name: string; description: string; category?: string }>
-	) => Array<[string, Array<{ id: string; name: string; description: string; category?: string }>]>;
+		list: Array<{
+			id: string;
+			name: string;
+			description: string;
+			category?: string;
+			user_toggleable?: boolean;
+		}>
+	) => Array<
+		[
+			string,
+			Array<{
+				id: string;
+				name: string;
+				description: string;
+				category?: string;
+				user_toggleable?: boolean;
+			}>
+		]
+	>;
 	export let enabledSkills: string[] = [];
 	export let allSkillsEnabled = false;
 	export let toggleAllSkills: (enabled: boolean) => void;

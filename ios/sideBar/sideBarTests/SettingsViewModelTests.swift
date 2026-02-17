@@ -96,6 +96,116 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.settings?.enabledSkills, ["s1"])
     }
 
+    func testSetSkillEnabledIgnoresLockedSkill() async throws {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "User",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: ["assistant-identity"]
+        )
+        let recorder = UpdateRecorder()
+        let cache = TestCacheClient()
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(settings),
+                updateRecorder: recorder
+            ),
+            skillsAPI: MockSkillsAPI(
+                result: .success(
+                    SkillsResponse(skills: [
+                        SkillItem(
+                            id: "assistant-identity",
+                            name: "Assistant Identity",
+                            description: "System-managed identity.",
+                            category: "System",
+                            userToggleable: false
+                        )
+                    ])
+                )
+            ),
+            cache: cache
+        )
+
+        await viewModel.load()
+        await viewModel.loadSkills()
+        await viewModel.setSkillEnabled(id: "assistant-identity", enabled: false)
+
+        XCTAssertEqual(recorder.callCount, 0)
+        XCTAssertEqual(viewModel.settings?.enabledSkills, ["assistant-identity"])
+    }
+
+    func testSetAllSkillsEnabledKeepsRequiredSkillsWhenDisabling() async throws {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "User",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: ["assistant-identity", "fs"]
+        )
+        let updated = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "User",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: ["assistant-identity"]
+        )
+        let recorder = UpdateRecorder()
+        let cache = TestCacheClient()
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(settings),
+                updateResult: .success(updated),
+                updateRecorder: recorder
+            ),
+            skillsAPI: MockSkillsAPI(
+                result: .success(
+                    SkillsResponse(skills: [
+                        SkillItem(
+                            id: "assistant-identity",
+                            name: "Assistant Identity",
+                            description: "System-managed identity.",
+                            category: "System",
+                            userToggleable: false
+                        ),
+                        SkillItem(id: "fs", name: "Files", description: "File access.", category: "Documents")
+                    ])
+                )
+            ),
+            cache: cache
+        )
+
+        await viewModel.load()
+        await viewModel.loadSkills()
+        await viewModel.setAllSkillsEnabled(false)
+
+        XCTAssertEqual(recorder.callCount, 1)
+        let update = try XCTUnwrap(recorder.lastUpdate)
+        let payload = try encodedPayload(update)
+        XCTAssertEqual(payload["enabled_skills"] as? [String], ["assistant-identity"])
+    }
+
     func testLoadProfileImageUsesCacheOnFailure() async {
         let settings = UserSettings(
             userId: "user-1",

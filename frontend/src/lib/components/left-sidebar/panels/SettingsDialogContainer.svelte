@@ -49,12 +49,28 @@
 	let isSavingSettings = false;
 	let settingsLoaded = false;
 	let settingsError = '';
-	let skills: Array<{ id: string; name: string; description: string; category?: string }> = [];
+	let skills: Array<{
+		id: string;
+		name: string;
+		description: string;
+		category?: string;
+		user_toggleable?: boolean;
+	}> = [];
 	let enabledSkills: string[] = [];
 	let initialEnabledSkills: string[] = [];
 	let isLoadingSkills = false;
 	let skillsError = '';
-	$: allSkillsEnabled = skills.length > 0 && enabledSkills.length === skills.length;
+	let toggleableSkillIds: string[] = [];
+	let requiredSkillIds: string[] = [];
+	$: toggleableSkillIds = skills
+		.filter((skill) => skill.user_toggleable !== false)
+		.map((skill) => skill.id);
+	$: requiredSkillIds = skills
+		.filter((skill) => skill.user_toggleable === false)
+		.map((skill) => skill.id);
+	$: allSkillsEnabled =
+		toggleableSkillIds.length > 0 &&
+		toggleableSkillIds.every((skillId) => enabledSkills.includes(skillId));
 	let locationSuggestions: Array<{ description: string; place_id: string }> = [];
 	let isLoadingLocations = false;
 	let locationLookupError = '';
@@ -263,6 +279,9 @@
 	}
 
 	function toggleSkill(name: string, enabled: boolean) {
+		const selected = skills.find((skill) => skill.id === name);
+		if (selected?.user_toggleable === false) return;
+
 		if (enabled) {
 			enabledSkills = [...new Set([...enabledSkills, name])];
 		} else {
@@ -272,9 +291,10 @@
 
 	function toggleAllSkills(enabled: boolean) {
 		if (enabled) {
-			enabledSkills = skills.map((skill) => skill.id);
+			enabledSkills = [...new Set([...enabledSkills, ...toggleableSkillIds, ...requiredSkillIds])];
 		} else {
-			enabledSkills = [];
+			enabledSkills = enabledSkills.filter((skill) => !toggleableSkillIds.includes(skill));
+			enabledSkills = [...new Set([...enabledSkills, ...requiredSkillIds])];
 		}
 	}
 

@@ -233,6 +233,7 @@ public final class SettingsViewModel: LoadableViewModel {
 
     public func setSkillEnabled(id: String, enabled: Bool) async {
         guard let settings else { return }
+        guard isSkillUserToggleable(id: id) else { return }
         var next = settings.enabledSkills
         if enabled {
             if !next.contains(id) {
@@ -245,14 +246,29 @@ public final class SettingsViewModel: LoadableViewModel {
     }
 
     public func setAllSkillsEnabled(_ enabled: Bool) async {
-        let next = enabled ? skills.map(\.id) : []
-        await updateEnabledSkills(next)
+        let currentEnabled = settings?.enabledSkills ?? []
+        let toggleableSkillIds = Set(skills.filter(\.userToggleable).map(\.id))
+        let requiredSkillIds = Set(skills.filter { !$0.userToggleable }.map(\.id))
+        var next = Set(currentEnabled)
+        if enabled {
+            next.formUnion(toggleableSkillIds)
+        } else {
+            next.subtract(toggleableSkillIds)
+        }
+        next.formUnion(requiredSkillIds)
+        let ordered = skills.map(\.id).filter { next.contains($0) }
+        await updateEnabledSkills(ordered)
+    }
+
+    public func isSkillUserToggleable(id: String) -> Bool {
+        skills.first { $0.id == id }?.userToggleable ?? true
     }
 
     private func updateEnabledSkills(_ enabledSkills: [String]) async {
         skillsError = nil
         isSavingSkills = true
         let previous = settings
+        let normalized = normalizeEnabledSkills(enabledSkills)
         if let current = settings {
             settings = UserSettings(
                 userId: current.userId,
@@ -267,12 +283,12 @@ public final class SettingsViewModel: LoadableViewModel {
                 location: current.location,
                 profileImageUrl: current.profileImageUrl,
                 assistantIdentity: current.assistantIdentity,
-                enabledSkills: enabledSkills
+                enabledSkills: normalized
             )
         }
         do {
             let update = SettingsUpdate(
-                enabledSkills: enabledSkills
+                enabledSkills: normalized
             )
             let response = try await settingsAPI.updateSettings(update)
             settings = response
@@ -282,6 +298,29 @@ public final class SettingsViewModel: LoadableViewModel {
             skillsError = error.localizedDescription
         }
         isSavingSkills = false
+    }
+
+    private func normalizeEnabledSkills(_ enabledSkills: [String]) -> [String] {
+        let allowedIds = Set(skills.map(\.id))
+        let requiredIds = Set(skills.filter { !$0.userToggleable }.map(\.id))
+        var seen: Set<String> = []
+        var normalized: [String] = []
+
+        for id in enabledSkills where allowedIds.contains(id) {
+            if !seen.contains(id) {
+                normalized.append(id)
+                seen.insert(id)
+            }
+        }
+
+        for id in skills.map(\.id) where requiredIds.contains(id) {
+            if !seen.contains(id) {
+                normalized.append(id)
+                seen.insert(id)
+            }
+        }
+
+        return normalized
     }
 
     private static func dateOnlyString(from date: Date) -> String {

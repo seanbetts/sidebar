@@ -17,6 +17,7 @@ class SkillItem(BaseModel):
     name: str
     description: str
     category: str
+    user_toggleable: bool = True
 
 
 class SkillsResponse(BaseModel):
@@ -36,5 +37,14 @@ async def list_skills(_: str = Depends(verify_bearer_token)):
         Skills list payload.
     """
     skills = SkillCatalogService.list_skills(settings.skills_dir)
-    skill_items = [SkillItem(**skill) for skill in skills]
+    skill_items = [
+        SkillItem(
+            id=str(skill["id"]),
+            name=str(skill["name"]),
+            description=str(skill["description"]),
+            category=str(skill["category"]),
+            user_toggleable=bool(skill.get("user_toggleable", True)),
+        )
+        for skill in skills
+    ]
     return SkillsResponse(skills=skill_items)

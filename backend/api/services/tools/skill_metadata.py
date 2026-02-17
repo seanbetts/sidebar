@@ -96,3 +96,12 @@ EXPOSED_SKILLS = {
     "skill-creator",
     "mcp-builder",
 }
+
+NON_TOGGLEABLE_SKILLS = {
+    "assistant-identity",
+}
+
+
+def is_skill_user_toggleable(skill_id: str) -> bool:
+    """Return whether a skill can be disabled by users."""
+    return skill_id not in NON_TOGGLEABLE_SKILLS

@@ -7,21 +7,56 @@
 
 	export let isLoadingSkills = false;
 	export let skillsError = '';
-	export let skills: Array<{ id: string; name: string; description: string; category?: string }> =
-		[];
+	export let skills: Array<{
+		id: string;
+		name: string;
+		description: string;
+		category?: string;
+		user_toggleable?: boolean;
+	}> = [];
 	export let groupSkills: (
-		list: Array<{ id: string; name: string; description: string; category?: string }>
-	) => Array<[string, Array<{ id: string; name: string; description: string; category?: string }>]>;
+		list: Array<{
+			id: string;
+			name: string;
+			description: string;
+			category?: string;
+			user_toggleable?: boolean;
+		}>
+	) => Array<
+		[
+			string,
+			Array<{
+				id: string;
+				name: string;
+				description: string;
+				category?: string;
+				user_toggleable?: boolean;
+			}>
+		]
+	>;
 	export let enabledSkills: string[] = [];
 	export let allSkillsEnabled = false;
 	export let toggleAllSkills: (enabled: boolean) => void;
 	export let toggleSkill: (id: string, enabled: boolean) => void;
 
 	let tooltipsEnabled = false;
+	let hasToggleableSkills = false;
 
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
 	});
+
+	$: hasToggleableSkills = skills.some((skill) => skill.user_toggleable !== false);
+
+	function isSkillToggleable(skill: {
+		id: string;
+		name: string;
+		description: string;
+		category?: string;
+		user_toggleable?: boolean;
+	}) {
+		return skill.user_toggleable !== false;
+	}
 </script>
 
 <h3>Skills</h3>
@@ -35,6 +70,7 @@
 					<input
 						type="checkbox"
 						checked={allSkillsEnabled}
+						disabled={!hasToggleableSkills}
 						on:change={(event) =>
 							toggleAllSkills((event.currentTarget as HTMLInputElement).checked)}
 					/>
@@ -72,8 +108,10 @@
 											<label class="skill-toggle" {...restProps}>
 												<input
 													type="checkbox"
-													checked={enabledSkills.includes(skill.id)}
+													checked={enabledSkills.includes(skill.id) || !isSkillToggleable(skill)}
+													disabled={!isSkillToggleable(skill)}
 													on:change={(event) =>
+														isSkillToggleable(skill) &&
 														toggleSkill(
 															skill.id,
 															(event.currentTarget as HTMLInputElement).checked
@@ -84,12 +122,19 @@
 										{/snippet}
 									</TooltipTrigger>
 									<TooltipContent side="top">
-										{enabledSkills.includes(skill.id) ? 'Disable' : 'Enable'}
-										{skill.name}
+										{#if isSkillToggleable(skill)}
+											{enabledSkills.includes(skill.id) ? 'Disable' : 'Enable'}
+											{skill.name}
+										{:else}
+											Required skill
+										{/if}
 									</TooltipContent>
 								</Tooltip>
 							</div>
 							<div class="skill-description">{skill.description}</div>
+							{#if !isSkillToggleable(skill)}
+								<div class="skill-required">Required</div>
+							{/if}
 						</div>
 					{/each}
 				</div>
@@ -230,8 +275,20 @@
 		outline-offset: 2px;
 	}
 
+	.skill-toggle input:disabled + .skill-switch {
+		opacity: 0.55;
+	}
+
 	.skill-toggle-label {
 		font-size: 0.8rem;
 		color: var(--color-foreground);
+	}
+
+	.skill-required {
+		margin-top: 0.35rem;
+		font-size: 0.72rem;
+		color: var(--color-muted-foreground);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
 	}
 </style>

@@ -529,7 +529,7 @@ def _select_seed_skills() -> list[str] | None:
     if not skills_dir or not skills_dir.exists():
         return None
     skills = SkillCatalogService.list_skills(skills_dir)
-    return [skill["id"] for skill in skills[:6]]
+    return [str(skill["id"]) for skill in skills[:6]]
 
 
 def _calculate_next_occurrence(rule: dict[str, Any], from_date: date) -> date:
