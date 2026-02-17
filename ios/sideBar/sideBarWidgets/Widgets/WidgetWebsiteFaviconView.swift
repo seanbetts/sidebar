@@ -29,7 +29,7 @@ struct WidgetWebsiteFaviconView: View {
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: max(2, size * 0.22), style: .continuous))
+        .clipShape(Circle())
     }
 
     private var prefetchedImage: Image? {
