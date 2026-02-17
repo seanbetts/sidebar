@@ -9,6 +9,31 @@ class SkillsParameterBuilder(BaseParameterBuilder):
     """Builders for skill tooling arguments."""
 
     @staticmethod
+    def build_assistant_identity_get_args(params: dict) -> list:
+        """Build CLI arguments for assistant identity read."""
+        args: list[str] = []
+        SkillsParameterBuilder.append_user_id(args, params)
+        return args
+
+    @staticmethod
+    def build_assistant_identity_update_args(params: dict) -> list:
+        """Build CLI arguments for assistant identity updates."""
+        args: list[str] = []
+        SkillsParameterBuilder.append_user_id(args, params)
+
+        for field_name in ("name", "tone", "values", "boundaries"):
+            if field_name in params and params[field_name] is not None:
+                args.extend([f"--{field_name}", params[field_name]])
+        return args
+
+    @staticmethod
+    def build_assistant_identity_reset_args(params: dict) -> list:
+        """Build CLI arguments for assistant identity reset."""
+        args: list[str] = []
+        SkillsParameterBuilder.append_user_id(args, params)
+        return args
+
+    @staticmethod
     def build_skill_package_args(params: dict) -> list:
         """Build CLI arguments for skill packaging."""
         args = [params["skill_dir"]]

@@ -138,6 +138,7 @@ class SkillCatalogService:
             "web-save": "Web",
             "web-search": "Web",
             "memory": "System",
+            "assistant-identity": "System",
             "audio-transcribe": "Media",
             "youtube-download": "Media",
             "youtube-transcribe": "Media",

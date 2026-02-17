@@ -64,6 +64,10 @@ SKILL_DISPLAY = {
         "name": "Prompt Preview",
         "description": "Generate the current system prompt output for preview.",
     },
+    "assistant-identity": {
+        "name": "Assistant Identity",
+        "description": "Read and update assistant-managed identity settings.",
+    },
     "memory": {
         "name": "Memory",
         "description": "Store and manage persistent user memories.",
@@ -80,6 +84,7 @@ EXPOSED_SKILLS = {
     "tasks",
     "web-save",
     "web-search",
+    "assistant-identity",
     "memory",
     "ui-theme",
     "prompt-preview",
