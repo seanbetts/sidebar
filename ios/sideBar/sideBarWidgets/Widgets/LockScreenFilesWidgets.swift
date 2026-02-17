@@ -65,11 +65,7 @@ struct LockScreenFilePreviewView: View {
 
     var body: some View {
         if !entry.isAuthenticated {
-            HStack {
-                Image(systemName: "doc")
-                Text("Sign in to sideBar")
-                    .font(.caption)
-            }
+            LockScreenSignedOutRow(iconSystemName: "doc")
         } else if entry.data.files.isEmpty {
             HStack {
                 Image(systemName: "doc")

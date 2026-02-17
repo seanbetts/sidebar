@@ -65,11 +65,7 @@ struct LockScreenSitePreviewView: View {
 
     var body: some View {
         if !entry.isAuthenticated {
-            HStack {
-                Image(systemName: "globe")
-                Text("Sign in to sideBar")
-                    .font(.caption)
-            }
+            LockScreenSignedOutRow(iconSystemName: "globe")
         } else if entry.data.websites.isEmpty {
             HStack {
                 Image(systemName: "globe")

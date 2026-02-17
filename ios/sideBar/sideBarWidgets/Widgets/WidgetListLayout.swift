@@ -89,3 +89,55 @@ struct WidgetListLayout<Header: View, List: View, Footer: View>: View {
         }
     }
 }
+
+enum HomeWidgetSignedOutContent {
+    case tasks
+    case notes
+    case websites
+    case files
+
+    var subtitle: String {
+        switch self {
+        case .tasks:
+            return "to see your tasks"
+        case .notes:
+            return "to see your notes"
+        case .websites:
+            return "to see your websites"
+        case .files:
+            return "to see your files"
+        }
+    }
+}
+
+struct HomeWidgetSignedOutView: View {
+    let content: HomeWidgetSignedOutContent
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                .font(.system(size: 32))
+                .foregroundStyle(.white)
+            Text("Sign in to sideBar")
+                .font(.headline)
+            Text(content.subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+#if os(iOS)
+struct LockScreenSignedOutRow: View {
+    let iconSystemName: String
+
+    var body: some View {
+        HStack {
+            Image(systemName: iconSystemName)
+            Text("Sign in to sideBar")
+                .font(.caption)
+        }
+    }
+}
+#endif

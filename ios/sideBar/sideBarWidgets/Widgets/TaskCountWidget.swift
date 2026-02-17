@@ -68,15 +68,7 @@ struct TaskCountWidgetView: View {
     }
 
     private var notAuthenticatedView: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "person.crop.circle")
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary)
-            Text("Sign in")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        HomeWidgetSignedOutView(content: .tasks)
     }
 }
 
