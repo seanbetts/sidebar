@@ -59,6 +59,19 @@ def test_tool_definitions_have_no_duplicate_names():
     assert len(merged) == expected_total
 
 
+def test_tool_schemas_disallow_top_level_combinators():
+    disallowed = {"oneOf", "anyOf", "allOf"}
+    offenders: list[str] = []
+
+    for name, definition in get_tool_definitions().items():
+        schema = definition.get("input_schema") or {}
+        present = sorted(disallowed.intersection(schema.keys()))
+        if present:
+            offenders.append(f"{name}: {', '.join(present)}")
+
+    assert offenders == []
+
+
 def test_skill_tool_scripts_exist_on_disk():
     skills_root = Path(__file__).resolve().parents[2] / "skills"
     assert skills_root.exists()
