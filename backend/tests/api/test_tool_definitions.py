@@ -11,7 +11,6 @@ from api.services.tools.definitions_web import get_web_definitions
 
 
 def _assert_definition_contract(definitions: dict):
-    assert definitions, "Expected definitions to be non-empty"
     for name, definition in definitions.items():
         assert isinstance(name, str)
         assert name
@@ -41,6 +40,8 @@ def test_individual_definitions_follow_contract():
         get_tasks_definitions(),
         get_misc_definitions(),
     ]:
+        if not definitions:
+            continue
         _assert_definition_contract(definitions)
 
 
@@ -99,4 +100,6 @@ def test_misc_definitions_include_assistant_identity_tools():
 
 def test_skills_definitions_do_not_expose_skill_packaging():
     definitions = get_skills_definitions()
+    assert definitions == {}
     assert "Package Skill" not in definitions
+    assert "Evaluate MCP Server" not in definitions

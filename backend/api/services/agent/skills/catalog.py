@@ -151,7 +151,6 @@ class SkillCatalogService:
             "audio-transcribe": "Media",
             "youtube-download": "Media",
             "youtube-transcribe": "Media",
-            "mcp-builder": "Development",
             "skill-creator": "Development",
             "ui-theme": "System",
             "prompt-preview": "System",

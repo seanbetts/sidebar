@@ -48,10 +48,6 @@ SKILL_DISPLAY = {
             "files workspace."
         ),
     },
-    "mcp-builder": {
-        "name": "MCP Builder",
-        "description": "Guide and templates for building MCP servers.",
-    },
     "skill-creator": {
         "name": "Skill Creator",
         "description": "Guide for creating and updating skills.",
@@ -99,7 +95,6 @@ EXPOSED_SKILLS = {
     "subdomain-discover",
     "web-crawler-policy",
     "skill-creator",
-    "mcp-builder",
 }
 
 NON_TOGGLEABLE_SKILLS = {

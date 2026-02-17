@@ -69,25 +69,3 @@ class SkillsParameterBuilder(BaseParameterBuilder):
         if params.get("reason"):
             args.extend(["--reason", params["reason"]])
         return args
-
-    @staticmethod
-    def build_mcp_evaluation_args(params: dict) -> list:
-        """Build CLI arguments for MCP evaluation runs."""
-        args = [params["eval_file"]]
-        if params.get("transport"):
-            args.extend(["--transport", params["transport"]])
-        if params.get("model"):
-            args.extend(["--model", params["model"]])
-        if params.get("command"):
-            args.extend(["--command", params["command"]])
-        if params.get("args"):
-            args.extend(["--args", *params["args"]])
-        if params.get("env"):
-            args.extend(["--env", *params["env"]])
-        if params.get("url"):
-            args.extend(["--url", params["url"]])
-        if params.get("headers"):
-            args.extend(["--header", *params["headers"]])
-        if params.get("output"):
-            args.extend(["--output", params["output"]])
-        return args

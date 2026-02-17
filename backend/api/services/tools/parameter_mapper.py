@@ -173,11 +173,6 @@ def build_assistant_soul_reset_args(params: dict) -> list:
     return SkillsParameterBuilder.build_assistant_soul_reset_args(params)
 
 
-def build_mcp_evaluation_args(params: dict) -> list:
-    """Build CLI arguments for MCP evaluation runs."""
-    return SkillsParameterBuilder.build_mcp_evaluation_args(params)
-
-
 def build_tasks_list_args(params: dict) -> list:
     """Build CLI arguments for list tasks."""
     return TasksParameterBuilder.build_list_args(params)
