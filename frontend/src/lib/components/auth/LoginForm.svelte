@@ -3,7 +3,15 @@
 	import { page } from '$app/stores';
 	import { getSupabaseClient } from '$lib/supabase';
 	import { Button } from '$lib/components/ui/button';
-	import { MessageSquare, FileText, Globe, Brain, FolderOpen, Cloud } from 'lucide-svelte';
+	import {
+		MessageSquare,
+		FileText,
+		Globe,
+		Brain,
+		FolderOpen,
+		Cloud,
+		ListTodo
+	} from 'lucide-svelte';
 	import { logError } from '$lib/utils/errorHandling';
 
 	let email = '';
@@ -11,6 +19,7 @@
 	let loading = false;
 	let error = '';
 	$: loggedOut = $page.url.searchParams.get('loggedOut') === '1';
+	$: sessionExpired = $page.url.searchParams.get('reason') === 'session_expired';
 	$: redirectTo = (() => {
 		const raw = $page.url.searchParams.get('redirectTo');
 		if (!raw) return '/';
@@ -112,6 +121,13 @@
 						</div>
 					</div>
 					<div class="feature">
+						<ListTodo size={18} strokeWidth={2} />
+						<div class="feature-content">
+							<span class="feature-title">Task Management</span>
+							<span class="feature-desc">Plan projects and track tasks in one workspace</span>
+						</div>
+					</div>
+					<div class="feature">
 						<FolderOpen size={18} strokeWidth={2} />
 						<div class="feature-content">
 							<span class="feature-title">File Intelligence</span>
@@ -131,11 +147,13 @@
 			<section class="login-panel">
 				<div class="login-panel-header">
 					<img src="/images/logo.svg" alt="sideBar" class="panel-logo" />
-					<div class="login-wordmark">Login</div>
+					<div class="login-wordmark">Sign in</div>
 				</div>
 
 				{#if loggedOut}
 					<div class="login-success">You have been signed out.</div>
+				{:else if sessionExpired}
+					<div class="login-info">Your session expired. Please sign in again.</div>
 				{/if}
 
 				{#if error}
@@ -334,6 +352,15 @@
 	}
 
 	.login-success {
+		padding: 0.75rem 0.9rem;
+		border-radius: 0.6rem;
+		background: var(--color-muted);
+		border: 1px solid var(--color-border);
+		color: var(--color-foreground);
+		font-size: 0.9rem;
+	}
+
+	.login-info {
 		padding: 0.75rem 0.9rem;
 		border-radius: 0.6rem;
 		background: var(--color-muted);
