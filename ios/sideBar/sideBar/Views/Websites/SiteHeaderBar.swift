@@ -95,8 +95,7 @@ public struct SiteHeaderBar: View {
                 } label: {
                     HStack(spacing: 6) {
                         if !environment.ingestionViewModel.activeUploadItems.isEmpty {
-                            ProgressView()
-                                .scaleEffect(0.6)
+                            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         } else if environment.ingestionViewModel.lastReadyMessage != nil {
                             SuccessCheckBadge(size: 14, symbolSize: 8)
                         } else {

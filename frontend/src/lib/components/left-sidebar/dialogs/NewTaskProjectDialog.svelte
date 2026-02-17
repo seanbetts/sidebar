@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { Loader2 } from 'lucide-svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 
 	export let open = false;
 	export let title = 'New project';
@@ -66,7 +67,7 @@
 			<AlertDialog.Action disabled={isDisabled} onclick={() => onConfirm?.()}>
 				{#if isBusy}
 					<span class="inline-flex items-center gap-2">
-						<Loader2 size={14} class="animate-spin" />
+						<LoadingGlyph size={LOADING_SIZES.inline} />
 						{busyLabel}
 					</span>
 				{:else}

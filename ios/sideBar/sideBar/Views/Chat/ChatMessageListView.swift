@@ -48,8 +48,7 @@ struct ChatMessageListView: View {
                             .buttonStyle(.plain)
                             .disabled(isAutoLoadingMore)
                             if isAutoLoadingMore {
-                                ProgressView()
-                                    .controlSize(.small)
+                                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                             }
                         }
                         .padding(.vertical, DesignTokens.Spacing.xxs)

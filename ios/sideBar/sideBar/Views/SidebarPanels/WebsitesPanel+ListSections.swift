@@ -161,8 +161,7 @@ extension WebsitesPanelView {
     @ViewBuilder
     func archiveLoadingRow(message: String) -> some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
-            ProgressView()
-                .controlSize(.small)
+            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             Text(message)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -175,8 +174,7 @@ extension WebsitesPanelView {
             Label("Archive", systemImage: "archivebox")
                 .font(.subheadline)
             if isArchiveLoading && !archivedItems.isEmpty {
-                ProgressView()
-                    .controlSize(.small)
+                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             }
         }
     }

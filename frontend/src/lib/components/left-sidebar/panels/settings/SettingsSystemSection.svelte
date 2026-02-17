@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Loader2 } from 'lucide-svelte';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import type { WeatherUnit } from '$lib/stores/weatherPreferences';
 
 	export let communicationStyle = '';
@@ -54,7 +55,7 @@
 	<div class="settings-actions">
 		{#if isLoadingSettings}
 			<div class="settings-meta">
-				<Loader2 size={16} class="spin" />
+				<LoadingGlyph size={LOADING_SIZES.inline} />
 				Loading...
 			</div>
 		{/if}

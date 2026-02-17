@@ -1,4 +1,7 @@
 <script lang="ts">
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
+
 	export let message: string = 'Loading...';
 	export let rows: number = 3;
 
@@ -7,7 +10,7 @@
 
 <div class="sidebar-loading" role="status" aria-live="polite">
 	<div class="loading-header">
-		<span class="loading-dot" aria-hidden="true"></span>
+		<LoadingGlyph size={LOADING_SIZES.panel} />
 		<span class="loading-text">{message}</span>
 	</div>
 	<div class="loading-rows" aria-hidden="true">
@@ -28,14 +31,6 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-	}
-
-	.loading-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 999px;
-		background: var(--color-muted-foreground);
-		animation: loading-pulse 1.2s ease-in-out infinite;
 	}
 
 	.loading-rows {
@@ -69,16 +64,6 @@
 
 	.loading-row.long {
 		width: 85%;
-	}
-
-	@keyframes loading-pulse {
-		0%,
-		100% {
-			opacity: 0.4;
-		}
-		50% {
-			opacity: 1;
-		}
 	}
 
 	@keyframes loading-shimmer {

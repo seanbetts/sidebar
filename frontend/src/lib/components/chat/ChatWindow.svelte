@@ -17,7 +17,6 @@
 	import {
 		AlertTriangle,
 		CheckCircle2,
-		Loader2,
 		MessageSquare,
 		Plus,
 		RotateCcw,
@@ -28,6 +27,8 @@
 	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 	import { getUserFriendlyError, useChatSSE } from '$lib/composables/useChatSSE';
 	import { logError } from '$lib/utils/errorHandling';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import { TOOLTIP_COPY } from '$lib/constants/tooltips';
 	import { canShowTooltips } from '$lib/utils/tooltip';
@@ -385,7 +386,7 @@
 				{#if $chatStore.activeTool}
 					<div class="chat-status-banner" data-status={$chatStore.activeTool.status}>
 						{#if $chatStore.activeTool.status === 'running'}
-							<Loader2 size={14} class="spin" />
+							<LoadingGlyph size={LOADING_SIZES.inline} />
 						{:else if $chatStore.activeTool.status === 'success'}
 							<CheckCircle2 size={14} />
 						{:else}
@@ -429,7 +430,7 @@
 					<span class="attachment-name">{attachment.name}</span>
 					<div class="attachment-meta">
 						{#if attachment.status !== 'ready' && attachment.status !== 'failed'}
-							<span class="attachment-spinner" aria-hidden="true"></span>
+							<LoadingGlyph size={LOADING_SIZES.inline} />
 						{/if}
 						<span class="attachment-status">{attachment.stage || attachment.status}</span>
 						{#if attachment.status === 'failed'}
@@ -604,10 +605,6 @@
 		color: var(--color-muted-foreground);
 	}
 
-	.spin {
-		animation: chat-spin 1s linear infinite;
-	}
-
 	.chat-attachments {
 		padding: 0 1.5rem 0.5rem;
 		display: flex;
@@ -642,15 +639,6 @@
 		gap: 0.5rem;
 	}
 
-	.attachment-spinner {
-		width: 12px;
-		height: 12px;
-		border-radius: 999px;
-		border: 2px solid color-mix(in oklab, var(--color-muted-foreground) 40%, transparent);
-		border-top-color: var(--color-muted-foreground);
-		animation: attachment-spin 1s linear infinite;
-	}
-
 	.attachment-actions {
 		display: inline-flex;
 		align-items: center;
@@ -667,17 +655,5 @@
 
 	.attachment-action:hover {
 		color: var(--color-foreground);
-	}
-
-	@keyframes attachment-spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	@keyframes chat-spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 </style>

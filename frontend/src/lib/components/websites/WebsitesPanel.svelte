@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onDestroy, tick } from 'svelte';
-	import { ChevronRight, Globe, Loader2, Search } from 'lucide-svelte';
+	import { ChevronRight, Globe, Search } from 'lucide-svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
 	import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import { websitesStore } from '$lib/stores/websites';
 	import type { WebsiteItem } from '$lib/stores/websites';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
@@ -376,7 +378,7 @@
 			<div class="websites-block">
 				<div class="websites-block-title">Saving</div>
 				<div class="website-pending" role="status" aria-live="polite">
-					<Loader2 size={14} class="spin" />
+					<LoadingGlyph size={LOADING_SIZES.inline} />
 					<div class="website-pending-text">
 						<span class="website-pending-title">{pendingWebsite.title}</span>
 						<span class="website-pending-domain">{pendingWebsite.domain}</span>
@@ -483,7 +485,7 @@
 						>
 							{#if $websitesStore.archivedLoading}
 								<div class="websites-empty websites-loading" role="status" aria-live="polite">
-									<Loader2 size={14} class="spin" />
+									<LoadingGlyph size={LOADING_SIZES.inline} />
 									<span>Loading archived websites...</span>
 								</div>
 							{:else if archivedItems.length === 0}
@@ -629,19 +631,6 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-	}
-
-	.spin {
-		animation: websites-spin 1s linear infinite;
-	}
-
-	@keyframes websites-spin {
-		from {
-			transform: rotate(0deg);
-		}
-		to {
-			transform: rotate(360deg);
-		}
 	}
 
 	:global(.archive-trigger) {

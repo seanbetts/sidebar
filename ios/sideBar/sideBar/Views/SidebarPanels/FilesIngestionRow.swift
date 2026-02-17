@@ -37,8 +37,7 @@ struct FilesIngestionRow: View, Equatable {
         SelectableRow(isSelected: isSelected, insets: rowInsets) {
             HStack(spacing: 8) {
                 if isProcessing {
-                    ProgressView()
-                        .scaleEffect(0.7)
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                 } else if isFailed {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption)

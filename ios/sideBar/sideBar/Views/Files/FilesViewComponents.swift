@@ -177,8 +177,7 @@ struct FilesProcessingView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            ProgressView()
-                .scaleEffect(1.1)
+            LoadingIndicatorView(size: LoadingIndicatorSize.page)
             if let progress = item.job.progress {
                 ProgressView(value: progress)
             }

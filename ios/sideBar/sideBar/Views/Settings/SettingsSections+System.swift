@@ -42,7 +42,7 @@ struct UserSettingsView: View {
             if viewModel.isSavingSystem {
                 Section {
                     HStack(spacing: 8) {
-                        ProgressView()
+                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         Text("Saving settings...")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -80,7 +80,7 @@ struct UserSettingsView: View {
         }
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
-                ProgressView()
+                LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
     }
@@ -167,13 +167,47 @@ struct AgentSettingsView: View {
                 Text(resolvedText(viewModel.settings?.assistantIdentity?.boundaries))
                     .textSelection(.enabled)
             }
+            if let identityMeta = viewModel.settings?.assistantIdentityMeta {
+                Section("Assistant Identity Meta") {
+                    Text("Updated: \(identityMeta.updatedAt)")
+                    Text("Version: \(identityMeta.version)")
+                    if let reason = identityMeta.reason, !reason.isEmpty {
+                        Text("Reason: \(reason)")
+                    }
+                }
+            }
+            Section("Soul Purpose") {
+                Text(resolvedText(viewModel.settings?.assistantSoul?.purpose))
+                    .textSelection(.enabled)
+            }
+            Section("Soul Operating Principles") {
+                Text(resolvedText(viewModel.settings?.assistantSoul?.operatingPrinciples))
+                    .textSelection(.enabled)
+            }
+            Section("Soul Adaptation Policy") {
+                Text(resolvedText(viewModel.settings?.assistantSoul?.adaptationPolicy))
+                    .textSelection(.enabled)
+            }
+            Section("Soul Success Signals") {
+                Text(resolvedText(viewModel.settings?.assistantSoul?.successSignals))
+                    .textSelection(.enabled)
+            }
+            if let soulMeta = viewModel.settings?.assistantSoulMeta {
+                Section("Assistant Soul Meta") {
+                    Text("Updated: \(soulMeta.updatedAt)")
+                    Text("Version: \(soulMeta.version)")
+                    if let reason = soulMeta.reason, !reason.isEmpty {
+                        Text("Reason: \(reason)")
+                    }
+                }
+            }
         }
         #if os(macOS)
         .formStyle(.grouped)
         #endif
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
-                ProgressView()
+                LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
     }

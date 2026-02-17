@@ -101,7 +101,7 @@ struct ProfileSettingsView: View {
             if viewModel.isSavingProfile {
                 Section {
                     HStack(spacing: 8) {
-                        ProgressView()
+                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         Text("Saving profile...")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -171,7 +171,7 @@ struct ProfileSettingsView: View {
         }
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
-                ProgressView()
+                LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
     }
@@ -188,7 +188,7 @@ struct ProfileSettingsView: View {
                     .resizable()
                     .scaledToFill()
             } else if viewModel.isLoadingProfileImage {
-                ProgressView()
+                LoadingIndicatorView(size: LoadingIndicatorSize.panel)
             } else {
                 Image(systemName: "person.crop.circle.fill")
                     .resizable()

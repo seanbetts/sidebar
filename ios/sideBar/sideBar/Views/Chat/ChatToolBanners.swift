@@ -28,9 +28,7 @@ struct ChatActiveToolBanner: View {
     private var statusIndicator: some View {
         switch activeTool.status {
         case .running:
-            ProgressView()
-                .progressViewStyle(.circular)
-                .scaleEffect(0.7)
+            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
         case .success:
             SuccessCheckBadge(size: 16, symbolSize: 9)
         case .error:

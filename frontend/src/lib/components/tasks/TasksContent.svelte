@@ -4,7 +4,8 @@
 
 <script lang="ts">
 	import type { Task, TaskGroup, TaskProject } from '$lib/types/tasks';
-	import { List, Search } from 'lucide-svelte';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import TaskDraftForm from './TaskDraftForm.svelte';
 	import TaskList from './TaskList.svelte';
 
@@ -60,11 +61,7 @@
 
 {#if isLoading || (selectionType === 'search' && searchPending)}
 	<div class="tasks-state">
-		{#if selectionType === 'search'}
-			<Search size={28} class="tasks-loading-icon" />
-		{:else}
-			<List size={28} class="tasks-loading-icon" />
-		{/if}
+		<LoadingGlyph size={LOADING_SIZES.page} />
 		{#if selectionType === 'search'}
 			Loading search results…
 		{:else}
@@ -164,11 +161,6 @@
 
 	:global(.dark) .tasks-empty-logo {
 		filter: invert(1);
-	}
-
-	:global(.tasks-loading-icon) {
-		margin-bottom: 0.6rem;
-		opacity: 0.7;
 	}
 
 	.tasks-error {

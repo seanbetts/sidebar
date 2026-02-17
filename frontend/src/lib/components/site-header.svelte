@@ -18,7 +18,9 @@
 	import { buildIngestionStatusMessage, hasReadyTransition } from '$lib/utils/ingestionStatus';
 	import { ingestionAPI } from '$lib/services/api';
 	import { logError } from '$lib/utils/errorHandling';
-	import { AlertTriangle, ArrowLeftRight, CheckCircle2, Loader2 } from 'lucide-svelte';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
+	import { AlertTriangle, ArrowLeftRight, CheckCircle2 } from 'lucide-svelte';
 
 	const siteHeaderData = useSiteHeaderData();
 	const INGESTION_READY_WINDOW_MS = 6_000;
@@ -337,7 +339,7 @@
 								aria-label="Show upload status"
 							>
 								{#if ingestionStatus === 'processing'}
-									<Loader2 size={12} class="spin" />
+									<LoadingGlyph size={LOADING_SIZES.inline} />
 								{:else if ingestionStatus === 'ready'}
 									<CheckCircle2 size={12} />
 								{:else}
@@ -544,16 +546,6 @@
 		height: 6px;
 		border-radius: 999px;
 		background: var(--color-muted-foreground);
-	}
-
-	.spin {
-		animation: site-header-spin 1s linear infinite;
-	}
-
-	@keyframes site-header-spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 
 	.location {

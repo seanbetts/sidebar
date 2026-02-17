@@ -258,7 +258,7 @@ extension NotesPanelView {
                     }
                 } else if viewModel.isSearching {
                     HStack(spacing: 12) {
-                        ProgressView()
+                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         Text("Searching…")
                             .foregroundStyle(.secondary)
                     }

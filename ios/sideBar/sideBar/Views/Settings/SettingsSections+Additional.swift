@@ -34,7 +34,7 @@ struct SkillsSettingsView: View {
             if viewModel.isSavingSkills {
                 Section {
                     HStack(spacing: 8) {
-                        ProgressView()
+                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         Text("Saving skills…")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -85,7 +85,7 @@ struct SkillsSettingsView: View {
         #endif
         .overlay {
             if viewModel.isLoadingSkills && viewModel.skills.isEmpty {
-                ProgressView()
+                LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
     }
@@ -164,7 +164,7 @@ struct ShortcutsSettingsView: View {
         #endif
         .overlay {
             if viewModel.isLoadingShortcuts && viewModel.shortcutsToken.isEmpty {
-                ProgressView()
+                LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
     }
