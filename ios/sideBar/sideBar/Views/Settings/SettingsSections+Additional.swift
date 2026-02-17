@@ -9,8 +9,6 @@ struct SkillsSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Manage installed skills and permissions here.")
-                    .foregroundStyle(.secondary)
                 Toggle("Enable all", isOn: Binding(
                     get: { allSkillsEnabled },
                     set: { isEnabled in
