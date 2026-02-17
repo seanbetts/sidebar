@@ -36,7 +36,7 @@ struct TaskCountWidgetView: View {
                 if entry.data.totalCount > 0 {
                     Circle()
                         .trim(from: 0, to: completionProgress)
-                        .stroke(Color.green, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .stroke(Color.white, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .frame(width: 64, height: 64)
                         .rotationEffect(.degrees(-90))
                         .widgetAccentable()
