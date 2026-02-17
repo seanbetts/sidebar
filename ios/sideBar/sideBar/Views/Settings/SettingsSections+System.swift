@@ -162,8 +162,7 @@ struct AgentSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section {
-                Text(resolvedText(viewModel.settings?.assistantIdentity?.name))
-                    .textSelection(.enabled)
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.name))
             } header: {
                 sectionHeader(
                     title: "Assistant Name",
@@ -171,8 +170,7 @@ struct AgentSettingsView: View {
                 )
             }
             Section {
-                Text(resolvedText(viewModel.settings?.assistantIdentity?.tone))
-                    .textSelection(.enabled)
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.tone))
             } header: {
                 sectionHeader(
                     title: "Assistant Tone",
@@ -180,8 +178,7 @@ struct AgentSettingsView: View {
                 )
             }
             Section {
-                Text(resolvedText(viewModel.settings?.assistantIdentity?.values))
-                    .textSelection(.enabled)
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.values))
             } header: {
                 sectionHeader(
                     title: "Assistant Values",
@@ -189,8 +186,7 @@ struct AgentSettingsView: View {
                 )
             }
             Section {
-                Text(resolvedText(viewModel.settings?.assistantIdentity?.boundaries))
-                    .textSelection(.enabled)
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.boundaries))
             } header: {
                 sectionHeader(
                     title: "Assistant Boundaries",
@@ -199,10 +195,10 @@ struct AgentSettingsView: View {
             }
             if let identityMeta = viewModel.settings?.assistantIdentityMeta {
                 Section {
-                    Text("Updated: \(identityMeta.updatedAt)")
-                    Text("Version: \(identityMeta.version)")
+                    readOnlySectionText("Updated: \(identityMeta.updatedAt)")
+                    readOnlySectionText("Version: \(identityMeta.version)")
                     if let reason = identityMeta.reason, !reason.isEmpty {
-                        Text("Reason: \(reason)")
+                        readOnlySectionText("Reason: \(reason)")
                     }
                 } header: {
                     sectionHeader(
@@ -212,8 +208,7 @@ struct AgentSettingsView: View {
                 }
             }
             Section {
-                Text(resolvedText(viewModel.settings?.assistantSoul?.purpose))
-                    .textSelection(.enabled)
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.purpose))
             } header: {
                 sectionHeader(
                     title: "Soul Purpose",
@@ -221,8 +216,7 @@ struct AgentSettingsView: View {
                 )
             }
             Section {
-                Text(resolvedText(viewModel.settings?.assistantSoul?.operatingPrinciples))
-                    .textSelection(.enabled)
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.operatingPrinciples))
             } header: {
                 sectionHeader(
                     title: "Soul Operating Principles",
@@ -230,8 +224,7 @@ struct AgentSettingsView: View {
                 )
             }
             Section {
-                Text(resolvedText(viewModel.settings?.assistantSoul?.adaptationPolicy))
-                    .textSelection(.enabled)
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.adaptationPolicy))
             } header: {
                 sectionHeader(
                     title: "Soul Adaptation Policy",
@@ -239,8 +232,7 @@ struct AgentSettingsView: View {
                 )
             }
             Section {
-                Text(resolvedText(viewModel.settings?.assistantSoul?.successSignals))
-                    .textSelection(.enabled)
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.successSignals))
             } header: {
                 sectionHeader(
                     title: "Soul Success Signals",
@@ -249,10 +241,10 @@ struct AgentSettingsView: View {
             }
             if let soulMeta = viewModel.settings?.assistantSoulMeta {
                 Section {
-                    Text("Updated: \(soulMeta.updatedAt)")
-                    Text("Version: \(soulMeta.version)")
+                    readOnlySectionText("Updated: \(soulMeta.updatedAt)")
+                    readOnlySectionText("Version: \(soulMeta.version)")
                     if let reason = soulMeta.reason, !reason.isEmpty {
-                        Text("Reason: \(reason)")
+                        readOnlySectionText("Reason: \(reason)")
                     }
                 } header: {
                     sectionHeader(
@@ -285,6 +277,12 @@ struct AgentSettingsView: View {
 
     private var assistantPossessiveDisplayName: String {
         "\(assistantDisplayName)'s"
+    }
+
+    private func readOnlySectionText(_ value: String) -> some View {
+        Text(value)
+            .foregroundStyle(.secondary)
+            .textSelection(.enabled)
     }
 
     @ViewBuilder
