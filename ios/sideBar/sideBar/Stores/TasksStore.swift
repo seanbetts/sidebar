@@ -1,9 +1,7 @@
 import Foundation
 import sideBarShared
 import Combine
-
 // MARK: - TasksStore
-
 /// Persistent store for task items, groups, and projects with optimistic update support.
 @MainActor public final class TasksStore: ObservableObject {
     @Published public private(set) var selection: TaskSelection = .none
@@ -21,8 +19,10 @@ import Combine
     private let networkStatus: (any NetworkStatusProviding)?
     private var pendingRemovals: Set<String> = []
     private var currentScope: String?
+    private var latestLoadRequestId: UInt64 = 0
+    private var inFlightListRefreshes: [TaskSelection: Task<TaskListResponse, Error>] = [:]
+    private var inFlightCountsRefresh: Task<TaskCountsResponse, Error>?
     weak var writeQueue: WriteQueue?
-
     public init(
         api: any TasksProviding,
         cache: CacheClient,
@@ -34,34 +34,17 @@ import Combine
         self.offlineStore = offlineStore
         self.networkStatus = networkStatus
     }
-
     public func attachWriteQueue(_ writeQueue: WriteQueue) {
         self.writeQueue = writeQueue
     }
-
     public func load(selection: TaskSelection, force: Bool = false) async {
+        let requestId = beginLoadRequest()
         if selection == .none {
             self.selection = selection
             errorMessage = nil
-            let fallbackSelection: TaskSelection = .today
-            let cacheKey = CacheKeys.tasksList(selectionKey: fallbackSelection.cacheKey)
-            if applyCachedOrOffline(
-                force: force,
-                cacheKey: cacheKey,
-                type: TaskListResponse.self,
-                apply: { [weak self] list in
-                    self?.apply(list: list, persist: false)
-                },
-                refreshIfAvailable: { [weak self] in
-                    guard let self else { return }
-                    await self.refresh(selection: fallbackSelection)
-                }
-            ) {
-                return
-            }
-            Task { [weak self] in
-                await self?.refresh(selection: fallbackSelection)
-            }
+            isLoading = false
+            searchPending = false
+            tasks = []
             return
         }
         let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
@@ -81,20 +64,19 @@ import Combine
             cacheKey: cacheKey,
             type: TaskListResponse.self,
             apply: { [weak self] list in
-                self?.apply(list: list, persist: false)
+                self?.apply(list: list, selection: selection, persist: false)
             },
             refreshIfAvailable: { [weak self] in
                 guard let self else { return }
-                await self.refresh(selection: selection)
+                await self.refresh(selection: selection, requestId: requestId)
             }
         ) {
             finishLoading(isSearch: selection.isSearch)
             return
         }
-        await refresh(selection: selection)
+        await refresh(selection: selection, requestId: requestId)
         finishLoading(isSearch: selection.isSearch)
     }
-
     public func loadCounts(force: Bool = false) async {
         errorMessage = nil
         if applyCachedOrOffline(
@@ -113,7 +95,6 @@ import Combine
         }
         await refreshCounts()
     }
-
     public func reset() {
         selection = .none
         tasks = []
@@ -173,12 +154,21 @@ import Combine
         tasks.insert(task, at: 0)
     }
 
-    private func refresh(selection: TaskSelection) async {
+    private func refresh(selection: TaskSelection, requestId: UInt64?) async {
         do {
-            let response = try await fetch(selection: selection)
-            apply(list: response, persist: true)
+            let response = try await fetchWithDedupe(selection: selection)
+            let shouldApplyVisibleState = shouldApplyVisibleState(
+                for: selection,
+                requestId: requestId
+            )
+            apply(
+                list: response,
+                selection: selection,
+                persist: true,
+                updateVisibleState: shouldApplyVisibleState
+            )
         } catch {
-            if tasks.isEmpty {
+            if shouldApplyVisibleState(for: selection, requestId: requestId), tasks.isEmpty {
                 errorMessage = ErrorMapping.message(for: error)
             }
         }
@@ -186,7 +176,7 @@ import Combine
 
     private func refreshCounts() async {
         do {
-            let response = try await api.counts()
+            let response = try await fetchCountsWithDedupe()
             counts = response
             cache.set(key: CacheKeys.tasksCounts, value: response, ttlSeconds: CachePolicy.tasksCounts)
             offlineStore?.set(
@@ -218,18 +208,27 @@ import Combine
         }
     }
 
-    private func apply(list: TaskListResponse, persist: Bool) {
-        // Filter out tasks that are pending removal (optimistic updates)
-        tasks = list.tasks.filter { !pendingRemovals.contains($0.id) }
-        groups = list.groups ?? []
-        projects = list.projects ?? []
-        currentScope = list.scope
+    private func apply(
+        list: TaskListResponse,
+        selection: TaskSelection,
+        persist: Bool,
+        updateVisibleState: Bool = true
+    ) {
+        if updateVisibleState {
+            // Filter out tasks that are pending removal (optimistic updates)
+            tasks = list.tasks.filter { !pendingRemovals.contains($0.id) }
+            groups = list.groups ?? []
+            projects = list.projects ?? []
+            currentScope = list.scope
+        }
 
-        // Clean up pendingRemovals: remove IDs that are no longer in the server response
-        // (confirms the server has processed the removal)
         if persist {
-            let serverTaskIds = Set(list.tasks.map { $0.id })
-            pendingRemovals = pendingRemovals.filter { serverTaskIds.contains($0) }
+            if updateVisibleState {
+                // Clean up pendingRemovals: remove IDs that are no longer in the server response
+                // (confirms the server has processed the removal)
+                let serverTaskIds = Set(list.tasks.map { $0.id })
+                pendingRemovals = pendingRemovals.filter { serverTaskIds.contains($0) }
+            }
 
             let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
             cache.set(key: cacheKey, value: list, ttlSeconds: CachePolicy.tasksList)
@@ -248,6 +247,47 @@ import Combine
         } else {
             isLoading = false
         }
+    }
+
+    private func beginLoadRequest() -> UInt64 {
+        latestLoadRequestId &+= 1
+        return latestLoadRequestId
+    }
+
+    private func shouldApplyVisibleState(
+        for selection: TaskSelection,
+        requestId: UInt64?
+    ) -> Bool {
+        if let requestId {
+            return requestId == latestLoadRequestId && self.selection == selection
+        }
+        return self.selection == selection
+    }
+
+    private func fetchWithDedupe(selection: TaskSelection) async throws -> TaskListResponse {
+        if let inFlight = inFlightListRefreshes[selection] {
+            return try await inFlight.value
+        }
+
+        let task = Task<TaskListResponse, Error> {
+            try await fetch(selection: selection)
+        }
+        inFlightListRefreshes[selection] = task
+        defer { inFlightListRefreshes[selection] = nil }
+        return try await task.value
+    }
+
+    private func fetchCountsWithDedupe() async throws -> TaskCountsResponse {
+        if let inFlightCountsRefresh {
+            return try await inFlightCountsRefresh.value
+        }
+
+        let task = Task<TaskCountsResponse, Error> {
+            try await api.counts()
+        }
+        inFlightCountsRefresh = task
+        defer { inFlightCountsRefresh = nil }
+        return try await task.value
     }
 
     @discardableResult
@@ -280,22 +320,6 @@ import Combine
 }
 
 extension TasksStore {
-    func enqueueOperation(_ operation: TaskOperationPayload) async throws {
-        guard let writeQueue else { throw WriteQueueError.missingQueue }
-        try await writeQueue.enqueue(
-            operation: .update,
-            entityType: .task,
-            entityId: operation.id,
-            payload: operation
-        )
-    }
-
-    func enqueueBatch(_ batch: TaskOperationBatch) async throws {
-        for operation in batch.operations {
-            try await enqueueOperation(operation)
-        }
-    }
-
     func applyLocalOperation(_ operation: TaskOperationPayload) {
         guard let kind = localOperation(from: operation.op) else { return }
         applyLocalOperation(operation, kind: kind)
@@ -322,14 +346,6 @@ extension TasksStore {
             return
         }
         offlineStore.set(key: CacheKeys.tasksSync, entityType: "taskSync", value: token, lastSyncAt: nil)
-    }
-
-    func refreshAfterSync() async {
-        guard selection != .none else {
-            return
-        }
-        await load(selection: selection, force: true)
-        await loadCounts(force: true)
     }
 
     private func persistCurrentSnapshot() {
@@ -480,19 +496,4 @@ extension TasksStore {
         guard let taskId = operation.id else { return }
         updateTask(id: taskId, update: update)
     }
-}
-
-private enum LocalTaskOperation {
-    case add
-    case remove
-    case rename
-    case notes
-    case move
-    case setDue
-    case clearDue
-    case setRepeat
-}
-
-extension TaskSelection {
-    var isSearch: Bool { if case .search = self { true } else { false } }
 }
