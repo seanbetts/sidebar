@@ -158,10 +158,6 @@ struct AgentSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Managed by the assistant. User edits are disabled for these fields.")
-                    .foregroundStyle(.secondary)
-            }
-            Section {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.name))
             } header: {
                 sectionHeader(
@@ -238,6 +234,10 @@ struct AgentSettingsView: View {
                     title: "Soul Success Signals",
                     subtitle: "How \(assistantDisplayName) measures good outcomes and alignment."
                 )
+            } footer: {
+                if viewModel.settings?.assistantSoulMeta == nil {
+                    agentSettingsFooter
+                }
             }
             if let soulMeta = viewModel.settings?.assistantSoulMeta {
                 Section {
@@ -251,6 +251,8 @@ struct AgentSettingsView: View {
                         title: "Assistant Soul Meta",
                         subtitle: "History of soul updates \(assistantDisplayName) has made."
                     )
+                } footer: {
+                    agentSettingsFooter
                 }
             }
         }
@@ -283,6 +285,12 @@ struct AgentSettingsView: View {
         Text(value)
             .foregroundStyle(.secondary)
             .textSelection(.enabled)
+    }
+
+    @ViewBuilder
+    private var agentSettingsFooter: some View {
+        Text("Managed by the assistant. User edits are disabled for these fields.")
+            .foregroundStyle(.secondary)
     }
 
     @ViewBuilder
