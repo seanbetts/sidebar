@@ -6,7 +6,6 @@ import LocalAuthentication
 #endif
 
 // MARK: - LoginView
-
 public struct LoginView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -20,7 +19,6 @@ public struct LoginView: View {
     @State private var showSuccess: Bool = false
     @State private var lockoutSecondsRemaining: Int?
     @FocusState private var focusedField: Field?
-
     private let lockoutTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private enum Field {
@@ -94,9 +92,14 @@ public struct LoginView: View {
 
     private var headerView: some View {
         VStack(spacing: 12) {
-            LoadingIndicatorView(size: LoadingIndicatorSize.hero, variant: .hero)
+            LoadingIndicatorView(size: 64, variant: .hero)
             Text("sideBar")
                 .font(DesignTokens.Typography.title2Semibold)
+            Text("AI chat with context from your notes, tasks, files, and saved websites.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, DesignTokens.Spacing.sm)
         }
     }
 
@@ -370,7 +373,7 @@ public struct LoginView: View {
                         Text("Signing in...")
                     }
                 } else {
-                    Text("Sign In")
+                    Text("Sign in")
                 }
             }
             .frame(maxWidth: .infinity)

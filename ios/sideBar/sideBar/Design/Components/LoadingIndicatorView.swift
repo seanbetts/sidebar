@@ -16,38 +16,49 @@ enum LoadingIndicatorVariant {
 }
 
 struct LoadingIndicatorView: View {
-    let size: CGFloat
+    let size: CGFloat?
     let variant: LoadingIndicatorVariant
 
-    init(size: CGFloat = LoadingIndicatorSize.panel, variant: LoadingIndicatorVariant = .standard) {
+    init(size: CGFloat? = LoadingIndicatorSize.panel, variant: LoadingIndicatorVariant = .standard) {
         self.size = size
         self.variant = variant
     }
 
     var body: some View {
-        PlatformLoadingIndicatorView(variant: variant)
-            .frame(width: size, height: size)
-            .clipped()
-            .fixedSize(horizontal: true, vertical: true)
-            .accessibilityHidden(true)
+        Group {
+            if let size {
+                PlatformLoadingIndicatorView(variant: variant)
+                    .frame(width: size, height: size)
+                    .clipped()
+            } else {
+                PlatformLoadingIndicatorView(variant: variant)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
 #if canImport(UIKit)
 import UIKit
 
+private final class FixedLayoutUIImageView: UIImageView {
+    override var intrinsicContentSize: CGSize {
+        .zero
+    }
+}
+
 private struct PlatformLoadingIndicatorView: UIViewRepresentable {
     @Environment(\.colorScheme) private var colorScheme
     let variant: LoadingIndicatorVariant
 
-    func makeUIView(context: Context) -> UIImageView {
-        let imageView = UIImageView()
+    func makeUIView(context: Context) -> FixedLayoutUIImageView {
+        let imageView = FixedLayoutUIImageView()
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         return imageView
     }
 
-    func updateUIView(_ imageView: UIImageView, context: Context) {
+    func updateUIView(_ imageView: FixedLayoutUIImageView, context: Context) {
         imageView.image = LoadingGIFImageCache.image(darkMode: colorScheme == .dark, variant: variant)
     }
 }
@@ -123,12 +134,18 @@ private enum LoadingGIFImageCache {
 #elseif canImport(AppKit)
 import AppKit
 
+private final class FixedLayoutNSImageView: NSImageView {
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
+    }
+}
+
 private struct PlatformLoadingIndicatorView: NSViewRepresentable {
     @Environment(\.colorScheme) private var colorScheme
     let variant: LoadingIndicatorVariant
 
-    func makeNSView(context: Context) -> NSImageView {
-        let imageView = NSImageView()
+    func makeNSView(context: Context) -> FixedLayoutNSImageView {
+        let imageView = FixedLayoutNSImageView()
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.imageAlignment = .alignCenter
         imageView.animates = true
@@ -137,7 +154,7 @@ private struct PlatformLoadingIndicatorView: NSViewRepresentable {
         return imageView
     }
 
-    func updateNSView(_ imageView: NSImageView, context: Context) {
+    func updateNSView(_ imageView: FixedLayoutNSImageView, context: Context) {
         imageView.image = LoadingGIFImageCache.image(darkMode: colorScheme == .dark, variant: variant)
     }
 }
