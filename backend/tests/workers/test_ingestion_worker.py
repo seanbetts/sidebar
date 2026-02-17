@@ -253,3 +253,36 @@ def test_transcribe_youtube_sign_in_required_is_non_retryable(test_db, monkeypat
 
     assert exc_info.value.code == "VIDEO_DOWNLOAD_FORBIDDEN"
     assert exc_info.value.retryable is False
+
+
+def test_classify_unexpected_error_maps_storage_tls_failure():
+    error = RuntimeError(
+        "SSL validation failed for "
+        "https://example.r2.cloudflarestorage.com/sidebar/user/files/file/staging/source "
+        "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed "
+        "certificate in certificate chain"
+    )
+
+    classified = ingestion_worker._classify_unexpected_error(error)
+
+    assert classified.code == "STORAGE_TLS_FAILED"
+    assert classified.retryable is False
+
+
+def test_classify_unexpected_error_maps_storage_timeout_as_retryable():
+    error = RuntimeError(
+        "Read timeout on endpoint URL: "
+        "\"https://example.r2.cloudflarestorage.com/sidebar/user/files/file/derivatives/source.txt\""
+    )
+
+    classified = ingestion_worker._classify_unexpected_error(error)
+
+    assert classified.code == "STORAGE_UNAVAILABLE"
+    assert classified.retryable is True
+
+
+def test_classify_unexpected_error_defaults_to_unknown():
+    classified = ingestion_worker._classify_unexpected_error(RuntimeError("boom"))
+
+    assert classified.code == "UNKNOWN_ERROR"
+    assert classified.retryable is True
