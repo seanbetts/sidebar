@@ -125,4 +125,34 @@ final class WidgetModelConversionTests: XCTestCase {
         XCTAssertEqual(widgetFile.mimeType, "application/pdf")
         XCTAssertEqual(widgetFile.recommendedViewer, "pdf")
     }
+
+    func testWidgetTaskDataDecodingDefaultsProgressFieldsForLegacyPayload() throws {
+        let legacyPayload = """
+        {
+          "tasks": [
+            {
+              "id": "task-1",
+              "title": "Legacy",
+              "isCompleted": false,
+              "completedAt": null,
+              "projectName": null,
+              "groupName": null,
+              "hasNotes": false,
+              "deadline": null
+            }
+          ],
+          "totalCount": 3,
+          "lastUpdated": "2026-02-17T12:00:00Z"
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let decoded = try decoder.decode(WidgetTaskData.self, from: Data(legacyPayload.utf8))
+
+        XCTAssertEqual(decoded.totalCount, 3)
+        XCTAssertEqual(decoded.progressCompletedCount, 0)
+        XCTAssertEqual(decoded.progressTotalCount, 3)
+    }
 }

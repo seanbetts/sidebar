@@ -62,9 +62,10 @@ struct TaskCountWidgetView: View {
     }
 
     private var completionProgress: CGFloat {
-        // For now, show full circle when there are tasks
-        // Could be enhanced to show completed/total ratio
-        entry.data.totalCount > 0 ? 1.0 : 0.0
+        let total = max(entry.data.progressTotalCount, 0)
+        guard total > 0 else { return 0.0 }
+        let completed = min(max(entry.data.progressCompletedCount, 0), total)
+        return CGFloat(completed) / CGFloat(total)
     }
 
     private var notAuthenticatedView: some View {
