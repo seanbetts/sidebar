@@ -68,6 +68,10 @@ SKILL_DISPLAY = {
         "name": "Assistant Identity",
         "description": "Read and update assistant-managed identity settings.",
     },
+    "assistant-soul": {
+        "name": "Assistant Soul",
+        "description": "Read and update assistant-managed soul guidance settings.",
+    },
     "memory": {
         "name": "Memory",
         "description": "Store and manage persistent user memories.",
@@ -85,6 +89,7 @@ EXPOSED_SKILLS = {
     "web-save",
     "web-search",
     "assistant-identity",
+    "assistant-soul",
     "memory",
     "ui-theme",
     "prompt-preview",
@@ -99,6 +104,7 @@ EXPOSED_SKILLS = {
 
 NON_TOGGLEABLE_SKILLS = {
     "assistant-identity",
+    "assistant-soul",
 }
 
 

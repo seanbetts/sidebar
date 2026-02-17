@@ -283,6 +283,9 @@ public final class SettingsViewModel: LoadableViewModel {
                 location: current.location,
                 profileImageUrl: current.profileImageUrl,
                 assistantIdentity: current.assistantIdentity,
+                assistantIdentityMeta: current.assistantIdentityMeta,
+                assistantSoul: current.assistantSoul,
+                assistantSoulMeta: current.assistantSoulMeta,
                 enabledSkills: normalized
             )
         }

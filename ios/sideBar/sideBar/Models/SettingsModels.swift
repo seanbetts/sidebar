@@ -13,6 +13,28 @@ public struct AssistantIdentitySettings: Codable, Equatable {
     public let boundaries: String?
 }
 
+/// Represents assistant soul guidance settings.
+public struct AssistantSoulSettings: Codable, Equatable {
+    /// The assistant's long-term purpose for this user.
+    public let purpose: String?
+    /// The assistant's operating principles.
+    public let operatingPrinciples: String?
+    /// The assistant's adaptation policy.
+    public let adaptationPolicy: String?
+    /// Signals that indicate assistant performance is improving.
+    public let successSignals: String?
+}
+
+/// Metadata for assistant-managed settings fields.
+public struct AgentFieldMeta: Codable, Equatable {
+    /// Last update time in ISO-8601 format.
+    public let updatedAt: String
+    /// Monotonic version number for the field.
+    public let version: Int
+    /// Optional reason attached to the update.
+    public let reason: String?
+}
+
 /// Represents an user settings struct.
 public struct UserSettings: Codable {
     /// The user id value.
@@ -39,6 +61,12 @@ public struct UserSettings: Codable {
     public let profileImageUrl: String?
     /// The assistant identity value.
     public let assistantIdentity: AssistantIdentitySettings?
+    /// Metadata about assistant identity updates.
+    public let assistantIdentityMeta: AgentFieldMeta?
+    /// The assistant soul value.
+    public let assistantSoul: AssistantSoulSettings?
+    /// Metadata about assistant soul updates.
+    public let assistantSoulMeta: AgentFieldMeta?
     /// The enabled skills value.
     public let enabledSkills: [String]
 
@@ -55,6 +83,9 @@ public struct UserSettings: Codable {
         location: String?,
         profileImageUrl: String?,
         assistantIdentity: AssistantIdentitySettings? = nil,
+        assistantIdentityMeta: AgentFieldMeta? = nil,
+        assistantSoul: AssistantSoulSettings? = nil,
+        assistantSoulMeta: AgentFieldMeta? = nil,
         enabledSkills: [String]
     ) {
         self.userId = userId
@@ -69,6 +100,9 @@ public struct UserSettings: Codable {
         self.location = location
         self.profileImageUrl = profileImageUrl
         self.assistantIdentity = assistantIdentity
+        self.assistantIdentityMeta = assistantIdentityMeta
+        self.assistantSoul = assistantSoul
+        self.assistantSoulMeta = assistantSoulMeta
         self.enabledSkills = enabledSkills
     }
 }

@@ -53,6 +53,7 @@ def get_misc_definitions() -> dict:
                     "tone": {"type": "string"},
                     "values": {"type": "string"},
                     "boundaries": {"type": "string"},
+                    "reason": {"type": "string"},
                 },
                 "anyOf": [
                     {"required": ["name"]},
@@ -69,11 +70,56 @@ def get_misc_definitions() -> dict:
             "description": "Reset assistant identity values back to defaults.",
             "input_schema": {
                 "type": "object",
-                "properties": {},
+                "properties": {"reason": {"type": "string"}},
             },
             "skill": "assistant-identity",
             "script": "reset_assistant_identity.py",
             "build_args": pm.build_assistant_identity_reset_args,
+        },
+        "Get Assistant Soul": {
+            "description": "Fetch the current assistant soul values.",
+            "input_schema": {
+                "type": "object",
+                "properties": {},
+            },
+            "skill": "assistant-soul",
+            "script": "get_assistant_soul.py",
+            "build_args": pm.build_assistant_soul_get_args,
+        },
+        "Update Assistant Soul": {
+            "description": (
+                "Update assistant soul fields such as purpose, operating principles, "
+                "adaptation policy, or success signals."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "purpose": {"type": "string"},
+                    "operating_principles": {"type": "string"},
+                    "adaptation_policy": {"type": "string"},
+                    "success_signals": {"type": "string"},
+                    "reason": {"type": "string"},
+                },
+                "anyOf": [
+                    {"required": ["purpose"]},
+                    {"required": ["operating_principles"]},
+                    {"required": ["adaptation_policy"]},
+                    {"required": ["success_signals"]},
+                ],
+            },
+            "skill": "assistant-soul",
+            "script": "update_assistant_soul.py",
+            "build_args": pm.build_assistant_soul_update_args,
+        },
+        "Reset Assistant Soul": {
+            "description": "Reset assistant soul values back to defaults.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"reason": {"type": "string"}},
+            },
+            "skill": "assistant-soul",
+            "script": "reset_assistant_soul.py",
+            "build_args": pm.build_assistant_soul_reset_args,
         },
         "Memory Tool": {
             "description": (

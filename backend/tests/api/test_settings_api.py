@@ -48,6 +48,7 @@ def test_update_settings_forces_required_skills(test_client):
     )
     assert response.status_code == 200
     assert "assistant-identity" in response.json()["enabled_skills"]
+    assert "assistant-soul" in response.json()["enabled_skills"]
 
 
 def test_update_settings_rejects_agent_owned_fields(test_client):

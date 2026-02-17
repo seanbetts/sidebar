@@ -28,6 +28,7 @@ def update_assistant_identity(
     tone: str | None,
     values: str | None,
     boundaries: str | None,
+    reason: str | None,
 ) -> dict:
     """Update one or more assistant identity fields."""
     if SessionLocal is None or SettingsService is None:
@@ -64,9 +65,11 @@ def update_assistant_identity(
             db,
             user_id,
             {"assistant_identity": merged_identity},
+            reason=reason,
         )
         return {
             "assistant_identity": updated_payload.get("assistant_identity", {}),
+            "assistant_identity_meta": updated_payload.get("assistant_identity_meta"),
             "updated_fields": changed_fields,
         }
     finally:
@@ -81,6 +84,7 @@ def main() -> None:
     parser.add_argument("--tone", help="Assistant tone")
     parser.add_argument("--values", help="Assistant values")
     parser.add_argument("--boundaries", help="Assistant boundaries")
+    parser.add_argument("--reason", help="Reason for updating assistant identity")
     parser.add_argument("--json", action="store_true", help="JSON output")
     args = parser.parse_args()
 
@@ -91,6 +95,7 @@ def main() -> None:
             tone=args.tone,
             values=args.values,
             boundaries=args.boundaries,
+            reason=args.reason,
         )
         sys.stdout.write(json.dumps({"success": True, "data": result}, indent=2))
         sys.stdout.write("\n")

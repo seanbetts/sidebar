@@ -19,7 +19,7 @@ except Exception:
     SettingsService = None
 
 
-def reset_assistant_identity(user_id: str) -> dict:
+def reset_assistant_identity(user_id: str, *, reason: str | None) -> dict:
     """Reset assistant identity payload for a user."""
     if SessionLocal is None or SettingsService is None:
         raise RuntimeError("Database dependencies are unavailable")
@@ -31,9 +31,11 @@ def reset_assistant_identity(user_id: str) -> dict:
             db,
             user_id,
             {"assistant_identity": None},
+            reason=reason,
         )
         return {
             "assistant_identity": updated_payload.get("assistant_identity", {}),
+            "assistant_identity_meta": updated_payload.get("assistant_identity_meta"),
             "reset": True,
         }
     finally:
@@ -44,11 +46,12 @@ def main() -> None:
     """Run CLI entrypoint."""
     parser = argparse.ArgumentParser(description="Reset assistant identity")
     parser.add_argument("--user-id", required=True, help="User ID")
+    parser.add_argument("--reason", help="Reason for resetting assistant identity")
     parser.add_argument("--json", action="store_true", help="JSON output")
     args = parser.parse_args()
 
     try:
-        result = reset_assistant_identity(args.user_id)
+        result = reset_assistant_identity(args.user_id, reason=args.reason)
         sys.stdout.write(json.dumps({"success": True, "data": result}, indent=2))
         sys.stdout.write("\n")
         sys.exit(0)

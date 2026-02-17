@@ -79,3 +79,6 @@ def test_misc_definitions_include_assistant_identity_tools():
     assert "Get Assistant Identity" in definitions
     assert "Update Assistant Identity" in definitions
     assert "Reset Assistant Identity" in definitions
+    assert "Get Assistant Soul" in definitions
+    assert "Update Assistant Soul" in definitions
+    assert "Reset Assistant Soul" in definitions

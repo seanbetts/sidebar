@@ -150,6 +150,7 @@ def test_build_assistant_identity_update_args_supports_partial_and_empty():
             "user_id": "user-1",
             "name": "Navigator",
             "tone": "",
+            "reason": "User requested more direct responses.",
         }
     )
     assert args == [
@@ -159,9 +160,41 @@ def test_build_assistant_identity_update_args_supports_partial_and_empty():
         "Navigator",
         "--tone",
         "",
+        "--reason",
+        "User requested more direct responses.",
     ]
 
 
 def test_build_assistant_identity_reset_args():
-    args = parameter_mapper.build_assistant_identity_reset_args({"user_id": "user-1"})
+    args = parameter_mapper.build_assistant_identity_reset_args(
+        {"user_id": "user-1", "reason": "Resetting to baseline."}
+    )
+    assert args == ["--user-id", "user-1", "--reason", "Resetting to baseline."]
+
+
+def test_build_assistant_soul_get_args():
+    args = parameter_mapper.build_assistant_soul_get_args({"user_id": "user-1"})
+    assert args == ["--user-id", "user-1"]
+
+
+def test_build_assistant_soul_update_args_supports_partial_and_reason():
+    args = parameter_mapper.build_assistant_soul_update_args(
+        {
+            "user_id": "user-1",
+            "purpose": "Help me ship faster with fewer mistakes.",
+            "reason": "Observed repeated planning requests.",
+        }
+    )
+    assert args == [
+        "--user-id",
+        "user-1",
+        "--purpose",
+        "Help me ship faster with fewer mistakes.",
+        "--reason",
+        "Observed repeated planning requests.",
+    ]
+
+
+def test_build_assistant_soul_reset_args():
+    args = parameter_mapper.build_assistant_soul_reset_args({"user_id": "user-1"})
     assert args == ["--user-id", "user-1"]

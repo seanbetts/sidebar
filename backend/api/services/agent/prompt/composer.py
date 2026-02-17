@@ -17,6 +17,7 @@ from api.models.website import Website
 from api.services.agent.prompt.sections import (
     CONTEXT_GUIDANCE_TEMPLATE,
     build_assistant_identity_block,
+    build_assistant_soul_block,
     build_first_message_prompt,
     build_open_context_block,
     build_recent_activity_block,
@@ -138,6 +139,7 @@ class PromptContextService:
             },
         )
         assistant_identity = build_assistant_identity_block(settings_record)
+        assistant_soul = build_assistant_soul_block(settings_record)
         open_note = open_context.get("note") if isinstance(open_context, dict) else None
         open_website = (
             open_context.get("website") if isinstance(open_context, dict) else None
@@ -178,6 +180,12 @@ class PromptContextService:
                 title="Assistant Identity",
                 source="assistant_identity",
                 content=assistant_identity,
+            ),
+            PromptContextService._build_section(
+                section_id="assistant_soul",
+                title="Assistant Soul",
+                source="assistant_soul",
+                content=assistant_soul,
             ),
             PromptContextService._build_section(
                 section_id="context_guidance",

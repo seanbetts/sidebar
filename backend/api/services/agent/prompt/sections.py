@@ -46,6 +46,7 @@ __all__ = [
     "build_recent_activity_block",
     "build_open_context_block",
     "build_assistant_identity_block",
+    "build_assistant_soul_block",
     "build_system_prompt",
     "build_first_message_prompt",
 ]
@@ -59,6 +60,24 @@ DEFAULT_ASSISTANT_IDENTITY = {
     "boundaries": (
         "Never fabricate facts or citations, never reveal secrets, and "
         "defer to user intent when requests are ambiguous."
+    ),
+}
+
+DEFAULT_ASSISTANT_SOUL = {
+    "purpose": (
+        "Help the user think clearly, execute reliably, and make durable progress "
+        "on meaningful work."
+    ),
+    "operating_principles": (
+        "Be direct, grounded in evidence, and explicit about uncertainty."
+    ),
+    "adaptation_policy": (
+        "Update behavior based on durable user preferences and repeated feedback, "
+        "not one-off phrasing."
+    ),
+    "success_signals": (
+        "Fewer misunderstandings, faster iteration, and outputs the user "
+        "can use immediately."
     ),
 }
 
@@ -433,6 +452,55 @@ def build_assistant_identity_block(settings_record: Any) -> str:
         f"Values: {resolved['values']}\n"
         f"Boundaries: {resolved['boundaries']}\n"
         "</assistant_identity>"
+    )
+
+
+def build_assistant_soul_block(settings_record: Any) -> str:
+    """Build the assistant soul block for the system prompt."""
+    soul_raw = (
+        getattr(settings_record, "assistant_soul", None) if settings_record else None
+    )
+    soul = soul_raw if isinstance(soul_raw, dict) else {}
+    soul_fields = (
+        "purpose",
+        "operating_principles",
+        "adaptation_policy",
+        "success_signals",
+    )
+    is_uninitialized = True
+    for field_name in soul_fields:
+        field_value = soul.get(field_name)
+        if isinstance(field_value, str) and field_value.strip():
+            is_uninitialized = False
+            break
+
+    resolved: dict[str, str] = {}
+    for field_name in soul_fields:
+        field_value = soul.get(field_name)
+        if isinstance(field_value, str):
+            trimmed = field_value.strip()
+            if trimmed:
+                resolved[field_name] = trimmed
+                continue
+        resolved[field_name] = DEFAULT_ASSISTANT_SOUL[field_name]
+
+    bootstrap_guidance = ""
+    if is_uninitialized:
+        bootstrap_guidance = (
+            "\nBootstrap guidance: assistant_soul is not initialized yet. "
+            "Ask up to three short calibration questions, then update "
+            "assistant_soul and assistant_identity "
+            "with the durable results."
+        )
+
+    return (
+        "<assistant_soul>\n"
+        f"Purpose: {resolved['purpose']}\n"
+        f"Operating principles: {resolved['operating_principles']}\n"
+        f"Adaptation policy: {resolved['adaptation_policy']}\n"
+        f"Success signals: {resolved['success_signals']}"
+        f"{bootstrap_guidance}\n"
+        "</assistant_soul>"
     )
 
 

@@ -3,6 +3,7 @@ from datetime import UTC, date, datetime
 from api.services.agent.prompt.sections import (
     CONTEXT_GUIDANCE_TEMPLATE,
     build_assistant_identity_block,
+    build_assistant_soul_block,
     build_first_message_prompt,
     build_open_context_block,
     build_recent_activity_block,
@@ -102,6 +103,30 @@ def test_build_assistant_identity_block_uses_overrides() -> None:
     assert "Tone: Calm and technical." in block
     assert "Values: Accuracy and speed." in block
     assert "Boundaries: Never hallucinate." in block
+
+
+def test_build_assistant_soul_block_defaults() -> None:
+    settings = DummySettings()
+    block = build_assistant_soul_block(settings)
+    assert "<assistant_soul>" in block
+    assert "Purpose:" in block
+    assert "Bootstrap guidance:" in block
+
+
+def test_build_assistant_soul_block_uses_overrides() -> None:
+    settings = DummySettings()
+    settings.assistant_soul = {
+        "purpose": "Help me execute deliberately.",
+        "operating_principles": "Be concise and explicit.",
+        "adaptation_policy": "Adapt on repeated feedback.",
+        "success_signals": "Less rework.",
+    }
+    block = build_assistant_soul_block(settings)
+    assert "Purpose: Help me execute deliberately." in block
+    assert "Operating principles: Be concise and explicit." in block
+    assert "Adaptation policy: Adapt on repeated feedback." in block
+    assert "Success signals: Less rework." in block
+    assert "Bootstrap guidance:" not in block
 
 
 def test_build_recent_activity_block() -> None:

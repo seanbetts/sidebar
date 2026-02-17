@@ -30,6 +30,7 @@ def get_assistant_identity(user_id: str) -> dict:
         settings_payload = SettingsService.get_settings(db, user_id)
         return {
             "assistant_identity": settings_payload.get("assistant_identity", {}),
+            "assistant_identity_meta": settings_payload.get("assistant_identity_meta"),
         }
     finally:
         db.close()

@@ -29,6 +29,12 @@
 	let assistantIdentityTone = '';
 	let assistantIdentityValues = '';
 	let assistantIdentityBoundaries = '';
+	let assistantIdentityMeta: { updated_at?: string; version?: number; reason?: string | null } = {};
+	let assistantSoulPurpose = '';
+	let assistantSoulOperatingPrinciples = '';
+	let assistantSoulAdaptationPolicy = '';
+	let assistantSoulSuccessSignals = '';
+	let assistantSoulMeta: { updated_at?: string; version?: number; reason?: string | null } = {};
 	let name = '';
 	let jobTitle = '';
 	let employer = '';
@@ -147,6 +153,13 @@
 			assistantIdentityTone = assistantIdentity?.tone ?? '';
 			assistantIdentityValues = assistantIdentity?.values ?? '';
 			assistantIdentityBoundaries = assistantIdentity?.boundaries ?? '';
+			assistantIdentityMeta = data?.assistant_identity_meta ?? {};
+			const assistantSoul = data?.assistant_soul ?? {};
+			assistantSoulPurpose = assistantSoul?.purpose ?? '';
+			assistantSoulOperatingPrinciples = assistantSoul?.operating_principles ?? '';
+			assistantSoulAdaptationPolicy = assistantSoul?.adaptation_policy ?? '';
+			assistantSoulSuccessSignals = assistantSoul?.success_signals ?? '';
+			assistantSoulMeta = data?.assistant_soul_meta ?? {};
 			name = data?.name ?? '';
 			jobTitle = data?.job_title ?? '';
 			employer = data?.employer ?? '';
@@ -203,6 +216,13 @@
 			assistantIdentityTone = assistantIdentity?.tone ?? '';
 			assistantIdentityValues = assistantIdentity?.values ?? '';
 			assistantIdentityBoundaries = assistantIdentity?.boundaries ?? '';
+			assistantIdentityMeta = data?.assistant_identity_meta ?? {};
+			const assistantSoul = data?.assistant_soul ?? {};
+			assistantSoulPurpose = assistantSoul?.purpose ?? '';
+			assistantSoulOperatingPrinciples = assistantSoul?.operating_principles ?? '';
+			assistantSoulAdaptationPolicy = assistantSoul?.adaptation_policy ?? '';
+			assistantSoulSuccessSignals = assistantSoul?.success_signals ?? '';
+			assistantSoulMeta = data?.assistant_soul_meta ?? {};
 			name = data?.name ?? '';
 			jobTitle = data?.job_title ?? '';
 			employer = data?.employer ?? '';
@@ -475,6 +495,12 @@
 	bind:assistantIdentityTone
 	bind:assistantIdentityValues
 	bind:assistantIdentityBoundaries
+	{assistantIdentityMeta}
+	bind:assistantSoulPurpose
+	bind:assistantSoulOperatingPrinciples
+	bind:assistantSoulAdaptationPolicy
+	bind:assistantSoulSuccessSignals
+	{assistantSoulMeta}
 	bind:weatherUnit
 	{setWeatherUnit}
 	{isLoadingSkills}

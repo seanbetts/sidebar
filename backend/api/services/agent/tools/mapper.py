@@ -18,6 +18,7 @@ from api.services.agent.tools.registry import get_tool_definitions
 
 SKILLS_REQUIRING_USER_ID = {
     "assistant-identity",
+    "assistant-soul",
     "fs",
     "notes",
     "tasks",
