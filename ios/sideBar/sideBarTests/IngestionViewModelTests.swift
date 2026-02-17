@@ -266,6 +266,106 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(toastCenter.toast?.message, "Failed to clear failed upload")
     }
 
+    func testCancelIngestionCancelsLocalUploadImmediately() async {
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let uploadManager = MockIngestionUploadManager()
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: uploadManager,
+            toastCenter: ToastCenter()
+        )
+        let item = makeListItem(id: "local-1", status: "uploading", stage: "uploading")
+        store.addLocalUpload(item, bookmarkData: nil)
+
+        viewModel.cancelIngestion(fileId: "local-1")
+
+        XCTAssertEqual(uploadManager.canceledUploadIds, ["local-1"])
+        XCTAssertFalse(viewModel.items.contains(where: { $0.file.id == "local-1" }))
+    }
+
+    func testCancelIngestionCallsAPIAndMarksCanceledForRemoteProcessingItem() async {
+        let processingItem = makeListItem(id: "file-1", status: "processing", stage: "extracting")
+        final class CancelCallTracker {
+            var fileIds: [String] = []
+        }
+        let tracker = CancelCallTracker()
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [processingItem])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced),
+            onCancel: { tracker.fileIds.append($0) }
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+        await viewModel.load()
+
+        viewModel.cancelIngestion(fileId: "file-1")
+
+        for _ in 0..<10 {
+            if viewModel.items.first(where: { $0.file.id == "file-1" })?.job.status == "canceled" {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        XCTAssertEqual(tracker.fileIds, ["file-1"])
+        XCTAssertEqual(viewModel.items.first(where: { $0.file.id == "file-1" })?.job.status, "canceled")
+    }
+
+    func testCancelIngestionShowsToastWhenRemoteCancelFails() async {
+        let processingItem = makeListItem(id: "file-1", status: "processing", stage: "extracting")
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [processingItem])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            cancelResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let toastCenter = ToastCenter()
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: toastCenter
+        )
+        await viewModel.load()
+
+        viewModel.cancelIngestion(fileId: "file-1")
+
+        for _ in 0..<10 {
+            if toastCenter.toast?.message == "Failed to cancel ingestion" {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        XCTAssertEqual(toastCenter.toast?.message, "Failed to cancel ingestion")
+        XCTAssertEqual(viewModel.items.first(where: { $0.file.id == "file-1" })?.job.status, "processing")
+    }
+
     func testCanRetryFailedUploadTrueForLocalFailedWithBookmark() async throws {
         let api = MockIngestionAPI(
             listResult: .success(IngestionListResponse(items: [])),
@@ -628,8 +728,28 @@ private struct MockIngestionAPI: IngestionProviding {
     let listResult: Result<IngestionListResponse, Error>
     let metaResult: Result<IngestionMetaResponse, Error>
     let contentResult: Result<Data, Error>
+    let cancelResult: Result<Void, Error>
     let pinResult: Result<Void, Error>
     let youtubeResult: Result<String, Error>
+    let onCancel: ((String) -> Void)?
+
+    init(
+        listResult: Result<IngestionListResponse, Error>,
+        metaResult: Result<IngestionMetaResponse, Error>,
+        contentResult: Result<Data, Error>,
+        cancelResult: Result<Void, Error> = .success(()),
+        pinResult: Result<Void, Error>,
+        youtubeResult: Result<String, Error>,
+        onCancel: ((String) -> Void)? = nil
+    ) {
+        self.listResult = listResult
+        self.metaResult = metaResult
+        self.contentResult = contentResult
+        self.cancelResult = cancelResult
+        self.pinResult = pinResult
+        self.youtubeResult = youtubeResult
+        self.onCancel = onCancel
+    }
 
     func list() async throws -> IngestionListResponse {
         try listResult.get()
@@ -645,6 +765,11 @@ private struct MockIngestionAPI: IngestionProviding {
         _ = kind
         _ = range
         return try contentResult.get()
+    }
+
+    func cancel(fileId: String) async throws {
+        onCancel?(fileId)
+        return try cancelResult.get()
     }
 
     func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {

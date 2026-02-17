@@ -40,8 +40,7 @@ struct IngestionCenterView: View {
                                 subtitle: "Moving files to workspace",
                                 iconName: "arrow.up.circle.fill",
                                 tint: DesignTokens.Colors.actionPrimary,
-                                items: uploadingItems,
-                                section: .uploading
+                                items: uploadingItems
                             )
                         }
 
@@ -51,8 +50,7 @@ struct IngestionCenterView: View {
                                 subtitle: "Preparing file content",
                                 iconName: "gearshape.2.fill",
                                 tint: DesignTokens.Colors.textSecondary,
-                                items: processingItems,
-                                section: .processing
+                                items: processingItems
                             )
                         }
 
@@ -62,8 +60,7 @@ struct IngestionCenterView: View {
                                 subtitle: "Uploads that need a retry or dismissal",
                                 iconName: "exclamationmark.triangle.fill",
                                 tint: DesignTokens.Colors.warning,
-                                items: failedItems,
-                                section: .failed
+                                items: failedItems
                             )
                         }
                     }
@@ -112,8 +109,7 @@ struct IngestionCenterView: View {
         subtitle: String,
         iconName: String,
         tint: Color,
-        items: [IngestionListItem],
-        section: IngestionCenterSection
+        items: [IngestionListItem]
     ) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             HStack(spacing: DesignTokens.Spacing.xs) {
@@ -135,9 +131,9 @@ struct IngestionCenterView: View {
             ForEach(items, id: \.file.id) { item in
                 IngestionCenterRow(
                     item: item,
-                    section: section,
+                    canCancel: viewModel.canCancelIngestion(fileId: item.file.id),
                     canRetry: viewModel.canRetryFailedUpload(fileId: item.file.id),
-                    onCancel: { viewModel.cancelUpload(fileId: $0) },
+                    onCancel: { viewModel.cancelIngestion(fileId: $0) },
                     onRetry: { viewModel.retryFailedUpload(fileId: $0) },
                     onDismiss: { viewModel.clearFailedUpload(fileId: $0) }
                 )
@@ -213,15 +209,9 @@ struct IngestionCenterView: View {
     }
 }
 
-private enum IngestionCenterSection {
-    case uploading
-    case processing
-    case failed
-}
-
 private struct IngestionCenterRow: View {
     let item: IngestionListItem
-    let section: IngestionCenterSection
+    let canCancel: Bool
     let canRetry: Bool
     let onCancel: (String) -> Void
     let onRetry: (String) -> Void
@@ -310,13 +300,6 @@ private struct IngestionCenterRow: View {
 
     private var isFailed: Bool {
         [IngestionListItem].normalizedStatus(item.statusValue) == "failed"
-    }
-
-    private var canCancel: Bool {
-        guard section != .failed else { return false }
-        guard item.file.id.hasPrefix("local-") || item.file.id.hasPrefix("youtube-") else { return false }
-        let status = [IngestionListItem].normalizedStatus(item.job.status ?? "")
-        return status == "uploading" || status == "queued" || status == "processing"
     }
 
     private var hasActions: Bool {

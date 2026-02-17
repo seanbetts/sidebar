@@ -365,6 +365,11 @@ private struct MockIngestionAPI: IngestionProviding {
         throw MockError.forced
     }
 
+    func cancel(fileId: String) async throws {
+        _ = fileId
+        throw MockError.forced
+    }
+
     func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
         _ = fileId
         _ = pinned

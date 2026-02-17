@@ -337,6 +337,58 @@ extension IngestionViewModel {
         releaseSecurityScopedAccess(for: fileId)
     }
 
+    public func canCancelIngestion(fileId: String) -> Bool {
+        guard let item = items.first(where: { $0.file.id == fileId }) else { return false }
+        let status = [IngestionListItem].normalizedStatus(item.statusValue)
+        guard !status.isEmpty else { return false }
+        guard ![IngestionListItem].terminalStatuses.contains(status) else { return false }
+        if fileId.hasPrefix("youtube-") {
+            // A temporary YouTube placeholder does not have a server-side job ID yet.
+            return false
+        }
+        return true
+    }
+
+    public func cancelIngestion(fileId: String) {
+        guard let item = items.first(where: { $0.file.id == fileId }) else { return }
+        guard canCancelIngestion(fileId: fileId) else { return }
+
+        if fileId.hasPrefix("local-") {
+            cancelUpload(fileId: fileId)
+            return
+        }
+
+        if isOfflineForIngestion() {
+            toastCenter.show(message: "Can't cancel while offline")
+            return
+        }
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.api.cancel(fileId: fileId)
+                let canceledJob = IngestionJob(
+                    status: "canceled",
+                    stage: "canceled",
+                    errorCode: nil,
+                    errorMessage: nil,
+                    userMessage: nil,
+                    progress: nil,
+                    attempts: item.job.attempts,
+                    updatedAt: item.job.updatedAt
+                )
+                self.store.updateJob(
+                    fileId: fileId,
+                    job: canceledJob,
+                    recommendedViewer: item.recommendedViewer
+                )
+                self.cancelJobPolling(fileId: fileId)
+            } catch {
+                self.toastCenter.show(message: "Failed to cancel ingestion")
+            }
+        }
+    }
+
     public var selectedItem: IngestionListItem? {
         guard let selectedFileId else { return nil }
         return items.first { $0.file.id == selectedFileId }
