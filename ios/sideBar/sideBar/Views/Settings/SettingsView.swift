@@ -51,11 +51,11 @@ public struct SettingsView: View {
 #if os(macOS)
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case profile
-    case settings
     case user
     case agent
     case skills
     case memories
+    case settings
 
     var id: String { rawValue }
 
@@ -64,7 +64,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .profile:
             return "Profile"
         case .settings:
-            return "Settings"
+            return "Other"
         case .user:
             return "User"
         case .agent:
@@ -190,10 +190,6 @@ private struct SettingsTabsView: View {
                 .tabItem {
                     Label("Profile", systemImage: "person.crop.circle")
                 }
-            GeneralSettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape")
-                }
             UserSettingsView(viewModel: viewModel)
                 .tabItem {
                     Label("User", systemImage: "bubble")
@@ -209,6 +205,10 @@ private struct SettingsTabsView: View {
             MemoriesSettingsView(viewModel: memoriesViewModel)
                 .tabItem {
                     Label("Memories", systemImage: "bookmark")
+                }
+            GeneralSettingsView()
+                .tabItem {
+                    Label("Other", systemImage: "gearshape")
                 }
         }
         .padding(DesignTokens.Spacing.md)
