@@ -157,6 +157,9 @@ public struct WebsitesView: View {
                 SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
                     copyWebsiteURL()
                 },
+                .share {
+                    shareWebsiteURL()
+                },
                 .download {
                     exportWebsite()
                 },
@@ -287,6 +290,11 @@ public struct WebsitesView: View {
             }
             #endif
         }
+    }
+
+    private func shareWebsiteURL() {
+        guard let url = websiteSourceURL else { return }
+        SystemSharePresenter.share(url: url)
     }
 
     private func exportWebsite() {

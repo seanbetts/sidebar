@@ -320,6 +320,11 @@ extension WebsitesDetailView {
         openURL(url)
     }
 
+    func shareWebsiteURL() {
+        guard let url = sourceURL else { return }
+        SystemSharePresenter.share(url: url)
+    }
+
     func archiveActiveWebsite() {
         guard let websiteId = viewModel.active?.id else { return }
         Task {

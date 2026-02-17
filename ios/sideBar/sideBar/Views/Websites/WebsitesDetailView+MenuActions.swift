@@ -34,6 +34,11 @@ extension WebsitesDetailView {
                 Label("Copy URL", systemImage: "link")
             }
             Button {
+                shareWebsiteURL()
+            } label: {
+                Label("Share URL", systemImage: "square.and.arrow.up")
+            }
+            Button {
                 exportWebsite()
             } label: {
                 Label("Download", systemImage: "square.and.arrow.down")
@@ -97,6 +102,9 @@ extension WebsitesDetailView {
             },
             SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
                 copyWebsiteURL()
+            },
+            .share {
+                shareWebsiteURL()
             },
             .download {
                 exportWebsite()
