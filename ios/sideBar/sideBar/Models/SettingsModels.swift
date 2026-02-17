@@ -228,7 +228,8 @@ public struct SkillItem: Codable, Identifiable {
         case name
         case description
         case category
-        case userToggleable = "user_toggleable"
+        case userToggleable
+        case legacyUserToggleable = "user_toggleable"
     }
 
     public init(from decoder: Decoder) throws {
@@ -237,7 +238,13 @@ public struct SkillItem: Codable, Identifiable {
         name = try container.decode(String.self, forKey: .name)
         description = try container.decode(String.self, forKey: .description)
         category = try container.decode(String.self, forKey: .category)
-        userToggleable = try container.decodeIfPresent(Bool.self, forKey: .userToggleable) ?? true
+        if let toggleable = try container.decodeIfPresent(Bool.self, forKey: .userToggleable) {
+            userToggleable = toggleable
+        } else if let legacyToggleable = try container.decodeIfPresent(Bool.self, forKey: .legacyUserToggleable) {
+            userToggleable = legacyToggleable
+        } else {
+            userToggleable = true
+        }
     }
 
     public func encode(to encoder: Encoder) throws {
