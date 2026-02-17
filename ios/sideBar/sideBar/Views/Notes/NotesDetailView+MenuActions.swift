@@ -17,6 +17,7 @@ struct NoteActionsMenuButton: UIViewRepresentable {
     let onRename: () -> Void
     let onMove: () -> Void
     let onCopy: () -> Void
+    let onShare: () -> Void
     let onDownload: () -> Void
     let onArchive: () -> Void
     let onDelete: () -> Void
@@ -51,6 +52,9 @@ struct NoteActionsMenuButton: UIViewRepresentable {
         let copyAction = UIAction(title: "Copy", image: UIImage(systemName: "doc.on.doc")) { _ in
             onCopy()
         }
+        let shareAction = UIAction(title: "Share Text", image: UIImage(systemName: "square.and.arrow.up.on.square")) { _ in
+            onShare()
+        }
         let downloadAction = UIAction(title: "Download", image: UIImage(systemName: "square.and.arrow.down")) { _ in
             onDownload()
         }
@@ -65,6 +69,7 @@ struct NoteActionsMenuButton: UIViewRepresentable {
             renameAction,
             moveAction,
             copyAction,
+            shareAction,
             downloadAction,
             archiveAction,
             deleteAction
@@ -131,6 +136,9 @@ extension NotesDetailView {
                 onCopy: {
                     copyMarkdown()
                 },
+                onShare: {
+                    shareMarkdown()
+                },
                 onDownload: {
                     exportMarkdown()
                 },
@@ -165,6 +173,9 @@ extension NotesDetailView {
             },
             .copy {
                 copyMarkdown()
+            },
+            .shareText {
+                shareMarkdown()
             },
             .download {
                 exportMarkdown()
@@ -204,6 +215,11 @@ extension NotesDetailView {
             copyMarkdown()
         } label: {
             Label("Copy", systemImage: "doc.on.doc")
+        }
+        Button {
+            shareMarkdown()
+        } label: {
+            Label("Share Text", systemImage: "square.and.arrow.up.on.square")
         }
         Button {
             exportMarkdown()

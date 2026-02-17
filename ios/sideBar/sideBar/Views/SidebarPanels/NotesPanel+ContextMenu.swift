@@ -31,6 +31,9 @@ extension NotesPanelView {
                 .copy {
                     Task { await copyNoteContent(for: item) }
                 },
+                .shareText {
+                    Task { await shareNoteContent(for: item) }
+                },
                 .download {
                     Task { await exportNoteContent(for: item) }
                 },
@@ -119,6 +122,15 @@ extension NotesPanelView {
         exportFilename = filename
         exportDocument = MarkdownFileDocument(text: content)
         isExporting = true
+    }
+
+    @MainActor
+    private func shareNoteContent(for item: FileNodeItem) async {
+        guard let content = await loadNoteContent(for: item), !content.isEmpty else {
+            environment.toastCenter.show(message: "Share unavailable")
+            return
+        }
+        SystemSharePresenter.share(text: content)
     }
 
     @MainActor

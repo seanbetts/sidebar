@@ -87,6 +87,12 @@ extension NotesDetailView {
         isExporting = true
     }
 
+    func shareMarkdown() {
+        let text = editorViewModel.content.isEmpty ? viewModel.activeNote?.content ?? "" : editorViewModel.content
+        guard !text.isEmpty else { return }
+        SystemSharePresenter.share(text: text)
+    }
+
     func requestCloseNote() {
         if editorViewModel.isDirty {
             isCloseConfirmPresented = true

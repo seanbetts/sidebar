@@ -187,6 +187,9 @@ public struct NotesView: View {
                 .copy {
                     copyMarkdown()
                 },
+                .shareText {
+                    shareMarkdown()
+                },
                 .download {
                     exportMarkdown()
                 },
@@ -276,6 +279,14 @@ public struct NotesView: View {
         exportFilename = filename
         exportDocument = MarkdownFileDocument(text: text)
         isExporting = true
+    }
+
+    private func shareMarkdown() {
+        let text = environment.notesEditorViewModel.content.isEmpty
+            ? environment.notesViewModel.activeNote?.content ?? ""
+            : environment.notesEditorViewModel.content
+        guard !text.isEmpty else { return }
+        SystemSharePresenter.share(text: text)
     }
 
     private func archiveActiveNote() {
