@@ -14,6 +14,10 @@ import UIKit
 public struct SettingsView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.colorScheme) private var colorScheme
+    @State private var savePillState: SettingsSavePillState?
+    @State private var wasSaving = false
+    @State private var savingDelayTask: Task<Void, Never>?
+    @State private var hideSavedTask: Task<Void, Never>?
 
     public init() {
     }
@@ -37,6 +41,26 @@ public struct SettingsView: View {
             )
             #endif
         }
+        .overlay(alignment: .bottom) {
+            if let savePillState {
+                SettingsSaveStatusPill(state: savePillState)
+                    .padding(.horizontal, DesignTokens.Spacing.lg)
+                    .padding(.bottom, savePillBottomPadding)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: savePillState)
+        .onAppear {
+            updateSavePillState()
+        }
+        .onChange(of: saveStatusSignature) { _, _ in
+            updateSavePillState()
+        }
+        .onDisappear {
+            savingDelayTask?.cancel()
+            hideSavedTask?.cancel()
+        }
     }
 
     private var settingsBackground: Color {
@@ -45,6 +69,148 @@ public struct SettingsView: View {
 
     private var listBackground: Color {
         colorScheme == .dark ? DesignTokens.Colors.surface : DesignTokens.Colors.background
+    }
+
+    private var isSavingAnySettings: Bool {
+        let viewModel = environment.settingsViewModel
+        return viewModel.isSavingProfile || viewModel.isSavingSystem || viewModel.isSavingSkills
+    }
+
+    private var currentSaveError: String? {
+        let viewModel = environment.settingsViewModel
+        return viewModel.profileSaveError ?? viewModel.systemSaveError ?? viewModel.skillsError
+    }
+
+    private var saveStatusSignature: String {
+        "\(isSavingAnySettings)|\(currentSaveError ?? "")"
+    }
+
+    private var savePillBottomPadding: CGFloat {
+        #if os(iOS)
+        return 84
+        #else
+        return 20
+        #endif
+    }
+
+    private func updateSavePillState() {
+        let isSaving = isSavingAnySettings
+        let saveError = currentSaveError?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        defer {
+            wasSaving = isSaving
+        }
+
+        if let saveError, !saveError.isEmpty {
+            savingDelayTask?.cancel()
+            hideSavedTask?.cancel()
+            withAnimation {
+                savePillState = .error
+            }
+            return
+        }
+
+        if isSaving {
+            hideSavedTask?.cancel()
+            if case .saving = savePillState {
+                return
+            }
+            savingDelayTask?.cancel()
+            savingDelayTask = Task {
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                guard !Task.isCancelled else { return }
+                guard isSavingAnySettings, currentSaveError == nil else { return }
+                await MainActor.run {
+                    withAnimation {
+                        savePillState = .saving
+                    }
+                }
+            }
+            return
+        }
+
+        savingDelayTask?.cancel()
+
+        if wasSaving {
+            showSavedPill()
+            return
+        }
+
+        if savePillState != nil {
+            withAnimation {
+                savePillState = nil
+            }
+        }
+    }
+
+    private func showSavedPill() {
+        hideSavedTask?.cancel()
+        withAnimation {
+            savePillState = .saved
+        }
+        hideSavedTask = Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                withAnimation {
+                    if case .saved = savePillState {
+                        savePillState = nil
+                    }
+                }
+            }
+        }
+    }
+}
+
+private enum SettingsSavePillState {
+    case saving
+    case saved
+    case error
+}
+
+private struct SettingsSaveStatusPill: View {
+    let state: SettingsSavePillState
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            switch state {
+            case .saving:
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.primary)
+            case .saved:
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(DesignTokens.Colors.success)
+            case .error:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(DesignTokens.Colors.error)
+            }
+            Text(title)
+                .font(DesignTokens.Typography.labelMd)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.xsPlus)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.35), lineWidth: 1)
+        )
+        .appShadow(color: Color.black.opacity(0.12), radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+    }
+
+    private var title: String {
+        switch state {
+        case .saving:
+            return "Saving settings..."
+        case .saved:
+            return "Saved"
+        case .error:
+            return "Couldn’t save settings"
+        }
     }
 }
 
