@@ -55,7 +55,7 @@ struct SkillsSettingsView: View {
                                 }
                             )) {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(skill.name)
+                                    Text(viewModel.displayName(for: skill))
                                         .font(DesignTokens.Typography.subheadlineSemibold)
                                     Text(skill.description)
                                         .font(.caption)

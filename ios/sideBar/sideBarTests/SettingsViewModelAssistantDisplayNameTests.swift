@@ -77,6 +77,100 @@ final class SettingsViewModelAssistantDisplayNameTests: XCTestCase {
 
         XCTAssertEqual(viewModel.assistantDisplayName, "sideBar")
     }
+
+    func testDisplayNameForAssistantIdentitySkillUsesAssistantName() async {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            assistantIdentity: AssistantIdentitySettings(
+                name: "Navigator",
+                tone: nil,
+                values: nil,
+                boundaries: nil
+            ),
+            enabledSkills: []
+        )
+        let viewModel = SettingsViewModel(
+            settingsAPI: AssistantNameMockSettingsAPI(result: .success(settings)),
+            skillsAPI: AssistantNameMockSkillsAPI(),
+            cache: TestCacheClient()
+        )
+        let skill = SkillItem(
+            id: "assistant-identity",
+            name: "Assistant Identity",
+            description: "System-managed identity.",
+            category: "System",
+            userToggleable: false
+        )
+
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.displayName(for: skill), "Navigator's Identity")
+    }
+
+    func testDisplayNameForAssistantSoulSkillUsesAssistantName() async {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            assistantIdentity: AssistantIdentitySettings(
+                name: "Navigator",
+                tone: nil,
+                values: nil,
+                boundaries: nil
+            ),
+            enabledSkills: []
+        )
+        let viewModel = SettingsViewModel(
+            settingsAPI: AssistantNameMockSettingsAPI(result: .success(settings)),
+            skillsAPI: AssistantNameMockSkillsAPI(),
+            cache: TestCacheClient()
+        )
+        let skill = SkillItem(
+            id: "assistant-soul",
+            name: "Assistant Soul",
+            description: "System-managed soul.",
+            category: "System",
+            userToggleable: false
+        )
+
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.displayName(for: skill), "Navigator's Soul")
+    }
+
+    func testDisplayNameForNonAssistantSkillIsUnchanged() {
+        let viewModel = SettingsViewModel(
+            settingsAPI: AssistantNameMockSettingsAPI(result: .failure(AssistantNameMockError.forced)),
+            skillsAPI: AssistantNameMockSkillsAPI(),
+            cache: TestCacheClient()
+        )
+        let skill = SkillItem(
+            id: "fs",
+            name: "Files",
+            description: "File access.",
+            category: "Documents"
+        )
+
+        XCTAssertEqual(viewModel.displayName(for: skill), "Files")
+    }
 }
 
 private enum AssistantNameMockError: Error {
