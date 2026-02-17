@@ -161,54 +161,104 @@ struct AgentSettingsView: View {
                 Text("Managed by the assistant. User edits are disabled for these fields.")
                     .foregroundStyle(.secondary)
             }
-            Section("Assistant Name") {
+            Section {
                 Text(resolvedText(viewModel.settings?.assistantIdentity?.name))
                     .textSelection(.enabled)
+            } header: {
+                sectionHeader(
+                    title: "Assistant Name",
+                    subtitle: "Your assistant's name"
+                )
             }
-            Section("Assistant Tone") {
+            Section {
                 Text(resolvedText(viewModel.settings?.assistantIdentity?.tone))
                     .textSelection(.enabled)
+            } header: {
+                sectionHeader(
+                    title: "Assistant Tone",
+                    subtitle: "How \(assistantDisplayName) should sound and respond."
+                )
             }
-            Section("Assistant Values") {
+            Section {
                 Text(resolvedText(viewModel.settings?.assistantIdentity?.values))
                     .textSelection(.enabled)
+            } header: {
+                sectionHeader(
+                    title: "Assistant Values",
+                    subtitle: "Core principles \(assistantDisplayName) prioritizes."
+                )
             }
-            Section("Assistant Boundaries") {
+            Section {
                 Text(resolvedText(viewModel.settings?.assistantIdentity?.boundaries))
                     .textSelection(.enabled)
+            } header: {
+                sectionHeader(
+                    title: "Assistant Boundaries",
+                    subtitle: "Limits \(assistantDisplayName) should not cross."
+                )
             }
             if let identityMeta = viewModel.settings?.assistantIdentityMeta {
-                Section("Assistant Identity Meta") {
+                Section {
                     Text("Updated: \(identityMeta.updatedAt)")
                     Text("Version: \(identityMeta.version)")
                     if let reason = identityMeta.reason, !reason.isEmpty {
                         Text("Reason: \(reason)")
                     }
+                } header: {
+                    sectionHeader(
+                        title: "Assistant Identity Meta",
+                        subtitle: "History of identity updates \(assistantDisplayName) has made."
+                    )
                 }
             }
-            Section("Soul Purpose") {
+            Section {
                 Text(resolvedText(viewModel.settings?.assistantSoul?.purpose))
                     .textSelection(.enabled)
+            } header: {
+                sectionHeader(
+                    title: "Soul Purpose",
+                    subtitle: "\(assistantPossessiveDisplayName) long-term mission and intent."
+                )
             }
-            Section("Soul Operating Principles") {
+            Section {
                 Text(resolvedText(viewModel.settings?.assistantSoul?.operatingPrinciples))
                     .textSelection(.enabled)
+            } header: {
+                sectionHeader(
+                    title: "Soul Operating Principles",
+                    subtitle: "Standing rules that guide \(assistantPossessiveDisplayName) day-to-day behavior."
+                )
             }
-            Section("Soul Adaptation Policy") {
+            Section {
                 Text(resolvedText(viewModel.settings?.assistantSoul?.adaptationPolicy))
                     .textSelection(.enabled)
+            } header: {
+                sectionHeader(
+                    title: "Soul Adaptation Policy",
+                    subtitle: "How \(assistantDisplayName) should adapt while staying aligned."
+                )
             }
-            Section("Soul Success Signals") {
+            Section {
                 Text(resolvedText(viewModel.settings?.assistantSoul?.successSignals))
                     .textSelection(.enabled)
+            } header: {
+                sectionHeader(
+                    title: "Soul Success Signals",
+                    subtitle: "How \(assistantDisplayName) measures good outcomes and alignment."
+                )
             }
             if let soulMeta = viewModel.settings?.assistantSoulMeta {
-                Section("Assistant Soul Meta") {
+                Section {
                     Text("Updated: \(soulMeta.updatedAt)")
                     Text("Version: \(soulMeta.version)")
                     if let reason = soulMeta.reason, !reason.isEmpty {
                         Text("Reason: \(reason)")
                     }
+                } header: {
+                    sectionHeader(
+                        title: "Assistant Soul Meta",
+                        subtitle: "History of soul updates \(assistantDisplayName) has made."
+                    )
                 }
             }
         }
@@ -225,5 +275,25 @@ struct AgentSettingsView: View {
     private func resolvedText(_ value: String?) -> String {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? "Not set" : trimmed
+    }
+
+    private var assistantDisplayName: String {
+        let trimmedName = viewModel.settings?.assistantIdentity?.name?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmedName.isEmpty ? "Your assistant" : trimmedName
+    }
+
+    private var assistantPossessiveDisplayName: String {
+        "\(assistantDisplayName)'s"
+    }
+
+    @ViewBuilder
+    private func sectionHeader(title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
