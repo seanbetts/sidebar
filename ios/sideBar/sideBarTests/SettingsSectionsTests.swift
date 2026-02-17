@@ -24,4 +24,34 @@ final class SettingsSectionsTests: XCTestCase {
 
         XCTAssertFalse(shouldFlush)
     }
+
+    func testPickerOptionsReturnsBaseOptionsWhenCurrentValueIsEmpty() {
+        let baseOptions = ["he/him", "she/her"]
+
+        let options = ProfileSettingsView.pickerOptions(base: baseOptions, currentValue: "")
+
+        XCTAssertEqual(options, baseOptions)
+    }
+
+    func testPickerOptionsPrependsCurrentValueWhenCurrentValueIsCustom() {
+        let baseOptions = ["he/him", "she/her"]
+
+        let options = ProfileSettingsView.pickerOptions(
+            base: baseOptions,
+            currentValue: "xe/xem"
+        )
+
+        XCTAssertEqual(options, ["xe/xem", "he/him", "she/her"])
+    }
+
+    func testPickerOptionsDoesNotDuplicateCaseInsensitiveExistingValue() {
+        let baseOptions = ["he/him", "she/her"]
+
+        let options = ProfileSettingsView.pickerOptions(
+            base: baseOptions,
+            currentValue: "He/Him"
+        )
+
+        XCTAssertEqual(options, baseOptions)
+    }
 }

@@ -126,12 +126,24 @@ struct ProfileSettingsView: View {
                         .multilineTextAlignment(.trailing)
                 }
                 LabeledContent("Gender") {
-                    TextField("Not set", text: $gender)
-                        .multilineTextAlignment(.trailing)
+                    Picker("Gender", selection: $gender) {
+                        Text("Not set").tag("")
+                        ForEach(genderPickerOptions, id: \.self) { option in
+                            Text(option).tag(option)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
                 }
                 LabeledContent("Pronouns") {
-                    TextField("Not set", text: $pronouns)
-                        .multilineTextAlignment(.trailing)
+                    Picker("Pronouns", selection: $pronouns) {
+                        Text("Not set").tag("")
+                        ForEach(pronounPickerOptions, id: \.self) { option in
+                            Text(option).tag(option)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
                 }
                 LabeledContent("Location") {
                     TextField("Not set", text: $location)
@@ -220,6 +232,14 @@ struct ProfileSettingsView: View {
         #else
         return "Tap to change."
         #endif
+    }
+
+    private var genderPickerOptions: [String] {
+        Self.pickerOptions(base: Self.genderOptions, currentValue: gender)
+    }
+
+    private var pronounPickerOptions: [String] {
+        Self.pickerOptions(base: Self.pronounOptions, currentValue: pronouns)
     }
 
 #if os(macOS)
