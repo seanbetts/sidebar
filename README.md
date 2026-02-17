@@ -152,6 +152,21 @@ docker compose up -d --build
 
 ## Development
 
+### Shared Loading Assets
+
+Loading GIF source-of-truth files live in:
+
+- `assets/loading/loading-light.gif`
+- `assets/loading/loading-dark.gif`
+
+Sync them to all runtime targets (web app, iOS app, share extension, Safari extension) with:
+
+```bash
+scripts/sync-loading-assets.sh
+```
+
+Pre-commit runs this sync automatically.
+
 ### Install Dev Dependencies
 
 For skill validation and testing:

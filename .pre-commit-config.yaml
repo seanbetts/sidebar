@@ -130,6 +130,12 @@ repos:
   # Custom - File size limits
   - repo: local
     hooks:
+      - id: sync-loading-assets
+        name: sync-loading-assets
+        entry: scripts/sync-loading-assets.sh
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: check-file-size-limits
         name: check-file-size-limits
         entry: python scripts/check_file_sizes.py
