@@ -84,6 +84,35 @@ class NotesParameterBuilder(BaseParameterBuilder):
         ]
 
     @staticmethod
+    def build_rename_args(params: dict) -> list:
+        """Build CLI arguments for notes rename."""
+        return [
+            params["note_id"],
+            "--new-name",
+            params["new_name"],
+            "--database",
+            "--user-id",
+            params["user_id"],
+        ]
+
+    @staticmethod
+    def build_archive_args(params: dict) -> list:
+        """Build CLI arguments for notes archive/unarchive."""
+        return [
+            params["note_id"],
+            "--archived",
+            str(params["archived"]).lower(),
+            "--database",
+            "--user-id",
+            params["user_id"],
+        ]
+
+    @staticmethod
+    def build_download_args(params: dict) -> list:
+        """Build CLI arguments for note download/export."""
+        return [params["note_id"], "--database", "--user-id", params["user_id"]]
+
+    @staticmethod
     def build_move_args(params: dict) -> list:
         """Build CLI arguments for notes move."""
         return [
@@ -94,6 +123,36 @@ class NotesParameterBuilder(BaseParameterBuilder):
             "--user-id",
             params["user_id"],
         ]
+
+    @staticmethod
+    def build_create_folder_args(params: dict) -> list:
+        """Build CLI arguments for create folder."""
+        return [params["path"], "--database", "--user-id", params["user_id"]]
+
+    @staticmethod
+    def build_rename_folder_args(params: dict) -> list:
+        """Build CLI arguments for rename folder."""
+        return [
+            params["old_path"],
+            "--new-name",
+            params["new_name"],
+            "--database",
+            "--user-id",
+            params["user_id"],
+        ]
+
+    @staticmethod
+    def build_move_folder_args(params: dict) -> list:
+        """Build CLI arguments for move folder."""
+        args = [params["old_path"], "--database", "--user-id", params["user_id"]]
+        if "new_parent" in params:
+            args.extend(["--new-parent", params["new_parent"]])
+        return args
+
+    @staticmethod
+    def build_delete_folder_args(params: dict) -> list:
+        """Build CLI arguments for delete folder."""
+        return [params["path"], "--database", "--user-id", params["user_id"]]
 
     @staticmethod
     def build_read_args(params: dict) -> list:

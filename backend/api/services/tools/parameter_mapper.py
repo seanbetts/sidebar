@@ -73,9 +73,44 @@ def build_notes_pin_args(params: dict) -> list:
     return NotesParameterBuilder.build_pin_args(params)
 
 
+def build_notes_rename_args(params: dict) -> list:
+    """Build CLI arguments for notes rename."""
+    return NotesParameterBuilder.build_rename_args(params)
+
+
+def build_notes_archive_args(params: dict) -> list:
+    """Build CLI arguments for notes archive/unarchive."""
+    return NotesParameterBuilder.build_archive_args(params)
+
+
+def build_notes_download_args(params: dict) -> list:
+    """Build CLI arguments for notes download/export."""
+    return NotesParameterBuilder.build_download_args(params)
+
+
 def build_notes_move_args(params: dict) -> list:
     """Build CLI arguments for notes move."""
     return NotesParameterBuilder.build_move_args(params)
+
+
+def build_notes_create_folder_args(params: dict) -> list:
+    """Build CLI arguments for create note folder."""
+    return NotesParameterBuilder.build_create_folder_args(params)
+
+
+def build_notes_rename_folder_args(params: dict) -> list:
+    """Build CLI arguments for rename note folder."""
+    return NotesParameterBuilder.build_rename_folder_args(params)
+
+
+def build_notes_move_folder_args(params: dict) -> list:
+    """Build CLI arguments for move note folder."""
+    return NotesParameterBuilder.build_move_folder_args(params)
+
+
+def build_notes_delete_folder_args(params: dict) -> list:
+    """Build CLI arguments for delete note folder."""
+    return NotesParameterBuilder.build_delete_folder_args(params)
 
 
 def build_notes_read_args(params: dict) -> list:

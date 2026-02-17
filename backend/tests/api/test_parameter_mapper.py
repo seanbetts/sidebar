@@ -131,6 +131,70 @@ def test_build_notes_list_args_includes_false_values():
     ]
 
 
+def test_build_notes_rename_args():
+    args = parameter_mapper.build_notes_rename_args(
+        {"note_id": "note-1", "new_name": "Renamed", "user_id": "user-1"}
+    )
+    assert args == [
+        "note-1",
+        "--new-name",
+        "Renamed",
+        "--database",
+        "--user-id",
+        "user-1",
+    ]
+
+
+def test_build_notes_archive_args_false():
+    args = parameter_mapper.build_notes_archive_args(
+        {"note_id": "note-1", "archived": False, "user_id": "user-1"}
+    )
+    assert args == [
+        "note-1",
+        "--archived",
+        "false",
+        "--database",
+        "--user-id",
+        "user-1",
+    ]
+
+
+def test_build_notes_download_args():
+    args = parameter_mapper.build_notes_download_args(
+        {"note_id": "note-1", "user_id": "user-1"}
+    )
+    assert args == ["note-1", "--database", "--user-id", "user-1"]
+
+
+def test_build_notes_folder_args():
+    assert parameter_mapper.build_notes_create_folder_args(
+        {"path": "Projects/Alpha", "user_id": "user-1"}
+    ) == ["Projects/Alpha", "--database", "--user-id", "user-1"]
+    assert parameter_mapper.build_notes_rename_folder_args(
+        {"old_path": "Projects/Alpha", "new_name": "Beta", "user_id": "user-1"}
+    ) == [
+        "Projects/Alpha",
+        "--new-name",
+        "Beta",
+        "--database",
+        "--user-id",
+        "user-1",
+    ]
+    assert parameter_mapper.build_notes_move_folder_args(
+        {"old_path": "Projects/Beta", "new_parent": "Archive", "user_id": "user-1"}
+    ) == [
+        "Projects/Beta",
+        "--database",
+        "--user-id",
+        "user-1",
+        "--new-parent",
+        "Archive",
+    ]
+    assert parameter_mapper.build_notes_delete_folder_args(
+        {"path": "Archive", "user_id": "user-1"}
+    ) == ["Archive", "--database", "--user-id", "user-1"]
+
+
 def test_build_youtube_transcribe_args_optional_fields():
     args = parameter_mapper.build_youtube_transcribe_args(
         {

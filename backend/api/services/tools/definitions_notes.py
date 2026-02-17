@@ -73,6 +73,37 @@ def get_notes_definitions() -> dict:
             "script": "pin_note.py",
             "build_args": pm.build_notes_pin_args,
         },
+        "Rename Note": {
+            "description": "Rename a note title by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "string", "description": "Note UUID"},
+                    "new_name": {"type": "string", "description": "New note title"},
+                },
+                "required": ["note_id", "new_name"],
+            },
+            "skill": "notes",
+            "script": "rename_note.py",
+            "build_args": pm.build_notes_rename_args,
+        },
+        "Archive Note": {
+            "description": "Archive or unarchive a note by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "string", "description": "Note UUID"},
+                    "archived": {
+                        "type": "boolean",
+                        "description": "True to archive, false to unarchive",
+                    },
+                },
+                "required": ["note_id", "archived"],
+            },
+            "skill": "notes",
+            "script": "archive_note.py",
+            "build_args": pm.build_notes_archive_args,
+        },
         "Move Note": {
             "description": "Move a note to a folder by ID.",
             "input_schema": {
@@ -90,6 +121,75 @@ def get_notes_definitions() -> dict:
             "script": "move_note.py",
             "build_args": pm.build_notes_move_args,
         },
+        "Create Note Folder": {
+            "description": "Create a logical notes folder marker.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Folder path (for example: Projects/Alpha)",
+                    },
+                },
+                "required": ["path"],
+            },
+            "skill": "notes",
+            "script": "create_folder.py",
+            "build_args": pm.build_notes_create_folder_args,
+        },
+        "Rename Note Folder": {
+            "description": "Rename a notes folder path.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "old_path": {
+                        "type": "string",
+                        "description": "Current folder path",
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "New folder basename",
+                    },
+                },
+                "required": ["old_path", "new_name"],
+            },
+            "skill": "notes",
+            "script": "rename_folder.py",
+            "build_args": pm.build_notes_rename_folder_args,
+        },
+        "Move Note Folder": {
+            "description": "Move a notes folder to a new parent folder.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "old_path": {
+                        "type": "string",
+                        "description": "Current folder path",
+                    },
+                    "new_parent": {
+                        "type": "string",
+                        "description": "Destination parent folder (empty for root)",
+                    },
+                },
+                "required": ["old_path"],
+            },
+            "skill": "notes",
+            "script": "move_folder.py",
+            "build_args": pm.build_notes_move_folder_args,
+        },
+        "Delete Note Folder": {
+            "description": "Soft-delete all notes in a folder path.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Folder path to delete"},
+                },
+                "required": ["path"],
+            },
+            "skill": "notes",
+            "script": "delete_folder.py",
+            "build_args": pm.build_notes_delete_folder_args,
+        },
         "Get Note": {
             "description": "Fetch a note by ID.",
             "input_schema": {
@@ -102,6 +202,19 @@ def get_notes_definitions() -> dict:
             "skill": "notes",
             "script": "read_note.py",
             "build_args": pm.build_notes_read_args,
+        },
+        "Download Note": {
+            "description": "Export a note as markdown content plus filename metadata.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "string", "description": "Note UUID"},
+                },
+                "required": ["note_id"],
+            },
+            "skill": "notes",
+            "script": "download_note.py",
+            "build_args": pm.build_notes_download_args,
         },
         "List Notes": {
             "description": "List notes with optional filters.",

@@ -10,7 +10,10 @@ SKILL_DISPLAY = {
     },
     "notes": {
         "name": "Notes",
-        "description": "Create, update, and organize notes and scratchpad content.",
+        "description": (
+            "Create, update, rename, archive, move, pin, delete, list, and "
+            "download notes and folders, plus manage scratchpad content."
+        ),
     },
     "web-save": {
         "name": "Web Save",

@@ -105,6 +105,17 @@ def test_fs_definitions_include_file_context_menu_parity_tools():
     assert "Pin File" in definitions
 
 
+def test_notes_definitions_include_context_menu_parity_tools():
+    definitions = get_notes_definitions()
+    assert "Rename Note" in definitions
+    assert "Archive Note" in definitions
+    assert "Download Note" in definitions
+    assert "Create Note Folder" in definitions
+    assert "Rename Note Folder" in definitions
+    assert "Move Note Folder" in definitions
+    assert "Delete Note Folder" in definitions
+
+
 def test_skills_definitions_do_not_expose_skill_packaging():
     definitions = get_skills_definitions()
     assert definitions == {}
