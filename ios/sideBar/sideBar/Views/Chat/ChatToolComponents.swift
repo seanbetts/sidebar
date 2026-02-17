@@ -11,16 +11,14 @@ struct ToolCallListView: View {
     var body: some View {
         if toolCalls.count == 1, let toolCall = toolCalls.first {
             toolPill(
-                text: toolCall.name,
-                showsChevron: false
+                text: toolCall.name
             )
         } else {
             Button {
                 showPopover.toggle()
             } label: {
                 toolPill(
-                    text: summaryText,
-                    showsChevron: true
+                    text: summaryText
                 )
             }
             .buttonStyle(.plain)
@@ -35,15 +33,14 @@ struct ToolCallListView: View {
     private var summaryText: String {
         let count = toolCalls.count
         if count == 1 {
-            return "1 tool used"
+            return "1 skill used"
         }
-        return "\(count) tools used"
+        return "\(count) skills used"
     }
 
     @ViewBuilder
     private func toolPill(
-        text: String,
-        showsChevron: Bool
+        text: String
     ) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "hammer.fill")
@@ -52,11 +49,6 @@ struct ToolCallListView: View {
             Text(text)
                 .font(DesignTokens.Typography.captionSemibold)
                 .foregroundStyle(toolPillForeground)
-            if showsChevron {
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2)
-                    .foregroundStyle(toolPillForeground)
-            }
         }
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Spacing.xs)
@@ -136,7 +128,7 @@ struct ToolCallPopoverContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Tools Used")
+            Text("Skills Used")
                 .font(DesignTokens.Typography.captionSemibold)
                 .foregroundStyle(.secondary)
             ForEach(toolCalls) { toolCall in
