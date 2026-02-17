@@ -325,6 +325,13 @@ extension WebsitesDetailView {
         SystemSharePresenter.share(url: url)
     }
 
+    func shareWebsiteText() {
+        guard let content = viewModel.active?.content, !content.isEmpty else { return }
+        let plainText = MarkdownRendering.plainTextForWebsiteShare(content)
+        guard !plainText.isEmpty else { return }
+        SystemSharePresenter.share(text: plainText)
+    }
+
     func archiveActiveWebsite() {
         guard let websiteId = viewModel.active?.id else { return }
         Task {

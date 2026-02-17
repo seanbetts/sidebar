@@ -13,9 +13,17 @@ enum SystemSharePresenter {
     #endif
 
     static func share(url: URL) {
+        share(items: [url])
+    }
+
+    static func share(text: String) {
+        share(items: [text])
+    }
+
+    private static func share(items: [Any]) {
         #if os(iOS)
         guard let presenter = topViewController() else { return }
-        let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
         if let popover = controller.popoverPresentationController {
             popover.sourceView = presenter.view
             popover.sourceRect = CGRect(
@@ -30,7 +38,7 @@ enum SystemSharePresenter {
         #elseif os(macOS)
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow,
               let anchorView = window.contentView else { return }
-        let picker = NSSharingServicePicker(items: [url])
+        let picker = NSSharingServicePicker(items: items)
         activePicker = picker
         let anchorRect = NSRect(x: anchorView.bounds.midX, y: anchorView.bounds.midY, width: 1, height: 1)
         picker.show(relativeTo: anchorRect, of: anchorView, preferredEdge: .minY)

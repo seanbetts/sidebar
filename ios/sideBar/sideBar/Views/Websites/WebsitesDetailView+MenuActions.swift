@@ -39,6 +39,11 @@ extension WebsitesDetailView {
                 Label("Share URL", systemImage: "square.and.arrow.up")
             }
             Button {
+                shareWebsiteText()
+            } label: {
+                Label("Share Text", systemImage: "square.and.arrow.up.on.square")
+            }
+            Button {
                 exportWebsite()
             } label: {
                 Label("Download", systemImage: "square.and.arrow.down")
@@ -105,6 +110,9 @@ extension WebsitesDetailView {
             },
             .share {
                 shareWebsiteURL()
+            },
+            .shareText {
+                shareWebsiteText()
             },
             .download {
                 exportWebsite()
