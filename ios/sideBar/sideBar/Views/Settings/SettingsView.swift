@@ -83,7 +83,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .settings:
             return "gearshape"
         case .user:
-            return "bubble"
+            return "person.line.dotted.person"
         case .agent:
             return "cpu"
         case .skills:
@@ -192,7 +192,7 @@ private struct SettingsTabsView: View {
                 }
             UserSettingsView(viewModel: viewModel)
                 .tabItem {
-                    Label("User", systemImage: "bubble")
+                    Label("User", systemImage: "person.line.dotted.person")
                 }
             AgentSettingsView(viewModel: viewModel)
                 .tabItem {
