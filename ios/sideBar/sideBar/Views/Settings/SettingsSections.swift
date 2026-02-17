@@ -167,7 +167,7 @@ struct ProfileSettingsView: View {
             syncDraftsFromSettings(viewModel.settings)
         }
         .onDisappear {
-            autosaveTask?.cancel()
+            flushPendingProfileAutosave()
         }
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
@@ -345,6 +345,39 @@ struct ProfileSettingsView: View {
                 location: location
             )
         }
+    }
+
+    private func flushPendingProfileAutosave() {
+        autosaveTask?.cancel()
+        guard Self.shouldFlushAutosaveOnDisappear(
+            hasLoadedDrafts: hasLoadedDrafts,
+            isSyncingDrafts: isSyncingDrafts,
+            isDraftDirty: isDraftDirty,
+            isSavingProfile: viewModel.isSavingProfile
+        ) else {
+            return
+        }
+        Task {
+            await viewModel.saveProfileSettings(
+                name: name,
+                jobTitle: jobTitle,
+                employer: employer,
+                dateOfBirth: dateOfBirthEnabled ? dateOfBirth : nil,
+                dateOfBirthEnabled: dateOfBirthEnabled,
+                gender: gender,
+                pronouns: pronouns,
+                location: location
+            )
+        }
+    }
+
+    static func shouldFlushAutosaveOnDisappear(
+        hasLoadedDrafts: Bool,
+        isSyncingDrafts: Bool,
+        isDraftDirty: Bool,
+        isSavingProfile: Bool
+    ) -> Bool {
+        hasLoadedDrafts && !isSyncingDrafts && isDraftDirty && !isSavingProfile
     }
 
     private static func parseDate(_ value: String?) -> Date? {

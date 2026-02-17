@@ -1,0 +1,115 @@
+import XCTest
+import sideBarShared
+@testable import sideBar
+
+@MainActor
+final class SettingsViewModelProfileTests: XCTestCase {
+    func testSaveProfileSettingsSendsLocationUpdate() async throws {
+        let initial = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Sam",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: "Boston",
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let updated = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Sam",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: "Seattle",
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let api = RecordingSettingsAPI(initial: initial, updated: updated)
+        let viewModel = SettingsViewModel(
+            settingsAPI: api,
+            skillsAPI: EmptySkillsAPI(),
+            cache: TestCacheClient()
+        )
+
+        await viewModel.load()
+        await viewModel.saveProfileSettings(
+            name: "Sam",
+            jobTitle: "",
+            employer: "",
+            dateOfBirth: nil,
+            dateOfBirthEnabled: false,
+            gender: "",
+            pronouns: "",
+            location: "Seattle"
+        )
+
+        XCTAssertEqual(api.updateCallCount, 1)
+        let payload = try encodedPayload(try XCTUnwrap(api.lastUpdate))
+        XCTAssertEqual(payload["location"] as? String, "Seattle")
+        XCTAssertEqual(viewModel.settings?.location, "Seattle")
+    }
+
+    private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {
+        let data = try JSONEncoder().encode(update)
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+}
+
+@MainActor
+private final class RecordingSettingsAPI: SettingsProviding {
+    let initial: UserSettings
+    let updated: UserSettings
+    var lastUpdate: SettingsUpdate?
+    var updateCallCount = 0
+
+    init(initial: UserSettings, updated: UserSettings) {
+        self.initial = initial
+        self.updated = updated
+    }
+
+    func getSettings() async throws -> UserSettings {
+        initial
+    }
+
+    func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
+        updateCallCount += 1
+        lastUpdate = update
+        return updated
+    }
+
+    func getShortcutsToken() async throws -> ShortcutsTokenResponse {
+        ShortcutsTokenResponse(token: "")
+    }
+
+    func rotateShortcutsToken() async throws -> ShortcutsTokenResponse {
+        ShortcutsTokenResponse(token: "")
+    }
+
+    func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {
+        _ = data
+        _ = contentType
+        _ = filename
+    }
+
+    func getProfileImage() async throws -> Data {
+        Data()
+    }
+
+    func deleteProfileImage() async throws {
+    }
+}
+
+private struct EmptySkillsAPI: SkillsProviding {
+    func list() async throws -> SkillsResponse {
+        SkillsResponse(skills: [])
+    }
+}
