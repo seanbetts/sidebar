@@ -152,9 +152,9 @@ docker compose up -d --build
 
 ## Development
 
-### Shared Loading Assets
+### Shared Assets
 
-Loading GIF source-of-truth files live in:
+Canonical assets live under `assets/`. Right now this includes loading GIFs:
 
 - `assets/loading/loading-light.gif`
 - `assets/loading/loading-dark.gif`
@@ -162,7 +162,7 @@ Loading GIF source-of-truth files live in:
 Sync them to all runtime targets (web app, iOS app, share extension, Safari extension) with:
 
 ```bash
-scripts/sync-loading-assets.sh
+scripts/sync-assets.sh
 ```
 
 Pre-commit runs this sync automatically.

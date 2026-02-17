@@ -130,9 +130,9 @@ repos:
   # Custom - File size limits
   - repo: local
     hooks:
-      - id: sync-loading-assets
-        name: sync-loading-assets
-        entry: scripts/sync-loading-assets.sh
+      - id: sync-assets
+        name: sync-assets
+        entry: scripts/sync-assets.sh
         language: system
         pass_filenames: false
         always_run: true
