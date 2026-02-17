@@ -27,6 +27,8 @@ struct LoadingIndicatorView: View {
     var body: some View {
         PlatformLoadingIndicatorView(variant: variant)
             .frame(width: size, height: size)
+            .clipped()
+            .fixedSize(horizontal: true, vertical: true)
             .accessibilityHidden(true)
     }
 }
@@ -40,7 +42,6 @@ private struct PlatformLoadingIndicatorView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> UIImageView {
         let imageView = UIImageView()
-        imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         return imageView
@@ -128,9 +129,11 @@ private struct PlatformLoadingIndicatorView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSImageView {
         let imageView = NSImageView()
-        imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.imageAlignment = .alignCenter
         imageView.animates = true
+        imageView.wantsLayer = true
+        imageView.layer?.masksToBounds = true
         return imageView
     }
 

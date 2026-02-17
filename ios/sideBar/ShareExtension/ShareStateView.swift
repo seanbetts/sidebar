@@ -156,6 +156,7 @@ class ShareStateView: UIView {
 
         refreshBrandLogo()
         logoImageView.contentMode = .scaleAspectFit
+        logoImageView.clipsToBounds = true
         logoImageView.accessibilityIdentifier = "share-brand-logo"
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
         logoImageView.heightAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true

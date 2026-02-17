@@ -164,6 +164,8 @@ class ShareStateView: NSView {
         refreshBrandLogo()
         logoImageView.imageScaling = .scaleProportionallyUpOrDown
         logoImageView.animates = true
+        logoImageView.wantsLayer = true
+        logoImageView.layer?.masksToBounds = true
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
         logoImageView.heightAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
         logoImageView.widthAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
