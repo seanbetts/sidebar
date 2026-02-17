@@ -151,6 +151,14 @@ extension KeyboardShortcutRegistry {
     private static func buildNotesShortcuts() -> [KeyboardShortcut] {
         [
             KeyboardShortcut(
+                input: UIKeyCommand.inputEscape,
+                modifiers: [],
+                title: "Close Note",
+                description: "Close the current note",
+                action: .closeItem,
+                contexts: [.notes]
+            ),
+            KeyboardShortcut(
                 input: "n",
                 modifiers: [.command, .shift],
                 title: "New Folder",

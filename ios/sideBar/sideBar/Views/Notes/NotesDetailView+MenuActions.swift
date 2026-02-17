@@ -231,5 +231,8 @@ extension NotesDetailView {
             },
             isDisabled: viewModel.activeNote == nil
         )
+        #if os(macOS)
+        .keyboardShortcut(.escape, modifiers: [])
+        #endif
     }
 }
