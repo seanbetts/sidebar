@@ -72,3 +72,13 @@ def test_skill_tool_scripts_exist_on_disk():
         direct_path = skills_root / skill / script
         scripts_path = skills_root / skill / "scripts" / script
         assert direct_path.exists() or scripts_path.exists()
+
+
+def test_misc_definitions_include_assistant_identity_tools():
+    definitions = get_misc_definitions()
+    assert "Get Assistant Identity" in definitions
+    assert "Update Assistant Identity" in definitions
+    assert "Reset Assistant Identity" in definitions
+    assert "Get Assistant Soul" in definitions
+    assert "Update Assistant Soul" in definitions
+    assert "Reset Assistant Soul" in definitions

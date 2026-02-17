@@ -2,6 +2,8 @@
 	import { AlertTriangle, FileMusic } from 'lucide-svelte';
 	import SpreadsheetViewer from '$lib/components/files/SpreadsheetViewer.svelte';
 	import FileMarkdown from '$lib/components/files/FileMarkdown.svelte';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 
 	export let loading = false;
 	export let error = '';
@@ -67,7 +69,7 @@
 				<div class="viewer-placeholder video-status">
 					<div class="viewer-placeholder-stack">
 						{#if isInProgress}
-							<span class="viewer-spinner" aria-hidden="true"></span>
+							<LoadingGlyph size={LOADING_SIZES.control} />
 						{:else}
 							<span class="viewer-placeholder-alert">
 								<AlertTriangle size={20} />
@@ -100,7 +102,7 @@
 				</div>
 			{:else if isInProgress}
 				<div class="viewer-placeholder-stack">
-					<span class="viewer-spinner" aria-hidden="true"></span>
+					<LoadingGlyph size={LOADING_SIZES.control} />
 					<span>{statusMessage}</span>
 				</div>
 			{:else}
@@ -230,21 +232,6 @@
 		align-items: center;
 		gap: 0.5rem;
 		text-align: center;
-	}
-
-	.viewer-spinner {
-		width: 20px;
-		height: 20px;
-		border-radius: 999px;
-		border: 2px solid var(--color-border);
-		border-top-color: var(--color-sidebar-primary);
-		animation: viewer-spin 0.8s linear infinite;
-	}
-
-	@keyframes viewer-spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 
 	.viewer-placeholder-alert {

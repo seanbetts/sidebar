@@ -106,9 +106,7 @@ private struct IngestionCenterRow: View {
                 if let progress = item.job.progress {
                     ProgressView(value: progress)
                 } else {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .scaleEffect(0.8)
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                 }
             }
         }

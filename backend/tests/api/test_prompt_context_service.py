@@ -18,6 +18,12 @@ def test_prompt_context_service_order_and_truncation(test_db):
             "ADD COLUMN IF NOT EXISTS assistant_identity jsonb"
         )
     )
+    test_db.execute(
+        text(
+            "ALTER TABLE user_settings "
+            "ADD COLUMN IF NOT EXISTS assistant_soul jsonb"
+        )
+    )
     test_db.commit()
     now = datetime(2025, 1, 2, 12, 0, tzinfo=UTC)
     user_id = "user-1"
@@ -81,10 +87,11 @@ def test_prompt_context_service_order_and_truncation(test_db):
     assert "<message_context>" in system_prompt
     idx_message = system_prompt.index("<message_context>")
     idx_identity = system_prompt.index("<assistant_identity>")
+    idx_soul = system_prompt.index("<assistant_soul>")
     idx_guidance = system_prompt.index("<context_guidance>")
     idx_open = system_prompt.index("<current_open>")
     idx_recent = system_prompt.index("<recent_activity>")
-    assert idx_message < idx_identity < idx_guidance < idx_open < idx_recent
+    assert idx_message < idx_identity < idx_soul < idx_guidance < idx_open < idx_recent
 
     assert len(system_prompt) <= PromptContextService.MAX_SYSTEM_PROMPT_CHARS
     assert "I use macOS." in first_message
@@ -102,22 +109,28 @@ def test_prompt_context_service_order_and_truncation(test_db):
             "chars": len(prompt_bundle["system_prompt"]["sections"][1]["content"]),
         },
         {
+            "id": "assistant_soul",
+            "title": "Assistant Soul",
+            "source": "assistant_soul",
+            "chars": len(prompt_bundle["system_prompt"]["sections"][2]["content"]),
+        },
+        {
             "id": "context_guidance",
             "title": "Context Guidance",
             "source": "context_guidance_template",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][2]["content"]),
+            "chars": len(prompt_bundle["system_prompt"]["sections"][3]["content"]),
         },
         {
             "id": "current_open",
             "title": "Current Open Context",
             "source": "open_context",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][3]["content"]),
+            "chars": len(prompt_bundle["system_prompt"]["sections"][4]["content"]),
         },
         {
             "id": "recent_activity",
             "title": "Recent Activity",
             "source": "recent_activity",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][4]["content"]),
+            "chars": len(prompt_bundle["system_prompt"]["sections"][5]["content"]),
         },
     ]
 

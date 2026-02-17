@@ -32,6 +32,7 @@ class UserSettings(Base):
     assistant_identity: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB, nullable=True
     )
+    assistant_soul: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     shortcuts_pat: Mapped[str | None] = mapped_column(Text, nullable=True)
     tasks_ai_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

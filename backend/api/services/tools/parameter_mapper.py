@@ -148,6 +148,36 @@ def build_skill_package_args(params: dict) -> list:
     return SkillsParameterBuilder.build_skill_package_args(params)
 
 
+def build_assistant_identity_get_args(params: dict) -> list:
+    """Build CLI arguments for getting assistant identity."""
+    return SkillsParameterBuilder.build_assistant_identity_get_args(params)
+
+
+def build_assistant_identity_update_args(params: dict) -> list:
+    """Build CLI arguments for updating assistant identity."""
+    return SkillsParameterBuilder.build_assistant_identity_update_args(params)
+
+
+def build_assistant_identity_reset_args(params: dict) -> list:
+    """Build CLI arguments for resetting assistant identity."""
+    return SkillsParameterBuilder.build_assistant_identity_reset_args(params)
+
+
+def build_assistant_soul_get_args(params: dict) -> list:
+    """Build CLI arguments for getting assistant soul."""
+    return SkillsParameterBuilder.build_assistant_soul_get_args(params)
+
+
+def build_assistant_soul_update_args(params: dict) -> list:
+    """Build CLI arguments for updating assistant soul."""
+    return SkillsParameterBuilder.build_assistant_soul_update_args(params)
+
+
+def build_assistant_soul_reset_args(params: dict) -> list:
+    """Build CLI arguments for resetting assistant soul."""
+    return SkillsParameterBuilder.build_assistant_soul_reset_args(params)
+
+
 def build_mcp_evaluation_args(params: dict) -> list:
     """Build CLI arguments for MCP evaluation runs."""
     return SkillsParameterBuilder.build_mcp_evaluation_args(params)

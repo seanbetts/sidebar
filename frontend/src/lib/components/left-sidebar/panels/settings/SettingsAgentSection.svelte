@@ -3,6 +3,17 @@
 	export let assistantIdentityTone = '';
 	export let assistantIdentityValues = '';
 	export let assistantIdentityBoundaries = '';
+	export let assistantIdentityMeta: {
+		updated_at?: string;
+		version?: number;
+		reason?: string | null;
+	} = {};
+	export let assistantSoulPurpose = '';
+	export let assistantSoulOperatingPrinciples = '';
+	export let assistantSoulAdaptationPolicy = '';
+	export let assistantSoulSuccessSignals = '';
+	export let assistantSoulMeta: { updated_at?: string; version?: number; reason?: string | null } =
+		{};
 </script>
 
 <h3>Agent</h3>
@@ -42,4 +53,60 @@
 			aria-readonly="true"
 		></textarea>
 	</label>
+	{#if assistantIdentityMeta?.updated_at}
+		<p class="settings-meta">
+			Identity updated {assistantIdentityMeta.updated_at} (v{assistantIdentityMeta.version ?? 1})
+			{#if assistantIdentityMeta.reason}
+				- {assistantIdentityMeta.reason}
+			{/if}
+		</p>
+	{/if}
+	<label class="settings-label">
+		<span>Soul purpose</span>
+		<textarea
+			class="settings-textarea"
+			value={assistantSoulPurpose}
+			rows="3"
+			readonly
+			aria-readonly="true"
+		></textarea>
+	</label>
+	<label class="settings-label">
+		<span>Soul operating principles</span>
+		<textarea
+			class="settings-textarea"
+			value={assistantSoulOperatingPrinciples}
+			rows="4"
+			readonly
+			aria-readonly="true"
+		></textarea>
+	</label>
+	<label class="settings-label">
+		<span>Soul adaptation policy</span>
+		<textarea
+			class="settings-textarea"
+			value={assistantSoulAdaptationPolicy}
+			rows="4"
+			readonly
+			aria-readonly="true"
+		></textarea>
+	</label>
+	<label class="settings-label">
+		<span>Soul success signals</span>
+		<textarea
+			class="settings-textarea"
+			value={assistantSoulSuccessSignals}
+			rows="3"
+			readonly
+			aria-readonly="true"
+		></textarea>
+	</label>
+	{#if assistantSoulMeta?.updated_at}
+		<p class="settings-meta">
+			Soul updated {assistantSoulMeta.updated_at} (v{assistantSoulMeta.version ?? 1})
+			{#if assistantSoulMeta.reason}
+				- {assistantSoulMeta.reason}
+			{/if}
+		</p>
+	{/if}
 </div>

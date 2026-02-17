@@ -152,6 +152,30 @@ docker compose up -d --build
 
 ## Development
 
+### Shared Assets
+
+Canonical assets live under `assets/`. Current groups:
+
+- `assets/loading/loading-light-44.gif`
+- `assets/loading/loading-dark-44.gif`
+- `assets/loading/loading-light-128.gif` (reserved for future 128px+ loading surfaces)
+- `assets/loading/loading-dark-128.gif` (reserved for future 128px+ loading surfaces)
+- `assets/branding/logo-light.png`
+- `assets/branding/logo-dark.png`
+- `assets/safari-extension/icon-48.png` (and `64/96/128/256/512`)
+- `assets/safari-extension/toolbar-icon.svg`
+
+Sync them to all runtime targets (web app, iOS app, share extension, Safari extension) with:
+
+```bash
+scripts/sync-assets.sh
+```
+
+Pre-commit runs this sync automatically.
+
+Note: `ios/sideBar/sideBar/Assets.xcassets/AppLogo.imageset` and
+`ios/sideBar/sideBarWidgets/Assets.xcassets/AppLogo.imageset` are intentionally not synced yet.
+
 ### Install Dev Dependencies
 
 For skill validation and testing:

@@ -6,14 +6,18 @@ from pathlib import Path
 
 import yaml
 
-from api.services.tools.skill_metadata import EXPOSED_SKILLS, SKILL_DISPLAY
+from api.services.tools.skill_metadata import (
+    EXPOSED_SKILLS,
+    SKILL_DISPLAY,
+    is_skill_user_toggleable,
+)
 
 
 class SkillCatalogService:
     """Load skill metadata from SKILL.md frontmatter."""
 
     @staticmethod
-    def list_skills(skills_dir: Path) -> list[dict[str, str]]:
+    def list_skills(skills_dir: Path) -> list[dict[str, str | bool]]:
         """List available skills with display metadata.
 
         Args:
@@ -22,7 +26,7 @@ class SkillCatalogService:
         Returns:
             List of skill metadata dicts.
         """
-        skills: list[dict[str, str]] = []
+        skills: list[dict[str, str | bool]] = []
         category_map = SkillCatalogService._category_map()
 
         if not skills_dir.exists():
@@ -47,10 +51,11 @@ class SkillCatalogService:
                     "name": name,
                     "description": description,
                     "category": category,
+                    "user_toggleable": is_skill_user_toggleable(skill_id),
                 }
             )
 
-        if "ui-theme" not in {skill["id"] for skill in skills}:
+        if "ui-theme" not in {str(skill["id"]) for skill in skills}:
             ui_display = SKILL_DISPLAY.get("ui-theme", {})
             skills.append(
                 {
@@ -61,10 +66,11 @@ class SkillCatalogService:
                         "Allow the assistant to switch light or dark mode.",
                     ),
                     "category": category_map.get("ui-theme", "System"),
+                    "user_toggleable": is_skill_user_toggleable("ui-theme"),
                 }
             )
 
-        if "web-search" not in {skill["id"] for skill in skills}:
+        if "web-search" not in {str(skill["id"]) for skill in skills}:
             web_display = SKILL_DISPLAY.get("web-search", {})
             skills.append(
                 {
@@ -75,10 +81,11 @@ class SkillCatalogService:
                         "Search the live web for up-to-date information.",
                     ),
                     "category": category_map.get("web-search", "Web"),
+                    "user_toggleable": is_skill_user_toggleable("web-search"),
                 }
             )
 
-        if "memory" not in {skill["id"] for skill in skills}:
+        if "memory" not in {str(skill["id"]) for skill in skills}:
             memory_display = SKILL_DISPLAY.get("memory", {})
             skills.append(
                 {
@@ -89,10 +96,11 @@ class SkillCatalogService:
                         "Store and manage persistent user memories.",
                     ),
                     "category": category_map.get("memory", "System"),
+                    "user_toggleable": is_skill_user_toggleable("memory"),
                 }
             )
 
-        return [skill for skill in skills if skill["id"] in EXPOSED_SKILLS]
+        return [skill for skill in skills if str(skill["id"]) in EXPOSED_SKILLS]
 
     @staticmethod
     def _read_frontmatter(skill_md: Path) -> dict[str, str]:
@@ -138,6 +146,8 @@ class SkillCatalogService:
             "web-save": "Web",
             "web-search": "Web",
             "memory": "System",
+            "assistant-identity": "System",
+            "assistant-soul": "System",
             "audio-transcribe": "Media",
             "youtube-download": "Media",
             "youtube-transcribe": "Media",

@@ -154,7 +154,7 @@ private struct MarkdownGalleryImageView: View {
                         .font(DesignTokens.Typography.display)
                         .foregroundStyle(.secondary)
                 case .empty:
-                    ProgressView()
+                    LoadingIndicatorView(size: LoadingIndicatorSize.control)
                 }
             }
             .frame(maxWidth: .infinity)

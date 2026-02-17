@@ -17,7 +17,12 @@ struct SkillsSettingsView: View {
                         Task { await viewModel.setAllSkillsEnabled(isEnabled) }
                     }
                 ))
-                .disabled(viewModel.isSavingSkills || viewModel.isLoadingSkills || viewModel.settings == nil)
+                .disabled(
+                    viewModel.isSavingSkills ||
+                    viewModel.isLoadingSkills ||
+                    viewModel.settings == nil ||
+                    !hasToggleableSkills
+                )
             }
             if let error = viewModel.skillsError {
                 Section {
@@ -29,7 +34,7 @@ struct SkillsSettingsView: View {
             if viewModel.isSavingSkills {
                 Section {
                     HStack(spacing: 8) {
-                        ProgressView()
+                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         Text("Saving skills…")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -57,9 +62,19 @@ struct SkillsSettingsView: View {
                                     Text(skill.description)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
+                                    if !skill.userToggleable {
+                                        Text("Required")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .textCase(.uppercase)
+                                    }
                                 }
                             }
-                            .disabled(viewModel.isSavingSkills || viewModel.settings == nil)
+                            .disabled(
+                                viewModel.isSavingSkills ||
+                                viewModel.settings == nil ||
+                                !skill.userToggleable
+                            )
                         }
                     }
                 }
@@ -70,7 +85,7 @@ struct SkillsSettingsView: View {
         #endif
         .overlay {
             if viewModel.isLoadingSkills && viewModel.skills.isEmpty {
-                ProgressView()
+                LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
     }
@@ -84,8 +99,12 @@ struct SkillsSettingsView: View {
 
     private var allSkillsEnabled: Bool {
         let enabled = Set(viewModel.settings?.enabledSkills ?? [])
-        let all = Set(viewModel.skills.map(\.id))
+        let all = Set(viewModel.skills.filter(\.userToggleable).map(\.id))
         return !all.isEmpty && enabled.isSuperset(of: all)
+    }
+
+    private var hasToggleableSkills: Bool {
+        viewModel.skills.contains(where: \.userToggleable)
     }
 
     private func isSkillEnabled(_ id: String) -> Bool {
@@ -145,7 +164,7 @@ struct ShortcutsSettingsView: View {
         #endif
         .overlay {
             if viewModel.isLoadingShortcuts && viewModel.shortcutsToken.isEmpty {
-                ProgressView()
+                LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
     }

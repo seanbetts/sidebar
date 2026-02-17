@@ -29,6 +29,12 @@
 	let assistantIdentityTone = '';
 	let assistantIdentityValues = '';
 	let assistantIdentityBoundaries = '';
+	let assistantIdentityMeta: { updated_at?: string; version?: number; reason?: string | null } = {};
+	let assistantSoulPurpose = '';
+	let assistantSoulOperatingPrinciples = '';
+	let assistantSoulAdaptationPolicy = '';
+	let assistantSoulSuccessSignals = '';
+	let assistantSoulMeta: { updated_at?: string; version?: number; reason?: string | null } = {};
 	let name = '';
 	let jobTitle = '';
 	let employer = '';
@@ -49,12 +55,28 @@
 	let isSavingSettings = false;
 	let settingsLoaded = false;
 	let settingsError = '';
-	let skills: Array<{ id: string; name: string; description: string; category?: string }> = [];
+	let skills: Array<{
+		id: string;
+		name: string;
+		description: string;
+		category?: string;
+		user_toggleable?: boolean;
+	}> = [];
 	let enabledSkills: string[] = [];
 	let initialEnabledSkills: string[] = [];
 	let isLoadingSkills = false;
 	let skillsError = '';
-	$: allSkillsEnabled = skills.length > 0 && enabledSkills.length === skills.length;
+	let toggleableSkillIds: string[] = [];
+	let requiredSkillIds: string[] = [];
+	$: toggleableSkillIds = skills
+		.filter((skill) => skill.user_toggleable !== false)
+		.map((skill) => skill.id);
+	$: requiredSkillIds = skills
+		.filter((skill) => skill.user_toggleable === false)
+		.map((skill) => skill.id);
+	$: allSkillsEnabled =
+		toggleableSkillIds.length > 0 &&
+		toggleableSkillIds.every((skillId) => enabledSkills.includes(skillId));
 	let locationSuggestions: Array<{ description: string; place_id: string }> = [];
 	let isLoadingLocations = false;
 	let locationLookupError = '';
@@ -131,6 +153,13 @@
 			assistantIdentityTone = assistantIdentity?.tone ?? '';
 			assistantIdentityValues = assistantIdentity?.values ?? '';
 			assistantIdentityBoundaries = assistantIdentity?.boundaries ?? '';
+			assistantIdentityMeta = data?.assistant_identity_meta ?? {};
+			const assistantSoul = data?.assistant_soul ?? {};
+			assistantSoulPurpose = assistantSoul?.purpose ?? '';
+			assistantSoulOperatingPrinciples = assistantSoul?.operating_principles ?? '';
+			assistantSoulAdaptationPolicy = assistantSoul?.adaptation_policy ?? '';
+			assistantSoulSuccessSignals = assistantSoul?.success_signals ?? '';
+			assistantSoulMeta = data?.assistant_soul_meta ?? {};
 			name = data?.name ?? '';
 			jobTitle = data?.job_title ?? '';
 			employer = data?.employer ?? '';
@@ -187,6 +216,13 @@
 			assistantIdentityTone = assistantIdentity?.tone ?? '';
 			assistantIdentityValues = assistantIdentity?.values ?? '';
 			assistantIdentityBoundaries = assistantIdentity?.boundaries ?? '';
+			assistantIdentityMeta = data?.assistant_identity_meta ?? {};
+			const assistantSoul = data?.assistant_soul ?? {};
+			assistantSoulPurpose = assistantSoul?.purpose ?? '';
+			assistantSoulOperatingPrinciples = assistantSoul?.operating_principles ?? '';
+			assistantSoulAdaptationPolicy = assistantSoul?.adaptation_policy ?? '';
+			assistantSoulSuccessSignals = assistantSoul?.success_signals ?? '';
+			assistantSoulMeta = data?.assistant_soul_meta ?? {};
 			name = data?.name ?? '';
 			jobTitle = data?.job_title ?? '';
 			employer = data?.employer ?? '';
@@ -263,6 +299,9 @@
 	}
 
 	function toggleSkill(name: string, enabled: boolean) {
+		const selected = skills.find((skill) => skill.id === name);
+		if (selected?.user_toggleable === false) return;
+
 		if (enabled) {
 			enabledSkills = [...new Set([...enabledSkills, name])];
 		} else {
@@ -272,9 +311,10 @@
 
 	function toggleAllSkills(enabled: boolean) {
 		if (enabled) {
-			enabledSkills = skills.map((skill) => skill.id);
+			enabledSkills = [...new Set([...enabledSkills, ...toggleableSkillIds, ...requiredSkillIds])];
 		} else {
-			enabledSkills = [];
+			enabledSkills = enabledSkills.filter((skill) => !toggleableSkillIds.includes(skill));
+			enabledSkills = [...new Set([...enabledSkills, ...requiredSkillIds])];
 		}
 	}
 
@@ -455,6 +495,12 @@
 	bind:assistantIdentityTone
 	bind:assistantIdentityValues
 	bind:assistantIdentityBoundaries
+	{assistantIdentityMeta}
+	bind:assistantSoulPurpose
+	bind:assistantSoulOperatingPrinciples
+	bind:assistantSoulAdaptationPolicy
+	bind:assistantSoulSuccessSignals
+	{assistantSoulMeta}
 	bind:weatherUnit
 	{setWeatherUnit}
 	{isLoadingSkills}

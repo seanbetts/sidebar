@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { Loader2, User } from 'lucide-svelte';
+	import { User } from 'lucide-svelte';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 
 	export let profileImageSrc = '';
 	export let profileImageError = '';
@@ -138,7 +140,7 @@
 <div class="settings-actions">
 	{#if isLoadingSettings}
 		<div class="settings-meta">
-			<Loader2 size={16} class="spin" />
+			<LoadingGlyph size={LOADING_SIZES.inline} />
 			Loading...
 		</div>
 	{/if}

@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { ChevronRight, FileText, Loader2, Search } from 'lucide-svelte';
+	import { ChevronRight, FileText, Search } from 'lucide-svelte';
 	import { treeStore } from '$lib/stores/tree';
 	import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
 	import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
 	import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import type { FileNode } from '$lib/types/file';
 	import { useNoteActions } from '$lib/hooks/useNoteActions';
@@ -277,7 +279,7 @@
 						>
 							{#if isArchiveExpanded && treeData?.archivedLoading}
 								<div class="notes-empty notes-loading" role="status" aria-live="polite">
-									<Loader2 size={14} class="spin" />
+									<LoadingGlyph size={LOADING_SIZES.inline} />
 									<span>Loading archived notes...</span>
 								</div>
 							{:else if archiveNodes.length > 0}
@@ -410,18 +412,5 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
-	}
-
-	.spin {
-		animation: notes-spin 1s linear infinite;
-	}
-
-	@keyframes notes-spin {
-		from {
-			transform: rotate(0deg);
-		}
-		to {
-			transform: rotate(360deg);
-		}
 	}
 </style>

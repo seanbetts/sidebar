@@ -60,7 +60,11 @@ public struct ScratchpadPopoverView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .overlay {
                     if isLoading && !hasLoaded {
-                        ProgressView("Loading...")
+                        VStack(spacing: 8) {
+                            LoadingIndicatorView(size: LoadingIndicatorSize.panel)
+                            Text("Loading...")
+                                .font(.caption)
+                        }
                     }
                 }
             }

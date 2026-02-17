@@ -29,7 +29,7 @@ struct CappedImageProvider: ImageProvider {
             case .empty:
                 HStack {
                     Spacer(minLength: 0)
-                    ProgressView()
+                    LoadingIndicatorView(size: LoadingIndicatorSize.control)
                     Spacer(minLength: 0)
                 }
             }

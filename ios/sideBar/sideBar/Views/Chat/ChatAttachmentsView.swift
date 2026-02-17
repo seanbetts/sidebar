@@ -41,8 +41,7 @@ struct PendingAttachmentsView: View {
                             .accessibilityLabel("Delete attachment")
                         }
                     } else {
-                        ProgressView()
-                            .controlSize(.small)
+                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                     }
                 }
                 .padding(.horizontal, DesignTokens.Spacing.sm)

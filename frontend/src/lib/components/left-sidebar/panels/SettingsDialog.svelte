@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { Loader2, LogOut, User } from 'lucide-svelte';
+	import { LogOut, User } from 'lucide-svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import { Button } from '$lib/components/ui/button';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import MemorySettings from '$lib/components/settings/MemorySettings.svelte';
 	import SettingsAccountSection from '$lib/components/left-sidebar/panels/settings/SettingsAccountSection.svelte';
 	import SettingsAgentSection from '$lib/components/left-sidebar/panels/settings/SettingsAgentSection.svelte';
@@ -46,15 +48,48 @@
 	export let assistantIdentityTone = '';
 	export let assistantIdentityValues = '';
 	export let assistantIdentityBoundaries = '';
+	export let assistantIdentityMeta: {
+		updated_at?: string;
+		version?: number;
+		reason?: string | null;
+	} = {};
+	export let assistantSoulPurpose = '';
+	export let assistantSoulOperatingPrinciples = '';
+	export let assistantSoulAdaptationPolicy = '';
+	export let assistantSoulSuccessSignals = '';
+	export let assistantSoulMeta: { updated_at?: string; version?: number; reason?: string | null } =
+		{};
 	export let weatherUnit: WeatherUnit = 'celsius';
 	export let setWeatherUnit: (unit: WeatherUnit) => void;
 	export let isLoadingSkills = false;
 	export let skillsError = '';
-	export let skills: Array<{ id: string; name: string; description: string; category?: string }> =
-		[];
+	export let skills: Array<{
+		id: string;
+		name: string;
+		description: string;
+		category?: string;
+		user_toggleable?: boolean;
+	}> = [];
 	export let groupSkills: (
-		list: Array<{ id: string; name: string; description: string; category?: string }>
-	) => Array<[string, Array<{ id: string; name: string; description: string; category?: string }>]>;
+		list: Array<{
+			id: string;
+			name: string;
+			description: string;
+			category?: string;
+			user_toggleable?: boolean;
+		}>
+	) => Array<
+		[
+			string,
+			Array<{
+				id: string;
+				name: string;
+				description: string;
+				category?: string;
+				user_toggleable?: boolean;
+			}>
+		]
+	>;
 	export let enabledSkills: string[] = [];
 	export let allSkillsEnabled = false;
 	export let toggleAllSkills: (enabled: boolean) => void;
@@ -92,7 +127,7 @@
 				{#if isLoadingSettings}
 					<div class="settings-loading-mask" aria-live="polite">
 						<div class="settings-loading-card">
-							<Loader2 size={18} class="spin" />
+							<LoadingGlyph size={LOADING_SIZES.control} />
 							<span>Loading settings...</span>
 						</div>
 					</div>
@@ -139,6 +174,12 @@
 						{assistantIdentityTone}
 						{assistantIdentityValues}
 						{assistantIdentityBoundaries}
+						{assistantIdentityMeta}
+						{assistantSoulPurpose}
+						{assistantSoulOperatingPrinciples}
+						{assistantSoulAdaptationPolicy}
+						{assistantSoulSuccessSignals}
+						{assistantSoulMeta}
 					/>
 				{:else if activeSettingsSection === 'storage'}
 					<SettingsStorageSection />
@@ -532,19 +573,6 @@
 		background: var(--color-card);
 		border: 1px solid var(--color-border);
 		color: var(--color-muted-foreground);
-	}
-
-	:global(.spin) {
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		from {
-			transform: rotate(0deg);
-		}
-		to {
-			transform: rotate(360deg);
-		}
 	}
 
 	@keyframes settings-dialog-in {

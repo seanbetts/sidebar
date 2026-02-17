@@ -350,8 +350,11 @@ private struct SideBarYouTubeEmbedBlock: View {
                 if !isPlayerLoaded {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(DesignTokens.Colors.muted)
-                    ProgressView("Loading video…")
-                        .font(.footnote)
+                    VStack(spacing: 8) {
+                        LoadingIndicatorView(size: LoadingIndicatorSize.panel)
+                        Text("Loading video…")
+                            .font(.footnote)
+                    }
                 }
             }
             .aspectRatio(16 / 9, contentMode: .fit)
@@ -365,8 +368,7 @@ private struct SideBarYouTubeEmbedBlock: View {
                 } label: {
                     HStack(spacing: 8) {
                         if isQueuedOrProcessing(context: context) {
-                            ProgressView()
-                                .controlSize(.small)
+                            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         }
                         Text(isQueuedOrProcessing(context: context) ? "Transcribing" : "Get Transcript")
                             .font(.footnote.weight(.semibold))

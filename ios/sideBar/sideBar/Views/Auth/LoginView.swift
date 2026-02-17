@@ -311,8 +311,7 @@ public struct LoginView: View {
                 Task { _ = await attemptOfflineUnlock() }
             } label: {
                 if isOfflineUnlocking {
-                    ProgressView()
-                        .tint(.black)
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         .frame(maxWidth: .infinity)
                 } else {
                     Text(offlineUnlockTitle)
@@ -363,15 +362,14 @@ public struct LoginView: View {
             ZStack {
                 // Hidden content to maintain consistent size
                 HStack(spacing: 8) {
-                    ProgressView()
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                     Text("Signing in...")
                 }
                 .opacity(0)
                 // Visible content
                 if isSigningIn {
                     HStack(spacing: 8) {
-                        ProgressView()
-                            .tint(.black)
+                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         Text("Signing in...")
                     }
                 } else {

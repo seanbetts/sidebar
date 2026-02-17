@@ -97,12 +97,23 @@ def _resolve_enabled_skills(settings_record):
         List of enabled skill IDs.
     """
     catalog = SkillCatalogService.list_skills(settings.skills_dir)
-    all_ids = [skill["id"] for skill in catalog]
+    all_ids = [str(skill["id"]) for skill in catalog]
+    required_ids = {
+        str(skill["id"])
+        for skill in catalog
+        if skill.get("user_toggleable", True) is False
+    }
     if not settings_record or settings_record.enabled_skills is None:
         return all_ids
-    return [
-        skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids
+    enabled = [
+        skill_id
+        for skill_id in settings_record.enabled_skills
+        if isinstance(skill_id, str) and skill_id in all_ids
     ]
+    for skill_id in all_ids:
+        if skill_id in required_ids and skill_id not in enabled:
+            enabled.append(skill_id)
+    return enabled
 
 
 def _build_title_cache_key(user_msg: str, assistant_msg: str) -> str:

@@ -38,6 +38,17 @@ final class SettingsAPITests: XCTestCase {
                 "values": "clarity",
                 "boundaries": "no guessing"
               },
+              "assistant_soul": {
+                "purpose": "Help with durable progress.",
+                "operating_principles": "Be direct and clear.",
+                "adaptation_policy": "Adapt on repeated feedback.",
+                "success_signals": "Less rework."
+              },
+              "assistant_soul_meta": {
+                "updated_at": "2026-02-17T10:00:00Z",
+                "version": 1,
+                "reason": "Bootstrap initialization"
+              },
               "enabled_skills": []
             }
             """
@@ -49,6 +60,8 @@ final class SettingsAPITests: XCTestCase {
         XCTAssertEqual(settings.userId, "u1")
         XCTAssertEqual(settings.communicationStyle, "friendly")
         XCTAssertEqual(settings.assistantIdentity?.name, "sideBar")
+        XCTAssertEqual(settings.assistantSoul?.purpose, "Help with durable progress.")
+        XCTAssertEqual(settings.assistantSoulMeta?.version, 1)
     }
 
     func testUpdateSettingsUsesPatchWithSnakeCaseKeys() async throws {

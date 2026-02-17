@@ -29,6 +29,38 @@ final class SkillsAPITests: XCTestCase {
         let response = try await api.list()
 
         XCTAssertEqual(response.skills.first?.id, "s1")
+        XCTAssertEqual(response.skills.first?.userToggleable, true)
+    }
+
+    func testListSkillsDecodesUserToggleablePolicy() async throws {
+        let api = SkillsAPI(client: makeClient())
+        SkillsURLProtocolMock.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "skills": [
+                {
+                  "id": "assistant-identity",
+                  "name": "Assistant Identity",
+                  "description": "Desc",
+                  "category": "System",
+                  "user_toggleable": false
+                }
+              ]
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        let response = try await api.list()
+
+        XCTAssertEqual(response.skills.first?.id, "assistant-identity")
+        XCTAssertEqual(response.skills.first?.userToggleable, false)
     }
 
     private func makeClient() -> APIClient {

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException
@@ -49,6 +50,7 @@ MAX_STYLE_CHARS = 4000
 MAX_PROFILE_FIELD_CHARS = 200
 MAX_ASSISTANT_IDENTITY_NAME_CHARS = 120
 MAX_ASSISTANT_IDENTITY_TEXT_CHARS = 2000
+MAX_ASSISTANT_SOUL_TEXT_CHARS = 3000
 
 DEFAULT_ASSISTANT_IDENTITY = {
     "name": "sideBar",
@@ -60,6 +62,24 @@ DEFAULT_ASSISTANT_IDENTITY = {
     "values": "Clarity, pragmatism, and rigor.",
 }
 
+DEFAULT_ASSISTANT_SOUL = {
+    "purpose": (
+        "Help the user think clearly, execute reliably, and make durable progress "
+        "on meaningful work."
+    ),
+    "operating_principles": (
+        "Be direct, grounded in evidence, and explicit about uncertainty."
+    ),
+    "adaptation_policy": (
+        "Update behavior based on durable user preferences and repeated feedback, "
+        "not one-off phrasing."
+    ),
+    "success_signals": (
+        "Fewer misunderstandings, faster iteration, and outputs the user "
+        "can use immediately."
+    ),
+}
+
 storage_backend = get_storage_backend()
 
 
@@ -68,6 +88,12 @@ class SettingsService:
 
     SHORTCUTS_PAT_PREFIX = "sb_pat_"
     ASSISTANT_IDENTITY_FIELDS = ("name", "tone", "boundaries", "values")
+    ASSISTANT_SOUL_FIELDS = (
+        "purpose",
+        "operating_principles",
+        "adaptation_policy",
+        "success_signals",
+    )
     USER_SETTINGS_FIELDS = (
         "communication_style",
         "working_relationship",
@@ -80,7 +106,7 @@ class SettingsService:
         "location",
         "enabled_skills",
     )
-    AGENT_SETTINGS_FIELDS = ("assistant_identity",)
+    AGENT_SETTINGS_FIELDS = ("assistant_identity", "assistant_soul")
 
     @staticmethod
     def _generate_shortcuts_pat() -> str:
@@ -122,6 +148,39 @@ class SettingsService:
         return None
 
     @staticmethod
+    def _required_skill_ids(catalog: list[dict[str, str | bool]]) -> list[str]:
+        """Return skill IDs that users are not allowed to disable."""
+        return [
+            str(skill["id"])
+            for skill in catalog
+            if skill.get("user_toggleable", True) is False
+        ]
+
+    @staticmethod
+    def _normalize_enabled_skills(
+        requested: list[str],
+        *,
+        catalog: list[dict[str, str | bool]],
+    ) -> list[str]:
+        """Normalize enabled skills, preserving order and forcing required skills."""
+        allowed = {str(skill["id"]) for skill in catalog}
+        required = SettingsService._required_skill_ids(catalog)
+        normalized: list[str] = []
+        seen: set[str] = set()
+
+        for skill_id in requested:
+            if skill_id in allowed and skill_id not in seen:
+                normalized.append(skill_id)
+                seen.add(skill_id)
+
+        for skill_id in required:
+            if skill_id not in seen:
+                normalized.append(skill_id)
+                seen.add(skill_id)
+
+        return normalized
+
+    @staticmethod
     def _resolve_enabled_skills(settings_record) -> list[str]:
         """Resolve enabled skills against the skill catalog.
 
@@ -132,15 +191,15 @@ class SettingsService:
             List of enabled skill IDs.
         """
         catalog = SkillCatalogService.list_skills(settings.skills_dir)
-        all_ids = [skill["id"] for skill in catalog]
+        all_ids = [str(skill["id"]) for skill in catalog]
         if not settings_record or settings_record.enabled_skills is None:
             return all_ids
-        enabled = [
+        requested = [
             skill_id
             for skill_id in settings_record.enabled_skills
-            if skill_id in all_ids
+            if isinstance(skill_id, str)
         ]
-        return enabled
+        return SettingsService._normalize_enabled_skills(requested, catalog=catalog)
 
     @staticmethod
     def _resolve_assistant_identity(settings_record) -> dict[str, str]:
@@ -171,6 +230,53 @@ class SettingsService:
                 resolved[field_name] = default
 
         return resolved
+
+    @staticmethod
+    def _resolve_assistant_soul(settings_record) -> dict[str, str]:
+        """Resolve assistant soul settings with defaults."""
+        raw = (
+            getattr(settings_record, "assistant_soul", None)
+            if settings_record
+            else None
+        )
+        if not isinstance(raw, dict):
+            raw = {}
+
+        resolved: dict[str, str] = {}
+        for field_name in SettingsService.ASSISTANT_SOUL_FIELDS:
+            default = DEFAULT_ASSISTANT_SOUL[field_name]
+            value = raw.get(field_name)
+            if isinstance(value, str):
+                trimmed = value.strip()
+                resolved[field_name] = trimmed if trimmed else default
+            else:
+                resolved[field_name] = default
+        return resolved
+
+    @staticmethod
+    def _resolve_agent_field_meta(raw_value: Any) -> dict[str, Any] | None:
+        """Resolve agent field metadata from stored JSON payload."""
+        if not isinstance(raw_value, dict):
+            return None
+        raw_meta = raw_value.get("_meta")
+        if not isinstance(raw_meta, dict):
+            return None
+
+        updated_at = raw_meta.get("updated_at")
+        reason = raw_meta.get("reason")
+        version = raw_meta.get("version")
+        if not isinstance(updated_at, str) or not updated_at.strip():
+            return None
+        if not isinstance(version, int) or version < 1:
+            return None
+
+        return {
+            "updated_at": updated_at.strip(),
+            "version": version,
+            "reason": reason.strip()
+            if isinstance(reason, str) and reason.strip()
+            else None,
+        }
 
     @staticmethod
     def _clean_text_field(
@@ -252,6 +358,79 @@ class SettingsService:
         return compact or None
 
     @staticmethod
+    def _clean_assistant_soul(value: Any) -> dict[str, str] | None:
+        """Validate and normalize the assistant soul payload."""
+        if value is None:
+            return None
+        if not isinstance(value, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="assistant_soul must be an object",
+            )
+
+        unknown_fields = sorted(
+            field
+            for field in value
+            if field not in SettingsService.ASSISTANT_SOUL_FIELDS
+        )
+        if unknown_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "assistant_soul has invalid fields: " f"{', '.join(unknown_fields)}"
+                ),
+            )
+
+        cleaned = {
+            "purpose": SettingsService._clean_text_field(
+                value.get("purpose"),
+                "assistant_soul.purpose",
+                MAX_ASSISTANT_SOUL_TEXT_CHARS,
+            ),
+            "operating_principles": SettingsService._clean_text_field(
+                value.get("operating_principles"),
+                "assistant_soul.operating_principles",
+                MAX_ASSISTANT_SOUL_TEXT_CHARS,
+            ),
+            "adaptation_policy": SettingsService._clean_text_field(
+                value.get("adaptation_policy"),
+                "assistant_soul.adaptation_policy",
+                MAX_ASSISTANT_SOUL_TEXT_CHARS,
+            ),
+            "success_signals": SettingsService._clean_text_field(
+                value.get("success_signals"),
+                "assistant_soul.success_signals",
+                MAX_ASSISTANT_SOUL_TEXT_CHARS,
+            ),
+        }
+        compact = {key: item for key, item in cleaned.items() if item is not None}
+        return compact or None
+
+    @staticmethod
+    def _apply_agent_field_meta(
+        value: dict[str, str] | None,
+        *,
+        existing_value: Any,
+        reason: str | None,
+    ) -> dict[str, Any]:
+        """Attach update metadata to an agent-managed JSON payload."""
+        payload: dict[str, Any] = dict(value or {})
+        existing_meta = SettingsService._resolve_agent_field_meta(existing_value) or {}
+        next_version = int(existing_meta.get("version", 0)) + 1
+        timestamp = (
+            datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        )
+        trimmed_reason = (
+            reason.strip() if isinstance(reason, str) and reason.strip() else None
+        )
+        payload["_meta"] = {
+            "updated_at": timestamp,
+            "version": next_version,
+            "reason": trimmed_reason,
+        }
+        return payload
+
+    @staticmethod
     def _reject_unknown_fields(
         updates: dict, *, allowed_fields: tuple[str, ...], scope_name: str
     ) -> None:
@@ -297,6 +476,17 @@ class SettingsService:
             "enabled_skills": SettingsService._resolve_enabled_skills(settings_record),
             "assistant_identity": SettingsService._resolve_assistant_identity(
                 settings_record
+            ),
+            "assistant_identity_meta": SettingsService._resolve_agent_field_meta(
+                getattr(settings_record, "assistant_identity", None)
+                if settings_record
+                else None
+            ),
+            "assistant_soul": SettingsService._resolve_assistant_soul(settings_record),
+            "assistant_soul_meta": SettingsService._resolve_agent_field_meta(
+                getattr(settings_record, "assistant_soul", None)
+                if settings_record
+                else None
             ),
         }
 
@@ -369,7 +559,7 @@ class SettingsService:
             )
         if "enabled_skills" in updates and updates["enabled_skills"] is not None:
             catalog = SkillCatalogService.list_skills(settings.skills_dir)
-            allowed = {skill["id"] for skill in catalog}
+            allowed = {str(skill["id"]) for skill in catalog}
             invalid = [
                 skill for skill in updates["enabled_skills"] if skill not in allowed
             ]
@@ -378,6 +568,10 @@ class SettingsService:
                     status_code=400,
                     detail=f"Invalid skills: {', '.join(invalid)}",
                 )
+            updates["enabled_skills"] = SettingsService._normalize_enabled_skills(
+                updates["enabled_skills"],
+                catalog=catalog,
+            )
         return updates
 
     @staticmethod
@@ -391,6 +585,10 @@ class SettingsService:
         if "assistant_identity" in updates:
             updates["assistant_identity"] = SettingsService._clean_assistant_identity(
                 updates.get("assistant_identity")
+            )
+        if "assistant_soul" in updates:
+            updates["assistant_soul"] = SettingsService._clean_assistant_soul(
+                updates.get("assistant_soul")
             )
         return updates
 
@@ -425,9 +623,32 @@ class SettingsService:
         return SettingsService.build_response(user_settings, user_id)
 
     @staticmethod
-    def update_agent_settings(db, user_id: str, updates: dict) -> dict:
+    def update_agent_settings(
+        db, user_id: str, updates: dict, *, reason: str | None = None
+    ) -> dict:
         """Update agent-managed settings fields for a user."""
         cleaned = SettingsService.clean_agent_updates(updates)
+        current_settings = UserSettingsService.get_settings(db, user_id)
+        if "assistant_identity" in cleaned:
+            cleaned["assistant_identity"] = SettingsService._apply_agent_field_meta(
+                cleaned["assistant_identity"],
+                existing_value=(
+                    getattr(current_settings, "assistant_identity", None)
+                    if current_settings
+                    else None
+                ),
+                reason=reason,
+            )
+        if "assistant_soul" in cleaned:
+            cleaned["assistant_soul"] = SettingsService._apply_agent_field_meta(
+                cleaned["assistant_soul"],
+                existing_value=(
+                    getattr(current_settings, "assistant_soul", None)
+                    if current_settings
+                    else None
+                ),
+                reason=reason,
+            )
         user_settings = UserSettingsService.upsert_settings(db, user_id, **cleaned)
         return SettingsService.build_response(user_settings, user_id)
 

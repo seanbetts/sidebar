@@ -64,6 +64,14 @@ SKILL_DISPLAY = {
         "name": "Prompt Preview",
         "description": "Generate the current system prompt output for preview.",
     },
+    "assistant-identity": {
+        "name": "Assistant Identity",
+        "description": "Read and update assistant-managed identity settings.",
+    },
+    "assistant-soul": {
+        "name": "Assistant Soul",
+        "description": "Read and update assistant-managed soul guidance settings.",
+    },
     "memory": {
         "name": "Memory",
         "description": "Store and manage persistent user memories.",
@@ -80,6 +88,8 @@ EXPOSED_SKILLS = {
     "tasks",
     "web-save",
     "web-search",
+    "assistant-identity",
+    "assistant-soul",
     "memory",
     "ui-theme",
     "prompt-preview",
@@ -91,3 +101,13 @@ EXPOSED_SKILLS = {
     "skill-creator",
     "mcp-builder",
 }
+
+NON_TOGGLEABLE_SKILLS = {
+    "assistant-identity",
+    "assistant-soul",
+}
+
+
+def is_skill_user_toggleable(skill_id: str) -> bool:
+    """Return whether a skill can be disabled by users."""
+    return skill_id not in NON_TOGGLEABLE_SKILLS

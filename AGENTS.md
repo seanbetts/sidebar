@@ -40,7 +40,8 @@ ruff check backend/ && npm run lint  # lint
 
 **Other constraints**
 - Fix root causes. Avoid band-aids that hide symptoms
-- Do not delete or rename unexpected files/behaviour. Stop and ask
+- Do not delete or rename unexpected files/behaviour. Stop and ask if deletion/rename is required.
+- If unexpected modified/untracked files exist, default to option 1: stage and commit only task-related files, leave other files untouched, and continue without asking.
 
 ## Anti-Patterns
 
@@ -73,7 +74,7 @@ Write tests for new behavior. Prefer a failing test first when practical.
 
 **Stop and ask:**
 - Breaking API or database schema changes
-- Deleting unexpected files
+- Deleting or renaming unexpected files
 - Security configuration
 - Ambiguous requirements
 

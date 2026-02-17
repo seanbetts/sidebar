@@ -153,3 +153,55 @@ async def test_execute_tool_requires_user_id():
     result = await mapper.execute_tool("Read File", {})
     assert result["success"] is False
     assert "requires user_id" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_appends_user_id_for_assistant_identity_skill():
+    tools = {
+        "Update Assistant Identity": {
+            "description": "update assistant identity",
+            "input_schema": {},
+            "skill": "assistant-identity",
+            "script": "update_assistant_identity.py",
+            "build_args": lambda _params: ["--name", "Navigator"],
+        }
+    }
+    mapper = _build_mapper(tools)
+    result = await mapper.execute_tool(
+        "Update Assistant Identity",
+        {"name": "Navigator"},
+        context={"user_id": "user-1"},
+    )
+    assert result["success"] is True
+    assert mapper.executor.calls[0]["args"] == [
+        "--name",
+        "Navigator",
+        "--user-id",
+        "user-1",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_appends_user_id_for_assistant_soul_skill():
+    tools = {
+        "Update Assistant Soul": {
+            "description": "update assistant soul",
+            "input_schema": {},
+            "skill": "assistant-soul",
+            "script": "update_assistant_soul.py",
+            "build_args": lambda _params: ["--purpose", "Help me iterate with confidence."],
+        }
+    }
+    mapper = _build_mapper(tools)
+    result = await mapper.execute_tool(
+        "Update Assistant Soul",
+        {"purpose": "Help me iterate with confidence."},
+        context={"user_id": "user-1"},
+    )
+    assert result["success"] is True
+    assert mapper.executor.calls[0]["args"] == [
+        "--purpose",
+        "Help me iterate with confidence.",
+        "--user-id",
+        "user-1",
+    ]

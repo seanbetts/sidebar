@@ -26,6 +26,23 @@ class AssistantIdentityPayload(BaseModel):
     values: str | None = None
 
 
+class AssistantSoulPayload(BaseModel):
+    """Assistant soul payload for durable operating guidance."""
+
+    purpose: str | None = None
+    operating_principles: str | None = None
+    adaptation_policy: str | None = None
+    success_signals: str | None = None
+
+
+class AgentFieldMetaPayload(BaseModel):
+    """Metadata for assistant-managed field updates."""
+
+    updated_at: str
+    version: int
+    reason: str | None = None
+
+
 class SettingsResponse(BaseModel):
     """Response payload for user settings."""
 
@@ -42,6 +59,9 @@ class SettingsResponse(BaseModel):
     profile_image_url: str | None = None
     enabled_skills: list[str] = []
     assistant_identity: AssistantIdentityPayload | None = None
+    assistant_identity_meta: AgentFieldMetaPayload | None = None
+    assistant_soul: AssistantSoulPayload | None = None
+    assistant_soul_meta: AgentFieldMetaPayload | None = None
 
 
 class SettingsUpdate(BaseModel):

@@ -200,17 +200,29 @@ class ShareStateView: NSView {
 }
 
 final class ShareLoadingView: ShareStateView {
+    private let loadingImageView: NSImageView
+
     init(message: String) {
-        let activityIndicator = NSProgressIndicator()
-        activityIndicator.style = .spinning
-        activityIndicator.controlSize = .regular
-        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        activityIndicator.startAnimation(nil)
-        super.init(message: message, accessoryView: activityIndicator)
+        let loadingImageView = NSImageView()
+        loadingImageView.imageScaling = .scaleProportionallyUpOrDown
+        loadingImageView.animates = true
+        loadingImageView.translatesAutoresizingMaskIntoConstraints = false
+        loadingImageView.image = ShareLoadingAsset.image(for: NSApp.effectiveAppearance)
+        self.loadingImageView = loadingImageView
+        super.init(message: message, accessoryView: loadingImageView)
+        NSLayoutConstraint.activate([
+            loadingImageView.widthAnchor.constraint(equalToConstant: 44),
+            loadingImageView.heightAnchor.constraint(equalToConstant: 44)
+        ])
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        loadingImageView.image = ShareLoadingAsset.image(for: effectiveAppearance)
     }
 }
 

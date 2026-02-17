@@ -25,8 +25,7 @@ public struct IngestionDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if shouldShowProcessingState {
                 VStack(spacing: 16) {
-                    ProgressView()
-                        .scaleEffect(1.1)
+                    LoadingIndicatorView(size: LoadingIndicatorSize.page)
                     PlaceholderView(
                         title: "Processing file…",
                         subtitle: processingDetail

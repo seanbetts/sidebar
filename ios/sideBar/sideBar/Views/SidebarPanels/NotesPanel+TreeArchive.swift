@@ -184,8 +184,7 @@ extension NotesPanelView {
     @ViewBuilder
     private func archiveLoadingRow(message: String) -> some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
-            ProgressView()
-                .controlSize(.small)
+            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             Text(message)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -198,8 +197,7 @@ extension NotesPanelView {
             Label("Archive", systemImage: "archivebox")
                 .font(.subheadline)
             if isArchiveLoading && !archivedNodes.isEmpty {
-                ProgressView()
-                    .controlSize(.small)
+                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             }
         }
     }

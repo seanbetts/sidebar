@@ -12,8 +12,7 @@ struct PendingWebsiteRow: View, Equatable {
             useListStyling: useListStyling
         ) {
             HStack(spacing: 8) {
-                ProgressView()
-                    .scaleEffect(0.75)
+                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(pending.title)
                         .font(.subheadline)
