@@ -119,15 +119,6 @@ struct ProfileSettingsView: View {
                 TextField("Gender", text: $gender)
                 TextField("Pronouns", text: $pronouns)
                 TextField("Location", text: $location)
-                Toggle("Date of Birth", isOn: $dateOfBirthEnabled)
-                if dateOfBirthEnabled {
-                    DatePicker(
-                        "Date of Birth",
-                        selection: $dateOfBirth,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.compact)
-                }
             }
 
             Section {
