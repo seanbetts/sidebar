@@ -44,8 +44,8 @@ public struct ContentView: View {
     @State var hasCompletedInitialSetup = false
     @State var backgroundedAt: Date?
 
-    /// Grace period before requiring biometric re-authentication (30 seconds)
-    let biometricGracePeriod: TimeInterval = 30
+    /// Grace period before requiring biometric re-authentication (5 minutes)
+    let biometricGracePeriod: TimeInterval = 300
 
     public init() {
     }
