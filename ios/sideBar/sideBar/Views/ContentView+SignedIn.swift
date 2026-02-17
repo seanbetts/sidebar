@@ -324,7 +324,7 @@ extension ContentView {
         content = AnyView(content.sheet(isPresented: $isSettingsPresented) {
             SettingsView()
                 .environmentObject(environment)
-                .phoneSheetGrabBarVisible()
+                .settingsSheetGrabBarVisible()
         })
         #endif
         content = AnyView(content.onChange(of: environment.signOutEvent) { _, _ in
