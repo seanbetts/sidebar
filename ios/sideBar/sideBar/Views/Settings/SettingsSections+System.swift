@@ -27,10 +27,6 @@ struct UserSettingsView: View {
                     }
                 }
             }
-            Section {
-                Text("Customize how the assistant should collaborate with you")
-                    .foregroundStyle(.secondary)
-            }
             Section("Communication Style") {
                 TextEditor(text: $communicationStyle)
                 .frame(minHeight: 120)
