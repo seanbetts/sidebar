@@ -27,13 +27,27 @@ struct UserSettingsView: View {
                     }
                 }
             }
-            Section("Communication Style") {
+            Section {
                 TextEditor(text: $communicationStyle)
                 .frame(minHeight: 120)
+            } header: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Communication Style")
+                    Text("How the assistant should communicate with you.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            Section("Working Relationship") {
+            Section {
                 TextEditor(text: $workingRelationship)
                     .frame(minHeight: 120)
+            } header: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Working Relationship")
+                    Text("How you want the assistant to collaborate with you.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             if viewModel.isSavingSystem {
                 Section {
