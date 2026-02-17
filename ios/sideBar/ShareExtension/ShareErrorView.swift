@@ -18,7 +18,7 @@ final class ShareErrorView: ShareStateView {
         super.init(
             message: message,
             accessoryView: iconImageView,
-            spacingAfterTitle: 20,
+            spacingAfterAccessory: 20,
             style: .minimal
         )
     }

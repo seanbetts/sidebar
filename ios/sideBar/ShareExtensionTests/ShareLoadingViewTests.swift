@@ -23,6 +23,14 @@ final class ShareLoadingViewTests: XCTestCase {
         XCTAssertNil(cardContainer)
     }
 
+    func testLoadingViewOmitsBrandStack() {
+        let subject = ShareLoadingView(message: "Saving website...")
+        let brandStack = subject.firstSubview(where: {
+            ($0 as? UIStackView)?.accessibilityIdentifier == "share-brand-stack"
+        })
+        XCTAssertNil(brandStack)
+    }
+
     private func colorsEqual(
         _ left: UIColor,
         _ right: UIColor,

@@ -32,7 +32,7 @@ final class ShareSuccessView: ShareStateView {
         super.init(
             message: message,
             accessoryView: iconContainerView,
-            spacingAfterTitle: 10,
+            spacingAfterAccessory: 10,
             style: .minimal
         )
     }

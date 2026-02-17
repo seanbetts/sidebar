@@ -9,17 +9,13 @@ final class ShareErrorViewTests: XCTestCase {
         XCTAssertTrue(buttons.isEmpty)
     }
 
-    func testErrorViewUsesVerticalBrandStack() {
+    func testErrorViewOmitsBrandStack() {
         let subject = ShareErrorView(message: "Failed")
 
-        guard let brandStack = subject.firstSubview(where: {
+        let brandStack = subject.firstSubview(where: {
             ($0 as? UIStackView)?.accessibilityIdentifier == "share-brand-stack"
-        }) as? UIStackView else {
-            XCTFail("Expected brand stack in view hierarchy.")
-            return
-        }
-
-        XCTAssertEqual(brandStack.axis, .vertical)
+        })
+        XCTAssertNil(brandStack)
     }
 
     func testErrorViewUsesMinimalContainerStyling() {
