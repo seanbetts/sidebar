@@ -38,10 +38,7 @@ public struct BiometricLockView: View {
             // Only show the card UI if there's an error or fallback needed
             if showFallbackUI {
                 VStack(spacing: 20) {
-                    Image("AppLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 64, height: 64)
+                    LoadingIndicatorView(size: LoadingIndicatorSize.hero, variant: .hero)
 
                     Text("Unlock sideBar")
                         .font(DesignTokens.Typography.title3Semibold)

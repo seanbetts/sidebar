@@ -56,9 +56,8 @@ sync_file() {
 }
 
 # Group: loading GIFs
-# Use the 44px visual variant as the shared source for all current loading sizes
-# (16, 20, 24, 32, 44). Keep 128px variants in assets/loading for future large
-# loading surfaces.
+# Use 44px assets for regular loading indicators (16, 20, 24, 32, 44) and sync
+# 128px assets for hero-sized loading surfaces.
 LIGHT_SRC="${ROOT_DIR}/assets/loading/loading-light-44.gif"
 DARK_SRC="${ROOT_DIR}/assets/loading/loading-dark-44.gif"
 
@@ -72,8 +71,12 @@ sync_file "${DARK_128_SRC}" "frontend/static/images/loading-dark-128.gif"
 
 sync_file "${LIGHT_SRC}" "ios/sideBar/sideBar/Resources/images/loading-light.gif"
 sync_file "${DARK_SRC}" "ios/sideBar/sideBar/Resources/images/loading-dark.gif"
+sync_file "${LIGHT_128_SRC}" "ios/sideBar/sideBar/Resources/images/loading-light-128.gif"
+sync_file "${DARK_128_SRC}" "ios/sideBar/sideBar/Resources/images/loading-dark-128.gif"
 sync_file "${LIGHT_SRC}" "ios/sideBar/ShareExtension/Resources/images/loading-light.gif"
 sync_file "${DARK_SRC}" "ios/sideBar/ShareExtension/Resources/images/loading-dark.gif"
+sync_file "${LIGHT_128_SRC}" "ios/sideBar/ShareExtension/Resources/images/loading-light-128.gif"
+sync_file "${DARK_128_SRC}" "ios/sideBar/ShareExtension/Resources/images/loading-dark-128.gif"
 sync_file "${LIGHT_SRC}" "ios/sideBar/sideBar Safari Extension/Resources/images/loading-light.gif"
 sync_file "${DARK_SRC}" "ios/sideBar/sideBar Safari Extension/Resources/images/loading-dark.gif"
 

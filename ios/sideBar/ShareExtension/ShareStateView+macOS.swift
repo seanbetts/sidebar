@@ -14,7 +14,7 @@ class ShareStateView: NSView {
         static let cardVerticalPadding: CGFloat = 22
         static let contentHorizontalInset: CGFloat = 20
         static let contentVerticalInset: CGFloat = 16
-        static let logoSize: CGFloat = 34
+        static let logoSize: CGFloat = 128
     }
 
     private struct ColorPalette {
@@ -163,6 +163,7 @@ class ShareStateView: NSView {
 
         refreshBrandLogo()
         logoImageView.imageScaling = .scaleProportionallyUpOrDown
+        logoImageView.animates = true
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
         logoImageView.heightAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
         logoImageView.widthAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
@@ -190,6 +191,9 @@ class ShareStateView: NSView {
     }
 
     private func brandLogoImage() -> NSImage? {
+        if let loading = ShareLoadingAsset.image(for: effectiveAppearance, variant: .hero) {
+            return loading
+        }
         let isDarkMode = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let preferredName = isDarkMode ? "logo-dark" : "logo-light"
         if let image = Bundle.main.image(forResource: NSImage.Name(preferredName)) {

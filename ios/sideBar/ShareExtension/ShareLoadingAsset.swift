@@ -1,15 +1,23 @@
 import Foundation
 import ImageIO
 
+enum ShareLoadingAssetVariant {
+    case standard
+    case hero
+}
+
 #if canImport(UIKit)
 import UIKit
 
 enum ShareLoadingAsset {
     private static let cache = NSCache<NSString, UIImage>()
 
-    static func image(for traitCollection: UITraitCollection) -> UIImage? {
+    static func image(
+        for traitCollection: UITraitCollection,
+        variant: ShareLoadingAssetVariant = .standard
+    ) -> UIImage? {
         let darkMode = traitCollection.userInterfaceStyle == .dark
-        let key = darkMode ? "loading-dark" : "loading-light"
+        let key = assetName(darkMode: darkMode, variant: variant)
         if let cached = cache.object(forKey: key as NSString) {
             return cached
         }
@@ -59,6 +67,19 @@ enum ShareLoadingAsset {
         let value = unclamped ?? clamped ?? 0.1
         return value > 0.02 ? value : 0.1
     }
+
+    private static func assetName(darkMode: Bool, variant: ShareLoadingAssetVariant) -> String {
+        switch (darkMode, variant) {
+        case (true, .standard):
+            return "loading-dark"
+        case (false, .standard):
+            return "loading-light"
+        case (true, .hero):
+            return "loading-dark-128"
+        case (false, .hero):
+            return "loading-light-128"
+        }
+    }
 }
 #elseif canImport(AppKit)
 import AppKit
@@ -66,9 +87,9 @@ import AppKit
 enum ShareLoadingAsset {
     private static var cache: [String: NSImage] = [:]
 
-    static func image(for appearance: NSAppearance) -> NSImage? {
+    static func image(for appearance: NSAppearance, variant: ShareLoadingAssetVariant = .standard) -> NSImage? {
         let darkMode = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        let key = darkMode ? "loading-dark" : "loading-light"
+        let key = assetName(darkMode: darkMode, variant: variant)
         if let cached = cache[key] {
             return cached
         }
@@ -78,6 +99,19 @@ enum ShareLoadingAsset {
         }
         cache[key] = image
         return image
+    }
+
+    private static func assetName(darkMode: Bool, variant: ShareLoadingAssetVariant) -> String {
+        switch (darkMode, variant) {
+        case (true, .standard):
+            return "loading-dark"
+        case (false, .standard):
+            return "loading-light"
+        case (true, .hero):
+            return "loading-dark-128"
+        case (false, .hero):
+            return "loading-light-128"
+        }
     }
 }
 #endif

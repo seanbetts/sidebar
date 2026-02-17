@@ -18,7 +18,7 @@ class ShareStateView: UIView {
         static let cardVerticalPadding: CGFloat = 24
         static let contentHorizontalInset: CGFloat = 20
         static let contentVerticalInset: CGFloat = 16
-        static let logoSize: CGFloat = 34
+        static let logoSize: CGFloat = 128
     }
 
     private struct ColorPalette {
@@ -101,6 +101,9 @@ class ShareStateView: UIView {
     }
 
     private func brandLogoImage() -> UIImage? {
+        if let loading = ShareLoadingAsset.image(for: traitCollection, variant: .hero) {
+            return loading
+        }
         let preferredName = traitCollection.userInterfaceStyle == .dark ? "logo-dark" : "logo-light"
         if let image = UIImage(named: preferredName, in: Bundle.main, compatibleWith: traitCollection) {
             return image
