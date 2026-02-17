@@ -15,7 +15,7 @@ struct ChatMessageCopyFeedbackState {
     }
 
     var iconName: String {
-        isCopied ? "checkmark.circle.fill" : "doc.on.doc"
+        isCopied ? "checkmark.circle" : "doc.on.doc"
     }
 
     var accessibilityLabel: String {
@@ -64,12 +64,6 @@ struct ChatMessageRow: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(copyFeedback.accessibilityLabel)
-                    if copyFeedback.isCopied {
-                        Text("Copied")
-                            .font(DesignTokens.Typography.caption2Semibold)
-                            .foregroundStyle(.secondary)
-                            .transition(.opacity)
-                    }
                 }
                 .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
