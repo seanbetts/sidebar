@@ -25,6 +25,7 @@ struct ChatMessageCopyFeedbackState {
 
 struct ChatMessageRow: View {
     let message: Message
+    let assistantDisplayName: String
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var copyFeedback = ChatMessageCopyFeedbackState()
@@ -38,7 +39,7 @@ struct ChatMessageRow: View {
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Text(message.role == .assistant ? "sideBar" : "You")
+                Text(message.role == .assistant ? assistantDisplayName : "You")
                     .font(DesignTokens.Typography.captionSemibold)
                     .padding(.horizontal, DesignTokens.Spacing.xs)
                     .padding(.vertical, DesignTokens.Spacing.xxs)

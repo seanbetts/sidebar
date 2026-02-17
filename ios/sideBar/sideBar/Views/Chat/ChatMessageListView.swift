@@ -24,6 +24,7 @@ struct ChatStreamingAutoScrollController {
 struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
     let bottomInset: CGFloat
+    let assistantDisplayName: String
     @State private var shouldScrollToBottom = false
     @State private var visibleMessageCount: Int = 40
     @State private var isAutoLoadingMore = false
@@ -57,7 +58,7 @@ struct ChatMessageListView: View {
                         }
                     }
                     ForEach(visibleMessages) { message in
-                        ChatMessageRow(message: message)
+                        ChatMessageRow(message: message, assistantDisplayName: assistantDisplayName)
                             .id(message.id)
                     }
                     chatBottomAnchor
