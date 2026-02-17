@@ -64,14 +64,26 @@ struct ChatMessageRow: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(showsThinkingIndicator)
+                    .opacity(showsThinkingIndicator ? 0.45 : 1.0)
                     .accessibilityLabel(copyFeedback.accessibilityLabel)
                 }
                 .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
 
-            SideBarMarkdown(text: message.content, style: .chat)
-                .textSelection(.enabled)
+            if showsThinkingIndicator {
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                    Text("Thinking...")
+                        .font(.subheadline)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                }
                 .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                SideBarMarkdown(text: message.content, style: .chat)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             if message.status == .error, let error = message.error {
                 Text(error)
@@ -151,6 +163,10 @@ struct ChatMessageRow: View {
         colorScheme == .dark ? Color.white : Color.black
     }
 
+    private var showsThinkingIndicator: Bool {
+        ChatMessagePresentation.showsThinkingIndicator(for: message)
+    }
+
     private func copyMessage() {
         let text = message.content
         #if os(iOS)
@@ -186,6 +202,16 @@ struct ChatMessageRow: View {
         }
     }
 }
+
+enum ChatMessagePresentation {
+    static func showsThinkingIndicator(for message: Message) -> Bool {
+        guard message.role == .assistant, message.status == .streaming else {
+            return false
+        }
+        return message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
 private extension DateFormatter {
     static let chatTimestamp: DateFormatter = {
         let formatter = DateFormatter()
