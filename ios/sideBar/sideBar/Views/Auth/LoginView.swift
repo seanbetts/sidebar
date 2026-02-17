@@ -94,10 +94,7 @@ public struct LoginView: View {
 
     private var headerView: some View {
         VStack(spacing: 12) {
-            Image("AppLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 64, height: 64)
+            LoadingIndicatorView(size: LoadingIndicatorSize.hero, variant: .hero)
             Text("sideBar")
                 .font(DesignTokens.Typography.title2Semibold)
         }

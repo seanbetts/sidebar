@@ -93,11 +93,7 @@ public struct WelcomeEmptyView: View {
 
     public var body: some View {
         VStack(spacing: 12) {
-            Image("AppLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 72, height: 72)
-                .opacity(0.7)
+            LoadingIndicatorView(size: LoadingIndicatorSize.hero, variant: .hero)
             Text("Welcome to sideBar")
                 .font(DesignTokens.Typography.title3Semibold)
             Text("Select a note, website, or file to get started.")

@@ -7,17 +7,25 @@ enum LoadingIndicatorSize {
     static let panel: CGFloat = 24
     static let page: CGFloat = 32
     static let extensionPrimary: CGFloat = 44
+    static let hero: CGFloat = 128
+}
+
+enum LoadingIndicatorVariant {
+    case standard
+    case hero
 }
 
 struct LoadingIndicatorView: View {
     let size: CGFloat
+    let variant: LoadingIndicatorVariant
 
-    init(size: CGFloat = LoadingIndicatorSize.panel) {
+    init(size: CGFloat = LoadingIndicatorSize.panel, variant: LoadingIndicatorVariant = .standard) {
         self.size = size
+        self.variant = variant
     }
 
     var body: some View {
-        PlatformLoadingIndicatorView()
+        PlatformLoadingIndicatorView(variant: variant)
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }
@@ -28,6 +36,7 @@ import UIKit
 
 private struct PlatformLoadingIndicatorView: UIViewRepresentable {
     @Environment(\.colorScheme) private var colorScheme
+    let variant: LoadingIndicatorVariant
 
     func makeUIView(context: Context) -> UIImageView {
         let imageView = UIImageView()
@@ -38,15 +47,15 @@ private struct PlatformLoadingIndicatorView: UIViewRepresentable {
     }
 
     func updateUIView(_ imageView: UIImageView, context: Context) {
-        imageView.image = LoadingGIFImageCache.image(darkMode: colorScheme == .dark)
+        imageView.image = LoadingGIFImageCache.image(darkMode: colorScheme == .dark, variant: variant)
     }
 }
 
 private enum LoadingGIFImageCache {
     private static let cache = NSCache<NSString, UIImage>()
 
-    static func image(darkMode: Bool) -> UIImage? {
-        let key = darkMode ? "loading-dark" : "loading-light"
+    static func image(darkMode: Bool, variant: LoadingIndicatorVariant) -> UIImage? {
+        let key = assetName(darkMode: darkMode, variant: variant)
         if let cached = cache.object(forKey: key as NSString) {
             return cached
         }
@@ -55,6 +64,19 @@ private enum LoadingGIFImageCache {
         }
         cache.setObject(decoded, forKey: key as NSString)
         return decoded
+    }
+
+    private static func assetName(darkMode: Bool, variant: LoadingIndicatorVariant) -> String {
+        switch (darkMode, variant) {
+        case (true, .standard):
+            return "loading-dark"
+        case (false, .standard):
+            return "loading-light"
+        case (true, .hero):
+            return "loading-dark-128"
+        case (false, .hero):
+            return "loading-light-128"
+        }
     }
 
     private static func decodeAnimatedImage(named name: String) -> UIImage? {
@@ -102,6 +124,7 @@ import AppKit
 
 private struct PlatformLoadingIndicatorView: NSViewRepresentable {
     @Environment(\.colorScheme) private var colorScheme
+    let variant: LoadingIndicatorVariant
 
     func makeNSView(context: Context) -> NSImageView {
         let imageView = NSImageView()
@@ -112,15 +135,15 @@ private struct PlatformLoadingIndicatorView: NSViewRepresentable {
     }
 
     func updateNSView(_ imageView: NSImageView, context: Context) {
-        imageView.image = LoadingGIFImageCache.image(darkMode: colorScheme == .dark)
+        imageView.image = LoadingGIFImageCache.image(darkMode: colorScheme == .dark, variant: variant)
     }
 }
 
 private enum LoadingGIFImageCache {
     private static var cache: [String: NSImage] = [:]
 
-    static func image(darkMode: Bool) -> NSImage? {
-        let key = darkMode ? "loading-dark" : "loading-light"
+    static func image(darkMode: Bool, variant: LoadingIndicatorVariant) -> NSImage? {
+        let key = assetName(darkMode: darkMode, variant: variant)
         if let cached = cache[key] {
             return cached
         }
@@ -130,6 +153,19 @@ private enum LoadingGIFImageCache {
         }
         cache[key] = image
         return image
+    }
+
+    private static func assetName(darkMode: Bool, variant: LoadingIndicatorVariant) -> String {
+        switch (darkMode, variant) {
+        case (true, .standard):
+            return "loading-dark"
+        case (false, .standard):
+            return "loading-light"
+        case (true, .hero):
+            return "loading-dark-128"
+        case (false, .hero):
+            return "loading-light-128"
+        }
     }
 }
 #endif
