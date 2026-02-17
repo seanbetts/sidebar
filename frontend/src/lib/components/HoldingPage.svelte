@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 
 	let mounted = false;
 
@@ -20,7 +22,11 @@
 	<div class="content">
 		<div class="logo">
 			<div class="logo-icon">
-				<img src="/images/logo.svg" alt="sideBar" />
+				<LoadingGlyph
+					size={LOADING_SIZES.hero}
+					lightSrc="/images/loading-light-128.gif"
+					darkSrc="/images/loading-dark-128.gif"
+				/>
 			</div>
 			<h1>sideBar</h1>
 		</div>
@@ -120,14 +126,9 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 120px;
-		height: 120px;
+		width: 128px;
+		height: 128px;
 		margin-bottom: 0;
-	}
-
-	.logo-icon img {
-		width: 100%;
-		height: 100%;
 	}
 
 	h1 {

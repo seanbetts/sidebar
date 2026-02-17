@@ -93,7 +93,13 @@
 		{/if}
 		{#if tasks.length === 0}
 			<div class="tasks-state">
-				<img class="tasks-empty-logo" src="/images/logo.svg" alt="sideBar" />
+				<div class="tasks-empty-glyph">
+					<LoadingGlyph
+						size={LOADING_SIZES.hero}
+						lightSrc="/images/loading-light-128.gif"
+						darkSrc="/images/loading-dark-128.gif"
+					/>
+				</div>
 				{#if selectionLabel === 'Today'}
 					All done for the day
 				{:else if selectionType === 'search'}
@@ -152,15 +158,8 @@
 		margin: 0 auto;
 	}
 
-	.tasks-empty-logo {
-		height: 3.25rem;
-		width: auto;
+	.tasks-empty-glyph {
 		margin-bottom: 0.75rem;
-		opacity: 0.7;
-	}
-
-	:global(.dark) .tasks-empty-logo {
-		filter: invert(1);
 	}
 
 	.tasks-error {
