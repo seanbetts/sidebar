@@ -110,15 +110,33 @@ struct ProfileSettingsView: View {
             }
 
             Section("Profile") {
-                TextField("Name", text: $name)
-                    #if os(iOS)
-                    .textInputAutocapitalization(.words)
-                    #endif
-                TextField("Job Title", text: $jobTitle)
-                TextField("Employer", text: $employer)
-                TextField("Gender", text: $gender)
-                TextField("Pronouns", text: $pronouns)
-                TextField("Location", text: $location)
+                LabeledContent("Name") {
+                    TextField("Not set", text: $name)
+                        .multilineTextAlignment(.trailing)
+                        #if os(iOS)
+                        .textInputAutocapitalization(.words)
+                        #endif
+                }
+                LabeledContent("Job Title") {
+                    TextField("Not set", text: $jobTitle)
+                        .multilineTextAlignment(.trailing)
+                }
+                LabeledContent("Employer") {
+                    TextField("Not set", text: $employer)
+                        .multilineTextAlignment(.trailing)
+                }
+                LabeledContent("Gender") {
+                    TextField("Not set", text: $gender)
+                        .multilineTextAlignment(.trailing)
+                }
+                LabeledContent("Pronouns") {
+                    TextField("Not set", text: $pronouns)
+                        .multilineTextAlignment(.trailing)
+                }
+                LabeledContent("Location") {
+                    TextField("Not set", text: $location)
+                        .multilineTextAlignment(.trailing)
+                }
             }
 
             Section {
