@@ -13,6 +13,8 @@ struct ChatInputAppKitView: NSViewRepresentable {
     let minHeight: CGFloat
     let maxHeight: CGFloat
     private let controlBarHeight: CGFloat = 44
+    private let textHorizontalInset: CGFloat = 16
+    private let textVerticalInset: CGFloat = 16
     let onSend: () -> Void
     let onAttach: () -> Void
 
@@ -23,16 +25,32 @@ struct ChatInputAppKitView: NSViewRepresentable {
         let textView = NSTextView()
         textView.font = NSFont.preferredFont(forTextStyle: .body)
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 16, height: 14)
+        textView.textContainerInset = NSSize(width: textHorizontalInset, height: textVerticalInset)
         textView.textContainer?.lineFragmentPadding = 0
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.autoresizingMask = [.width]
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
+        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.heightTracksTextView = false
         textView.delegate = context.coordinator
         textView.textColor = .labelColor
         textView.string = text
         textView.setAccessibilityLabel("Message")
+
+        let textScrollView = NSScrollView()
+        textScrollView.drawsBackground = false
+        textScrollView.borderType = .noBorder
+        textScrollView.hasHorizontalScroller = false
+        textScrollView.hasVerticalScroller = false
+        textScrollView.autohidesScrollers = true
+        textScrollView.scrollerStyle = .overlay
+        textScrollView.documentView = textView
 
         let controlBar = NSView()
         controlBar.wantsLayer = true
@@ -74,25 +92,25 @@ struct ChatInputAppKitView: NSViewRepresentable {
         button.action = #selector(Coordinator.didTapSend)
         button.setAccessibilityLabel("Send message")
 
-        containerView.addSubview(textView)
+        containerView.addSubview(textScrollView)
         containerView.addSubview(placeholderLabel)
         containerView.addSubview(controlBar)
         controlBar.addSubview(attachButton)
         controlBar.addSubview(button)
-        textView.translatesAutoresizingMaskIntoConstraints = false
+        textScrollView.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         controlBar.translatesAutoresizingMaskIntoConstraints = false
         attachButton.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
-            textView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            textView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            textView.topAnchor.constraint(equalTo: containerView.topAnchor),
-            textView.bottomAnchor.constraint(equalTo: controlBar.topAnchor),
-            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 16),
-            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -16),
-            placeholderLabel.topAnchor.constraint(equalTo: textView.topAnchor, constant: textView.textContainerInset.height + 2),
+            textScrollView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            textScrollView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            textScrollView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            textScrollView.bottomAnchor.constraint(equalTo: controlBar.topAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: textScrollView.leadingAnchor, constant: textHorizontalInset),
+            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textScrollView.trailingAnchor, constant: -textHorizontalInset),
+            placeholderLabel.topAnchor.constraint(equalTo: textScrollView.topAnchor, constant: textView.textContainerInset.height + 2),
             controlBar.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             controlBar.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             controlBar.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
@@ -108,6 +126,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         ])
 
         context.coordinator.textView = textView
+        context.coordinator.textScrollView = textScrollView
         context.coordinator.sendButton = button
         context.coordinator.attachButton = attachButton
         context.coordinator.placeholderLabel = placeholderLabel
@@ -134,7 +153,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         button.contentTintColor = canSend ? tintColor : NSColor.secondaryLabelColor
         attachButton.contentTintColor = isEnabled ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor
         placeholderLabel.isHidden = !text.trimmed.isEmpty
-        recalculateHeight(for: textView)
+        context.coordinator.applySizing(for: textView)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -149,21 +168,6 @@ struct ChatInputAppKitView: NSViewRepresentable {
         )
     }
 
-    private func recalculateHeight(for textView: NSTextView) {
-        guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer else {
-            return
-        }
-        layoutManager.ensureLayout(for: textContainer)
-        let usedRect = layoutManager.usedRect(for: textContainer)
-        let contentHeight = usedRect.height + textView.textContainerInset.height * 2
-        let height = min(maxHeight, max(minHeight, contentHeight + controlBarHeight))
-        if measuredHeight != height {
-            DispatchQueue.main.async {
-                measuredHeight = height
-            }
-        }
-    }
-
     final class Coordinator: NSObject, NSTextViewDelegate {
         private var text: Binding<String>
         private var measuredHeight: Binding<CGFloat>
@@ -173,6 +177,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         private let onSend: () -> Void
         private let onAttach: () -> Void
         weak var textView: NSTextView?
+        weak var textScrollView: NSScrollView?
         weak var sendButton: NSButton?
         weak var attachButton: NSButton?
         weak var placeholderLabel: NSTextField?
@@ -199,16 +204,13 @@ struct ChatInputAppKitView: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
             placeholderLabel?.isHidden = !textView.string.trimmed.isEmpty
-            guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer else {
-                return
-            }
-            layoutManager.ensureLayout(for: textContainer)
-            let usedRect = layoutManager.usedRect(for: textContainer)
-            let contentHeight = usedRect.height + textView.textContainerInset.height * 2
-            let height = min(maxHeight, max(minHeight, contentHeight + controlBarHeight))
-            if measuredHeight.wrappedValue != height {
-                measuredHeight.wrappedValue = height
-            }
+            applySizing(for: textView)
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            guard (textView.enclosingScrollView ?? textScrollView)?.hasVerticalScroller == true else { return }
+            textView.scrollRangeToVisible(textView.selectedRange())
         }
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
@@ -228,6 +230,30 @@ struct ChatInputAppKitView: NSViewRepresentable {
 
         @objc func didTapAttach() {
             onAttach()
+        }
+
+        func applySizing(for textView: NSTextView) {
+            guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer else {
+                return
+            }
+            layoutManager.ensureLayout(for: textContainer)
+            let usedRect = layoutManager.usedRect(for: textContainer)
+            let contentHeight = usedRect.height + textView.textContainerInset.height * 2
+            let sizing = ChatInputSizing.resolve(
+                contentHeight: contentHeight + controlBarHeight,
+                minHeight: minHeight,
+                maxHeight: maxHeight
+            )
+            if measuredHeight.wrappedValue != sizing.measuredHeight {
+                measuredHeight.wrappedValue = sizing.measuredHeight
+            }
+            if let scrollView = textView.enclosingScrollView ?? textScrollView,
+               scrollView.hasVerticalScroller != sizing.isOverflowing {
+                scrollView.hasVerticalScroller = sizing.isOverflowing
+            }
+            if sizing.isOverflowing {
+                textView.scrollRangeToVisible(textView.selectedRange())
+            }
         }
     }
 }
