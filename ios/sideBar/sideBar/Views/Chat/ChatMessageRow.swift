@@ -64,14 +64,14 @@ struct ChatMessageRow: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .disabled(showsThinkingIndicator)
-                    .opacity(showsThinkingIndicator ? 0.45 : 1.0)
+                    .disabled(showsThinkingPlaceholder)
+                    .opacity(showsThinkingPlaceholder ? 0.45 : 1.0)
                     .accessibilityLabel(copyFeedback.accessibilityLabel)
                 }
                 .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
 
-            if showsThinkingIndicator {
+            if showsThinkingPlaceholder {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                     Text("Thinking...")
@@ -83,6 +83,16 @@ struct ChatMessageRow: View {
                 SideBarMarkdown(text: message.content, style: .chat)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if showsStreamingThinkingFooter {
+                HStack(spacing: DesignTokens.Spacing.xxs) {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                    Text("Thinking...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if message.status == .error, let error = message.error {
@@ -163,8 +173,12 @@ struct ChatMessageRow: View {
         colorScheme == .dark ? Color.white : Color.black
     }
 
-    private var showsThinkingIndicator: Bool {
-        ChatMessagePresentation.showsThinkingIndicator(for: message)
+    private var showsThinkingPlaceholder: Bool {
+        ChatMessagePresentation.showsThinkingPlaceholder(for: message)
+    }
+
+    private var showsStreamingThinkingFooter: Bool {
+        ChatMessagePresentation.showsStreamingThinkingFooter(for: message)
     }
 
     private func copyMessage() {
@@ -204,11 +218,19 @@ struct ChatMessageRow: View {
 }
 
 enum ChatMessagePresentation {
-    static func showsThinkingIndicator(for message: Message) -> Bool {
-        guard message.role == .assistant, message.status == .streaming else {
+    static func showsThinkingPlaceholder(for message: Message) -> Bool {
+        guard isAssistantStreaming(message) else {
             return false
         }
         return message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    static func showsStreamingThinkingFooter(for message: Message) -> Bool {
+        isAssistantStreaming(message) && !showsThinkingPlaceholder(for: message)
+    }
+
+    private static func isAssistantStreaming(_ message: Message) -> Bool {
+        message.role == .assistant && message.status == .streaming
     }
 }
 

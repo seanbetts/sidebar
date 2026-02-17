@@ -150,7 +150,10 @@ private struct ChatDetailView: View {
                     isEnabled: canSendMessages,
                     isSendEnabled: canSendMessages && !viewModel.hasPendingAttachments,
                     onSend: handleSend,
-                    onAttach: { isFileImporterPresented = true }
+                    onAttach: {
+                        guard canSendMessages else { return }
+                        isFileImporterPresented = true
+                    }
                 )
                 if !environment.isNetworkAvailable {
                     Text("Chat is unavailable offline. You can still read past conversations.")
@@ -179,6 +182,7 @@ private struct ChatDetailView: View {
                     handleSend()
                 }
             case .attachFile:
+                guard canSendMessages else { return }
                 isFileImporterPresented = true
             default:
                 break

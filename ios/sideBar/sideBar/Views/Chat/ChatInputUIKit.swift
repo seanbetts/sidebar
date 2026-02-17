@@ -108,6 +108,8 @@ struct ChatInputUIKitView: UIViewRepresentable {
         let tintColor: UIColor = .label
         button.backgroundColor = .clear
         button.tintColor = canSend ? tintColor : UIColor.secondaryLabel
+        attachButton.isEnabled = isEnabled
+        attachButton.alpha = isEnabled ? 1.0 : 0.45
         attachButton.tintColor = isEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
         placeholderLabel.isHidden = !text.trimmed.isEmpty
         context.coordinator.applySizing(for: textView)

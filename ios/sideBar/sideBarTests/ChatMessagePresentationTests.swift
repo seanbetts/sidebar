@@ -2,28 +2,39 @@ import XCTest
 @testable import sideBar
 
 final class ChatMessagePresentationTests: XCTestCase {
-    func testShowsThinkingIndicatorForStreamingAssistantMessageWithEmptyContent() {
+    func testShowsThinkingPlaceholderForStreamingAssistantMessageWithEmptyContent() {
         let message = makeMessage(role: .assistant, status: .streaming, content: "")
 
-        XCTAssertTrue(ChatMessagePresentation.showsThinkingIndicator(for: message))
+        XCTAssertTrue(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
+        XCTAssertFalse(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
     }
 
-    func testShowsThinkingIndicatorForStreamingAssistantMessageWithWhitespaceContent() {
+    func testShowsThinkingPlaceholderForStreamingAssistantMessageWithWhitespaceContent() {
         let message = makeMessage(role: .assistant, status: .streaming, content: "   \n ")
 
-        XCTAssertTrue(ChatMessagePresentation.showsThinkingIndicator(for: message))
+        XCTAssertTrue(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
+        XCTAssertFalse(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
     }
 
-    func testDoesNotShowThinkingIndicatorForStreamingAssistantMessageWithContent() {
+    func testShowsStreamingThinkingFooterForStreamingAssistantMessageWithContent() {
         let message = makeMessage(role: .assistant, status: .streaming, content: "Hello")
 
-        XCTAssertFalse(ChatMessagePresentation.showsThinkingIndicator(for: message))
+        XCTAssertFalse(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
+        XCTAssertTrue(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
     }
 
-    func testDoesNotShowThinkingIndicatorForStreamingUserMessage() {
+    func testDoesNotShowThinkingIndicatorsForStreamingUserMessage() {
         let message = makeMessage(role: .user, status: .streaming, content: "")
 
-        XCTAssertFalse(ChatMessagePresentation.showsThinkingIndicator(for: message))
+        XCTAssertFalse(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
+        XCTAssertFalse(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
+    }
+
+    func testDoesNotShowThinkingIndicatorsForCompleteAssistantMessage() {
+        let message = makeMessage(role: .assistant, status: .complete, content: "Hello")
+
+        XCTAssertFalse(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
+        XCTAssertFalse(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
     }
 
     private func makeMessage(role: MessageRole, status: MessageStatus, content: String) -> Message {
