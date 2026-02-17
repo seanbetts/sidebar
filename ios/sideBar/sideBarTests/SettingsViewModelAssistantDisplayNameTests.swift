@@ -3,7 +3,7 @@ import sideBarShared
 @testable import sideBar
 
 @MainActor
-final class SettingsViewModelAssistantDisplayNameTests: XCTestCase {
+final class SettingsVMAssistantDisplayNameTests: XCTestCase {
     func testAssistantDisplayNameFallsBackWhenSettingsMissing() {
         let viewModel = SettingsViewModel(
             settingsAPI: AssistantNameMockSettingsAPI(result: .failure(AssistantNameMockError.forced)),
