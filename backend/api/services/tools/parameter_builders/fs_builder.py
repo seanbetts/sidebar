@@ -39,6 +39,29 @@ class FsParameterBuilder(BaseParameterBuilder):
         return FsParameterBuilder.append_user_id(args, params)
 
     @staticmethod
+    def build_delete_args(params: dict) -> list:
+        """Build CLI arguments for the fs delete tool."""
+        args = [params["path"]]
+        if params.get("recursive"):
+            args.append("--recursive")
+        return FsParameterBuilder.append_user_id(args, params)
+
+    @staticmethod
+    def build_rename_args(params: dict) -> list:
+        """Build CLI arguments for the fs rename tool."""
+        args = [params["path"], params["new_name"]]
+        if params.get("dry_run"):
+            args.append("--dry-run")
+        return FsParameterBuilder.append_user_id(args, params)
+
+    @staticmethod
+    def build_pin_args(params: dict) -> list:
+        """Build CLI arguments for the fs pin tool."""
+        pinned = bool(params.get("pinned", True))
+        args = [params["path"], "--pinned", "true" if pinned else "false"]
+        return FsParameterBuilder.append_user_id(args, params)
+
+    @staticmethod
     def build_search_args(params: dict) -> list:
         """Build CLI arguments for the fs search tool."""
         directory = params.get("directory", ".")

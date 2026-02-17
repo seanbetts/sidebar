@@ -98,6 +98,13 @@ def test_misc_definitions_include_assistant_identity_tools():
     assert "Reset Assistant Soul" in definitions
 
 
+def test_fs_definitions_include_file_context_menu_parity_tools():
+    definitions = get_fs_definitions()
+    assert "Rename File" in definitions
+    assert "Delete File" in definitions
+    assert "Pin File" in definitions
+
+
 def test_skills_definitions_do_not_expose_skill_packaging():
     definitions = get_skills_definitions()
     assert definitions == {}

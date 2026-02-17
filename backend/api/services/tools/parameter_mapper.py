@@ -33,6 +33,21 @@ def build_fs_write_args(params: dict) -> list:
     return FsParameterBuilder.build_write_args(params)
 
 
+def build_fs_delete_args(params: dict) -> list:
+    """Build CLI arguments for the fs delete tool."""
+    return FsParameterBuilder.build_delete_args(params)
+
+
+def build_fs_rename_args(params: dict) -> list:
+    """Build CLI arguments for the fs rename tool."""
+    return FsParameterBuilder.build_rename_args(params)
+
+
+def build_fs_pin_args(params: dict) -> list:
+    """Build CLI arguments for the fs pin tool."""
+    return FsParameterBuilder.build_pin_args(params)
+
+
 def build_fs_search_args(params: dict) -> list:
     """Build CLI arguments for the fs search tool."""
     return FsParameterBuilder.build_search_args(params)

@@ -4,8 +4,8 @@ SKILL_DISPLAY = {
     "fs": {
         "name": "Files",
         "description": (
-            "Browse, read, search, and write ingested files. Reads return "
-            "extracted text (ai.md) with frontmatter."
+            "Browse, read, search, write, rename, pin, and delete ingested files. "
+            "Reads return extracted text (ai.md) with frontmatter."
         ),
     },
     "notes": {

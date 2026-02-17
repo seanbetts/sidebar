@@ -9,7 +9,10 @@ def get_fs_definitions() -> dict:
     """Return filesystem tool definitions."""
     return {
         "Browse Files": {
-            "description": "List ingested files and folders in R2-backed storage (paths map to ingested records).",
+            "description": (
+                "List ingested files and folders in R2-backed storage "
+                "(paths map to ingested records)."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -34,7 +37,10 @@ def get_fs_definitions() -> dict:
             "validate_read": True,
         },
         "Read File": {
-            "description": "Read extracted text/ai.md content for ingested files (including PDFs). Returns frontmatter + text, not raw binary.",
+            "description": (
+                "Read extracted text/ai.md content for ingested files "
+                "(including PDFs). Returns frontmatter + text, not raw binary."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -56,7 +62,10 @@ def get_fs_definitions() -> dict:
             "validate_read": True,
         },
         "Write File": {
-            "description": "Create/update ingested text files (stored in R2 + DB). Use for files; use Create Note for notes.",
+            "description": (
+                "Create/update ingested text files (stored in R2 + DB). "
+                "Use for files; use Create Note for notes."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -74,8 +83,83 @@ def get_fs_definitions() -> dict:
             "build_args": pm.build_fs_write_args,
             "validate_write": True,
         },
+        "Delete File": {
+            "description": (
+                "Delete an ingested file or folder path "
+                "(soft delete in DB + derivative cleanup)."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File or directory path to delete",
+                    },
+                    "recursive": {
+                        "type": "boolean",
+                        "description": "Required for directory-style path deletes",
+                    },
+                },
+                "required": ["path"],
+            },
+            "skill": "fs",
+            "script": "delete.py",
+            "build_args": pm.build_fs_delete_args,
+            "validate_write": True,
+        },
+        "Rename File": {
+            "description": (
+                "Rename an ingested file or directory in-place " "(same parent path)."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Existing file or directory path",
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "New name (not a path)",
+                    },
+                    "dry_run": {
+                        "type": "boolean",
+                        "description": "Preview rename without executing",
+                    },
+                },
+                "required": ["path", "new_name"],
+            },
+            "skill": "fs",
+            "script": "rename.py",
+            "build_args": pm.build_fs_rename_args,
+            "validate_write": True,
+        },
+        "Pin File": {
+            "description": "Set pinned state for an ingested file by path.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path to pin/unpin",
+                    },
+                    "pinned": {
+                        "type": "boolean",
+                        "description": "True to pin, false to unpin",
+                    },
+                },
+                "required": ["path", "pinned"],
+            },
+            "skill": "fs",
+            "script": "pin.py",
+            "build_args": pm.build_fs_pin_args,
+            "validate_write": True,
+        },
         "Search Files": {
-            "description": "Search ingested files by name or extracted text content (including PDF text).",
+            "description": (
+                "Search ingested files by name or extracted text content "
+                "(including PDF text)."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {

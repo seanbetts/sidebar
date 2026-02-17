@@ -45,6 +45,32 @@ def test_build_fs_search_args_optional_flags():
     ]
 
 
+def test_build_fs_delete_args_recursive_and_user():
+    args = parameter_mapper.build_fs_delete_args(
+        {"path": "/docs/archive", "recursive": True, "user_id": "user-1"}
+    )
+    assert args == ["/docs/archive", "--recursive", "--user-id", "user-1"]
+
+
+def test_build_fs_rename_args_with_dry_run():
+    args = parameter_mapper.build_fs_rename_args(
+        {
+            "path": "/docs/old.txt",
+            "new_name": "new.txt",
+            "dry_run": True,
+            "user_id": "user-1",
+        }
+    )
+    assert args == ["/docs/old.txt", "new.txt", "--dry-run", "--user-id", "user-1"]
+
+
+def test_build_fs_pin_args_false():
+    args = parameter_mapper.build_fs_pin_args(
+        {"path": "/docs/file.txt", "pinned": False, "user_id": "user-1"}
+    )
+    assert args == ["/docs/file.txt", "--pinned", "false", "--user-id", "user-1"]
+
+
 def test_build_notes_create_args_derives_title_and_tags():
     args = parameter_mapper.build_notes_create_args(
         {
