@@ -53,6 +53,8 @@ public final class AppEnvironment: ObservableObject {
     public let settingsViewModel: SettingsViewModel
     /// View model coordinating weather presentation state.
     public let weatherViewModel: WeatherViewModel
+    /// View model coordinating live device location state.
+    public let currentLocationViewModel: CurrentLocationViewModel
     /// Navigation coordinator for cross-feature section and deep-link routing state.
     public let navigation: NavigationCoordinator
     let realtimeClient: RealtimeClient
@@ -121,6 +123,7 @@ public final class AppEnvironment: ObservableObject {
         self.memoriesViewModel = dependencies.memoriesViewModel
         self.settingsViewModel = dependencies.settingsViewModel
         self.weatherViewModel = dependencies.weatherViewModel
+        self.currentLocationViewModel = dependencies.currentLocationViewModel
         self.realtimeClient = dependencies.realtimeClient
         self.connectivityMonitor = dependencies.connectivityMonitor
         self.biometricMonitor = dependencies.biometricMonitor

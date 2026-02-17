@@ -1,5 +1,6 @@
 import SwiftUI
 import sideBarShared
+import CoreLocation
 #if os(iOS)
 import UIKit
 #endif
@@ -16,6 +17,13 @@ struct MacInitialSelectionPlan {
 extension ContentView {
     func refreshWeatherIfPossible() async {
         guard environment.authState == .active else { return }
+        if let coordinate = environment.currentLocationViewModel.currentLocationCoordinate {
+            await environment.weatherViewModel.load(
+                lat: coordinate.latitude,
+                lon: coordinate.longitude
+            )
+            return
+        }
         let location = environment.settingsViewModel.settings?.location?.trimmed ?? ""
         guard !location.isEmpty else { return }
         await environment.weatherViewModel.load(location: location)

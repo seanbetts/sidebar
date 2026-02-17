@@ -36,6 +36,7 @@ extension AppEnvironment {
             ingestionViewModel.clearSelection()
             ingestionViewModel.panelSearchQuery = ""
             ingestionViewModel.errorMessage = nil
+            currentLocationViewModel.stopTracking()
             isTasksFocused = false
             navigation.resetForSignOut()
             Task {
@@ -47,6 +48,9 @@ extension AppEnvironment {
         }
         if isAuthenticated {
             biometricMonitor.startMonitoring()
+            if authState == .active {
+                currentLocationViewModel.startTracking()
+            }
             #if os(iOS) || os(macOS)
             if authState == .active {
                 registerDeviceTokenIfNeeded()
@@ -59,6 +63,7 @@ extension AppEnvironment {
             }
         } else {
             biometricMonitor.stopMonitoring()
+            currentLocationViewModel.stopTracking()
         }
         realtimeClientStopStart()
 

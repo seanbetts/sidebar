@@ -118,6 +118,12 @@ extension AppEnvironment {
             }
             .store(in: &cancellables)
 
+        currentLocationViewModel.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
         writeQueue.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()

@@ -257,6 +257,10 @@ public struct SiteHeaderBar: View {
     }
 
     private var locationText: String {
+        let currentLocation = environment.currentLocationViewModel.currentLocationLabel?.trimmed ?? ""
+        if !currentLocation.isEmpty {
+            return formattedLocation(currentLocation)
+        }
         let location = environment.settingsViewModel.settings?.location?.trimmed ?? ""
         return location.isEmpty ? "Set location" : formattedLocation(location)
     }
