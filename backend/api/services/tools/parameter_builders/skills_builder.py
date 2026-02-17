@@ -71,14 +71,6 @@ class SkillsParameterBuilder(BaseParameterBuilder):
         return args
 
     @staticmethod
-    def build_skill_package_args(params: dict) -> list:
-        """Build CLI arguments for skill packaging."""
-        args = [params["skill_dir"]]
-        if params.get("output_dir"):
-            args.append(params["output_dir"])
-        return args
-
-    @staticmethod
     def build_mcp_evaluation_args(params: dict) -> list:
         """Build CLI arguments for MCP evaluation runs."""
         args = [params["eval_file"]]

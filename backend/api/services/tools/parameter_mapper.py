@@ -143,11 +143,6 @@ def build_crawler_policy_args(params: dict) -> list:
     return WebParameterBuilder.build_crawler_policy_args(params)
 
 
-def build_skill_package_args(params: dict) -> list:
-    """Build CLI arguments for skill packaging."""
-    return SkillsParameterBuilder.build_skill_package_args(params)
-
-
 def build_assistant_identity_get_args(params: dict) -> list:
     """Build CLI arguments for getting assistant identity."""
     return SkillsParameterBuilder.build_assistant_identity_get_args(params)

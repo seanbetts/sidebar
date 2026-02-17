@@ -95,3 +95,8 @@ def test_misc_definitions_include_assistant_identity_tools():
     assert "Get Assistant Soul" in definitions
     assert "Update Assistant Soul" in definitions
     assert "Reset Assistant Soul" in definitions
+
+
+def test_skills_definitions_do_not_expose_skill_packaging():
+    definitions = get_skills_definitions()
+    assert "Package Skill" not in definitions
