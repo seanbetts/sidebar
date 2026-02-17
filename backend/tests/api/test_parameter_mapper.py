@@ -195,6 +195,33 @@ def test_build_assistant_soul_update_args_supports_partial_and_reason():
     ]
 
 
+def test_build_assistant_soul_update_args_uses_kebab_case_for_all_fields():
+    args = parameter_mapper.build_assistant_soul_update_args(
+        {
+            "user_id": "user-1",
+            "purpose": "Purpose",
+            "operating_principles": "Operating principles",
+            "adaptation_policy": "Adaptation policy",
+            "success_signals": "Success signals",
+            "reason": "Bulk update",
+        }
+    )
+    assert args == [
+        "--user-id",
+        "user-1",
+        "--purpose",
+        "Purpose",
+        "--operating-principles",
+        "Operating principles",
+        "--adaptation-policy",
+        "Adaptation policy",
+        "--success-signals",
+        "Success signals",
+        "--reason",
+        "Bulk update",
+    ]
+
+
 def test_build_assistant_soul_reset_args():
     args = parameter_mapper.build_assistant_soul_reset_args({"user_id": "user-1"})
     assert args == ["--user-id", "user-1"]

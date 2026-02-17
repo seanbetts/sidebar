@@ -56,7 +56,8 @@ class SkillsParameterBuilder(BaseParameterBuilder):
             "success_signals",
         ):
             if field_name in params and params[field_name] is not None:
-                args.extend([f"--{field_name}", params[field_name]])
+                # CLI uses kebab-case flags, while tool schema keys are snake_case.
+                args.extend([f"--{field_name.replace('_', '-')}", params[field_name]])
         if params.get("reason"):
             args.extend(["--reason", params["reason"]])
         return args
