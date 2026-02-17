@@ -143,6 +143,11 @@ def build_website_save_args(params: dict) -> list:
     return WebsiteParameterBuilder.build_save_args(params)
 
 
+def build_website_add_args(params: dict) -> list:
+    """Build CLI arguments for website add."""
+    return WebsiteParameterBuilder.build_add_args(params)
+
+
 def build_website_delete_args(params: dict) -> list:
     """Build CLI arguments for website delete."""
     return WebsiteParameterBuilder.build_delete_args(params)
@@ -153,6 +158,11 @@ def build_website_pin_args(params: dict) -> list:
     return WebsiteParameterBuilder.build_pin_args(params)
 
 
+def build_website_rename_args(params: dict) -> list:
+    """Build CLI arguments for website rename."""
+    return WebsiteParameterBuilder.build_rename_args(params)
+
+
 def build_website_archive_args(params: dict) -> list:
     """Build CLI arguments for website archive/unarchive."""
     return WebsiteParameterBuilder.build_archive_args(params)
@@ -161,6 +171,11 @@ def build_website_archive_args(params: dict) -> list:
 def build_website_read_args(params: dict) -> list:
     """Build CLI arguments for website read."""
     return WebsiteParameterBuilder.build_read_args(params)
+
+
+def build_website_download_args(params: dict) -> list:
+    """Build CLI arguments for website download/export."""
+    return WebsiteParameterBuilder.build_download_args(params)
 
 
 def build_website_list_args(params: dict) -> list:

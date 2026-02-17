@@ -195,6 +195,34 @@ def test_build_notes_folder_args():
     ) == ["Archive", "--database", "--user-id", "user-1"]
 
 
+def test_build_website_add_args():
+    args = parameter_mapper.build_website_add_args(
+        {"url": "https://example.com/post", "user_id": "user-1"}
+    )
+    assert args == ["https://example.com/post", "--database", "--user-id", "user-1"]
+
+
+def test_build_website_rename_args():
+    args = parameter_mapper.build_website_rename_args(
+        {"website_id": "web-1", "new_name": "Renamed Website", "user_id": "user-1"}
+    )
+    assert args == [
+        "web-1",
+        "--new-name",
+        "Renamed Website",
+        "--database",
+        "--user-id",
+        "user-1",
+    ]
+
+
+def test_build_website_download_args():
+    args = parameter_mapper.build_website_download_args(
+        {"website_id": "web-1", "user_id": "user-1"}
+    )
+    assert args == ["web-1", "--database", "--user-id", "user-1"]
+
+
 def test_build_youtube_transcribe_args_optional_fields():
     args = parameter_mapper.build_youtube_transcribe_args(
         {

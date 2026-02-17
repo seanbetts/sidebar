@@ -361,7 +361,10 @@ async def stream_with_tools(
                                                     "folder": note_data.get("folder"),
                                                 },
                                             }
-                                    elif display_name == "Save Website":
+                                    elif display_name in {
+                                        "Save Website",
+                                        "Add Website",
+                                    }:
                                         yield {
                                             "type": "website_saved",
                                             "data": {

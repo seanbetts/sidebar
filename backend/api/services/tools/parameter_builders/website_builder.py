@@ -9,9 +9,14 @@ class WebsiteParameterBuilder(BaseParameterBuilder):
     """Builders for website tool arguments."""
 
     @staticmethod
+    def build_add_args(params: dict) -> list:
+        """Build CLI arguments for website add."""
+        return [params["url"], "--database", "--user-id", params["user_id"]]
+
+    @staticmethod
     def build_save_args(params: dict) -> list:
         """Build CLI arguments for website save."""
-        return [params["url"], "--database", "--user-id", params["user_id"]]
+        return WebsiteParameterBuilder.build_add_args(params)
 
     @staticmethod
     def build_delete_args(params: dict) -> list:
@@ -25,6 +30,18 @@ class WebsiteParameterBuilder(BaseParameterBuilder):
             params["website_id"],
             "--pinned",
             str(params["pinned"]).lower(),
+            "--database",
+            "--user-id",
+            params["user_id"],
+        ]
+
+    @staticmethod
+    def build_rename_args(params: dict) -> list:
+        """Build CLI arguments for website rename."""
+        return [
+            params["website_id"],
+            "--new-name",
+            params["new_name"],
             "--database",
             "--user-id",
             params["user_id"],
@@ -45,6 +62,11 @@ class WebsiteParameterBuilder(BaseParameterBuilder):
     @staticmethod
     def build_read_args(params: dict) -> list:
         """Build CLI arguments for website read."""
+        return [params["website_id"], "--database", "--user-id", params["user_id"]]
+
+    @staticmethod
+    def build_download_args(params: dict) -> list:
+        """Build CLI arguments for website download/export."""
         return [params["website_id"], "--database", "--user-id", params["user_id"]]
 
     @staticmethod

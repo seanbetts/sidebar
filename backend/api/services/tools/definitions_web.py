@@ -8,6 +8,19 @@ from api.services.tools import parameter_mapper as pm
 def get_web_definitions() -> dict:
     """Return web tool definitions."""
     return {
+        "Add Website": {
+            "description": "Add a website to the database (visible in UI).",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Website URL"},
+                },
+                "required": ["url"],
+            },
+            "skill": "web-save",
+            "script": "save_url.py",
+            "build_args": pm.build_website_add_args,
+        },
         "Discover Subdomains": {
             "description": "Discover subdomains for a given domain.",
             "input_schema": {
@@ -47,7 +60,7 @@ def get_web_definitions() -> dict:
             "build_args": pm.build_crawler_policy_args,
         },
         "Save Website": {
-            "description": "Save a website to the database (visible in UI).",
+            "description": "Alias for Add Website.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -86,6 +99,20 @@ def get_web_definitions() -> dict:
             "script": "pin_website.py",
             "build_args": pm.build_website_pin_args,
         },
+        "Rename Website": {
+            "description": "Rename a website title by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "website_id": {"type": "string", "description": "Website UUID"},
+                    "new_name": {"type": "string", "description": "New website title"},
+                },
+                "required": ["website_id", "new_name"],
+            },
+            "skill": "web-save",
+            "script": "rename_website.py",
+            "build_args": pm.build_website_rename_args,
+        },
         "Archive Website": {
             "description": "Archive or unarchive a website in the database.",
             "input_schema": {
@@ -112,6 +139,21 @@ def get_web_definitions() -> dict:
             "skill": "web-save",
             "script": "read_website.py",
             "build_args": pm.build_website_read_args,
+        },
+        "Download Website": {
+            "description": (
+                "Export a website as markdown content plus filename metadata."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "website_id": {"type": "string", "description": "Website UUID"},
+                },
+                "required": ["website_id"],
+            },
+            "skill": "web-save",
+            "script": "download_website.py",
+            "build_args": pm.build_website_download_args,
         },
         "List Websites": {
             "description": "List websites with optional filters.",

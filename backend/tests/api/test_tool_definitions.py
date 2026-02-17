@@ -116,6 +116,16 @@ def test_notes_definitions_include_context_menu_parity_tools():
     assert "Delete Note Folder" in definitions
 
 
+def test_web_definitions_include_context_menu_parity_tools():
+    definitions = get_web_definitions()
+    assert "Add Website" in definitions
+    assert "Rename Website" in definitions
+    assert "Download Website" in definitions
+    assert "Archive Website" in definitions
+    assert "Delete Website" in definitions
+    assert "Pin Website" in definitions
+
+
 def test_skills_definitions_do_not_expose_skill_packaging():
     definitions = get_skills_definitions()
     assert definitions == {}
