@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from api.services.tools.parameter_builders.base import BaseParameterBuilder
 
 
@@ -47,10 +49,45 @@ class TasksParameterBuilder(BaseParameterBuilder):
         return args
 
     @staticmethod
+    def build_rename_args(params: dict) -> list:
+        """Build CLI arguments for rename task."""
+        args = [params["task_id"]]
+        TasksParameterBuilder.append_user_id(args, params)
+        args.extend(["--new-name", params["new_name"]])
+        return args
+
+    @staticmethod
+    def build_update_notes_args(params: dict) -> list:
+        """Build CLI arguments for update task notes."""
+        args = [params["task_id"]]
+        TasksParameterBuilder.append_user_id(args, params)
+        args.extend(["--notes", params.get("notes", "")])
+        return args
+
+    @staticmethod
     def build_defer_args(params: dict) -> list:
         """Build CLI arguments for defer task."""
         args = [params["task_id"], params["due_date"]]
         TasksParameterBuilder.append_user_id(args, params)
+        return args
+
+    @staticmethod
+    def build_set_due_args(params: dict) -> list:
+        """Build CLI arguments for set task due date."""
+        args = [params["task_id"], params["due_date"]]
+        TasksParameterBuilder.append_user_id(args, params)
+        return args
+
+    @staticmethod
+    def build_set_repeat_args(params: dict) -> list:
+        """Build CLI arguments for set task repeat."""
+        args = [params["task_id"]]
+        TasksParameterBuilder.append_user_id(args, params)
+        if "recurrence_rule" in params:
+            recurrence_rule = json.dumps(params.get("recurrence_rule"))
+            args.extend(["--recurrence-rule", recurrence_rule])
+        if params.get("start_date"):
+            args.extend(["--start-date", params["start_date"]])
         return args
 
     @staticmethod
@@ -76,6 +113,22 @@ class TasksParameterBuilder(BaseParameterBuilder):
         """Build CLI arguments for create group."""
         args = [params["title"]]
         TasksParameterBuilder.append_user_id(args, params)
+        return args
+
+    @staticmethod
+    def build_rename_project_args(params: dict) -> list:
+        """Build CLI arguments for rename project."""
+        args = [params["project_id"]]
+        TasksParameterBuilder.append_user_id(args, params)
+        args.extend(["--new-name", params["new_name"]])
+        return args
+
+    @staticmethod
+    def build_rename_group_args(params: dict) -> list:
+        """Build CLI arguments for rename group."""
+        args = [params["group_id"]]
+        TasksParameterBuilder.append_user_id(args, params)
+        args.extend(["--new-name", params["new_name"]])
         return args
 
     @staticmethod

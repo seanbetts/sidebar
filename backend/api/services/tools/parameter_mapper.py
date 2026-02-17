@@ -258,9 +258,29 @@ def build_tasks_complete_args(params: dict) -> list:
     return TasksParameterBuilder.build_complete_args(params)
 
 
+def build_tasks_rename_args(params: dict) -> list:
+    """Build CLI arguments for rename task."""
+    return TasksParameterBuilder.build_rename_args(params)
+
+
+def build_tasks_update_notes_args(params: dict) -> list:
+    """Build CLI arguments for update task notes."""
+    return TasksParameterBuilder.build_update_notes_args(params)
+
+
 def build_tasks_defer_args(params: dict) -> list:
     """Build CLI arguments for defer task."""
     return TasksParameterBuilder.build_defer_args(params)
+
+
+def build_tasks_set_due_args(params: dict) -> list:
+    """Build CLI arguments for set task due date."""
+    return TasksParameterBuilder.build_set_due_args(params)
+
+
+def build_tasks_set_repeat_args(params: dict) -> list:
+    """Build CLI arguments for set task repeat."""
+    return TasksParameterBuilder.build_set_repeat_args(params)
 
 
 def build_tasks_clear_due_args(params: dict) -> list:
@@ -276,6 +296,16 @@ def build_tasks_create_project_args(params: dict) -> list:
 def build_tasks_create_group_args(params: dict) -> list:
     """Build CLI arguments for create group."""
     return TasksParameterBuilder.build_create_group_args(params)
+
+
+def build_tasks_rename_project_args(params: dict) -> list:
+    """Build CLI arguments for rename project."""
+    return TasksParameterBuilder.build_rename_project_args(params)
+
+
+def build_tasks_rename_group_args(params: dict) -> list:
+    """Build CLI arguments for rename group."""
+    return TasksParameterBuilder.build_rename_group_args(params)
 
 
 def build_tasks_trash_args(params: dict) -> list:

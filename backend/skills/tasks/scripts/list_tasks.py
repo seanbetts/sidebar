@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """List Tasks
 
-Fetch tasks by scope (today, upcoming, inbox) from the database.
+Fetch tasks by scope (today, upcoming, inbox, completed) from the database.
 """
 
 import argparse
@@ -83,7 +83,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="List tasks by scope")
     parser.add_argument(
         "scope",
-        choices=["today", "upcoming", "inbox"],
+        choices=["today", "upcoming", "inbox", "completed"],
         help="Task scope to fetch",
     )
     parser.add_argument("--user-id", required=True, help="User ID")

@@ -126,6 +126,24 @@ def test_web_definitions_include_context_menu_parity_tools():
     assert "Pin Website" in definitions
 
 
+def test_tasks_definitions_include_context_menu_parity_tools():
+    definitions = get_tasks_definitions()
+    assert "Rename Task" in definitions
+    assert "Update Task Notes" in definitions
+    assert "Move Task" in definitions
+    assert "Set Task Repeat" in definitions
+    assert "Set Task Due Date" in definitions
+    assert "Defer Task" in definitions
+    assert "Clear Task Due Date" in definitions
+    assert "Delete Task" in definitions
+    assert "Rename Project" in definitions
+    assert "Delete Project" in definitions
+    assert "Rename Group" in definitions
+    assert "Delete Group" in definitions
+    list_scope = definitions["List Tasks"]["input_schema"]["properties"]["scope"]["enum"]
+    assert "completed" in list_scope
+
+
 def test_skills_definitions_do_not_expose_skill_packaging():
     definitions = get_skills_definitions()
     assert definitions == {}

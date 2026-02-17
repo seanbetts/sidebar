@@ -19,7 +19,7 @@ def get_tasks_definitions() -> dict:
                 "properties": {
                     "scope": {
                         "type": "string",
-                        "enum": ["today", "upcoming", "inbox"],
+                        "enum": ["today", "upcoming", "inbox", "completed"],
                         "description": "Which task list to fetch",
                     },
                 },
@@ -102,6 +102,48 @@ def get_tasks_definitions() -> dict:
             "script": "complete_task.py",
             "build_args": pm.build_tasks_complete_args,
         },
+        "Rename Task": {
+            "description": "Rename a task title by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID to rename",
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "New task title",
+                    },
+                },
+                "required": ["task_id", "new_name"],
+            },
+            "skill": "tasks",
+            "script": "rename_task.py",
+            "build_args": pm.build_tasks_rename_args,
+        },
+        "Update Task Notes": {
+            "description": (
+                "Update task notes by ID. Pass an empty string to clear notes."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID to update",
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "New notes content (markdown/plain text)",
+                    },
+                },
+                "required": ["task_id", "notes"],
+            },
+            "skill": "tasks",
+            "script": "update_task_notes.py",
+            "build_args": pm.build_tasks_update_notes_args,
+        },
         "Defer Task": {
             "description": (
                 "Change a task's due date. Use this to reschedule a task "
@@ -125,6 +167,28 @@ def get_tasks_definitions() -> dict:
             "script": "defer_task.py",
             "build_args": pm.build_tasks_defer_args,
         },
+        "Set Task Due Date": {
+            "description": (
+                "Set a task due date to a specific day in ISO format (YYYY-MM-DD)."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID",
+                    },
+                    "due_date": {
+                        "type": "string",
+                        "description": "Due date in ISO format (YYYY-MM-DD)",
+                    },
+                },
+                "required": ["task_id", "due_date"],
+            },
+            "skill": "tasks",
+            "script": "set_due_date.py",
+            "build_args": pm.build_tasks_set_due_args,
+        },
         "Clear Task Due Date": {
             "description": (
                 "Remove a task's due date. The task will no longer appear "
@@ -143,6 +207,40 @@ def get_tasks_definitions() -> dict:
             "skill": "tasks",
             "script": "clear_due_date.py",
             "build_args": pm.build_tasks_clear_due_args,
+        },
+        "Set Task Repeat": {
+            "description": (
+                "Set or clear a task repeat rule. Provide recurrence_rule as an object "
+                "to enable repeating, or null to remove repeating."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID",
+                    },
+                    "recurrence_rule": {
+                        "type": ["object", "null"],
+                        "description": (
+                            "Repeat rule object with type (daily|weekly|monthly) "
+                            "and optional interval/weekday/day_of_month. "
+                            "Use null to clear repeating."
+                        ),
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": (
+                            "Optional anchor date in ISO format (YYYY-MM-DD). "
+                            "If omitted, current task deadline is used when available."
+                        ),
+                    },
+                },
+                "required": ["task_id", "recurrence_rule"],
+            },
+            "skill": "tasks",
+            "script": "set_task_repeat.py",
+            "build_args": pm.build_tasks_set_repeat_args,
         },
         "Create Project": {
             "description": (
@@ -167,6 +265,26 @@ def get_tasks_definitions() -> dict:
             "script": "create_project.py",
             "build_args": pm.build_tasks_create_project_args,
         },
+        "Rename Project": {
+            "description": "Rename a task project title by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "description": "Project ID to rename",
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "New project title",
+                    },
+                },
+                "required": ["project_id", "new_name"],
+            },
+            "skill": "tasks",
+            "script": "rename_project.py",
+            "build_args": pm.build_tasks_rename_project_args,
+        },
         "Create Group": {
             "description": (
                 "Create a new group for organizing projects and tasks. "
@@ -185,6 +303,26 @@ def get_tasks_definitions() -> dict:
             "skill": "tasks",
             "script": "create_group.py",
             "build_args": pm.build_tasks_create_group_args,
+        },
+        "Rename Group": {
+            "description": "Rename a task group title by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "group_id": {
+                        "type": "string",
+                        "description": "Group ID to rename",
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "New group title",
+                    },
+                },
+                "required": ["group_id", "new_name"],
+            },
+            "skill": "tasks",
+            "script": "rename_group.py",
+            "build_args": pm.build_tasks_rename_group_args,
         },
         "Delete Task": {
             "description": (
