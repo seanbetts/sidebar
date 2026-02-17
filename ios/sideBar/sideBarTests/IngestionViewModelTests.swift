@@ -233,6 +233,58 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(pending.first?.kind, .youtube)
     }
 
+    func testPanelPinnedItemsIncludesPinnedFileWithoutRecommendedViewer() async {
+        let pinnedProcessingItem = IngestionListItem(
+            file: IngestedFileMeta(
+                id: "file-1",
+                filenameOriginal: "file.txt",
+                path: nil,
+                mimeOriginal: "text/plain",
+                sizeBytes: 10,
+                sha256: nil,
+                pinned: true,
+                pinnedOrder: 0,
+                category: nil,
+                sourceUrl: nil,
+                sourceMetadata: nil,
+                createdAt: "2026-01-10T00:00:00Z",
+                updatedAt: nil,
+                deletedAt: nil
+            ),
+            job: IngestionJob(
+                status: "processing",
+                stage: "extracting",
+                errorCode: nil,
+                errorMessage: nil,
+                userMessage: nil,
+                progress: nil,
+                attempts: 1,
+                updatedAt: nil
+            ),
+            recommendedViewer: nil
+        )
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [pinnedProcessingItem])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-1"])
+    }
+
     func testClearFailedUploadShowsToastWhenDeleteFails() async {
         let failedItem = makeListItem(id: "file-1", status: "failed", stage: "failed")
         let api = MockIngestionAPI(

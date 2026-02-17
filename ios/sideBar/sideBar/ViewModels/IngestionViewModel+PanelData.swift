@@ -48,7 +48,7 @@ extension IngestionViewModel {
         }
         let searchResults = filtered.sorted(by: Self.sortByCreatedDateDescending)
         let pinnedItems = filtered
-            .filter { panelIsReady($0) && ($0.file.pinned ?? false) }
+            .filter { $0.file.pinned ?? false }
             .sorted(by: Self.sortPinnedItems)
         let unpinned = filtered.filter { !($0.file.pinned ?? false) }
         let grouped = unpinned.reduce(into: [String: [IngestionListItem]]()) { result, item in
@@ -98,10 +98,6 @@ extension IngestionViewModel {
             return leftOrder < rightOrder
         }
         return sortByCreatedDateDescending(lhs, rhs)
-    }
-
-    private func panelIsReady(_ item: IngestionListItem) -> Bool {
-        (item.job.status ?? "") == "ready" && item.recommendedViewer != nil
     }
 
     private func panelIsFolder(_ item: IngestionListItem) -> Bool {
