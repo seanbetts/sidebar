@@ -102,7 +102,7 @@ def test_notes_create_update_and_rename(test_client):
     assert rename.status_code == 200
 
 
-def test_notes_pin_move_archive(test_client):
+def test_notes_pin_move_archive(test_client, test_db):
     create = test_client.post(
         "/api/notes",
         json={"content": "# Title\n\nBody"},
@@ -123,6 +123,12 @@ def test_notes_pin_move_archive(test_client):
         headers=_auth_headers(),
     )
     assert move.status_code == 200
+    moved = test_db.query(Note).filter(Note.id == uuid.UUID(note_id)).first()
+    assert moved is not None
+    moved_metadata = moved.metadata_ or {}
+    assert moved_metadata.get("folder") == "Inbox"
+    assert moved_metadata.get("pinned") is False
+    assert moved_metadata.get("pinned_order") is None
 
     archive = test_client.patch(
         f"/api/notes/{note_id}/archive",

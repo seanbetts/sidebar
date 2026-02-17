@@ -30,6 +30,35 @@ def test_notes_sync_conflict(test_db):
     assert result.conflicts
 
 
+def test_notes_sync_move_unpins_note(test_db):
+    note = NotesService.create_note(test_db, "user-1", "# Title\n\nBody")
+    NotesService.update_pinned(test_db, "user-1", note.id, True)
+
+    result = NotesSyncService.sync_operations(
+        test_db,
+        "user-1",
+        {
+            "last_sync": None,
+            "operations": [
+                {
+                    "operation_id": "op-move",
+                    "op": "move",
+                    "id": str(note.id),
+                    "folder": "Inbox",
+                }
+            ],
+        },
+    )
+
+    assert not result.conflicts
+    moved = NotesService.get_note(test_db, "user-1", note.id, mark_opened=False)
+    assert moved is not None
+    metadata = moved.metadata_ or {}
+    assert metadata.get("folder") == "Inbox"
+    assert metadata.get("pinned") is False
+    assert metadata.get("pinned_order") is None
+
+
 def test_websites_sync_conflict(test_db):
     website = WebsitesService.save_website(
         test_db,

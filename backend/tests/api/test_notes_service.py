@@ -70,6 +70,24 @@ def test_update_pinned_assigns_next_order(db_session):
     assert (pinned_b.metadata_ or {}).get("pinned_order") == 1
 
 
+def test_update_folder_can_clear_pinned_state(db_session):
+    note = NotesService.create_note(db_session, "test_user", "# Move Me\n\nBody")
+    NotesService.update_pinned(db_session, "test_user", note.id, True)
+
+    moved = NotesService.update_folder(
+        db_session,
+        "test_user",
+        note.id,
+        "Projects/Beta",
+        clear_pinned=True,
+    )
+
+    metadata = moved.metadata_ or {}
+    assert metadata.get("folder") == "Projects/Beta"
+    assert metadata.get("pinned") is False
+    assert metadata.get("pinned_order") is None
+
+
 def test_list_notes_filters(db_session):
     now = datetime.now(UTC)
     earlier = now - timedelta(days=2)
