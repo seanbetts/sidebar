@@ -248,6 +248,9 @@ extension WebsitesDetailView {
             action: { viewModel.clearSelection() },
             isDisabled: viewModel.active == nil
         )
+        #if os(macOS)
+        .keyboardShortcut(.escape, modifiers: [])
+        #endif
     }
 
     private var expandButton: some View {
