@@ -67,7 +67,7 @@
 				</h1>
 				<p class="login-tagline">Your AI-Powered Workspace</p>
 				<p class="login-description">
-					sideBar is an AI assistant, powered by Anthropic's Claude, that can access to your notes,
+					sideBar is an AI assistant, powered by Anthropic's Claude, that can access your notes,
 					saved websites, and files, giving every interaction AI superpowers!
 				</p>
 
