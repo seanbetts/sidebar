@@ -22,5 +22,16 @@
     "testExample",
     "testLaunchPerformance",
     "testLaunch"
-  ]
+  ],
+  "warning_gate": {
+    "max_warnings": 0,
+    "include_path_contains": [
+      "/ios/sideBar/sideBar/",
+      "/ios/sideBar/ShareExtension/",
+      "/ios/sideBar/sideBarWidgets/",
+      "/ios/sideBar/sideBar Safari Extension/"
+    ],
+    "exclude_path_contains": [],
+    "exclude_message_regexes": []
+  }
 }

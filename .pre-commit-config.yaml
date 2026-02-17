@@ -81,6 +81,13 @@ repos:
         files: ^ios/
         pass_filenames: false
         stages: [manual]
+      - id: ios-warning-gate
+        name: ios-warning-gate
+        entry: scripts/check-ios-warning-gate.sh
+        language: system
+        files: ^(ios/.*\.swift|scripts/check_ios_quality_gates\.py|scripts/ios_quality_gates\.json|scripts/check-ios-warning-gate\.sh)$
+        pass_filenames: false
+        stages: [pre-push, manual]
 
   # Frontend - ESLint (all files)
   - repo: https://github.com/pre-commit/mirrors-eslint

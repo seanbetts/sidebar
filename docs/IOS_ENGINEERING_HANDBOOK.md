@@ -91,6 +91,7 @@ Local validation commands:
 swiftlint --config ios/sideBar/.swiftlint.yml
 python3 scripts/check_ios_doc_comments.py
 python3 scripts/check_ios_architecture_boundaries.py
+scripts/check-ios-warning-gate.sh
 scripts/test-ios.sh
 ```
 
@@ -112,6 +113,7 @@ CI workflow (`.github/workflows/ios-ci.yml`):
   - macOS lane: unit tests only, coverage disabled.
 - Hard gates (runs after both quality and test matrix complete):
   - Per-target coverage thresholds and baseline-drop enforcement via `scripts/check_ios_quality_gates.py`.
+  - First-party iOS target warning gate via `scripts/check_ios_quality_gates.py` warning policy.
   - Uses iPhone lane xcresult only.
 
 Pre-push hook (`.git/hooks/pre-push`):
@@ -119,6 +121,7 @@ Pre-push hook (`.git/hooks/pre-push`):
 - Blocks pushes to `main` unless `scripts/test-ios.sh` passes locally.
 - Pushes to `dev` and other branches are unblocked.
 - Guards against broken builds reaching Xcode Cloud.
+- `pre-commit` push-stage hook `ios-warning-gate` runs `scripts/check-ios-warning-gate.sh` for iOS/script changes and fails on scoped warnings.
 
 ## Self-Hosted Runner Setup
 
