@@ -65,11 +65,7 @@ struct LockScreenTaskPreviewView: View {
 
     var body: some View {
         if !entry.isAuthenticated {
-            HStack {
-                Image(systemName: "checklist")
-                Text("Sign in to sideBar")
-                    .font(.caption)
-            }
+            LockScreenSignedOutRow(iconSystemName: "checklist")
         } else if entry.data.tasks.isEmpty {
             HStack {
                 Image(systemName: "checkmark.circle.fill")

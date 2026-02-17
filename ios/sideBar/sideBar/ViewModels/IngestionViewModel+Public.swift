@@ -173,6 +173,55 @@ extension IngestionViewModel {
         }
     }
 
+    public func retryFailedUpload(fileId: String) {
+        guard let item = items.first(where: { $0.file.id == fileId }) else { return }
+        guard [IngestionListItem].normalizedStatus(item.statusValue) == "failed" else { return }
+
+        if let sourceUrl = retryableYouTubeSource(for: item) {
+            store.removeLocalUpload(fileId: fileId)
+            if selectedFileId == fileId {
+                clearSelection()
+            }
+            Task { [weak self] in
+                guard let self else { return }
+                if let message = await self.ingestYouTube(url: sourceUrl, showQueuedToast: false) {
+                    self.toastCenter.show(message: message)
+                }
+            }
+            return
+        }
+
+        guard let resumable = retryableLocalUploadRecord(fileId: fileId) else {
+            toastCenter.show(message: "Re-select file to retry upload")
+            return
+        }
+        resumeUpload(resumable)
+    }
+
+    @discardableResult
+    public func retryAllFailedUploads() -> Int {
+        let failedIds = failedUploadItems.map(\.file.id)
+        guard !failedIds.isEmpty else { return 0 }
+        var retriedCount = 0
+        for fileId in failedIds where canRetryFailedUpload(fileId: fileId) {
+            retryFailedUpload(fileId: fileId)
+            retriedCount += 1
+        }
+        if retriedCount == 0 {
+            toastCenter.show(message: "No retryable uploads")
+        }
+        return retriedCount
+    }
+
+    public func canRetryFailedUpload(fileId: String) -> Bool {
+        guard let item = items.first(where: { $0.file.id == fileId }) else { return false }
+        guard [IngestionListItem].normalizedStatus(item.statusValue) == "failed" else { return false }
+        if retryableYouTubeSource(for: item) != nil {
+            return true
+        }
+        return retryableLocalUploadRecord(fileId: fileId) != nil
+    }
+
     public func renameFile(fileId: String, filename: String) async -> Bool {
         if isOfflineForIngestion() {
             do {
@@ -288,6 +337,58 @@ extension IngestionViewModel {
         releaseSecurityScopedAccess(for: fileId)
     }
 
+    public func canCancelIngestion(fileId: String) -> Bool {
+        guard let item = items.first(where: { $0.file.id == fileId }) else { return false }
+        let status = [IngestionListItem].normalizedStatus(item.statusValue)
+        guard !status.isEmpty else { return false }
+        guard ![IngestionListItem].terminalStatuses.contains(status) else { return false }
+        if fileId.hasPrefix("youtube-") {
+            // A temporary YouTube placeholder does not have a server-side job ID yet.
+            return false
+        }
+        return true
+    }
+
+    public func cancelIngestion(fileId: String) {
+        guard let item = items.first(where: { $0.file.id == fileId }) else { return }
+        guard canCancelIngestion(fileId: fileId) else { return }
+
+        if fileId.hasPrefix("local-") {
+            cancelUpload(fileId: fileId)
+            return
+        }
+
+        if isOfflineForIngestion() {
+            toastCenter.show(message: "Can't cancel while offline")
+            return
+        }
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.api.cancel(fileId: fileId)
+                let canceledJob = IngestionJob(
+                    status: "canceled",
+                    stage: "canceled",
+                    errorCode: nil,
+                    errorMessage: nil,
+                    userMessage: nil,
+                    progress: nil,
+                    attempts: item.job.attempts,
+                    updatedAt: item.job.updatedAt
+                )
+                self.store.updateJob(
+                    fileId: fileId,
+                    job: canceledJob,
+                    recommendedViewer: item.recommendedViewer
+                )
+                self.cancelJobPolling(fileId: fileId)
+            } catch {
+                self.toastCenter.show(message: "Failed to cancel ingestion")
+            }
+        }
+    }
+
     public var selectedItem: IngestionListItem? {
         guard let selectedFileId else { return nil }
         return items.first { $0.file.id == selectedFileId }
@@ -307,6 +408,19 @@ extension IngestionViewModel {
 
     public func clearReadyMessage() {
         lastReadyMessage = nil
+    }
+
+    private func retryableLocalUploadRecord(fileId: String) -> LocalUploadResumeItem? {
+        guard let record = store.localUploadRecords[fileId] else { return nil }
+        guard let bookmarkData = record.bookmarkData else { return nil }
+        return LocalUploadResumeItem(item: record.item, bookmarkData: bookmarkData)
+    }
+
+    private func retryableYouTubeSource(for item: IngestionListItem) -> String? {
+        guard item.file.id.hasPrefix("youtube-") else { return nil }
+        guard let sourceUrl = item.file.sourceUrl?.trimmingCharacters(in: .whitespacesAndNewlines) else { return nil }
+        guard !sourceUrl.isEmpty else { return nil }
+        return sourceUrl
     }
 
     /// Refreshes widget data by fetching the latest files list

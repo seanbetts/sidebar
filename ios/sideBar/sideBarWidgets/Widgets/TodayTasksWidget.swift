@@ -200,17 +200,7 @@ struct TodayTasksWidgetView: View {
     // MARK: - Not Authenticated
 
     private var notAuthenticatedView: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "person.crop.circle.badge.exclamationmark")
-                .font(.system(size: 32))
-                .foregroundStyle(.orange)
-            Text("Sign in to sideBar")
-                .font(.headline)
-            Text("to see your tasks")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        HomeWidgetSignedOutView(content: .tasks)
     }
 }
 

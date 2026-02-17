@@ -9,8 +9,6 @@ struct SkillsSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Manage installed skills and permissions here.")
-                    .foregroundStyle(.secondary)
                 Toggle("Enable all", isOn: Binding(
                     get: { allSkillsEnabled },
                     set: { isEnabled in
@@ -57,7 +55,7 @@ struct SkillsSettingsView: View {
                                 }
                             )) {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(skill.name)
+                                    Text(viewModel.displayName(for: skill))
                                         .font(DesignTokens.Typography.subheadlineSemibold)
                                     Text(skill.description)
                                         .font(.caption)

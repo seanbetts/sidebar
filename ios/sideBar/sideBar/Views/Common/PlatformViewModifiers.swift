@@ -41,4 +41,13 @@ extension View {
         self
         #endif
     }
+
+    @ViewBuilder
+    func settingsSheetGrabBarVisible() -> some View {
+        #if os(iOS)
+        self.presentationDragIndicator(.visible)
+        #else
+        self
+        #endif
+    }
 }

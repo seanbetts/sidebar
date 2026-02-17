@@ -28,27 +28,19 @@ final class ShareSuccessViewTests: XCTestCase {
         XCTAssertTrue(colorsEqual(iconBackgroundColor, .white, traitCollection: darkTraits))
 
         let labels = subject.allSubviews(of: UILabel.self)
-        XCTAssertTrue(labels.contains(where: { $0.text == "sideBar" }))
         XCTAssertTrue(labels.contains(where: { $0.text == message }))
     }
 
-    func testBrandLogoVisibilityReflectsAssetAvailability() {
+    func testSuccessViewOmitsBrandLogo() {
         let subject = ShareSuccessView(message: "Saved")
 
-        guard let logoView = subject.firstSubview(where: {
+        let logoView = subject.firstSubview(where: {
             ($0 as? UIImageView)?.accessibilityIdentifier == "share-brand-logo"
-        }) as? UIImageView else {
-            XCTFail("Expected brand logo image view in hierarchy.")
-            return
-        }
-
-        let hasAdaptiveLogo = UIImage(named: "logo-light", in: Bundle.main, compatibleWith: nil) != nil
-            || UIImage(named: "logo-dark", in: Bundle.main, compatibleWith: nil) != nil
-        let hasBundledLogo = hasAdaptiveLogo || UIImage(named: "AppLogo", in: Bundle.main, compatibleWith: nil) != nil
-        XCTAssertEqual(!logoView.isHidden, hasBundledLogo)
+        })
+        XCTAssertNil(logoView)
     }
 
-    func testSuccessViewUsesMinimalBrandStackAndNoCardContainer() {
+    func testSuccessViewUsesMinimalLayoutWithoutBrandStackOrCardContainer() {
         let subject = ShareSuccessView(message: "Saved")
         XCTAssertTrue(colorsEqual(subject.backgroundColor ?? .clear, .clear))
         XCTAssertTrue(colorsEqual(subject.hostBackgroundColor, .clear))
@@ -58,14 +50,10 @@ final class ShareSuccessViewTests: XCTestCase {
         })
         XCTAssertNil(cardContainer)
 
-        guard let brandStack = subject.firstSubview(where: {
+        let brandStack = subject.firstSubview(where: {
             ($0 as? UIStackView)?.accessibilityIdentifier == "share-brand-stack"
-        }) as? UIStackView else {
-            XCTFail("Expected brand stack in view hierarchy.")
-            return
-        }
-
-        XCTAssertEqual(brandStack.axis, .vertical)
+        })
+        XCTAssertNil(brandStack)
     }
 
     func testSuccessViewShowsGrabHandle() {

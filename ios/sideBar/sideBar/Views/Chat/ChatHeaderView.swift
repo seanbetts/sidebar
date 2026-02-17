@@ -19,10 +19,6 @@ struct ChatHeaderView: View {
                 if let activeTool = viewModel.activeTool {
                     ChatActiveToolBanner(activeTool: activeTool)
                 }
-
-                if let promptPreview = viewModel.promptPreview {
-                    PromptPreviewView(promptPreview: promptPreview)
-                }
             }
             .padding(DesignTokens.Spacing.md)
             .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
@@ -39,8 +35,7 @@ struct ChatHeaderView: View {
         if isCompact {
             return false
         }
-        return viewModel.activeTool != nil ||
-            viewModel.promptPreview != nil
+        return viewModel.activeTool != nil
     }
 
     private var headerContent: some View {

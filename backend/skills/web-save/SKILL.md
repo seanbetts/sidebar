@@ -1,90 +1,41 @@
 ---
 name: web-save
-description: Save web pages as clean markdown files using a local parser with optional Jina.ai fallback. Use when you need to archive articles, blog posts, documentation, or any web content for later reading or building a local knowledge base.
+description: Database-backed website operations - add, read, list, rename, pin, archive, delete, and export websites.
+metadata:
+  capabilities:
+    reads: true
+    writes: true
+    network: true
+    external_apis: true
 ---
 
-# web-save
+# Web Save Operations
 
-Save web pages as markdown files using a local parser with optional Jina.ai fallback.
-
-## Description
-
-Fetches web page content, converts it to markdown using a local parser, and saves it to the database with metadata. Falls back to Jina.ai when configured.
-
-## When to Use
-
-- Save interesting articles or web pages for later reading
-- Archive web content as markdown for note-taking
-- Capture blog posts, documentation, or any web content
-- Build a local knowledge base from web sources
-
-## Requirements
-
-- Internet connection to fetch web content
-- **JINA_API_KEY** (optional) environment variable for fallback (stored in Doppler secrets)
+Database-backed operations for saved websites.
 
 ## Scripts
 
-### save_url.py
-Fetches a URL and saves it as a markdown entry in the database using the local parser (with Jina.ai fallback when configured).
+- `save_url.py` - Add/save a website URL into the database
+- `read_website.py` - Fetch a website by ID
+- `list_websites.py` - List websites with optional filters
+- `rename_website.py` - Rename a website title
+- `pin_website.py` - Pin or unpin a website
+- `archive_website.py` - Archive or unarchive a website
+- `delete_website.py` - Soft-delete a website
+- `download_website.py` - Export website markdown content + filename metadata
+
+All scripts support `--json` output.
+
+## save_url.py
+
+`save_url.py` fetches and parses a URL, then stores a normalized markdown snapshot plus metadata in the websites table.
 
 ```bash
-python save_url.py URL [--folder FOLDER] [--filename FILENAME] [--json]
+python save_url.py URL --database --user-id USER_ID [--json]
 ```
 
-**Arguments**:
-- `URL`: Web page URL to save (required)
+### Notes
 
-**Options**:
-- `--folder`: Subfolder within Websites/ to save to (default: root)
-- `--filename`: Custom filename (default: auto-generated from page title)
-- `--json`: Output results in JSON format
-
-**Features**:
-- Automatic title extraction from page content
-- Metadata header with source URL and date
-- Sanitized filenames (replaces invalid characters)
-- Optional subfolder organization
-- Validates URLs and handles redirects
-
-**Examples**:
-```bash
-# Save article to Websites/
-python save_url.py "https://example.com/article"
-
-# Save to subfolder
-python save_url.py "https://example.com/article" --folder "Tech Articles"
-
-# Custom filename
-python save_url.py "https://example.com/article" --filename "my-saved-article"
-
-# JSON output
-python save_url.py "https://example.com/article" --json
-```
-
-**Output**:
-Creates a markdown file with:
-```markdown
----
-source: https://example.com/article
-date: 2025-12-20
----
-
-[Page content in markdown format]
-```
-
-## Configuration
-
-The skill uses:
-- **Storage**: Database (websites table)
-- **API**: Local parsing pipeline
-- **Fallback API**: Jina.ai Reader API (https://r.jina.ai/) when `JINA_API_KEY` is set
-
-## Future Enhancements
-
-Potential future features:
-- Batch URL processing
-- Tag/category support
-- Integration with folder-config for custom save locations
-- Content filtering/summarization options
-- Support for other markdown conversion services
+- `WEB_SAVE_MODE` controls parser behavior (`local`, `jina`, `compare`; default `local`).
+- `JINA_API_KEY` is optional unless `WEB_SAVE_MODE` requires Jina fetches.
+- URLs are normalized before save to avoid duplicate records.

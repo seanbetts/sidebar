@@ -275,10 +275,12 @@ extension TasksPanelView {
             onDelete: onDelete
         )
         .onTapGesture {
+            let isAlreadySelected = viewModel.selection == selection
             if isCompact {
                 environment.tasksPhoneDetailRouteId = selection.cacheKey
             }
             environment.commandSelection = .tasks
+            guard !isAlreadySelected else { return }
             Task { await viewModel.load(selection: selection) }
         }
     }

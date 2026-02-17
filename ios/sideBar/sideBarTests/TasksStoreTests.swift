@@ -131,6 +131,119 @@ final class TasksStoreTests: XCTestCase {
         XCTAssertEqual(api.countsCallCount, 1)
         XCTAssertEqual(store.counts?.counts.today, 4)
     }
+
+    func testLoadNoneDoesNotFetchFallbackList() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
+
+        await store.load(selection: .none)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(store.selection, .none)
+        XCTAssertEqual(store.tasks, [])
+        XCTAssertEqual(api.listCallCount, 0)
+    }
+
+    func testCachedListRefreshDoesNotOverrideNewerSelection() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
+
+        let cachedTodayTask = TaskItem(id: "today-cached", title: "Cached today", status: "open")
+        let cachedToday = TaskListResponse(
+            scope: "today",
+            generatedAt: nil,
+            tasks: [cachedTodayTask],
+            projects: nil,
+            groups: nil
+        )
+        cache.set(
+            key: CacheKeys.tasksList(selectionKey: TaskSelection.today.cacheKey),
+            value: cachedToday,
+            ttlSeconds: 60
+        )
+
+        let refreshedTodayTask = TaskItem(id: "today-fresh", title: "Fresh today", status: "open")
+        api.listResponsesByScope["today"] = TaskListResponse(
+            scope: "today",
+            generatedAt: nil,
+            tasks: [refreshedTodayTask],
+            projects: nil,
+            groups: nil
+        )
+        api.listResponseDelaysByScope["today"] = 200_000_000
+
+        let upcomingTask = TaskItem(id: "upcoming", title: "Upcoming", status: "open")
+        api.listResponsesByScope["upcoming"] = TaskListResponse(
+            scope: "upcoming",
+            generatedAt: nil,
+            tasks: [upcomingTask],
+            projects: nil,
+            groups: nil
+        )
+
+        await store.load(selection: .today)
+        XCTAssertEqual(store.selection, .today)
+        XCTAssertEqual(store.tasks, [cachedTodayTask])
+
+        await store.load(selection: .upcoming, force: true)
+        XCTAssertEqual(store.selection, .upcoming)
+        XCTAssertEqual(store.tasks, [upcomingTask])
+
+        try? await Task.sleep(nanoseconds: 260_000_000)
+        XCTAssertEqual(store.selection, .upcoming)
+        XCTAssertEqual(store.tasks, [upcomingTask])
+    }
+
+    func testCachedListRefreshesCoalesceWhenAlreadyInFlight() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
+
+        let cachedToday = TaskListResponse(scope: "today", generatedAt: nil, tasks: [], projects: nil, groups: nil)
+        cache.set(
+            key: CacheKeys.tasksList(selectionKey: TaskSelection.today.cacheKey),
+            value: cachedToday,
+            ttlSeconds: 60
+        )
+        api.listResponseDelaysByScope["today"] = 200_000_000
+
+        await store.load(selection: .today)
+        await store.load(selection: .today)
+        try? await Task.sleep(nanoseconds: 260_000_000)
+
+        XCTAssertEqual(api.listCallCount, 1)
+    }
+
+    func testCachedCountRefreshesCoalesceWhenAlreadyInFlight() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
+
+        let cachedCounts = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(inbox: 1, today: 7, upcoming: 2, completed: 3),
+            projects: [],
+            groups: []
+        )
+        cache.set(key: CacheKeys.tasksCounts, value: cachedCounts, ttlSeconds: 60)
+        api.countsResponseDelayNanoseconds = 200_000_000
+
+        await store.loadCounts()
+        await store.loadCounts()
+        try? await Task.sleep(nanoseconds: 260_000_000)
+
+        XCTAssertEqual(api.countsCallCount, 1)
+    }
 }
 
 @MainActor
@@ -147,6 +260,9 @@ private final class TestNetworkStatus: NetworkStatusProviding {
 private final class StubTasksAPI: TasksProviding {
     var listCallCount: Int = 0
     var countsCallCount: Int = 0
+    var listResponsesByScope: [String: TaskListResponse] = [:]
+    var listResponseDelaysByScope: [String: UInt64] = [:]
+    var countsResponseDelayNanoseconds: UInt64 = 0
     var countsResponse = TaskCountsResponse(
         generatedAt: nil,
         counts: TaskCounts(inbox: 0, today: 0, upcoming: 0, completed: 0),
@@ -156,7 +272,11 @@ private final class StubTasksAPI: TasksProviding {
 
     func list(scope: String) async throws -> TaskListResponse {
         listCallCount += 1
-        return TaskListResponse(scope: scope, generatedAt: nil, tasks: [], projects: nil, groups: nil)
+        if let delay = listResponseDelaysByScope[scope], delay > 0 {
+            try? await Task.sleep(nanoseconds: delay)
+        }
+        return listResponsesByScope[scope]
+            ?? TaskListResponse(scope: scope, generatedAt: nil, tasks: [], projects: nil, groups: nil)
     }
 
     func projectTasks(projectId: String) async throws -> TaskListResponse {
@@ -173,6 +293,9 @@ private final class StubTasksAPI: TasksProviding {
 
     func counts() async throws -> TaskCountsResponse {
         countsCallCount += 1
+        if countsResponseDelayNanoseconds > 0 {
+            try? await Task.sleep(nanoseconds: countsResponseDelayNanoseconds)
+        }
         return countsResponse
     }
 

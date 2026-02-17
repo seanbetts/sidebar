@@ -211,9 +211,33 @@ extension WebsitesViewModel {
     func clearPendingIfNeeded(items: [WebsiteItem]) {
         guard let pendingWebsite else { return }
         let pendingUrl = pendingWebsite.url
-        if items.contains(where: { $0.url == pendingUrl }) {
+        let pendingKey = canonicalWebsiteURLForPendingMatch(pendingUrl) ?? pendingUrl
+        if items.contains(where: {
+            (canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url) == pendingKey
+        }) {
             self.pendingWebsite = nil
         }
+    }
+
+    func canonicalWebsiteURLForPendingMatch(_ raw: String) -> String? {
+        guard let trimmed = raw.trimmedOrNil else { return nil }
+        let candidate = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
+        guard var components = URLComponents(string: candidate),
+              let scheme = components.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host = components.host?.lowercased(),
+              !host.isEmpty else {
+            return nil
+        }
+
+        if YouTubeURLPolicy.isYouTubeHost(host),
+           let videoId = YouTubeURLPolicy.extractVideoId(from: candidate) {
+            return "https://www.youtube.com/watch?v=\(videoId)"
+        }
+
+        components.query = nil
+        components.fragment = nil
+        return components.string
     }
 
     func setTranscriptRequestInFlight(

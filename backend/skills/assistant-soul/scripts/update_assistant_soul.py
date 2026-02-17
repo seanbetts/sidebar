@@ -87,10 +87,22 @@ def main() -> None:
     parser.add_argument("--purpose", help="Assistant soul purpose")
     parser.add_argument(
         "--operating-principles",
+        "--operating_principles",
+        dest="operating_principles",
         help="Assistant soul operating principles",
     )
-    parser.add_argument("--adaptation-policy", help="Assistant soul adaptation policy")
-    parser.add_argument("--success-signals", help="Assistant soul success signals")
+    parser.add_argument(
+        "--adaptation-policy",
+        "--adaptation_policy",
+        dest="adaptation_policy",
+        help="Assistant soul adaptation policy",
+    )
+    parser.add_argument(
+        "--success-signals",
+        "--success_signals",
+        dest="success_signals",
+        help="Assistant soul success signals",
+    )
     parser.add_argument("--reason", help="Reason for updating assistant soul")
     parser.add_argument("--json", action="store_true", help="JSON output")
     args = parser.parse_args()

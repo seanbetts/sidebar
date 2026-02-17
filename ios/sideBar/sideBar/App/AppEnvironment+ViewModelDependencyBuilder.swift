@@ -14,6 +14,7 @@ extension AppEnvironment {
             let memoriesViewModel: MemoriesViewModel
             let settingsViewModel: SettingsViewModel
             let weatherViewModel: WeatherViewModel
+            let currentLocationViewModel: CurrentLocationViewModel
         }
 
         static func build(
@@ -85,6 +86,10 @@ extension AppEnvironment {
                 cache: container.cacheClient
             )
             let weatherViewModel = WeatherViewModel(api: container.weatherAPI)
+            let currentLocationViewModel = CurrentLocationViewModel(
+                provider: CoreLocationProvider(),
+                labelResolver: CLGeocoderLocationLabelResolver()
+            )
             return Output(
                 chatViewModel: chatViewModel,
                 notesViewModel: notesViewModel,
@@ -94,7 +99,8 @@ extension AppEnvironment {
                 tasksViewModel: tasksViewModel,
                 memoriesViewModel: memoriesViewModel,
                 settingsViewModel: settingsViewModel,
-                weatherViewModel: weatherViewModel
+                weatherViewModel: weatherViewModel,
+                currentLocationViewModel: currentLocationViewModel
             )
         }
     }

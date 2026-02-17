@@ -252,6 +252,45 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.pendingWebsite)
     }
 
+    func testClearPendingIfNeededCanonicalizesYouTubeURLs() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        viewModel.showPendingFromExtension(url: "https://youtu.be/abc123xyzAA?t=10&si=token")
+        XCTAssertNotNil(viewModel.pendingWebsite)
+
+        let payload = RealtimePayload(
+            eventType: .insert,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "site-yt-1",
+                title: "Video",
+                url: "https://www.youtube.com/watch?v=abc123xyzAA",
+                domain: "youtube.com",
+                metadata: nil,
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2026-02-17T10:00:00Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        await viewModel.applyRealtimeEvent(payload)
+
+        XCTAssertNil(viewModel.pendingWebsite)
+    }
+
     func testSaveWebsiteWithoutSelectionPreservesCurrentDetail() async {
         let existing = makeItem(id: "site-existing")
         let existingDetail = makeDetail(id: "site-existing")
@@ -1030,6 +1069,10 @@ private final class MockIngestionAPI: IngestionProviding {
         _ = kind
         _ = range
         throw MockError.forced
+    }
+
+    func cancel(fileId: String) async throws {
+        _ = fileId
     }
 
     func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {

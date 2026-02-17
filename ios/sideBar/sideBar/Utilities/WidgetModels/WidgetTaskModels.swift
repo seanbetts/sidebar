@@ -40,13 +40,24 @@ public struct WidgetTaskData: WidgetDataContainer {
 
   public let tasks: [WidgetTask]
   public let totalCount: Int
+  public let progressCompletedCount: Int
+  public let progressTotalCount: Int
   public let lastUpdated: Date
 
   public var items: [WidgetTask] { tasks }
 
-  public init(tasks: [WidgetTask], totalCount: Int, lastUpdated: Date = Date()) {
+  public init(
+    tasks: [WidgetTask],
+    totalCount: Int,
+    progressCompletedCount: Int = 0,
+    progressTotalCount: Int? = nil,
+    lastUpdated: Date = Date()
+  ) {
     self.tasks = tasks
     self.totalCount = totalCount
+    let resolvedProgressTotal = max(0, progressTotalCount ?? totalCount)
+    self.progressTotalCount = resolvedProgressTotal
+    self.progressCompletedCount = min(max(0, progressCompletedCount), resolvedProgressTotal)
     self.lastUpdated = lastUpdated
   }
 
@@ -61,6 +72,42 @@ public struct WidgetTaskData: WidgetDataContainer {
     ],
     totalCount: 6
   )
+}
+
+extension WidgetTaskData: Codable {
+  private enum CodingKeys: String, CodingKey {
+    case tasks
+    case totalCount
+    case progressCompletedCount
+    case progressTotalCount
+    case lastUpdated
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let decodedTasks = try container.decodeIfPresent([WidgetTask].self, forKey: .tasks) ?? []
+    let decodedTotalCount = try container.decodeIfPresent(Int.self, forKey: .totalCount) ?? decodedTasks.count
+    let decodedCompleted = try container.decodeIfPresent(Int.self, forKey: .progressCompletedCount) ?? 0
+    let decodedProgressTotal = try container.decodeIfPresent(Int.self, forKey: .progressTotalCount) ?? decodedTotalCount
+    let decodedLastUpdated = try container.decodeIfPresent(Date.self, forKey: .lastUpdated) ?? Date()
+
+    self.init(
+      tasks: decodedTasks,
+      totalCount: decodedTotalCount,
+      progressCompletedCount: decodedCompleted,
+      progressTotalCount: decodedProgressTotal,
+      lastUpdated: decodedLastUpdated
+    )
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(tasks, forKey: .tasks)
+    try container.encode(totalCount, forKey: .totalCount)
+    try container.encode(progressCompletedCount, forKey: .progressCompletedCount)
+    try container.encode(progressTotalCount, forKey: .progressTotalCount)
+    try container.encode(lastUpdated, forKey: .lastUpdated)
+  }
 }
 
 // MARK: - TaskItem to WidgetTask Conversion

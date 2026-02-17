@@ -11,7 +11,6 @@ from api.services.tools.definitions_web import get_web_definitions
 
 
 def _assert_definition_contract(definitions: dict):
-    assert definitions, "Expected definitions to be non-empty"
     for name, definition in definitions.items():
         assert isinstance(name, str)
         assert name
@@ -41,6 +40,8 @@ def test_individual_definitions_follow_contract():
         get_tasks_definitions(),
         get_misc_definitions(),
     ]:
+        if not definitions:
+            continue
         _assert_definition_contract(definitions)
 
 
@@ -95,3 +96,56 @@ def test_misc_definitions_include_assistant_identity_tools():
     assert "Get Assistant Soul" in definitions
     assert "Update Assistant Soul" in definitions
     assert "Reset Assistant Soul" in definitions
+
+
+def test_fs_definitions_include_file_context_menu_parity_tools():
+    definitions = get_fs_definitions()
+    assert "Rename File" in definitions
+    assert "Delete File" in definitions
+    assert "Pin File" in definitions
+
+
+def test_notes_definitions_include_context_menu_parity_tools():
+    definitions = get_notes_definitions()
+    assert "Rename Note" in definitions
+    assert "Archive Note" in definitions
+    assert "Download Note" in definitions
+    assert "Create Note Folder" in definitions
+    assert "Rename Note Folder" in definitions
+    assert "Move Note Folder" in definitions
+    assert "Delete Note Folder" in definitions
+
+
+def test_web_definitions_include_context_menu_parity_tools():
+    definitions = get_web_definitions()
+    assert "Add Website" in definitions
+    assert "Rename Website" in definitions
+    assert "Download Website" in definitions
+    assert "Archive Website" in definitions
+    assert "Delete Website" in definitions
+    assert "Pin Website" in definitions
+
+
+def test_tasks_definitions_include_context_menu_parity_tools():
+    definitions = get_tasks_definitions()
+    assert "Rename Task" in definitions
+    assert "Update Task Notes" in definitions
+    assert "Move Task" in definitions
+    assert "Set Task Repeat" in definitions
+    assert "Set Task Due Date" in definitions
+    assert "Defer Task" in definitions
+    assert "Clear Task Due Date" in definitions
+    assert "Delete Task" in definitions
+    assert "Rename Project" in definitions
+    assert "Delete Project" in definitions
+    assert "Rename Group" in definitions
+    assert "Delete Group" in definitions
+    list_scope = definitions["List Tasks"]["input_schema"]["properties"]["scope"]["enum"]
+    assert "completed" in list_scope
+
+
+def test_skills_definitions_do_not_expose_skill_packaging():
+    definitions = get_skills_definitions()
+    assert definitions == {}
+    assert "Package Skill" not in definitions
+    assert "Evaluate MCP Server" not in definitions

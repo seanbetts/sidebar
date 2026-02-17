@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from api.db.session import set_session_user_id
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
+from api.services.file_ingestion_service import FileIngestionService
 from api.services.skill_file_ops_helpers import (
     build_frontmatter,
     find_record_by_path,
@@ -703,6 +704,23 @@ def delete_path(user_id: str, path: str) -> dict:
         db.commit()
 
     return {"deleted": deleted, "count": len(deleted)}
+
+
+def pin_path(user_id: str, path: str, pinned: bool) -> dict:
+    """Set pinned state for a file identified by path."""
+    ensure_allowed_path(normalized := normalize_path(path, allow_root=False))
+
+    with session_for_user(user_id) as db:
+        record = find_record_by_path(db, user_id, normalized)
+        if not record:
+            raise FileNotFoundError(f"File not found: {path}")
+        FileIngestionService.update_pinned(db, user_id, record.id, pinned)
+        return {
+            "id": str(record.id),
+            "path": normalized,
+            "pinned": bool(record.pinned),
+            "pinned_order": record.pinned_order,
+        }
 
 
 def move_path(user_id: str, source: str, destination: str) -> dict:

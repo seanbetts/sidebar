@@ -184,7 +184,7 @@ extension NotesStore {
     private func applyLocalMove(notePath: String, folder: String) {
         let newPath = movingPath(notePath, to: folder)
         guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
-            copyNode(node, path: newPath)
+            copyNode(node, path: newPath, pinned: false, pinnedOrder: nil)
         }) else { return }
         persistLocalTree(updatedTree)
         updateCachedNotePath(from: notePath, to: newPath, newName: nil)

@@ -29,6 +29,12 @@ extension WebsitesPanelView {
             SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
                 copyWebsiteURL(for: item)
             },
+            .share {
+                shareWebsiteURL(for: item)
+            },
+            .shareText {
+                Task { await shareWebsiteText(for: item) }
+            },
             .download {
                 Task { await exportWebsiteContent(for: item) }
             },
@@ -143,6 +149,29 @@ extension WebsitesPanelView {
             }
             #endif
         }
+    }
+
+    private func shareWebsiteURL(for item: WebsiteItem) {
+        guard let url = URL(string: item.url) else {
+            appEnvironment.toastCenter.show(message: "Share unavailable")
+            return
+        }
+        SystemSharePresenter.share(url: url)
+    }
+
+    @MainActor
+    private func shareWebsiteText(for item: WebsiteItem) async {
+        await ensureWebsiteLoaded(item)
+        guard let content = viewModel.active?.content, !content.isEmpty else {
+            appEnvironment.toastCenter.show(message: "Share unavailable")
+            return
+        }
+        let plainText = MarkdownRendering.plainTextForWebsiteShare(content)
+        guard !plainText.isEmpty else {
+            appEnvironment.toastCenter.show(message: "Share unavailable")
+            return
+        }
+        SystemSharePresenter.share(text: plainText)
     }
 
     private func copyWebsiteTitle(for item: WebsiteItem) {

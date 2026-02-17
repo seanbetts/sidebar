@@ -95,7 +95,7 @@ public struct LoginView: View {
             LoadingIndicatorView(size: 64, variant: .hero)
             Text("sideBar")
                 .font(DesignTokens.Typography.title2Semibold)
-            Text("AI chat with context from your notes, tasks, files, and saved websites.")
+            Text("AI assistance with context from your notes, tasks, files, and saved websites.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

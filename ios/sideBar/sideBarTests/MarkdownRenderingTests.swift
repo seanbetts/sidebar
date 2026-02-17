@@ -165,6 +165,44 @@ final class MarkdownRenderingTests: XCTestCase {
         XCTAssertFalse(stripped.contains("Transcript of Example video"))
     }
 
+    func testPlainTextForWebsiteShareRemovesFrontmatterAndMarkdownSyntax() {
+        let input = """
+        ---
+        title: Example title
+        ---
+        # Heading
+
+        This is **bold** with a [link label](https://example.com).
+        """
+
+        let sharedText = MarkdownRendering.plainTextForWebsiteShare(input)
+
+        XCTAssertTrue(sharedText.contains("Heading"))
+        XCTAssertTrue(sharedText.contains("bold"))
+        XCTAssertTrue(sharedText.contains("link label"))
+        XCTAssertFalse(sharedText.contains("title: Example title"))
+        XCTAssertFalse(sharedText.contains("---"))
+        XCTAssertFalse(sharedText.contains("**"))
+        XCTAssertFalse(sharedText.contains("[link label]"))
+    }
+
+    func testPlainTextForWebsiteShareRemovesTranscriptArtifactsAndKeepsVideoURL() {
+        let input = """
+        <!-- YOUTUBE_TRANSCRIPT:dQw4w9WgXcQ -->
+        ### Transcript of Example video
+        [YouTube](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+
+        Article body.
+        """
+
+        let sharedText = MarkdownRendering.plainTextForWebsiteShare(input)
+
+        XCTAssertFalse(sharedText.contains("YOUTUBE_TRANSCRIPT"))
+        XCTAssertFalse(sharedText.contains("Transcript of Example video"))
+        XCTAssertTrue(sharedText.contains("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        XCTAssertTrue(sharedText.contains("Article body."))
+    }
+
     func testNormalizedWebsiteBlocksSuppressesInlineSVG() {
         let input = """
         Intro paragraph.

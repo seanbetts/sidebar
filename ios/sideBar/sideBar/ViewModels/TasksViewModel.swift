@@ -93,7 +93,10 @@ public final class TasksViewModel: ObservableObject {
                 groupName: task.groupId.flatMap { groupTitleById[$0] }
             )
         }
-        let data = WidgetTaskData(tasks: Array(widgetTasks), totalCount: todayTasks.count)
+        let data = buildWidgetTaskData(
+            tasks: Array(widgetTasks),
+            remainingCount: todayTasks.count
+        )
         WidgetDataManager.shared.store(data, for: .tasks)
     }
 
@@ -113,11 +116,43 @@ public final class TasksViewModel: ObservableObject {
                     groupName: task.groupId.flatMap { groupTitleById[$0] }
                 )
             }
-            let data = WidgetTaskData(tasks: Array(widgetTasks), totalCount: todayTasks.count)
+            let data = buildWidgetTaskData(
+                tasks: Array(widgetTasks),
+                remainingCount: todayTasks.count
+            )
             WidgetDataManager.shared.store(data, for: .tasks)
         } catch {
             // Silently fail - widget will use cached data
         }
+    }
+
+    private func buildWidgetTaskData(tasks: [WidgetTask], remainingCount: Int) -> WidgetTaskData {
+        let now = Date()
+        let previous: WidgetTaskData = WidgetDataManager.shared.load(for: .tasks)
+        let calendar = Calendar.current
+
+        let progressCompletedCount: Int
+        let progressTotalCount: Int
+
+        if calendar.isDate(previous.lastUpdated, inSameDayAs: now) {
+            let persistedCompleted = max(0, previous.progressCompletedCount)
+            let persistedTotal = max(0, previous.progressTotalCount)
+            let nextTotal = max(persistedTotal, remainingCount + persistedCompleted)
+            let inferredCompleted = max(persistedCompleted, nextTotal - remainingCount)
+            progressTotalCount = nextTotal
+            progressCompletedCount = min(inferredCompleted, nextTotal)
+        } else {
+            progressTotalCount = max(0, remainingCount)
+            progressCompletedCount = 0
+        }
+
+        return WidgetTaskData(
+            tasks: tasks,
+            totalCount: remainingCount,
+            progressCompletedCount: progressCompletedCount,
+            progressTotalCount: progressTotalCount,
+            lastUpdated: now
+        )
     }
 
     public func loadCounts(force: Bool = false) async {

@@ -30,6 +30,7 @@ from api.models.file_ingestion import FileDerivative, FileProcessingJob, Ingeste
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.storage.service import get_storage_backend
 from api.services.website_transcript_service import WebsiteTranscriptService
+from botocore import exceptions as botocore_exceptions
 from docx import Document
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LAParams, LTAnno, LTChar, LTTextContainer, LTTextLine
@@ -241,6 +242,96 @@ class IngestionError(Exception):
         super().__init__(message)
         self.code = code
         self.retryable = retryable
+
+
+_STORAGE_TLS_HINTS = (
+    "certificate verify failed",
+    "ssl validation failed",
+    "self-signed certificate",
+    "tlsv",
+    "hostname mismatch",
+)
+_STORAGE_TRANSIENT_HINTS = (
+    "timed out",
+    "timeout",
+    "connection reset",
+    "connection aborted",
+    "temporarily unavailable",
+    "service unavailable",
+    "ssl syscall error: eof detected",
+)
+_STORAGE_CONTEXT_HINTS = (
+    "cloudflarestorage.com",
+    "amazonaws.com",
+    "s3",
+    "storage",
+    "/staging/source",
+    "/derivatives/",
+)
+
+
+def _iter_exception_chain(error: Exception):
+    current: Exception | None = error
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        yield current
+        seen.add(id(current))
+        next_error = current.__cause__ or current.__context__
+        current = next_error if isinstance(next_error, Exception) else None
+
+
+def _matches_message_hints(
+    error: Exception, *, context_hints: tuple[str, ...], value_hints: tuple[str, ...]
+) -> bool:
+    chain_text = " ".join(str(item) for item in _iter_exception_chain(error)).lower()
+    return any(hint in chain_text for hint in context_hints) and any(
+        hint in chain_text for hint in value_hints
+    )
+
+
+def _classify_storage_error(error: Exception) -> IngestionError | None:
+    for item in _iter_exception_chain(error):
+        if isinstance(item, botocore_exceptions.SSLError):
+            return IngestionError("STORAGE_TLS_FAILED", str(error), retryable=False)
+        if isinstance(
+            item,
+            (
+                botocore_exceptions.EndpointConnectionError,
+                botocore_exceptions.ConnectTimeoutError,
+                botocore_exceptions.ReadTimeoutError,
+                botocore_exceptions.ConnectionClosedError,
+            ),
+        ):
+            return IngestionError("STORAGE_UNAVAILABLE", str(error), retryable=True)
+        if isinstance(item, botocore_exceptions.ClientError):
+            response = getattr(item, "response", {}) or {}
+            metadata = (
+                response.get("ResponseMetadata", {})
+                if isinstance(response, dict)
+                else {}
+            )
+            status_code = metadata.get("HTTPStatusCode")
+            if status_code in {429, 500, 502, 503, 504}:
+                return IngestionError("STORAGE_UNAVAILABLE", str(error), retryable=True)
+
+    if _matches_message_hints(
+        error, context_hints=_STORAGE_CONTEXT_HINTS, value_hints=_STORAGE_TLS_HINTS
+    ):
+        return IngestionError("STORAGE_TLS_FAILED", str(error), retryable=False)
+    if _matches_message_hints(
+        error,
+        context_hints=_STORAGE_CONTEXT_HINTS,
+        value_hints=_STORAGE_TRANSIENT_HINTS,
+    ):
+        return IngestionError("STORAGE_UNAVAILABLE", str(error), retryable=True)
+    return None
+
+
+def _classify_unexpected_error(error: Exception) -> IngestionError:
+    storage_error = _classify_storage_error(error)
+    if storage_error is not None:
+        return storage_error
+    return IngestionError("UNKNOWN_ERROR", str(error), retryable=True)
 
 
 def _claim_job(db, worker_id: str) -> FileProcessingJob | None:
@@ -2259,9 +2350,7 @@ def worker_loop() -> None:
                             str(job.file_id), str(record.user_id) if record else None
                         )
                 except Exception as error:
-                    unknown_error = IngestionError(
-                        "UNKNOWN_ERROR", str(error), retryable=True
-                    )
+                    unknown_error = _classify_unexpected_error(error)
                     db.rollback()
                     _retry_or_fail(db, job, unknown_error)
                     if job.status == "failed" and _should_cleanup_after_failure(

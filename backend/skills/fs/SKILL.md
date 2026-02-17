@@ -1,6 +1,6 @@
 ---
 name: fs
-description: Filesystem operations backed by ingestion - list, read, write, delete, move, search files. Use for file management tasks in storage.
+description: Filesystem operations backed by ingestion - list, read, write, rename, pin, delete, and search files. Use for file management tasks in storage.
 metadata:
   capabilities:
     reads: true
@@ -22,11 +22,14 @@ All operations are relative to the ingestion-backed storage root.
 - `list.py` - List files with filtering
 - `read.py` - Read file content
 - `write.py` - Create/update files
-- `info.py` - Get file metadata
 - `delete.py` - Delete files/folders
-- `move.py` - Move files
 - `rename.py` - Rename files
+- `pin.py` - Pin or unpin files
 - `search.py` - Search by name/content
+
+Compatibility scripts retained for MCP flows:
+- `copy.py` - Copy files/folders
+- `move.py` - Move files/folders
 
 All scripts support `--json` flag for structured output.
 

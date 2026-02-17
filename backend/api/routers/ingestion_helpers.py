@@ -47,6 +47,12 @@ ERROR_MESSAGES = {
     "TRANSCRIPTION_FAILED": "We couldn't transcribe this audio file.",
     "VIDEO_TRANSCRIPTION_FAILED": "We couldn't transcribe this video.",
     "VIDEO_TRANSCRIPTION_UNAVAILABLE": "Video transcription is unavailable right now.",
+    "STORAGE_TLS_FAILED": (
+        "Secure storage connection failed while processing this file."
+    ),
+    "STORAGE_UNAVAILABLE": (
+        "File storage is temporarily unavailable. Please try again shortly."
+    ),
     "VIDEO_DOWNLOAD_FORBIDDEN": (
         "YouTube blocked the download. Try a different video or try again later."
     ),

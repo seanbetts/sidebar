@@ -46,6 +46,84 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertFalse(WidgetTasksUtils.isOverdue(upcomingA))
     }
 
+    func testWidgetTaskDataDecodingDefaultsProgressFieldsForLegacyPayload() throws {
+        let legacyPayload = """
+        {
+          "tasks": [
+            {
+              "id": "task-1",
+              "title": "Legacy",
+              "isCompleted": false,
+              "completedAt": null,
+              "projectName": null,
+              "groupName": null,
+              "hasNotes": false,
+              "deadline": null
+            }
+          ],
+          "totalCount": 3,
+          "lastUpdated": "2026-02-17T12:00:00Z"
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(WidgetTaskData.self, from: Data(legacyPayload.utf8))
+
+        XCTAssertEqual(decoded.totalCount, 3)
+        XCTAssertEqual(decoded.progressCompletedCount, 0)
+        XCTAssertEqual(decoded.progressTotalCount, 3)
+    }
+
+    func testCompleteTaskIntentOptimisticallyUpdatesProgressCounts() async throws {
+        clearTaskWidgetStorage()
+        defer { clearTaskWidgetStorage() }
+
+        let seededTasks = [
+            WidgetTask(id: "task-1", title: "Task 1"),
+            WidgetTask(id: "task-2", title: "Task 2"),
+            WidgetTask(id: "task-3", title: "Task 3")
+        ]
+        WidgetDataManager.shared.updateTodayTasks(
+            seededTasks,
+            totalCount: 3,
+            progressCompletedCount: 1,
+            progressTotalCount: 4
+        )
+
+        _ = try await CompleteTaskIntent(taskId: "task-2").perform()
+        let updated = WidgetDataManager.shared.loadTodayTasks()
+
+        XCTAssertEqual(updated.totalCount, 2)
+        XCTAssertEqual(updated.progressCompletedCount, 2)
+        XCTAssertEqual(updated.progressTotalCount, 4)
+        XCTAssertEqual(updated.tasks.first(where: { $0.id == "task-2" })?.isCompleted, true)
+    }
+
+    func testCompleteTaskIntentIsIdempotentForAlreadyCompletedTask() async throws {
+        clearTaskWidgetStorage()
+        defer { clearTaskWidgetStorage() }
+
+        let seededTasks = [
+            WidgetTask(id: "task-1", title: "Task 1"),
+            WidgetTask(id: "task-2", title: "Task 2", isCompleted: true, completedAt: Date()),
+            WidgetTask(id: "task-3", title: "Task 3")
+        ]
+        WidgetDataManager.shared.updateTodayTasks(
+            seededTasks,
+            totalCount: 2,
+            progressCompletedCount: 1,
+            progressTotalCount: 3
+        )
+
+        _ = try await CompleteTaskIntent(taskId: "task-2").perform()
+        let updated = WidgetDataManager.shared.loadTodayTasks()
+
+        XCTAssertEqual(updated.totalCount, 2)
+        XCTAssertEqual(updated.progressCompletedCount, 1)
+        XCTAssertEqual(updated.progressTotalCount, 3)
+    }
+
     func testQuickSaveRoundTripAndConsumeClearsStoredValue() {
         let manager = WidgetDataManager.shared
         let url = URL(string: "https://example.com/docs")!
@@ -200,4 +278,15 @@ private func appGroupIdForWidgetTests() -> String {
         .replacingOccurrences(of: ".ShareExtension", with: "")
         .replacingOccurrences(of: ".sideBarWidgets", with: "")
     return "group.\(normalized)"
+}
+
+private func clearTaskWidgetStorage() {
+    let groupId = appGroupIdForWidgetTests()
+    let defaults = UserDefaults(suiteName: groupId)
+    defaults?.removeObject(forKey: WidgetContentType.tasks.dataKey)
+    defaults?.removeObject(forKey: WidgetContentType.tasks.pendingKey)
+    defaults?.removeObject(forKey: "widgetTodayTasks")
+    defaults?.removeObject(forKey: "widgetPendingCompletions")
+    defaults?.removeObject(forKey: "widgetPendingAddTask")
+    defaults?.synchronize()
 }

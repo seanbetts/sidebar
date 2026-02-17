@@ -39,8 +39,22 @@ struct CompleteTaskIntent: AppIntent {
                 deadline: task.deadline
             )
         }
+
+        let baseProgressTotal = max(data.progressTotalCount, data.totalCount)
+        let nextProgressCompletedCount: Int
+        if wasAlreadyCompleted {
+            nextProgressCompletedCount = min(data.progressCompletedCount, baseProgressTotal)
+        } else {
+            nextProgressCompletedCount = min(baseProgressTotal, data.progressCompletedCount + 1)
+        }
+
         let nextTotalCount = wasAlreadyCompleted ? data.totalCount : max(0, data.totalCount - 1)
-        WidgetDataManager.shared.updateTodayTasks(updatedTasks, totalCount: nextTotalCount)
+        WidgetDataManager.shared.updateTodayTasks(
+            updatedTasks,
+            totalCount: nextTotalCount,
+            progressCompletedCount: nextProgressCompletedCount,
+            progressTotalCount: baseProgressTotal
+        )
 
         return .result()
     }

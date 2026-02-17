@@ -15,7 +15,7 @@ struct ChatMessageCopyFeedbackState {
     }
 
     var iconName: String {
-        isCopied ? "checkmark.circle.fill" : "doc.on.doc"
+        isCopied ? "checkmark.circle" : "doc.on.doc"
     }
 
     var accessibilityLabel: String {
@@ -25,6 +25,7 @@ struct ChatMessageCopyFeedbackState {
 
 struct ChatMessageRow: View {
     let message: Message
+    let assistantDisplayName: String
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var copyFeedback = ChatMessageCopyFeedbackState()
@@ -38,7 +39,7 @@ struct ChatMessageRow: View {
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Text(message.role == .assistant ? "sideBar" : "You")
+                Text(message.role == .assistant ? assistantDisplayName : "You")
                     .font(DesignTokens.Typography.captionSemibold)
                     .padding(.horizontal, DesignTokens.Spacing.xs)
                     .padding(.vertical, DesignTokens.Spacing.xxs)
@@ -48,11 +49,8 @@ struct ChatMessageRow: View {
                     .clipShape(Capsule())
                 Spacer()
                 HStack(spacing: DesignTokens.Spacing.xxs) {
-                    if copyFeedback.isCopied {
-                        Text("Copied")
-                            .font(DesignTokens.Typography.caption2Semibold)
-                            .foregroundStyle(.secondary)
-                            .transition(.opacity)
+                    if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
+                        ToolCallListView(toolCalls: toolCalls, role: message.role)
                     }
                     Button {
                         copyMessage()
@@ -66,17 +64,35 @@ struct ChatMessageRow: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(showsThinkingPlaceholder)
+                    .opacity(showsThinkingPlaceholder ? 0.45 : 1.0)
                     .accessibilityLabel(copyFeedback.accessibilityLabel)
                 }
                 .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
 
-            SideBarMarkdown(text: message.content, style: .chat)
-                .textSelection(.enabled)
+            if showsThinkingPlaceholder {
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                    Text("Thinking...")
+                        .font(.subheadline)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                }
                 .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                SideBarMarkdown(text: message.content, style: .chat)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
-            if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
-                ToolCallListView(toolCalls: toolCalls)
+            if showsStreamingThinkingFooter {
+                HStack(spacing: DesignTokens.Spacing.xxs) {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                    Text("Thinking...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if message.status == .error, let error = message.error {
@@ -157,6 +173,14 @@ struct ChatMessageRow: View {
         colorScheme == .dark ? Color.white : Color.black
     }
 
+    private var showsThinkingPlaceholder: Bool {
+        ChatMessagePresentation.showsThinkingPlaceholder(for: message)
+    }
+
+    private var showsStreamingThinkingFooter: Bool {
+        ChatMessagePresentation.showsStreamingThinkingFooter(for: message)
+    }
+
     private func copyMessage() {
         let text = message.content
         #if os(iOS)
@@ -192,6 +216,24 @@ struct ChatMessageRow: View {
         }
     }
 }
+
+enum ChatMessagePresentation {
+    static func showsThinkingPlaceholder(for message: Message) -> Bool {
+        guard isAssistantStreaming(message) else {
+            return false
+        }
+        return message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    static func showsStreamingThinkingFooter(for message: Message) -> Bool {
+        isAssistantStreaming(message) && !showsThinkingPlaceholder(for: message)
+    }
+
+    private static func isAssistantStreaming(_ message: Message) -> Bool {
+        message.role == .assistant && message.status == .streaming
+    }
+}
+
 private extension DateFormatter {
     static let chatTimestamp: DateFormatter = {
         let formatter = DateFormatter()

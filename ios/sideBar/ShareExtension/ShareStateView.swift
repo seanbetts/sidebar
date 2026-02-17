@@ -18,7 +18,6 @@ class ShareStateView: UIView {
         static let cardVerticalPadding: CGFloat = 24
         static let contentHorizontalInset: CGFloat = 20
         static let contentVerticalInset: CGFloat = 16
-        static let logoSize: CGFloat = 128
     }
 
     private struct ColorPalette {
@@ -44,11 +43,8 @@ class ShareStateView: UIView {
         }
     }
 
-    private let titleLabel = UILabel()
     private let messageLabel = UILabel()
-    private let logoImageView = UIImageView()
     private let grabHandleView = UIView()
-    private let brandStack = UIStackView()
     private let style: Style
 
     private var colorPalette: ColorPalette {
@@ -66,17 +62,16 @@ class ShareStateView: UIView {
     init(
         message: String,
         accessoryView: UIView,
-        spacingAfterTitle: CGFloat = Layout.defaultSpacing,
+        spacingAfterAccessory: CGFloat = Layout.defaultSpacing,
         footerView: UIView? = nil,
         style: Style = .card
     ) {
         self.style = style
         super.init(frame: .zero)
-        observeUserInterfaceStyleChanges()
         setup(
             message: message,
             accessoryView: accessoryView,
-            spacingAfterTitle: spacingAfterTitle,
+            spacingAfterAccessory: spacingAfterAccessory,
             footerView: footerView
         )
     }
@@ -85,51 +80,33 @@ class ShareStateView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private func observeUserInterfaceStyleChanges() {
-        _ = registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
-            self.refreshBrandLogo()
-        }
-    }
-
     func updateMessage(_ message: String) {
         messageLabel.text = message
-    }
-
-    private func refreshBrandLogo() {
-        logoImageView.image = brandLogoImage()
-        logoImageView.isHidden = logoImageView.image == nil
-    }
-
-    private func brandLogoImage() -> UIImage? {
-        if let loading = ShareLoadingAsset.image(for: traitCollection, variant: .hero) {
-            return loading
-        }
-        let preferredName = traitCollection.userInterfaceStyle == .dark ? "logo-dark" : "logo-light"
-        if let image = UIImage(named: preferredName, in: Bundle.main, compatibleWith: traitCollection) {
-            return image
-        }
-        return UIImage(named: "AppLogo", in: Bundle.main, compatibleWith: traitCollection)
     }
 
     private func setup(
         message: String,
         accessoryView: UIView,
-        spacingAfterTitle: CGFloat,
+        spacingAfterAccessory: CGFloat,
         footerView: UIView?
     ) {
         backgroundColor = colorPalette.stateBackground
         configureGrabHandle()
 
-        configureLabels(message: message)
-        configureBrandStack()
+        configureMessageLabel(message: message)
 
-        var arrangedSubviews: [UIView] = [brandStack, accessoryView, messageLabel]
+        var arrangedSubviews: [UIView] = [accessoryView, messageLabel]
         if let footerView {
             arrangedSubviews.append(footerView)
         }
 
         let content = UIStackView(arrangedSubviews: arrangedSubviews)
-        configureContentStack(content, spacingAfterTitle: spacingAfterTitle, hasFooter: footerView != nil)
+        configureContentStack(
+            content,
+            accessoryView: accessoryView,
+            spacingAfterAccessory: spacingAfterAccessory,
+            hasFooter: footerView != nil
+        )
         content.translatesAutoresizingMaskIntoConstraints = false
         addSubview(content)
         activateLayoutConstraints(for: content)
@@ -148,20 +125,7 @@ class ShareStateView: UIView {
         addSubview(grabHandleView)
     }
 
-    private func configureLabels(message: String) {
-        titleLabel.text = "sideBar"
-        titleLabel.font = .systemFont(ofSize: style == .minimal ? 28 : 30, weight: .semibold)
-        titleLabel.textColor = .label
-        titleLabel.textAlignment = .center
-
-        refreshBrandLogo()
-        logoImageView.contentMode = .scaleAspectFit
-        logoImageView.clipsToBounds = true
-        logoImageView.accessibilityIdentifier = "share-brand-logo"
-        logoImageView.translatesAutoresizingMaskIntoConstraints = false
-        logoImageView.heightAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
-        logoImageView.widthAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
-
+    private func configureMessageLabel(message: String) {
         messageLabel.text = message
         messageLabel.font = style == .minimal
             ? .systemFont(ofSize: 15, weight: .regular)
@@ -171,25 +135,17 @@ class ShareStateView: UIView {
         messageLabel.numberOfLines = 0
     }
 
-    private func configureBrandStack() {
-        brandStack.axis = .vertical
-        brandStack.alignment = .center
-        brandStack.spacing = 8
-        brandStack.accessibilityIdentifier = "share-brand-stack"
-        brandStack.addArrangedSubview(logoImageView)
-        brandStack.addArrangedSubview(titleLabel)
-    }
-
     private func configureContentStack(
         _ content: UIStackView,
-        spacingAfterTitle: CGFloat,
+        accessoryView: UIView,
+        spacingAfterAccessory: CGFloat,
         hasFooter: Bool
     ) {
         content.axis = .vertical
         content.alignment = .center
         content.spacing = Layout.defaultSpacing
-        if spacingAfterTitle != content.spacing {
-            content.setCustomSpacing(spacingAfterTitle, after: brandStack)
+        if spacingAfterAccessory != content.spacing {
+            content.setCustomSpacing(spacingAfterAccessory, after: accessoryView)
         }
         if hasFooter {
             content.setCustomSpacing(16, after: messageLabel)

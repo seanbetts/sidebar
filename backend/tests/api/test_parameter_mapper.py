@@ -45,6 +45,32 @@ def test_build_fs_search_args_optional_flags():
     ]
 
 
+def test_build_fs_delete_args_recursive_and_user():
+    args = parameter_mapper.build_fs_delete_args(
+        {"path": "/docs/archive", "recursive": True, "user_id": "user-1"}
+    )
+    assert args == ["/docs/archive", "--recursive", "--user-id", "user-1"]
+
+
+def test_build_fs_rename_args_with_dry_run():
+    args = parameter_mapper.build_fs_rename_args(
+        {
+            "path": "/docs/old.txt",
+            "new_name": "new.txt",
+            "dry_run": True,
+            "user_id": "user-1",
+        }
+    )
+    assert args == ["/docs/old.txt", "new.txt", "--dry-run", "--user-id", "user-1"]
+
+
+def test_build_fs_pin_args_false():
+    args = parameter_mapper.build_fs_pin_args(
+        {"path": "/docs/file.txt", "pinned": False, "user_id": "user-1"}
+    )
+    assert args == ["/docs/file.txt", "--pinned", "false", "--user-id", "user-1"]
+
+
 def test_build_notes_create_args_derives_title_and_tags():
     args = parameter_mapper.build_notes_create_args(
         {
@@ -103,6 +129,98 @@ def test_build_notes_list_args_includes_false_values():
         "--archived",
         "False",
     ]
+
+
+def test_build_notes_rename_args():
+    args = parameter_mapper.build_notes_rename_args(
+        {"note_id": "note-1", "new_name": "Renamed", "user_id": "user-1"}
+    )
+    assert args == [
+        "note-1",
+        "--new-name",
+        "Renamed",
+        "--database",
+        "--user-id",
+        "user-1",
+    ]
+
+
+def test_build_notes_archive_args_false():
+    args = parameter_mapper.build_notes_archive_args(
+        {"note_id": "note-1", "archived": False, "user_id": "user-1"}
+    )
+    assert args == [
+        "note-1",
+        "--archived",
+        "false",
+        "--database",
+        "--user-id",
+        "user-1",
+    ]
+
+
+def test_build_notes_download_args():
+    args = parameter_mapper.build_notes_download_args(
+        {"note_id": "note-1", "user_id": "user-1"}
+    )
+    assert args == ["note-1", "--database", "--user-id", "user-1"]
+
+
+def test_build_notes_folder_args():
+    assert parameter_mapper.build_notes_create_folder_args(
+        {"path": "Projects/Alpha", "user_id": "user-1"}
+    ) == ["Projects/Alpha", "--database", "--user-id", "user-1"]
+    assert parameter_mapper.build_notes_rename_folder_args(
+        {"old_path": "Projects/Alpha", "new_name": "Beta", "user_id": "user-1"}
+    ) == [
+        "Projects/Alpha",
+        "--new-name",
+        "Beta",
+        "--database",
+        "--user-id",
+        "user-1",
+    ]
+    assert parameter_mapper.build_notes_move_folder_args(
+        {"old_path": "Projects/Beta", "new_parent": "Archive", "user_id": "user-1"}
+    ) == [
+        "Projects/Beta",
+        "--database",
+        "--user-id",
+        "user-1",
+        "--new-parent",
+        "Archive",
+    ]
+    assert parameter_mapper.build_notes_delete_folder_args(
+        {"path": "Archive", "user_id": "user-1"}
+    ) == ["Archive", "--database", "--user-id", "user-1"]
+
+
+def test_build_website_add_args():
+    args = parameter_mapper.build_website_add_args(
+        {"url": "https://example.com/post", "user_id": "user-1"}
+    )
+    assert args == ["https://example.com/post", "--database", "--user-id", "user-1"]
+
+
+def test_build_website_rename_args():
+    args = parameter_mapper.build_website_rename_args(
+        {"website_id": "web-1", "new_name": "Renamed Website", "user_id": "user-1"}
+    )
+    assert args == [
+        "web-1",
+        "--new-name",
+        "Renamed Website",
+        "--database",
+        "--user-id",
+        "user-1",
+    ]
+
+
+def test_build_website_download_args():
+    args = parameter_mapper.build_website_download_args(
+        {"website_id": "web-1", "user_id": "user-1"}
+    )
+    assert args == ["web-1", "--database", "--user-id", "user-1"]
 
 
 def test_build_youtube_transcribe_args_optional_fields():
@@ -192,6 +310,33 @@ def test_build_assistant_soul_update_args_supports_partial_and_reason():
         "Help me ship faster with fewer mistakes.",
         "--reason",
         "Observed repeated planning requests.",
+    ]
+
+
+def test_build_assistant_soul_update_args_uses_kebab_case_for_all_fields():
+    args = parameter_mapper.build_assistant_soul_update_args(
+        {
+            "user_id": "user-1",
+            "purpose": "Purpose",
+            "operating_principles": "Operating principles",
+            "adaptation_policy": "Adaptation policy",
+            "success_signals": "Success signals",
+            "reason": "Bulk update",
+        }
+    )
+    assert args == [
+        "--user-id",
+        "user-1",
+        "--purpose",
+        "Purpose",
+        "--operating-principles",
+        "Operating principles",
+        "--adaptation-policy",
+        "Adaptation policy",
+        "--success-signals",
+        "Success signals",
+        "--reason",
+        "Bulk update",
     ]
 
 

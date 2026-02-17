@@ -126,6 +126,15 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(url?.absoluteString, "https://example.com/docs?tab=1")
     }
 
+    func testNormalizedWebsiteEventURLCanonicalizesYouTubeURL() {
+        let controller = ShareViewController()
+        let url = URL(string: "https://youtu.be/abc123xyzAA?t=14&si=test")!
+
+        let normalized = controller.normalizedWebsiteEventURL(url)
+
+        XCTAssertEqual(normalized, "https://www.youtube.com/watch?v=abc123xyzAA")
+    }
+
     func testMimeTypeForFilenameUsesKnownAndFallbackMappings() {
         let controller = ShareViewController()
 

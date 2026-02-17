@@ -63,6 +63,27 @@ final class SkillsAPITests: XCTestCase {
         XCTAssertEqual(response.skills.first?.userToggleable, false)
     }
 
+    func testSkillItemDecodesLegacyUnderscoreKeyWithoutSnakeCaseStrategy() throws {
+        let payload = """
+        {
+          "skills": [
+            {
+              "id": "assistant-soul",
+              "name": "Assistant Soul",
+              "description": "Desc",
+              "category": "System",
+              "user_toggleable": false
+            }
+          ]
+        }
+        """
+
+        let response = try JSONDecoder().decode(SkillsResponse.self, from: Data(payload.utf8))
+
+        XCTAssertEqual(response.skills.first?.id, "assistant-soul")
+        XCTAssertEqual(response.skills.first?.userToggleable, false)
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

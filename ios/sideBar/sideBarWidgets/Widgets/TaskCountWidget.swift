@@ -36,7 +36,7 @@ struct TaskCountWidgetView: View {
                 if entry.data.totalCount > 0 {
                     Circle()
                         .trim(from: 0, to: completionProgress)
-                        .stroke(Color.green, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .stroke(Color.white, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .frame(width: 64, height: 64)
                         .rotationEffect(.degrees(-90))
                         .widgetAccentable()
@@ -62,21 +62,14 @@ struct TaskCountWidgetView: View {
     }
 
     private var completionProgress: CGFloat {
-        // For now, show full circle when there are tasks
-        // Could be enhanced to show completed/total ratio
-        entry.data.totalCount > 0 ? 1.0 : 0.0
+        let total = max(entry.data.progressTotalCount, 0)
+        guard total > 0 else { return 0.0 }
+        let completed = min(max(entry.data.progressCompletedCount, 0), total)
+        return CGFloat(completed) / CGFloat(total)
     }
 
     private var notAuthenticatedView: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "person.crop.circle")
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary)
-            Text("Sign in")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        HomeWidgetSignedOutView(content: .tasks)
     }
 }
 

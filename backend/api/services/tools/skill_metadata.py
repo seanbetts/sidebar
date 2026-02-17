@@ -4,13 +4,16 @@ SKILL_DISPLAY = {
     "fs": {
         "name": "Files",
         "description": (
-            "Browse, read, search, and write ingested files. Reads return "
-            "extracted text (ai.md) with frontmatter."
+            "Browse, read, search, write, rename, pin, and delete ingested files. "
+            "Reads return extracted text (ai.md) with frontmatter."
         ),
     },
     "notes": {
         "name": "Notes",
-        "description": "Create, update, and organize notes and scratchpad content.",
+        "description": (
+            "Create, update, rename, archive, move, pin, delete, list, and "
+            "download notes and folders, plus manage scratchpad content."
+        ),
     },
     "web-save": {
         "name": "Web Save",
@@ -47,10 +50,6 @@ SKILL_DISPLAY = {
             "Transcribe YouTube videos into text and store transcripts in the "
             "files workspace."
         ),
-    },
-    "mcp-builder": {
-        "name": "MCP Builder",
-        "description": "Guide and templates for building MCP servers.",
     },
     "skill-creator": {
         "name": "Skill Creator",
@@ -99,7 +98,6 @@ EXPOSED_SKILLS = {
     "subdomain-discover",
     "web-crawler-policy",
     "skill-creator",
-    "mcp-builder",
 }
 
 NON_TOGGLEABLE_SKILLS = {

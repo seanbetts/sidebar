@@ -110,23 +110,44 @@ struct ProfileSettingsView: View {
             }
 
             Section("Profile") {
-                TextField("Name", text: $name)
-                    #if os(iOS)
-                    .textInputAutocapitalization(.words)
-                    #endif
-                TextField("Job Title", text: $jobTitle)
-                TextField("Employer", text: $employer)
-                TextField("Gender", text: $gender)
-                TextField("Pronouns", text: $pronouns)
-                TextField("Location", text: $location)
-                Toggle("Date of Birth", isOn: $dateOfBirthEnabled)
-                if dateOfBirthEnabled {
-                    DatePicker(
-                        "Date of Birth",
-                        selection: $dateOfBirth,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.compact)
+                LabeledContent("Name") {
+                    TextField("Not set", text: $name)
+                        .multilineTextAlignment(.trailing)
+                        #if os(iOS)
+                        .textInputAutocapitalization(.words)
+                        #endif
+                }
+                LabeledContent("Job Title") {
+                    TextField("Not set", text: $jobTitle)
+                        .multilineTextAlignment(.trailing)
+                }
+                LabeledContent("Employer") {
+                    TextField("Not set", text: $employer)
+                        .multilineTextAlignment(.trailing)
+                }
+                LabeledContent("Gender") {
+                    Picker("Gender", selection: $gender) {
+                        Text("Not set").tag("")
+                        ForEach(genderPickerOptions, id: \.self) { option in
+                            Text(option).tag(option)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                }
+                LabeledContent("Pronouns") {
+                    Picker("Pronouns", selection: $pronouns) {
+                        Text("Not set").tag("")
+                        ForEach(pronounPickerOptions, id: \.self) { option in
+                            Text(option).tag(option)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                }
+                LabeledContent("Location") {
+                    TextField("Not set", text: $location)
+                        .multilineTextAlignment(.trailing)
                 }
             }
 
@@ -167,7 +188,7 @@ struct ProfileSettingsView: View {
             syncDraftsFromSettings(viewModel.settings)
         }
         .onDisappear {
-            autosaveTask?.cancel()
+            flushPendingProfileAutosave()
         }
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
@@ -211,6 +232,14 @@ struct ProfileSettingsView: View {
         #else
         return "Tap to change."
         #endif
+    }
+
+    private var genderPickerOptions: [String] {
+        Self.pickerOptions(base: Self.genderOptions, currentValue: gender)
+    }
+
+    private var pronounPickerOptions: [String] {
+        Self.pickerOptions(base: Self.pronounOptions, currentValue: pronouns)
     }
 
 #if os(macOS)
@@ -345,6 +374,39 @@ struct ProfileSettingsView: View {
                 location: location
             )
         }
+    }
+
+    private func flushPendingProfileAutosave() {
+        autosaveTask?.cancel()
+        guard Self.shouldFlushAutosaveOnDisappear(
+            hasLoadedDrafts: hasLoadedDrafts,
+            isSyncingDrafts: isSyncingDrafts,
+            isDraftDirty: isDraftDirty,
+            isSavingProfile: viewModel.isSavingProfile
+        ) else {
+            return
+        }
+        Task {
+            await viewModel.saveProfileSettings(
+                name: name,
+                jobTitle: jobTitle,
+                employer: employer,
+                dateOfBirth: dateOfBirthEnabled ? dateOfBirth : nil,
+                dateOfBirthEnabled: dateOfBirthEnabled,
+                gender: gender,
+                pronouns: pronouns,
+                location: location
+            )
+        }
+    }
+
+    static func shouldFlushAutosaveOnDisappear(
+        hasLoadedDrafts: Bool,
+        isSyncingDrafts: Bool,
+        isDraftDirty: Bool,
+        isSavingProfile: Bool
+    ) -> Bool {
+        hasLoadedDrafts && !isSyncingDrafts && isDraftDirty && !isSavingProfile
     }
 
     private static func parseDate(_ value: String?) -> Date? {

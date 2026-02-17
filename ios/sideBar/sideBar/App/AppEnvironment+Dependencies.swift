@@ -21,6 +21,7 @@ extension AppEnvironment {
         let memoriesViewModel: MemoriesViewModel
         let settingsViewModel: SettingsViewModel
         let weatherViewModel: WeatherViewModel
+        let currentLocationViewModel: CurrentLocationViewModel
         let realtimeClient: RealtimeClient
         let connectivityMonitor: ConnectivityMonitor
         let biometricMonitor: BiometricMonitor
@@ -60,6 +61,7 @@ extension AppEnvironment {
             memoriesViewModel: viewModels.memoriesViewModel,
             settingsViewModel: viewModels.settingsViewModel,
             weatherViewModel: viewModels.weatherViewModel,
+            currentLocationViewModel: viewModels.currentLocationViewModel,
             realtimeClient: core.realtimeClient,
             connectivityMonitor: core.connectivityMonitor,
             biometricMonitor: core.biometricMonitor,

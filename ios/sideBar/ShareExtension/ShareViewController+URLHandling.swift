@@ -5,6 +5,10 @@ import sideBarShared
 extension ShareViewController {
     // MARK: - URL Handling
 
+    func normalizedWebsiteEventURL(_ url: URL) -> String {
+        ExtensionURLMessageHandler.normalizeQueuedURL(url.absoluteString) ?? url.absoluteString
+    }
+
     func extractURL(from itemProvider: NSItemProvider) async throws -> URL? {
         let urlTypes: [UTType] = [.url, .plainText, .text, .html]
         let candidateIdentifiers = itemProvider.registeredTypeIdentifiers.compactMap { identifier -> String? in
@@ -62,14 +66,18 @@ extension ShareViewController {
 
             do {
                 try await saveWebsiteNow()
-                ExtensionEventStore.shared.recordWebsiteSaved(url: url.absoluteString)
+                ExtensionEventStore.shared.recordWebsiteSaved(
+                    url: normalizedWebsiteEventURL(url)
+                )
                 showSuccess(message: ExtensionUserMessageCatalog.message(for: .websiteSaved))
             } catch {
                 if environment.isUnauthorized(error),
                    await environment.ensureValidAccessToken(forceRefresh: true) {
                     do {
                         try await saveWebsiteNow()
-                        ExtensionEventStore.shared.recordWebsiteSaved(url: url.absoluteString)
+                        ExtensionEventStore.shared.recordWebsiteSaved(
+                            url: normalizedWebsiteEventURL(url)
+                        )
                         showSuccess(message: ExtensionUserMessageCatalog.message(for: .websiteSaved))
                         return
                     } catch {

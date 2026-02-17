@@ -60,6 +60,14 @@ def test_user_message_for_error():
         _user_message_for_error("FILE_EMPTY", "failed")
         == "This file appears to be empty."
     )
+    assert (
+        _user_message_for_error("STORAGE_TLS_FAILED", "failed")
+        == "Secure storage connection failed while processing this file."
+    )
+    assert (
+        _user_message_for_error("STORAGE_UNAVAILABLE", "failed")
+        == "File storage is temporarily unavailable. Please try again shortly."
+    )
 
 
 def test_user_message_for_job_stage_mapping():

@@ -65,11 +65,7 @@ struct LockScreenNotePreviewView: View {
 
     var body: some View {
         if !entry.isAuthenticated {
-            HStack {
-                Image(systemName: "pin")
-                Text("Sign in to sideBar")
-                    .font(.caption)
-            }
+            LockScreenSignedOutRow(iconSystemName: "pin")
         } else if entry.data.notes.isEmpty {
             HStack {
                 Image(systemName: "pin")

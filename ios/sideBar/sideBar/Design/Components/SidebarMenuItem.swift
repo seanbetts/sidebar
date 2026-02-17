@@ -43,6 +43,19 @@ extension SidebarMenuItem {
         SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil, handler: handler)
     }
 
+    static func share(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Share URL", systemImage: "square.and.arrow.up", role: nil, handler: handler)
+    }
+
+    static func shareText(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(
+            title: "Share Text",
+            systemImage: "square.and.arrow.up.on.square",
+            role: nil,
+            handler: handler
+        )
+    }
+
     static func delete(handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(title: "Delete", systemImage: "trash", role: .destructive, handler: handler)
     }

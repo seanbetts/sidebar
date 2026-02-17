@@ -10,6 +10,7 @@ struct WidgetWebsiteFaviconView: View {
     let site: WidgetWebsite
     let imageData: Data?
     let size: CGFloat
+    @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
         Group {
@@ -29,7 +30,7 @@ struct WidgetWebsiteFaviconView: View {
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: max(2, size * 0.22), style: .continuous))
+        .clipShape(Circle())
     }
 
     private var prefetchedImage: Image? {
@@ -51,11 +52,20 @@ struct WidgetWebsiteFaviconView: View {
 
     @ViewBuilder
     private func faviconImage(_ image: Image) -> some View {
-        image
-            .renderingMode(.original)
-            .resizable()
-            .scaledToFit()
-            .widgetAccentable(false)
+        if renderingMode == .accented {
+            image
+                .renderingMode(.original)
+                .resizable()
+                .widgetAccentedRenderingMode(.fullColor)
+                .scaledToFit()
+                .widgetAccentable(false)
+        } else {
+            image
+                .renderingMode(.original)
+                .resizable()
+                .scaledToFit()
+                .widgetAccentable(false)
+        }
     }
 }
 

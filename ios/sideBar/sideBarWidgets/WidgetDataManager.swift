@@ -186,8 +186,19 @@ extension WidgetDataManager {
   }
 
   /// Backward compatible method for updating tasks (optimistic update from intent)
-  public func updateTodayTasks(_ tasks: [WidgetTask], totalCount: Int) {
-    let data = WidgetTaskData(tasks: tasks, totalCount: totalCount)
+  public func updateTodayTasks(
+    _ tasks: [WidgetTask],
+    totalCount: Int,
+    progressCompletedCount: Int? = nil,
+    progressTotalCount: Int? = nil
+  ) {
+    let existing = loadTodayTasks()
+    let data = WidgetTaskData(
+      tasks: tasks,
+      totalCount: totalCount,
+      progressCompletedCount: progressCompletedCount ?? existing.progressCompletedCount,
+      progressTotalCount: progressTotalCount ?? max(totalCount, existing.progressTotalCount)
+    )
     store(data, for: .tasks)
   }
 

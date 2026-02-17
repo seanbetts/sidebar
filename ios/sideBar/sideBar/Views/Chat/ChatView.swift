@@ -133,7 +133,11 @@ private struct ChatDetailView: View {
                 } else if viewModel.messages.isEmpty {
                     EmptyView()
                 } else {
-                    ChatMessageListView(viewModel: viewModel, bottomInset: messageListBottomInset)
+                    ChatMessageListView(
+                        viewModel: viewModel,
+                        bottomInset: messageListBottomInset,
+                        assistantDisplayName: assistantDisplayName
+                    )
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -146,7 +150,10 @@ private struct ChatDetailView: View {
                     isEnabled: canSendMessages,
                     isSendEnabled: canSendMessages && !viewModel.hasPendingAttachments,
                     onSend: handleSend,
-                    onAttach: { isFileImporterPresented = true }
+                    onAttach: {
+                        guard canSendMessages else { return }
+                        isFileImporterPresented = true
+                    }
                 )
                 if !environment.isNetworkAvailable {
                     Text("Chat is unavailable offline. You can still read past conversations.")
@@ -175,6 +182,7 @@ private struct ChatDetailView: View {
                     handleSend()
                 }
             case .attachFile:
+                guard canSendMessages else { return }
                 isFileImporterPresented = true
             default:
                 break
@@ -196,6 +204,10 @@ private struct ChatDetailView: View {
 
     private var canSendMessages: Bool {
         !viewModel.isStreaming && environment.isNetworkAvailable
+    }
+
+    private var assistantDisplayName: String {
+        environment.settingsViewModel.assistantDisplayName
     }
 
     private func handleSend() {

@@ -23,7 +23,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
         textView.font = UIFont.preferredFont(forTextStyle: .body)
         textView.backgroundColor = .clear
         textView.textColor = UIColor.label
-        textView.textContainerInset = UIEdgeInsets(top: 12, left: 44, bottom: 4, right: 48)
+        textView.textContainerInset = UIEdgeInsets(top: 12, left: 44, bottom: 10, right: 48)
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false
         textView.delegate = context.coordinator
@@ -108,9 +108,11 @@ struct ChatInputUIKitView: UIViewRepresentable {
         let tintColor: UIColor = .label
         button.backgroundColor = .clear
         button.tintColor = canSend ? tintColor : UIColor.secondaryLabel
+        attachButton.isEnabled = isEnabled
+        attachButton.alpha = isEnabled ? 1.0 : 0.45
         attachButton.tintColor = isEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
         placeholderLabel.isHidden = !text.trimmed.isEmpty
-        recalculateHeight(for: textView)
+        context.coordinator.applySizing(for: textView)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -122,16 +124,6 @@ struct ChatInputUIKitView: UIViewRepresentable {
             onSend: onSend,
             onAttach: onAttach
         )
-    }
-
-    private func recalculateHeight(for textView: UITextView) {
-        let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
-        let height = min(maxHeight, max(minHeight, size.height))
-        if measuredHeight != height {
-            DispatchQueue.main.async {
-                measuredHeight = height
-            }
-        }
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
@@ -165,11 +157,12 @@ struct ChatInputUIKitView: UIViewRepresentable {
         func textViewDidChange(_ textView: UITextView) {
             text.wrappedValue = textView.text
             placeholderLabel?.isHidden = !textView.text.trimmed.isEmpty
-            let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
-            let height = min(maxHeight, max(minHeight, size.height))
-            if measuredHeight.wrappedValue != height {
-                measuredHeight.wrappedValue = height
-            }
+            applySizing(for: textView)
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            guard textView.isScrollEnabled else { return }
+            textView.scrollRangeToVisible(textView.selectedRange)
         }
 
         func textView(
@@ -186,6 +179,25 @@ struct ChatInputUIKitView: UIViewRepresentable {
 
         @objc func didTapAttach() {
             onAttach()
+        }
+
+        func applySizing(for textView: UITextView) {
+            let fittingWidth = max(textView.bounds.width, 1)
+            let size = textView.sizeThatFits(CGSize(width: fittingWidth, height: .greatestFiniteMagnitude))
+            let sizing = ChatInputSizing.resolve(
+                contentHeight: size.height,
+                minHeight: minHeight,
+                maxHeight: maxHeight
+            )
+            if measuredHeight.wrappedValue != sizing.measuredHeight {
+                measuredHeight.wrappedValue = sizing.measuredHeight
+            }
+            if textView.isScrollEnabled != sizing.isOverflowing {
+                textView.isScrollEnabled = sizing.isOverflowing
+            }
+            if sizing.isOverflowing {
+                textView.scrollRangeToVisible(textView.selectedRange)
+            }
         }
     }
 }

@@ -253,6 +253,7 @@ class NotesService:
         *,
         client_updated_at: datetime | None = None,
         op: str = "move",
+        clear_pinned: bool = False,
     ) -> Note:
         """Update a note's folder.
 
@@ -263,6 +264,7 @@ class NotesService:
             folder: New folder path.
             client_updated_at: Optional client timestamp for conflict checks.
             op: Operation label for conflict payloads.
+            clear_pinned: Whether to clear pinned metadata when moving folders.
 
         Returns:
             Updated Note.
@@ -284,7 +286,12 @@ class NotesService:
 
         ensure_note_no_conflict(note, client_updated_at, op=op)
 
-        note.metadata_ = {**(note.metadata_ or {}), "folder": folder}
+        metadata = {**(note.metadata_ or {}), "folder": folder}
+        if clear_pinned:
+            metadata["pinned"] = False
+            metadata.pop("pinned_order", None)
+
+        note.metadata_ = metadata
         flag_modified(note, "metadata_")
         note.updated_at = datetime.now(UTC)
         db.commit()

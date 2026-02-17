@@ -110,6 +110,10 @@ private struct PollingStressIngestionAPI: IngestionProviding {
         throw PollingStressError.forced
     }
 
+    func cancel(fileId: String) async throws {
+        _ = fileId
+    }
+
     func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
         _ = fileId
         _ = pinned

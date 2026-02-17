@@ -33,6 +33,21 @@ def build_fs_write_args(params: dict) -> list:
     return FsParameterBuilder.build_write_args(params)
 
 
+def build_fs_delete_args(params: dict) -> list:
+    """Build CLI arguments for the fs delete tool."""
+    return FsParameterBuilder.build_delete_args(params)
+
+
+def build_fs_rename_args(params: dict) -> list:
+    """Build CLI arguments for the fs rename tool."""
+    return FsParameterBuilder.build_rename_args(params)
+
+
+def build_fs_pin_args(params: dict) -> list:
+    """Build CLI arguments for the fs pin tool."""
+    return FsParameterBuilder.build_pin_args(params)
+
+
 def build_fs_search_args(params: dict) -> list:
     """Build CLI arguments for the fs search tool."""
     return FsParameterBuilder.build_search_args(params)
@@ -58,9 +73,44 @@ def build_notes_pin_args(params: dict) -> list:
     return NotesParameterBuilder.build_pin_args(params)
 
 
+def build_notes_rename_args(params: dict) -> list:
+    """Build CLI arguments for notes rename."""
+    return NotesParameterBuilder.build_rename_args(params)
+
+
+def build_notes_archive_args(params: dict) -> list:
+    """Build CLI arguments for notes archive/unarchive."""
+    return NotesParameterBuilder.build_archive_args(params)
+
+
+def build_notes_download_args(params: dict) -> list:
+    """Build CLI arguments for notes download/export."""
+    return NotesParameterBuilder.build_download_args(params)
+
+
 def build_notes_move_args(params: dict) -> list:
     """Build CLI arguments for notes move."""
     return NotesParameterBuilder.build_move_args(params)
+
+
+def build_notes_create_folder_args(params: dict) -> list:
+    """Build CLI arguments for create note folder."""
+    return NotesParameterBuilder.build_create_folder_args(params)
+
+
+def build_notes_rename_folder_args(params: dict) -> list:
+    """Build CLI arguments for rename note folder."""
+    return NotesParameterBuilder.build_rename_folder_args(params)
+
+
+def build_notes_move_folder_args(params: dict) -> list:
+    """Build CLI arguments for move note folder."""
+    return NotesParameterBuilder.build_move_folder_args(params)
+
+
+def build_notes_delete_folder_args(params: dict) -> list:
+    """Build CLI arguments for delete note folder."""
+    return NotesParameterBuilder.build_delete_folder_args(params)
 
 
 def build_notes_read_args(params: dict) -> list:
@@ -93,6 +143,11 @@ def build_website_save_args(params: dict) -> list:
     return WebsiteParameterBuilder.build_save_args(params)
 
 
+def build_website_add_args(params: dict) -> list:
+    """Build CLI arguments for website add."""
+    return WebsiteParameterBuilder.build_add_args(params)
+
+
 def build_website_delete_args(params: dict) -> list:
     """Build CLI arguments for website delete."""
     return WebsiteParameterBuilder.build_delete_args(params)
@@ -103,6 +158,11 @@ def build_website_pin_args(params: dict) -> list:
     return WebsiteParameterBuilder.build_pin_args(params)
 
 
+def build_website_rename_args(params: dict) -> list:
+    """Build CLI arguments for website rename."""
+    return WebsiteParameterBuilder.build_rename_args(params)
+
+
 def build_website_archive_args(params: dict) -> list:
     """Build CLI arguments for website archive/unarchive."""
     return WebsiteParameterBuilder.build_archive_args(params)
@@ -111,6 +171,11 @@ def build_website_archive_args(params: dict) -> list:
 def build_website_read_args(params: dict) -> list:
     """Build CLI arguments for website read."""
     return WebsiteParameterBuilder.build_read_args(params)
+
+
+def build_website_download_args(params: dict) -> list:
+    """Build CLI arguments for website download/export."""
+    return WebsiteParameterBuilder.build_download_args(params)
 
 
 def build_website_list_args(params: dict) -> list:
@@ -143,11 +208,6 @@ def build_crawler_policy_args(params: dict) -> list:
     return WebParameterBuilder.build_crawler_policy_args(params)
 
 
-def build_skill_package_args(params: dict) -> list:
-    """Build CLI arguments for skill packaging."""
-    return SkillsParameterBuilder.build_skill_package_args(params)
-
-
 def build_assistant_identity_get_args(params: dict) -> list:
     """Build CLI arguments for getting assistant identity."""
     return SkillsParameterBuilder.build_assistant_identity_get_args(params)
@@ -178,11 +238,6 @@ def build_assistant_soul_reset_args(params: dict) -> list:
     return SkillsParameterBuilder.build_assistant_soul_reset_args(params)
 
 
-def build_mcp_evaluation_args(params: dict) -> list:
-    """Build CLI arguments for MCP evaluation runs."""
-    return SkillsParameterBuilder.build_mcp_evaluation_args(params)
-
-
 def build_tasks_list_args(params: dict) -> list:
     """Build CLI arguments for list tasks."""
     return TasksParameterBuilder.build_list_args(params)
@@ -203,9 +258,29 @@ def build_tasks_complete_args(params: dict) -> list:
     return TasksParameterBuilder.build_complete_args(params)
 
 
+def build_tasks_rename_args(params: dict) -> list:
+    """Build CLI arguments for rename task."""
+    return TasksParameterBuilder.build_rename_args(params)
+
+
+def build_tasks_update_notes_args(params: dict) -> list:
+    """Build CLI arguments for update task notes."""
+    return TasksParameterBuilder.build_update_notes_args(params)
+
+
 def build_tasks_defer_args(params: dict) -> list:
     """Build CLI arguments for defer task."""
     return TasksParameterBuilder.build_defer_args(params)
+
+
+def build_tasks_set_due_args(params: dict) -> list:
+    """Build CLI arguments for set task due date."""
+    return TasksParameterBuilder.build_set_due_args(params)
+
+
+def build_tasks_set_repeat_args(params: dict) -> list:
+    """Build CLI arguments for set task repeat."""
+    return TasksParameterBuilder.build_set_repeat_args(params)
 
 
 def build_tasks_clear_due_args(params: dict) -> list:
@@ -221,6 +296,16 @@ def build_tasks_create_project_args(params: dict) -> list:
 def build_tasks_create_group_args(params: dict) -> list:
     """Build CLI arguments for create group."""
     return TasksParameterBuilder.build_create_group_args(params)
+
+
+def build_tasks_rename_project_args(params: dict) -> list:
+    """Build CLI arguments for rename project."""
+    return TasksParameterBuilder.build_rename_project_args(params)
+
+
+def build_tasks_rename_group_args(params: dict) -> list:
+    """Build CLI arguments for rename group."""
+    return TasksParameterBuilder.build_rename_group_args(params)
 
 
 def build_tasks_trash_args(params: dict) -> list:

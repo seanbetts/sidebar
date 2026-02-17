@@ -15,10 +15,6 @@ public struct TasksView: View {
 
     public var body: some View {
         TasksDetailView(viewModel: environment.tasksViewModel)
-            .task {
-                await environment.tasksViewModel.load(selection: environment.tasksViewModel.selection)
-                await environment.tasksViewModel.loadCounts()
-            }
             .onAppear {
                 environment.isTasksFocused = true
                 consumePendingNewTaskDeepLinkIfNeeded()

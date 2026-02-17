@@ -14,7 +14,6 @@ class ShareStateView: NSView {
         static let cardVerticalPadding: CGFloat = 22
         static let contentHorizontalInset: CGFloat = 20
         static let contentVerticalInset: CGFloat = 16
-        static let logoSize: CGFloat = 128
     }
 
     private struct ColorPalette {
@@ -40,10 +39,7 @@ class ShareStateView: NSView {
         }
     }
 
-    private let titleLabel = NSTextField(labelWithString: "sideBar")
     private let messageLabel = NSTextField(wrappingLabelWithString: "")
-    private let logoImageView = NSImageView()
-    private let brandStack = NSStackView()
     private let style: Style
 
     private var colorPalette: ColorPalette {
@@ -57,7 +53,7 @@ class ShareStateView: NSView {
     init(
         message: String,
         accessoryView: NSView,
-        spacingAfterTitle: CGFloat = Layout.defaultSpacing,
+        spacingAfterAccessory: CGFloat = Layout.defaultSpacing,
         footerView: NSView? = nil,
         style: Style = .card
     ) {
@@ -66,18 +62,13 @@ class ShareStateView: NSView {
         setup(
             message: message,
             accessoryView: accessoryView,
-            spacingAfterTitle: spacingAfterTitle,
+            spacingAfterAccessory: spacingAfterAccessory,
             footerView: footerView
         )
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        refreshBrandLogo()
     }
 
     func applyHostBackground(to hostView: SharePlatformView) {
@@ -92,14 +83,13 @@ class ShareStateView: NSView {
     private func setup(
         message: String,
         accessoryView: NSView,
-        spacingAfterTitle: CGFloat,
+        spacingAfterAccessory: CGFloat,
         footerView: NSView?
     ) {
         wantsLayer = true
         layer?.backgroundColor = colorPalette.stateBackground.cgColor
 
-        configureLabels(message: message)
-        configureBrandStack()
+        configureMessageLabel(message: message)
 
         let content = NSStackView()
         content.orientation = .vertical
@@ -107,15 +97,14 @@ class ShareStateView: NSView {
         content.spacing = Layout.defaultSpacing
         content.translatesAutoresizingMaskIntoConstraints = false
 
-        content.addArrangedSubview(brandStack)
         content.addArrangedSubview(accessoryView)
         content.addArrangedSubview(messageLabel)
         if let footerView {
             content.addArrangedSubview(footerView)
             content.setCustomSpacing(16, after: messageLabel)
         }
-        if spacingAfterTitle != content.spacing {
-            content.setCustomSpacing(spacingAfterTitle, after: brandStack)
+        if spacingAfterAccessory != content.spacing {
+            content.setCustomSpacing(spacingAfterAccessory, after: accessoryView)
         }
 
         addSubview(content)
@@ -155,21 +144,7 @@ class ShareStateView: NSView {
         ])
     }
 
-    private func configureLabels(message: String) {
-        titleLabel.font = NSFont.systemFont(ofSize: style == .minimal ? 25 : 28, weight: .semibold)
-        titleLabel.textColor = .labelColor
-        titleLabel.alignment = .center
-        titleLabel.setContentHuggingPriority(.required, for: .vertical)
-
-        refreshBrandLogo()
-        logoImageView.imageScaling = .scaleProportionallyUpOrDown
-        logoImageView.animates = true
-        logoImageView.wantsLayer = true
-        logoImageView.layer?.masksToBounds = true
-        logoImageView.translatesAutoresizingMaskIntoConstraints = false
-        logoImageView.heightAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
-        logoImageView.widthAnchor.constraint(equalToConstant: Layout.logoSize).isActive = true
-
+    private func configureMessageLabel(message: String) {
         messageLabel.stringValue = message
         messageLabel.font = NSFont.systemFont(ofSize: style == .minimal ? 14 : 13)
         messageLabel.textColor = .secondaryLabelColor
@@ -177,31 +152,6 @@ class ShareStateView: NSView {
         messageLabel.lineBreakMode = .byWordWrapping
         messageLabel.maximumNumberOfLines = 0
         messageLabel.preferredMaxLayoutWidth = 320
-    }
-
-    private func configureBrandStack() {
-        brandStack.orientation = .vertical
-        brandStack.alignment = .centerX
-        brandStack.spacing = 8
-        brandStack.addArrangedSubview(logoImageView)
-        brandStack.addArrangedSubview(titleLabel)
-    }
-
-    private func refreshBrandLogo() {
-        logoImageView.image = brandLogoImage()
-        logoImageView.isHidden = logoImageView.image == nil
-    }
-
-    private func brandLogoImage() -> NSImage? {
-        if let loading = ShareLoadingAsset.image(for: effectiveAppearance, variant: .hero) {
-            return loading
-        }
-        let isDarkMode = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        let preferredName = isDarkMode ? "logo-dark" : "logo-light"
-        if let image = Bundle.main.image(forResource: NSImage.Name(preferredName)) {
-            return image
-        }
-        return Bundle.main.image(forResource: NSImage.Name("AppLogo"))
     }
 }
 
@@ -249,7 +199,7 @@ final class ShareErrorView: ShareStateView {
         super.init(
             message: message,
             accessoryView: iconImageView,
-            spacingAfterTitle: 20,
+            spacingAfterAccessory: 20,
             style: .minimal
         )
     }
@@ -291,7 +241,7 @@ final class ShareSuccessView: ShareStateView {
         super.init(
             message: message,
             accessoryView: iconContainerView,
-            spacingAfterTitle: 10,
+            spacingAfterAccessory: 10,
             style: .minimal
         )
     }

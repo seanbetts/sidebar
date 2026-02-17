@@ -248,6 +248,9 @@ extension WebsitesDetailView {
             action: { viewModel.clearSelection() },
             isDisabled: viewModel.active == nil
         )
+        #if os(macOS)
+        .keyboardShortcut(.escape, modifiers: [])
+        #endif
     }
 
     private var expandButton: some View {
@@ -315,6 +318,18 @@ extension WebsitesDetailView {
     func openInDefaultBrowser() {
         guard let url = sourceURL else { return }
         openURL(url)
+    }
+
+    func shareWebsiteURL() {
+        guard let url = sourceURL else { return }
+        SystemSharePresenter.share(url: url)
+    }
+
+    func shareWebsiteText() {
+        guard let content = viewModel.active?.content, !content.isEmpty else { return }
+        let plainText = MarkdownRendering.plainTextForWebsiteShare(content)
+        guard !plainText.isEmpty else { return }
+        SystemSharePresenter.share(text: plainText)
     }
 
     func archiveActiveWebsite() {

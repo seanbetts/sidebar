@@ -48,6 +48,8 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>We use Face ID to securely unlock sideBar and protect your data.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We use your current location to show local weather and current city in the header.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose a profile photo for your sideBar account.</string>
 	<key>UIApplicationSceneManifest</key>

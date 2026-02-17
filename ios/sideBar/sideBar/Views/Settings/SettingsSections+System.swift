@@ -28,16 +28,26 @@ struct UserSettingsView: View {
                 }
             }
             Section {
-                Text("Customize how the assistant should collaborate with you")
-                    .foregroundStyle(.secondary)
-            }
-            Section("Communication Style") {
                 TextEditor(text: $communicationStyle)
                 .frame(minHeight: 120)
+            } header: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Communication Style")
+                    Text("How the assistant should communicate with you.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            Section("Working Relationship") {
+            Section {
                 TextEditor(text: $workingRelationship)
                     .frame(minHeight: 120)
+            } header: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Working Relationship")
+                    Text("How you want the assistant to collaborate with you.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             if viewModel.isSavingSystem {
                 Section {
@@ -148,57 +158,101 @@ struct AgentSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Managed by the assistant. User edits are disabled for these fields.")
-                    .foregroundStyle(.secondary)
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.name))
+            } header: {
+                sectionHeader(
+                    title: "Assistant Name",
+                    subtitle: "Your assistant's name"
+                )
             }
-            Section("Assistant Name") {
-                Text(resolvedText(viewModel.settings?.assistantIdentity?.name))
-                    .textSelection(.enabled)
+            Section {
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.tone))
+            } header: {
+                sectionHeader(
+                    title: "Assistant Tone",
+                    subtitle: "How \(assistantDisplayName) should sound and respond."
+                )
             }
-            Section("Assistant Tone") {
-                Text(resolvedText(viewModel.settings?.assistantIdentity?.tone))
-                    .textSelection(.enabled)
+            Section {
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.values))
+            } header: {
+                sectionHeader(
+                    title: "Assistant Values",
+                    subtitle: "Core principles \(assistantDisplayName) prioritizes."
+                )
             }
-            Section("Assistant Values") {
-                Text(resolvedText(viewModel.settings?.assistantIdentity?.values))
-                    .textSelection(.enabled)
-            }
-            Section("Assistant Boundaries") {
-                Text(resolvedText(viewModel.settings?.assistantIdentity?.boundaries))
-                    .textSelection(.enabled)
+            Section {
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.boundaries))
+            } header: {
+                sectionHeader(
+                    title: "Assistant Boundaries",
+                    subtitle: "Limits \(assistantDisplayName) should not cross."
+                )
             }
             if let identityMeta = viewModel.settings?.assistantIdentityMeta {
-                Section("Assistant Identity Meta") {
-                    Text("Updated: \(identityMeta.updatedAt)")
-                    Text("Version: \(identityMeta.version)")
+                Section {
+                    readOnlySectionText("Updated: \(identityMeta.updatedAt)")
+                    readOnlySectionText("Version: \(identityMeta.version)")
                     if let reason = identityMeta.reason, !reason.isEmpty {
-                        Text("Reason: \(reason)")
+                        readOnlySectionText("Reason: \(reason)")
                     }
+                } header: {
+                    sectionHeader(
+                        title: "Assistant Identity Meta",
+                        subtitle: "History of identity updates \(assistantDisplayName) has made."
+                    )
                 }
             }
-            Section("Soul Purpose") {
-                Text(resolvedText(viewModel.settings?.assistantSoul?.purpose))
-                    .textSelection(.enabled)
+            Section {
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.purpose))
+            } header: {
+                sectionHeader(
+                    title: "Soul Purpose",
+                    subtitle: "\(assistantPossessiveDisplayName) long-term mission and intent."
+                )
             }
-            Section("Soul Operating Principles") {
-                Text(resolvedText(viewModel.settings?.assistantSoul?.operatingPrinciples))
-                    .textSelection(.enabled)
+            Section {
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.operatingPrinciples))
+            } header: {
+                sectionHeader(
+                    title: "Soul Operating Principles",
+                    subtitle: "Standing rules that guide \(assistantPossessiveDisplayName) day-to-day behavior."
+                )
             }
-            Section("Soul Adaptation Policy") {
-                Text(resolvedText(viewModel.settings?.assistantSoul?.adaptationPolicy))
-                    .textSelection(.enabled)
+            Section {
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.adaptationPolicy))
+            } header: {
+                sectionHeader(
+                    title: "Soul Adaptation Policy",
+                    subtitle: "How \(assistantDisplayName) should adapt while staying aligned."
+                )
             }
-            Section("Soul Success Signals") {
-                Text(resolvedText(viewModel.settings?.assistantSoul?.successSignals))
-                    .textSelection(.enabled)
+            Section {
+                readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.successSignals))
+            } header: {
+                sectionHeader(
+                    title: "Soul Success Signals",
+                    subtitle: "How \(assistantDisplayName) measures good outcomes and alignment."
+                )
+            } footer: {
+                if viewModel.settings?.assistantSoulMeta == nil {
+                    agentSettingsFooter
+                }
             }
             if let soulMeta = viewModel.settings?.assistantSoulMeta {
-                Section("Assistant Soul Meta") {
-                    Text("Updated: \(soulMeta.updatedAt)")
-                    Text("Version: \(soulMeta.version)")
+                Section {
+                    readOnlySectionText("Updated: \(soulMeta.updatedAt)")
+                    readOnlySectionText("Version: \(soulMeta.version)")
                     if let reason = soulMeta.reason, !reason.isEmpty {
-                        Text("Reason: \(reason)")
+                        readOnlySectionText("Reason: \(reason)")
                     }
+                } header: {
+                    sectionHeader(
+                        title: "Assistant Soul Meta",
+                        subtitle: "History of soul updates \(assistantDisplayName) has made."
+                    )
+                } footer: {
+                    agentSettingsFooter
                 }
             }
         }
@@ -215,5 +269,37 @@ struct AgentSettingsView: View {
     private func resolvedText(_ value: String?) -> String {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? "Not set" : trimmed
+    }
+
+    private var assistantDisplayName: String {
+        let trimmedName = viewModel.settings?.assistantIdentity?.name?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmedName.isEmpty ? "Your assistant" : trimmedName
+    }
+
+    private var assistantPossessiveDisplayName: String {
+        "\(assistantDisplayName)'s"
+    }
+
+    private func readOnlySectionText(_ value: String) -> some View {
+        Text(value)
+            .foregroundStyle(.secondary)
+            .textSelection(.enabled)
+    }
+
+    @ViewBuilder
+    private var agentSettingsFooter: some View {
+        Text("Managed by the assistant. User edits are disabled for these fields.")
+            .foregroundStyle(.secondary)
+    }
+
+    @ViewBuilder
+    private func sectionHeader(title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
