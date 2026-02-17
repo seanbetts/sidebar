@@ -7,6 +7,8 @@
 	import { FileText } from 'lucide-svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
+	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
+	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import EditorToolbar from '$lib/components/editor/EditorToolbar.svelte';
 	import { createMarkdownEditor } from '$lib/components/editor/useMarkdownEditor';
 	import { useEditorActions } from '$lib/hooks/useEditorActions';
@@ -350,7 +352,13 @@
 	<!-- Empty state - shown when no note selected -->
 	{#if !currentNoteName}
 		<div class="empty-state">
-			<img class="welcome-logo" src="/images/logo.svg" alt="sideBar" />
+			<div class="welcome-loading">
+				<LoadingGlyph
+					size={LOADING_SIZES.hero}
+					lightSrc="/images/loading-light-128.gif"
+					darkSrc="/images/loading-dark-128.gif"
+				/>
+			</div>
 			<h2>Welcome to sideBar</h2>
 			<p>Select a note, website, or file to get started</p>
 		</div>
@@ -392,15 +400,8 @@
 		text-align: center;
 	}
 
-	.welcome-logo {
-		height: 4rem;
-		width: auto;
+	.welcome-loading {
 		margin: 0 auto 0.75rem;
-		opacity: 0.7;
-	}
-
-	:global(.dark) .welcome-logo {
-		filter: invert(1);
 	}
 
 	.empty-state h2 {

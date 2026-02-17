@@ -64,6 +64,12 @@ DARK_SRC="${ROOT_DIR}/assets/loading/loading-dark-44.gif"
 
 sync_file "${LIGHT_SRC}" "frontend/static/images/loading-light.gif"
 sync_file "${DARK_SRC}" "frontend/static/images/loading-dark.gif"
+
+LIGHT_128_SRC="${ROOT_DIR}/assets/loading/loading-light-128.gif"
+DARK_128_SRC="${ROOT_DIR}/assets/loading/loading-dark-128.gif"
+sync_file "${LIGHT_128_SRC}" "frontend/static/images/loading-light-128.gif"
+sync_file "${DARK_128_SRC}" "frontend/static/images/loading-dark-128.gif"
+
 sync_file "${LIGHT_SRC}" "ios/sideBar/sideBar/Resources/images/loading-light.gif"
 sync_file "${DARK_SRC}" "ios/sideBar/sideBar/Resources/images/loading-dark.gif"
 sync_file "${LIGHT_SRC}" "ios/sideBar/ShareExtension/Resources/images/loading-light.gif"

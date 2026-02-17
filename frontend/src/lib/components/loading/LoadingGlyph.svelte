@@ -3,6 +3,8 @@
 
 	export let size: number = LOADING_SIZES.panel;
 	export let label: string = '';
+	export let lightSrc: string = '/images/loading-light.gif';
+	export let darkSrc: string = '/images/loading-dark.gif';
 
 	$: trimmedLabel = label.trim();
 </script>
@@ -14,8 +16,8 @@
 	aria-label={trimmedLabel || undefined}
 	aria-hidden={trimmedLabel ? undefined : 'true'}
 >
-	<img class="loading-image loading-image-light" src="/images/loading-light.gif" alt="" />
-	<img class="loading-image loading-image-dark" src="/images/loading-dark.gif" alt="" />
+	<img class="loading-image loading-image-light" src={lightSrc} alt="" />
+	<img class="loading-image loading-image-dark" src={darkSrc} alt="" />
 </span>
 
 <style>
