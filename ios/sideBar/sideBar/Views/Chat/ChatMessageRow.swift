@@ -48,11 +48,8 @@ struct ChatMessageRow: View {
                     .clipShape(Capsule())
                 Spacer()
                 HStack(spacing: DesignTokens.Spacing.xxs) {
-                    if copyFeedback.isCopied {
-                        Text("Copied")
-                            .font(DesignTokens.Typography.caption2Semibold)
-                            .foregroundStyle(.secondary)
-                            .transition(.opacity)
+                    if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
+                        ToolCallListView(toolCalls: toolCalls, role: message.role)
                     }
                     Button {
                         copyMessage()
@@ -67,6 +64,12 @@ struct ChatMessageRow: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(copyFeedback.accessibilityLabel)
+                    if copyFeedback.isCopied {
+                        Text("Copied")
+                            .font(DesignTokens.Typography.caption2Semibold)
+                            .foregroundStyle(.secondary)
+                            .transition(.opacity)
+                    }
                 }
                 .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
@@ -74,10 +77,6 @@ struct ChatMessageRow: View {
             SideBarMarkdown(text: message.content, style: .chat)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-            if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
-                ToolCallListView(toolCalls: toolCalls, role: message.role)
-            }
 
             if message.status == .error, let error = message.error {
                 Text(error)
