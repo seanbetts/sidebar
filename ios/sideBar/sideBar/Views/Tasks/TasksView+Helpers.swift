@@ -1,14 +1,6 @@
 import SwiftUI
 
 extension TasksDetailView {
-    func commitRename() {
-        guard let task = renameTask else { return }
-        let newTitle = renameValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        renameTask = nil
-        if newTitle.isEmpty || newTitle == task.title { return }
-        Task { await viewModel.renameTask(task: task, title: newTitle) }
-    }
-
     func openNotes(_ task: TaskItem) {
         notesTask = task
         setActiveTask(task)
@@ -104,15 +96,6 @@ extension TasksDetailView {
         #else
         return horizontalSizeClass == .compact
         #endif
-    }
-
-    var isRenamePresented: Binding<Bool> {
-        Binding(
-            get: { renameTask != nil },
-            set: { newValue in
-                if !newValue { renameTask = nil }
-            }
-        )
     }
 
     var isDeletePresented: Binding<Bool> {

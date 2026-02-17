@@ -7,6 +7,60 @@ enum RepeatType: String, CaseIterable {
     case monthly
 }
 
+func canSaveRenamedTaskTitle(originalTitle: String, editedTitle: String) -> Bool {
+    let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    return !trimmedTitle.isEmpty && trimmedTitle != originalTitle
+}
+
+struct RenameTaskSheet: View {
+    let task: TaskItem
+    let onSave: (String) -> Void
+    let onDismiss: () -> Void
+
+    @State private var title: String = ""
+    @FocusState private var isTitleFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Task name") {
+                    TextField("Task title", text: $title, axis: .vertical)
+                        .lineLimit(1...3)
+                        .textInputAutocapitalizationSentences()
+                        .disableAutocorrection(false)
+                        .focused($isTitleFocused)
+                        .submitLabelDone()
+                        .onSubmit { handleSave() }
+                }
+            }
+            .navigationTitle("Rename task")
+            .navigationBarTitleDisplayModeInline()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { onDismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        handleSave()
+                    }
+                    .disabled(!canSaveRenamedTaskTitle(originalTitle: task.title, editedTitle: title))
+                }
+            }
+            .onAppear {
+                title = task.title
+                isTitleFocused = true
+            }
+        }
+    }
+
+    private func handleSave() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canSaveRenamedTaskTitle(originalTitle: task.title, editedTitle: title) else { return }
+        onSave(trimmedTitle)
+        onDismiss()
+    }
+}
+
 struct NewTaskSheet: View {
     let draft: TaskDraft
     let groups: [TaskGroup]

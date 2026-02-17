@@ -13,7 +13,6 @@ struct TasksDetailView: View {
     #endif
 
     @State var renameTask: TaskItem?
-    @State var renameValue: String = ""
     @State var notesTask: TaskItem?
     @State var dueTask: TaskItem?
     @State var dueDate: Date = Date()
@@ -40,13 +39,15 @@ struct TasksDetailView: View {
             content(state: state)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .alert("Rename task", isPresented: isRenamePresented) {
-            TextField("Title", text: $renameValue)
-                .submitLabel(.done)
-                .onSubmit { commitRename() }
-            Button("Rename") { commitRename() }
-                .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) { renameTask = nil }
+        .sheet(item: $renameTask) { task in
+            RenameTaskSheet(
+                task: task,
+                onSave: { title in
+                    Task { await viewModel.renameTask(task: task, title: title) }
+                },
+                onDismiss: { renameTask = nil }
+            )
+            .phoneSheetGrabBarVisible()
         }
         .deleteConfirmationAlert(
             title: "Delete task",
@@ -481,7 +482,6 @@ extension TasksDetailView {
 
     private func openRename(_ task: TaskItem) {
         renameTask = task
-        renameValue = task.title
         setActiveTask(task)
     }
 
