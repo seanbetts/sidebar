@@ -55,9 +55,8 @@ public struct BiometricLockView: View {
 
                     Button(action: authenticate) {
                         if isAuthenticating {
-                            ProgressView()
-                                .tint(.black)
-                                .frame(maxWidth: .infinity)
+                            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                                .frame(maxWidth: .infinity, alignment: .center)
                         } else {
                             Text(unlockButtonTitle)
                                 .frame(maxWidth: .infinity)
