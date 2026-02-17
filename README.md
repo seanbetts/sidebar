@@ -156,8 +156,10 @@ docker compose up -d --build
 
 Canonical assets live under `assets/`. Current groups:
 
-- `assets/loading/loading-light.gif`
-- `assets/loading/loading-dark.gif`
+- `assets/loading/loading-light-44.gif`
+- `assets/loading/loading-dark-44.gif`
+- `assets/loading/loading-light-128.gif` (reserved for future 128px+ loading surfaces)
+- `assets/loading/loading-dark-128.gif` (reserved for future 128px+ loading surfaces)
 - `assets/branding/logo-light.png`
 - `assets/branding/logo-dark.png`
 - `assets/safari-extension/icon-48.png` (and `64/96/128/256/512`)

@@ -7,7 +7,7 @@ Usage: scripts/sync-assets.sh [--check]
 
 Syncs canonical assets from /assets into all runtime targets.
 Currently synced groups:
-  - loading GIFs from assets/loading/
+  - loading GIFs (44px source) from assets/loading/
   - extension logos from assets/branding/
   - Safari extension icons from assets/safari-extension/
 
@@ -56,8 +56,11 @@ sync_file() {
 }
 
 # Group: loading GIFs
-LIGHT_SRC="${ROOT_DIR}/assets/loading/loading-light.gif"
-DARK_SRC="${ROOT_DIR}/assets/loading/loading-dark.gif"
+# Use the 44px visual variant as the shared source for all current loading sizes
+# (16, 20, 24, 32, 44). Keep 128px variants in assets/loading for future large
+# loading surfaces.
+LIGHT_SRC="${ROOT_DIR}/assets/loading/loading-light-44.gif"
+DARK_SRC="${ROOT_DIR}/assets/loading/loading-dark-44.gif"
 
 sync_file "${LIGHT_SRC}" "frontend/static/images/loading-light.gif"
 sync_file "${DARK_SRC}" "frontend/static/images/loading-dark.gif"
