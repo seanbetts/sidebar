@@ -76,7 +76,7 @@ struct ChatMessageRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
-                ToolCallListView(toolCalls: toolCalls)
+                ToolCallListView(toolCalls: toolCalls, role: message.role)
             }
 
             if message.status == .error, let error = message.error {

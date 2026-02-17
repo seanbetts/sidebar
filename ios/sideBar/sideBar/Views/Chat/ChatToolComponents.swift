@@ -4,6 +4,8 @@ import SwiftUI
 
 struct ToolCallListView: View {
     let toolCalls: [ToolCall]
+    let role: MessageRole
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showPopover = false
 
     var body: some View {
@@ -30,10 +32,6 @@ struct ToolCallListView: View {
         }
     }
 
-    private var toolBackground: Color {
-        DesignTokens.Colors.surface
-    }
-
     private var summaryText: String {
         let count = toolCalls.count
         if count == 1 {
@@ -50,23 +48,46 @@ struct ToolCallListView: View {
         HStack(spacing: 6) {
             Image(systemName: "hammer.fill")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(toolPillForeground)
             Text(text)
                 .font(DesignTokens.Typography.captionSemibold)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(toolPillForeground)
             if showsChevron {
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(toolPillForeground)
             }
         }
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Spacing.xs)
         .background(
             Capsule(style: .continuous)
-                .fill(toolBackground)
+                .fill(toolPillBackground)
         )
+        .overlay(toolPillBorder)
         .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var toolPillBackground: Color {
+        if colorScheme == .dark {
+            return role == .assistant ? Color.black : Color.white
+        }
+        return role == .assistant ? Color.white : Color.black
+    }
+
+    private var toolPillForeground: Color {
+        if colorScheme == .dark {
+            return role == .assistant ? Color.white : Color.black
+        }
+        return role == .assistant ? Color.black : Color.white
+    }
+
+    @ViewBuilder
+    private var toolPillBorder: some View {
+        if colorScheme == .light, role == .assistant {
+            Capsule()
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        }
     }
 }
 
