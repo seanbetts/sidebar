@@ -104,7 +104,7 @@ extension NotesPanelView {
     }
 
     func filterNodes(_ nodes: [FileNode], includeArchived: Bool) -> [FileNode] {
-        nodes.compactMap { node in
+        let filtered = nodes.compactMap { node -> FileNode? in
             if node.type == .directory {
                 let children = filterNodes(node.children ?? [], includeArchived: includeArchived)
                 if !includeArchived && node.name.lowercased() == "archive" {
@@ -131,6 +131,46 @@ extension NotesPanelView {
                 return archived ? node : nil
             }
             return (!archived && !pinned) ? node : nil
+        }
+        return sortNodesForDisplay(filtered)
+    }
+
+    func sortNodesForDisplay(_ nodes: [FileNode]) -> [FileNode] {
+        let normalized = nodes.map { node in
+            guard node.type == .directory else {
+                return node
+            }
+            return FileNode(
+                name: node.name,
+                path: node.path,
+                type: node.type,
+                size: node.size,
+                modified: node.modified,
+                created: node.created,
+                children: sortNodesForDisplay(node.children ?? []),
+                expanded: node.expanded,
+                pinned: node.pinned,
+                pinnedOrder: node.pinnedOrder,
+                archived: node.archived,
+                folderMarker: node.folderMarker
+            )
+        }
+
+        return normalized.sorted { lhs, rhs in
+            let leftIsDirectory = lhs.type == .directory
+            let rightIsDirectory = rhs.type == .directory
+            if leftIsDirectory != rightIsDirectory {
+                return leftIsDirectory
+            }
+            if leftIsDirectory {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            let leftRecency = lhs.modified ?? lhs.created ?? 0
+            let rightRecency = rhs.modified ?? rhs.created ?? 0
+            if leftRecency != rightRecency {
+                return leftRecency > rightRecency
+            }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
         }
     }
 }
