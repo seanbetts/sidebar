@@ -16,6 +16,7 @@
 	import { canShowTooltips } from '$lib/utils/tooltip';
 	import { resolveWeatherIcon } from '$lib/utils/weatherIcons';
 	import { buildIngestionStatusMessage, hasReadyTransition } from '$lib/utils/ingestionStatus';
+	import { isIPhoneDevice } from '$lib/utils/device';
 	import { ingestionAPI } from '$lib/services/api';
 	import { logError } from '$lib/utils/errorHandling';
 	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
@@ -48,10 +49,12 @@
 		entry: WebsiteTranscriptEntry;
 	} | null = null;
 	let tooltipsEnabled = false;
+	let hideScratchpadOnIPhone = false;
 
 	$: ({ liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
+		hideScratchpadOnIPhone = isIPhoneDevice();
 		void ingestionStore.load();
 	});
 	const isTranscriptPending = (status?: string) =>
@@ -399,7 +402,9 @@
 			</TooltipTrigger>
 			<TooltipContent side="bottom">Swap chat and workspace positions</TooltipContent>
 		</Tooltip>
-		<ScratchpadPopover />
+		{#if !hideScratchpadOnIPhone}
+			<ScratchpadPopover />
+		{/if}
 		<ModeToggle />
 	</div>
 </header>
