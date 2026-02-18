@@ -178,7 +178,8 @@ struct FilesProcessingView: View {
     var body: some View {
         VStack(spacing: 12) {
             LoadingIndicatorView(size: LoadingIndicatorSize.page)
-            if let progress = item.job.progress {
+            if FilesWorkspaceDisplayPolicy.shouldShowUploadProgressInMainWorkspace(for: item),
+               let progress = item.job.progress {
                 ProgressView(value: progress)
             }
             Text(statusTitle)
@@ -204,5 +205,11 @@ struct FilesProcessingView: View {
             return message
         }
         return ingestionStatusLabel(for: item.job)
+    }
+}
+
+enum FilesWorkspaceDisplayPolicy {
+    static func shouldShowUploadProgressInMainWorkspace(for _: IngestionListItem) -> Bool {
+        false
     }
 }
