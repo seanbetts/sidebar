@@ -74,10 +74,7 @@ struct ChatMessageListView: View {
                     streamingAutoScrollController.reset()
                     shouldScrollToBottom = true
                     scrollToBottom(proxy: proxy, animated: false)
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 200_000_000)
-                        scrollToBottom(proxy: proxy, animated: false)
-                    }
+                    scheduleDeferredBottomScroll(proxy: proxy)
                     shouldScrollToBottom = false
                     return
                 }
@@ -96,10 +93,7 @@ struct ChatMessageListView: View {
                     let shouldJump = shouldScrollToBottom
                     scrollToBottom(proxy: proxy, animated: !shouldJump)
                     if shouldJump {
-                        Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 200_000_000)
-                            scrollToBottom(proxy: proxy, animated: false)
-                        }
+                        scheduleDeferredBottomScroll(proxy: proxy)
                     }
                     shouldScrollToBottom = false
                     return
@@ -116,9 +110,18 @@ struct ChatMessageListView: View {
                     return
                 }
 
+                if oldToken.activeToolSignature != newToken.activeToolSignature {
+                    scrollToBottom(proxy: proxy, animated: false)
+                    return
+                }
+
                 if oldToken.bottomInset != newToken.bottomInset {
                     scrollToBottom(proxy: proxy, animated: false)
                 }
+            }
+            .onAppear {
+                scrollToBottom(proxy: proxy, animated: false)
+                scheduleDeferredBottomScroll(proxy: proxy)
             }
             .refreshable {
                 await viewModel.refreshConversations()
@@ -144,7 +147,8 @@ struct ChatMessageListView: View {
         return ScrollChangeToken(
             selectedConversationId: viewModel.selectedConversationId,
             messageCount: viewModel.messages.count,
-            lastMessageSignature: "\(lastMessage?.id ?? ""):\(lastMessage?.content ?? "")",
+            lastMessageSignature: ChatMessageScrollSignature(message: lastMessage),
+            activeToolSignature: viewModel.activeTool.map { "\($0.name):\($0.status.rawValue)" } ?? "",
             bottomInset: bottomInset
         )
     }
@@ -157,6 +161,15 @@ struct ChatMessageListView: View {
             return
         }
         proxy.scrollTo("bottom", anchor: .bottom)
+    }
+
+    private func scheduleDeferredBottomScroll(proxy: ScrollViewProxy) {
+        Task { @MainActor in
+            await Task.yield()
+            scrollToBottom(proxy: proxy, animated: false)
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            scrollToBottom(proxy: proxy, animated: false)
+        }
     }
 
     private func loadMoreMessages(proxy: ScrollViewProxy) {
@@ -220,6 +233,36 @@ struct ChatMessageListView: View {
 private struct ScrollChangeToken: Equatable {
     let selectedConversationId: String?
     let messageCount: Int
-    let lastMessageSignature: String
+    let lastMessageSignature: ChatMessageScrollSignature
+    let activeToolSignature: String
     let bottomInset: CGFloat
+}
+
+struct ChatMessageScrollSignature: Equatable {
+    let id: String
+    let content: String
+    let status: MessageStatus
+    let toolCallsSignature: String
+    let needsNewline: Bool
+    let error: String
+
+    init(message: Message?) {
+        guard let message else {
+            id = ""
+            content = ""
+            status = .complete
+            toolCallsSignature = ""
+            needsNewline = false
+            error = ""
+            return
+        }
+        id = message.id
+        content = message.content
+        status = message.status
+        toolCallsSignature = (message.toolCalls ?? []).map {
+            "\($0.id):\($0.name):\($0.status.rawValue)"
+        }.joined(separator: "|")
+        needsNewline = message.needsNewline ?? false
+        error = message.error ?? ""
+    }
 }
