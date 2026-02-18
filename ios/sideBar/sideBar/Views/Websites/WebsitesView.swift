@@ -36,7 +36,6 @@ public struct WebsitesView: View {
             .task {
                 await environment.websitesViewModel.load(force: true)
             }
-            #if os(iOS)
             .onChange(of: scenePhase) {
                 guard scenePhase == .active else { return }
                 Task {
@@ -44,7 +43,6 @@ public struct WebsitesView: View {
                     await environment.websitesViewModel.load(force: true)
                 }
             }
-            #endif
             #if !os(macOS)
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)
