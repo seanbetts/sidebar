@@ -3,7 +3,7 @@ primary_region = "lhr"
 
 [processes]
   app = "uvicorn api.main:app --host 0.0.0.0 --port 8001"
-  ingestion = "python workers/ingestion_worker.py"
+  ingestion = "python -m workers.ingestion_worker"
 
 [build]
   dockerfile = "docker/Dockerfile.skills-api"
