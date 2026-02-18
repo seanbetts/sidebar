@@ -49,16 +49,6 @@ struct UserSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            if viewModel.isSavingSystem {
-                Section {
-                    HStack(spacing: 8) {
-                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                        Text("Saving settings...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
             if let saveError = viewModel.systemSaveError {
                 Section {
                     Text(saveError)

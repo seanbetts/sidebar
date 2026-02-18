@@ -98,17 +98,6 @@ struct ProfileSettingsView: View {
                 }
             }
 
-            if viewModel.isSavingProfile {
-                Section {
-                    HStack(spacing: 8) {
-                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                        Text("Saving profile...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-
             Section("Profile") {
                 LabeledContent("Name") {
                     TextField("Not set", text: $name)
