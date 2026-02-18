@@ -128,6 +128,62 @@ class FileIngestionService:
         )
 
     @staticmethod
+    def ensure_job_record(
+        db: Session,
+        record: IngestedFile,
+        *,
+        has_derivatives: bool,
+    ) -> FileProcessingJob:
+        """Ensure a processing job row exists for an ingested file.
+
+        This backfills legacy/corrupted records that predate file_processing_jobs.
+        Inference strategy:
+        - Derivatives exist: mark as ready.
+        - No derivatives + source URL: queue for processing.
+        - No derivatives + no source URL: mark failed (missing source metadata).
+        """
+        existing = FileIngestionService.get_job(db, record.id)
+        if existing:
+            return existing
+
+        now = datetime.now(UTC)
+        status = "ready"
+        stage = "ready"
+        error_code: str | None = None
+        error_message: str | None = None
+        started_at: datetime | None = record.created_at or now
+        finished_at: datetime | None = now
+
+        if not has_derivatives:
+            if record.source_url:
+                status = "queued"
+                stage = "queued"
+                started_at = None
+                finished_at = None
+            else:
+                status = "failed"
+                stage = "failed"
+                error_code = "SOURCE_MISSING"
+                error_message = "Ingestion job metadata missing for existing file"
+                started_at = None
+                finished_at = now
+
+        job = FileProcessingJob(
+            file_id=record.id,
+            status=status,
+            stage=stage,
+            error_code=error_code,
+            error_message=error_message,
+            attempts=0,
+            started_at=started_at,
+            finished_at=finished_at,
+            updated_at=now,
+        )
+        db.add(job)
+        db.commit()
+        return job
+
+    @staticmethod
     def list_ingestions(
         db: Session,
         user_id: str,

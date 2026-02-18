@@ -128,7 +128,6 @@ def list_ingestions(
 
     items = []
     for record in records:
-        job = FileIngestionService.get_job(db, record.id)
         derivatives = FileIngestionService.list_derivatives(db, record.id)
         derivative_payload = [
             {
@@ -142,6 +141,11 @@ def list_ingestions(
         ]
         derivative_payload = _filter_user_derivatives(
             derivative_payload, record.user_id
+        )
+        job = FileIngestionService.ensure_job_record(
+            db,
+            record,
+            has_derivatives=bool(derivative_payload),
         )
         items.append(
             {
@@ -207,7 +211,6 @@ def get_file_meta(
     record.last_opened_at = datetime.now(UTC)
     db.commit()
 
-    job = FileIngestionService.get_job(db, file_id)
     derivatives = [
         {
             "id": str(item.id),
@@ -219,6 +222,11 @@ def get_file_meta(
         for item in FileIngestionService.list_derivatives(db, file_id)
     ]
     derivatives = _filter_user_derivatives(derivatives, record.user_id)
+    job = FileIngestionService.ensure_job_record(
+        db,
+        record,
+        has_derivatives=bool(derivatives),
+    )
 
     metadata = record.source_metadata or {}
     if (

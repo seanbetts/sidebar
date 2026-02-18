@@ -2,6 +2,7 @@ from datetime import timedelta
 
 import pytest
 from api.exceptions import ConflictError
+from api.models.file_ingestion import FileDerivative, FileProcessingJob
 from api.services.file_ingestion_service import FileIngestionService
 
 
@@ -188,3 +189,63 @@ def test_list_ingestions_for_sidebar_backfills_active_when_no_completed_items(db
     )
 
     assert len(records) == 4
+
+
+def test_ensure_job_record_backfills_ready_when_derivatives_exist(db_session):
+    record = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="legacy.pdf",
+        path="legacy.pdf",
+        mime_original="application/pdf",
+        size_bytes=10,
+    )[0]
+    db_session.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+    db_session.query(FileProcessingJob).filter(
+        FileProcessingJob.file_id == record.id
+    ).delete()
+    db_session.add(
+        FileDerivative(
+            file_id=record.id,
+            kind="viewer_pdf",
+            storage_key=f"user-1/files/{record.id}/derivatives/viewer.pdf",
+            mime="application/pdf",
+            size_bytes=256,
+            sha256=None,
+        )
+    )
+    db_session.commit()
+
+    job = FileIngestionService.ensure_job_record(
+        db_session,
+        record,
+        has_derivatives=True,
+    )
+
+    assert job.status == "ready"
+    assert job.stage == "ready"
+
+
+def test_ensure_job_record_backfills_failed_without_derivatives_or_source(db_session):
+    record = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="legacy.txt",
+        path="legacy.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )[0]
+    db_session.query(FileProcessingJob).filter(
+        FileProcessingJob.file_id == record.id
+    ).delete()
+    db_session.commit()
+
+    job = FileIngestionService.ensure_job_record(
+        db_session,
+        record,
+        has_derivatives=False,
+    )
+
+    assert job.status == "failed"
+    assert job.stage == "failed"
+    assert job.error_code == "SOURCE_MISSING"
