@@ -39,6 +39,10 @@ extension SidebarMenuItem {
         SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil, handler: handler)
     }
 
+    static func copyTranscript(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Copy Transcript", systemImage: "doc.on.doc", role: nil, handler: handler)
+    }
+
     static func copyMarkdown(handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(title: "Copy Markdown", systemImage: "doc.on.doc", role: nil, handler: handler)
     }

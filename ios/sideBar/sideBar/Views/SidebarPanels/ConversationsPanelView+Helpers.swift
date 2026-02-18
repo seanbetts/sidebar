@@ -228,7 +228,7 @@ extension ConversationsPanelView {
             .rename {
                 beginRename(conversation)
             },
-            .copy {
+            .copyTranscript {
                 Task { await copyConversation(conversation) }
             },
             .delete {
