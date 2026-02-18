@@ -3,6 +3,12 @@ import SwiftUI
 #if os(iOS)
 import UIKit
 
+/// iPhone now uses the same SwiftUI context menu path as iPad/macOS to avoid
+/// row height jitter during long-press highlight.
+func shouldUseUIKitContextMenu(on idiom: UIUserInterfaceIdiom) -> Bool {
+    false
+}
+
 private struct UIKitContextMenuView<Content: View>: UIViewRepresentable {
     let items: [SidebarMenuItem]
     let content: Content
@@ -77,7 +83,7 @@ extension View {
     @ViewBuilder
     func platformContextMenu(items: [SidebarMenuItem]) -> some View {
         #if os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
+        if shouldUseUIKitContextMenu(on: UIDevice.current.userInterfaceIdiom) {
             UIKitContextMenuView(items: items, content: self)
         } else {
             self.contextMenu {
