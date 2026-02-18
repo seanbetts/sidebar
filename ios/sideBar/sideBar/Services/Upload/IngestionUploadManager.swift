@@ -78,6 +78,8 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private let workQueueKey = DispatchSpecificKey<Void>()
     private var contexts: [Int: UploadContext] = [:]
     private var taskIdsByUploadId: [String: Int] = [:]
+    private var startingUploadIds: Set<String> = []
+    private var pendingCanceledUploadIds: Set<String> = []
 
     public init(config: APIClientConfig, session: URLSession? = nil) {
         self.config = config
@@ -114,7 +116,12 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         let session = self.session
         let logger = self.logger
 
+        markUploadStartRequested(uploadId: request.uploadId)
         workQueue.async {
+            guard self.canProceedWithStart(uploadId: request.uploadId) else {
+                self.dispatchCompletion(onCompletion, result: .failure(URLError(.cancelled)))
+                return
+            }
             let boundary = "Boundary-\(UUID().uuidString)"
             var urlRequest = URLRequest(url: baseUrl.appendingPathComponent("files"))
             urlRequest.httpMethod = "POST"
@@ -138,6 +145,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
                     logger: logger
                 )
             } catch {
+                self.markUploadStartFinished(uploadId: request.uploadId)
                 DispatchQueue.main.async { onCompletion(.failure(error)) }
                 return
             }
@@ -149,7 +157,15 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
                 onProgress: onProgress,
                 onCompletion: onCompletion
             )
-            self.setContext(context, forTaskId: task.taskIdentifier, uploadId: request.uploadId)
+            guard self.setContext(context, forTaskId: task.taskIdentifier, uploadId: request.uploadId) else {
+                self.dispatchCompletion(onCompletion, result: .failure(URLError(.cancelled)))
+                do {
+                    try FileManager.default.removeItem(at: bodyURL)
+                } catch {
+                    logger.error("Failed to remove canceled upload body file: \(error.localizedDescription, privacy: .public)")
+                }
+                return
+            }
             task.resume()
         }
     }
@@ -221,10 +237,15 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         }
     }
 
-    private func setContext(_ context: UploadContext, forTaskId taskId: Int, uploadId: String) {
+    private func setContext(_ context: UploadContext, forTaskId taskId: Int, uploadId: String) -> Bool {
         queue.sync {
+            defer { startingUploadIds.remove(uploadId) }
+            guard pendingCanceledUploadIds.remove(uploadId) == nil else {
+                return false
+            }
             contexts[taskId] = context
             taskIdsByUploadId[uploadId] = taskId
+            return true
         }
     }
 
@@ -259,10 +280,40 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private func takeContext(forUploadId uploadId: String) -> (UploadContext?, Int?) {
         queue.sync {
             guard let taskId = taskIdsByUploadId.removeValue(forKey: uploadId) else {
+                pendingCanceledUploadIds.insert(uploadId)
+                expirePendingCancellation(uploadId: uploadId)
                 return (nil, nil)
             }
             let context = contexts.removeValue(forKey: taskId)
             return (context, taskId)
+        }
+    }
+
+    private func markUploadStartRequested(uploadId: String) {
+        queue.sync {
+            startingUploadIds.insert(uploadId)
+        }
+    }
+
+    private func canProceedWithStart(uploadId: String) -> Bool {
+        queue.sync {
+            guard pendingCanceledUploadIds.remove(uploadId) == nil else {
+                startingUploadIds.remove(uploadId)
+                return false
+            }
+            return true
+        }
+    }
+
+    private func markUploadStartFinished(uploadId: String) {
+        queue.sync {
+            startingUploadIds.remove(uploadId)
+        }
+    }
+
+    private func expirePendingCancellation(uploadId: String) {
+        queue.asyncAfter(deadline: .now() + 5) { [weak self] in
+            self?.pendingCanceledUploadIds.remove(uploadId)
         }
     }
 
