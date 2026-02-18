@@ -93,7 +93,7 @@ public struct WelcomeEmptyView: View {
 
     public var body: some View {
         VStack(spacing: 12) {
-            LoadingIndicatorView(size: LoadingIndicatorSize.hero, variant: .hero)
+            LoadingIndicatorView(size: 96, variant: .hero)
             Text("Welcome to sideBar")
                 .font(DesignTokens.Typography.title3Semibold)
             Text("Select a note, website, or file to get started.")
