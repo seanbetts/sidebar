@@ -28,7 +28,7 @@ extension NotesPanelView {
                 .move {
                     beginMove(for: item)
                 },
-                .copy {
+                .copyMarkdown {
                     Task { await copyNoteContent(for: item) }
                 },
                 .shareText {
