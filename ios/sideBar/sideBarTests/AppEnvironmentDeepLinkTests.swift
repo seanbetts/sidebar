@@ -202,14 +202,18 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         assertStorageStateCleared(environment)
     }
 
-    func testEmitShortcutActionUsesFocusedSectionWhenAvailable() async {
+    func testEmitShortcutActionUsesPlatformPreferredSectionWhenAvailable() async {
         let environment = requireEnvironment()
         environment.activeSection = .notes
         environment.focusedSection = .chat
 
         environment.emitShortcutAction(.deleteItem)
 
+        #if os(iOS)
+        XCTAssertEqual(environment.shortcutActionEvent?.section, .notes)
+        #else
         XCTAssertEqual(environment.shortcutActionEvent?.section, .chat)
+        #endif
     }
 
     func testEmitShortcutActionFallsBackToActiveSectionWhenNoFocusedSection() async {
@@ -222,15 +226,34 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(environment.shortcutActionEvent?.section, .notes)
     }
 
-    func testActiveShortcutContextsPreferFocusedSection() async {
+    func testActiveShortcutContextsPreferPlatformResolutionSection() async {
         let environment = requireEnvironment()
         environment.activeSection = .notes
         environment.focusedSection = .chat
         environment.isTasksFocused = true
 
+        #if os(iOS)
+        XCTAssertTrue(environment.activeShortcutContexts.contains(.notes))
+        XCTAssertFalse(environment.activeShortcutContexts.contains(.chat))
+        #else
         XCTAssertTrue(environment.activeShortcutContexts.contains(.chat))
         XCTAssertFalse(environment.activeShortcutContexts.contains(.notes))
+        #endif
     }
+
+    #if os(iOS)
+    func testShortcutActionRouterCloseItemUsesActiveSectionWhenFocusIsStale() async {
+        let environment = requireEnvironment()
+        environment.activeSection = .websites
+        environment.focusedSection = .notes
+        environment.websitesViewModel.selectedWebsiteId = "website-1"
+
+        let router = ShortcutActionRouter()
+        router.handle(.closeItem, environment: environment)
+
+        XCTAssertNil(environment.websitesViewModel.selectedWebsiteId)
+    }
+    #endif
 
     private func primeEnvironmentForSignOutReset(_ environment: AppEnvironment) {
         environment.authState = .active

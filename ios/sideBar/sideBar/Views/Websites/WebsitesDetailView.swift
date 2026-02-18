@@ -34,6 +34,11 @@ struct WebsitesDetailView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onKeyPress(.escape) {
+            guard viewModel.active != nil else { return .ignored }
+            viewModel.clearSelection()
+            return .handled
+        }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .websites else { return }
             switch event.action {
@@ -251,9 +256,7 @@ extension WebsitesDetailView {
             action: { viewModel.clearSelection() },
             isDisabled: viewModel.active == nil
         )
-        #if os(macOS)
         .keyboardShortcut(.escape, modifiers: [])
-        #endif
     }
 
     private var expandButton: some View {
