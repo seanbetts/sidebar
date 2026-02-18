@@ -1,5 +1,15 @@
 import SwiftUI
 
+private enum IngestionDisplayRowKind {
+    case section(title: String, iconName: String, tint: Color, count: Int)
+    case item(IngestionListItem)
+}
+
+private struct IngestionDisplayRow: Identifiable {
+    let id: String
+    let kind: IngestionDisplayRowKind
+}
+
 struct IngestionCenterView: View {
     @ObservedObject var viewModel: IngestionViewModel
 
@@ -23,8 +33,34 @@ struct IngestionCenterView: View {
         !uploadingItems.isEmpty || !processingItems.isEmpty || !failedItems.isEmpty
     }
 
+    private var displayRows: [IngestionDisplayRow] {
+        var rows: [IngestionDisplayRow] = []
+        appendRows(
+            to: &rows,
+            title: "Uploading",
+            iconName: "arrow.up.circle.fill",
+            tint: DesignTokens.Colors.actionPrimary,
+            items: uploadingItems
+        )
+        appendRows(
+            to: &rows,
+            title: "Processing",
+            iconName: "gearshape.2.fill",
+            tint: DesignTokens.Colors.textSecondary,
+            items: processingItems
+        )
+        appendRows(
+            to: &rows,
+            title: "Attention",
+            iconName: "exclamationmark.triangle.fill",
+            tint: DesignTokens.Colors.warning,
+            items: failedItems
+        )
+        return rows
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.smPlus) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             summaryCard
 
             if let ready = viewModel.lastReadyMessage {
@@ -33,35 +69,9 @@ struct IngestionCenterView: View {
 
             if hasItems {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                        if !uploadingItems.isEmpty {
-                            section(
-                                title: "Uploading",
-                                subtitle: "Moving files to workspace",
-                                iconName: "arrow.up.circle.fill",
-                                tint: DesignTokens.Colors.actionPrimary,
-                                items: uploadingItems
-                            )
-                        }
-
-                        if !processingItems.isEmpty {
-                            section(
-                                title: "Processing",
-                                subtitle: "Preparing file content",
-                                iconName: "gearshape.2.fill",
-                                tint: DesignTokens.Colors.textSecondary,
-                                items: processingItems
-                            )
-                        }
-
-                        if !failedItems.isEmpty {
-                            section(
-                                title: "Needs Attention",
-                                subtitle: "Uploads that need a retry or dismissal",
-                                iconName: "exclamationmark.triangle.fill",
-                                tint: DesignTokens.Colors.warning,
-                                items: failedItems
-                            )
+                    LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                        ForEach(displayRows) { row in
+                            displayRowView(row)
                         }
                     }
                 }
@@ -74,13 +84,13 @@ struct IngestionCenterView: View {
     }
 
     private var summaryCard: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xsPlus) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Ingestion Center")
                     .font(DesignTokens.Typography.titleMd)
                 Spacer()
                 if !failedItems.isEmpty {
-                    Button("Retry All Failed") {
+                    Button("Retry All") {
                         _ = viewModel.retryAllFailedUploads()
                     }
                     .buttonStyle(IngestionCenterActionButtonStyle(tint: DesignTokens.Colors.actionPrimary))
@@ -94,50 +104,68 @@ struct IngestionCenterView: View {
                 counterPill(title: "Attention", value: failedItems.count, tint: DesignTokens.Colors.warning)
             }
         }
-        .padding(DesignTokens.Spacing.sm)
+        .padding(DesignTokens.Spacing.smPlus)
         .background(DesignTokens.Colors.surface)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+                .stroke(DesignTokens.Colors.border.opacity(0.7), lineWidth: 1)
+        )
+    }
+
+    private func appendRows(
+        to rows: inout [IngestionDisplayRow],
+        title: String,
+        iconName: String,
+        tint: Color,
+        items: [IngestionListItem]
+    ) {
+        guard !items.isEmpty else { return }
+        rows.append(
+            IngestionDisplayRow(
+                id: "section-\(title.lowercased())",
+                kind: .section(
+                    title: title,
+                    iconName: iconName,
+                    tint: tint,
+                    count: items.count
+                )
+            )
+        )
+        rows.append(
+            contentsOf: items.map { item in
+                IngestionDisplayRow(id: "item-\(item.file.id)", kind: .item(item))
+            }
         )
     }
 
     @ViewBuilder
-    private func section(
-        title: String,
-        subtitle: String,
-        iconName: String,
-        tint: Color,
-        items: [IngestionListItem]
-    ) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+    private func displayRowView(_ row: IngestionDisplayRow) -> some View {
+        switch row.kind {
+        case let .section(title, iconName, tint, count):
             HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: iconName)
                     .font(DesignTokens.Typography.captionSemibold)
                     .foregroundStyle(tint)
                 Text(title)
-                    .font(DesignTokens.Typography.captionSemibold)
-                Text(subtitle)
-                    .font(DesignTokens.Typography.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .font(DesignTokens.Typography.labelXs)
                 Spacer()
-                Text("\(items.count)")
+                Text("\(count)")
                     .font(DesignTokens.Typography.captionSemibold)
                     .foregroundStyle(.secondary)
             }
-
-            ForEach(items, id: \.file.id) { item in
-                IngestionCenterRow(
-                    item: item,
-                    canCancel: viewModel.canCancelIngestion(fileId: item.file.id),
-                    canRetry: viewModel.canRetryFailedUpload(fileId: item.file.id),
-                    onCancel: { viewModel.cancelIngestion(fileId: $0) },
-                    onRetry: { viewModel.retryFailedUpload(fileId: $0) },
-                    onDismiss: { viewModel.clearFailedUpload(fileId: $0) }
-                )
-            }
+            .padding(.horizontal, DesignTokens.Spacing.xxs)
+            .padding(.top, DesignTokens.Spacing.xs)
+            .padding(.bottom, DesignTokens.Spacing.xxs)
+        case let .item(item):
+            IngestionCenterRow(
+                item: item,
+                canCancel: viewModel.canCancelIngestion(fileId: item.file.id),
+                canRetry: viewModel.canRetryFailedUpload(fileId: item.file.id),
+                onCancel: { viewModel.cancelIngestion(fileId: $0) },
+                onRetry: { viewModel.retryFailedUpload(fileId: $0) },
+                onDismiss: { viewModel.clearFailedUpload(fileId: $0) }
+            )
         }
     }
 
@@ -177,7 +205,7 @@ struct IngestionCenterView: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+                .stroke(DesignTokens.Colors.border.opacity(0.7), lineWidth: 1)
         )
     }
 
@@ -194,11 +222,11 @@ struct IngestionCenterView: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.xs)
         .padding(.vertical, DesignTokens.Spacing.xxs)
-        .background(DesignTokens.Colors.surface)
+        .background(tint.opacity(0.08))
         .clipShape(Capsule())
         .overlay(
             Capsule()
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+                .stroke(tint.opacity(0.22), lineWidth: 1)
         )
     }
 
@@ -218,26 +246,22 @@ private struct IngestionCenterRow: View {
     let onDismiss: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            HStack(alignment: .top, spacing: DesignTokens.Spacing.xs) {
-                iconBubble
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xsPlus) {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.xs) {
+                Image(systemName: iconName)
+                    .font(DesignTokens.Typography.subheadlineSemibold)
+                    .foregroundStyle(iconForeground)
+                    .frame(width: 18, height: 18)
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     Text(displayName)
                         .font(DesignTokens.Typography.subheadlineSemibold)
                         .lineLimit(1)
 
-                    Text(statusLabel)
+                    Text(metadataText)
                         .font(DesignTokens.Typography.caption)
                         .foregroundStyle(statusColor)
                         .lineLimit(1)
-
-                    if let detail = statusDetail {
-                        Text(detail)
-                            .font(DesignTokens.Typography.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
                 }
 
                 Spacer(minLength: DesignTokens.Spacing.xs)
@@ -289,12 +313,12 @@ private struct IngestionCenterRow: View {
                 }
             }
         }
-        .padding(DesignTokens.Spacing.sm)
+        .padding(DesignTokens.Spacing.smPlus)
         .background(DesignTokens.Colors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                .stroke(DesignTokens.Colors.border.opacity(0.6), lineWidth: 1)
         )
     }
 
@@ -327,13 +351,12 @@ private struct IngestionCenterRow: View {
     }
 
     private var statusDetail: String? {
-        if let message = item.job.userMessage?.trimmingCharacters(in: .whitespacesAndNewlines), !message.isEmpty {
-            return message
-        }
-        if let message = item.job.errorMessage?.trimmingCharacters(in: .whitespacesAndNewlines), !message.isEmpty {
-            return message
-        }
-        return nil
+        ingestionStatusDetail(for: item.job, statusLabel: statusLabel)
+    }
+
+    private var metadataText: String {
+        guard let detail = statusDetail else { return statusLabel }
+        return "\(statusLabel) • \(detail)"
     }
 
     private var statusColor: Color {
@@ -376,29 +399,11 @@ private struct IngestionCenterRow: View {
         }
     }
 
-    private var iconBubble: some View {
-        ZStack {
-            Circle()
-                .fill(iconBackground)
-            Image(systemName: iconName)
-                .font(DesignTokens.Typography.captionSemibold)
-                .foregroundStyle(iconForeground)
-        }
-        .frame(width: 30, height: 30)
-    }
-
     private var iconForeground: Color {
         if isFailed {
             return DesignTokens.Colors.warning
         }
-        return DesignTokens.Colors.textSecondary
-    }
-
-    private var iconBackground: Color {
-        if isFailed {
-            return DesignTokens.Colors.warningBackground
-        }
-        return DesignTokens.Colors.muted
+        return DesignTokens.Colors.textTertiary
     }
 }
 
