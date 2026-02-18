@@ -1,6 +1,10 @@
 app = "sidebar-api"
 primary_region = "lhr"
 
+[processes]
+  app = "uvicorn api.main:app --host 0.0.0.0 --port 8001"
+  ingestion = "python workers/ingestion_worker.py"
+
 [build]
   dockerfile = "docker/Dockerfile.skills-api"
 
@@ -43,3 +47,4 @@ primary_region = "lhr"
 [[mounts]]
   source = "data"
   destination = "/data"
+  processes = ["app"]

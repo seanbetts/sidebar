@@ -38,12 +38,13 @@ RUN pip install --no-cache-dir \
 
 # Copy API code
 COPY --chown=appuser:appuser api/ ./api/
+COPY --chown=appuser:appuser workers/ ./workers/
 COPY --chown=appuser:appuser skills/ ./skills/
 COPY --chown=appuser:appuser scripts/ ./scripts/
 
 # Create writable directories for non-root user
 RUN mkdir -p /workspace /tmp && \
-    chown -R appuser:appuser /workspace /tmp /app/api /app/skills /app/scripts
+    chown -R appuser:appuser /workspace /tmp /app/api /app/workers /app/skills /app/scripts
 
 # Copy entrypoint
 COPY docker/entrypoint.sh /app/entrypoint.sh
