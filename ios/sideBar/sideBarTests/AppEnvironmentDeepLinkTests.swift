@@ -4,9 +4,12 @@ import sideBarShared
 
 @MainActor
 final class AppEnvironmentDeepLinkTests: XCTestCase {
+    private static var retainedEnvironments: [AppEnvironment] = []
+
     override func setUp() {
         super.setUp()
         clearWidgetPendingOperations()
+        clearExtensionEvents()
         let environment = requireEnvironment()
         resetDeepLinkState(environment)
     }
@@ -15,6 +18,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         let environment = requireEnvironment()
         resetDeepLinkState(environment)
         clearWidgetPendingOperations()
+        clearExtensionEvents()
         super.tearDown()
     }
 
@@ -130,6 +134,60 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
         XCTAssertEqual(environment.commandSelection, .notes)
         XCTAssertTrue(environment.pendingNewNoteDeepLink)
+    }
+
+    func testConsumeExtensionEventsWhenActiveShowsPendingWebsite() async {
+        let environment = requireEnvironment()
+        environment.authState = .active
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+
+        ExtensionEventStore.shared.recordWebsiteSaved(url: url)
+        await environment.consumeExtensionEvents()
+
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
+    }
+
+    func testConsumeExtensionEventsWhenInactivePreservesEvents() async {
+        let environment = requireEnvironment()
+        let url = "https://www.youtube.com/watch?v=abc123xyzAA"
+
+        environment.authState = .signedOut
+        ExtensionEventStore.shared.recordWebsiteSaved(url: url)
+        await environment.consumeExtensionEvents()
+        XCTAssertNil(environment.websitesViewModel.pendingWebsite)
+
+        environment.authState = .active
+        await environment.consumeExtensionEvents()
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
+    }
+
+    func testRefreshAuthStateWhenSessionBecomesActiveConsumesExtensionEvents() {
+        let previousSharedEnvironment = AppEnvironment.shared
+        defer { AppEnvironment.shared = previousSharedEnvironment }
+
+        let authSession = MutableAuthSession(authState: .stale)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(container: container)
+        Self.retainedEnvironments.append(environment)
+        resetDeepLinkState(environment)
+        environment.authState = .stale
+
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        ExtensionEventStore.shared.recordWebsiteSaved(url: url)
+
+        authSession.authState = .active
+        environment.refreshAuthState()
+
+        for _ in 0..<40 where environment.websitesViewModel.pendingWebsite?.url != url {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+
+        XCTAssertEqual(environment.authState, .active)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
     }
 
     func testRefreshAuthStateOnSignOutResetsNavigationViewModelsAndOfflineSnapshots() async {
@@ -275,6 +333,10 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         _ = WidgetDataManager.shared.consumePendingOperations(for: .notes, actionType: NoteWidgetAction.self)
     }
 
+    private func clearExtensionEvents() {
+        _ = ExtensionEventStore.shared.consumeEvents()
+    }
+
     private func requireEnvironment(
         file: StaticString = #filePath,
         line: UInt = #line
@@ -301,9 +363,42 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.tasksViewModel.cancelNewTask()
         environment.tasksViewModel.reset()
         environment.chatViewModel.reset()
+        environment.websitesViewModel.pendingWebsite = nil
     }
 }
 
 private struct SignOutPayload: Codable, Equatable {
     let value: String
+}
+
+private final class MutableAuthSession: AuthSession {
+    var accessToken: String?
+    var userId: String?
+    var authState: AuthState
+
+    var authorizationToken: String? {
+        authState == .active ? accessToken : nil
+    }
+
+    init(authState: AuthState) {
+        self.authState = authState
+    }
+
+    func signIn(email: String, password: String) async throws {
+        _ = email
+        _ = password
+        authState = .active
+    }
+
+    func refreshSession() async {
+    }
+
+    func refreshSessionIfStale() async {
+    }
+
+    func signOut() async {
+        accessToken = nil
+        userId = nil
+        authState = .signedOut
+    }
 }

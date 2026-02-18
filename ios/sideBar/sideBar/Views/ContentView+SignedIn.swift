@@ -229,14 +229,12 @@ extension ContentView {
             pendingBiometricUnavailableAlert = false
             isSigningOut = false
             if isAuthenticated {
-                #if os(iOS)
                 Task {
                     if environment.authState == .active {
                         await environment.consumeExtensionEvents()
                         await environment.consumeWidgetCompletions()
                     }
                 }
-                #endif
                 // When user just signed in (transitioned from not authenticated to authenticated),
                 // consider them already unlocked since they authenticated with password.
                 // Biometric lock should only apply when returning from background.
