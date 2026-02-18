@@ -125,7 +125,8 @@ struct TaskRow<MenuContent: View>: View {
                         Text(task.title)
                             .font(.subheadline)
                             .foregroundStyle(DesignTokens.Colors.textPrimary)
-                            .lineLimit(1)
+                            .lineLimit(isExpanded ? nil : 1)
+                            .fixedSize(horizontal: false, vertical: isExpanded)
                         if let notes = task.notes, !notes.isEmpty {
                             Button {
                                 onOpenNotes()
