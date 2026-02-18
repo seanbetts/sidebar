@@ -14,7 +14,6 @@ extension TasksUtils {
             appendTaskToTodayBuckets(
                 task,
                 buckets: &buckets,
-                projects: projects,
                 groupTitleById: groupTitleById,
                 projectTitleById: projectTitleById
             )
@@ -27,7 +26,7 @@ extension TasksUtils {
             }
         }
 
-        return orderedTodaySections(from: buckets, groups: groups)
+        return orderedTodaySections(from: buckets, groups: groups, projects: projects)
     }
 
     public static func buildSearchSections(tasks: [TaskItem], groups: [TaskGroup]) -> [TaskSection] {
@@ -107,33 +106,22 @@ extension TasksUtils {
     private static func appendTaskToTodayBuckets(
         _ task: TaskItem,
         buckets: inout [String: TaskSection],
-        projects: [TaskProject],
         groupTitleById: [String: String],
         projectTitleById: [String: String]
     ) {
-        if let groupId = resolvedGroupId(for: task, projects: projects) {
-            let key = "group:\(groupId)"
-            let title = groupTitleById[groupId] ?? "Group"
-            appendTask(task, buckets: &buckets, key: key, title: title)
-            return
-        }
         if let projectId = task.projectId {
             let key = "project:\(projectId)"
             let title = projectTitleById[projectId] ?? "Project"
             appendTask(task, buckets: &buckets, key: key, title: title)
             return
         }
-        appendTask(task, buckets: &buckets, key: "other", title: "Other")
-    }
-
-    private static func resolvedGroupId(for task: TaskItem, projects: [TaskProject]) -> String? {
         if let groupId = task.groupId {
-            return groupId
+            let key = "group:\(groupId)"
+            let title = groupTitleById[groupId] ?? "Group"
+            appendTask(task, buckets: &buckets, key: key, title: title)
+            return
         }
-        guard let projectId = task.projectId else {
-            return nil
-        }
-        return projects.first(where: { $0.id == projectId })?.groupId
+        appendTask(task, buckets: &buckets, key: "other", title: "Other")
     }
 
     private static func appendTask(
@@ -149,16 +137,38 @@ extension TasksUtils {
 
     private static func orderedTodaySections(
         from buckets: [String: TaskSection],
-        groups: [TaskGroup]
+        groups: [TaskGroup],
+        projects: [TaskProject]
     ) -> [TaskSection] {
         var sections: [TaskSection] = []
+        var appendedProjectKeys: Set<String> = []
+
+        for project in projects {
+            let key = "project:\(project.id)"
+            guard let section = buckets[key], !section.tasks.isEmpty else { continue }
+            sections.append(TaskSection(id: key, title: section.title, tasks: section.tasks))
+            appendedProjectKeys.insert(key)
+        }
+
+        let unresolvedProjectSections = buckets
+            .filter { key, section in
+                key.hasPrefix("project:") && !section.tasks.isEmpty && !appendedProjectKeys.contains(key)
+            }
+            .sorted {
+                let titleOrder = $0.value.title.localizedCaseInsensitiveCompare($1.value.title)
+                if titleOrder == .orderedSame {
+                    return $0.key < $1.key
+                }
+                return titleOrder == .orderedAscending
+            }
+        for (key, section) in unresolvedProjectSections {
+            sections.append(TaskSection(id: key, title: section.title, tasks: section.tasks))
+        }
+
         for group in groups {
             if let section = buckets["group:\(group.id)"], !section.tasks.isEmpty {
                 sections.append(TaskSection(id: group.id, title: section.title, tasks: section.tasks))
             }
-        }
-        for (key, section) in buckets where key.hasPrefix("project:") && !section.tasks.isEmpty {
-            sections.append(TaskSection(id: key, title: section.title, tasks: section.tasks))
         }
         if let other = buckets["other"], !other.tasks.isEmpty {
             sections.append(other)

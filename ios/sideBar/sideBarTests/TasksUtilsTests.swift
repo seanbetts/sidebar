@@ -196,7 +196,7 @@ final class TasksUtilsTests: XCTestCase {
         XCTAssertEqual(workSection?.tasks.map(\.id), ["t1"])
     }
 
-    func testBuildTodaySectionsResolvesGroupFromProject() async {
+    func testBuildTodaySectionsPrefersProjectOverGroup() async {
         let group = TaskGroup(id: "g1", title: "Work", updatedAt: nil)
         let project = TaskProject(id: "p1", title: "Project A", groupId: "g1", status: "active", updatedAt: nil)
         let task = TaskItem(id: "t1", title: "Do thing", status: "open", projectId: "p1")
@@ -207,10 +207,26 @@ final class TasksUtilsTests: XCTestCase {
             groupTitleById: ["g1": "Work"],
             projectTitleById: ["p1": "Project A"]
         )
-        // Task should land in the group bucket since project resolves to group g1
-        let workSection = sections.first(where: { $0.id == "g1" })
-        XCTAssertNotNil(workSection)
-        XCTAssertEqual(workSection?.tasks.map(\.id), ["t1"])
+        let projectSection = sections.first(where: { $0.id == "project:p1" })
+        XCTAssertNotNil(projectSection)
+        XCTAssertEqual(projectSection?.tasks.map(\.id), ["t1"])
+    }
+
+    func testBuildTodaySectionsPlacesProjectsBeforeGroupFallback() async {
+        let group = TaskGroup(id: "g1", title: "Work", updatedAt: nil)
+        let project = TaskProject(id: "p1", title: "Project A", groupId: "g1", status: "active", updatedAt: nil)
+        let projectTask = TaskItem(id: "t1", title: "Project task", status: "open", projectId: "p1", groupId: "g1")
+        let groupTask = TaskItem(id: "t2", title: "Group task", status: "open", groupId: "g1")
+
+        let sections = TasksUtils.buildTodaySections(
+            tasks: [projectTask, groupTask],
+            groups: [group],
+            projects: [project],
+            groupTitleById: ["g1": "Work"],
+            projectTitleById: ["p1": "Project A"]
+        )
+
+        XCTAssertEqual(sections.map(\.id), ["project:p1", "g1"])
     }
 
     func testBuildSearchSectionsGroupsAndUnassigned() async {
