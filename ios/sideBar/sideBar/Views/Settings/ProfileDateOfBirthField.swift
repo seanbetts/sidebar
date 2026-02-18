@@ -18,10 +18,15 @@ struct ProfileDateOfBirthField: View {
                     .datePickerStyle(.compact)
                     #endif
 
-                    Button("Clear") {
+                    Button {
                         dateOfBirthEnabled = false
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.body)
                     }
-                    .font(.caption)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Clear date of birth")
                 }
             } else {
                 Button("Set") {
