@@ -27,7 +27,10 @@ public struct TasksView: View {
             .onChange(of: scenePhase) {
                 guard scenePhase == .active else { return }
                 Task {
-                    await environment.tasksViewModel.load(selection: environment.tasksViewModel.selection, force: true)
+                    await environment.tasksViewModel.load(
+                        selection: environment.tasksViewModel.preferredLoadSelection,
+                        force: true
+                    )
                     await environment.tasksViewModel.loadCounts(force: true)
                 }
             }

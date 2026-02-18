@@ -38,7 +38,7 @@ struct TasksPanelView: View {
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
-                Task { await viewModel.load(selection: viewModel.selection) }
+                Task { await viewModel.load(selection: viewModel.preferredLoadSelection) }
                 Task { await viewModel.loadCounts() }
             }
         }
@@ -157,7 +157,7 @@ extension TasksPanelView {
                 subtitle: error,
                 actionTitle: "Retry"
             ) {
-                Task { await viewModel.load(selection: viewModel.selection, force: true) }
+                Task { await viewModel.load(selection: viewModel.preferredLoadSelection, force: true) }
             }
         } else {
             List {
@@ -228,7 +228,7 @@ extension TasksPanelView {
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {
-                await viewModel.load(selection: viewModel.selection, force: true)
+                await viewModel.load(selection: viewModel.preferredLoadSelection, force: true)
                 await viewModel.loadCounts(force: true)
             }
         }

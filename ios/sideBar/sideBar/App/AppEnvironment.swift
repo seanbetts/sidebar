@@ -159,7 +159,7 @@ public final class AppEnvironment: ObservableObject {
                 },
                 SyncableStoreAdapter { [weak tasksViewModel] in
                     guard let tasksViewModel else { return }
-                    await tasksViewModel.load(selection: tasksViewModel.selection, force: true)
+                    await tasksViewModel.load(selection: tasksViewModel.preferredLoadSelection, force: true)
                     await tasksViewModel.loadCounts(force: true)
                     await tasksViewModel.refreshWidgetData()
                 }

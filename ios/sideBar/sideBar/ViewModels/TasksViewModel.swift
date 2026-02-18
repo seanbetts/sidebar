@@ -412,7 +412,7 @@ extension TasksViewModel {
             clientUpdatedAt: nil
         )
 
-        if !networkStatus.isNetworkAvailable {
+        if shouldQueueTaskWrites {
             do {
                 try await store.enqueueOperation(operation)
                 store.applyLocalOperation(operation)

@@ -217,8 +217,12 @@ import Combine
         if updateVisibleState {
             // Filter out tasks that are pending removal (optimistic updates)
             tasks = list.tasks.filter { !pendingRemovals.contains($0.id) }
-            groups = list.groups ?? []
-            projects = list.projects ?? []
+            if let responseGroups = list.groups {
+                groups = responseGroups
+            }
+            if let responseProjects = list.projects {
+                projects = responseProjects
+            }
             currentScope = list.scope
         }
 
@@ -288,33 +292,6 @@ import Combine
         inFlightCountsRefresh = task
         defer { inFlightCountsRefresh = nil }
         return try await task.value
-    }
-
-    @discardableResult
-    private func applyCachedOrOffline<T: Codable>(
-        force: Bool,
-        cacheKey: String,
-        type: T.Type,
-        apply: (T) -> Void,
-        refreshIfAvailable: @escaping @MainActor () async -> Void
-    ) -> Bool {
-        if !force, let cached: T = cache.get(key: cacheKey) {
-            apply(cached)
-            Task {
-                await refreshIfAvailable()
-            }
-            return true
-        }
-        if !force, let offline = offlineStore?.get(key: cacheKey, as: type) {
-            apply(offline)
-            if networkStatus?.isNetworkAvailable ?? true {
-                Task {
-                    await refreshIfAvailable()
-                }
-            }
-            return true
-        }
-        return false
     }
 
 }
