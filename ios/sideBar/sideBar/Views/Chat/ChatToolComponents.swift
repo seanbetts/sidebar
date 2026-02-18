@@ -8,13 +8,17 @@ struct ToolCallListView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var showPopover = false
     private let maxPillWidth: CGFloat = 180
+    private let minTextPillWidth: CGFloat = 70
 
     var body: some View {
         Button {
             showPopover = true
         } label: {
-            toolPill(text: summaryText)
-                .frame(maxWidth: maxPillWidth, alignment: .leading)
+            ViewThatFits(in: .horizontal) {
+                toolPill(text: summaryText)
+                    .frame(minWidth: minTextPillWidth, maxWidth: maxPillWidth, alignment: .leading)
+                toolIconOnlyPill
+            }
         }
         .buttonStyle(.plain)
         .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
@@ -51,6 +55,19 @@ struct ToolCallListView: View {
                 .fill(toolPillBackground)
         )
         .overlay(toolPillBorder)
+    }
+
+    private var toolIconOnlyPill: some View {
+        Image(systemName: "hammer.fill")
+            .font(.caption2)
+            .foregroundStyle(toolPillForeground)
+            .padding(.horizontal, DesignTokens.Spacing.xs)
+            .padding(.vertical, DesignTokens.Spacing.xxs)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(toolPillBackground)
+            )
+            .overlay(toolPillBorder)
     }
 
     private var toolPillBackground: Color {

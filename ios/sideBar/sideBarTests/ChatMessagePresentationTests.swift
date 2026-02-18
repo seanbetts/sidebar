@@ -6,35 +6,35 @@ final class ChatMessagePresentationTests: XCTestCase {
         let message = makeMessage(role: .assistant, status: .streaming, content: "")
 
         XCTAssertTrue(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
-        XCTAssertFalse(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
+        XCTAssertTrue(ChatMessagePresentation.showsHeaderThinkingIndicator(for: message))
     }
 
     func testShowsThinkingPlaceholderForStreamingAssistantMessageWithWhitespaceContent() {
         let message = makeMessage(role: .assistant, status: .streaming, content: "   \n ")
 
         XCTAssertTrue(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
-        XCTAssertFalse(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
+        XCTAssertTrue(ChatMessagePresentation.showsHeaderThinkingIndicator(for: message))
     }
 
-    func testShowsStreamingThinkingFooterForStreamingAssistantMessageWithContent() {
+    func testDoesNotShowThinkingPlaceholderForStreamingAssistantMessageWithContent() {
         let message = makeMessage(role: .assistant, status: .streaming, content: "Hello")
 
         XCTAssertFalse(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
-        XCTAssertTrue(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
+        XCTAssertTrue(ChatMessagePresentation.showsHeaderThinkingIndicator(for: message))
     }
 
     func testDoesNotShowThinkingIndicatorsForStreamingUserMessage() {
         let message = makeMessage(role: .user, status: .streaming, content: "")
 
         XCTAssertFalse(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
-        XCTAssertFalse(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
+        XCTAssertFalse(ChatMessagePresentation.showsHeaderThinkingIndicator(for: message))
     }
 
     func testDoesNotShowThinkingIndicatorsForCompleteAssistantMessage() {
         let message = makeMessage(role: .assistant, status: .complete, content: "Hello")
 
         XCTAssertFalse(ChatMessagePresentation.showsThinkingPlaceholder(for: message))
-        XCTAssertFalse(ChatMessagePresentation.showsStreamingThinkingFooter(for: message))
+        XCTAssertFalse(ChatMessagePresentation.showsHeaderThinkingIndicator(for: message))
     }
 
     private func makeMessage(role: MessageRole, status: MessageStatus, content: String) -> Message {
