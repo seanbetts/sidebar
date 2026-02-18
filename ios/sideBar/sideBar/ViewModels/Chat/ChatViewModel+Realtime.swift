@@ -3,6 +3,26 @@ import sideBarShared
 import Foundation
 import OSLog
 
+private enum DecodedRealtimeField<Value> {
+    case missing
+    case value(Value?)
+    case invalid
+
+    var decodedValue: Value? {
+        if case let .value(value) = self {
+            return value
+        }
+        return nil
+    }
+
+    var isInvalid: Bool {
+        if case .invalid = self {
+            return true
+        }
+        return false
+    }
+}
+
 // MARK: - ChatViewModel+Realtime
 
 extension ChatViewModel {
@@ -17,6 +37,74 @@ extension ChatViewModel {
 
     func refreshMemories() {
         cache.remove(key: CacheKeys.memoriesList)
+    }
+
+    func handleAssistantIdentityUpdated(_ event: ChatStreamEvent) {
+        guard let payload = dictionaryValue(from: event.data) else {
+            onAssistantSettingsUpdated?(
+                AssistantSettingsRealtimeUpdate(
+                    assistantIdentity: nil,
+                    assistantIdentityMeta: nil,
+                    assistantSoul: nil,
+                    assistantSoulMeta: nil,
+                    requiresRefresh: true
+                )
+            )
+            return
+        }
+        let hasIdentityPayload = payload.keys.contains("assistant_identity")
+            || payload.keys.contains("assistant_identity_meta")
+        let identity = decodeRealtimeField(
+            payload["assistant_identity"],
+            as: AssistantIdentitySettings.self
+        )
+        let meta = decodeRealtimeField(
+            payload["assistant_identity_meta"],
+            as: AgentFieldMeta.self
+        )
+        onAssistantSettingsUpdated?(
+            AssistantSettingsRealtimeUpdate(
+                assistantIdentity: identity.decodedValue,
+                assistantIdentityMeta: meta.decodedValue,
+                assistantSoul: nil,
+                assistantSoulMeta: nil,
+                requiresRefresh: !hasIdentityPayload || identity.isInvalid || meta.isInvalid
+            )
+        )
+    }
+
+    func handleAssistantSoulUpdated(_ event: ChatStreamEvent) {
+        guard let payload = dictionaryValue(from: event.data) else {
+            onAssistantSettingsUpdated?(
+                AssistantSettingsRealtimeUpdate(
+                    assistantIdentity: nil,
+                    assistantIdentityMeta: nil,
+                    assistantSoul: nil,
+                    assistantSoulMeta: nil,
+                    requiresRefresh: true
+                )
+            )
+            return
+        }
+        let hasSoulPayload = payload.keys.contains("assistant_soul")
+            || payload.keys.contains("assistant_soul_meta")
+        let soul = decodeRealtimeField(
+            payload["assistant_soul"],
+            as: AssistantSoulSettings.self
+        )
+        let meta = decodeRealtimeField(
+            payload["assistant_soul_meta"],
+            as: AgentFieldMeta.self
+        )
+        onAssistantSettingsUpdated?(
+            AssistantSettingsRealtimeUpdate(
+                assistantIdentity: nil,
+                assistantIdentityMeta: nil,
+                assistantSoul: soul.decodedValue,
+                assistantSoulMeta: meta.decodedValue,
+                requiresRefresh: !hasSoulPayload || soul.isInvalid || meta.isInvalid
+            )
+        )
     }
 
     func handleNoteCreate(_ event: ChatStreamEvent) {
@@ -232,6 +320,29 @@ extension ChatViewModel {
             return [:]
         }
         return dict.mapValues { AnyCodable($0) }
+    }
+
+    private func decodeRealtimeField<T: Decodable>(
+        _ value: Any?,
+        as type: T.Type
+    ) -> DecodedRealtimeField<T> {
+        guard let value else {
+            return .missing
+        }
+        if value is NSNull {
+            return .value(nil)
+        }
+        guard JSONSerialization.isValidJSONObject(value) else {
+            return .invalid
+        }
+        do {
+            let data = try JSONSerialization.data(withJSONObject: value)
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            return .value(try decoder.decode(type, from: data))
+        } catch {
+            return .invalid
+        }
     }
 
     func persistMessage(conversationId: String, message: Message) async {

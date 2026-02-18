@@ -138,18 +138,29 @@ struct ChatUICoordinator {
     let toastCenter: ToastCenter?
     let userDefaults: UserDefaults
     let clock: () -> Date
+    let onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)?
 
     init(
         themeManager: ThemeManager,
         toastCenter: ToastCenter? = nil,
         userDefaults: UserDefaults = .standard,
-        clock: @escaping () -> Date = Date.init
+        clock: @escaping () -> Date = Date.init,
+        onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? = nil
     ) {
         self.themeManager = themeManager
         self.toastCenter = toastCenter
         self.userDefaults = userDefaults
         self.clock = clock
+        self.onAssistantSettingsUpdated = onAssistantSettingsUpdated
     }
+}
+
+struct AssistantSettingsRealtimeUpdate {
+    let assistantIdentity: AssistantIdentitySettings?
+    let assistantIdentityMeta: AgentFieldMeta?
+    let assistantSoul: AssistantSoulSettings?
+    let assistantSoulMeta: AgentFieldMeta?
+    let requiresRefresh: Bool
 }
 
 /// Represents ChatActiveTool.

@@ -59,6 +59,38 @@ def test_stream_chat_forwards_memory_events(test_client, monkeypatch):
     assert "event: complete" in body
 
 
+def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch):
+    class FakeAssistantIdentityClaudeClient:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def stream_with_tools(self, *_args, **_kwargs):
+            yield {
+                "type": "assistant_identity_updated",
+                "data": {
+                    "assistant_identity": {"name": "Navigator"},
+                    "assistant_identity_meta": {
+                        "updated_at": "2026-02-18T00:00:00Z",
+                        "version": 2,
+                    },
+                },
+            }
+
+    monkeypatch.setattr(chat_router, "ClaudeClient", FakeAssistantIdentityClaudeClient)
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+
+    body = response.text
+    assert "event: assistant_identity_updated" in body
+    assert '"assistant_identity": {"name": "Navigator"}' in body
+    assert "event: complete" in body
+
+
 def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
     user_id = "user-1"
     conversation = ConversationService.create_conversation(

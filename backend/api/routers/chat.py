@@ -314,6 +314,8 @@ async def stream_chat(
                     "memory_created",
                     "memory_updated",
                     "memory_deleted",
+                    "assistant_identity_updated",
+                    "assistant_soul_updated",
                 }:
                     data = json.dumps(event.get("data", {}))
                     yield f"event: {event_type}\ndata: {data}\n\n"

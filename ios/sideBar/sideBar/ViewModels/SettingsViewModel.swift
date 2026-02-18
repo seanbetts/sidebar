@@ -63,7 +63,7 @@ public final class SettingsViewModel: LoadableViewModel {
         }
     }
 
-    public func load() async {
+    public func load(force: Bool = false) async {
         clearError()
         profileSaveError = nil
         systemSaveError = nil
@@ -76,7 +76,7 @@ public final class SettingsViewModel: LoadableViewModel {
             try await settingsAPI.getSettings()
         }
         do {
-            let (response, _) = try await loader.load(onRefresh: { [weak self] fresh in
+            let (response, _) = try await loader.load(force: force, onRefresh: { [weak self] fresh in
                 self?.settings = fresh
             })
             settings = response
@@ -288,6 +288,53 @@ public final class SettingsViewModel: LoadableViewModel {
         next.formUnion(requiredSkillIds)
         let ordered = skills.map(\.id).filter { next.contains($0) }
         await updateEnabledSkills(ordered)
+    }
+
+    func applyAssistantSettingsUpdate(_ update: AssistantSettingsRealtimeUpdate) {
+        guard let current = settings else {
+            Task { [weak self] in
+                await self?.load(force: true)
+            }
+            return
+        }
+        if update.requiresRefresh {
+            Task { [weak self] in
+                await self?.load(force: true)
+            }
+            return
+        }
+        let hasIdentity = update.assistantIdentity != nil || update.assistantIdentityMeta != nil
+        let hasSoul = update.assistantSoul != nil || update.assistantSoulMeta != nil
+        guard hasIdentity || hasSoul else {
+            Task { [weak self] in
+                await self?.load(force: true)
+            }
+            return
+        }
+        let next = UserSettings(
+            userId: current.userId,
+            communicationStyle: current.communicationStyle,
+            workingRelationship: current.workingRelationship,
+            name: current.name,
+            jobTitle: current.jobTitle,
+            employer: current.employer,
+            dateOfBirth: current.dateOfBirth,
+            gender: current.gender,
+            pronouns: current.pronouns,
+            location: current.location,
+            profileImageUrl: current.profileImageUrl,
+            assistantIdentity: update.assistantIdentity ?? current.assistantIdentity,
+            assistantIdentityMeta: update.assistantIdentityMeta ?? current.assistantIdentityMeta,
+            assistantSoul: update.assistantSoul ?? current.assistantSoul,
+            assistantSoulMeta: update.assistantSoulMeta ?? current.assistantSoulMeta,
+            enabledSkills: current.enabledSkills
+        )
+        settings = next
+        cache.set(
+            key: CacheKeys.userSettings,
+            value: next,
+            ttlSeconds: CachePolicy.userSettings
+        )
     }
 
     public func isSkillUserToggleable(id: String) -> Bool {

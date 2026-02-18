@@ -128,6 +128,7 @@ private final class ChatViewModelTeardownBag {
     var toastCenter: ToastCenter? { ui.toastCenter }
     var userDefaults: UserDefaults { ui.userDefaults }
     var clock: () -> Date { ui.clock }
+    var onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? { ui.onAssistantSettingsUpdated }
     private let teardownBag = ChatViewModelTeardownBag()
 
     var currentStreamMessageId: String?

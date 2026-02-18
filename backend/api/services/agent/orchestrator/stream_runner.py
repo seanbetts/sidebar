@@ -18,6 +18,29 @@ from api.services.web_search_builder import (
 logger = logging.getLogger(__name__)
 
 
+def _assistant_settings_stream_event(
+    display_name: str, result_data: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Map assistant settings tool results to realtime stream events."""
+    if display_name in {"Update Assistant Identity", "Reset Assistant Identity"}:
+        return {
+            "type": "assistant_identity_updated",
+            "data": {
+                "assistant_identity": result_data.get("assistant_identity"),
+                "assistant_identity_meta": result_data.get("assistant_identity_meta"),
+            },
+        }
+    if display_name in {"Update Assistant Soul", "Reset Assistant Soul"}:
+        return {
+            "type": "assistant_soul_updated",
+            "data": {
+                "assistant_soul": result_data.get("assistant_soul"),
+                "assistant_soul_meta": result_data.get("assistant_soul_meta"),
+            },
+        }
+    return None
+
+
 def _is_connection_setup_error(error: Exception) -> bool:
     """Return True when the error indicates stream connection setup failed."""
     error_name = error.__class__.__name__
@@ -468,6 +491,13 @@ async def stream_with_tools(
                                                 "type": event_type,
                                                 "data": {"result": result_data},
                                             }
+                                    assistant_settings_event = (
+                                        _assistant_settings_stream_event(
+                                            display_name, result_data
+                                        )
+                                    )
+                                    if assistant_settings_event:
+                                        yield assistant_settings_event
 
                                 content_value = json.dumps(result)
                                 if display_name == "Memory Tool":

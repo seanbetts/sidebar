@@ -36,4 +36,17 @@ final class ChatStreamParserTests: XCTestCase {
 
         XCTAssertTrue(events.isEmpty)
     }
+
+    func testIngestParsesAssistantIdentityUpdatedEvent() {
+        var parser = ChatStreamParser()
+        let chunk = "event: assistant_identity_updated\ndata: {\"assistant_identity\":{\"name\":\"Navigator\"}}\n\n"
+
+        let events = parser.ingest(Data(chunk.utf8))
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?.type, .assistantIdentityUpdated)
+        let payload = events.first?.data?.value as? [String: Any]
+        let identity = payload?["assistant_identity"] as? [String: Any]
+        XCTAssertEqual(identity?["name"] as? String, "Navigator")
+    }
 }

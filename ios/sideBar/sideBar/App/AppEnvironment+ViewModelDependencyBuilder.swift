@@ -17,11 +17,20 @@ extension AppEnvironment {
             let currentLocationViewModel: CurrentLocationViewModel
         }
 
+        private static func makeSettingsViewModel(container: ServiceContainer) -> SettingsViewModel {
+            SettingsViewModel(
+                settingsAPI: container.settingsAPI,
+                skillsAPI: container.skillsAPI,
+                cache: container.cacheClient
+            )
+        }
+
         static func build(
             container: ServiceContainer,
             core: CoreDependencyBuilder.Output,
             stores: StoreDependencyBuilder.Output
         ) -> Output {
+            let settingsViewModel = makeSettingsViewModel(container: container)
             let chatViewModel = ChatViewModel(
                 network: ChatNetworkCoordinator(
                     chatAPI: container.chatAPI,
@@ -40,7 +49,8 @@ extension AppEnvironment {
                 ),
                 ui: ChatUICoordinator(
                     themeManager: core.themeManager,
-                    toastCenter: core.toastCenter
+                    toastCenter: core.toastCenter,
+                    onAssistantSettingsUpdated: { settingsViewModel.applyAssistantSettingsUpdate($0) }
                 )
             )
             let notesViewModel = NotesViewModel(
@@ -78,11 +88,6 @@ extension AppEnvironment {
             )
             let memoriesViewModel = MemoriesViewModel(
                 api: container.memoriesAPI,
-                cache: container.cacheClient
-            )
-            let settingsViewModel = SettingsViewModel(
-                settingsAPI: container.settingsAPI,
-                skillsAPI: container.skillsAPI,
                 cache: container.cacheClient
             )
             let weatherViewModel = WeatherViewModel(api: container.weatherAPI)
