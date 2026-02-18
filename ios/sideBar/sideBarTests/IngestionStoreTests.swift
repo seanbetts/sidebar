@@ -337,6 +337,56 @@ final class IngestionStoreTests: XCTestCase {
 
         XCTAssertEqual(store.items.first?.recommendedViewer, "viewer_pdf")
     }
+
+    func testApplyMetaUpdateSwitchesActiveMetaWhenFileIDChangesButShapeMatches() async {
+        let cache = TestCacheClient()
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let first = makeMeta(
+            fileID: "file-1",
+            status: "processing",
+            stage: "extracting",
+            updatedAt: "2026-01-10T00:00:00Z",
+            recommendedViewer: nil
+        )
+        let second = makeMeta(
+            fileID: "file-2",
+            status: "processing",
+            stage: "extracting",
+            updatedAt: "2026-01-10T00:00:00Z",
+            recommendedViewer: nil
+        )
+
+        store.applyMetaUpdate(first, persist: false)
+        store.applyMetaUpdate(second, persist: false)
+
+        XCTAssertEqual(store.activeMeta?.file.id, "file-2")
+    }
+
+    func testApplyMetaUpdateUpdatesWhenRecommendedViewerChanges() async {
+        let cache = TestCacheClient()
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let initial = makeMeta(
+            fileID: "file-1",
+            status: "ready",
+            stage: "ready",
+            updatedAt: "2026-01-10T00:00:00Z",
+            recommendedViewer: nil
+        )
+        let updated = makeMeta(
+            fileID: "file-1",
+            status: "ready",
+            stage: "ready",
+            updatedAt: "2026-01-10T00:00:00Z",
+            recommendedViewer: "text_original"
+        )
+
+        store.applyMetaUpdate(initial, persist: false)
+        store.applyMetaUpdate(updated, persist: false)
+
+        XCTAssertEqual(store.activeMeta?.recommendedViewer, "text_original")
+    }
 }
 
 private struct MockIngestionAPI: IngestionProviding {
@@ -452,6 +502,53 @@ private func makeItem(
             attempts: 0,
             updatedAt: "2024-01-01T12:00:00Z"
         ),
+        recommendedViewer: recommendedViewer
+    )
+}
+
+private func makeMeta(
+    fileID: String,
+    status: String,
+    stage: String,
+    updatedAt: String,
+    recommendedViewer: String?
+) -> IngestionMetaResponse {
+    IngestionMetaResponse(
+        file: IngestedFileMeta(
+            id: fileID,
+            filenameOriginal: "\(fileID).txt",
+            path: "/\(fileID).txt",
+            mimeOriginal: "text/plain",
+            sizeBytes: 12,
+            sha256: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            category: nil,
+            sourceUrl: nil,
+            sourceMetadata: nil,
+            createdAt: "2026-01-10T00:00:00Z",
+            updatedAt: updatedAt,
+            deletedAt: nil
+        ),
+        job: IngestionJob(
+            status: status,
+            stage: stage,
+            errorCode: nil,
+            errorMessage: nil,
+            userMessage: nil,
+            progress: nil,
+            attempts: 0,
+            updatedAt: updatedAt
+        ),
+        derivatives: [
+            IngestionDerivative(
+                id: "\(fileID)-d1",
+                kind: "text_original",
+                storageKey: "derivatives/\(fileID)/text_original",
+                mime: "text/plain",
+                sizeBytes: 12
+            )
+        ],
         recommendedViewer: recommendedViewer
     )
 }
