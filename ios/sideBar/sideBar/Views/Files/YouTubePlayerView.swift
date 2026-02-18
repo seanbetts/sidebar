@@ -1,6 +1,11 @@
 import SwiftUI
 import WebKit
 import os
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 #if os(macOS)
 // MARK: - YouTubePlayerView
@@ -18,6 +23,10 @@ public struct YouTubePlayerView: NSViewRepresentable {
         let configuration = WKWebViewConfiguration()
         if #available(macOS 10.12, *) {
             configuration.mediaTypesRequiringUserActionForPlayback = []
+        }
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
+        if #available(macOS 14.0, *) {
+            configuration.preferences.isElementFullscreenEnabled = true
         }
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.userContentController = makeUserContentController(coordinator: context.coordinator)
@@ -69,6 +78,31 @@ public struct YouTubePlayerView: NSViewRepresentable {
             notifyLoadState(false)
         }
 
+        public func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            if let externalURL = externalURL(for: navigationAction) {
+                openExternally(externalURL)
+                decisionHandler(.cancel)
+                return
+            }
+            decisionHandler(.allow)
+        }
+
+        public func webView(
+            _ webView: WKWebView,
+            createWebViewWith configuration: WKWebViewConfiguration,
+            for navigationAction: WKNavigationAction,
+            windowFeatures: WKWindowFeatures
+        ) -> WKWebView? {
+            if let url = navigationAction.request.url {
+                openExternally(url)
+            }
+            return nil
+        }
+
         public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             logger.error("YouTube webview provisional navigation failed: \(error.localizedDescription, privacy: .public)")
             notifyLoadState(false)
@@ -85,6 +119,28 @@ public struct YouTubePlayerView: NSViewRepresentable {
         func notifyLoadState(_ isLoaded: Bool) {
             Task { @MainActor in
                 onLoadStateChange(isLoaded)
+            }
+        }
+
+        private func externalURL(for navigationAction: WKNavigationAction) -> URL? {
+            let isLinkActivation = navigationAction.navigationType == .linkActivated
+            let isNewWindow = navigationAction.targetFrame == nil
+            guard isLinkActivation || isNewWindow else { return nil }
+            guard let url = navigationAction.request.url,
+                  let host = url.host?.lowercased(),
+                  YouTubeURLPolicy.isYouTubeHost(host) else {
+                return nil
+            }
+            let isNoCookieEmbed = (host == "youtube-nocookie.com" || host.hasSuffix(".youtube-nocookie.com"))
+                && url.path.hasPrefix("/embed/")
+            guard !isNoCookieEmbed else { return nil }
+            return url
+        }
+
+        private func openExternally(_ url: URL) {
+            let externalURL = YouTubeURLPolicy.preferredExternalURL(from: url)
+            Task { @MainActor in
+                NSWorkspace.shared.open(externalURL)
             }
         }
     }
@@ -142,7 +198,7 @@ public struct YouTubePlayerView: NSViewRepresentable {
           <body>
             <iframe
               src=\"\(escaped)\"
-              allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\"
+              allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share\"
               allowfullscreen
               onload="window.sideBarYouTubeIframeLoaded && window.sideBarYouTubeIframeLoaded()"
             ></iframe>
@@ -175,6 +231,10 @@ public struct YouTubePlayerView: UIViewRepresentable {
         configuration.allowsInlineMediaPlayback = true
         if #available(iOS 10.0, *) {
             configuration.mediaTypesRequiringUserActionForPlayback = []
+        }
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
+        if #available(iOS 15.0, *) {
+            configuration.preferences.isElementFullscreenEnabled = true
         }
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.userContentController = makeUserContentController(coordinator: context.coordinator)
@@ -228,6 +288,31 @@ public struct YouTubePlayerView: UIViewRepresentable {
             notifyLoadState(false)
         }
 
+        public func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            if let externalURL = externalURL(for: navigationAction) {
+                openExternally(externalURL)
+                decisionHandler(.cancel)
+                return
+            }
+            decisionHandler(.allow)
+        }
+
+        public func webView(
+            _ webView: WKWebView,
+            createWebViewWith configuration: WKWebViewConfiguration,
+            for navigationAction: WKNavigationAction,
+            windowFeatures: WKWindowFeatures
+        ) -> WKWebView? {
+            if let url = navigationAction.request.url {
+                openExternally(url)
+            }
+            return nil
+        }
+
         public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             logger.error("YouTube webview provisional navigation failed: \(error.localizedDescription, privacy: .public)")
             notifyLoadState(false)
@@ -244,6 +329,28 @@ public struct YouTubePlayerView: UIViewRepresentable {
         func notifyLoadState(_ isLoaded: Bool) {
             Task { @MainActor in
                 onLoadStateChange(isLoaded)
+            }
+        }
+
+        private func externalURL(for navigationAction: WKNavigationAction) -> URL? {
+            let isLinkActivation = navigationAction.navigationType == .linkActivated
+            let isNewWindow = navigationAction.targetFrame == nil
+            guard isLinkActivation || isNewWindow else { return nil }
+            guard let url = navigationAction.request.url,
+                  let host = url.host?.lowercased(),
+                  YouTubeURLPolicy.isYouTubeHost(host) else {
+                return nil
+            }
+            let isNoCookieEmbed = (host == "youtube-nocookie.com" || host.hasSuffix(".youtube-nocookie.com"))
+                && url.path.hasPrefix("/embed/")
+            guard !isNoCookieEmbed else { return nil }
+            return url
+        }
+
+        private func openExternally(_ url: URL) {
+            let externalURL = YouTubeURLPolicy.preferredExternalURL(from: url)
+            Task { @MainActor in
+                UIApplication.shared.open(externalURL)
             }
         }
     }
@@ -297,7 +404,7 @@ public struct YouTubePlayerView: UIViewRepresentable {
           <body>
             <iframe
               src=\"\(escaped)\"
-              allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\"
+              allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share\"
               allowfullscreen
               onload="window.sideBarYouTubeIframeLoaded && window.sideBarYouTubeIframeLoaded()"
             ></iframe>

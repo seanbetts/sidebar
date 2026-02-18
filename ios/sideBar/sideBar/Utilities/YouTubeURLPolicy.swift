@@ -53,14 +53,32 @@ enum YouTubeURLPolicy {
 
     nonisolated static func embedURL(videoId: String) -> URL? {
         guard let trimmed = videoId.trimmedOrNil else { return nil }
-        let query = "playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
+        let query = "playsinline=1&rel=0&modestbranding=1&fs=1&origin=https://www.youtube-nocookie.com"
         return URL(string: "https://www.youtube-nocookie.com/embed/\(trimmed)?\(query)")
+    }
+
+    nonisolated static func watchURL(videoId: String) -> URL? {
+        guard let trimmed = videoId.trimmedOrNil else { return nil }
+        return URL(string: "https://www.youtube.com/watch?v=\(trimmed)")
+    }
+
+    nonisolated static func preferredExternalURL(from url: URL) -> URL {
+        guard let host = url.host?.lowercased() else { return url }
+        let isNoCookieHost = host == "youtube-nocookie.com" || host.hasSuffix(".youtube-nocookie.com")
+        guard isNoCookieHost else { return url }
+        guard let videoId = extractVideoId(from: url.absoluteString),
+              let watchURL = watchURL(videoId: videoId) else {
+            return url
+        }
+        return watchURL
     }
 
     nonisolated static func isYouTubeHost(_ rawHost: String) -> Bool {
         let host = rawHost.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         return host == "youtube.com" ||
             host.hasSuffix(".youtube.com") ||
+            host == "youtube-nocookie.com" ||
+            host.hasSuffix(".youtube-nocookie.com") ||
             host == "youtu.be" ||
             host.hasSuffix(".youtu.be")
     }
