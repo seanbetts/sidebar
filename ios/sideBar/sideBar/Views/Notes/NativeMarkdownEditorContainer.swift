@@ -32,6 +32,11 @@ struct NativeMarkdownEditorContainer: View {
                         isEditing = true
                     }
                 )
+                .onKeyPress(.escape) {
+                    guard !isEditing, editorViewModel.currentNoteId != nil else { return .ignored }
+                    environment.emitShortcutAction(.closeItem)
+                    return .handled
+                }
             }
         }
         .onAppear {
