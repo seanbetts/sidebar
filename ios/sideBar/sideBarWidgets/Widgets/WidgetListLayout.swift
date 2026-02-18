@@ -124,6 +124,7 @@ struct HomeWidgetSignedOutView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
