@@ -49,6 +49,14 @@ struct SidebarCommands: Commands {
             }
         }
 
+        CommandGroup(after: .newItem) {
+            Button("Close Item") {
+                guard shouldHandleCloseItem else { return }
+                environment.emitShortcutAction(.closeItem)
+            }
+            .keyboardShortcut(.escape, modifiers: [])
+        }
+
         CommandMenu("Tasks") {
             Button("Complete Task") {
                 environment.emitShortcutAction(.completeTask)
@@ -82,6 +90,16 @@ struct SidebarCommands: Commands {
             }
             .keyboardShortcut(.delete, modifiers: [.command, .shift])
         }
+    }
+
+    private var shouldHandleCloseItem: Bool {
+        if environment.websitesViewModel.active != nil {
+            return true
+        }
+        if environment.notesViewModel.activeNote != nil, environment.notesEditorViewModel.isReadOnly {
+            return true
+        }
+        return false
     }
 }
 #endif
