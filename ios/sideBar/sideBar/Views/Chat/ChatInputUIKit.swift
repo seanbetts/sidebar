@@ -8,6 +8,7 @@ import UIKit
 struct ChatInputUIKitView: UIViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
+    let resetToken: UUID
     let isEnabled: Bool
     let isSendEnabled: Bool
     let minHeight: CGFloat
@@ -112,6 +113,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
         attachButton.alpha = isEnabled ? 1.0 : 0.45
         attachButton.tintColor = isEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
         placeholderLabel.isHidden = !text.trimmed.isEmpty
+        context.coordinator.applyResetIfNeeded(token: resetToken, textView: textView)
         context.coordinator.applySizing(for: textView)
     }
 
@@ -119,6 +121,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
         Coordinator(
             text: $text,
             measuredHeight: $measuredHeight,
+            initialResetToken: resetToken,
             minHeight: minHeight,
             maxHeight: maxHeight,
             onSend: onSend,
@@ -129,6 +132,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
     final class Coordinator: NSObject, UITextViewDelegate {
         private var text: Binding<String>
         private var measuredHeight: Binding<CGFloat>
+        private var resetToken: UUID
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
         private let onSend: () -> Void
@@ -141,6 +145,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
         init(
             text: Binding<String>,
             measuredHeight: Binding<CGFloat>,
+            initialResetToken: UUID,
             minHeight: CGFloat,
             maxHeight: CGFloat,
             onSend: @escaping () -> Void,
@@ -148,10 +153,20 @@ struct ChatInputUIKitView: UIViewRepresentable {
         ) {
             self.text = text
             self.measuredHeight = measuredHeight
+            resetToken = initialResetToken
             self.minHeight = minHeight
             self.maxHeight = maxHeight
             self.onSend = onSend
             self.onAttach = onAttach
+        }
+
+        func applyResetIfNeeded(token: UUID, textView: UITextView) {
+            guard resetToken != token else { return }
+            resetToken = token
+            textView.isScrollEnabled = false
+            textView.setContentOffset(.zero, animated: false)
+            let end = textView.endOfDocument
+            textView.selectedTextRange = textView.textRange(from: end, to: end)
         }
 
         func textViewDidChange(_ textView: UITextView) {
