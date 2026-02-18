@@ -137,7 +137,7 @@ public struct WebsitesView: View {
                     renameValue = environment.websitesViewModel.active?.title ?? ""
                     isRenameDialogPresented = true
                 },
-                .copy {
+                .copyMarkdown {
                     copyWebsiteContent()
                 },
                 SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {

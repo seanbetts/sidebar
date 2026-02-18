@@ -21,7 +21,7 @@ extension WebsitesDetailView {
             Button {
                 copyWebsiteContent()
             } label: {
-                Label("Copy", systemImage: "doc.on.doc")
+                Label("Copy Markdown", systemImage: "doc.on.doc")
             }
             Button {
                 copyWebsiteTitle()
@@ -99,7 +99,7 @@ extension WebsitesDetailView {
                 renameValue = viewModel.active?.title ?? ""
                 isRenameDialogPresented = true
             },
-            .copy {
+            .copyMarkdown {
                 copyWebsiteContent()
             },
             SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
