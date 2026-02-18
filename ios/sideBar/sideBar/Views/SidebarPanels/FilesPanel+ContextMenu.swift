@@ -22,7 +22,7 @@ extension FilesPanelView {
             .rename {
                 beginRename(for: item)
             },
-            .copy {
+            .copyText {
                 Task {
                     await selectFileForAction(item)
                     copySelectedFileContent()

@@ -16,6 +16,20 @@ final class SidebarMenuItemTests: XCTestCase {
         XCTAssertTrue(didInvoke)
     }
 
+    func testCopyTextMenuItemFactoryUsesExpectedMetadata() {
+        var didInvoke = false
+        let item = SidebarMenuItem.copyText {
+            didInvoke = true
+        }
+
+        XCTAssertEqual(item.title, "Copy Text")
+        XCTAssertEqual(item.systemImage, "doc.on.doc")
+        XCTAssertNil(item.role)
+
+        item.handler()
+        XCTAssertTrue(didInvoke)
+    }
+
     func testShareMenuItemFactoryUsesExpectedMetadata() {
         var didInvoke = false
         let item = SidebarMenuItem.share {
