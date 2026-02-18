@@ -41,6 +41,9 @@ struct ChatMessageRow: View {
             HStack(spacing: 6) {
                 Text(message.role == .assistant ? assistantDisplayName : "You")
                     .font(DesignTokens.Typography.captionSemibold)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
                     .padding(.horizontal, DesignTokens.Spacing.xs)
                     .padding(.vertical, DesignTokens.Spacing.xxs)
                     .background(rolePillBackground)
