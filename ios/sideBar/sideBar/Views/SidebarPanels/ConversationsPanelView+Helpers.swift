@@ -1,5 +1,38 @@
 import SwiftUI
 import sideBarShared
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
+
+enum ConversationCopyFormatter {
+    static func formattedTranscript(
+        title: String,
+        messages: [Message],
+        assistantName: String
+    ) -> String {
+        let conversationTitle = title.trimmed.isEmpty ? "Chat" : title.trimmed
+        let lines = messages.compactMap { message -> String? in
+            let trimmedContent = message.content.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            let fallbackError = message.error?.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            ) ?? ""
+            let text = trimmedContent.isEmpty ? fallbackError : trimmedContent
+            guard !text.isEmpty else {
+                return nil
+            }
+            let speaker = message.role == .assistant ? assistantName : "You"
+            return "\(speaker):\n\(text)"
+        }
+        guard !lines.isEmpty else {
+            return ""
+        }
+        return "Chat: \(conversationTitle)\n\n" + lines.joined(separator: "\n\n")
+    }
+}
 
 extension ConversationsPanelView {
     var header: some View {
@@ -61,9 +94,7 @@ extension ConversationsPanelView {
                         SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
                             ConversationRow(
                                 conversation: conversation,
-                                isSelected: viewModel.selectedConversationId == conversation.id,
-                                onRename: { beginRename(conversation) },
-                                onDelete: { presentDelete(conversation) }
+                                isSelected: viewModel.selectedConversationId == conversation.id
                             )
                         }
                         .onTapGesture {
@@ -74,6 +105,7 @@ extension ConversationsPanelView {
                             onLeading: { beginRename(conversation) },
                             onDelete: { presentDelete(conversation) }
                         )
+                        .platformContextMenu(items: conversationContextMenuItemsList(for: conversation))
                     }
                 }
             }
@@ -189,5 +221,79 @@ extension ConversationsPanelView {
         }
         let index = title.index(title.startIndex, offsetBy: maxLength)
         return "\(title[..<index])..."
+    }
+
+    func conversationContextMenuItemsList(for conversation: Conversation) -> [SidebarMenuItem] {
+        [
+            .rename {
+                beginRename(conversation)
+            },
+            .copy {
+                Task { await copyConversation(conversation) }
+            },
+            .delete {
+                presentDelete(conversation)
+            }
+        ]
+    }
+
+    @MainActor
+    private func copyConversation(_ conversation: Conversation) async {
+        guard let text = await transcriptText(for: conversation), !text.isEmpty else {
+            environment.toastCenter.show(message: "Copy unavailable")
+            return
+        }
+        copyConversationTextToClipboard(text)
+    }
+
+    @MainActor
+    private func transcriptText(for conversation: Conversation) async -> String? {
+        let assistantName = environment.settingsViewModel.assistantDisplayName
+        if viewModel.selectedConversationId == conversation.id && !viewModel.messages.isEmpty {
+            return ConversationCopyFormatter.formattedTranscript(
+                title: conversation.title,
+                messages: viewModel.messages,
+                assistantName: assistantName
+            )
+        }
+
+        do {
+            try await viewModel.chatStore.loadConversation(id: conversation.id)
+        } catch {
+            return nil
+        }
+
+        guard let detail = viewModel.chatStore.conversationDetails[conversation.id] else {
+            return nil
+        }
+        return ConversationCopyFormatter.formattedTranscript(
+            title: detail.title,
+            messages: detail.messages,
+            assistantName: assistantName
+        )
+    }
+
+    private func copyConversationTextToClipboard(_ text: String) {
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = text
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == text {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == text {
+                pasteboard.string = ""
+            }
+            #endif
+        }
     }
 }

@@ -1,6 +1,7 @@
 import Combine
 import CoreLocation
 import Foundation
+import MapKit
 
 /// Abstraction for location authorization and coordinate updates.
 public protocol CurrentLocationProviding: AnyObject {
@@ -90,28 +91,32 @@ public protocol CurrentLocationLabelResolving {
     func resolveLabel(for location: CLLocation) async -> String?
 }
 
-/// CLGeocoder-backed location label resolver.
+/// MapKit-backed location label resolver.
 public final class CLGeocoderLocationLabelResolver: CurrentLocationLabelResolving {
-    private let geocoder: CLGeocoder
-
-    public init(geocoder: CLGeocoder = CLGeocoder()) {
-        self.geocoder = geocoder
+    public init() {
     }
 
     public func resolveLabel(for location: CLLocation) async -> String? {
+        guard let request = MKReverseGeocodingRequest(location: location) else {
+            return nil
+        }
         do {
-            let placemarks = try await geocoder.reverseGeocodeLocation(location)
-            guard let placemark = placemarks.first else {
+            let mapItems = try await request.mapItems
+            guard let mapItem = mapItems.first else {
                 return nil
             }
-            let locality = placemark.locality
-                ?? placemark.subAdministrativeArea
-                ?? placemark.administrativeArea
-            let country = placemark.country ?? placemark.isoCountryCode
-            if let locality, let country {
-                return "\(locality), \(country)"
+            let city = mapItem.addressRepresentations?.cityName
+            let region = mapItem.addressRepresentations?.regionName
+            if let city, let region {
+                return "\(city), \(region)"
             }
-            return locality ?? country
+            if let city {
+                return city
+            }
+            if let region {
+                return region
+            }
+            return mapItem.address?.shortAddress ?? mapItem.address?.fullAddress
         } catch {
             return nil
         }

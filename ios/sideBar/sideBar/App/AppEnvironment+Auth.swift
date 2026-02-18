@@ -58,7 +58,7 @@ extension AppEnvironment {
             #endif
             Task { [weak self] in
                 if self?.authState == .active {
-                    await self?.consumePendingShares()
+                    await self?.consumeExtensionEvents()
                 }
             }
         } else {
@@ -81,10 +81,10 @@ extension AppEnvironment {
     }
 
     public func consumeExtensionEvents() async {
+        guard authState == .active else { return }
         await consumePendingShares()
         let events = ExtensionEventStore.shared.consumeEvents()
         guard !events.isEmpty else { return }
-        guard authState == .active else { return }
         let websiteEvents = events.filter { $0.type == .websiteSaved }
         guard !websiteEvents.isEmpty else { return }
         for event in websiteEvents {

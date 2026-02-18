@@ -1,6 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import type { Span } from '@opentelemetry/api';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createProxyHandler } from '$lib/server/apiProxy';
 
@@ -45,6 +45,14 @@ describe('createProxyHandler', () => {
 			...overrides,
 			locals: overrides.locals ? { ...locals, ...overrides.locals } : locals
 		}) as RequestEvent;
+
+	beforeEach(() => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
 
 	it('proxies GET requests and returns JSON', async () => {
 		const fetchMock = vi

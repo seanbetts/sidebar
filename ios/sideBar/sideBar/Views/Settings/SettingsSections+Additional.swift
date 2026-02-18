@@ -29,16 +29,6 @@ struct SkillsSettingsView: View {
                         .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
-            if viewModel.isSavingSkills {
-                Section {
-                    HStack(spacing: 8) {
-                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                        Text("Saving skills…")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
             if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
                 Section {
                     Text("No skills available.")

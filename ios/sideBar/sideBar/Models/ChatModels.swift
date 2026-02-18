@@ -5,6 +5,12 @@ import sideBarShared
 public enum MessageRole: String, Codable {
     case user
     case assistant
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = (try? container.decode(String.self))?.lowercased() ?? ""
+        self = MessageRole(rawValue: rawValue) ?? .assistant
+    }
 }
 
 /// Represents a message status enum.
@@ -13,6 +19,23 @@ public enum MessageStatus: String, Codable {
     case streaming
     case complete
     case error
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = (try? container.decode(String.self))?.lowercased() ?? ""
+        switch rawValue {
+        case MessageStatus.pending.rawValue:
+            self = .pending
+        case MessageStatus.streaming.rawValue:
+            self = .streaming
+        case MessageStatus.error.rawValue:
+            self = .error
+        case "completed":
+            self = .complete
+        default:
+            self = .complete
+        }
+    }
 }
 
 /// Represents a tool call struct.
@@ -68,6 +91,49 @@ public struct Message: Codable, Identifiable {
     public let timestamp: String
     /// The error value.
     public let error: String?
+
+    public init(
+        id: String,
+        role: MessageRole,
+        content: String,
+        status: MessageStatus,
+        toolCalls: [ToolCall]?,
+        needsNewline: Bool?,
+        timestamp: String,
+        error: String?
+    ) {
+        self.id = id
+        self.role = role
+        self.content = content
+        self.status = status
+        self.toolCalls = toolCalls
+        self.needsNewline = needsNewline
+        self.timestamp = timestamp
+        self.error = error
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case role
+        case content
+        case status
+        case toolCalls
+        case needsNewline
+        case timestamp
+        case error
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        role = (try? container.decode(MessageRole.self, forKey: .role)) ?? .assistant
+        content = (try? container.decode(String.self, forKey: .content)) ?? ""
+        status = (try? container.decode(MessageStatus.self, forKey: .status)) ?? .complete
+        toolCalls = try? container.decode([ToolCall].self, forKey: .toolCalls)
+        needsNewline = try? container.decodeIfPresent(Bool.self, forKey: .needsNewline)
+        timestamp = (try? container.decode(String.self, forKey: .timestamp)) ?? ""
+        error = try? container.decodeIfPresent(String.self, forKey: .error)
+    }
 }
 
 /// Represents a conversation struct.

@@ -54,7 +54,7 @@ extension NotesPanelView {
 
     var archivedNodes: [FileNode] {
         let nodes = viewModel.archivedTree?.children ?? []
-        return normalizeArchivedNodes(nodes)
+        return sortNodesForDisplay(normalizeArchivedNodes(nodes))
     }
 
     var archivedEmptyStateText: String {
@@ -165,8 +165,8 @@ extension NotesPanelView {
             if leftIsDirectory {
                 return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
-            let leftRecency = lhs.modified ?? lhs.created ?? 0
-            let rightRecency = rhs.modified ?? rhs.created ?? 0
+            let leftRecency = lhs.created ?? 0
+            let rightRecency = rhs.created ?? 0
             if leftRecency != rightRecency {
                 return leftRecency > rightRecency
             }

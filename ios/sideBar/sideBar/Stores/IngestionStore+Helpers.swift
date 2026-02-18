@@ -264,12 +264,25 @@ extension IngestionStore {
         guard let current = activeMeta else {
             return true
         }
-        return current.file.pinned != incoming.file.pinned
+        return current.file.id != incoming.file.id
+            || current.file.filenameOriginal != incoming.file.filenameOriginal
+            || current.file.updatedAt != incoming.file.updatedAt
+            || current.file.path != incoming.file.path
+            || current.file.mimeOriginal != incoming.file.mimeOriginal
+            || current.file.sizeBytes != incoming.file.sizeBytes
+            || current.file.pinned != incoming.file.pinned
             || current.file.pinnedOrder != incoming.file.pinnedOrder
             || current.job.updatedAt != incoming.job.updatedAt
             || current.job.status != incoming.job.status
             || current.job.stage != incoming.job.stage
-            || current.derivatives.count != incoming.derivatives.count
+            || current.recommendedViewer != incoming.recommendedViewer
+            || !current.derivatives.elementsEqual(incoming.derivatives, by: { lhs, rhs in
+                lhs.id == rhs.id
+                    && lhs.kind == rhs.kind
+                    && lhs.storageKey == rhs.storageKey
+                    && lhs.mime == rhs.mime
+                    && lhs.sizeBytes == rhs.sizeBytes
+            })
     }
 
     func persistListCache() {

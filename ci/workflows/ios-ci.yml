@@ -23,6 +23,7 @@ on:
       - "scripts/validate_ios_test_lane.py"
       - "scripts/check_ios_quality_gates.py"
       - "scripts/ios_quality_gates.json"
+      - "scripts/check-ios-warning-gate.sh"
       - "scripts/test-ios.sh"
       - ".github/workflows/ios-ci.yml"
 

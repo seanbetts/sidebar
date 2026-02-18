@@ -49,16 +49,6 @@ struct UserSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            if viewModel.isSavingSystem {
-                Section {
-                    HStack(spacing: 8) {
-                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                        Text("Saving settings...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
             if let saveError = viewModel.systemSaveError {
                 Section {
                     Text(saveError)
@@ -289,7 +279,8 @@ struct AgentSettingsView: View {
 
     @ViewBuilder
     private var agentSettingsFooter: some View {
-        Text("Managed by the assistant. User edits are disabled for these fields.")
+        Text("Managed by \(assistantDisplayName). User edits are disabled for these fields.")
+            .padding(.top, DesignTokens.Spacing.sm)
             .foregroundStyle(.secondary)
     }
 

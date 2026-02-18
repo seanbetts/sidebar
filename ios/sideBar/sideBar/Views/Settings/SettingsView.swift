@@ -37,19 +37,22 @@ public struct SettingsView: View {
             SettingsTabsView(
                 viewModel: environment.settingsViewModel,
                 memoriesViewModel: environment.memoriesViewModel,
-                settingsBackground: settingsBackground
+                settingsBackground: settingsBackground,
+                savePillState: savePillState
             )
             #endif
         }
+        #if os(macOS)
         .overlay(alignment: .bottom) {
             if let savePillState {
                 SettingsSaveStatusPill(state: savePillState)
                     .padding(.horizontal, DesignTokens.Spacing.lg)
-                    .padding(.bottom, savePillBottomPadding)
+                    .padding(.bottom, 20)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .allowsHitTesting(false)
             }
         }
+        #endif
         .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: savePillState)
         .onAppear {
             updateSavePillState()
@@ -83,14 +86,6 @@ public struct SettingsView: View {
 
     private var saveStatusSignature: String {
         "\(isSavingAnySettings)|\(currentSaveError ?? "")"
-    }
-
-    private var savePillBottomPadding: CGFloat {
-        #if os(iOS)
-        return 84
-        #else
-        return 20
-        #endif
     }
 
     private func updateSavePillState() {
@@ -180,7 +175,7 @@ private struct SettingsSaveStatusPill: View {
                     .tint(.primary)
             case .saved:
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(DesignTokens.Colors.success)
+                    .foregroundStyle(.primary)
             case .error:
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(DesignTokens.Colors.error)
@@ -348,6 +343,7 @@ private struct SettingsTabsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var memoriesViewModel: MemoriesViewModel
     let settingsBackground: Color
+    let savePillState: SettingsSavePillState?
     @State private var hasLoaded = false
 
     var body: some View {
@@ -379,7 +375,15 @@ private struct SettingsTabsView: View {
         }
         .padding(DesignTokens.Spacing.md)
         .background(settingsBackground)
-        .ignoresSafeArea()
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let savePillState {
+                SettingsSaveStatusPill(state: savePillState)
+                    .padding(.horizontal, DesignTokens.Spacing.lg)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
+        }
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true

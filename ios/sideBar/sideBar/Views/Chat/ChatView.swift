@@ -155,12 +155,6 @@ private struct ChatDetailView: View {
                         isFileImporterPresented = true
                     }
                 )
-                if !environment.isNetworkAvailable {
-                    Text("Chat is unavailable offline. You can still read past conversations.")
-                        .font(DesignTokens.Typography.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
             }
             .padding(.horizontal, DesignTokens.Spacing.md)
             .padding(.bottom, DesignTokens.Spacing.md)

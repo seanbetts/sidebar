@@ -3,12 +3,12 @@ import XCTest
 
 @MainActor
 final class NotesPanelTreeHelpersTests: XCTestCase {
-    func testMainNodesSortUnpinnedNotesByMostRecentModified() async {
+    func testMainNodesSortUnpinnedNotesByMostRecentCreated() async {
         let tree = FileTree(children: [
-            makeFile(path: "note-old", name: "Old.md", modified: 100),
-            makeFile(path: "note-pinned", name: "Pinned.md", modified: 400, pinned: true, pinnedOrder: 0),
-            makeFile(path: "note-new", name: "New.md", modified: 300),
-            makeFile(path: "note-mid", name: "Mid.md", modified: 200)
+            makeFile(path: "note-old", name: "Old.md", created: 100, modified: 500),
+            makeFile(path: "note-pinned", name: "Pinned.md", created: 400, modified: 900, pinned: true, pinnedOrder: 0),
+            makeFile(path: "note-new", name: "New.md", created: 300, modified: 200),
+            makeFile(path: "note-mid", name: "Mid.md", created: 200, modified: 800)
         ])
         let viewModel = makeViewModel(tree: tree)
 
@@ -20,8 +20,8 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
 
     func testPinnedItemsUsePinnedOrderNotRecency() async {
         let tree = FileTree(children: [
-            makeFile(path: "pin-first", name: "First.md", modified: 100, pinned: true, pinnedOrder: 0),
-            makeFile(path: "pin-second", name: "Second.md", modified: 500, pinned: true, pinnedOrder: 2)
+            makeFile(path: "pin-first", name: "First.md", created: 100, modified: 100, pinned: true, pinnedOrder: 0),
+            makeFile(path: "pin-second", name: "Second.md", created: 500, modified: 500, pinned: true, pinnedOrder: 2)
         ])
         let viewModel = makeViewModel(tree: tree)
 
@@ -31,7 +31,7 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertEqual(panel.pinnedItems.map(\.id), ["pin-first", "pin-second"])
     }
 
-    func testMainNodesSortFolderChildrenByMostRecent() async {
+    func testMainNodesSortFolderChildrenByMostRecentCreated() async {
         let folder = FileNode(
             name: "Work",
             path: "folder:Work",
@@ -40,8 +40,8 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
             modified: nil,
             created: nil,
             children: [
-                makeFile(path: "work-old", name: "WorkOld.md", modified: 100),
-                makeFile(path: "work-new", name: "WorkNew.md", modified: 200)
+                makeFile(path: "work-old", name: "WorkOld.md", created: 100, modified: 900),
+                makeFile(path: "work-new", name: "WorkNew.md", created: 200, modified: 1)
             ],
             expanded: nil,
             pinned: nil,
@@ -59,8 +59,22 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertEqual(children.map(\.path), ["work-new", "work-old"])
     }
 
+    func testArchivedNodesSortByMostRecentCreated() async {
+        let archivedTree = FileTree(children: [
+            makeFile(path: "arch-old", name: "Old.md", created: 100, modified: 500, archived: true),
+            makeFile(path: "arch-new", name: "New.md", created: 300, modified: 200, archived: true),
+            makeFile(path: "arch-mid", name: "Mid.md", created: 200, modified: 800, archived: true)
+        ])
+        let viewModel = makeViewModel(tree: FileTree(children: []), archivedTree: archivedTree)
+
+        await viewModel.loadArchivedTree()
+        let panel = NotesPanelView(viewModel: viewModel)
+
+        XCTAssertEqual(panel.archivedNodes.map(\.path), ["arch-new", "arch-mid", "arch-old"])
+    }
+
     func testNoteContextMenuIncludesShareTextForFileItems() {
-        let tree = FileTree(children: [makeFile(path: "note-1", name: "Note.md", modified: 100)])
+        let tree = FileTree(children: [makeFile(path: "note-1", name: "Note.md", created: 100)])
         let viewModel = makeViewModel(tree: tree)
         let panel = NotesPanelView(viewModel: viewModel)
         let item = FileNodeItem(id: "note-1", name: "Note.md", type: .file)
@@ -83,8 +97,8 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
 }
 
 @MainActor
-private func makeViewModel(tree: FileTree) -> NotesViewModel {
-    let api = StaticTreeNotesAPI(tree: tree)
+private func makeViewModel(tree: FileTree, archivedTree: FileTree = FileTree(children: [])) -> NotesViewModel {
+    let api = StaticTreeNotesAPI(tree: tree, archivedTree: archivedTree)
     let store = NotesStore(api: api, cache: InMemoryCacheClient())
     return NotesViewModel(
         api: api,
@@ -97,9 +111,11 @@ private func makeViewModel(tree: FileTree) -> NotesViewModel {
 private func makeFile(
     path: String,
     name: String,
-    modified: Double?,
+    created: Double?,
+    modified: Double? = nil,
     pinned: Bool = false,
-    pinnedOrder: Int? = nil
+    pinnedOrder: Int? = nil,
+    archived: Bool = false
 ) -> FileNode {
     FileNode(
         name: name,
@@ -107,12 +123,12 @@ private func makeFile(
         type: .file,
         size: nil,
         modified: modified,
-        created: nil,
+        created: created,
         children: nil,
         expanded: nil,
         pinned: pinned,
         pinnedOrder: pinnedOrder,
-        archived: false,
+        archived: archived,
         folderMarker: nil
     )
 }
@@ -129,9 +145,11 @@ private enum StaticTreeAPIError: Error {
 
 private final class StaticTreeNotesAPI: NotesProviding {
     private let tree: FileTree
+    private let archivedTree: FileTree
 
-    init(tree: FileTree) {
+    init(tree: FileTree, archivedTree: FileTree) {
         self.tree = tree
+        self.archivedTree = archivedTree
     }
 
     func listTree() async throws -> FileTree {
@@ -141,7 +159,7 @@ private final class StaticTreeNotesAPI: NotesProviding {
     func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
         _ = limit
         _ = offset
-        return FileTree(children: [])
+        return archivedTree
     }
 
     func getNote(id: String) async throws -> NotePayload {

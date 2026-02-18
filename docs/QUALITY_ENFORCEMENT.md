@@ -843,6 +843,12 @@ Hard quality gates are enforced via:
 python scripts/check_ios_quality_gates.py --xcresult <path-to-xcresult>
 ```
 
+Local warning-only gate (pre-push compatible) is enforced via:
+
+```bash
+scripts/check-ios-warning-gate.sh
+```
+
 Current hard thresholds (first-party targets only):
 - `sideBar.app >= 40%`
 - `sideBarShared.framework >= 80%`
@@ -851,6 +857,7 @@ Current hard thresholds (first-party targets only):
 - `sideBar Safari Extension.appex >= 15%`
 - minimum `12` deterministic UI journey tests (template launch/example tests excluded)
 - coverage may not regress by more than `1.0` percentage point below baseline
+- scoped warnings for first-party iOS targets must be `0` (`warning_gate.max_warnings`)
 
 ---
 

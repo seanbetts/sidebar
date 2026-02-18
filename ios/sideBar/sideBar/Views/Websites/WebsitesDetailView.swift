@@ -37,6 +37,9 @@ struct WebsitesDetailView: View {
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .websites else { return }
             switch event.action {
+            case .closeItem:
+                guard viewModel.active != nil else { return }
+                viewModel.clearSelection()
             case .renameItem:
                 guard viewModel.active != nil else { return }
                 renameValue = displayTitle

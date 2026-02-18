@@ -35,7 +35,6 @@ public final class CurrentLocationViewModel: ObservableObject {
 
     deinit {
         resolveLabelTask?.cancel()
-        provider.stopUpdatingLocation()
     }
 
     /// Starts location tracking flow.

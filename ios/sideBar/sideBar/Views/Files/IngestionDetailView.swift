@@ -57,8 +57,15 @@ public struct IngestionDetailView: View {
     }
 
     private var shouldShowProcessingState: Bool {
-        let status = meta.job.status ?? ""
-        return status != "ready" && status != "failed" && status != "canceled"
+        Self.shouldShowProcessingState(status: meta.job.status, errorMessage: viewModel.errorMessage)
+    }
+
+    static func shouldShowProcessingState(status: String?, errorMessage: String?) -> Bool {
+        if let errorMessage, !errorMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return false
+        }
+        let normalizedStatus = (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalizedStatus != "ready" && normalizedStatus != "failed" && normalizedStatus != "canceled"
     }
 
     private var processingDetail: String? {
