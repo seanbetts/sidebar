@@ -180,7 +180,7 @@ private struct SettingsSaveStatusPill: View {
                     .tint(.primary)
             case .saved:
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(DesignTokens.Colors.success)
+                    .foregroundStyle(.primary)
             case .error:
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(DesignTokens.Colors.error)
