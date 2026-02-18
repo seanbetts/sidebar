@@ -120,6 +120,12 @@ public enum TasksUtils {
         }
     }
 
+    public static func sortForToday(_ tasks: [TaskItem]) -> [TaskItem] {
+        tasks.sorted { lhs, rhs in
+            compareForToday(lhs, rhs)
+        }
+    }
+
     public static func taskSubtitle(
         task: TaskItem,
         selection: TaskSelection,
@@ -171,6 +177,51 @@ public enum TasksUtils {
             return dateA < dateB
         }
         return lhs.title.lowercased() < rhs.title.lowercased()
+    }
+
+    static func compareForToday(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
+        if lhs.isPreview != rhs.isPreview {
+            return lhs.isPreview == false
+        }
+        let lhsRank = todayUrgencyRank(lhs)
+        let rhsRank = todayUrgencyRank(rhs)
+        if lhsRank != rhsRank {
+            return lhsRank < rhsRank
+        }
+        let lhsTitle = lhs.title.lowercased()
+        let rhsTitle = rhs.title.lowercased()
+        if lhsTitle != rhsTitle {
+            return lhsTitle < rhsTitle
+        }
+        let lhsDate = parseTaskDate(lhs)
+        let rhsDate = parseTaskDate(rhs)
+        if lhsDate != rhsDate {
+            switch (lhsDate, rhsDate) {
+            case let (left?, right?):
+                return left < right
+            case (nil, _?):
+                return false
+            case (_?, nil):
+                return true
+            case (nil, nil):
+                break
+            }
+        }
+        return lhs.id < rhs.id
+    }
+
+    private static func todayUrgencyRank(_ task: TaskItem) -> Int {
+        guard let date = parseTaskDate(task) else {
+            return 2
+        }
+        let diff = dayDiff(from: startOfDay(Date()), to: date)
+        if diff < 0 {
+            return 0
+        }
+        if diff == 0 {
+            return 1
+        }
+        return 2
     }
 
     static func startOfDay(_ date: Date) -> Date {

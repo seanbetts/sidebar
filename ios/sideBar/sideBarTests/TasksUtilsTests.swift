@@ -179,6 +179,26 @@ final class TasksUtilsTests: XCTestCase {
         XCTAssertEqual(result.map(\.id), ["1", "1-next"])
     }
 
+    func testSortForTodayRanksOverdueThenToday() async {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        let overdue = TaskItem(id: "overdue", title: "Zeta", status: "open", deadline: TasksUtils.formatDateKey(yesterday))
+        let dueToday = TaskItem(id: "today", title: "Alpha", status: "open", deadline: TasksUtils.formatDateKey(Date()))
+        let future = TaskItem(id: "future", title: "Beta", status: "open", deadline: TasksUtils.formatDateKey(tomorrow))
+
+        let result = TasksUtils.sortForToday([future, dueToday, overdue])
+        XCTAssertEqual(result.map(\.id), ["overdue", "today", "future"])
+    }
+
+    func testSortForTodayUsesNameWithinSameUrgencyBucket() async {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let overdueZ = TaskItem(id: "z", title: "Zulu", status: "open", deadline: TasksUtils.formatDateKey(yesterday))
+        let overdueA = TaskItem(id: "a", title: "Alpha", status: "open", deadline: TasksUtils.formatDateKey(yesterday))
+
+        let result = TasksUtils.sortForToday([overdueZ, overdueA])
+        XCTAssertEqual(result.map(\.id), ["a", "z"])
+    }
+
     // MARK: - Section builders
 
     func testBuildTodaySectionsBucketsTasksByGroup() async {
