@@ -28,4 +28,14 @@ final class IngestionDetailViewTests: XCTestCase {
             )
         )
     }
+
+    func testShouldShowProcessingStateFalseWhenViewerStateIsAvailable() {
+        XCTAssertFalse(
+            IngestionDetailView.shouldShowProcessingState(
+                status: "processing",
+                errorMessage: nil,
+                hasViewerState: true
+            )
+        )
+    }
 }

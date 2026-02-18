@@ -29,4 +29,22 @@ extension AppEnvironment: RealtimeEventHandler {
             await ingestionViewModel.applyFileJobEvent(payload)
         }
     }
+
+    public func handleTaskEvent(_ payload: RealtimePayload<TaskRealtimeRecord>) {
+        Task {
+            await tasksViewModel.applyTaskRealtimeEvent(payload)
+        }
+    }
+
+    public func handleTaskProjectEvent(_ payload: RealtimePayload<TaskProjectRealtimeRecord>) {
+        Task {
+            await tasksViewModel.applyTaskProjectRealtimeEvent(payload)
+        }
+    }
+
+    public func handleTaskGroupEvent(_ payload: RealtimePayload<TaskGroupRealtimeRecord>) {
+        Task {
+            await tasksViewModel.applyTaskGroupRealtimeEvent(payload)
+        }
+    }
 }

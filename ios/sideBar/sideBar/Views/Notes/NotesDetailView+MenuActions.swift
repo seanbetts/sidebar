@@ -49,7 +49,7 @@ struct NoteActionsMenuButton: UIViewRepresentable {
         let moveAction = UIAction(title: "Move", image: UIImage(systemName: "arrow.forward.folder")) { _ in
             onMove()
         }
-        let copyAction = UIAction(title: "Copy", image: UIImage(systemName: "doc.on.doc")) { _ in
+        let copyAction = UIAction(title: "Copy Markdown", image: UIImage(systemName: "doc.on.doc")) { _ in
             onCopy()
         }
         let shareAction = UIAction(title: "Share Text", image: UIImage(systemName: "square.and.arrow.up.on.square")) { _ in
@@ -171,7 +171,7 @@ extension NotesDetailView {
                 moveSelection = currentFolderPath
                 isMoveSheetPresented = true
             },
-            .copy {
+            .copyMarkdown {
                 copyMarkdown()
             },
             .shareText {
@@ -214,7 +214,7 @@ extension NotesDetailView {
         Button {
             copyMarkdown()
         } label: {
-            Label("Copy", systemImage: "doc.on.doc")
+            Label("Copy Markdown", systemImage: "doc.on.doc")
         }
         Button {
             shareMarkdown()
@@ -238,17 +238,27 @@ extension NotesDetailView {
         }
     }
 
+    @ViewBuilder
     var closeButton: some View {
-        HeaderActionButton(
-            systemName: "xmark",
-            accessibilityLabel: "Close note",
-            action: {
-                requestCloseNote()
-            },
-            isDisabled: viewModel.activeNote == nil
-        )
-        #if os(macOS)
-        .keyboardShortcut(.escape, modifiers: [])
-        #endif
+        if editorViewModel.isReadOnly {
+            HeaderActionButton(
+                systemName: "xmark",
+                accessibilityLabel: "Close note",
+                action: {
+                    requestCloseNote()
+                },
+                isDisabled: viewModel.activeNote == nil
+            )
+            .keyboardShortcut(.escape, modifiers: [])
+        } else {
+            HeaderActionButton(
+                systemName: "xmark",
+                accessibilityLabel: "Close note",
+                action: {
+                    requestCloseNote()
+                },
+                isDisabled: viewModel.activeNote == nil
+            )
+        }
     }
 }

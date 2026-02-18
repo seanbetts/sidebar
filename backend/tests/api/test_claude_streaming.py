@@ -208,6 +208,120 @@ async def test_stream_with_tools_emits_memory_event():
 
 
 @pytest.mark.asyncio
+async def test_stream_with_tools_emits_assistant_identity_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="assistant_identity"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"name": "Navigator"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class AssistantIdentityToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            return "Update Assistant Identity"
+
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {
+                "success": True,
+                "data": {
+                    "assistant_identity": {"name": "Navigator"},
+                    "assistant_identity_meta": {
+                        "updated_at": "2026-02-18T00:00:00Z",
+                        "version": 3,
+                    },
+                },
+            }
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=AssistantIdentityToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert {
+        "type": "assistant_identity_updated",
+        "data": {
+            "assistant_identity": {"name": "Navigator"},
+            "assistant_identity_meta": {
+                "updated_at": "2026-02-18T00:00:00Z",
+                "version": 3,
+            },
+        },
+    } in output
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_emits_assistant_soul_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="assistant_soul"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"purpose": "Help"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class AssistantSoulToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            return "Reset Assistant Soul"
+
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {
+                "success": True,
+                "data": {
+                    "assistant_soul": {"purpose": "Help"},
+                    "assistant_soul_meta": {
+                        "updated_at": "2026-02-18T00:00:00Z",
+                        "version": 4,
+                    },
+                },
+            }
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=AssistantSoulToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert {
+        "type": "assistant_soul_updated",
+        "data": {
+            "assistant_soul": {"purpose": "Help"},
+            "assistant_soul_meta": {
+                "updated_at": "2026-02-18T00:00:00Z",
+                "version": 4,
+            },
+        },
+    } in output
+
+
+@pytest.mark.asyncio
 async def test_stream_with_tools_emits_note_pinned_event():
     events = [
         SimpleNamespace(

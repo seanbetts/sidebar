@@ -12,6 +12,9 @@ extension SupabaseRealtimeAdapter {
         let shouldResubscribeWebsites = currentUserId != userId || websitesChannel == nil
         let shouldResubscribeIngestedFiles = currentUserId != userId || ingestedFilesChannel == nil
         let shouldResubscribeFileJobs = currentUserId != userId || fileJobsChannel == nil
+        let shouldResubscribeTasks = currentUserId != userId || tasksChannel == nil
+        let shouldResubscribeTaskProjects = currentUserId != userId || taskProjectsChannel == nil
+        let shouldResubscribeTaskGroups = currentUserId != userId || taskGroupsChannel == nil
         currentUserId = userId
         if shouldResubscribeNotes {
             await subscribeToNotes(userId: userId)
@@ -25,6 +28,15 @@ extension SupabaseRealtimeAdapter {
         if shouldResubscribeFileJobs {
             await subscribeToFileJobs()
         }
+        if shouldResubscribeTasks {
+            await subscribeToTasks(userId: userId)
+        }
+        if shouldResubscribeTaskProjects {
+            await subscribeToTaskProjects(userId: userId)
+        }
+        if shouldResubscribeTaskGroups {
+            await subscribeToTaskGroups(userId: userId)
+        }
     }
 
     func stopInternal() async {
@@ -32,16 +44,25 @@ extension SupabaseRealtimeAdapter {
         websitesSubscriptions.removeAll()
         ingestedFilesSubscriptions.removeAll()
         fileJobsSubscriptions.removeAll()
+        tasksSubscriptions.removeAll()
+        taskProjectsSubscriptions.removeAll()
+        taskGroupsSubscriptions.removeAll()
         let channels: [RealtimeChannelV2] = [
             notesChannel,
             websitesChannel,
             ingestedFilesChannel,
-            fileJobsChannel
+            fileJobsChannel,
+            tasksChannel,
+            taskProjectsChannel,
+            taskGroupsChannel
         ].compactMap { $0 }
         notesChannel = nil
         websitesChannel = nil
         ingestedFilesChannel = nil
         fileJobsChannel = nil
+        tasksChannel = nil
+        taskProjectsChannel = nil
+        taskGroupsChannel = nil
         await tokenStore.set(nil)
         currentUserId = nil
         for channel in channels {
@@ -268,6 +289,165 @@ extension SupabaseRealtimeAdapter {
             // Expected during auth transitions
         } catch {
             logger.error("File jobs subscription failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    func subscribeToTasks(userId: String) async {
+        if let existingChannel = tasksChannel {
+            await client.realtimeV2.removeChannel(existingChannel)
+        }
+        tasksSubscriptions.removeAll()
+        let channel = client.realtimeV2.channel("public:\(RealtimeTable.tasks)")
+        let filter = "user_id=eq.\(userId)"
+        tasksSubscriptions.append(
+            channel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: RealtimeTable.tasks,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleTaskInsert(SupabaseInsertActionAdapter(action: action))
+                }
+            }
+        )
+        tasksSubscriptions.append(
+            channel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: RealtimeTable.tasks,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleTaskUpdate(SupabaseUpdateActionAdapter(action: action))
+                }
+            }
+        )
+        tasksSubscriptions.append(
+            channel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: RealtimeTable.tasks,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleTaskDelete(SupabaseDeleteActionAdapter(action: action))
+                }
+            }
+        )
+        tasksChannel = channel
+        do {
+            try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
+        } catch {
+            logger.error("Tasks subscription failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    func subscribeToTaskProjects(userId: String) async {
+        if let existingChannel = taskProjectsChannel {
+            await client.realtimeV2.removeChannel(existingChannel)
+        }
+        taskProjectsSubscriptions.removeAll()
+        let channel = client.realtimeV2.channel("public:\(RealtimeTable.taskProjects)")
+        let filter = "user_id=eq.\(userId)"
+        taskProjectsSubscriptions.append(
+            channel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: RealtimeTable.taskProjects,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleTaskProjectInsert(SupabaseInsertActionAdapter(action: action))
+                }
+            }
+        )
+        taskProjectsSubscriptions.append(
+            channel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: RealtimeTable.taskProjects,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleTaskProjectUpdate(SupabaseUpdateActionAdapter(action: action))
+                }
+            }
+        )
+        taskProjectsSubscriptions.append(
+            channel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: RealtimeTable.taskProjects,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleTaskProjectDelete(SupabaseDeleteActionAdapter(action: action))
+                }
+            }
+        )
+        taskProjectsChannel = channel
+        do {
+            try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
+        } catch {
+            logger.error("Task projects subscription failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    func subscribeToTaskGroups(userId: String) async {
+        if let existingChannel = taskGroupsChannel {
+            await client.realtimeV2.removeChannel(existingChannel)
+        }
+        taskGroupsSubscriptions.removeAll()
+        let channel = client.realtimeV2.channel("public:\(RealtimeTable.taskGroups)")
+        let filter = "user_id=eq.\(userId)"
+        taskGroupsSubscriptions.append(
+            channel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: RealtimeTable.taskGroups,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleTaskGroupInsert(SupabaseInsertActionAdapter(action: action))
+                }
+            }
+        )
+        taskGroupsSubscriptions.append(
+            channel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: RealtimeTable.taskGroups,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleTaskGroupUpdate(SupabaseUpdateActionAdapter(action: action))
+                }
+            }
+        )
+        taskGroupsSubscriptions.append(
+            channel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: RealtimeTable.taskGroups,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleTaskGroupDelete(SupabaseDeleteActionAdapter(action: action))
+                }
+            }
+        )
+        taskGroupsChannel = channel
+        do {
+            try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
+        } catch {
+            logger.error("Task groups subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

@@ -52,15 +52,6 @@ public struct WebsitesView: View {
                         if environment.websitesViewModel.active != nil, !isPhone {
                             websiteToolbarMenu
                         }
-                        if isPhone {
-                            Button {
-                                environment.emitShortcutAction(.openScratchpad)
-                            } label: {
-                                Image(systemName: "square.and.pencil")
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Scratchpad")
-                        }
                     }
                 }
             }
@@ -146,7 +137,7 @@ public struct WebsitesView: View {
                     renameValue = environment.websitesViewModel.active?.title ?? ""
                     isRenameDialogPresented = true
                 },
-                .copy {
+                .copyMarkdown {
                     copyWebsiteContent()
                 },
                 SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {

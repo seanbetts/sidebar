@@ -41,12 +41,18 @@ struct ChatMessageRow: View {
             HStack(spacing: 6) {
                 Text(message.role == .assistant ? assistantDisplayName : "You")
                     .font(DesignTokens.Typography.captionSemibold)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
                     .padding(.horizontal, DesignTokens.Spacing.xs)
                     .padding(.vertical, DesignTokens.Spacing.xxs)
                     .background(rolePillBackground)
                     .foregroundStyle(rolePillText)
                     .overlay(rolePillBorder)
                     .clipShape(Capsule())
+                if showsHeaderThinkingIndicator {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                }
                 Spacer()
                 HStack(spacing: DesignTokens.Spacing.xxs) {
                     if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
@@ -71,29 +77,9 @@ struct ChatMessageRow: View {
                 .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
 
-            if showsThinkingPlaceholder {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                    Text("Thinking...")
-                        .font(.subheadline)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
-                }
+            SideBarMarkdown(text: message.content, style: .chat)
+                .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                SideBarMarkdown(text: message.content, style: .chat)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if showsStreamingThinkingFooter {
-                HStack(spacing: DesignTokens.Spacing.xxs) {
-                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                    Text("Thinking...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
 
             if message.status == .error, let error = message.error {
                 Text(error)
@@ -177,8 +163,8 @@ struct ChatMessageRow: View {
         ChatMessagePresentation.showsThinkingPlaceholder(for: message)
     }
 
-    private var showsStreamingThinkingFooter: Bool {
-        ChatMessagePresentation.showsStreamingThinkingFooter(for: message)
+    private var showsHeaderThinkingIndicator: Bool {
+        ChatMessagePresentation.showsHeaderThinkingIndicator(for: message)
     }
 
     private func copyMessage() {
@@ -225,8 +211,8 @@ enum ChatMessagePresentation {
         return message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    static func showsStreamingThinkingFooter(for message: Message) -> Bool {
-        isAssistantStreaming(message) && !showsThinkingPlaceholder(for: message)
+    static func showsHeaderThinkingIndicator(for message: Message) -> Bool {
+        isAssistantStreaming(message)
     }
 
     private static func isAssistantStreaming(_ message: Message) -> Bool {

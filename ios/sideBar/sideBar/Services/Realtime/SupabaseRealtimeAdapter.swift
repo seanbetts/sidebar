@@ -12,6 +12,9 @@ public protocol RealtimeEventHandler: AnyObject {
     func handleWebsiteEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>)
     func handleIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>)
     func handleFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>)
+    func handleTaskEvent(_ payload: RealtimePayload<TaskRealtimeRecord>)
+    func handleTaskProjectEvent(_ payload: RealtimePayload<TaskProjectRealtimeRecord>)
+    func handleTaskGroupEvent(_ payload: RealtimePayload<TaskGroupRealtimeRecord>)
 }
 
 /// Bridges Supabase realtime events into app payloads.
@@ -28,10 +31,16 @@ public protocol RealtimeEventHandler: AnyObject {
     var websitesChannel: RealtimeChannelV2?
     var ingestedFilesChannel: RealtimeChannelV2?
     var fileJobsChannel: RealtimeChannelV2?
+    var tasksChannel: RealtimeChannelV2?
+    var taskProjectsChannel: RealtimeChannelV2?
+    var taskGroupsChannel: RealtimeChannelV2?
     var notesSubscriptions: [ObservationToken] = []
     var websitesSubscriptions: [ObservationToken] = []
     var ingestedFilesSubscriptions: [ObservationToken] = []
     var fileJobsSubscriptions: [ObservationToken] = []
+    var tasksSubscriptions: [ObservationToken] = []
+    var taskProjectsSubscriptions: [ObservationToken] = []
+    var taskGroupsSubscriptions: [ObservationToken] = []
     var transitionTask: Task<Void, Never>?
 
     public init(config: EnvironmentConfig, handler: RealtimeEventHandler? = nil) {
@@ -225,7 +234,7 @@ extension SupabaseRealtimeAdapter {
         }
     }
 
-    private static func makeDecoder() -> JSONDecoder {
+    static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return decoder
@@ -281,6 +290,7 @@ extension SupabaseRealtimeAdapter {
             self?.handler?.handleFileJobEvent(payload)
         }
     }
+
 }
 
 actor AccessTokenStore {

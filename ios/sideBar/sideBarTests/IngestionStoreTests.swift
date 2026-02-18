@@ -7,8 +7,8 @@ import sideBarShared
 final class IngestionStoreTests: XCTestCase {
     func testApplyIngestedFileEventCachesList() async {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
 
         let payload = RealtimePayload<IngestedFileRealtimeRecord>(
             eventType: .insert,
@@ -41,9 +41,9 @@ final class IngestionStoreTests: XCTestCase {
 
     func testApplyIngestedFileEventPreservesRecommendedViewerForExistingFile() async {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
-        let existing = makeItem(
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let existing = IngestionStoreTestsSupport.makeItem(
             id: "f1",
             mimeOriginal: "application/pdf",
             pinned: true,
@@ -83,8 +83,8 @@ final class IngestionStoreTests: XCTestCase {
 
     func testApplyFileJobEventUpdatesJobStatus() async {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
 
         let insert = RealtimePayload<IngestedFileRealtimeRecord>(
             eventType: .insert,
@@ -134,8 +134,8 @@ final class IngestionStoreTests: XCTestCase {
 
     func testLocalUploadsPersistAndReload() async {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
         let item = IngestionListItem(
             file: IngestedFileMeta(
                 id: "local-1",
@@ -168,14 +168,14 @@ final class IngestionStoreTests: XCTestCase {
 
         store.addLocalUpload(item)
 
-        let reloaded = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let reloaded = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
         XCTAssertTrue(reloaded.items.contains { $0.file.id == "local-1" })
     }
 
     func testApplyIngestedFileEventSkipsWebsiteTranscriptRecords() async {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
 
         let payload = RealtimePayload<IngestedFileRealtimeRecord>(
             eventType: .insert,
@@ -208,8 +208,8 @@ final class IngestionStoreTests: XCTestCase {
 
     func testApplyIngestedFileEventUpdateRemovesSoftDeletedRecord() async {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
 
         let insertPayload = RealtimePayload<IngestedFileRealtimeRecord>(
             eventType: .insert,
@@ -266,18 +266,18 @@ final class IngestionStoreTests: XCTestCase {
 
     func testLoadListFiltersTranscriptAndDeletedRowsFromAPI() async throws {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let api = MockIngestionAPI(
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let api = IngestionStoreTestsSupport.MockIngestionAPI(
             listResponse: IngestionListResponse(
                 items: [
-                    makeItem(id: "keep-1"),
-                    makeItem(
+                    IngestionStoreTestsSupport.makeItem(id: "keep-1"),
+                    IngestionStoreTestsSupport.makeItem(
                         id: "drop-transcript",
                         filename: "YouTube transcript",
                         sourceMetadata: ["website_transcript": AnyCodable(true)]
                     ),
-                    makeItem(id: "drop-deleted", deletedAt: "2024-01-01T12:01:00Z"),
-                    makeItem(id: "drop-ai", path: "/files/drop-ai/ai/ai.md")
+                    IngestionStoreTestsSupport.makeItem(id: "drop-deleted", deletedAt: "2024-01-01T12:01:00Z"),
+                    IngestionStoreTestsSupport.makeItem(id: "drop-ai", path: "/files/drop-ai/ai/ai.md")
                 ]
             )
         )
@@ -290,13 +290,13 @@ final class IngestionStoreTests: XCTestCase {
 
     func testLoadListFiltersTranscriptRowsFromCacheBeforeRefresh() async throws {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
         cache.set(
             key: CacheKeys.ingestionList,
             value: IngestionListResponse(
                 items: [
-                    makeItem(id: "keep-cached"),
-                    makeItem(
+                    IngestionStoreTestsSupport.makeItem(id: "keep-cached"),
+                    IngestionStoreTestsSupport.makeItem(
                         id: "drop-cached-transcript",
                         filename: "YouTube transcript",
                         sourceMetadata: ["website_transcript": AnyCodable(true)]
@@ -305,7 +305,7 @@ final class IngestionStoreTests: XCTestCase {
             ),
             ttlSeconds: 600
         )
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
 
         try await store.loadList(force: false)
 
@@ -314,8 +314,8 @@ final class IngestionStoreTests: XCTestCase {
 
     func testApplySyncFileInfersRecommendedViewerWhenMissing() async {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
         let file = IngestedFileMeta(
             id: "f-sync",
             filenameOriginal: "sync.pdf",
@@ -340,16 +340,16 @@ final class IngestionStoreTests: XCTestCase {
 
     func testApplyMetaUpdateSwitchesActiveMetaWhenFileIDChangesButShapeMatches() async {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
-        let first = makeMeta(
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let first = IngestionStoreTestsSupport.makeMeta(
             fileID: "file-1",
             status: "processing",
             stage: "extracting",
             updatedAt: "2026-01-10T00:00:00Z",
             recommendedViewer: nil
         )
-        let second = makeMeta(
+        let second = IngestionStoreTestsSupport.makeMeta(
             fileID: "file-2",
             status: "processing",
             stage: "extracting",
@@ -365,16 +365,16 @@ final class IngestionStoreTests: XCTestCase {
 
     func testApplyMetaUpdateUpdatesWhenRecommendedViewerChanges() async {
         let cache = TestCacheClient()
-        let defaults = makeDefaults()
-        let store = IngestionStore(api: MockIngestionAPI(), cache: cache, userDefaults: defaults)
-        let initial = makeMeta(
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let store = IngestionStore(api: IngestionStoreTestsSupport.MockIngestionAPI(), cache: cache, userDefaults: defaults)
+        let initial = IngestionStoreTestsSupport.makeMeta(
             fileID: "file-1",
             status: "ready",
             stage: "ready",
             updatedAt: "2026-01-10T00:00:00Z",
             recommendedViewer: nil
         )
-        let updated = makeMeta(
+        let updated = IngestionStoreTestsSupport.makeMeta(
             fileID: "file-1",
             status: "ready",
             stage: "ready",
@@ -387,168 +387,4 @@ final class IngestionStoreTests: XCTestCase {
 
         XCTAssertEqual(store.activeMeta?.recommendedViewer, "text_original")
     }
-}
-
-private struct MockIngestionAPI: IngestionProviding {
-    let listResponse: IngestionListResponse?
-
-    init(listResponse: IngestionListResponse? = nil) {
-        self.listResponse = listResponse
-    }
-
-    func list() async throws -> IngestionListResponse {
-        if let listResponse {
-            return listResponse
-        }
-        throw MockError.forced
-    }
-
-    func getMeta(fileId: String) async throws -> IngestionMetaResponse {
-        _ = fileId
-        throw MockError.forced
-    }
-
-    func getContent(fileId: String, kind: String, range: String?) async throws -> Data {
-        _ = fileId
-        _ = kind
-        _ = range
-        throw MockError.forced
-    }
-
-    func cancel(fileId: String) async throws {
-        _ = fileId
-        throw MockError.forced
-    }
-
-    func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
-        _ = fileId
-        _ = pinned
-        _ = clientUpdatedAt
-        throw MockError.forced
-    }
-
-    func delete(fileId: String, clientUpdatedAt: String?) async throws {
-        _ = fileId
-        _ = clientUpdatedAt
-        throw MockError.forced
-    }
-
-    func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws {
-        _ = fileId
-        _ = filename
-        _ = clientUpdatedAt
-        throw MockError.forced
-    }
-
-    func ingestYouTube(url: String) async throws -> String {
-        _ = url
-        throw MockError.forced
-    }
-
-    func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
-        _ = payload
-        throw MockError.forced
-    }
-}
-
-private func makeDefaults() -> UserDefaults {
-    let defaults = UserDefaults(suiteName: "IngestionStoreTests") ?? .standard
-    defaults.removePersistentDomain(forName: "IngestionStoreTests")
-    return defaults
-}
-
-private enum MockError: Error {
-    case forced
-}
-
-private func makeItem(
-    id: String,
-    filename: String = "doc.txt",
-    path: String = "/doc.txt",
-    mimeOriginal: String = "text/plain",
-    sourceMetadata: [String: AnyCodable]? = nil,
-    sourceUrl: String? = nil,
-    pinned: Bool? = nil,
-    pinnedOrder: Int? = nil,
-    status: String = "processing",
-    stage: String = "extracting",
-    recommendedViewer: String? = nil,
-    deletedAt: String? = nil
-) -> IngestionListItem {
-    IngestionListItem(
-        file: IngestedFileMeta(
-            id: id,
-            filenameOriginal: filename,
-            path: path,
-            mimeOriginal: mimeOriginal,
-            sizeBytes: 12,
-            sha256: nil,
-            pinned: pinned,
-            pinnedOrder: pinnedOrder,
-            category: nil,
-            sourceUrl: sourceUrl,
-            sourceMetadata: sourceMetadata,
-            createdAt: "2024-01-01T12:00:00Z",
-            updatedAt: "2024-01-01T12:00:00Z",
-            deletedAt: deletedAt
-        ),
-        job: IngestionJob(
-            status: status,
-            stage: stage,
-            errorCode: nil,
-            errorMessage: nil,
-            userMessage: nil,
-            progress: nil,
-            attempts: 0,
-            updatedAt: "2024-01-01T12:00:00Z"
-        ),
-        recommendedViewer: recommendedViewer
-    )
-}
-
-private func makeMeta(
-    fileID: String,
-    status: String,
-    stage: String,
-    updatedAt: String,
-    recommendedViewer: String?
-) -> IngestionMetaResponse {
-    IngestionMetaResponse(
-        file: IngestedFileMeta(
-            id: fileID,
-            filenameOriginal: "\(fileID).txt",
-            path: "/\(fileID).txt",
-            mimeOriginal: "text/plain",
-            sizeBytes: 12,
-            sha256: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            category: nil,
-            sourceUrl: nil,
-            sourceMetadata: nil,
-            createdAt: "2026-01-10T00:00:00Z",
-            updatedAt: updatedAt,
-            deletedAt: nil
-        ),
-        job: IngestionJob(
-            status: status,
-            stage: stage,
-            errorCode: nil,
-            errorMessage: nil,
-            userMessage: nil,
-            progress: nil,
-            attempts: 0,
-            updatedAt: updatedAt
-        ),
-        derivatives: [
-            IngestionDerivative(
-                id: "\(fileID)-d1",
-                kind: "text_original",
-                storageKey: "derivatives/\(fileID)/text_original",
-                mime: "text/plain",
-                sizeBytes: 12
-            )
-        ],
-        recommendedViewer: recommendedViewer
-    )
 }

@@ -1,7 +1,4 @@
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 
 public struct TasksView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -30,7 +27,10 @@ public struct TasksView: View {
             .onChange(of: scenePhase) {
                 guard scenePhase == .active else { return }
                 Task {
-                    await environment.tasksViewModel.load(selection: environment.tasksViewModel.selection, force: true)
+                    await environment.tasksViewModel.load(
+                        selection: environment.tasksViewModel.preferredLoadSelection,
+                        force: true
+                    )
                     await environment.tasksViewModel.loadCounts(force: true)
                 }
             }
@@ -38,19 +38,6 @@ public struct TasksView: View {
             #if !os(macOS)
             .navigationTitle("Tasks")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if isCompact, isPhone {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                            environment.emitShortcutAction(.openScratchpad)
-                        } label: {
-                            Image(systemName: "square.and.pencil")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Scratchpad")
-                    }
-                }
-            }
             #endif
     }
 
@@ -59,14 +46,6 @@ public struct TasksView: View {
         return false
         #else
         return horizontalSizeClass == .compact
-        #endif
-    }
-
-    private var isPhone: Bool {
-        #if os(iOS)
-        return UIDevice.current.userInterfaceIdiom == .phone
-        #else
-        return false
         #endif
     }
 

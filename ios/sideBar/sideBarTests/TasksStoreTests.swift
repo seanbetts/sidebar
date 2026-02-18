@@ -147,6 +147,70 @@ final class TasksStoreTests: XCTestCase {
         XCTAssertEqual(api.listCallCount, 0)
     }
 
+    func testSearchLoadPreservesGroupsAndProjectsWhenResponseOmitsMetadata() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
+
+        let group = TaskGroup(id: "g1", title: "Work", updatedAt: nil)
+        let project = TaskProject(id: "p1", title: "Roadmap", groupId: "g1", status: "active", updatedAt: nil)
+        api.listResponsesByScope["today"] = TaskListResponse(
+            scope: "today",
+            generatedAt: nil,
+            tasks: [TaskItem(id: "today-1", title: "Today task", status: "open")],
+            projects: [project],
+            groups: [group]
+        )
+        api.searchResponse = TaskListResponse(
+            scope: "search",
+            generatedAt: nil,
+            tasks: [TaskItem(id: "search-1", title: "Search result", status: "open")],
+            projects: nil,
+            groups: nil
+        )
+
+        await store.load(selection: .today, force: true)
+        await store.load(selection: .search(query: "search"), force: true)
+
+        XCTAssertEqual(store.groups, [group])
+        XCTAssertEqual(store.projects, [project])
+        XCTAssertEqual(store.tasks.map(\.id), ["search-1"])
+    }
+
+    func testCachedListSkipsBackgroundRefreshWhenServerUnreachable() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let networkStatus = TestNetworkStatus(isNetworkAvailable: true, isServerReachable: false)
+        let store = TasksStore(
+            api: api,
+            cache: cache,
+            offlineStore: offlineStore,
+            networkStatus: networkStatus
+        )
+        let cachedList = TaskListResponse(
+            scope: "today",
+            generatedAt: nil,
+            tasks: [TaskItem(id: "cached-1", title: "Cached", status: "open")],
+            projects: nil,
+            groups: nil
+        )
+        cache.set(
+            key: CacheKeys.tasksList(selectionKey: TaskSelection.today.cacheKey),
+            value: cachedList,
+            ttlSeconds: 60
+        )
+
+        await store.load(selection: .today)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(store.tasks.map(\.id), ["cached-1"])
+        XCTAssertEqual(api.listCallCount, 0)
+    }
+
     func testCachedListRefreshDoesNotOverrideNewerSelection() async {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
@@ -249,11 +313,13 @@ final class TasksStoreTests: XCTestCase {
 @MainActor
 private final class TestNetworkStatus: NetworkStatusProviding {
     var isNetworkAvailable: Bool
+    var isServerReachable: Bool
     var isOffline: Bool
 
-    init(isNetworkAvailable: Bool, isOffline: Bool = false) {
+    init(isNetworkAvailable: Bool, isOffline: Bool = false, isServerReachable: Bool = true) {
         self.isNetworkAvailable = isNetworkAvailable
         self.isOffline = isOffline
+        self.isServerReachable = isServerReachable
     }
 }
 
@@ -262,6 +328,7 @@ private final class StubTasksAPI: TasksProviding {
     var countsCallCount: Int = 0
     var listResponsesByScope: [String: TaskListResponse] = [:]
     var listResponseDelaysByScope: [String: UInt64] = [:]
+    var searchResponse = TaskListResponse(scope: "search", generatedAt: nil, tasks: [], projects: nil, groups: nil)
     var countsResponseDelayNanoseconds: UInt64 = 0
     var countsResponse = TaskCountsResponse(
         generatedAt: nil,
@@ -288,7 +355,8 @@ private final class StubTasksAPI: TasksProviding {
     }
 
     func search(query: String) async throws -> TaskListResponse {
-        throw StubError.unused
+        _ = query
+        return searchResponse
     }
 
     func counts() async throws -> TaskCountsResponse {

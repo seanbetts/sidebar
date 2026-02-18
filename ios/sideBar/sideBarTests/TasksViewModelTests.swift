@@ -98,6 +98,34 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(store.tasks.first?.isPreview, true)
     }
 
+    func testCreateTaskQueuesWhenServerIsUnreachable() async {
+        let api = TasksViewModelAPIStub()
+        let sut = makeSUT(api: api, networkAvailable: true, serverReachable: false)
+        let viewModel = sut.viewModel
+        let store = sut.store
+        let writeQueue = sut.writeQueue
+        await viewModel.load(selection: .today)
+        viewModel.startNewTask()
+
+        await viewModel.createTask(title: "Queued while server down", notes: "", dueDate: nil, listId: nil)
+        await eventually {
+            writeQueue.pendingCount >= 1
+        }
+
+        XCTAssertEqual(api.applyCallCount, 0, "Should queue when backend is unreachable")
+        XCTAssertNil(viewModel.newTaskDraft)
+        XCTAssertEqual(store.tasks.first?.title, "Queued while server down")
+        XCTAssertEqual(store.tasks.first?.isPreview, true)
+    }
+
+    func testPreferredLoadSelectionDefaultsToTodayWhenSelectionIsNone() async {
+        let api = TasksViewModelAPIStub()
+        let sut = makeSUT(api: api, networkAvailable: true)
+
+        XCTAssertEqual(sut.viewModel.selection, .none)
+        XCTAssertEqual(sut.viewModel.preferredLoadSelection, .today)
+    }
+
     // MARK: - Load with different selections
 
     func testLoadUpcomingSelectionSetsSelectionAndFetchesList() async {
@@ -229,8 +257,9 @@ final class TasksViewModelTests: XCTestCase {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Old", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Draft", status: "open", notes: "Updated", updatedAt: "u2")])
-        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Draft", status: "open", notes: "Updated", updatedAt: "u2")])
+        let updatedTask = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Updated", updatedAt: "u2")
+        api.enqueueListResponse(scope: "today", tasks: [updatedTask])
+        api.enqueueListResponse(scope: "today", tasks: [updatedTask])
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
@@ -369,12 +398,16 @@ final class TasksViewModelTests: XCTestCase {
 
     private func makeSUT(
         api: TasksViewModelAPIStub,
-        networkAvailable: Bool
+        networkAvailable: Bool,
+        serverReachable: Bool = true
     ) -> SUT {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let networkStatus = TasksTestNetworkStatus(isNetworkAvailable: networkAvailable)
+        let networkStatus = TasksTestNetworkStatus(
+            isNetworkAvailable: networkAvailable,
+            isServerReachable: serverReachable
+        )
         let store = TasksStore(
             api: api,
             cache: cache,

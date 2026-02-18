@@ -1,9 +1,6 @@
 import Foundation
 import sideBarShared
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 
 extension WebsitesPanelView {
     func open(item: WebsiteItem) {
@@ -48,7 +45,13 @@ extension WebsitesPanelView {
             r2FaviconPublicBaseUrl: appEnvironment.container.config.r2FaviconPublicBaseUrl
         )
         .staggeredAppear(index: index, isActive: listAppeared)
-        .onTapGesture { open(item: item) }
+        .onTapGesture {
+            #if os(iOS)
+            toggleQuickActions(for: item)
+            #else
+            open(item: item)
+            #endif
+        }
         .platformContextMenu(items: websiteContextMenuItemsList(for: item))
         .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
 
@@ -187,18 +190,6 @@ extension WebsitesPanelView {
         #endif
     }
 
-    var isCompactPhone: Bool {
-        isCompact && isPhone
-    }
-
-    private var isPhone: Bool {
-        #if os(iOS)
-        return UIDevice.current.userInterfaceIdiom == .phone
-        #else
-        return false
-        #endif
-    }
-
     var isSaveErrorPresented: Binding<Bool> {
         Binding(
             get: { saveErrorMessage != nil },
@@ -238,5 +229,123 @@ extension WebsitesPanelView {
                 saveErrorMessage = viewModel.saveErrorMessage ?? "Failed to save website. Please try again."
             }
         }
+    }
+
+    var quickActionItem: WebsiteItem? {
+        guard let quickActionWebsiteId else { return nil }
+        return viewModel.items.first { $0.id == quickActionWebsiteId }
+    }
+
+    func toggleQuickActions(for item: WebsiteItem) {
+        if selection == item.id {
+            withAnimation {
+                quickActionWebsiteId = quickActionWebsiteId == item.id ? nil : item.id
+            }
+            return
+        }
+
+        withAnimation {
+            quickActionWebsiteId = item.id
+        }
+        open(item: item)
+    }
+
+    func hideQuickActions() {
+        withAnimation {
+            quickActionWebsiteId = nil
+        }
+    }
+
+    func togglePinnedFromQuickActions(for item: WebsiteItem) {
+        Task {
+            await viewModel.setPinned(id: item.id, pinned: !item.pinned)
+        }
+    }
+
+    func toggleArchivedFromQuickActions(for item: WebsiteItem) {
+        hideQuickActions()
+        Task {
+            await viewModel.setArchived(id: item.id, archived: !item.archived)
+        }
+    }
+
+    func promptDeleteFromQuickActions(for item: WebsiteItem) {
+        hideQuickActions()
+        deleteTarget = item
+    }
+}
+
+struct WebsiteQuickActionsPill: View {
+    let isPinned: Bool
+    let isArchived: Bool
+    let onPinToggle: () -> Void
+    let onArchiveToggle: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            actionButton(
+                title: isPinned ? "Unpin" : "Pin",
+                icon: isPinned ? "pin.slash" : "pin",
+                role: nil,
+                action: onPinToggle
+            )
+            actionDivider
+            actionButton(
+                title: isArchived ? "Unarchive" : "Archive",
+                icon: isArchived ? "archivebox.fill" : "archivebox",
+                role: nil,
+                action: onArchiveToggle
+            )
+            actionDivider
+            actionButton(
+                title: "Delete",
+                icon: "trash",
+                role: .destructive,
+                action: onDelete
+            )
+        }
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.vertical, DesignTokens.Spacing.xsPlus)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.35), lineWidth: 1)
+        )
+        .appShadow(
+            color: Color.black.opacity(0.12),
+            radius: DesignTokens.Spacing.sm,
+            y: DesignTokens.Spacing.xs
+        )
+    }
+
+    @ViewBuilder
+    private func actionButton(
+        title: String,
+        icon: String,
+        role: ButtonRole?,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
+                Image(systemName: icon)
+                    .font(DesignTokens.Typography.captionSemibold)
+                Text(title)
+                    .font(DesignTokens.Typography.captionSemibold)
+            }
+            .lineLimit(1)
+            .padding(.horizontal, DesignTokens.Spacing.xs)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .foregroundStyle(
+                role == .destructive ? DesignTokens.Colors.error : DesignTokens.Colors.textPrimary
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var actionDivider: some View {
+        Rectangle()
+            .fill(DesignTokens.Colors.border)
+            .frame(width: 1, height: 16)
     }
 }

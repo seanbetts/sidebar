@@ -11,7 +11,7 @@ public final class ShortcutActionRouter {
     }
 
     public func handle(_ action: ShortcutAction, environment: AppEnvironment) {
-        let section = environment.focusedSection ?? environment.activeSection
+        let section = environment.activeSection ?? environment.focusedSection
         if handleNavigation(action, environment: environment) {
             return
         }

@@ -5,10 +5,12 @@ import sideBarShared
 @MainActor
 final class TasksTestNetworkStatus: NetworkStatusProviding {
     var isNetworkAvailable: Bool
+    var isServerReachable: Bool
     var isOffline: Bool { !isNetworkAvailable }
 
-    init(isNetworkAvailable: Bool) {
+    init(isNetworkAvailable: Bool, isServerReachable: Bool = true) {
         self.isNetworkAvailable = isNetworkAvailable
+        self.isServerReachable = isServerReachable
     }
 }
 

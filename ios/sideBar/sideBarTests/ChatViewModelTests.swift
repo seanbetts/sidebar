@@ -30,7 +30,7 @@ final class ChatViewModelTests: XCTestCase {
         )]
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.conversationsList, value: cached, ttlSeconds: CachePolicy.conversationsList)
-        let api = MockConversationsAPI(listResult: .failure(MockError.forced))
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .failure(ChatViewModelTestsSupport.MockError.forced))
         let viewModel = makeViewModel(api: api, cache: cache)
 
         await viewModel.loadConversations()
@@ -61,7 +61,7 @@ final class ChatViewModelTests: XCTestCase {
                 error: nil
             )]
         )
-        let api = MockConversationsAPI(listResult: .success([]), getResult: .success(conversation))
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]), getResult: .success(conversation))
         let viewModel = makeViewModel(api: api, cache: cache)
 
         await viewModel.selectConversation(id: "conv-1")
@@ -88,7 +88,7 @@ final class ChatViewModelTests: XCTestCase {
         let note = NotePayload(id: "note-1", name: "Test.md", content: "Hello", path: "note-1", modified: nil, created: nil)
         cache.set(key: CacheKeys.notesTree, value: FileTree(children: []), ttlSeconds: 60)
         cache.set(key: CacheKeys.note(id: "note-1"), value: note, ttlSeconds: 60)
-        let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
+        let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)
 
         let event = ChatStreamEvent(type: .noteUpdated, data: AnyCodable(["id": "note-1"]))
         viewModel.handle(event: event)
@@ -105,7 +105,7 @@ final class ChatViewModelTests: XCTestCase {
         let cached = ScratchpadResponse(id: "s1", title: ScratchpadConstants.title, content: "Cached", updatedAt: nil)
         cache.set(key: CacheKeys.scratchpad, value: cached, ttlSeconds: 60)
         let viewModel = makeViewModel(
-            api: MockConversationsAPI(listResult: .success([])),
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
             cache: cache,
             scratchpadStore: store
         )
@@ -129,7 +129,7 @@ final class ChatViewModelTests: XCTestCase {
             updatedAt: "2026-01-02T00:00:00Z"
         )
         cache.set(key: CacheKeys.memoriesList, value: [memory], ttlSeconds: 60)
-        let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
+        let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)
 
         viewModel.handle(event: ChatStreamEvent(type: .memoryCreated, data: AnyCodable(["id": "memory-1"])))
 
@@ -139,7 +139,7 @@ final class ChatViewModelTests: XCTestCase {
 
     func testPromptPreviewEventStoresPromptDiagnostics() async {
         let cache = TestCacheClient()
-        let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
+        let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)
 
         let event = ChatStreamEvent(
             type: .promptPreview,
@@ -240,7 +240,7 @@ final class ChatViewModelTests: XCTestCase {
             isArchived: nil,
             messages: messages
         )
-        let api = MockConversationsAPI(listResult: .success([]), getResult: .success(conversation))
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]), getResult: .success(conversation))
         let viewModel = makeViewModel(api: api, cache: cache)
 
         await viewModel.selectConversation(id: "conv-1")
@@ -251,9 +251,9 @@ final class ChatViewModelTests: XCTestCase {
 
     func testPersistMessageSetsErrorOnFailure() async {
         let cache = TestCacheClient()
-        let api = MockConversationsAPI(
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(
             listResult: .success([]),
-            addMessageResult: .failure(MockError.forced)
+            addMessageResult: .failure(ChatViewModelTestsSupport.MockError.forced)
         )
         let viewModel = makeViewModel(api: api, cache: cache)
 
@@ -275,11 +275,11 @@ final class ChatViewModelTests: XCTestCase {
 
     func testLoadConversationOfflineWithoutCacheSetsError() async {
         let cache = TestCacheClient()
-        let api = ConversationsAPISpy()
+        let api = ChatViewModelTestsSupport.ConversationsAPISpy()
         let viewModel = makeViewModel(
             api: api,
             cache: cache,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+            networkStatus: ChatViewModelTestsSupport.TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
         )
 
         await viewModel.loadConversation(id: "conv-1")
@@ -300,7 +300,7 @@ final class ChatViewModelTests: XCTestCase {
             firstMessage: nil,
             isArchived: nil
         )
-        let api = MockConversationsAPI(
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(
             listResult: .success([]),
             createResult: .success(created)
         )
@@ -315,7 +315,7 @@ final class ChatViewModelTests: XCTestCase {
 
     func testReconcileMessagesPrefersLocalStreamingContentWhenIDsMatch() async {
         let cache = TestCacheClient()
-        let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
+        let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)
         let localStreaming = Message(
             id: "assistant-1",
             role: .assistant,
@@ -349,7 +349,7 @@ final class ChatViewModelTests: XCTestCase {
 
     func testReconcileMessagesDoesNotAppendLocalStreamWhenServerHasStreamingAssistant() async {
         let cache = TestCacheClient()
-        let viewModel = makeViewModel(api: MockConversationsAPI(listResult: .success([])), cache: cache)
+        let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)
         viewModel.streamingConversationId = "conv-1"
         viewModel.currentStreamMessageId = "assistant-local"
         viewModel.messages = [
@@ -386,7 +386,7 @@ final class ChatViewModelTests: XCTestCase {
     private func makeViewModel<API: ConversationsProviding & ConversationsAPIProviding>(
         api: API,
         cache: CacheClient,
-        networkStatus: TestNetworkStatus? = nil,
+        networkStatus: ChatViewModelTestsSupport.TestNetworkStatus? = nil,
         scratchpadStore: ScratchpadStore? = nil
     ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
@@ -395,13 +395,13 @@ final class ChatViewModelTests: XCTestCase {
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
-        let effectiveNetworkStatus = networkStatus ?? TestNetworkStatus(isNetworkAvailable: true)
+        let effectiveNetworkStatus = networkStatus ?? ChatViewModelTestsSupport.TestNetworkStatus(isNetworkAvailable: true)
         let viewModel = ChatViewModel(
             network: ChatNetworkCoordinator(
                 chatAPI: chatAPI,
                 conversationsAPI: api,
                 ingestionAPI: ingestionAPI,
-                streamClient: MockChatStreamClient(),
+                streamClient: ChatViewModelTestsSupport.MockChatStreamClient(),
                 networkStatus: effectiveNetworkStatus
             ),
             storage: ChatStorageCoordinator(
@@ -420,147 +420,5 @@ final class ChatViewModelTests: XCTestCase {
         )
         Self.retainedViewModels.append(viewModel)
         return viewModel
-    }
-}
-
-private enum MockError: Error {
-    case forced
-}
-
-private struct TestNetworkStatus: NetworkStatusProviding {
-    let isNetworkAvailable: Bool
-    let isOffline: Bool
-
-    init(isNetworkAvailable: Bool, isOffline: Bool = false) {
-        self.isNetworkAvailable = isNetworkAvailable
-        self.isOffline = isOffline
-    }
-}
-
-@MainActor
-private final class ConversationsAPISpy: ConversationsAPIProviding, ConversationsProviding {
-    private(set) var getCallCount = 0
-
-    func list() async throws -> [Conversation] {
-        return []
-    }
-
-    func get(id: String) async throws -> ConversationWithMessages {
-        _ = id
-        getCallCount += 1
-        throw MockError.forced
-    }
-
-    func search(query: String, limit: Int) async throws -> [Conversation] {
-        _ = query
-        _ = limit
-        return []
-    }
-
-    func delete(conversationId: String) async throws -> Conversation {
-        _ = conversationId
-        throw MockError.forced
-    }
-
-    func create(title: String) async throws -> Conversation {
-        _ = title
-        throw MockError.forced
-    }
-
-    func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
-        _ = conversationId
-        _ = message
-        throw MockError.forced
-    }
-
-    func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
-        _ = conversationId
-        _ = updates
-        throw MockError.forced
-    }
-}
-
-private final class MockChatStreamClient: ChatStreamClient {
-    weak var handler: ChatStreamEventHandler?
-
-    func connect(request: ChatStreamRequest) async throws {
-        _ = request
-    }
-
-    func disconnect() {
-    }
-}
-
-private struct MockConversationsAPI: ConversationsAPIProviding, ConversationsProviding {
-    let listResult: Result<[Conversation], Error>
-    let getResult: Result<ConversationWithMessages, Error>
-    let searchResult: Result<[Conversation], Error>
-    let deleteResult: Result<Conversation, Error>
-    let createResult: Result<Conversation, Error>
-    let addMessageResult: Result<Conversation, Error>
-    let updateResult: Result<Conversation, Error>
-
-    init(
-        listResult: Result<[Conversation], Error>,
-        getResult: Result<ConversationWithMessages, Error> = .failure(MockError.forced),
-        searchResult: Result<[Conversation], Error> = .success([]),
-        deleteResult: Result<Conversation, Error> = .success(Conversation(
-            id: "deleted",
-            title: "Deleted",
-            titleGenerated: false,
-            createdAt: "",
-            updatedAt: "",
-            messageCount: 0,
-            firstMessage: nil,
-            isArchived: true
-        )),
-        createResult: Result<Conversation, Error> = .failure(MockError.forced),
-        addMessageResult: Result<Conversation, Error> = .failure(MockError.forced),
-        updateResult: Result<Conversation, Error> = .failure(MockError.forced)
-    ) {
-        self.listResult = listResult
-        self.getResult = getResult
-        self.searchResult = searchResult
-        self.deleteResult = deleteResult
-        self.createResult = createResult
-        self.addMessageResult = addMessageResult
-        self.updateResult = updateResult
-    }
-
-    func list() async throws -> [Conversation] {
-        try listResult.get()
-    }
-
-    func get(id: String) async throws -> ConversationWithMessages {
-        _ = id
-        return try getResult.get()
-    }
-
-    func search(query: String, limit: Int) async throws -> [Conversation] {
-        _ = query
-        _ = limit
-        return try searchResult.get()
-    }
-
-    func delete(conversationId: String) async throws -> Conversation {
-        _ = conversationId
-        return try deleteResult.get()
-    }
-
-    func create(title: String) async throws -> Conversation {
-        _ = title
-        return try createResult.get()
-    }
-
-    func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
-        _ = conversationId
-        _ = message
-        return try addMessageResult.get()
-    }
-
-    func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
-        _ = conversationId
-        _ = updates
-        return try updateResult.get()
     }
 }

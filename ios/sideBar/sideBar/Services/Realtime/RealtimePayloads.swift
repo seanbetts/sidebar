@@ -30,4 +30,7 @@ public enum RealtimeTable {
     public static let websites = "websites"
     public static let ingestedFiles = "ingested_files"
     public static let fileJobs = "file_processing_jobs"
+    public static let tasks = "tasks"
+    public static let taskProjects = "task_projects"
+    public static let taskGroups = "task_groups"
 }

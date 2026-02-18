@@ -2,7 +2,7 @@ import os
 import uuid
 
 from api.config import settings
-from api.models.file_ingestion import FileProcessingJob, IngestedFile
+from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.models.website import Website
 
 
@@ -116,3 +116,44 @@ def test_ingestion_meta_syncs_failed_transcript_status(test_client, test_db):
     assert transcripts[video_id]["status"] == "failed"
     assert transcripts[video_id]["file_id"] == str(file_id)
     assert transcripts[video_id]["error"] == "Download failed"
+
+
+def test_ingestion_meta_backfills_missing_job_as_ready_when_derivatives_exist(
+    test_client, test_db
+):
+    user_id = os.getenv("TEST_USER_ID", "user-1")
+    file_id = uuid.uuid4()
+
+    record = IngestedFile(
+        id=file_id,
+        user_id=user_id,
+        filename_original="legacy.pdf",
+        path="legacy.pdf",
+        mime_original="application/pdf",
+        size_bytes=123,
+        sha256="abc",
+    )
+    derivative = FileDerivative(
+        file_id=file_id,
+        kind="viewer_pdf",
+        storage_key=f"{user_id}/files/{file_id}/derivatives/viewer.pdf",
+        mime="application/pdf",
+        size_bytes=123,
+    )
+    test_db.add(record)
+    test_db.add(derivative)
+    test_db.commit()
+
+    response = test_client.get(f"/api/v1/files/{file_id}/meta", headers=_auth_headers())
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["job"]["status"] == "ready"
+    assert payload["job"]["stage"] == "ready"
+
+    backfilled_job = (
+        test_db.query(FileProcessingJob)
+        .filter(FileProcessingJob.file_id == file_id)
+        .first()
+    )
+    assert backfilled_job is not None
+    assert backfilled_job.status == "ready"

@@ -91,6 +91,51 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         XCTAssertEqual(payload?.oldRecord?.fileId, "f1")
     }
 
+    func testHandleTaskUpdateIncludesOldRecord() async {
+        let expectation = expectation(description: "task update")
+        let handler = RecordingRealtimeHandler(taskExpectation: expectation)
+        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler)
+        let record = TaskRealtimeRecord(
+            id: "t1",
+            title: "New title",
+            status: "today",
+            deadline: "2026-02-18",
+            notes: "new",
+            projectId: "p1",
+            groupId: "g1",
+            repeating: false,
+            repeatTemplate: false,
+            recurrenceRule: nil,
+            nextInstanceDate: nil,
+            updatedAt: "new-updated",
+            deletedAt: nil
+        )
+        let old = TaskRealtimeRecord(
+            id: "t1",
+            title: "Old title",
+            status: "today",
+            deadline: "2026-02-17",
+            notes: "old",
+            projectId: "p1",
+            groupId: "g1",
+            repeating: false,
+            repeatTemplate: false,
+            recurrenceRule: nil,
+            nextInstanceDate: nil,
+            updatedAt: "old-updated",
+            deletedAt: nil
+        )
+
+        adapter.handleTaskUpdate(MockAction(record: record, oldRecord: old))
+
+        await fulfillment(of: [expectation], timeout: 1.0)
+        let payload = handler.taskPayload
+        XCTAssertEqual(payload?.eventType, .update)
+        XCTAssertEqual(payload?.table, RealtimeTable.tasks)
+        XCTAssertEqual(payload?.record?.title, "New title")
+        XCTAssertEqual(payload?.oldRecord?.title, "Old title")
+    }
+
     func testEnqueueTransitionRunsOperationsSeriallyInSubmissionOrder() async {
         let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting())
         let executionOrder = SynchronizedIntArray()
@@ -116,16 +161,25 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
             adapter.websitesChannel = adapter.client.realtimeV2.channel("public:websites-\(index)")
             adapter.ingestedFilesChannel = adapter.client.realtimeV2.channel("public:files-\(index)")
             adapter.fileJobsChannel = adapter.client.realtimeV2.channel("public:file-jobs-\(index)")
+            adapter.tasksChannel = adapter.client.realtimeV2.channel("public:tasks-\(index)")
+            adapter.taskProjectsChannel = adapter.client.realtimeV2.channel("public:task-projects-\(index)")
+            adapter.taskGroupsChannel = adapter.client.realtimeV2.channel("public:task-groups-\(index)")
             await adapter.stopInternal()
             XCTAssertNil(adapter.notesChannel)
             XCTAssertNil(adapter.websitesChannel)
             XCTAssertNil(adapter.ingestedFilesChannel)
             XCTAssertNil(adapter.fileJobsChannel)
+            XCTAssertNil(adapter.tasksChannel)
+            XCTAssertNil(adapter.taskProjectsChannel)
+            XCTAssertNil(adapter.taskGroupsChannel)
             XCTAssertNil(adapter.currentUserId)
             XCTAssertTrue(adapter.notesSubscriptions.isEmpty)
             XCTAssertTrue(adapter.websitesSubscriptions.isEmpty)
             XCTAssertTrue(adapter.ingestedFilesSubscriptions.isEmpty)
             XCTAssertTrue(adapter.fileJobsSubscriptions.isEmpty)
+            XCTAssertTrue(adapter.tasksSubscriptions.isEmpty)
+            XCTAssertTrue(adapter.taskProjectsSubscriptions.isEmpty)
+            XCTAssertTrue(adapter.taskGroupsSubscriptions.isEmpty)
         }
     }
 }
@@ -135,21 +189,33 @@ private final class RecordingRealtimeHandler: RealtimeEventHandler {
     var websitePayload: RealtimePayload<WebsiteRealtimeRecord>?
     var ingestedPayload: RealtimePayload<IngestedFileRealtimeRecord>?
     var fileJobPayload: RealtimePayload<FileJobRealtimeRecord>?
+    var taskPayload: RealtimePayload<TaskRealtimeRecord>?
+    var taskProjectPayload: RealtimePayload<TaskProjectRealtimeRecord>?
+    var taskGroupPayload: RealtimePayload<TaskGroupRealtimeRecord>?
     private let noteExpectation: XCTestExpectation?
     private let websiteExpectation: XCTestExpectation?
     private let ingestedExpectation: XCTestExpectation?
     private let fileJobExpectation: XCTestExpectation?
+    private let taskExpectation: XCTestExpectation?
+    private let taskProjectExpectation: XCTestExpectation?
+    private let taskGroupExpectation: XCTestExpectation?
 
     init(
         noteExpectation: XCTestExpectation? = nil,
         websiteExpectation: XCTestExpectation? = nil,
         ingestedExpectation: XCTestExpectation? = nil,
-        fileJobExpectation: XCTestExpectation? = nil
+        fileJobExpectation: XCTestExpectation? = nil,
+        taskExpectation: XCTestExpectation? = nil,
+        taskProjectExpectation: XCTestExpectation? = nil,
+        taskGroupExpectation: XCTestExpectation? = nil
     ) {
         self.noteExpectation = noteExpectation
         self.websiteExpectation = websiteExpectation
         self.ingestedExpectation = ingestedExpectation
         self.fileJobExpectation = fileJobExpectation
+        self.taskExpectation = taskExpectation
+        self.taskProjectExpectation = taskProjectExpectation
+        self.taskGroupExpectation = taskGroupExpectation
     }
 
     func handleNoteEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) {
@@ -170,6 +236,21 @@ private final class RecordingRealtimeHandler: RealtimeEventHandler {
     func handleFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>) {
         fileJobPayload = payload
         fileJobExpectation?.fulfill()
+    }
+
+    func handleTaskEvent(_ payload: RealtimePayload<TaskRealtimeRecord>) {
+        taskPayload = payload
+        taskExpectation?.fulfill()
+    }
+
+    func handleTaskProjectEvent(_ payload: RealtimePayload<TaskProjectRealtimeRecord>) {
+        taskProjectPayload = payload
+        taskProjectExpectation?.fulfill()
+    }
+
+    func handleTaskGroupEvent(_ payload: RealtimePayload<TaskGroupRealtimeRecord>) {
+        taskGroupPayload = payload
+        taskGroupExpectation?.fulfill()
     }
 }
 

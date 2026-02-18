@@ -92,6 +92,7 @@ private struct ChatDetailView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
     @State private var inputMeasuredHeight: CGFloat = 0
+    @State private var inputResetToken = UUID()
     @State private var attachmentsHeight: CGFloat = 0
     @State private var isFileImporterPresented = false
 
@@ -147,6 +148,7 @@ private struct ChatDetailView: View {
                 ChatInputBar(
                     text: $draftMessage,
                     measuredHeight: $inputMeasuredHeight,
+                    resetToken: inputResetToken,
                     isEnabled: canSendMessages,
                     isSendEnabled: canSendMessages && !viewModel.hasPendingAttachments,
                     onSend: handleSend,
@@ -210,6 +212,8 @@ private struct ChatDetailView: View {
             return
         }
         draftMessage = ""
+        inputMeasuredHeight = inputBarMinHeight
+        inputResetToken = UUID()
         Task {
             await viewModel.sendMessage(text: message)
         }

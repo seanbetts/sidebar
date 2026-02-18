@@ -8,17 +8,29 @@ public struct OfflineSnapshotRetention: Sendable {
     public let maxWebsites: Int
     public let maxFiles: Int
     public let maxConversations: Int
+    public let maxTaskLists: Int
+    public let maxTaskCounts: Int
+    public let maxTaskSyncEntries: Int
+    public let maxTaskPendingPlaceholders: Int
 
     public init(
         maxNotes: Int = 200,
         maxWebsites: Int = 500,
         maxFiles: Int = 500,
-        maxConversations: Int = 100
+        maxConversations: Int = 100,
+        maxTaskLists: Int = 200,
+        maxTaskCounts: Int = 20,
+        maxTaskSyncEntries: Int = 20,
+        maxTaskPendingPlaceholders: Int = 300
     ) {
         self.maxNotes = maxNotes
         self.maxWebsites = maxWebsites
         self.maxFiles = maxFiles
         self.maxConversations = maxConversations
+        self.maxTaskLists = maxTaskLists
+        self.maxTaskCounts = maxTaskCounts
+        self.maxTaskSyncEntries = maxTaskSyncEntries
+        self.maxTaskPendingPlaceholders = maxTaskPendingPlaceholders
     }
 
 }
@@ -78,6 +90,10 @@ public final class OfflineStore {
         await pruneEntries(entityType: "website", keepLatest: retention.maxWebsites)
         await pruneEntries(entityType: "file", keepLatest: retention.maxFiles)
         await pruneEntries(entityType: "conversation", keepLatest: retention.maxConversations)
+        await pruneEntries(entityType: "taskList", keepLatest: retention.maxTaskLists)
+        await pruneEntries(entityType: "taskCounts", keepLatest: retention.maxTaskCounts)
+        await pruneEntries(entityType: "taskSync", keepLatest: retention.maxTaskSyncEntries)
+        await pruneEntries(entityType: "taskPending", keepLatest: retention.maxTaskPendingPlaceholders)
     }
 
     // MARK: - Core Data Helpers

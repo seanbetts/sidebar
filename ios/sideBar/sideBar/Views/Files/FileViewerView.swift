@@ -16,6 +16,7 @@ import QuickLook
 public struct FileViewerView: View {
     public let state: FileViewerState
     public let pdfController: PDFViewerController?
+    @Environment(\.openURL) private var openURL
 
     public init(state: FileViewerState, pdfController: PDFViewerController? = nil) {
         self.state = state
@@ -25,13 +26,24 @@ public struct FileViewerView: View {
     public var body: some View {
         Group {
             if let embedURL = state.youtubeEmbedURL {
-                VStack(spacing: 0) {
+                VStack(spacing: DesignTokens.Spacing.sm) {
                     YouTubePlayerView(url: embedURL)
                         .aspectRatio(16.0 / 9.0, contentMode: .fit)
                         .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
                         .padding(.top, SideBarMarkdownLayout.verticalPadding)
+                    Button {
+                        openURL(YouTubeURLPolicy.preferredExternalURL(from: embedURL))
+                    } label: {
+                        Label("Open in YouTube", systemImage: "arrow.up.right.square")
+                            .font(.footnote.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth)
+                    .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
                     constrainedContentView
                 }
             } else {

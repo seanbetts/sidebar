@@ -8,6 +8,7 @@ import SwiftUI
 struct ChatInputAppKitView: NSViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
+    let resetToken: UUID
     let isEnabled: Bool
     let isSendEnabled: Bool
     let minHeight: CGFloat
@@ -155,6 +156,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         attachButton.alphaValue = isEnabled ? 1.0 : 0.45
         attachButton.contentTintColor = isEnabled ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor
         placeholderLabel.isHidden = !text.trimmed.isEmpty
+        context.coordinator.applyResetIfNeeded(token: resetToken, textView: textView)
         context.coordinator.applySizing(for: textView)
     }
 
@@ -162,6 +164,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         Coordinator(
             text: $text,
             measuredHeight: $measuredHeight,
+            initialResetToken: resetToken,
             minHeight: minHeight,
             maxHeight: maxHeight,
             controlBarHeight: controlBarHeight,
@@ -173,6 +176,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         private var text: Binding<String>
         private var measuredHeight: Binding<CGFloat>
+        private var resetToken: UUID
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
         private let controlBarHeight: CGFloat
@@ -187,6 +191,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         init(
             text: Binding<String>,
             measuredHeight: Binding<CGFloat>,
+            initialResetToken: UUID,
             minHeight: CGFloat,
             maxHeight: CGFloat,
             controlBarHeight: CGFloat,
@@ -195,11 +200,24 @@ struct ChatInputAppKitView: NSViewRepresentable {
         ) {
             self.text = text
             self.measuredHeight = measuredHeight
+            resetToken = initialResetToken
             self.minHeight = minHeight
             self.maxHeight = maxHeight
             self.controlBarHeight = controlBarHeight
             self.onSend = onSend
             self.onAttach = onAttach
+        }
+
+        func applyResetIfNeeded(token: UUID, textView: NSTextView) {
+            guard resetToken != token else { return }
+            resetToken = token
+            if let scrollView = textView.enclosingScrollView ?? textScrollView {
+                scrollView.hasVerticalScroller = false
+                scrollView.contentView.scroll(to: .zero)
+                scrollView.reflectScrolledClipView(scrollView.contentView)
+            }
+            let endLocation = textView.string.utf16.count
+            textView.setSelectedRange(NSRange(location: endLocation, length: 0))
         }
 
         func textDidChange(_ notification: Notification) {

@@ -109,15 +109,11 @@ extension ChatViewModel {
             .toolEnd: { [weak self] (event: ChatStreamEvent) in
                 self?.handleToolEnd(event)
             },
-            .memoryCreated: { [weak self] (_: ChatStreamEvent) in
-                self?.refreshMemories()
-            },
-            .memoryUpdated: { [weak self] (_: ChatStreamEvent) in
-                self?.refreshMemories()
-            },
-            .memoryDeleted: { [weak self] (_: ChatStreamEvent) in
-                self?.refreshMemories()
-            }
+            .memoryCreated: { [weak self] (_: ChatStreamEvent) in self?.refreshMemories() },
+            .memoryUpdated: { [weak self] (_: ChatStreamEvent) in self?.refreshMemories() },
+            .memoryDeleted: { [weak self] (_: ChatStreamEvent) in self?.refreshMemories() },
+            .assistantIdentityUpdated: { [weak self] (event: ChatStreamEvent) in self?.handleAssistantIdentityUpdated(event) },
+            .assistantSoulUpdated: { [weak self] (event: ChatStreamEvent) in self?.handleAssistantSoulUpdated(event) }
         ]
         return handlers
     }

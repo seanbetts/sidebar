@@ -39,12 +39,24 @@ extension SidebarMenuItem {
         SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil, handler: handler)
     }
 
+    static func copyTranscript(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Copy Transcript", systemImage: "doc.on.doc", role: nil, handler: handler)
+    }
+
+    static func copyText(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Copy Text", systemImage: "doc.on.doc", role: nil, handler: handler)
+    }
+
+    static func copyMarkdown(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Copy Markdown", systemImage: "doc.on.doc", role: nil, handler: handler)
+    }
+
     static func download(handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil, handler: handler)
     }
 
     static func share(handler: @escaping () -> Void) -> SidebarMenuItem {
-        SidebarMenuItem(title: "Share URL", systemImage: "square.and.arrow.up", role: nil, handler: handler)
+        SidebarMenuItem(title: "Share URL", systemImage: "square.and.arrow.up.on.square", role: nil, handler: handler)
     }
 
     static func shareText(handler: @escaping () -> Void) -> SidebarMenuItem {

@@ -184,7 +184,7 @@ public struct NotesView: View {
                     moveSelection = currentFolderPath
                     isMoveSheetPresented = true
                 },
-                .copy {
+                .copyMarkdown {
                     copyMarkdown()
                 },
                 .shareText {

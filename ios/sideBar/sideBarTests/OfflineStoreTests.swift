@@ -111,4 +111,73 @@ final class OfflineStoreTests: XCTestCase {
         XCTAssertEqual(remainingIds, Set(["note-2", "note-3"]))
         XCTAssertEqual(entries.count, 4)
     }
+
+    func testCleanupSnapshotsPrunesTaskEntriesByEntityType() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let store = OfflineStore(container: persistence.container)
+
+        struct Payload: Codable {
+            let value: String
+        }
+
+        for index in 1...3 {
+            store.set(
+                key: "tasks.list.\(index)",
+                entityType: "taskList",
+                value: Payload(value: "list-\(index)"),
+                lastSyncAt: nil
+            )
+        }
+        for index in 1...2 {
+            store.set(
+                key: "tasks.counts.\(index)",
+                entityType: "taskCounts",
+                value: Payload(value: "counts-\(index)"),
+                lastSyncAt: nil
+            )
+            store.set(
+                key: "tasks.sync.\(index)",
+                entityType: "taskSync",
+                value: Payload(value: "sync-\(index)"),
+                lastSyncAt: nil
+            )
+        }
+        for index in 1...4 {
+            store.set(
+                key: "tasks.pending.\(index)",
+                entityType: "taskPending",
+                value: Payload(value: "pending-\(index)"),
+                lastSyncAt: nil
+            )
+        }
+
+        await store.cleanupSnapshots(
+            retention: OfflineSnapshotRetention(
+                maxTaskLists: 2,
+                maxTaskCounts: 1,
+                maxTaskSyncEntries: 1,
+                maxTaskPendingPlaceholders: 2
+            )
+        )
+
+        let taskListRequest = OfflineEntry.fetchRequest()
+        taskListRequest.predicate = NSPredicate(format: "entityType == %@", "taskList")
+        let taskLists = try persistence.container.viewContext.fetch(taskListRequest)
+        XCTAssertEqual(taskLists.count, 2)
+
+        let taskCountsRequest = OfflineEntry.fetchRequest()
+        taskCountsRequest.predicate = NSPredicate(format: "entityType == %@", "taskCounts")
+        let taskCounts = try persistence.container.viewContext.fetch(taskCountsRequest)
+        XCTAssertEqual(taskCounts.count, 1)
+
+        let taskSyncRequest = OfflineEntry.fetchRequest()
+        taskSyncRequest.predicate = NSPredicate(format: "entityType == %@", "taskSync")
+        let taskSync = try persistence.container.viewContext.fetch(taskSyncRequest)
+        XCTAssertEqual(taskSync.count, 1)
+
+        let taskPendingRequest = OfflineEntry.fetchRequest()
+        taskPendingRequest.predicate = NSPredicate(format: "entityType == %@", "taskPending")
+        let taskPending = try persistence.container.viewContext.fetch(taskPendingRequest)
+        XCTAssertEqual(taskPending.count, 2)
+    }
 }

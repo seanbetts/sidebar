@@ -2,9 +2,17 @@
 import Foundation
 
 extension AppEnvironment {
+    private var shortcutResolutionSection: AppSection? {
+        #if os(macOS)
+        focusedSection ?? activeSection
+        #else
+        activeSection ?? focusedSection
+        #endif
+    }
+
     public var activeShortcutContexts: Set<ShortcutContext> {
         var contexts: Set<ShortcutContext> = [.universal]
-        let section = focusedSection ?? activeSection
+        let section = shortcutResolutionSection
         if let section {
             if section == .tasks {
                 if focusedSection == .tasks || isTasksFocused {
@@ -18,7 +26,7 @@ extension AppEnvironment {
     }
 
     public func emitShortcutAction(_ action: ShortcutAction) {
-        shortcutActionEvent = ShortcutActionEvent(action: action, section: focusedSection ?? activeSection)
+        shortcutActionEvent = ShortcutActionEvent(action: action, section: shortcutResolutionSection)
     }
 }
 #endif

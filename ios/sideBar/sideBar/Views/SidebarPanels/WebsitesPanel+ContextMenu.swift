@@ -20,7 +20,7 @@ extension WebsitesPanelView {
             .rename {
                 beginRename(for: item)
             },
-            .copy {
+            .copyMarkdown {
                 Task { await copyWebsiteContent(for: item) }
             },
             SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {

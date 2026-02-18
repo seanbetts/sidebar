@@ -38,7 +38,7 @@ from PIL import Image
 from pptx import Presentation
 from pypdf import PdfReader
 from python_calamine import CalamineError, CalamineWorkbook, XmlError, ZipError
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, text
 from sqlalchemy.orm.attributes import flag_modified
 from tabulate import tabulate
 
@@ -332,6 +332,26 @@ def _classify_unexpected_error(error: Exception) -> IngestionError:
     if storage_error is not None:
         return storage_error
     return IngestionError("UNKNOWN_ERROR", str(error), retryable=True)
+
+
+def _resolve_worker_user_id() -> str | None:
+    configured_user_id = (os.getenv("INGESTION_WORKER_USER_ID") or "").strip()
+    if configured_user_id:
+        return configured_user_id
+
+    app_env = (settings.app_env or "").strip().lower()
+    if app_env in {"local", "dev", "development", "test", "testing"}:
+        fallback_user_id = (settings.default_user_id or "").strip()
+        return fallback_user_id or None
+    return None
+
+
+def _set_worker_claim_scope(db, worker_user_id: str | None) -> None:
+    if worker_user_id:
+        set_session_user_id(db, worker_user_id)
+        return
+    db.info.pop("app_user_id", None)
+    db.execute(text("SELECT set_config('app.user_id', '', false)"))
 
 
 def _claim_job(db, worker_id: str) -> FileProcessingJob | None:
@@ -2058,11 +2078,17 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
 
 def worker_loop() -> None:
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
-    worker_user_id = os.getenv("INGESTION_WORKER_USER_ID") or settings.default_user_id
+    worker_user_id = _resolve_worker_user_id()
     _ensure_stdio()
     if shutil.which("soffice") is None:
         logger.warning(
             "LibreOffice (soffice) not found. DOCX/XLSX/PPTX conversion will fail."
+        )
+    if worker_user_id:
+        logger.info("Ingestion worker claim scope user_id=%s", worker_user_id)
+    else:
+        logger.info(
+            "Ingestion worker claim scope is unscoped; no INGESTION_WORKER_USER_ID configured"
         )
     db_url = settings.database_url
     if db_url:
@@ -2076,8 +2102,7 @@ def worker_loop() -> None:
     while True:
         with SessionLocal() as db:
             try:
-                if worker_user_id:
-                    set_session_user_id(db, worker_user_id)
+                _set_worker_claim_scope(db, worker_user_id)
                 _requeue_stalled_jobs(db)
                 job = _claim_job(db, worker_id)
                 if not job:

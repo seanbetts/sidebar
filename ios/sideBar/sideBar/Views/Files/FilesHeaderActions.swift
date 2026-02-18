@@ -88,7 +88,7 @@ struct FilesHeaderActions: View {
             Button {
                 copyFileContent()
             } label: {
-                Label("Copy", systemImage: "doc.on.doc")
+                Label("Copy Text", systemImage: "doc.on.doc")
             }
             Button {
                 Task { await downloadFile() }
@@ -117,7 +117,7 @@ struct FilesHeaderActions: View {
                 .rename {
                     beginRename()
                 },
-                .copy {
+                .copyText {
                     copyFileContent()
                 },
                 .download {

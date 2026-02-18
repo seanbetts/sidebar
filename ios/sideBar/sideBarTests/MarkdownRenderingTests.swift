@@ -5,7 +5,7 @@ import sideBarShared
 final class MarkdownRenderingTests: XCTestCase {
     private static let expectedYouTubeEmbedURL =
         "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" +
-        "?playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
+        "?playsinline=1&rel=0&modestbranding=1&fs=1&origin=https://www.youtube-nocookie.com"
 
     func testNormalizeTaskListsStrikesCheckedItems() {
         let input = "- [x] done\n- [ ] todo"

@@ -7,15 +7,20 @@ struct ToolCallListView: View {
     let role: MessageRole
     @Environment(\.colorScheme) private var colorScheme
     @State private var showPopover = false
+    private let maxPillWidth: CGFloat = 180
+    private let minTextPillWidth: CGFloat = 70
 
     var body: some View {
         Button {
             showPopover = true
         } label: {
-            toolPill(text: summaryText)
+            ViewThatFits(in: .horizontal) {
+                toolPill(text: summaryText)
+                    .frame(minWidth: minTextPillWidth, maxWidth: maxPillWidth, alignment: .leading)
+                toolIconOnlyPill
+            }
         }
         .buttonStyle(.plain)
-        .fixedSize(horizontal: true, vertical: false)
         .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
             ToolCallPopoverContent(toolCalls: toolCalls)
                 .presentationCompactAdaptation(.sheet)
@@ -39,16 +44,30 @@ struct ToolCallListView: View {
                 .foregroundStyle(toolPillForeground)
             Text(text)
                 .font(DesignTokens.Typography.captionSemibold)
+                .lineLimit(1)
+                .truncationMode(.tail)
                 .foregroundStyle(toolPillForeground)
         }
-        .padding(.horizontal, DesignTokens.Spacing.sm)
-        .padding(.vertical, DesignTokens.Spacing.xs)
+        .padding(.horizontal, DesignTokens.Spacing.xs)
+        .padding(.vertical, DesignTokens.Spacing.xxs)
         .background(
             Capsule(style: .continuous)
                 .fill(toolPillBackground)
         )
         .overlay(toolPillBorder)
-        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var toolIconOnlyPill: some View {
+        Image(systemName: "hammer.fill")
+            .font(.caption2)
+            .foregroundStyle(toolPillForeground)
+            .padding(.horizontal, DesignTokens.Spacing.xs)
+            .padding(.vertical, DesignTokens.Spacing.xxs)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(toolPillBackground)
+            )
+            .overlay(toolPillBorder)
     }
 
     private var toolPillBackground: Color {

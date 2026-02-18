@@ -27,6 +27,8 @@ public enum ChatStreamEventType: String {
     case memoryCreated = "memory_created"
     case memoryUpdated = "memory_updated"
     case memoryDeleted = "memory_deleted"
+    case assistantIdentityUpdated = "assistant_identity_updated"
+    case assistantSoulUpdated = "assistant_soul_updated"
 }
 
 /// Represents ChatStreamEvent.

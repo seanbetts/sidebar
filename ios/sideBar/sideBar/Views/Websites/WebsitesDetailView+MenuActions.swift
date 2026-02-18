@@ -21,7 +21,7 @@ extension WebsitesDetailView {
             Button {
                 copyWebsiteContent()
             } label: {
-                Label("Copy", systemImage: "doc.on.doc")
+                Label("Copy Markdown", systemImage: "doc.on.doc")
             }
             Button {
                 copyWebsiteTitle()
@@ -36,7 +36,7 @@ extension WebsitesDetailView {
             Button {
                 shareWebsiteURL()
             } label: {
-                Label("Share URL", systemImage: "square.and.arrow.up")
+                Label("Share URL", systemImage: "square.and.arrow.up.on.square")
             }
             Button {
                 shareWebsiteText()
@@ -99,7 +99,7 @@ extension WebsitesDetailView {
                 renameValue = viewModel.active?.title ?? ""
                 isRenameDialogPresented = true
             },
-            .copy {
+            .copyMarkdown {
                 copyWebsiteContent()
             },
             SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {

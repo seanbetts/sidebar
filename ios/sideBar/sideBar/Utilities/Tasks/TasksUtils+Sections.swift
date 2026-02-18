@@ -21,7 +21,7 @@ extension TasksUtils {
 
         for key in buckets.keys {
             if var section = buckets[key] {
-                section.tasks = sortByDueDate(section.tasks)
+                section.tasks = sortForToday(section.tasks)
                 buckets[key] = section
             }
         }

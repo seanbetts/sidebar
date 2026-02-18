@@ -198,7 +198,13 @@ final class IngestionUploadManagerTests: XCTestCase {
             baseUrl: URL(string: "https://example.com")!,
             accessTokenProvider: { nil }
         )
-        return IngestionUploadManager(config: config)
+        let sessionConfig = URLSessionConfiguration.ephemeral
+        sessionConfig.protocolClasses = [IngestionUploadURLProtocolMock.self]
+        sessionConfig.waitsForConnectivity = false
+        sessionConfig.timeoutIntervalForRequest = 5
+        sessionConfig.timeoutIntervalForResource = 5
+        let session = URLSession(configuration: sessionConfig)
+        return IngestionUploadManager(config: config, session: session)
     }
 }
 

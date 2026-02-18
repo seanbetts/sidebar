@@ -57,10 +57,21 @@ public struct IngestionDetailView: View {
     }
 
     private var shouldShowProcessingState: Bool {
-        Self.shouldShowProcessingState(status: meta.job.status, errorMessage: viewModel.errorMessage)
+        Self.shouldShowProcessingState(
+            status: meta.job.status,
+            errorMessage: viewModel.errorMessage,
+            hasViewerState: viewModel.viewerState != nil
+        )
     }
 
-    static func shouldShowProcessingState(status: String?, errorMessage: String?) -> Bool {
+    static func shouldShowProcessingState(
+        status: String?,
+        errorMessage: String?,
+        hasViewerState: Bool = false
+    ) -> Bool {
+        if hasViewerState {
+            return false
+        }
         if let errorMessage, !errorMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return false
         }

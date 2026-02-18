@@ -6,7 +6,7 @@ extension TasksViewModel {
     }
 
     public func completeTask(task: TaskItem) async {
-        if !networkStatus.isNetworkAvailable {
+        if shouldQueueTaskWrites {
             await queueOfflineOperation(
                 TaskOperationPayload(
                     operationId: TaskOperationId.make(),
@@ -170,7 +170,7 @@ extension TasksViewModel {
         refreshWidget: Bool = true
     ) async {
         setLocalErrorMessage(nil)
-        if !networkStatus.isNetworkAvailable {
+        if shouldQueueTaskWrites {
             await queueOfflineOperation(operation)
             return
         }
