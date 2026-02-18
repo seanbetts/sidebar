@@ -36,7 +36,7 @@ extension WebsitesDetailView {
             Button {
                 shareWebsiteURL()
             } label: {
-                Label("Share URL", systemImage: "square.and.arrow.up")
+                Label("Share URL", systemImage: "square.and.arrow.up.on.square")
             }
             Button {
                 shareWebsiteText()

@@ -9,7 +9,7 @@ final class SidebarMenuItemTests: XCTestCase {
         }
 
         XCTAssertEqual(item.title, "Share URL")
-        XCTAssertEqual(item.systemImage, "square.and.arrow.up")
+        XCTAssertEqual(item.systemImage, "square.and.arrow.up.on.square")
         XCTAssertNil(item.role)
 
         item.handler()
