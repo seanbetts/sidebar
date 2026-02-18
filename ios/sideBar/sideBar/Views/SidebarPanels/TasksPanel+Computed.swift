@@ -1,7 +1,4 @@
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 
 extension TasksPanelView {
     var groupsSorted: [TaskGroup] {
@@ -47,15 +44,4 @@ extension TasksPanelView {
         #endif
     }
 
-    var isCompactPhone: Bool {
-        isCompact && isPhone
-    }
-
-    var isPhone: Bool {
-        #if os(iOS)
-        return UIDevice.current.userInterfaceIdiom == .phone
-        #else
-        return false
-        #endif
-    }
 }

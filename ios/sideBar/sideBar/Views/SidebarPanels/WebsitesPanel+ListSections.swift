@@ -1,9 +1,6 @@
 import Foundation
 import sideBarShared
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 
 extension WebsitesPanelView {
     func open(item: WebsiteItem) {
@@ -48,7 +45,13 @@ extension WebsitesPanelView {
             r2FaviconPublicBaseUrl: appEnvironment.container.config.r2FaviconPublicBaseUrl
         )
         .staggeredAppear(index: index, isActive: listAppeared)
-        .onTapGesture { open(item: item) }
+        .onTapGesture {
+            #if os(iOS)
+            toggleQuickActions(for: item)
+            #else
+            open(item: item)
+            #endif
+        }
         .platformContextMenu(items: websiteContextMenuItemsList(for: item))
         .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
 
@@ -184,18 +187,6 @@ extension WebsitesPanelView {
         return false
         #else
         return horizontalSizeClass == .compact
-        #endif
-    }
-
-    var isCompactPhone: Bool {
-        isCompact && isPhone
-    }
-
-    private var isPhone: Bool {
-        #if os(iOS)
-        return UIDevice.current.userInterfaceIdiom == .phone
-        #else
-        return false
         #endif
     }
 

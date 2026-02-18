@@ -129,17 +129,6 @@ extension TasksPanelView {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add")
-                    if isCompactPhone {
-                        Button {
-                            environment.emitShortcutAction(.openScratchpad)
-                        } label: {
-                            Image(systemName: "square.and.pencil")
-                                .font(DesignTokens.Typography.labelMd)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Scratchpad")
-                    }
                     if isCompact {
                         SettingsAvatarButton()
                     }

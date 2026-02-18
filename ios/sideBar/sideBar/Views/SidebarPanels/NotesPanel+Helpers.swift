@@ -1,9 +1,6 @@
 import Foundation
 import sideBarShared
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 
 // MARK: - NotesPanel+Helpers
 
@@ -33,17 +30,6 @@ extension NotesPanelView {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add note")
-                    if isCompactPhone {
-                        Button {
-                            environment.emitShortcutAction(.openScratchpad)
-                        } label: {
-                            Image(systemName: "square.and.pencil")
-                                .font(DesignTokens.Typography.labelMd)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Scratchpad")
-                    }
                     if isCompact {
                         SettingsAvatarButton()
                     }
@@ -62,18 +48,6 @@ extension NotesPanelView {
         return false
         #else
         return horizontalSizeClass == .compact
-        #endif
-    }
-
-    var isCompactPhone: Bool {
-        isCompact && isPhone
-    }
-
-    private var isPhone: Bool {
-        #if os(iOS)
-        return UIDevice.current.userInterfaceIdiom == .phone
-        #else
-        return false
         #endif
     }
 
