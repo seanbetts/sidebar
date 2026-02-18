@@ -257,8 +257,9 @@ final class TasksViewModelTests: XCTestCase {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Old", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Draft", status: "open", notes: "Updated", updatedAt: "u2")])
-        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Draft", status: "open", notes: "Updated", updatedAt: "u2")])
+        let updatedTask = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Updated", updatedAt: "u2")
+        api.enqueueListResponse(scope: "today", tasks: [updatedTask])
+        api.enqueueListResponse(scope: "today", tasks: [updatedTask])
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)

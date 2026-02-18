@@ -48,7 +48,7 @@ final class TasksWriteQueueExecutorTests: XCTestCase {
 @MainActor
 private final class TasksWriteQueueStoreSpy: TasksWriteQueueApplying {
     var removedPlaceholders: [String] = []
-    var lastToken: String? = nil
+    var lastToken: String?
     var refreshAfterSyncCallCount: Int = 0
 
     func removePendingTaskPlaceholder(operationId: String) {
