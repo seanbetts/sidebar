@@ -4,20 +4,14 @@ import SwiftUI
 struct ConversationRow: View, Equatable {
     let conversation: Conversation
     let isSelected: Bool
-    let onRename: () -> Void
-    let onDelete: () -> Void
     private let subtitleText: String
 
     init(
         conversation: Conversation,
-        isSelected: Bool,
-        onRename: @escaping () -> Void,
-        onDelete: @escaping () -> Void
+        isSelected: Bool
     ) {
         self.conversation = conversation
         self.isSelected = isSelected
-        self.onRename = onRename
-        self.onDelete = onDelete
         let formattedDate = ConversationRow.formattedDate(from: conversation.updatedAt)
         let count = conversation.messageCount
         let label = count == 1 ? "1 message" : "\(count) messages"
@@ -44,30 +38,6 @@ struct ConversationRow: View, Equatable {
                     .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)
             }
             Spacer(minLength: 0)
-            #if os(macOS)
-            let menu = Menu {
-                Button("Rename") {
-                    onRename()
-                }
-                Button("Delete", role: .destructive) {
-                    onDelete()
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(DesignTokens.Typography.labelMd)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-            }
-            .menuStyle(.borderlessButton)
-            .buttonStyle(.plain)
-            .accessibilityLabel("Conversation actions")
-
-            if #available(macOS 13.0, *) {
-                menu.menuIndicator(.hidden)
-            } else {
-                menu
-            }
-            #endif
         }
         .accessibilityElement(children: .combine)
     }
