@@ -7,6 +7,16 @@ from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from workers import ingestion_worker
 
 
+class _DummySession:
+    def __init__(self):
+        self.info: dict[str, str] = {}
+        self.executed: list[str] = []
+
+    def execute(self, statement):
+        self.executed.append(str(statement))
+        return None
+
+
 def _make_ingested_file(test_db, file_id):
     record = IngestedFile(
         id=file_id,
@@ -286,3 +296,61 @@ def test_classify_unexpected_error_defaults_to_unknown():
 
     assert classified.code == "UNKNOWN_ERROR"
     assert classified.retryable is True
+
+
+def test_resolve_worker_user_id_prefers_explicit_env(monkeypatch):
+    monkeypatch.setenv("INGESTION_WORKER_USER_ID", "worker-user")
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "production")
+    monkeypatch.setattr(ingestion_worker.settings, "default_user_id", "fallback-user")
+
+    assert ingestion_worker._resolve_worker_user_id() == "worker-user"
+
+
+def test_resolve_worker_user_id_uses_default_in_local(monkeypatch):
+    monkeypatch.delenv("INGESTION_WORKER_USER_ID", raising=False)
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "local")
+    monkeypatch.setattr(ingestion_worker.settings, "default_user_id", "fallback-user")
+
+    assert ingestion_worker._resolve_worker_user_id() == "fallback-user"
+
+
+def test_resolve_worker_user_id_is_unscoped_in_production(monkeypatch):
+    monkeypatch.delenv("INGESTION_WORKER_USER_ID", raising=False)
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "production")
+    monkeypatch.setattr(ingestion_worker.settings, "default_user_id", "fallback-user")
+
+    assert ingestion_worker._resolve_worker_user_id() is None
+
+
+def test_resolve_worker_user_id_is_unscoped_when_app_env_missing(monkeypatch):
+    monkeypatch.delenv("INGESTION_WORKER_USER_ID", raising=False)
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "")
+    monkeypatch.setattr(ingestion_worker.settings, "default_user_id", "fallback-user")
+
+    assert ingestion_worker._resolve_worker_user_id() is None
+
+
+def test_set_worker_claim_scope_sets_explicit_user(monkeypatch):
+    scoped_to: list[str] = []
+
+    def fake_set_session_user_id(_db, user_id):
+        scoped_to.append(user_id)
+
+    monkeypatch.setattr(ingestion_worker, "set_session_user_id", fake_set_session_user_id)
+
+    session = _DummySession()
+    ingestion_worker._set_worker_claim_scope(session, "user-1")
+
+    assert scoped_to == ["user-1"]
+    assert session.executed == []
+
+
+def test_set_worker_claim_scope_clears_stale_user_when_unscoped():
+    session = _DummySession()
+    session.info["app_user_id"] = "stale-user"
+
+    ingestion_worker._set_worker_claim_scope(session, None)
+
+    assert "app_user_id" not in session.info
+    assert session.executed
+    assert "set_config('app.user_id', '', false)" in session.executed[0].lower()
