@@ -238,17 +238,27 @@ extension NotesDetailView {
         }
     }
 
+    @ViewBuilder
     var closeButton: some View {
-        HeaderActionButton(
-            systemName: "xmark",
-            accessibilityLabel: "Close note",
-            action: {
-                requestCloseNote()
-            },
-            isDisabled: viewModel.activeNote == nil
-        )
-        #if os(macOS)
-        .keyboardShortcut(.escape, modifiers: [])
-        #endif
+        if editorViewModel.isReadOnly {
+            HeaderActionButton(
+                systemName: "xmark",
+                accessibilityLabel: "Close note",
+                action: {
+                    requestCloseNote()
+                },
+                isDisabled: viewModel.activeNote == nil
+            )
+            .keyboardShortcut(.escape, modifiers: [])
+        } else {
+            HeaderActionButton(
+                systemName: "xmark",
+                accessibilityLabel: "Close note",
+                action: {
+                    requestCloseNote()
+                },
+                isDisabled: viewModel.activeNote == nil
+            )
+        }
     }
 }
