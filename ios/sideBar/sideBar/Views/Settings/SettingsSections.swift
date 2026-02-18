@@ -149,6 +149,10 @@ struct ProfileSettingsView: View {
                     TextField("Not set", text: $location)
                         .multilineTextAlignment(.trailing)
                 }
+                ProfileDateOfBirthField(
+                    dateOfBirthEnabled: $dateOfBirthEnabled,
+                    dateOfBirth: $dateOfBirth
+                )
             }
 
             Section {
