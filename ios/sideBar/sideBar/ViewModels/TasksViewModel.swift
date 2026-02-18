@@ -22,6 +22,7 @@ public final class TasksViewModel: ObservableObject {
     let networkStatus: any NetworkStatusProviding
     var cancellables = Set<AnyCancellable>()
     var searchDebounce: Task<Void, Never>?
+    var realtimeRefreshTask: Task<Void, Never>?
     var lastNonSearchSelection: TaskSelection = .today
 
     public init(
@@ -163,6 +164,7 @@ public final class TasksViewModel: ObservableObject {
     public func reset() {
         searchDebounce?.cancel()
         searchDebounce = nil
+        realtimeRefreshTask?.cancel()
         localErrorMessage = nil
         searchQuery = ""
         newTaskDraft = nil
@@ -175,10 +177,6 @@ public final class TasksViewModel: ObservableObject {
         panelOrphanProjects = []
         panelGroupCounts = [:]
         panelProjectCounts = [:]
-    }
-
-    func setLocalErrorMessage(_ message: String?) {
-        localErrorMessage = message
     }
 
     private func rebuildPanelDerivedState(

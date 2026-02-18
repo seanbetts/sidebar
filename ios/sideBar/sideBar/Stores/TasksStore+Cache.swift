@@ -9,9 +9,8 @@ extension TasksStore {
         apply: (T) -> Void,
         refreshIfAvailable: @escaping @MainActor () async -> Void
     ) -> Bool {
-        let canRefreshFromRemote = (networkStatus?.isNetworkAvailable ?? true)
-            && (networkStatus?.isServerReachable ?? true)
-        if !force, let cached: T = cache.get(key: cacheKey) {
+        let canRefreshFromRemote = canRefreshFromRemote()
+        if !force, let cached: T = cachedSnapshot(key: cacheKey) {
             apply(cached)
             if canRefreshFromRemote {
                 Task {
@@ -20,7 +19,7 @@ extension TasksStore {
             }
             return true
         }
-        if !force, let offline = offlineStore?.get(key: cacheKey, as: type) {
+        if !force, let offline = offlineSnapshot(key: cacheKey, as: type) {
             apply(offline)
             if canRefreshFromRemote {
                 Task {

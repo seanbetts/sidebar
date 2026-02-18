@@ -294,6 +294,18 @@ import Combine
         return try await task.value
     }
 
+    func canRefreshFromRemote() -> Bool {
+        (networkStatus?.isNetworkAvailable ?? true) && (networkStatus?.isServerReachable ?? true)
+    }
+
+    func cachedSnapshot<T: Codable>(key: String) -> T? {
+        cache.get(key: key)
+    }
+
+    func offlineSnapshot<T: Codable>(key: String, as type: T.Type) -> T? {
+        offlineStore?.get(key: key, as: type)
+    }
+
 }
 
 extension TasksStore {
