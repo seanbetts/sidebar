@@ -35,7 +35,6 @@ struct WebsitesPanelView: View {
     @State var exportDocument: MarkdownFileDocument?
     @State var isExporting = false
     @State var exportFilename: String = "website"
-    @State var quickActionWebsiteId: String?
     @FocusState var isSearchFocused: Bool
 
     var body: some View {
@@ -60,17 +59,9 @@ struct WebsitesPanelView: View {
         }
         .onChange(of: viewModel.active?.id) { _, newValue in
             selection = newValue
-            if quickActionWebsiteId != newValue {
-                hideQuickActions()
-            }
         }
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading
-        }
-        .onChange(of: viewModel.items.map(\.id)) { _, ids in
-            guard let quickActionWebsiteId else { return }
-            guard !ids.contains(quickActionWebsiteId) else { return }
-            hideQuickActions()
         }
         .onChange(of: isArchiveExpanded) { _, expanded in
             if expanded {
@@ -113,7 +104,6 @@ struct WebsitesPanelView: View {
             message: "This will remove the website and cannot be undone.",
             onConfirm: {
                 guard let item = deleteTarget else { return }
-                hideQuickActions()
                 deleteTarget = nil
                 Task { await viewModel.deleteWebsite(id: item.id) }
             },
@@ -144,29 +134,6 @@ struct WebsitesPanelView: View {
         ) { _ in
             exportDocument = nil
         }
-        #if os(iOS)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let quickActionItem {
-                WebsiteQuickActionsPill(
-                    isPinned: quickActionItem.pinned,
-                    isArchived: quickActionItem.archived,
-                    onPinToggle: {
-                        togglePinnedFromQuickActions(for: quickActionItem)
-                    },
-                    onArchiveToggle: {
-                        toggleArchivedFromQuickActions(for: quickActionItem)
-                    },
-                    onDelete: {
-                        promptDeleteFromQuickActions(for: quickActionItem)
-                    }
-                )
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.bottom, DesignTokens.Spacing.sm)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        #endif
-        .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: quickActionWebsiteId)
         .onReceive(appEnvironment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .websites else { return }
             switch event.action {
