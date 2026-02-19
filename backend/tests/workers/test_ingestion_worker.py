@@ -356,3 +356,52 @@ def test_set_worker_claim_scope_clears_stale_user_when_unscoped():
     assert len(session.executed) == 2
     assert "set_config('app.user_id', '', false)" in session.executed[0].lower()
     assert "set_config('app.ingestion_scope', 'all', false)" in session.executed[1].lower()
+
+
+def test_enforce_safe_dev_worker_configuration_allows_local_db(monkeypatch):
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "local")
+    monkeypatch.setattr(
+        ingestion_worker.settings,
+        "database_url",
+        "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test",
+    )
+    monkeypatch.delenv("INGESTION_ALLOW_REMOTE_DB", raising=False)
+
+    ingestion_worker._enforce_safe_dev_worker_configuration()
+
+
+def test_enforce_safe_dev_worker_configuration_blocks_remote_db(monkeypatch):
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "local")
+    monkeypatch.setattr(
+        ingestion_worker.settings,
+        "database_url",
+        "postgresql://user:pass@aws-1-eu-central-1.pooler.supabase.com:6543/postgres",
+    )
+    monkeypatch.delenv("INGESTION_ALLOW_REMOTE_DB", raising=False)
+
+    with pytest.raises(RuntimeError, match="Refusing to start ingestion worker"):
+        ingestion_worker._enforce_safe_dev_worker_configuration()
+
+
+def test_enforce_safe_dev_worker_configuration_allows_remote_db_override(monkeypatch):
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "development")
+    monkeypatch.setattr(
+        ingestion_worker.settings,
+        "database_url",
+        "postgresql://user:pass@aws-1-eu-central-1.pooler.supabase.com:6543/postgres",
+    )
+    monkeypatch.setenv("INGESTION_ALLOW_REMOTE_DB", "1")
+
+    ingestion_worker._enforce_safe_dev_worker_configuration()
+
+
+def test_enforce_safe_dev_worker_configuration_skips_production(monkeypatch):
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "production")
+    monkeypatch.setattr(
+        ingestion_worker.settings,
+        "database_url",
+        "postgresql://user:pass@aws-1-eu-central-1.pooler.supabase.com:6543/postgres",
+    )
+    monkeypatch.delenv("INGESTION_ALLOW_REMOTE_DB", raising=False)
+
+    ingestion_worker._enforce_safe_dev_worker_configuration()
