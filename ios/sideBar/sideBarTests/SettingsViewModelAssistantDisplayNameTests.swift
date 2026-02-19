@@ -171,6 +171,47 @@ final class SettingsVMAssistantDisplayNameTests: XCTestCase {
 
         XCTAssertEqual(viewModel.displayName(for: skill), "Files")
     }
+
+    func testDisplayDescriptionReplacesAssistantNamePlaceholder() async {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            assistantIdentity: AssistantIdentitySettings(
+                name: "Navigator",
+                tone: nil,
+                values: nil,
+                boundaries: nil
+            ),
+            enabledSkills: []
+        )
+        let viewModel = SettingsViewModel(
+            settingsAPI: AssistantNameMockSettingsAPI(result: .success(settings)),
+            skillsAPI: AssistantNameMockSkillsAPI(),
+            cache: TestCacheClient()
+        )
+        let skill = SkillItem(
+            id: "ui-theme",
+            name: "UI Theme",
+            description: "Allow {name} to switch between light and dark mode",
+            category: "System"
+        )
+
+        await viewModel.load()
+
+        XCTAssertEqual(
+            viewModel.displayDescription(for: skill),
+            "Allow Navigator to switch between light and dark mode"
+        )
+    }
 }
 
 private enum AssistantNameMockError: Error {

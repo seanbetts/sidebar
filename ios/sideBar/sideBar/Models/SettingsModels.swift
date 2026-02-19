@@ -208,19 +208,23 @@ public struct SkillItem: Codable, Identifiable {
     public let category: String
     /// Whether users are allowed to toggle this skill.
     public let userToggleable: Bool
+    /// Whether non-toggleable skills should show a "Required" badge.
+    public let showRequiredBadge: Bool
 
     public init(
         id: String,
         name: String,
         description: String,
         category: String,
-        userToggleable: Bool = true
+        userToggleable: Bool = true,
+        showRequiredBadge: Bool? = nil
     ) {
         self.id = id
         self.name = name
         self.description = description
         self.category = category
         self.userToggleable = userToggleable
+        self.showRequiredBadge = showRequiredBadge ?? !userToggleable
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -229,7 +233,9 @@ public struct SkillItem: Codable, Identifiable {
         case description
         case category
         case userToggleable
+        case showRequiredBadge
         case legacyUserToggleable = "user_toggleable"
+        case legacyShowRequiredBadge = "show_required_badge"
     }
 
     public init(from decoder: Decoder) throws {
@@ -245,6 +251,13 @@ public struct SkillItem: Codable, Identifiable {
         } else {
             userToggleable = true
         }
+        if let showBadge = try container.decodeIfPresent(Bool.self, forKey: .showRequiredBadge) {
+            showRequiredBadge = showBadge
+        } else if let legacyShowBadge = try container.decodeIfPresent(Bool.self, forKey: .legacyShowRequiredBadge) {
+            showRequiredBadge = legacyShowBadge
+        } else {
+            showRequiredBadge = !userToggleable
+        }
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -254,6 +267,7 @@ public struct SkillItem: Codable, Identifiable {
         try container.encode(description, forKey: .description)
         try container.encode(category, forKey: .category)
         try container.encode(userToggleable, forKey: .userToggleable)
+        try container.encode(showRequiredBadge, forKey: .showRequiredBadge)
     }
 }
 
