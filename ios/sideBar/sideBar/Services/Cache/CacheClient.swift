@@ -80,7 +80,7 @@ public final class InMemoryCacheClient: CacheClient {
     }
 
     public func remove(key: String) {
-        queue.sync {
+        _ = queue.sync {
             storage.removeValue(forKey: key)
         }
     }
