@@ -217,8 +217,11 @@ extension ContentView {
         phoneSelection: AppSection
     ) -> Bool {
         guard isPhoneIdiom else { return false }
-        guard isPhonePanelListVisible else { return false }
-        return AppSection.primaryNavigationSections.contains(phoneSelection)
+        if isPhonePanelListVisible {
+            return AppSection.primaryNavigationSections.contains(phoneSelection)
+        }
+        // In compact tasks detail routes, keep showing the dock for quick add.
+        return phoneSelection == .tasks
     }
 
     #if !os(macOS)

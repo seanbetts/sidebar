@@ -100,6 +100,16 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(shouldShow)
     }
 
+    func testShouldDisplayPhoneFloatingActionDockShowsInTasksDetailWorkspace() {
+        let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
+            isPhoneIdiom: true,
+            isPhonePanelListVisible: false,
+            phoneSelection: .tasks
+        )
+
+        XCTAssertTrue(shouldShow)
+    }
+
     func testShouldDisplayPhoneFloatingActionDockHidesForNonPhone() {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: false,

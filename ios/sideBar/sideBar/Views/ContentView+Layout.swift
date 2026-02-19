@@ -144,32 +144,41 @@ extension ContentView {
             }
         case .tasks:
             PhoneFloatingActionDock {
-                Menu {
-                    Button {
+                if isPhonePanelListVisible {
+                    Menu {
+                        Button {
+                            environment.emitShortcutAction(.newItem)
+                        } label: {
+                            Label("New task", systemImage: "checkmark.circle")
+                        }
+                        Button {
+                            environment.emitShortcutAction(.createTaskGroup)
+                        } label: {
+                            Label("New group", systemImage: "folder")
+                        }
+                        Button {
+                            environment.emitShortcutAction(.createTaskProject)
+                        } label: {
+                            Label("New project", systemImage: "list.bullet.rectangle")
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(DesignTokens.Typography.labelMd)
+                            .frame(
+                                width: PhoneFloatingActionMetrics.buttonSize,
+                                height: PhoneFloatingActionMetrics.buttonSize
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add")
+                } else {
+                    PhoneFloatingActionButton(
+                        systemName: "plus",
+                        accessibilityLabel: "New task"
+                    ) {
                         environment.emitShortcutAction(.newItem)
-                    } label: {
-                        Label("New task", systemImage: "checkmark.circle")
                     }
-                    Button {
-                        environment.emitShortcutAction(.createTaskGroup)
-                    } label: {
-                        Label("New group", systemImage: "folder")
-                    }
-                    Button {
-                        environment.emitShortcutAction(.createTaskProject)
-                    } label: {
-                        Label("New project", systemImage: "list.bullet.rectangle")
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(DesignTokens.Typography.labelMd)
-                        .frame(
-                            width: PhoneFloatingActionMetrics.buttonSize,
-                            height: PhoneFloatingActionMetrics.buttonSize
-                        )
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add")
             }
         case .websites:
             PhoneFloatingActionDock {
