@@ -15,32 +15,12 @@ extension TasksDetailView {
 
     var workspaceFloatingActionDock: some View {
         PhoneFloatingActionDock {
-            Menu {
-                Button {
-                    viewModel.startNewTask()
-                } label: {
-                    Label("New task", systemImage: "checkmark.circle")
-                }
-                Button {
-                    showNewGroupAlert = true
-                } label: {
-                    Label("New group", systemImage: "folder")
-                }
-                Button {
-                    showNewProjectAlert = true
-                } label: {
-                    Label("New project", systemImage: "list.bullet.rectangle")
-                }
-            } label: {
-                Image(systemName: "plus")
-                    .font(DesignTokens.Typography.labelMd)
-                    .frame(
-                        width: PhoneFloatingActionMetrics.buttonSize,
-                        height: PhoneFloatingActionMetrics.buttonSize
-                    )
+            PhoneFloatingActionButton(
+                systemName: "plus",
+                accessibilityLabel: "New task"
+            ) {
+                viewModel.startNewTask()
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Add")
         }
     }
 
@@ -91,58 +71,5 @@ extension TasksDetailView {
     func openRename(_ task: TaskItem) {
         renameTask = task
         setActiveTask(task)
-    }
-
-    func handleCreateGroup() {
-        let title = newGroupTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
-        newGroupTitle = ""
-        Task {
-            do {
-                try await viewModel.createGroup(title: title)
-            } catch {
-                viewModel.setErrorMessage(ErrorMapping.message(for: error))
-            }
-        }
-    }
-
-    func handleProjectTitleNext() {
-        let title = newProjectTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
-        pendingProjectTitle = title
-        newProjectTitle = ""
-        if let preferredGroupId = preferredGroupIdForNewProject() {
-            handleCreateProject(groupId: preferredGroupId)
-            return
-        }
-        if viewModel.groups.isEmpty {
-            handleCreateProject(groupId: nil)
-            return
-        }
-        showProjectGroupDialog = true
-    }
-
-    func handleCreateProject(groupId: String?) {
-        let title = pendingProjectTitle
-        pendingProjectTitle = ""
-        guard !title.isEmpty else { return }
-        Task {
-            do {
-                try await viewModel.createProject(title: title, groupId: groupId)
-            } catch {
-                viewModel.setErrorMessage(ErrorMapping.message(for: error))
-            }
-        }
-    }
-
-    func preferredGroupIdForNewProject() -> String? {
-        switch viewModel.selection {
-        case .group(let id):
-            return id
-        case .project(let id):
-            return viewModel.projects.first(where: { $0.id == id })?.groupId
-        default:
-            return nil
-        }
     }
 }

@@ -25,12 +25,6 @@ struct TasksDetailView: View {
     @State var deleteTask: TaskItem?
     @State var activeTaskId: String?
     @State private var expandedTaskIds: Set<String> = []
-    @State var showNewGroupAlert: Bool = false
-    @State var showNewProjectAlert: Bool = false
-    @State var showProjectGroupDialog: Bool = false
-    @State var newGroupTitle: String = ""
-    @State var newProjectTitle: String = ""
-    @State var pendingProjectTitle: String = ""
 
     var body: some View {
         let state = viewModel.viewState
@@ -146,29 +140,6 @@ struct TasksDetailView: View {
                     onDismiss: { viewModel.cancelNewTask() }
                 )
                 .phoneSheetGrabBarVisible()
-            }
-        }
-        .alert("New group", isPresented: $showNewGroupAlert) {
-            TextField("Group name", text: $newGroupTitle)
-            Button("Cancel", role: .cancel) { newGroupTitle = "" }
-            Button("Save") { handleCreateGroup() }
-        } message: {
-            Text("Add a new group for your tasks.")
-        }
-        .alert("New project", isPresented: $showNewProjectAlert) {
-            TextField("Project name", text: $newProjectTitle)
-            Button("Cancel", role: .cancel) { newProjectTitle = "" }
-            Button("Next") { handleProjectTitleNext() }
-        } message: {
-            Text("Name your project, then pick a group.")
-        }
-        .confirmationDialog("Choose group", isPresented: $showProjectGroupDialog, titleVisibility: .visible) {
-            Button("No group") { handleCreateProject(groupId: nil) }
-            let sortedGroups = viewModel.groups.sorted {
-                $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-            }
-            ForEach(sortedGroups, id: \.id) { group in
-                Button(group.title) { handleCreateProject(groupId: group.id) }
             }
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
