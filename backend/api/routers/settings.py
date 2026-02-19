@@ -62,6 +62,8 @@ class SettingsResponse(BaseModel):
     assistant_identity_meta: AgentFieldMetaPayload | None = None
     assistant_soul: AssistantSoulPayload | None = None
     assistant_soul_meta: AgentFieldMetaPayload | None = None
+    ai_primary_provider: str | None = None
+    ai_fallback_to_managed: bool = True
 
 
 class SettingsUpdate(BaseModel):
@@ -79,6 +81,8 @@ class SettingsUpdate(BaseModel):
     pronouns: str | None = None
     location: str | None = None
     enabled_skills: list[str] | None = None
+    ai_primary_provider: str | None = None
+    ai_fallback_to_managed: bool | None = None
 
 
 class ShortcutsPatResponse(BaseModel):

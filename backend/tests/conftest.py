@@ -164,6 +164,37 @@ from api.models.website import Website  # noqa: F401, E402
 from api.models.website_processing_job import WebsiteProcessingJob  # noqa: F401, E402
 
 
+def _ensure_user_settings_columns(connection) -> None:
+    """Ensure additive user_settings columns exist for incremental schema tests."""
+    from sqlalchemy import text
+
+    connection.execute(
+        text(
+            "ALTER TABLE user_settings "
+            "ADD COLUMN IF NOT EXISTS ai_primary_provider text"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE user_settings "
+            "ADD COLUMN IF NOT EXISTS ai_fallback_to_managed boolean DEFAULT true"
+        )
+    )
+    connection.execute(
+        text(
+            "UPDATE user_settings "
+            "SET ai_fallback_to_managed = true "
+            "WHERE ai_fallback_to_managed IS NULL"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE user_settings "
+            "ALTER COLUMN ai_fallback_to_managed SET NOT NULL"
+        )
+    )
+
+
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for test files."""
@@ -406,6 +437,7 @@ def test_db_engine():
         with engine.connect() as connection:
             connection.execute(text("SET search_path TO public"))
             Base.metadata.create_all(bind=connection)
+            _ensure_user_settings_columns(connection)
 
     yield engine
 
@@ -440,6 +472,7 @@ def test_db(test_db_engine):
         db = TestSessionLocal()
         db.info["force_public_search_path"] = True
         db.execute(text("SET search_path TO public"))
+        _ensure_user_settings_columns(db.connection())
 
         try:
             yield db
@@ -456,6 +489,7 @@ def test_db(test_db_engine):
     db.info["force_public_search_path"] = True
     db.execute(text("SET search_path TO public"))
     Base.metadata.create_all(bind=db.connection())
+    _ensure_user_settings_columns(db.connection())
 
     try:
         yield db

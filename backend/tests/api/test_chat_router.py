@@ -22,6 +22,11 @@ class FakeClaudeClient:
 
 def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
     monkeypatch.setattr(chat_router, "ClaudeClient", FakeClaudeClient)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: None),
+    )
 
     response = test_client.post(
         "/api/chat/stream",
@@ -45,6 +50,11 @@ def test_stream_chat_forwards_memory_events(test_client, monkeypatch):
             yield {"type": "memory_created", "data": {"id": "memory-1"}}
 
     monkeypatch.setattr(chat_router, "ClaudeClient", FakeMemoryClaudeClient)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: None),
+    )
 
     response = test_client.post(
         "/api/chat/stream",
@@ -77,6 +87,11 @@ def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch
             }
 
     monkeypatch.setattr(chat_router, "ClaudeClient", FakeAssistantIdentityClaudeClient)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: None),
+    )
 
     response = test_client.post(
         "/api/chat/stream",
@@ -106,6 +121,11 @@ def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch)
             }
 
     monkeypatch.setattr(chat_router, "ClaudeClient", FakeOtherPreferencesClaudeClient)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: None),
+    )
 
     response = test_client.post(
         "/api/chat/stream",
@@ -185,6 +205,11 @@ def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
 
     monkeypatch.setattr(
         chat_router.genai, "Client", lambda *_args, **_kwargs: FakeGeminiClient()
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: None),
     )
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id

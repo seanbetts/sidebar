@@ -63,3 +63,18 @@ def test_update_settings_rejects_agent_owned_fields(test_client):
         },
     )
     assert response.status_code == 422
+
+
+def test_update_settings_accepts_ai_provider_preferences(test_client):
+    response = test_client.patch(
+        "/api/settings",
+        headers=_auth_headers(),
+        json={
+            "ai_primary_provider": "anthropic",
+            "ai_fallback_to_managed": False,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ai_primary_provider"] == "anthropic"
+    assert body["ai_fallback_to_managed"] is False

@@ -1,4 +1,6 @@
 import pytest
+from api.services.ai.policy import AICapabilityUnavailableError
+from api.services.ai.gateway import TranscriptionResolution
 from api.services.agent.tools import mapper as tool_mapper_module
 from api.services.agent.tools.mapper import ToolMapper
 
@@ -265,3 +267,65 @@ async def test_execute_tool_other_preferences_handler(monkeypatch):
     assert result["success"] is True
     assert result["data"]["weather_unit"] == "fahrenheit"
     assert result["data"]["biometric_unlock_enabled"] is True
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_injects_transcription_model_from_gateway(monkeypatch):
+    tools = {
+        "Transcribe Audio": {
+            "description": "transcribe audio",
+            "input_schema": {},
+            "skill": "audio-transcribe",
+            "script": "transcribe_audio.py",
+            "build_args": lambda params: [params["model"]],
+        }
+    }
+    mapper = _build_mapper(tools)
+    monkeypatch.setattr(
+        mapper.ai_gateway,
+        "resolve_transcription",
+        lambda **_kwargs: TranscriptionResolution(
+            provider="openai",
+            model="gpt-4o-transcribe",
+            used_managed_fallback=False,
+        ),
+    )
+
+    result = await mapper.execute_tool(
+        "Transcribe Audio",
+        {"file_path": "files/audio.m4a"},
+        context={"user_id": "user-1"},
+    )
+    assert result["success"] is True
+    assert mapper.executor.calls[0]["args"] == [
+        "gpt-4o-transcribe",
+        "--user-id",
+        "user-1",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_returns_error_when_transcription_unavailable(monkeypatch):
+    tools = {
+        "Transcribe Audio": {
+            "description": "transcribe audio",
+            "input_schema": {},
+            "skill": "audio-transcribe",
+            "script": "transcribe_audio.py",
+            "build_args": lambda params: [params["file_path"]],
+        }
+    }
+    mapper = _build_mapper(tools)
+
+    def _raise_unavailable(**_kwargs):
+        raise AICapabilityUnavailableError("Capability unavailable")
+
+    monkeypatch.setattr(mapper.ai_gateway, "resolve_transcription", _raise_unavailable)
+
+    result = await mapper.execute_tool(
+        "Transcribe Audio",
+        {"file_path": "files/audio.m4a"},
+        context={"user_id": "user-1"},
+    )
+    assert result["success"] is False
+    assert "Capability unavailable" in result["error"]

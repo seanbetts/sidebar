@@ -64,6 +64,8 @@ class UserSettingsService:
         enabled_skills: Any = UNSET,
         assistant_identity: Any = UNSET,
         assistant_soul: Any = UNSET,
+        ai_primary_provider: Any = UNSET,
+        ai_fallback_to_managed: Any = UNSET,
         shortcuts_pat: Any = UNSET,
         tasks_ai_snapshot: Any = UNSET,
     ) -> UserSettings:
@@ -87,6 +89,8 @@ class UserSettingsService:
             enabled_skills: Optional list of enabled skills.
             assistant_identity: Optional assistant identity payload.
             assistant_soul: Optional assistant soul payload.
+            ai_primary_provider: Optional primary AI provider override.
+            ai_fallback_to_managed: Optional fallback policy toggle.
             shortcuts_pat: Optional shortcuts PAT token.
             tasks_ai_snapshot: Optional tasks AI snapshot payload.
 
@@ -129,6 +133,10 @@ class UserSettingsService:
             if assistant_soul is not UserSettingsService.UNSET:
                 settings.assistant_soul = assistant_soul
                 flag_modified(settings, "assistant_soul")
+            if ai_primary_provider is not UserSettingsService.UNSET:
+                settings.ai_primary_provider = ai_primary_provider
+            if ai_fallback_to_managed is not UserSettingsService.UNSET:
+                settings.ai_fallback_to_managed = ai_fallback_to_managed
             if shortcuts_pat is not UserSettingsService.UNSET:
                 settings.shortcuts_pat = shortcuts_pat
             if tasks_ai_snapshot is not UserSettingsService.UNSET:
@@ -170,6 +178,12 @@ class UserSettingsService:
                 assistant_soul=None
                 if assistant_soul is UserSettingsService.UNSET
                 else assistant_soul,
+                ai_primary_provider=None
+                if ai_primary_provider is UserSettingsService.UNSET
+                else ai_primary_provider,
+                ai_fallback_to_managed=True
+                if ai_fallback_to_managed is UserSettingsService.UNSET
+                else ai_fallback_to_managed,
                 shortcuts_pat=None
                 if shortcuts_pat is UserSettingsService.UNSET
                 else shortcuts_pat,

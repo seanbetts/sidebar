@@ -16,6 +16,8 @@ from api.services.agent.tools.execution import (
     handle_ui_theme,
 )
 from api.services.agent.tools.registry import get_tool_definitions
+from api.services.ai.gateway import AIProviderGateway
+from api.services.user_settings_service import UserSettingsService
 
 SKILLS_REQUIRING_USER_ID = {
     "assistant-identity",
@@ -31,6 +33,8 @@ SKILLS_REQUIRING_USER_ID = {
     "web-crawler-policy",
 }
 
+TRANSCRIPTION_TOOL_NAMES = {"Transcribe Audio", "Transcribe YouTube"}
+
 
 class ToolMapper:
     """Maps MCP tools to Claude tool definitions."""
@@ -38,6 +42,7 @@ class ToolMapper:
     def __init__(self):
         """Initialize tool registry and path validation."""
         self.executor = SkillExecutor(settings.skills_dir, settings.workspace_base)
+        self.ai_gateway = AIProviderGateway(settings)
         self.path_validator = PathValidator(
             settings.workspace_base, settings.writable_paths
         )
@@ -125,6 +130,17 @@ class ToolMapper:
             raise ValueError(f"Skill '{skill}' requires user_id parameter")
         if "--user-id" not in args:
             args.extend(["--user-id", user_id])
+
+    @staticmethod
+    def _settings_record_from_context(context: dict[str, Any] | None):
+        """Fetch the user settings record from tool execution context."""
+        if not context:
+            return None
+        db = context.get("db")
+        user_id = context.get("user_id")
+        if db is None or not user_id:
+            return None
+        return UserSettingsService.get_settings(db, str(user_id))
 
     def get_claude_tools(
         self, allowed_skills: list[str] | None = None
@@ -251,6 +267,17 @@ class ToolMapper:
 
             skill = tool_config.get("skill")
             parameters = self._inject_user_id(skill, parameters, context)
+
+            if display_name in TRANSCRIPTION_TOOL_NAMES:
+                settings_record = self._settings_record_from_context(context)
+                resolution = self.ai_gateway.resolve_transcription(
+                    settings_record=settings_record,
+                    requested_model=parameters.get("model"),
+                )
+                parameters = {
+                    **parameters,
+                    "model": resolution.model,
+                }
 
             # Build arguments using the tool's build function
             args = tool_config["build_args"](parameters)

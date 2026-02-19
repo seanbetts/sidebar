@@ -1,11 +1,9 @@
 """Chat router with SSE streaming support."""
 # ruff: noqa: B008
 
-import asyncio
 import hashlib
 import json
 import logging
-import os
 import time
 from datetime import UTC, datetime
 from typing import TypedDict
@@ -13,7 +11,6 @@ from typing import TypedDict
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from google import genai
-from google.genai import types
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
@@ -29,6 +26,7 @@ from api.metrics import (
 )
 from api.schemas.tool_context import ToolExecutionContext
 from api.services.agent.prompt.composer import PromptContextService
+from api.services.ai.gateway import AIProviderGateway
 from api.services.claude_client import ClaudeClient
 from api.services.conversation_service import ConversationService
 from api.services.settings_service import SettingsService
@@ -132,30 +130,6 @@ def _sanitize_title(raw_title: str) -> str:
     return title
 
 
-def _is_retryable_error(error: Exception) -> bool:
-    if isinstance(error, ValueError):
-        return False
-    error_name = error.__class__.__name__
-    non_retryable = {"AuthenticationError", "PermissionDenied", "InvalidArgument"}
-    return error_name not in non_retryable
-
-
-def _extract_response_text(response) -> str:
-    text = getattr(response, "text", None)
-    if text:
-        return text
-
-    candidates = getattr(response, "candidates", None) or []
-    for candidate in candidates:
-        content = getattr(candidate, "content", None)
-        parts = getattr(content, "parts", None) or []
-        for part in parts:
-            part_text = getattr(part, "text", None)
-            if part_text:
-                return part_text
-    return ""
-
-
 @router.post("/stream")
 async def stream_chat(
     request: Request,
@@ -223,8 +197,8 @@ async def stream_chat(
     if not history:
         history = [{"role": "user", "content": first_message_prompt}]
 
-    # Create Claude client
     claude_client = ClaudeClient(settings)
+    ai_gateway = AIProviderGateway(settings, claude_client=claude_client)
     tool_context = ToolExecutionContext(
         db=db,
         user_id=user_id,
@@ -244,12 +218,13 @@ async def stream_chat(
     async def event_generator():
         """Generate SSE events."""
         try:
-            async for event in claude_client.stream_with_tools(
-                message,
-                history,
+            async for event in ai_gateway.stream_chat_with_tools(
+                message=message,
+                conversation_history=history,
                 system_prompt=system_prompt,
                 allowed_skills=enabled_skills,
                 tool_context=tool_context,
+                settings_record=settings_record,
             ):
                 event_type = event.get("type")
 
@@ -363,6 +338,7 @@ async def generate_title(
 
     user_msg = messages[0].get("content", "")
     assistant_msg = messages[1].get("content", "")
+    settings_record = UserSettingsService.get_settings(db, user_id)
     cache_key = _build_title_cache_key(user_msg, assistant_msg)
     cached = _get_cached_title(cache_key)
     if cached:
@@ -377,52 +353,13 @@ async def generate_title(
         return {"title": cached_title, "fallback": False}
 
     try:
-        # Initialize Gemini client
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY not configured")
-
-        client = genai.Client(api_key=api_key)
-
-        prompt = (
-            "Generate ONLY a 3-5 word title for this conversation.\n"
-            "Output the title directly without quotes, punctuation, or prefixes.\n\n"
-            f"User: {user_msg[:200]}\n"
-            f"Assistant: {assistant_msg[:200]}\n\n"
-            "Title:"
+        ai_gateway = AIProviderGateway(settings, google_client_factory=genai.Client)
+        title_result = await ai_gateway.generate_title(
+            user_message=user_msg,
+            assistant_message=assistant_msg,
+            settings_record=settings_record,
         )
-
-        response = None
-        last_error: Exception | None = None
-        for attempt in range(3):
-            try:
-                response = client.models.generate_content(
-                    model="gemini-3-flash-preview",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        temperature=0,
-                        max_output_tokens=20,
-                        response_mime_type="text/plain",
-                        automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                            disable=True
-                        ),
-                        thinking_config=types.ThinkingConfig(thinking_budget=0),
-                    ),
-                )
-                break
-            except Exception as error:
-                last_error = error
-                if not _is_retryable_error(error) or attempt == 2:
-                    raise
-                backoff_seconds = 0.5 * (2**attempt)
-                await asyncio.sleep(backoff_seconds)
-
-        if response is None:
-            if last_error:
-                raise last_error
-            raise ValueError("No response from title generator")
-
-        raw_title = _extract_response_text(response)
+        raw_title = title_result.raw_title
         title = _sanitize_title(raw_title)
 
         # Update conversation title

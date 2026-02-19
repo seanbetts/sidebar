@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from api.config import settings
 from api.services.agent.skills.catalog import SkillCatalogService
+from api.services.ai.registry import VALID_AI_PROVIDERS
 from api.services.storage.service import get_storage_backend
 from api.services.user_settings_service import UserSettingsService
 
@@ -105,6 +106,8 @@ class SettingsService:
         "pronouns",
         "location",
         "enabled_skills",
+        "ai_primary_provider",
+        "ai_fallback_to_managed",
     )
     AGENT_SETTINGS_FIELDS = ("assistant_identity", "assistant_soul")
 
@@ -370,6 +373,37 @@ class SettingsService:
         return compact or None
 
     @staticmethod
+    def _clean_ai_primary_provider(value: Any) -> str | None:
+        """Validate and normalize ai_primary_provider."""
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise HTTPException(
+                status_code=400,
+                detail="ai_primary_provider must be a string",
+            )
+        provider = value.strip().lower()
+        if not provider:
+            return None
+        if provider not in VALID_AI_PROVIDERS:
+            allowed = ", ".join(VALID_AI_PROVIDERS)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid ai_primary_provider. Allowed values: {allowed}",
+            )
+        return provider
+
+    @staticmethod
+    def _resolve_ai_primary_provider(value: Any) -> str | None:
+        """Resolve ai_primary_provider from storage without raising."""
+        if not isinstance(value, str):
+            return None
+        candidate = value.strip().lower()
+        if candidate in VALID_AI_PROVIDERS:
+            return candidate
+        return None
+
+    @staticmethod
     def _clean_assistant_soul(value: Any) -> dict[str, str] | None:
         """Validate and normalize the assistant soul payload."""
         if value is None:
@@ -467,6 +501,10 @@ class SettingsService:
         Returns:
             Settings response payload.
         """
+        ai_fallback_value = None
+        if settings_record and hasattr(settings_record, "ai_fallback_to_managed"):
+            ai_fallback_value = settings_record.ai_fallback_to_managed
+
         return {
             "user_id": user_id,
             "communication_style": SettingsService._resolve_default(
@@ -499,6 +537,16 @@ class SettingsService:
                 getattr(settings_record, "assistant_soul", None)
                 if settings_record
                 else None
+            ),
+            "ai_primary_provider": (
+                SettingsService._resolve_ai_primary_provider(
+                    getattr(settings_record, "ai_primary_provider", None)
+                )
+                if settings_record
+                else None
+            ),
+            "ai_fallback_to_managed": (
+                bool(ai_fallback_value) if ai_fallback_value is not None else True
             ),
         }
 
@@ -584,6 +632,19 @@ class SettingsService:
                 updates["enabled_skills"],
                 catalog=catalog,
             )
+        if "ai_primary_provider" in updates:
+            updates["ai_primary_provider"] = SettingsService._clean_ai_primary_provider(
+                updates.get("ai_primary_provider")
+            )
+        if "ai_fallback_to_managed" in updates:
+            value = updates.get("ai_fallback_to_managed")
+            if value is None:
+                updates["ai_fallback_to_managed"] = True
+            elif not isinstance(value, bool):
+                raise HTTPException(
+                    status_code=400,
+                    detail="ai_fallback_to_managed must be a boolean",
+                )
         return updates
 
     @staticmethod
