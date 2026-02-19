@@ -373,6 +373,50 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.items.isEmpty)
     }
 
+    func testArchiveWebsiteClearsSelectionWhenActiveMatches() async throws {
+        let cache = InMemoryCacheClient()
+        let archivedItem = WebsiteItem(
+            id: "site-1",
+            title: "Site",
+            url: "https://example.com",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: true,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: nil,
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [makeItem(id: "site-1")])),
+            getResult: .success(makeDetail(id: "site-1")),
+            archiveResult: .success(archivedItem)
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.load()
+        try await store.loadDetail(id: "site-1")
+        XCTAssertEqual(viewModel.active?.id, "site-1")
+        XCTAssertNil(viewModel.selectedWebsiteId)
+
+        await viewModel.setArchived(id: "site-1", archived: true)
+
+        XCTAssertNil(viewModel.active)
+        XCTAssertNil(viewModel.selectedWebsiteId)
+    }
+
     func testDeleteWebsiteConflictRefreshesAndRetries() async {
         let staleUpdatedAt = "2026-02-08T14:19:25.939359+00:00"
         let freshUpdatedAt = "2026-02-08T14:20:06.958809+00:00"
