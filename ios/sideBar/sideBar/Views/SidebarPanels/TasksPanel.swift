@@ -47,7 +47,7 @@ struct TasksPanelView: View {
                 return
             }
             if !viewModel.searchQuery.isEmpty {
-                viewModel.updateSearch(query: "")
+                viewModel.clearSearchQuery()
             }
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
@@ -456,9 +456,9 @@ private extension TasksPanelView {
     var deleteAlertMessage: String {
         switch deleteTarget?.kind {
         case .group:
-            return "This will delete the group and all nested projects and tasks."
+            return "This will delete the group, all nested projects, and all tasks in those lists. This action cannot be undone."
         case .project:
-            return "This will delete the project and all of its tasks."
+            return "This will delete the project and all tasks in it. This action cannot be undone."
         case .none:
             return ""
         }

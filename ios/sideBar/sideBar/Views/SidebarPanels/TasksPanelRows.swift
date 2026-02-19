@@ -40,7 +40,7 @@ struct TaskPanelRow: View, Equatable {
     }
 
     var body: some View {
-        SelectableRow(
+        let row = SelectableRow(
             isSelected: isSelected,
             insets: rowInsets,
             useListStyling: useListStyling
@@ -72,22 +72,11 @@ struct TaskPanelRow: View, Equatable {
             onLeading: onRename,
             onDelete: onDelete
         )
-        #if os(macOS)
-        .contextMenu {
-            if let onRename {
-                Button("Rename") {
-                    onRename()
-                }
-            }
-            if let onDelete {
-                Button(role: .destructive) {
-                    onDelete()
-                } label: {
-                    Text("Delete")
-                }
-            }
+        if contextMenuItems.isEmpty {
+            row
+        } else {
+            row.platformContextMenu(items: contextMenuItems)
         }
-        #endif
     }
 
     private var primaryTextColor: Color {
@@ -119,5 +108,16 @@ struct TaskPanelRow: View, Equatable {
             bottom: 0,
             trailing: DesignTokens.Spacing.sm
         )
+    }
+
+    private var contextMenuItems: [SidebarMenuItem] {
+        var items: [SidebarMenuItem] = []
+        if let onRename {
+            items.append(.rename(handler: onRename))
+        }
+        if let onDelete {
+            items.append(.delete(handler: onDelete))
+        }
+        return items
     }
 }
