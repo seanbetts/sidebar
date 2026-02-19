@@ -156,16 +156,18 @@ extension WebsitesPanelView {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Websites") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
-                    Button {
-                        newWebsiteUrl = ""
-                        isNewWebsitePresented = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(DesignTokens.Typography.labelMd)
-                            .frame(width: 28, height: 28)
+                    if !isCompactPhone {
+                        Button {
+                            newWebsiteUrl = ""
+                            isNewWebsitePresented = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(DesignTokens.Typography.labelMd)
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Add website")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add website")
                     if isCompact {
                         SettingsAvatarButton()
                     }

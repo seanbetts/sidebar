@@ -39,7 +39,7 @@ extension ConversationsPanelView {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Chat") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
-                    if showNewChatButton {
+                    if showNewChatButton && !isCompactPhone {
                         Button {
                             Task {
                                 await viewModel.startNewConversation()
@@ -74,12 +74,19 @@ extension ConversationsPanelView {
         #endif
     }
 
-    var showNewChatButton: Bool {
+    var isCompactPhone: Bool {
+        isCompact && isPhone
+    }
+
+    private var isPhone: Bool {
         #if os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            return true
-        }
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
         #endif
+    }
+
+    var showNewChatButton: Bool {
         guard viewModel.selectedConversationId != nil else {
             return false
         }

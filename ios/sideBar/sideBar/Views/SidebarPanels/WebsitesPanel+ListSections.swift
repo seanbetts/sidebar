@@ -1,6 +1,9 @@
 import Foundation
 import sideBarShared
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 extension WebsitesPanelView {
     func open(item: WebsiteItem) {
@@ -181,6 +184,18 @@ extension WebsitesPanelView {
         return false
         #else
         return horizontalSizeClass == .compact
+        #endif
+    }
+
+    var isCompactPhone: Bool {
+        isCompact && isPhone
+    }
+
+    private var isPhone: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
         #endif
     }
 

@@ -1,6 +1,9 @@
 import Foundation
 import sideBarShared
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - NotesPanel+Helpers
 
@@ -9,27 +12,29 @@ extension NotesPanelView {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Notes") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
-                    Button {
-                        newFolderName = ""
-                        newFolderParent = ""
-                        isNewFolderPresented = true
-                    } label: {
-                        Image(systemName: "folder")
-                            .font(DesignTokens.Typography.labelMd)
-                            .frame(width: 28, height: 28)
+                    if !isCompactPhone {
+                        Button {
+                            newFolderName = ""
+                            newFolderParent = ""
+                            isNewFolderPresented = true
+                        } label: {
+                            Image(systemName: "folder")
+                                .font(DesignTokens.Typography.labelMd)
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Add folder")
+                        Button {
+                            newNoteName = ""
+                            isNewNotePresented = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(DesignTokens.Typography.labelMd)
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Add note")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add folder")
-                    Button {
-                        newNoteName = ""
-                        isNewNotePresented = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(DesignTokens.Typography.labelMd)
-                            .frame(width: 28, height: 28)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add note")
                     if isCompact {
                         SettingsAvatarButton()
                     }
@@ -48,6 +53,18 @@ extension NotesPanelView {
         return false
         #else
         return horizontalSizeClass == .compact
+        #endif
+    }
+
+    var isCompactPhone: Bool {
+        isCompact && isPhone
+    }
+
+    private var isPhone: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
         #endif
     }
 

@@ -57,6 +57,10 @@ struct TasksPanelView: View {
                 isSearchFocused = true
             case .newItem:
                 handleNewTaskTap()
+            case .createTaskGroup:
+                showNewGroupAlert = true
+            case .createTaskProject:
+                showNewProjectAlert = true
             default:
                 break
             }
@@ -106,29 +110,31 @@ extension TasksPanelView {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Tasks") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
-                    Menu {
-                        Button {
-                            handleNewTaskTap()
+                    if !isCompactPhone {
+                        Menu {
+                            Button {
+                                handleNewTaskTap()
+                            } label: {
+                                Label("New task", systemImage: "checkmark.circle")
+                            }
+                            Button {
+                                showNewGroupAlert = true
+                            } label: {
+                                Label("New group", systemImage: "folder")
+                            }
+                            Button {
+                                showNewProjectAlert = true
+                            } label: {
+                                Label("New project", systemImage: "list.bullet.rectangle")
+                            }
                         } label: {
-                            Label("New task", systemImage: "checkmark.circle")
+                            Image(systemName: "plus")
+                                .font(DesignTokens.Typography.labelMd)
+                                .frame(width: 28, height: 28)
                         }
-                        Button {
-                            showNewGroupAlert = true
-                        } label: {
-                            Label("New group", systemImage: "folder")
-                        }
-                        Button {
-                            showNewProjectAlert = true
-                        } label: {
-                            Label("New project", systemImage: "list.bullet.rectangle")
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(DesignTokens.Typography.labelMd)
-                            .frame(width: 28, height: 28)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Add")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add")
                     if isCompact {
                         SettingsAvatarButton()
                     }
