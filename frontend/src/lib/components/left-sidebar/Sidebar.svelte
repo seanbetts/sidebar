@@ -34,7 +34,7 @@
 	import { logError } from '$lib/utils/errorHandling';
 	import { canShowTooltips } from '$lib/utils/tooltip';
 
-	let isCollapsed = false;
+	export let isCollapsed = false;
 	let isErrorDialogOpen = false;
 	let errorTitle = 'Unable to complete action';
 	let errorMessage = 'Failed to create note. Please try again.';

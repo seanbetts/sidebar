@@ -22,15 +22,43 @@
 	import { startTaskEvents, stopTaskEvents } from '$lib/realtime/task_events';
 	import { logError } from '$lib/utils/errorHandling';
 	import { initWebVitals } from '$lib/utils/performance';
+	import {
+		SIDEBAR_SWIPE_CONFIG,
+		resolveSidebarSwipeAction,
+		supportsSidebarSwipeGestures
+	} from '$lib/utils/sidebarSwipe';
 
 	let { data, children } = $props();
 	let healthChecked = false;
 	let stopStorageListener: (() => void) | null = null;
 	let stopRealtimeListener: (() => void) | null = null;
 	let stopDebugListener: (() => void) | null = null;
+	let stopSwipeViewportListener: (() => void) | null = null;
 
 	let debugLayout = false;
 	let viewportDebug = '';
+	let isSidebarCollapsed = $state(false);
+	let sidebarSwipeEnabled = $state(false);
+	let pageContentRef = $state<HTMLElement | null>(null);
+
+	interface SwipeStartSnapshot {
+		startX: number;
+		startY: number;
+		startedAtMs: number;
+		startedNearLeadingEdge: boolean;
+	}
+
+	interface TouchPointLike {
+		clientX: number;
+		clientY: number;
+	}
+
+	interface WorkspaceTouchEventLike extends Event {
+		touches: ArrayLike<TouchPointLike>;
+		changedTouches: ArrayLike<TouchPointLike>;
+	}
+
+	let swipeStartSnapshot = $state<SwipeStartSnapshot | null>(null);
 
 	onMount(() => {
 		debugLayout =
@@ -56,6 +84,18 @@
 				window.visualViewport?.removeEventListener('resize', update);
 			};
 		}
+
+		const updateSidebarSwipeEnabled = () => {
+			sidebarSwipeEnabled = supportsSidebarSwipeGestures(
+				window.innerWidth,
+				navigator.maxTouchPoints ?? 0
+			);
+		};
+		updateSidebarSwipeEnabled();
+		window.addEventListener('resize', updateSidebarSwipeEnabled);
+		stopSwipeViewportListener = () => {
+			window.removeEventListener('resize', updateSidebarSwipeEnabled);
+		};
 
 		const storedTheme = getStoredTheme();
 		const prefersDark =
@@ -101,6 +141,7 @@
 		stopStorageListener?.();
 		stopRealtimeListener?.();
 		stopDebugListener?.();
+		stopSwipeViewportListener?.();
 		stopRealtime();
 		stopTaskEvents();
 		chatStore.cleanup?.();
@@ -124,6 +165,53 @@
 			toast.error('Some services are unavailable. Restart the backend via Doppler and refresh.');
 		}
 	}
+
+	function clearSwipeStart() {
+		swipeStartSnapshot = null;
+	}
+
+	function handleWorkspaceTouchStart(event: Event) {
+		const touchEvent = event as WorkspaceTouchEventLike;
+		if (!sidebarSwipeEnabled || !pageContentRef || touchEvent.touches.length !== 1) {
+			clearSwipeStart();
+			return;
+		}
+
+		const touch = touchEvent.touches[0];
+		const pageLeft = pageContentRef.getBoundingClientRect().left;
+		swipeStartSnapshot = {
+			startX: touch.clientX,
+			startY: touch.clientY,
+			startedAtMs: Date.now(),
+			startedNearLeadingEdge: touch.clientX - pageLeft <= SIDEBAR_SWIPE_CONFIG.edgeActivationPx
+		};
+	}
+
+	function handleWorkspaceTouchEnd(event: Event) {
+		const touchEvent = event as WorkspaceTouchEventLike;
+		if (!sidebarSwipeEnabled || !swipeStartSnapshot || touchEvent.changedTouches.length !== 1) {
+			clearSwipeStart();
+			return;
+		}
+
+		const touch = touchEvent.changedTouches[0];
+		const action = resolveSidebarSwipeAction({
+			startX: swipeStartSnapshot.startX,
+			endX: touch.clientX,
+			startY: swipeStartSnapshot.startY,
+			endY: touch.clientY,
+			durationMs: Date.now() - swipeStartSnapshot.startedAtMs,
+			startedNearLeadingEdge: swipeStartSnapshot.startedNearLeadingEdge,
+			isSidebarCollapsed
+		});
+
+		if (action === 'collapse') {
+			isSidebarCollapsed = true;
+		} else if (action === 'expand') {
+			isSidebarCollapsed = false;
+		}
+		clearSwipeStart();
+	}
 </script>
 
 <svelte:head>
@@ -137,10 +225,16 @@
 {:else}
 	<TooltipProvider delayDuration={250}>
 		<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
-			<Sidebar />
+			<Sidebar bind:isCollapsed={isSidebarCollapsed} />
 			<main class="main-content">
 				<SiteHeader />
-				<div class="page-content">
+				<div
+					class="page-content"
+					bind:this={pageContentRef}
+					ontouchstart={handleWorkspaceTouchStart}
+					ontouchend={handleWorkspaceTouchEnd}
+					ontouchcancel={clearSwipeStart}
+				>
 					{@render children()}
 				</div>
 			</main>
