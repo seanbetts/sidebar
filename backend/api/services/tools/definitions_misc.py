@@ -109,6 +109,98 @@ def get_misc_definitions() -> dict:
             "script": "reset_assistant_soul.py",
             "build_args": pm.build_assistant_soul_reset_args,
         },
+        "Get Profile and User Settings": {
+            "description": "Fetch current profile and user settings values.",
+            "input_schema": {
+                "type": "object",
+                "properties": {},
+            },
+            "skill": "settings-profile-user",
+            "script": "get_profile_user_settings.py",
+            "build_args": pm.build_profile_user_settings_get_args,
+        },
+        "Update Profile and User Settings": {
+            "description": (
+                "Update profile and user settings fields such as communication style, "
+                "working relationship, personal profile fields, and date of birth."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "communication_style": {"type": "string"},
+                    "working_relationship": {"type": "string"},
+                    "name": {"type": "string"},
+                    "job_title": {"type": "string"},
+                    "employer": {"type": "string"},
+                    "date_of_birth": {
+                        "type": "string",
+                        "description": "Date string in YYYY-MM-DD format.",
+                    },
+                    "clear_date_of_birth": {
+                        "type": "boolean",
+                        "description": "When true, clears date of birth.",
+                    },
+                    "gender": {"type": "string"},
+                    "pronouns": {"type": "string"},
+                    "location": {"type": "string"},
+                },
+            },
+            "skill": "settings-profile-user",
+            "script": "update_profile_user_settings.py",
+            "build_args": pm.build_profile_user_settings_update_args,
+        },
+        "Upload Profile Image": {
+            "description": (
+                "Upload a profile image from a local file path into user settings."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Local path to an image file.",
+                    },
+                    "content_type": {
+                        "type": "string",
+                        "description": "Optional MIME type (image/*).",
+                    },
+                },
+                "required": ["path"],
+            },
+            "skill": "settings-profile-user",
+            "script": "upload_profile_image.py",
+            "build_args": pm.build_profile_image_upload_args,
+            "validate_read": True,
+        },
+        "Remove Profile Image": {
+            "description": "Remove the current profile image from user settings.",
+            "input_schema": {
+                "type": "object",
+                "properties": {},
+            },
+            "skill": "settings-profile-user",
+            "script": "delete_profile_image.py",
+            "build_args": pm.build_profile_image_delete_args,
+        },
+        "Set Other Preferences": {
+            "description": (
+                "Update local Other settings preferences such as temperature units "
+                "or biometric unlock preference."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "weather_unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                    },
+                    "biometric_unlock_enabled": {"type": "boolean"},
+                },
+            },
+            "skill": "settings-other-preferences",
+            "script": None,
+            "build_args": None,
+        },
         "Memory Tool": {
             "description": (
                 "Create, update, and manage persistent memory files. "

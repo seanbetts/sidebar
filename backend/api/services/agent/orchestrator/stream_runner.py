@@ -38,6 +38,16 @@ def _assistant_settings_stream_event(
                 "assistant_soul_meta": result_data.get("assistant_soul_meta"),
             },
         }
+    if display_name in {
+        "Update Profile and User Settings",
+        "Upload Profile Image",
+        "Remove Profile Image",
+    }:
+        settings_payload = result_data.get("settings")
+        data = settings_payload if isinstance(settings_payload, dict) else result_data
+        return {"type": "profile_user_settings_updated", "data": data}
+    if display_name == "Set Other Preferences":
+        return {"type": "other_preferences_updated", "data": result_data}
     return None
 
 

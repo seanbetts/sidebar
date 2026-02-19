@@ -214,6 +214,26 @@ extension ChatViewModel {
         promptPreview = PromptPreviewPayloadParser.parseEventPayload(payload)
     }
 
+    func handleOtherPreferencesUpdated(_ event: ChatStreamEvent) {
+        if let weatherUnit = stringValue(from: event.data, key: "weather_unit"),
+           weatherUnit == "celsius" || weatherUnit == "fahrenheit" {
+            UserDefaults.standard.set(
+                weatherUnit == "fahrenheit",
+                forKey: AppStorageKeys.weatherUsesFahrenheit
+            )
+        }
+
+        if let biometricUnlockEnabled = boolValue(
+            from: event.data,
+            key: "biometric_unlock_enabled"
+        ) {
+            UserDefaults.standard.set(
+                biometricUnlockEnabled,
+                forKey: AppStorageKeys.biometricUnlockEnabled
+            )
+        }
+    }
+
     func handleToolStart(_ event: ChatStreamEvent) {
         guard let name = stringValue(from: event.data, key: "name") else {
             return
@@ -306,6 +326,13 @@ extension ChatViewModel {
             return nil
         }
         return payload[key] as? String
+    }
+
+    func boolValue(from data: AnyCodable?, key: String) -> Bool? {
+        guard let payload = dictionaryValue(from: data) else {
+            return nil
+        }
+        return payload[key] as? Bool
     }
 
     func anyCodableValue(_ value: Any?) -> AnyCodable? {

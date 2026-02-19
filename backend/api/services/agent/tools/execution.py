@@ -84,3 +84,33 @@ def handle_memory_tool(
     from api.services.memory_tool_handler import MemoryToolHandler
 
     return MemoryToolHandler.execute_command(db, user_id, parameters)
+
+
+def handle_other_preferences(parameters: dict) -> dict[str, Any]:
+    """Validate and normalize local Other preferences payload."""
+    weather_unit = parameters.get("weather_unit")
+    biometric_unlock_enabled = parameters.get("biometric_unlock_enabled")
+
+    if weather_unit not in {None, "celsius", "fahrenheit"}:
+        return {"success": False, "error": "Invalid weather_unit"}
+    if biometric_unlock_enabled is not None and not isinstance(
+        biometric_unlock_enabled, bool
+    ):
+        return {"success": False, "error": "Invalid biometric_unlock_enabled"}
+
+    result_data: dict[str, Any] = {}
+    if weather_unit is not None:
+        result_data["weather_unit"] = weather_unit
+    if biometric_unlock_enabled is not None:
+        result_data["biometric_unlock_enabled"] = biometric_unlock_enabled
+
+    if not result_data:
+        return {
+            "success": False,
+            "error": (
+                "At least one preference is required: "
+                "weather_unit or biometric_unlock_enabled"
+            ),
+        }
+
+    return {"success": True, "data": result_data}

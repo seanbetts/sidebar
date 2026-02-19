@@ -238,6 +238,26 @@ def build_assistant_soul_reset_args(params: dict) -> list:
     return SkillsParameterBuilder.build_assistant_soul_reset_args(params)
 
 
+def build_profile_user_settings_get_args(params: dict) -> list:
+    """Build CLI arguments for reading profile/user settings."""
+    return SkillsParameterBuilder.build_profile_user_settings_get_args(params)
+
+
+def build_profile_user_settings_update_args(params: dict) -> list:
+    """Build CLI arguments for updating profile/user settings."""
+    return SkillsParameterBuilder.build_profile_user_settings_update_args(params)
+
+
+def build_profile_image_upload_args(params: dict) -> list:
+    """Build CLI arguments for profile image upload."""
+    return SkillsParameterBuilder.build_profile_image_upload_args(params)
+
+
+def build_profile_image_delete_args(params: dict) -> list:
+    """Build CLI arguments for profile image delete."""
+    return SkillsParameterBuilder.build_profile_image_delete_args(params)
+
+
 def build_tasks_list_args(params: dict) -> list:
     """Build CLI arguments for list tasks."""
     return TasksParameterBuilder.build_list_args(params)

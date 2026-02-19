@@ -205,3 +205,63 @@ async def test_execute_tool_appends_user_id_for_assistant_soul_skill():
         "--user-id",
         "user-1",
     ]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_appends_user_id_for_profile_user_settings_skill():
+    tools = {
+        "Update Profile and User Settings": {
+            "description": "update profile and user settings",
+            "input_schema": {},
+            "skill": "settings-profile-user",
+            "script": "update_profile_user_settings.py",
+            "build_args": lambda _params: ["--name", "Sean"],
+        }
+    }
+    mapper = _build_mapper(tools)
+    result = await mapper.execute_tool(
+        "Update Profile and User Settings",
+        {"name": "Sean"},
+        context={"user_id": "user-1"},
+    )
+    assert result["success"] is True
+    assert mapper.executor.calls[0]["args"] == [
+        "--name",
+        "Sean",
+        "--user-id",
+        "user-1",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_other_preferences_handler(monkeypatch):
+    tools = {
+        "Set Other Preferences": {
+            "description": "preferences",
+            "input_schema": {},
+            "skill": "settings-other-preferences",
+            "script": None,
+            "build_args": None,
+        }
+    }
+    mapper = _build_mapper(tools)
+
+    def fake_handle_other_preferences(params):
+        return {"success": True, "data": params}
+
+    monkeypatch.setattr(
+        tool_mapper_module,
+        "handle_other_preferences",
+        fake_handle_other_preferences,
+    )
+    monkeypatch.setattr(
+        tool_mapper_module.AuditLogger, "log_tool_call", lambda **_: None
+    )
+
+    result = await mapper.execute_tool(
+        "Set Other Preferences",
+        {"weather_unit": "fahrenheit", "biometric_unlock_enabled": True},
+    )
+    assert result["success"] is True
+    assert result["data"]["weather_unit"] == "fahrenheit"
+    assert result["data"]["biometric_unlock_enabled"] is True

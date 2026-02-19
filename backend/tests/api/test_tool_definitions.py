@@ -96,6 +96,11 @@ def test_misc_definitions_include_assistant_identity_tools():
     assert "Get Assistant Soul" in definitions
     assert "Update Assistant Soul" in definitions
     assert "Reset Assistant Soul" in definitions
+    assert "Get Profile and User Settings" in definitions
+    assert "Update Profile and User Settings" in definitions
+    assert "Upload Profile Image" in definitions
+    assert "Remove Profile Image" in definitions
+    assert "Set Other Preferences" in definitions
 
 
 def test_fs_definitions_include_file_context_menu_parity_tools():

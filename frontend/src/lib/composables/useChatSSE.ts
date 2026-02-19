@@ -7,6 +7,7 @@ import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 import { ingestionStore } from '$lib/stores/ingestion';
 import { scratchpadStore } from '$lib/stores/scratchpad';
 import { memoriesStore } from '$lib/stores/memories';
+import { weatherPreferencesStore } from '$lib/stores/weatherPreferences';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 import { logError } from '$lib/utils/errorHandling';
@@ -224,7 +225,7 @@ export function useChatSSE() {
 					{
 						systemPromptSections: data?.system_prompt_sections ?? [],
 						firstMessagePromptSections: data?.first_message_prompt_sections ?? [],
-						promptReport: data?.prompt_report ?? null
+						promptReport: data?.prompt_report ?? undefined
 					}
 				);
 			},
@@ -242,6 +243,14 @@ export function useChatSSE() {
 			onMemoryDeleted: async () => {
 				dispatchCacheEvent('memory.deleted');
 				await memoriesStore.load();
+			},
+
+			onProfileUserSettingsUpdated: () => undefined,
+
+			onOtherPreferencesUpdated: (data) => {
+				if (data?.weather_unit === 'celsius' || data?.weather_unit === 'fahrenheit') {
+					weatherPreferencesStore.setWeatherUnit(data.weather_unit);
+				}
 			},
 
 			onFirstEvent: ({ elapsedMs }) => {

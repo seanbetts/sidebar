@@ -322,6 +322,112 @@ async def test_stream_with_tools_emits_assistant_soul_event():
 
 
 @pytest.mark.asyncio
+async def test_stream_with_tools_emits_profile_user_settings_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="profile_user_settings"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"name": "Sean"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class ProfileUserSettingsToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            return "Update Profile and User Settings"
+
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {
+                "success": True,
+                "data": {
+                    "settings": {
+                        "name": "Sean",
+                        "job_title": "Engineer",
+                        "location": "Austin, TX",
+                    }
+                },
+            }
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=ProfileUserSettingsToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert {
+        "type": "profile_user_settings_updated",
+        "data": {
+            "name": "Sean",
+            "job_title": "Engineer",
+            "location": "Austin, TX",
+        },
+    } in output
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_emits_other_preferences_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="other_preferences"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"weather_unit": "fahrenheit"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class OtherPreferencesToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            return "Set Other Preferences"
+
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {
+                "success": True,
+                "data": {
+                    "weather_unit": "fahrenheit",
+                    "biometric_unlock_enabled": True,
+                },
+            }
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=OtherPreferencesToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert {
+        "type": "other_preferences_updated",
+        "data": {
+            "weather_unit": "fahrenheit",
+            "biometric_unlock_enabled": True,
+        },
+    } in output
+
+
+@pytest.mark.asyncio
 async def test_stream_with_tools_emits_note_pinned_event():
     events = [
         SimpleNamespace(
