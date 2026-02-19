@@ -53,7 +53,7 @@ struct TaskCountWidgetView: View {
             if entry.data.totalCount == 0 {
                 Text("All done!")
                     .font(.caption)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.secondary)
                     .widgetAccentable()
             }
         }

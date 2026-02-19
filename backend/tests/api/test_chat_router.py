@@ -91,6 +91,73 @@ def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch
     assert "event: complete" in body
 
 
+def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch):
+    class FakeOtherPreferencesClaudeClient:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def stream_with_tools(self, *_args, **_kwargs):
+            yield {
+                "type": "other_preferences_updated",
+                "data": {
+                    "weather_unit": "fahrenheit",
+                    "biometric_unlock_enabled": True,
+                },
+            }
+
+    monkeypatch.setattr(chat_router, "ClaudeClient", FakeOtherPreferencesClaudeClient)
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+
+    body = response.text
+    assert "event: other_preferences_updated" in body
+    assert '"weather_unit": "fahrenheit"' in body
+    assert '"biometric_unlock_enabled": true' in body
+    assert "event: complete" in body
+
+
+def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_resolve_enabled_skills(settings_record):
+        captured["settings_record"] = settings_record
+        return ["notes", "assistant-identity"]
+
+    class FakeSkillAwareClaudeClient:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def stream_with_tools(self, *_args, **kwargs):
+            captured["allowed_skills"] = kwargs.get("allowed_skills")
+            yield {"type": "token", "content": "Hello"}
+
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: None),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(fake_resolve_enabled_skills),
+    )
+    monkeypatch.setattr(chat_router, "ClaudeClient", FakeSkillAwareClaudeClient)
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+    assert captured["settings_record"] is None
+    assert captured["allowed_skills"] == ["notes", "assistant-identity"]
+
+
 def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
     user_id = "user-1"
     conversation = ConversationService.create_conversation(

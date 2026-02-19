@@ -15,6 +15,7 @@ struct WebsitesDetailView: View {
     @Binding var isRenameDialogPresented: Bool
     @Binding var renameValue: String
     @Binding var isDeleteAlertPresented: Bool
+    @State private var quickActionsWebsiteId: String?
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
@@ -60,7 +61,36 @@ struct WebsitesDetailView: View {
                 break
             }
         }
+        .onChange(of: viewModel.active?.id) { _, newValue in
+            guard quickActionsWebsiteId != newValue else { return }
+            hideQuickActionsPill()
+        }
         #if os(iOS)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let active = viewModel.active, quickActionsWebsiteId == active.id {
+                WebsiteContentQuickActionsPill(
+                    isPinned: active.pinned,
+                    isArchived: active.archived,
+                    onPinToggle: {
+                        togglePinnedForActiveWebsite()
+                    },
+                    onArchiveToggle: {
+                        toggleArchiveForActiveWebsite()
+                    },
+                    onDelete: {
+                        hideQuickActionsPill()
+                        isDeleteAlertPresented = true
+                    }
+                )
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.bottom, DesignTokens.Spacing.sm)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(
+            .easeInOut(duration: DesignTokens.Animation.standard),
+            value: quickActionsWebsiteId
+        )
         .toolbar {
             ToolbarItem(placement: .principal) {
                 if isCompact, sourceURL != nil {
@@ -136,6 +166,12 @@ extension WebsitesDetailView {
                     renderingContext: .website
                 )
             }
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                TapGesture().onEnded {
+                    toggleQuickActionsPill(for: website.id)
+                }
+            )
         } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {
             LoadingView(message: viewModel.detailLoadingMessage)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -397,6 +433,33 @@ extension WebsitesDetailView {
                 }
             }
         )
+    }
+
+    private func toggleQuickActionsPill(for websiteId: String) {
+        withAnimation {
+            quickActionsWebsiteId = quickActionsWebsiteId == websiteId ? nil : websiteId
+        }
+    }
+
+    private func hideQuickActionsPill() {
+        withAnimation {
+            quickActionsWebsiteId = nil
+        }
+    }
+
+    private func togglePinnedForActiveWebsite() {
+        guard let active = viewModel.active else { return }
+        Task {
+            await viewModel.setPinned(id: active.id, pinned: !active.pinned)
+        }
+    }
+
+    private func toggleArchiveForActiveWebsite() {
+        guard let active = viewModel.active else { return }
+        hideQuickActionsPill()
+        Task {
+            await viewModel.setArchived(id: active.id, archived: !active.archived)
+        }
     }
 
     private static let publishedDateFormatter: DateFormatter = {

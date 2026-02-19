@@ -18,6 +18,7 @@ class SkillItem(BaseModel):
     description: str
     category: str
     user_toggleable: bool = True
+    show_required_badge: bool = True
 
 
 class SkillsResponse(BaseModel):
@@ -44,6 +45,7 @@ async def list_skills(_: str = Depends(verify_bearer_token)):
             description=str(skill["description"]),
             category=str(skill["category"]),
             user_toggleable=bool(skill.get("user_toggleable", True)),
+            show_required_badge=bool(skill.get("show_required_badge", True)),
         )
         for skill in skills
     ]

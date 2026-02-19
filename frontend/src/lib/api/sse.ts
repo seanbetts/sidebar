@@ -32,6 +32,11 @@ export interface SSECallbacks {
 	onMemoryCreated?: (data: { result?: any }) => void;
 	onMemoryUpdated?: (data: { result?: any }) => void;
 	onMemoryDeleted?: (data: { result?: any }) => void;
+	onProfileUserSettingsUpdated?: (data: Record<string, unknown>) => void;
+	onOtherPreferencesUpdated?: (data: {
+		weather_unit?: 'celsius' | 'fahrenheit';
+		biometric_unlock_enabled?: boolean;
+	}) => void;
 }
 
 /**
@@ -265,6 +270,12 @@ export class SSEClient {
 				break;
 			case 'memory_deleted':
 				callbacks.onMemoryDeleted?.(data);
+				break;
+			case 'profile_user_settings_updated':
+				callbacks.onProfileUserSettingsUpdated?.(data);
+				break;
+			case 'other_preferences_updated':
+				callbacks.onOtherPreferencesUpdated?.(data);
 				break;
 
 			default:

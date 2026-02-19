@@ -63,6 +63,10 @@ public final class SettingsViewModel: LoadableViewModel {
         }
     }
 
+    public func displayDescription(for skill: SkillItem) -> String {
+        skill.description.replacingOccurrences(of: "{name}", with: assistantDisplayName)
+    }
+
     public func load(force: Bool = false) async {
         clearError()
         profileSaveError = nil

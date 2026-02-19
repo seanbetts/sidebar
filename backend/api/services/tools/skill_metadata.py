@@ -3,23 +3,18 @@
 SKILL_DISPLAY = {
     "fs": {
         "name": "Files",
-        "description": (
-            "Browse, read, search, write, rename, pin, and delete ingested files. "
-            "Reads return extracted text (ai.md) with frontmatter."
-        ),
+        "description": "Search, read, write, rename, pin and delete files",
     },
     "notes": {
         "name": "Notes",
         "description": (
-            "Create, update, rename, archive, move, pin, delete, list, and "
-            "download notes and folders, plus manage scratchpad content."
+            "Search, read, create, update, rename, pin, move, manage folder, "
+            "archive and delete notes"
         ),
     },
     "web-save": {
         "name": "Web Save",
-        "description": (
-            "Save web pages as clean markdown in the database for later use."
-        ),
+        "description": "Save webpages as clean markdown",
     },
     "web-search": {
         "name": "Web Search",
@@ -35,21 +30,15 @@ SKILL_DISPLAY = {
     },
     "audio-transcribe": {
         "name": "Audio Transcription",
-        "description": "Transcribe audio files into text and store transcripts in R2.",
+        "description": "Transcribe audio files into text and save the transcripts",
     },
     "youtube-download": {
         "name": "YouTube Download",
-        "description": (
-            "Download YouTube video or audio to the files workspace "
-            "(videos by default)."
-        ),
+        "description": "Save YouTube videos",
     },
     "youtube-transcribe": {
         "name": "YouTube Transcription",
-        "description": (
-            "Transcribe YouTube videos into text and store transcripts in the "
-            "files workspace."
-        ),
+        "description": "Transcribe YouTube videos into text and save the transcripts",
     },
     "skill-creator": {
         "name": "Skill Creator",
@@ -57,7 +46,7 @@ SKILL_DISPLAY = {
     },
     "ui-theme": {
         "name": "UI Theme",
-        "description": "Allow the assistant to switch light or dark mode.",
+        "description": "Allow {name} to switch between light and dark mode",
     },
     "prompt-preview": {
         "name": "Prompt Preview",
@@ -66,18 +55,30 @@ SKILL_DISPLAY = {
     "assistant-identity": {
         "name": "Assistant Identity",
         "description": "Read and update assistant-managed identity settings.",
+        "show_required_badge": False,
     },
     "assistant-soul": {
         "name": "Assistant Soul",
         "description": "Read and update assistant-managed soul guidance settings.",
+        "show_required_badge": False,
+    },
+    "settings-profile-user": {
+        "name": "Settings Profile/User",
+        "description": "Read and update profile and user settings fields.",
+    },
+    "settings-other-preferences": {
+        "name": "Settings Other Preferences",
+        "description": "Update local Other settings preferences.",
     },
     "memory": {
         "name": "Memory",
-        "description": "Store and manage persistent user memories.",
+        "description": "Store and manage persistent memories",
     },
     "tasks": {
         "name": "Tasks",
-        "description": "Create, complete, defer, and organize tasks and projects.",
+        "description": (
+            "Search, read, create, complete, defer, organize and delete tasks"
+        ),
     },
 }
 
@@ -89,6 +90,8 @@ EXPOSED_SKILLS = {
     "web-search",
     "assistant-identity",
     "assistant-soul",
+    "settings-profile-user",
+    "settings-other-preferences",
     "memory",
     "ui-theme",
     "prompt-preview",

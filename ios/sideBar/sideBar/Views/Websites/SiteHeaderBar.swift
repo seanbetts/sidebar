@@ -101,7 +101,7 @@ public struct SiteHeaderBar: View {
                         } else {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.caption)
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(DesignTokens.Colors.error)
                         }
                         Text(ingestionStatusText)
                             .font(DesignTokens.Typography.captionSemibold)

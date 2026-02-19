@@ -29,9 +29,9 @@ from api.metrics import (
 )
 from api.schemas.tool_context import ToolExecutionContext
 from api.services.agent.prompt.composer import PromptContextService
-from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.claude_client import ClaudeClient
 from api.services.conversation_service import ConversationService
+from api.services.settings_service import SettingsService
 from api.services.user_settings_service import UserSettingsService
 from api.utils.validation import parse_uuid
 
@@ -85,35 +85,6 @@ def _build_history(messages, user_message_id, latest_message):
             history = history[:-1]
 
     return history
-
-
-def _resolve_enabled_skills(settings_record):
-    """Resolve enabled skills from settings against the skill catalog.
-
-    Args:
-        settings_record: User settings record or None.
-
-    Returns:
-        List of enabled skill IDs.
-    """
-    catalog = SkillCatalogService.list_skills(settings.skills_dir)
-    all_ids = [str(skill["id"]) for skill in catalog]
-    required_ids = {
-        str(skill["id"])
-        for skill in catalog
-        if skill.get("user_toggleable", True) is False
-    }
-    if not settings_record or settings_record.enabled_skills is None:
-        return all_ids
-    enabled = [
-        skill_id
-        for skill_id in settings_record.enabled_skills
-        if isinstance(skill_id, str) and skill_id in all_ids
-    ]
-    for skill_id in all_ids:
-        if skill_id in required_ids and skill_id not in enabled:
-            enabled.append(skill_id)
-    return enabled
 
 
 def _build_title_cache_key(user_msg: str, assistant_msg: str) -> str:
@@ -248,7 +219,7 @@ async def stream_chat(
     )
     system_prompt = prompt_bundle["system_prompt"]["text"]
     first_message_prompt = prompt_bundle["first_message_prompt"]["text"]
-    enabled_skills = _resolve_enabled_skills(settings_record)
+    enabled_skills = SettingsService.resolve_enabled_skills(settings_record)
     if not history:
         history = [{"role": "user", "content": first_message_prompt}]
 
@@ -316,6 +287,8 @@ async def stream_chat(
                     "memory_deleted",
                     "assistant_identity_updated",
                     "assistant_soul_updated",
+                    "profile_user_settings_updated",
+                    "other_preferences_updated",
                 }:
                     data = json.dumps(event.get("data", {}))
                     yield f"event: {event_type}\ndata: {data}\n\n"

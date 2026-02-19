@@ -47,10 +47,10 @@ struct SkillsSettingsView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(viewModel.displayName(for: skill))
                                         .font(DesignTokens.Typography.subheadlineSemibold)
-                                    Text(skill.description)
+                                    Text(viewModel.displayDescription(for: skill))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    if !skill.userToggleable {
+                                    if !skill.userToggleable && skill.showRequiredBadge {
                                         Text("Required")
                                             .font(.caption2)
                                             .foregroundStyle(.secondary)

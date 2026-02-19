@@ -2,13 +2,13 @@ import XCTest
 @testable import sideBar
 
 final class ContentViewLifecycleTests: XCTestCase {
-    func testMakeMacInitialSelectionPlanDefaultsToNotesWithoutPendingSelection() {
+    func testMakeMacInitialSelectionPlanDefaultsToChatWithoutPendingSelection() {
         let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: nil)
 
-        XCTAssertEqual(plan.primarySection, .notes)
+        XCTAssertNil(plan.primarySection)
         XCTAssertEqual(plan.secondarySection, .chat)
-        XCTAssertEqual(plan.lastNonChatSection, .notes)
-        XCTAssertEqual(plan.sidebarSelection, .notes)
+        XCTAssertNil(plan.lastNonChatSection)
+        XCTAssertEqual(plan.sidebarSelection, .chat)
         XCTAssertNil(plan.focusedSection)
         XCTAssertFalse(plan.shouldConsumeCommandSelection)
     }
@@ -38,11 +38,38 @@ final class ContentViewLifecycleTests: XCTestCase {
     func testMakeMacInitialSelectionPlanIgnoresPendingSettingsSelection() {
         let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: .settings)
 
-        XCTAssertEqual(plan.primarySection, .notes)
+        XCTAssertNil(plan.primarySection)
         XCTAssertEqual(plan.secondarySection, .chat)
-        XCTAssertEqual(plan.lastNonChatSection, .notes)
-        XCTAssertEqual(plan.sidebarSelection, .notes)
+        XCTAssertNil(plan.lastNonChatSection)
+        XCTAssertEqual(plan.sidebarSelection, .chat)
         XCTAssertNil(plan.focusedSection)
         XCTAssertFalse(plan.shouldConsumeCommandSelection)
+    }
+
+    func testMakeInitialPhoneChatActionCreatesConversationWhenNoneExist() {
+        let action = ContentView.makeInitialPhoneChatAction(
+            selectedConversationId: nil,
+            conversationIds: []
+        )
+
+        XCTAssertEqual(action, .createConversation)
+    }
+
+    func testMakeInitialPhoneChatActionSelectsFirstConversationWhenAvailable() {
+        let action = ContentView.makeInitialPhoneChatAction(
+            selectedConversationId: nil,
+            conversationIds: ["conversation-1", "conversation-2"]
+        )
+
+        XCTAssertEqual(action, .selectConversation("conversation-1"))
+    }
+
+    func testMakeInitialPhoneChatActionDoesNothingWhenAlreadySelected() {
+        let action = ContentView.makeInitialPhoneChatAction(
+            selectedConversationId: "conversation-9",
+            conversationIds: ["conversation-1"]
+        )
+
+        XCTAssertEqual(action, .none)
     }
 }

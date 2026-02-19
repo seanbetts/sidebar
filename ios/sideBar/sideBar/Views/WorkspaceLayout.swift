@@ -228,7 +228,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         let willExpand = !isLeftPanelExpanded
         isLeftPanelExpanded.toggle()
         if willExpand, selection == nil {
-            selection = .notes
+            selection = .chat
         }
     }
 

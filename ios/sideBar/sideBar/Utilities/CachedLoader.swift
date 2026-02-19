@@ -28,9 +28,17 @@ public struct CachedLoader<T: Codable> {
         onRefresh: ((T) -> Void)? = nil
     ) async throws -> (T, Bool) {
         if !force, let cached: T = cache.get(key: cacheKey) {
-            Task {
+            let cache = self.cache
+            let fetch = self.fetch
+            let cacheKey = self.cacheKey
+            let ttlSeconds = self.ttlSeconds
+            let logger = self.logger
+            Task { [weak cache] in
                 do {
                     let fresh = try await fetch()
+                    guard let cache else {
+                        return
+                    }
                     cache.set(key: cacheKey, value: fresh, ttlSeconds: ttlSeconds)
                     if let onRefresh {
                         await MainActor.run {
@@ -39,7 +47,7 @@ public struct CachedLoader<T: Codable> {
                     }
                 } catch {
                     logger.error(
-                        "Background refresh failed for key \(self.cacheKey, privacy: .public)"
+                        "Background refresh failed for key \(cacheKey, privacy: .public)"
                     )
                     logger.error(
                         "Background refresh error: \(error.localizedDescription, privacy: .public)"

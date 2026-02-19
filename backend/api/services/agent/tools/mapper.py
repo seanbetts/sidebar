@@ -11,6 +11,7 @@ from api.security.path_validator import PathValidator
 from api.services.agent.skills.executor import SkillExecutor
 from api.services.agent.tools.execution import (
     handle_memory_tool,
+    handle_other_preferences,
     handle_prompt_preview,
     handle_ui_theme,
 )
@@ -19,6 +20,7 @@ from api.services.agent.tools.registry import get_tool_definitions
 SKILLS_REQUIRING_USER_ID = {
     "assistant-identity",
     "assistant-soul",
+    "settings-profile-user",
     "fs",
     "notes",
     "tasks",
@@ -206,6 +208,29 @@ class ToolMapper:
             # Special case: memory tool
             if display_name == "Memory Tool":
                 result = handle_memory_tool(context, parameters)
+                normalized = self._normalize_result(result)
+                status = "success" if normalized.get("success") else "error"
+                tool_executions_total.labels(tool_skill, status).inc()
+                tool_execution_duration_seconds.labels(tool_skill).observe(
+                    time.time() - start_time
+                )
+                return normalized
+
+            # Special case: local other preferences
+            if display_name == "Set Other Preferences":
+                result = handle_other_preferences(parameters)
+                AuditLogger.log_tool_call(
+                    tool_name=display_name,
+                    parameters={
+                        "weather_unit": parameters.get("weather_unit"),
+                        "biometric_unlock_enabled": parameters.get(
+                            "biometric_unlock_enabled"
+                        ),
+                    },
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=result.get("success", False),
+                )
+
                 normalized = self._normalize_result(result)
                 status = "success" if normalized.get("success") else "error"
                 tool_executions_total.labels(tool_skill, status).inc()

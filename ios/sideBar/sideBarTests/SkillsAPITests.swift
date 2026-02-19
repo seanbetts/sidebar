@@ -30,6 +30,7 @@ final class SkillsAPITests: XCTestCase {
 
         XCTAssertEqual(response.skills.first?.id, "s1")
         XCTAssertEqual(response.skills.first?.userToggleable, true)
+        XCTAssertEqual(response.skills.first?.showRequiredBadge, false)
     }
 
     func testListSkillsDecodesUserToggleablePolicy() async throws {
@@ -61,6 +62,7 @@ final class SkillsAPITests: XCTestCase {
 
         XCTAssertEqual(response.skills.first?.id, "assistant-identity")
         XCTAssertEqual(response.skills.first?.userToggleable, false)
+        XCTAssertEqual(response.skills.first?.showRequiredBadge, true)
     }
 
     func testSkillItemDecodesLegacyUnderscoreKeyWithoutSnakeCaseStrategy() throws {
@@ -82,6 +84,29 @@ final class SkillsAPITests: XCTestCase {
 
         XCTAssertEqual(response.skills.first?.id, "assistant-soul")
         XCTAssertEqual(response.skills.first?.userToggleable, false)
+        XCTAssertEqual(response.skills.first?.showRequiredBadge, true)
+    }
+
+    func testSkillItemDecodesShowRequiredBadgeLegacyKey() throws {
+        let payload = """
+        {
+          "skills": [
+            {
+              "id": "assistant-identity",
+              "name": "Assistant Identity",
+              "description": "Desc",
+              "category": "System",
+              "user_toggleable": false,
+              "show_required_badge": false
+            }
+          ]
+        }
+        """
+
+        let response = try JSONDecoder().decode(SkillsResponse.self, from: Data(payload.utf8))
+
+        XCTAssertEqual(response.skills.first?.id, "assistant-identity")
+        XCTAssertEqual(response.skills.first?.showRequiredBadge, false)
     }
 
     private func makeClient() -> APIClient {

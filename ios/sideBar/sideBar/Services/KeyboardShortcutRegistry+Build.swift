@@ -11,44 +11,18 @@ extension KeyboardShortcutRegistry {
             + buildTasksShortcuts()
     }
 
-    // swiftlint:disable:next function_body_length
     private static func buildUniversalShortcuts() -> [KeyboardShortcut] {
-        [
+        let navigationShortcuts = AppSection.primaryNavigationSections.enumerated().map { index, section in
             KeyboardShortcut(
-                input: "1",
-                title: "Notes",
-                description: "Navigate to Notes",
-                action: .navigate(.notes),
+                input: String(index + 1),
+                title: section.title,
+                description: "Navigate to \(section.title)",
+                action: .navigate(section),
                 contexts: [.universal]
-            ),
-            KeyboardShortcut(
-                input: "2",
-                title: "Tasks",
-                description: "Navigate to Tasks",
-                action: .navigate(.tasks),
-                contexts: [.universal]
-            ),
-            KeyboardShortcut(
-                input: "3",
-                title: "Websites",
-                description: "Navigate to Websites",
-                action: .navigate(.websites),
-                contexts: [.universal]
-            ),
-            KeyboardShortcut(
-                input: "4",
-                title: "Files",
-                description: "Navigate to Files",
-                action: .navigate(.files),
-                contexts: [.universal]
-            ),
-            KeyboardShortcut(
-                input: "5",
-                title: "Chat",
-                description: "Navigate to Chat",
-                action: .navigate(.chat),
-                contexts: [.universal]
-            ),
+            )
+        }
+
+        return navigationShortcuts + [
             KeyboardShortcut(
                 input: ",",
                 title: "Settings",

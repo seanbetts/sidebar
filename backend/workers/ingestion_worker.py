@@ -349,9 +349,11 @@ def _resolve_worker_user_id() -> str | None:
 def _set_worker_claim_scope(db, worker_user_id: str | None) -> None:
     if worker_user_id:
         set_session_user_id(db, worker_user_id)
+        db.execute(text("SELECT set_config('app.ingestion_scope', '', false)"))
         return
     db.info.pop("app_user_id", None)
     db.execute(text("SELECT set_config('app.user_id', '', false)"))
+    db.execute(text("SELECT set_config('app.ingestion_scope', 'all', false)"))
 
 
 def _claim_job(db, worker_id: str) -> FileProcessingJob | None:

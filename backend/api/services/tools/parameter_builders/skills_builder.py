@@ -70,3 +70,54 @@ class SkillsParameterBuilder(BaseParameterBuilder):
         if params.get("reason"):
             args.extend(["--reason", params["reason"]])
         return args
+
+    @staticmethod
+    def build_profile_user_settings_get_args(params: dict) -> list:
+        """Build CLI arguments for profile/user settings read."""
+        args: list[str] = []
+        SkillsParameterBuilder.append_user_id(args, params)
+        return args
+
+    @staticmethod
+    def build_profile_user_settings_update_args(params: dict) -> list:
+        """Build CLI arguments for profile/user settings updates."""
+        args: list[str] = []
+        SkillsParameterBuilder.append_user_id(args, params)
+
+        field_map = (
+            ("communication_style", "--communication-style"),
+            ("working_relationship", "--working-relationship"),
+            ("name", "--name"),
+            ("job_title", "--job-title"),
+            ("employer", "--employer"),
+            ("date_of_birth", "--date-of-birth"),
+            ("gender", "--gender"),
+            ("pronouns", "--pronouns"),
+            ("location", "--location"),
+        )
+        for field_name, flag_name in field_map:
+            if field_name in params and params[field_name] is not None:
+                args.extend([flag_name, str(params[field_name])])
+
+        if bool(params.get("clear_date_of_birth")):
+            args.append("--clear-date-of-birth")
+
+        return args
+
+    @staticmethod
+    def build_profile_image_upload_args(params: dict) -> list:
+        """Build CLI arguments for profile image upload."""
+        args: list[str] = []
+        SkillsParameterBuilder.append_user_id(args, params)
+        if "path" in params and params["path"] is not None:
+            args.extend(["--path", str(params["path"])])
+        if params.get("content_type"):
+            args.extend(["--content-type", str(params["content_type"])])
+        return args
+
+    @staticmethod
+    def build_profile_image_delete_args(params: dict) -> list:
+        """Build CLI arguments for profile image delete."""
+        args: list[str] = []
+        SkillsParameterBuilder.append_user_id(args, params)
+        return args

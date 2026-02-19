@@ -53,10 +53,10 @@ enum DesignTokens {
         static let textSecondary = Color.secondary
         static let textTertiary = Color.platformTertiaryLabel
         static let selection = Color.appSelection
-        static let success = Color.green
-        static let successBackground = Color.green.opacity(0.12)
-        static let warning = Color.orange
-        static let warningBackground = Color.orange.opacity(0.12)
+        static let success = textPrimary
+        static let successBackground = muted.opacity(0.55)
+        static let warning = textSecondary
+        static let warningBackground = muted.opacity(0.55)
         static let error = Color.red
         static let errorBackground = Color.red.opacity(0.1)
         static let errorSurface = Color.red.opacity(0.12)

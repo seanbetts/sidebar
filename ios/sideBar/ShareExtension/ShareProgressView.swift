@@ -10,7 +10,7 @@ final class ShareProgressView: ShareStateView {
         progressView.translatesAutoresizingMaskIntoConstraints = false
         progressView.progress = 0
         progressView.trackTintColor = .systemGray5
-        progressView.progressTintColor = .systemBlue
+        progressView.progressTintColor = .label
 
         let progressContainer = UIView()
         progressContainer.translatesAutoresizingMaskIntoConstraints = false

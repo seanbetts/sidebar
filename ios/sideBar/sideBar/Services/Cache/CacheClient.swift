@@ -3,7 +3,7 @@ import Foundation
 import OSLog
 
 /// Defines the requirements for CacheClient.
-public protocol CacheClient {
+public protocol CacheClient: AnyObject {
     func get<T: Codable>(key: String) -> T?
     func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval)
     func remove(key: String)
@@ -32,24 +32,29 @@ public final class InMemoryCacheClient: CacheClient {
     }
 
     private var storage: [String: Entry] = [:]
-    private let lock = NSLock()
+    private let queue = DispatchQueue(
+        label: "ai.sidebar.sidebar.in-memory-cache",
+        qos: .userInitiated
+    )
     private let logger = Logger(subsystem: "sideBar", category: "Cache")
 
     public init() {
     }
 
     public func get<T: Codable>(key: String) -> T? {
-        lock.lock()
-        guard let entry = storage[key] else {
-            lock.unlock()
+        let entry: Entry? = queue.sync {
+            guard let entry = storage[key] else {
+                return nil
+            }
+            if Date() > entry.expiresAt {
+                storage.removeValue(forKey: key)
+                return nil
+            }
+            return entry
+        }
+        guard let entry else {
             return nil
         }
-        if Date() > entry.expiresAt {
-            storage.removeValue(forKey: key)
-            lock.unlock()
-            return nil
-        }
-        lock.unlock()
         do {
             let decoder = JSONDecoder()
             return try decoder.decode(T.self, from: entry.data)
@@ -69,20 +74,20 @@ public final class InMemoryCacheClient: CacheClient {
             return
         }
         let entry = Entry(expiresAt: Date().addingTimeInterval(ttlSeconds), data: data)
-        lock.lock()
-        storage[key] = entry
-        lock.unlock()
+        queue.sync {
+            storage[key] = entry
+        }
     }
 
     public func remove(key: String) {
-        lock.lock()
-        storage.removeValue(forKey: key)
-        lock.unlock()
+        queue.sync {
+            storage.removeValue(forKey: key)
+        }
     }
 
     public func clear() {
-        lock.lock()
-        storage.removeAll()
-        lock.unlock()
+        queue.sync {
+            storage.removeAll()
+        }
     }
 }

@@ -113,7 +113,8 @@ extension ChatViewModel {
             .memoryUpdated: { [weak self] (_: ChatStreamEvent) in self?.refreshMemories() },
             .memoryDeleted: { [weak self] (_: ChatStreamEvent) in self?.refreshMemories() },
             .assistantIdentityUpdated: { [weak self] (event: ChatStreamEvent) in self?.handleAssistantIdentityUpdated(event) },
-            .assistantSoulUpdated: { [weak self] (event: ChatStreamEvent) in self?.handleAssistantSoulUpdated(event) }
+            .assistantSoulUpdated: { [weak self] (event: ChatStreamEvent) in self?.handleAssistantSoulUpdated(event) },
+            .otherPreferencesUpdated: { [weak self] (event: ChatStreamEvent) in self?.handleOtherPreferencesUpdated(event) }
         ]
         return handlers
     }

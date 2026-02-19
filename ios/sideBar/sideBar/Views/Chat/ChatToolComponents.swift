@@ -39,7 +39,7 @@ struct ToolCallListView: View {
         text: String
     ) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: "hammer.fill")
+            Image(systemName: "command")
                 .font(.caption2)
                 .foregroundStyle(toolPillForeground)
             Text(text)
@@ -58,7 +58,7 @@ struct ToolCallListView: View {
     }
 
     private var toolIconOnlyPill: some View {
-        Image(systemName: "hammer.fill")
+        Image(systemName: "command")
             .font(.caption2)
             .foregroundStyle(toolPillForeground)
             .padding(.horizontal, DesignTokens.Spacing.xs)
@@ -128,11 +128,11 @@ struct ToolCallRow: View {
     private var statusColor: Color {
         switch toolCall.status {
         case .pending:
-            return .orange
+            return DesignTokens.Colors.textSecondary
         case .success:
-            return .green
+            return DesignTokens.Colors.textPrimary
         case .error:
-            return .red
+            return DesignTokens.Colors.error
         }
     }
 

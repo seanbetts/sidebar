@@ -41,12 +41,18 @@ describe('chat streaming flow', () => {
 		const client = new SSEClient();
 		const onNotePinned = vi.fn();
 		const onIngestionUpdated = vi.fn();
+		const onProfileUserSettingsUpdated = vi.fn();
+		const onOtherPreferencesUpdated = vi.fn();
 
 		const stream = createStream([
 			'event: note_pinned\n',
 			'data: {"id":"note-1","pinned":true}\n\n',
 			'event: ingestion_updated\n',
 			'data: {"file_id":"file-1"}\n\n',
+			'event: profile_user_settings_updated\n',
+			'data: {"name":"Sean"}\n\n',
+			'event: other_preferences_updated\n',
+			'data: {"weather_unit":"fahrenheit","biometric_unlock_enabled":true}\n\n',
 			'event: complete\n',
 			'data: {}\n\n'
 		]);
@@ -58,9 +64,22 @@ describe('chat streaming flow', () => {
 			body: stream
 		})) as unknown as typeof fetch;
 
-		await client.connect({ message: 'Hi' }, { onNotePinned, onIngestionUpdated });
+		await client.connect(
+			{ message: 'Hi' },
+			{
+				onNotePinned,
+				onIngestionUpdated,
+				onProfileUserSettingsUpdated,
+				onOtherPreferencesUpdated
+			}
+		);
 
 		expect(onNotePinned).toHaveBeenCalledWith({ id: 'note-1', pinned: true });
 		expect(onIngestionUpdated).toHaveBeenCalledWith({ file_id: 'file-1' });
+		expect(onProfileUserSettingsUpdated).toHaveBeenCalledWith({ name: 'Sean' });
+		expect(onOtherPreferencesUpdated).toHaveBeenCalledWith({
+			weather_unit: 'fahrenheit',
+			biometric_unlock_enabled: true
+		});
 	});
 });
