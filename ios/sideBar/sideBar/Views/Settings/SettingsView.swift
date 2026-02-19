@@ -187,12 +187,7 @@ private struct SettingsSaveStatusPill: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(
-            Capsule()
-                .stroke(Color.white.opacity(0.35), lineWidth: 1)
-        )
-        .appShadow(color: Color.black.opacity(0.12), radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+        .glassEffect(.regular.interactive(), in: Capsule())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
     }

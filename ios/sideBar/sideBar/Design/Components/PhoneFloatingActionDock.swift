@@ -13,16 +13,7 @@ struct PhoneFloatingActionDock<Content: View>: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(
-            Capsule()
-                .stroke(Color.white.opacity(0.35), lineWidth: 1)
-        )
-        .appShadow(
-            color: Color.black.opacity(0.12),
-            radius: DesignTokens.Spacing.sm,
-            y: DesignTokens.Spacing.xs
-        )
+        .glassEffect(.regular.interactive(), in: Capsule())
     }
 }
 
