@@ -155,18 +155,23 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                                 .ignoresSafeArea(.all, edges: .bottom)
                         }
                     }
-                    .contentShape(Rectangle())
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 16, coordinateSpace: .local)
-                            .onEnded { value in
+                    #if os(iOS)
+                    .overlay {
+                        if isIPadSidebarSwipeEnabled {
+                            WorkspaceSidebarSwipeCaptureView(
+                                isEnabled: true,
+                                regionWidth: widths.main + (isRightSidebarCollapsed ? 0 : widths.right + dividerWidth),
+                                isLeftPanelExpanded: isLeftPanelExpanded
+                            ) { translation, startX in
                                 handleMainWorkspaceSwipe(
-                                    translation: value.translation,
-                                    startX: value.startLocation.x,
-                                    regionWidth: widths.main
+                                    translation: translation,
+                                    startX: startX,
+                                    regionWidth: widths.main + (isRightSidebarCollapsed ? 0 : widths.right + dividerWidth)
                                 )
-                            },
-                        including: .subviews
-                    )
+                            }
+                        }
+                    }
+                    #endif
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -361,3 +366,93 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         DesignTokens.Colors.textTertiary
     }
 }
+
+#if os(iOS)
+private struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
+    let isEnabled: Bool
+    let regionWidth: CGFloat
+    let isLeftPanelExpanded: Bool
+    let onSwipeEnded: (CGSize, CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isOpaque = false
+
+        let recognizer = UIPanGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handlePan(_:))
+        )
+        recognizer.minimumNumberOfTouches = 1
+        recognizer.maximumNumberOfTouches = 1
+        recognizer.cancelsTouchesInView = false
+        recognizer.delaysTouchesBegan = false
+        recognizer.delegate = context.coordinator
+        view.addGestureRecognizer(recognizer)
+
+        context.coordinator.panRecognizer = recognizer
+        context.coordinator.onSwipeEnded = onSwipeEnded
+        context.coordinator.isEnabledProvider = { isEnabled }
+        context.coordinator.regionWidthProvider = { regionWidth }
+        context.coordinator.isLeftPanelExpandedProvider = { isLeftPanelExpanded }
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.onSwipeEnded = onSwipeEnded
+        context.coordinator.isEnabledProvider = { isEnabled }
+        context.coordinator.regionWidthProvider = { regionWidth }
+        context.coordinator.isLeftPanelExpandedProvider = { isLeftPanelExpanded }
+        context.coordinator.panRecognizer?.isEnabled = isEnabled
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        weak var panRecognizer: UIPanGestureRecognizer?
+        var onSwipeEnded: ((CGSize, CGFloat) -> Void)?
+        var isEnabledProvider: (() -> Bool)?
+        var regionWidthProvider: (() -> CGFloat)?
+        var isLeftPanelExpandedProvider: (() -> Bool)?
+
+        @objc func handlePan(_ recognizer: UIPanGestureRecognizer) {
+            guard recognizer.state == .ended else { return }
+            guard isEnabledProvider?() == true else { return }
+            guard let view = recognizer.view else { return }
+
+            let translationPoint = recognizer.translation(in: view)
+            let translation = CGSize(width: translationPoint.x, height: translationPoint.y)
+            let endLocation = recognizer.location(in: view)
+            let startX = endLocation.x - translation.width
+            let regionWidth = regionWidthProvider?() ?? view.bounds.width
+            let isLeftPanelExpanded = isLeftPanelExpandedProvider?() ?? false
+            let action = WorkspaceSidebarSwipePolicy.resolveAction(
+                translation: translation,
+                startX: startX,
+                regionWidth: regionWidth,
+                isLeftPanelExpanded: isLeftPanelExpanded,
+                isIPad: true
+            )
+
+            guard action != .none else { return }
+            onSwipeEnded?(translation, startX)
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            true
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldReceive touch: UITouch
+        ) -> Bool {
+            isEnabledProvider?() ?? false
+        }
+    }
+}
+#endif

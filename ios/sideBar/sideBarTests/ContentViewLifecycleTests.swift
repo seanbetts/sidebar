@@ -80,6 +80,46 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(plan.sidebarSelection, .tasks)
     }
 
+    func testShouldShowPhoneFloatingActionDockForPrimaryPhoneSectionPanelList() {
+        let shouldShow = ContentView.shouldShowPhoneFloatingActionDock(
+            isPhoneIdiom: true,
+            isPhonePanelListVisible: true,
+            phoneSelection: .chat
+        )
+
+        XCTAssertTrue(shouldShow)
+    }
+
+    func testShouldShowPhoneFloatingActionDockHidesInPhoneDetailWorkspace() {
+        let shouldShow = ContentView.shouldShowPhoneFloatingActionDock(
+            isPhoneIdiom: true,
+            isPhonePanelListVisible: false,
+            phoneSelection: .notes
+        )
+
+        XCTAssertFalse(shouldShow)
+    }
+
+    func testShouldShowPhoneFloatingActionDockHidesForNonPhone() {
+        let shouldShow = ContentView.shouldShowPhoneFloatingActionDock(
+            isPhoneIdiom: false,
+            isPhonePanelListVisible: true,
+            phoneSelection: .tasks
+        )
+
+        XCTAssertFalse(shouldShow)
+    }
+
+    func testShouldShowPhoneFloatingActionDockHidesOutsidePrimaryPhoneSections() {
+        let shouldShow = ContentView.shouldShowPhoneFloatingActionDock(
+            isPhoneIdiom: true,
+            isPhonePanelListVisible: true,
+            phoneSelection: .settings
+        )
+
+        XCTAssertFalse(shouldShow)
+    }
+
     func testWorkspaceSidebarSwipePolicyCollapsesExpandedPanelOnLeftSwipe() {
         let action = WorkspaceSidebarSwipePolicy.resolveAction(
             translation: CGSize(width: -120, height: 12),
@@ -150,5 +190,17 @@ final class ContentViewLifecycleTests: XCTestCase {
         )
 
         XCTAssertEqual(action, .none)
+    }
+
+    func testWorkspaceSidebarSwipePolicyCollapsesWhenSwipeStartsInSecondaryWorkspacePane() {
+        let action = WorkspaceSidebarSwipePolicy.resolveAction(
+            translation: CGSize(width: -120, height: 8),
+            startX: 920,
+            regionWidth: 1100,
+            isLeftPanelExpanded: true,
+            isIPad: true
+        )
+
+        XCTAssertEqual(action, .collapseLeftPanel)
     }
 }
