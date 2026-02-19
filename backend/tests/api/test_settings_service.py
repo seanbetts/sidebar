@@ -298,13 +298,9 @@ def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
 
 def test_clean_updates_accepts_ai_provider_fields() -> None:
     cleaned = SettingsService.clean_updates(
-        {
-            "ai_primary_provider": "  OPENAI  ",
-            "ai_fallback_to_managed": False,
-        }
+        {"ai_primary_provider": "  OPENAI  "}
     )
     assert cleaned["ai_primary_provider"] == "openai"
-    assert cleaned["ai_fallback_to_managed"] is False
 
 
 def test_clean_updates_rejects_invalid_ai_provider() -> None:
@@ -317,7 +313,6 @@ def test_clean_updates_rejects_invalid_ai_provider() -> None:
 def test_build_response_defaults_ai_provider_policy() -> None:
     payload = SettingsService.build_response(settings_record=None, user_id="user-1")
     assert payload["ai_primary_provider"] is None
-    assert payload["ai_fallback_to_managed"] is False
 
 
 def test_get_settings_includes_primary_provider_key_status(test_db) -> None:

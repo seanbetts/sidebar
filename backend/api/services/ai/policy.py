@@ -10,7 +10,6 @@ from api.services.ai.registry import (
     AICapability,
     AIProvider,
     is_provider_supported_for_capability,
-    managed_default_provider,
 )
 
 
@@ -23,7 +22,6 @@ class AIUserPolicy:
     """Per-user AI routing policy."""
 
     primary_provider: AIProvider | None
-    fallback_to_managed: bool
 
 
 @dataclass(frozen=True)
@@ -32,7 +30,6 @@ class ProviderSelection:
 
     provider: AIProvider
     capability: AICapability
-    used_managed_fallback: bool
 
 
 class AIPolicyService:
@@ -52,49 +49,22 @@ class AIPolicyService:
             if candidate in VALID_AI_PROVIDERS:
                 provider = cast(AIProvider, candidate)
 
-        raw_fallback = (
-            getattr(settings_record, "ai_fallback_to_managed", None)
-            if settings_record
-            else None
-        )
-        fallback_to_managed = False if raw_fallback is None else bool(raw_fallback)
-        return AIUserPolicy(
-            primary_provider=provider,
-            fallback_to_managed=fallback_to_managed,
-        )
+        return AIUserPolicy(primary_provider=provider)
 
     @staticmethod
     def select_provider(
         capability: AICapability, policy: AIUserPolicy
     ) -> ProviderSelection:
-        """Select provider for a capability using user policy and fallback rules."""
-        managed_provider = managed_default_provider(capability)
+        """Select provider for a capability using strict BYOK rules."""
         primary = policy.primary_provider
 
         if not primary:
-            if not policy.fallback_to_managed:
-                raise AICapabilityUnavailableError(
-                    "No primary AI provider configured for strict BYOK mode"
-                )
-            return ProviderSelection(
-                provider=managed_provider,
-                capability=capability,
-                used_managed_fallback=True,
+            raise AICapabilityUnavailableError(
+                "No primary AI provider configured for strict BYOK mode"
             )
 
         if is_provider_supported_for_capability(primary, capability):
-            return ProviderSelection(
-                provider=primary,
-                capability=capability,
-                used_managed_fallback=False,
-            )
-
-        if policy.fallback_to_managed:
-            return ProviderSelection(
-                provider=managed_provider,
-                capability=capability,
-                used_managed_fallback=True,
-            )
+            return ProviderSelection(provider=primary, capability=capability)
 
         raise AICapabilityUnavailableError(
             f"Capability '{capability}' is unavailable for provider '{primary}'"

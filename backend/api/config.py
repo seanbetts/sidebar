@@ -114,7 +114,7 @@ class Settings(BaseSettings):
     db_slow_query_ms: int = int(os.getenv("DB_SLOW_QUERY_MS", "2000"))
 
     # Claude API configuration
-    anthropic_api_key: str  # Loaded from Doppler or environment
+    anthropic_api_key: str | None = None
     model_name: str = "claude-sonnet-4-5-20250929"
     byok_encryption_key: str | None = os.getenv("BYOK_ENCRYPTION_KEY")
 

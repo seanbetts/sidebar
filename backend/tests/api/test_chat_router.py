@@ -14,31 +14,41 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
 
 
-def _managed_fallback_settings() -> SimpleNamespace:
+def _provider_settings(provider: str = "anthropic") -> SimpleNamespace:
     return SimpleNamespace(
         name=None,
         communication_style=None,
         working_relationship=None,
         enabled_skills=None,
-        ai_primary_provider=None,
-        ai_fallback_to_managed=True,
+        ai_primary_provider=provider,
     )
 
 
-class FakeClaudeClient:
-    def __init__(self, *_args, **_kwargs):
-        pass
+def _patch_stream_gateway(monkeypatch, events):
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
 
-    async def stream_with_tools(self, *_args, **_kwargs):
-        yield {"type": "token", "content": "Hello"}
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **_kwargs):
+            for event in events:
+                yield event
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
 
 
 def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
-    monkeypatch.setattr(chat_router, "ClaudeClient", FakeClaudeClient)
+    _patch_stream_gateway(monkeypatch, [{"type": "token", "content": "Hello"}])
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )
 
     response = test_client.post(
@@ -55,18 +65,14 @@ def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
 
 
 def test_stream_chat_forwards_memory_events(test_client, monkeypatch):
-    class FakeMemoryClaudeClient:
-        def __init__(self, *_args, **_kwargs):
-            pass
-
-        async def stream_with_tools(self, *_args, **_kwargs):
-            yield {"type": "memory_created", "data": {"id": "memory-1"}}
-
-    monkeypatch.setattr(chat_router, "ClaudeClient", FakeMemoryClaudeClient)
+    _patch_stream_gateway(
+        monkeypatch,
+        [{"type": "memory_created", "data": {"id": "memory-1"}}],
+    )
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )
 
     response = test_client.post(
@@ -83,12 +89,10 @@ def test_stream_chat_forwards_memory_events(test_client, monkeypatch):
 
 
 def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch):
-    class FakeAssistantIdentityClaudeClient:
-        def __init__(self, *_args, **_kwargs):
-            pass
-
-        async def stream_with_tools(self, *_args, **_kwargs):
-            yield {
+    _patch_stream_gateway(
+        monkeypatch,
+        [
+            {
                 "type": "assistant_identity_updated",
                 "data": {
                     "assistant_identity": {"name": "Navigator"},
@@ -98,12 +102,12 @@ def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch
                     },
                 },
             }
-
-    monkeypatch.setattr(chat_router, "ClaudeClient", FakeAssistantIdentityClaudeClient)
+        ],
+    )
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )
 
     response = test_client.post(
@@ -120,24 +124,22 @@ def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch
 
 
 def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch):
-    class FakeOtherPreferencesClaudeClient:
-        def __init__(self, *_args, **_kwargs):
-            pass
-
-        async def stream_with_tools(self, *_args, **_kwargs):
-            yield {
+    _patch_stream_gateway(
+        monkeypatch,
+        [
+            {
                 "type": "other_preferences_updated",
                 "data": {
                     "weather_unit": "fahrenheit",
                     "biometric_unlock_enabled": True,
                 },
             }
-
-    monkeypatch.setattr(chat_router, "ClaudeClient", FakeOtherPreferencesClaudeClient)
+        ],
+    )
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )
 
     response = test_client.post(
@@ -161,25 +163,32 @@ def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypa
         captured["settings_record"] = settings_record
         return ["notes", "assistant-identity"]
 
-    class FakeSkillAwareClaudeClient:
+    class FakeGateway:
         def __init__(self, *_args, **_kwargs):
             pass
 
-        async def stream_with_tools(self, *_args, **kwargs):
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **kwargs):
             captured["allowed_skills"] = kwargs.get("allowed_skills")
             yield {"type": "token", "content": "Hello"}
 
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )
     monkeypatch.setattr(
         chat_router.SettingsService,
         "resolve_enabled_skills",
         staticmethod(fake_resolve_enabled_skills),
     )
-    monkeypatch.setattr(chat_router, "ClaudeClient", FakeSkillAwareClaudeClient)
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
 
     response = test_client.post(
         "/api/chat/stream",
@@ -222,7 +231,12 @@ def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
+        staticmethod(lambda *_args, **_kwargs: _provider_settings("google")),
+    )
+    monkeypatch.setattr(
+        chat_router.UserAIProviderKeyService,
+        "get_active_key",
+        staticmethod(lambda *_args, **_kwargs: "google-test-key"),
     )
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id
@@ -265,8 +279,6 @@ def test_stream_chat_persists_conversation_provider_model(
                 provider="anthropic",
                 model="claude-sonnet-4-6",
                 api_key="test-key",
-                used_byok=False,
-                used_managed_fallback=False,
             )
 
         async def stream_chat_with_tools(self, **_kwargs):
@@ -276,7 +288,7 @@ def test_stream_chat_persists_conversation_provider_model(
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )
     monkeypatch.setattr(
         chat_router.SettingsService,
@@ -344,7 +356,7 @@ def test_generate_title_uses_conversation_provider_lock(
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id

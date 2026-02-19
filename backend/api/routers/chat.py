@@ -28,7 +28,6 @@ from api.schemas.tool_context import ToolExecutionContext
 from api.services.agent.prompt.composer import PromptContextService
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
-from api.services.claude_client import ClaudeClient
 from api.services.conversation_service import ConversationService
 from api.services.settings_service import SettingsService
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
@@ -199,8 +198,7 @@ async def stream_chat(
     if not history:
         history = [{"role": "user", "content": first_message_prompt}]
 
-    claude_client = ClaudeClient(settings)
-    ai_gateway = AIProviderGateway(settings, claude_client=claude_client)
+    ai_gateway = AIProviderGateway(settings)
     tool_context = ToolExecutionContext(
         db=db,
         user_id=user_id,

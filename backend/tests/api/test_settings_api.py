@@ -69,15 +69,11 @@ def test_update_settings_accepts_ai_provider_preferences(test_client):
     response = test_client.patch(
         "/api/settings",
         headers=_auth_headers(),
-        json={
-            "ai_primary_provider": "anthropic",
-            "ai_fallback_to_managed": False,
-        },
+        json={"ai_primary_provider": "anthropic"},
     )
     assert response.status_code == 200
     body = response.json()
     assert body["ai_primary_provider"] == "anthropic"
-    assert body["ai_fallback_to_managed"] is False
 
 
 def test_provider_key_crud_flow(test_client):

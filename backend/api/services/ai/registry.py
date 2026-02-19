@@ -11,12 +11,6 @@ AICapability = Literal["chat", "title", "audio_transcription"]
 
 VALID_AI_PROVIDERS: tuple[AIProvider, ...] = ("anthropic", "openai", "google")
 
-_MANAGED_DEFAULT_PROVIDER_BY_CAPABILITY: dict[AICapability, AIProvider] = {
-    "chat": "anthropic",
-    "title": "google",
-    "audio_transcription": "openai",
-}
-
 # "Supported" here means supported by sideBar's current implementation.
 _SUPPORTED_PROVIDER_CAPABILITIES: dict[AIProvider, set[AICapability]] = {
     "anthropic": {"chat", "title"},
@@ -29,11 +23,6 @@ _DEFAULT_MODELS: dict[tuple[AIProvider, AICapability], str] = {
     ("openai", "title"): "gpt-4o-mini",
     ("openai", "audio_transcription"): "gpt-4o-transcribe",
 }
-
-
-def managed_default_provider(capability: AICapability) -> AIProvider:
-    """Return the default managed provider for a capability."""
-    return _MANAGED_DEFAULT_PROVIDER_BY_CAPABILITY[capability]
 
 
 def is_provider_supported_for_capability(

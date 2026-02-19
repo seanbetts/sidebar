@@ -3,7 +3,7 @@
 from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, Date, DateTime, Text
+from sqlalchemy import Date, DateTime, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,11 +34,6 @@ class UserSettings(Base):
     )
     assistant_soul: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     ai_primary_provider: Mapped[str | None] = mapped_column(Text, nullable=True)
-    ai_fallback_to_managed: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        default=False,
-    )
     shortcuts_pat: Mapped[str | None] = mapped_column(Text, nullable=True)
     tasks_ai_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

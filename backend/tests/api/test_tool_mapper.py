@@ -296,8 +296,6 @@ async def test_execute_tool_injects_transcription_model_from_gateway(monkeypatch
             provider="openai",
             model="gpt-4o-transcribe",
             api_key="sk-test-openai",
-            used_byok=True,
-            used_managed_fallback=False,
         ),
     )
 

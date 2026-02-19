@@ -107,7 +107,6 @@ class SettingsService:
         "location",
         "enabled_skills",
         "ai_primary_provider",
-        "ai_fallback_to_managed",
     )
     AGENT_SETTINGS_FIELDS = ("assistant_identity", "assistant_soul")
 
@@ -506,10 +505,6 @@ class SettingsService:
         Returns:
             Settings response payload.
         """
-        ai_fallback_value = None
-        if settings_record and hasattr(settings_record, "ai_fallback_to_managed"):
-            ai_fallback_value = settings_record.ai_fallback_to_managed
-
         return {
             "user_id": user_id,
             "communication_style": SettingsService._resolve_default(
@@ -549,9 +544,6 @@ class SettingsService:
                 )
                 if settings_record
                 else None
-            ),
-            "ai_fallback_to_managed": (
-                bool(ai_fallback_value) if ai_fallback_value is not None else False
             ),
             "ai_primary_provider_has_key": False,
             "ai_primary_provider_key_last4": None,
@@ -643,15 +635,6 @@ class SettingsService:
             updates["ai_primary_provider"] = SettingsService._clean_ai_primary_provider(
                 updates.get("ai_primary_provider")
             )
-        if "ai_fallback_to_managed" in updates:
-            value = updates.get("ai_fallback_to_managed")
-            if value is None:
-                updates["ai_fallback_to_managed"] = False
-            elif not isinstance(value, bool):
-                raise HTTPException(
-                    status_code=400,
-                    detail="ai_fallback_to_managed must be a boolean",
-                )
         return updates
 
     @staticmethod

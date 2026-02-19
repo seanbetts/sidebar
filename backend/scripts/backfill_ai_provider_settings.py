@@ -38,7 +38,6 @@ class BackfillOutcome:
 
     user_id: str
     selected_provider: str | None
-    fallback_to_managed: bool | None
     seeded_providers: list[str]
     status: str
     note: str
@@ -77,26 +76,24 @@ def _resolve_selected_provider(
     *,
     existing_primary: str | None,
     providers_with_keys: list[AIProvider],
-) -> tuple[str | None, bool | None, str]:
+) -> tuple[str | None, str]:
     if "anthropic" in providers_with_keys:
-        return "anthropic", False, "Selected anthropic for strict BYOK chat support"
+        return "anthropic", "Selected anthropic for strict BYOK chat support"
 
     if _is_valid_provider(existing_primary) and existing_primary in providers_with_keys:
         return (
             existing_primary,
-            True,
-            "No anthropic key; retained existing primary with managed fallback enabled",
+            "No anthropic key; retained existing primary provider",
         )
 
     if providers_with_keys:
         selected = providers_with_keys[0]
         return (
             selected,
-            True,
-            "No anthropic key; selected available provider with managed fallback enabled",
+            "No anthropic key; selected an available provider",
         )
 
-    return None, None, "No provider key available; user not updated"
+    return None, "No provider key available; user not updated"
 
 
 def _discover_user_ids(db, explicit_user_ids: list[str]) -> list[str]:
@@ -141,7 +138,7 @@ def run_backfill(*, apply: bool, seed_from_managed: bool, user_ids: list[str]) -
                 else None
             )
             providers_with_keys = _active_key_providers(db, user_id)
-            selected_provider, fallback_to_managed, note = _resolve_selected_provider(
+            selected_provider, note = _resolve_selected_provider(
                 existing_primary=existing_primary,
                 providers_with_keys=providers_with_keys,
             )
@@ -151,7 +148,6 @@ def run_backfill(*, apply: bool, seed_from_managed: bool, user_ids: list[str]) -
                     BackfillOutcome(
                         user_id=user_id,
                         selected_provider=None,
-                        fallback_to_managed=None,
                         seeded_providers=seeded_providers,
                         status="skipped",
                         note=note,
@@ -164,14 +160,12 @@ def run_backfill(*, apply: bool, seed_from_managed: bool, user_ids: list[str]) -
                     db,
                     user_id,
                     ai_primary_provider=selected_provider,
-                    ai_fallback_to_managed=fallback_to_managed,
                 )
 
             outcomes.append(
                 BackfillOutcome(
                     user_id=user_id,
                     selected_provider=selected_provider,
-                    fallback_to_managed=fallback_to_managed,
                     seeded_providers=seeded_providers,
                     status="updated" if apply else "planned",
                     note=note,
@@ -181,15 +175,10 @@ def run_backfill(*, apply: bool, seed_from_managed: bool, user_ids: list[str]) -
         print(f"mode={'apply' if apply else 'dry-run'}")
         for outcome in outcomes:
             seeded = ",".join(outcome.seeded_providers) if outcome.seeded_providers else "-"
-            fallback = (
-                str(outcome.fallback_to_managed).lower()
-                if outcome.fallback_to_managed is not None
-                else "-"
-            )
             provider = outcome.selected_provider or "-"
             print(
                 f"user_id={outcome.user_id} status={outcome.status} "
-                f"provider={provider} fallback={fallback} seeded={seeded} note={outcome.note}"
+                f"provider={provider} seeded={seeded} note={outcome.note}"
             )
         return 0
     finally:
@@ -199,9 +188,7 @@ def run_backfill(*, apply: bool, seed_from_managed: bool, user_ids: list[str]) -
 def main() -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description=(
-            "Backfill ai_primary_provider and ai_fallback_to_managed for existing users."
-        )
+        description="Backfill ai_primary_provider for existing users."
     )
     parser.add_argument(
         "--apply",

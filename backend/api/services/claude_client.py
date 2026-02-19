@@ -30,8 +30,11 @@ class ClaudeClient:
             api_key: Optional API key override.
             model: Optional model override.
         """
+        resolved_api_key = api_key or settings.anthropic_api_key
+        if not resolved_api_key:
+            raise ValueError("No API key configured for provider 'anthropic'")
         self.client = AsyncAnthropic(
-            api_key=api_key or settings.anthropic_api_key,
+            api_key=resolved_api_key,
             http_client=self._create_http_client(settings),
         )
         self.model = model or settings.model_name

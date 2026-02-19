@@ -177,25 +177,6 @@ def _ensure_user_settings_columns(connection) -> None:
     )
     connection.execute(
         text(
-            "ALTER TABLE user_settings "
-            "ADD COLUMN IF NOT EXISTS ai_fallback_to_managed boolean DEFAULT false"
-        )
-    )
-    connection.execute(
-        text(
-            "UPDATE user_settings "
-            "SET ai_fallback_to_managed = false "
-            "WHERE ai_fallback_to_managed IS NULL"
-        )
-    )
-    connection.execute(
-        text(
-            "ALTER TABLE user_settings "
-            "ALTER COLUMN ai_fallback_to_managed SET NOT NULL"
-        )
-    )
-    connection.execute(
-        text(
             "ALTER TABLE conversations "
             "ADD COLUMN IF NOT EXISTS ai_provider text"
         )
