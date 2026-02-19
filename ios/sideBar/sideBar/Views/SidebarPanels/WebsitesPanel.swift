@@ -213,7 +213,7 @@ extension WebsitesPanelView {
                     } else {
                         ForEach(filteredItems, id: \.id) { item in
                             let index = staggerIndex(for: item.id, section: "search")
-                            websiteListRow(item: item, index: index)
+                            websiteListRow(item: item, index: index, allowArchive: !item.archived)
                         }
                     }
                 }
@@ -231,7 +231,7 @@ extension WebsitesPanelView {
                         Section("Pinned") {
                             ForEach(pinnedItemsSorted, id: \.id) { item in
                                 let index = staggerIndex(for: item.id, section: "pinned")
-                                websiteListRow(item: item, index: index)
+                                websiteListRow(item: item, index: index, allowArchive: true)
                             }
                         }
                     }
@@ -243,7 +243,7 @@ extension WebsitesPanelView {
                             }
                             ForEach(mainItems, id: \.id) { item in
                                 let index = staggerIndex(for: item.id, section: "main")
-                                websiteListRow(item: item, index: index)
+                                websiteListRow(item: item, index: index, allowArchive: true)
                             }
                         }
                     }
@@ -319,7 +319,7 @@ extension WebsitesPanelView {
                     } else {
                         ForEach(filteredItems, id: \.id) { item in
                             let index = staggerIndex(for: item.id, section: "search")
-                            websiteListRow(item: item, index: index)
+                            websiteListRow(item: item, index: index, allowArchive: !item.archived)
                         }
                     }
                 }
@@ -345,7 +345,7 @@ extension WebsitesPanelView {
                     Section("Pinned") {
                         ForEach(pinnedItemsSorted, id: \.id) { item in
                             let index = staggerIndex(for: item.id, section: "pinned")
-                            websiteListRow(item: item, index: index)
+                            websiteListRow(item: item, index: index, allowArchive: true)
                         }
                     }
                 }
@@ -357,7 +357,7 @@ extension WebsitesPanelView {
                         }
                         ForEach(mainItems, id: \.id) { item in
                             let index = staggerIndex(for: item.id, section: "main")
-                            websiteListRow(item: item, index: index)
+                            websiteListRow(item: item, index: index, allowArchive: true)
                         }
                     }
                 }

@@ -40,7 +40,7 @@ extension WebsitesPanelView {
         item: WebsiteItem,
         index: Int,
         useListStyling: Bool = true,
-        allowArchive: Bool = true
+        allowArchive: Bool
     ) -> some View {
         let isSelected = selection == item.id
         let shouldArchive = Self.swipeActionArchives(item: item, allowArchive: allowArchive)
