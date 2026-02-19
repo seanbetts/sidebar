@@ -92,7 +92,7 @@ extension ContentView {
                     Spacer(minLength: 0)
                     phoneFloatingActionDock
                         .padding(.trailing, DesignTokens.Spacing.lg)
-                        .padding(.bottom, DesignTokens.Spacing.xl)
+                        .padding(.bottom, 48)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
