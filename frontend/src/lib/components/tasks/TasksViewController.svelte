@@ -286,7 +286,7 @@
 			return;
 		}
 		const interval = Math.max(1, Number.parseInt(repeatInterval, 10) || 1);
-		const rule = { type: repeatType, interval } as Task['recurrenceRule'];
+		const rule: NonNullable<Task['recurrenceRule']> = { type: repeatType, interval };
 		const startDate = repeatStartDate || formatDateKeyForToday();
 		if (repeatType === 'weekly') {
 			const date = toDate(startDate);

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import { onDestroy, onMount } from 'svelte';
 	import { chatStore } from '$lib/stores/chat';
 	import { Button } from '$lib/components/ui/button';
@@ -348,8 +349,8 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
-										handleNewChat(event);
+										invokeSnippetClick(props, event);
+										handleNewChat();
 									}}
 									aria-label="New chat"
 								>
@@ -367,8 +368,8 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
-										handleCloseChat(event);
+										invokeSnippetClick(props, event);
+										handleCloseChat();
 									}}
 									aria-label="Close chat"
 								>
@@ -442,7 +443,7 @@
 												class="attachment-action"
 												{...props}
 												onclick={(event) => {
-													props.onclick?.(event);
+													invokeSnippetClick(props, event);
 													handleRetryAttachment(attachment.id);
 												}}
 												aria-label="Retry attachment"
@@ -460,7 +461,7 @@
 												class="attachment-action"
 												{...props}
 												onclick={(event) => {
-													props.onclick?.(event);
+													invokeSnippetClick(props, event);
 													handleDeleteAttachment(attachment.id);
 												}}
 												aria-label="Delete attachment"

@@ -163,7 +163,7 @@ describe('tasks-due-actions', () => {
 				...mockDeps._getState(),
 				selection: { type: 'today' },
 				tasks: [createMockTask()],
-				counts: { today: 1 }
+				counts: { today: 1, upcoming: 0 }
 			});
 
 			await actions.clearDueDate('task-1');
@@ -187,7 +187,7 @@ describe('tasks-due-actions', () => {
 				...mockDeps._getState(),
 				selection: { type: 'today' },
 				tasks: [createMockTask()],
-				counts: { today: 1 },
+				counts: { today: 1, upcoming: 0 },
 				todayCount: 1
 			});
 

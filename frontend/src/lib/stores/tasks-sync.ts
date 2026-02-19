@@ -4,18 +4,14 @@ import type {
 	Task,
 	TaskGroup,
 	TaskProject,
+	TaskSyncConflict,
+	TaskSelection,
 	TaskSyncResponse,
 	TaskSyncUpdates
 } from '$lib/types/tasks';
 
-type TaskSelectionLike = {
-	type: string;
-	id?: string;
-	query?: string;
-};
-
 type TaskStateLike = {
-	selection: TaskSelectionLike;
+	selection: TaskSelection;
 	tasks: Task[];
 	groups: TaskGroup[];
 	projects: TaskProject[];
@@ -26,16 +22,21 @@ export type TasksMetaCache = {
 	projects: TaskProject[];
 };
 
-type SyncCoordinatorOptions = {
+type SyncCoordinatorOptions<TState extends TaskStateLike> = {
 	cacheTtl: number;
 	cacheVersion: string;
 	isBrowser: boolean;
-	tasksCacheKey: (selection: TaskSelectionLike) => string;
-	updateState: (updater: (state: TaskStateLike) => TaskStateLike) => void;
+	tasksCacheKey: (selection: TaskSelection) => string;
+	updateState: (updater: (state: TState) => TState) => void;
 	setMeta: (meta: TasksMetaCache) => void;
 	setSyncNotice: (message: string) => void;
 	setConflictNotice: (message: string) => void;
 	onNextTasks?: (tasks: Task[]) => void;
+};
+
+type TaskSyncResponseLike = Partial<Omit<TaskSyncResponse, 'updates' | 'conflicts'>> & {
+	updates?: Partial<TaskSyncUpdates>;
+	conflicts?: Array<Partial<TaskSyncConflict>>;
 };
 
 const mergeById = <T extends { id: string }>(existing: T[], updates: T[]) => {
@@ -47,10 +48,10 @@ const mergeById = <T extends { id: string }>(existing: T[], updates: T[]) => {
 	return Array.from(map.values());
 };
 
-const mergeUpdatesIntoState = (
+const mergeUpdatesIntoState = <TState extends TaskStateLike>(
 	updates: TaskSyncUpdates,
 	options: Pick<
-		SyncCoordinatorOptions,
+		SyncCoordinatorOptions<TState>,
 		'cacheTtl' | 'cacheVersion' | 'tasksCacheKey' | 'updateState' | 'setMeta'
 	>
 ) => {
@@ -90,10 +91,12 @@ const mergeUpdatesIntoState = (
 /**
  * Create sync helpers that update task store state.
  */
-export function createTasksSyncCoordinator(options: SyncCoordinatorOptions) {
+export function createTasksSyncCoordinator<TState extends TaskStateLike>(
+	options: SyncCoordinatorOptions<TState>
+) {
 	let initialized = false;
 
-	const handleSyncResponse = (response: TaskSyncResponse | null) => {
+	const handleSyncResponse = (response: TaskSyncResponseLike | null) => {
 		if (!response) return;
 		if (response.nextTasks?.length) {
 			options.onNextTasks?.(response.nextTasks);
@@ -102,7 +105,14 @@ export function createTasksSyncCoordinator(options: SyncCoordinatorOptions) {
 			options.setConflictNotice('Tasks changed elsewhere. Refresh to continue.');
 		}
 		if (response.updates) {
-			mergeUpdatesIntoState(response.updates, options);
+			mergeUpdatesIntoState(
+				{
+					tasks: response.updates.tasks ?? [],
+					projects: response.updates.projects ?? [],
+					groups: response.updates.groups ?? []
+				},
+				options
+			);
 		}
 	};
 

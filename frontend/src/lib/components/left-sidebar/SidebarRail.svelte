@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import { MessageSquare, FileText, Globe, Menu, FolderOpen, CheckSquare } from 'lucide-svelte';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import { canShowTooltips } from '$lib/utils/tooltip';
@@ -29,7 +30,7 @@
 					class="rail-toggle"
 					{...props}
 					onclick={(event) => {
-						props.onclick?.(event);
+						invokeSnippetClick(props, event);
 						onToggle?.();
 					}}
 					aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -50,7 +51,7 @@
 					<button
 						{...props}
 						onclick={(event) => {
-							props.onclick?.(event);
+							invokeSnippetClick(props, event);
 							onOpenSection?.('notes');
 						}}
 						class="rail-btn"
@@ -69,7 +70,7 @@
 					<button
 						{...props}
 						onclick={(event) => {
-							props.onclick?.(event);
+							invokeSnippetClick(props, event);
 							onOpenSection?.('tasks');
 						}}
 						class="rail-btn"
@@ -88,7 +89,7 @@
 					<button
 						{...props}
 						onclick={(event) => {
-							props.onclick?.(event);
+							invokeSnippetClick(props, event);
 							onOpenSection?.('websites');
 						}}
 						class="rail-btn"
@@ -107,7 +108,7 @@
 					<button
 						{...props}
 						onclick={(event) => {
-							props.onclick?.(event);
+							invokeSnippetClick(props, event);
 							onOpenSection?.('files');
 						}}
 						class="rail-btn"
@@ -126,7 +127,7 @@
 					<button
 						{...props}
 						onclick={(event) => {
-							props.onclick?.(event);
+							invokeSnippetClick(props, event);
 							onOpenSection?.('chat');
 						}}
 						class="rail-btn"
@@ -148,7 +149,7 @@
 					<button
 						{...props}
 						onclick={(event) => {
-							props.onclick?.(event);
+							invokeSnippetClick(props, event);
 							onOpenSettings?.();
 						}}
 						class="rail-btn rail-btn-avatar"

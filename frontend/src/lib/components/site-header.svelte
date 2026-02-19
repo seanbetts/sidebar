@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { useSiteHeaderData } from '$lib/hooks/useSiteHeaderData';
@@ -387,8 +388,8 @@
 						variant="outline"
 						{...props}
 						onclick={(event) => {
-							props.onclick?.(event);
-							handleLayoutSwap(event);
+							invokeSnippetClick(props, event);
+							handleLayoutSwap();
 						}}
 						aria-label="Swap layout"
 						class="swap-button border-border"

@@ -29,6 +29,7 @@ const createProject = (overrides: Partial<TaskProject> = {}): TaskProject => ({
 	id: 'proj-1',
 	title: 'Test Project',
 	groupId: null,
+	status: 'open',
 	...overrides
 });
 
@@ -115,8 +116,8 @@ describe('tasks-cache-helpers', () => {
 		it('normalizes TaskCountsResponse format', () => {
 			const response: TaskCountsResponse = {
 				counts: { inbox: 5, today: 10, upcoming: 15 },
-				groups: [{ id: 'g1', title: 'Group', count: 3 }],
-				projects: [{ id: 'p1', title: 'Project', groupId: null, count: 7 }]
+				groups: [{ id: 'g1', count: 3 }],
+				projects: [{ id: 'p1', count: 7 }]
 			};
 
 			const result = normalizeCountsCache(response);
@@ -151,10 +152,10 @@ describe('tasks-cache-helpers', () => {
 			const response: TaskCountsResponse = {
 				counts: { inbox: 1, today: 2, upcoming: 3 },
 				groups: [
-					{ id: 'g1', title: 'Group 1', count: 10 },
-					{ id: 'g2', title: 'Group 2', count: 20 }
+					{ id: 'g1', count: 10 },
+					{ id: 'g2', count: 20 }
 				],
-				projects: [{ id: 'p1', title: 'Project 1', groupId: 'g1', count: 5 }]
+				projects: [{ id: 'p1', count: 5 }]
 			};
 
 			const map = buildCountsMap(response);

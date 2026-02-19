@@ -14,8 +14,11 @@ export type PublicEnv = {
  * @returns Public environment variables for metrics and telemetry.
  */
 export function getPublicEnv(): PublicEnv {
-	const metaEnv = typeof import.meta !== 'undefined' ? ((import.meta as ImportMeta).env ?? {}) : {};
-	const processEnv = typeof process !== 'undefined' ? (process.env ?? {}) : {};
+	const metaEnv =
+		typeof import.meta !== 'undefined'
+			? (((import.meta as ImportMeta & { env?: PublicEnv }).env ?? {}) as PublicEnv)
+			: {};
+	const processEnv = typeof process !== 'undefined' ? ((process.env ?? {}) as PublicEnv) : {};
 
 	return {
 		PUBLIC_ENABLE_WEB_VITALS:

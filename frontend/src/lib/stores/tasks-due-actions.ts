@@ -1,8 +1,6 @@
 import type { Task, TaskSelection } from '$lib/types/tasks';
 
-type UpdateState = (updater: (state: StoreState) => StoreState) => void;
-
-type StoreState = {
+type StoreStateBase = {
 	selection: TaskSelection;
 	tasks: Task[];
 	counts: Record<string, number>;
@@ -10,15 +8,17 @@ type StoreState = {
 	error?: string;
 };
 
+type UpdateState<TState extends StoreStateBase> = (updater: (state: TState) => TState) => void;
+
 type CacheConfig = {
 	cacheTtl: number;
 	cacheVersion: string;
 	countsCacheKey: string;
 };
 
-type DueActionDeps = {
-	update: UpdateState;
-	getState: () => StoreState;
+type DueActionDeps<TState extends StoreStateBase> = {
+	update: UpdateState<TState>;
+	getState: () => TState;
 	selectionKey: (selection: TaskSelection) => string;
 	tasksCacheKey: (selection: TaskSelection) => string;
 	updateTaskCaches: (options: {
@@ -30,12 +30,12 @@ type DueActionDeps = {
 		countsCacheKey: string;
 		getCachedData: <T>(key: string, config: { ttl: number; version: string }) => T | null;
 		setCachedData: <T>(key: string, data: T, config: { ttl: number; version: string }) => void;
-		updateState: UpdateState;
+		updateState: UpdateState<TState>;
 	}) => void;
 	classifyDueBucket: (value: string) => 'today' | 'upcoming';
 	getCachedData: <T>(key: string, config: { ttl: number; version: string }) => T | null;
 	setCachedData: <T>(key: string, data: T, config: { ttl: number; version: string }) => void;
-	enqueueTaskOperation: (operation: Record<string, unknown>) => Promise<any>;
+	enqueueTaskOperation: (operation: { op: string } & Record<string, unknown>) => Promise<any>;
 	handleSyncResponse: (response: any) => void;
 	loadSelection: (
 		selection: TaskSelection,
@@ -48,7 +48,10 @@ type DueActionDeps = {
 	cacheConfig: CacheConfig;
 };
 
-const refreshTaskLists = async (deps: DueActionDeps, selection: TaskSelection) => {
+const refreshTaskLists = async <TState extends StoreStateBase>(
+	deps: DueActionDeps<TState>,
+	selection: TaskSelection
+) => {
 	if (!deps.isBrowser || !navigator.onLine) {
 		return;
 	}
@@ -70,7 +73,7 @@ const refreshTaskLists = async (deps: DueActionDeps, selection: TaskSelection) =
 		});
 };
 
-export const createDueActions = (deps: DueActionDeps) => {
+export const createDueActions = <TState extends StoreStateBase>(deps: DueActionDeps<TState>) => {
 	const { cacheTtl, cacheVersion, countsCacheKey } = deps.cacheConfig;
 
 	const setRepeat = async (

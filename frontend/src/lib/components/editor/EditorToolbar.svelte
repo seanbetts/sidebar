@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import {
 		FileText,
 		Save,
@@ -96,7 +97,7 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onCopy();
 								}}
 								aria-label={isCopied ? 'Copied preview' : 'Copy preview'}
@@ -121,7 +122,7 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onClose();
 								}}
 								aria-label="Close preview"
@@ -141,7 +142,7 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onPinToggle();
 								}}
 								aria-label="Pin note"
@@ -166,7 +167,7 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onRename();
 								}}
 								aria-label="Rename note"
@@ -220,7 +221,7 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onCopy();
 								}}
 								aria-label={isCopied ? 'Copied note' : 'Copy note'}
@@ -245,7 +246,7 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onDownload();
 								}}
 								aria-label="Download note"
@@ -264,7 +265,7 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									const handler = noteNode?.archived ? onUnarchive : onArchive;
 									handler?.();
 								}}
@@ -290,7 +291,7 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onDelete();
 								}}
 								aria-label="Delete note"
@@ -309,7 +310,7 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onClose();
 								}}
 								aria-label="Close note"

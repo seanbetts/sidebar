@@ -5,14 +5,8 @@ import {
 	StateField,
 	Transaction
 } from '@codemirror/state';
-import {
-	Decoration,
-	DecorationSet,
-	EditorView,
-	keymap,
-	ViewPlugin,
-	WidgetType
-} from '@codemirror/view';
+import { Decoration, EditorView, keymap, ViewPlugin, WidgetType } from '@codemirror/view';
+import type { DecorationSet } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import {
 	HighlightStyle,
@@ -47,6 +41,8 @@ type EditorAPI = {
 	setReadOnly: (isReadOnly: boolean) => void;
 	focus: () => void;
 	applyCommand: (command: string, payload?: unknown) => boolean;
+	setSelectionAtCoords: (coords: { x: number; y: number }) => void;
+	setSelectionAtCoordsDeferred: (coords: { x: number; y: number }) => void;
 };
 
 declare global {
@@ -125,7 +121,6 @@ addHighlightTag(tags.strong, 'cm-strong');
 addHighlightTag(tags.emphasis, 'cm-emphasis');
 addHighlightTag(tags.strikethrough, 'cm-strikethrough');
 addHighlightTag(tags.link, 'cm-link');
-addHighlightTag(tags.code, 'cm-inline-code');
 addHighlightTag(tags.monospace, 'cm-inline-code');
 
 const markdownHighlightStyle = HighlightStyle.define(highlightSpecs);

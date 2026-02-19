@@ -230,7 +230,7 @@ describe('MessageList', () => {
 				{
 					target: messagesContainer,
 					contentRect: messagesContainer.getBoundingClientRect()
-				} as ResizeObserverEntry
+				} as unknown as ResizeObserverEntry
 			],
 			{} as ResizeObserver
 		);

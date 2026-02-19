@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
@@ -114,8 +115,8 @@
 								variant="ghost"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
-									handleAttachClick(event);
+									invokeSnippetClick(props, event);
+									handleAttachClick();
 								}}
 								aria-label="Attach file"
 								{disabled}
@@ -150,8 +151,8 @@
 						<Button
 							{...props}
 							onclick={(event) => {
-								props.onclick?.(event);
-								handleSubmit(event);
+								invokeSnippetClick(props, event);
+								handleSubmit();
 							}}
 							disabled={disabled || !inputValue.trim()}
 							size="icon"

@@ -35,8 +35,8 @@
 	let stopDebugListener: (() => void) | null = null;
 	let stopSwipeViewportListener: (() => void) | null = null;
 
-	let debugLayout = false;
-	let viewportDebug = '';
+	let debugLayout = $state(false);
+	let viewportDebug = $state('');
 	let isSidebarCollapsed = $state(false);
 	let sidebarSwipeEnabled = $state(false);
 	let pageContentRef = $state<HTMLElement | null>(null);

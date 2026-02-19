@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import { onDestroy, onMount } from 'svelte';
 	import type { Message } from '$lib/types/chat';
 	import { Badge } from '$lib/components/ui/badge';
@@ -100,8 +101,8 @@
 							class="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
 							{...props}
 							onclick={(event) => {
-								props.onclick?.(event);
-								handleCopy(event);
+								invokeSnippetClick(props, event);
+								handleCopy();
 							}}
 							aria-label={isCopied ? 'Copied message' : 'Copy message'}
 						>

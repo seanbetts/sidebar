@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createTasksSyncCoordinator } from '$lib/stores/tasks-sync';
-import type { Task, TaskGroup, TaskProject } from '$lib/types/tasks';
+import type { Task, TaskGroup, TaskProject, TaskSelection } from '$lib/types/tasks';
 
 vi.mock('$lib/services/task_sync', () => ({
 	hydrateTaskCache: vi.fn().mockResolvedValue(null),
@@ -36,6 +36,7 @@ const createProject = (overrides: Partial<TaskProject> = {}): TaskProject => ({
 	id: 'proj-1',
 	title: 'Test Project',
 	groupId: null,
+	status: 'open',
 	...overrides
 });
 
@@ -51,7 +52,7 @@ const createMockOptions = () => {
 		cacheTtl: 300000,
 		cacheVersion: '1',
 		isBrowser: false,
-		tasksCacheKey: (selection: { type: string }) => `tasks.tasks.${selection.type}`,
+		tasksCacheKey: (selection: TaskSelection) => `tasks.tasks.${selection.type}`,
 		updateState: vi.fn((updater) => {
 			state = updater(state);
 		}),

@@ -446,7 +446,7 @@ function createTasksStore() {
 		deleteProject: async (projectId: string) => {
 			try {
 				const state = get({ subscribe });
-				const nextSelection =
+				const nextSelection: TaskSelection =
 					state.selection.type === 'project' && state.selection.id === projectId
 						? { type: 'today' }
 						: state.selection;

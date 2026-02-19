@@ -371,16 +371,6 @@
 		font-weight: 500;
 	}
 
-	.repeat-label {
-		font-size: 0.7rem;
-		letter-spacing: 0.02em;
-		text-transform: uppercase;
-		color: var(--color-muted-foreground);
-		background: var(--color-secondary);
-		border-radius: 999px;
-		padding: 0.1rem 0.4rem;
-	}
-
 	.meta {
 		font-size: 0.75rem;
 		color: var(--color-muted-foreground);

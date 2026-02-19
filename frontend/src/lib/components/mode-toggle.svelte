@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import { Button } from '$lib/components/ui/button';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import { onDestroy, onMount } from 'svelte';
@@ -52,7 +53,7 @@
 				size="icon"
 				{...props}
 				onclick={(event) => {
-					props.onclick?.(event);
+					invokeSnippetClick(props, event);
 					toggleTheme();
 				}}
 				aria-label="Toggle theme"

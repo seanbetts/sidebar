@@ -21,6 +21,12 @@ import type {
 const OUTBOX_BATCH_SIZE = 50;
 let flushPromise: Promise<TaskSyncResponse | null> | null = null;
 
+type TaskSyncOperationInput = {
+	op: string;
+	operation_id?: string;
+	client_updated_at?: string;
+} & Record<string, unknown>;
+
 const isOnline = () => typeof navigator !== 'undefined' && navigator.onLine;
 
 const buildOperationId = () => {
@@ -30,8 +36,9 @@ const buildOperationId = () => {
 	return `op-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-const withOperationMetadata = (operation: Partial<TaskSyncOperation>): TaskSyncOperation => ({
+const withOperationMetadata = (operation: TaskSyncOperationInput): TaskSyncOperation => ({
 	...operation,
+	op: operation.op,
 	operation_id: operation.operation_id ?? buildOperationId(),
 	client_updated_at: operation.client_updated_at ?? new Date().toISOString()
 });
@@ -64,7 +71,7 @@ export async function cacheTaskListResponse(response: TaskListResponse): Promise
  * Enqueue an operation and flush immediately if online.
  */
 export async function enqueueTaskOperation(
-	operation: Partial<TaskSyncOperation>
+	operation: TaskSyncOperationInput
 ): Promise<TaskSyncResponse | null> {
 	const normalized = withOperationMetadata(operation);
 	await enqueueOperation(normalized);

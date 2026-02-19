@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import {
 		Pin,
 		PinOff,
@@ -78,7 +79,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onPinToggle();
 									}}
 									aria-label="Pin website"
@@ -103,7 +104,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onCopyUrl();
 									}}
 									aria-label="Copy website URL"
@@ -122,7 +123,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onRename();
 									}}
 									aria-label="Rename website"
@@ -141,7 +142,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onCopy();
 									}}
 									aria-label={isCopied ? 'Copied website' : 'Copy website'}
@@ -166,7 +167,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onDownload();
 									}}
 									aria-label="Download website"
@@ -185,7 +186,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onArchive();
 									}}
 									aria-label={website.archived ? 'Unarchive website' : 'Archive website'}
@@ -210,7 +211,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onDelete();
 									}}
 									aria-label="Delete website"
@@ -229,7 +230,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onClose();
 									}}
 									aria-label="Close website"

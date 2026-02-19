@@ -1,17 +1,18 @@
 import type {
 	Task,
 	TaskCountsResponse,
+	TaskGroup,
 	TaskListResponse,
 	TaskProject,
 	TaskSelection
 } from '$lib/types/tasks';
 import type { TasksMetaCache } from '$lib/stores/tasks-sync';
 
-type StoreState = {
+type StoreStateBase = {
 	selection: TaskSelection;
 	tasks: Task[];
-	groups: unknown[];
-	projects: unknown[];
+	groups: TaskGroup[];
+	projects: TaskProject[];
 	isLoading: boolean;
 	searchPending: boolean;
 	error: string;
@@ -19,15 +20,15 @@ type StoreState = {
 	todayCount: number;
 };
 
-type LoaderDeps = {
+type LoaderDeps<TState extends StoreStateBase> = {
 	tasksAPI: {
 		list: (scope: string) => Promise<TaskListResponse>;
 		groupTasks: (id: string) => Promise<TaskListResponse>;
 		projectTasks: (id: string) => Promise<TaskListResponse>;
 		search: (query: string) => Promise<TaskListResponse>;
 	};
-	getState: () => StoreState;
-	updateState: (updater: (state: StoreState) => StoreState) => void;
+	getState: () => TState;
+	updateState: (updater: (state: TState) => TState) => void;
 	getCachedData: <T>(key: string, config: { ttl: number; version: string }) => T | null;
 	setCachedData: <T>(key: string, data: T, config: { ttl: number; version: string }) => void;
 	isCacheStale: (key: string, ttl: number) => boolean;
@@ -35,7 +36,9 @@ type LoaderDeps = {
 	cacheVersion: string;
 	metaCacheKey: string;
 	countsCacheKey: string;
-	snapshotLoader: { load: () => Promise<{ tasks: Task[]; groups: any[]; projects: any[] } | null> };
+	snapshotLoader: {
+		load: () => Promise<{ tasks: Task[]; groups: TaskGroup[]; projects: TaskProject[] } | null>;
+	};
 	filterTasksForSelection: (
 		tasks: Task[],
 		selection: TaskSelection,
@@ -45,7 +48,7 @@ type LoaderDeps = {
 		map: Record<string, number>;
 		todayCount: number;
 	};
-	selectionCount: (selection: TaskSelection, tasks: Task[], projects: any[]) => number;
+	selectionCount: (selection: TaskSelection, tasks: Task[], projects: TaskProject[]) => number;
 	selectionKey: (selection: TaskSelection) => string;
 	tasksCacheKey: (selection: TaskSelection) => string;
 	isSameSelection: (a: TaskSelection, b: TaskSelection) => boolean;
@@ -56,14 +59,14 @@ type LoaderDeps = {
 		selection: TaskSelection;
 		lastMeta: TasksMetaCache;
 		setMeta: (meta: TasksMetaCache) => void;
-		updateState: LoaderDeps['updateState'];
+		updateState: LoaderDeps<TState>['updateState'];
 	}) => void;
 	applyTaskMetaCountsOnly: (options: {
 		response: TaskListResponse;
 		selection: TaskSelection;
 		lastMeta: TasksMetaCache;
 		setMeta: (meta: TasksMetaCache) => void;
-		updateState: LoaderDeps['updateState'];
+		updateState: LoaderDeps<TState>['updateState'];
 	}) => void;
 	getLastMeta: () => TasksMetaCache;
 	setLastMeta: (meta: TasksMetaCache) => void;
@@ -71,7 +74,7 @@ type LoaderDeps = {
 	isBrowser: boolean;
 };
 
-export const createTaskLoader = (deps: LoaderDeps) => {
+export const createTaskLoader = <TState extends StoreStateBase>(deps: LoaderDeps<TState>) => {
 	let loadToken = 0;
 	const selectionInFlight = new Map<string, Promise<void>>();
 	let preloadAllSelections: (current: TaskSelection) => void = () => {};

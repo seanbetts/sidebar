@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import {
 		GalleryHorizontal,
 		GalleryVertical,
@@ -108,7 +109,7 @@
 								class:active={viewMode === 'content'}
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									viewMode = 'content';
 								}}
 								aria-label="View file"
@@ -133,7 +134,7 @@
 								class:active={viewMode === 'markdown'}
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									viewMode = 'markdown';
 								}}
 								aria-label="View markdown"
@@ -159,7 +160,7 @@
 									class:active={viewMode === 'content'}
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										viewMode = 'content';
 									}}
 									aria-label="View file"
@@ -184,7 +185,7 @@
 									class:active={viewMode === 'markdown'}
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										viewMode = 'markdown';
 									}}
 									aria-label="View markdown"
@@ -209,7 +210,7 @@
 								class="viewer-control"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onPrevPage();
 								}}
 								disabled={!canPrev}
@@ -231,7 +232,7 @@
 								class="viewer-control"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onNextPage();
 								}}
 								disabled={!canNext}
@@ -253,7 +254,7 @@
 								class="viewer-control"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onZoomOut();
 								}}
 								aria-label="Zoom out"
@@ -274,7 +275,7 @@
 								class="viewer-control"
 								{...props}
 								onclick={(event) => {
-									props.onclick?.(event);
+									invokeSnippetClick(props, event);
 									onZoomIn();
 								}}
 								aria-label="Zoom in"
@@ -295,7 +296,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onSetFitMode('height');
 									}}
 									aria-label="Fit to height"
@@ -316,7 +317,7 @@
 									variant="ghost"
 									{...props}
 									onclick={(event) => {
-										props.onclick?.(event);
+										invokeSnippetClick(props, event);
 										onSetFitMode('width');
 									}}
 									aria-label="Fit to width"
@@ -343,7 +344,7 @@
 							class="viewer-control"
 							{...props}
 							onclick={(event) => {
-								props.onclick?.(event);
+								invokeSnippetClick(props, event);
 								onPinToggle();
 							}}
 							disabled={!hasActive}
@@ -369,7 +370,7 @@
 							aria-label="Rename file"
 							{...props}
 							onclick={(event) => {
-								props.onclick?.(event);
+								invokeSnippetClick(props, event);
 								onRename();
 							}}
 							disabled={!hasActive}
@@ -389,7 +390,7 @@
 							class="viewer-control"
 							{...props}
 							onclick={(event) => {
-								props.onclick?.(event);
+								invokeSnippetClick(props, event);
 								onDownload();
 							}}
 							disabled={!viewerUrl || isVideo}
@@ -410,7 +411,7 @@
 							class="viewer-control"
 							{...props}
 							onclick={(event) => {
-								props.onclick?.(event);
+								invokeSnippetClick(props, event);
 								onCopyMarkdown();
 							}}
 							disabled={!hasMarkdown && !isSpreadsheet}
@@ -437,7 +438,7 @@
 							class="viewer-control"
 							{...props}
 							onclick={(event) => {
-								props.onclick?.(event);
+								invokeSnippetClick(props, event);
 								onDelete();
 							}}
 							disabled={!hasActive}
@@ -458,7 +459,7 @@
 							class="viewer-close"
 							{...props}
 							onclick={(event) => {
-								props.onclick?.(event);
+								invokeSnippetClick(props, event);
 								onClose();
 							}}
 							aria-label="Close file viewer"

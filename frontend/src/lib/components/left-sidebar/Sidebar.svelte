@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import { onDestroy, onMount } from 'svelte';
 	import { Plus, Folder, FileVideoCamera, Layers, List, CheckCircle } from 'lucide-svelte';
 	import { conversationListStore } from '$lib/stores/conversations';
@@ -487,8 +488,8 @@
 										class="panel-action"
 										{...props}
 										onclick={(event) => {
-											props.onclick?.(event);
-											handleNewFolder(event);
+											invokeSnippetClick(props, event);
+											handleNewFolder();
 										}}
 										aria-label="New folder"
 									>
@@ -507,8 +508,8 @@
 										class="panel-action"
 										{...props}
 										onclick={(event) => {
-											props.onclick?.(event);
-											handleNewNote(event);
+											invokeSnippetClick(props, event);
+											handleNewNote();
 										}}
 										aria-label="New note"
 									>
@@ -606,8 +607,8 @@
 										class="panel-action"
 										{...props}
 										onclick={(event) => {
-											props.onclick?.(event);
-											handleAddYouTube(event);
+											invokeSnippetClick(props, event);
+											handleAddYouTube();
 										}}
 										aria-label="Add YouTube video"
 										disabled={isAddingYoutube}
@@ -627,7 +628,7 @@
 										class="panel-action"
 										{...props}
 										onclick={(event) => {
-											props.onclick?.(event);
+											invokeSnippetClick(props, event);
 											handleUploadFileClick(fileInput);
 										}}
 										aria-label="Upload file"
@@ -665,8 +666,8 @@
 											class="panel-action"
 											{...props}
 											onclick={(event) => {
-												props.onclick?.(event);
-												handleNewChat(event);
+												invokeSnippetClick(props, event);
+												handleNewChat();
 											}}
 											aria-label="New chat"
 										>

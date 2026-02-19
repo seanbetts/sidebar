@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import { Plus } from 'lucide-svelte';
 	import { websitesStore } from '$lib/stores/websites';
 	import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
@@ -35,7 +36,7 @@
 							class="panel-action"
 							{...props}
 							onclick={(event) => {
-								props.onclick?.(event);
+								invokeSnippetClick(props, event);
 								onNewWebsite();
 							}}
 							aria-label="Save website"

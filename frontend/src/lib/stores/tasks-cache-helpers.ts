@@ -12,7 +12,20 @@ type NormalizeCountsResult = {
 	todayCount: number;
 };
 
-type UpdateTaskCachesOptions = {
+type CountsStateBase = {
+	tasks: Task[];
+	selection: TaskSelection;
+	counts: Record<string, number>;
+	todayCount: number;
+};
+
+type MetaStateBase = CountsStateBase & {
+	groups: TaskGroup[];
+	projects: TaskProject[];
+	error?: string;
+};
+
+type UpdateTaskCachesOptions<TState extends CountsStateBase = CountsStateBase> = {
 	taskId: string;
 	task: Task;
 	targetBucket: 'today' | 'upcoming';
@@ -21,43 +34,15 @@ type UpdateTaskCachesOptions = {
 	countsCacheKey: string;
 	getCachedData: <T>(key: string, config: { ttl: number; version: string }) => T | null;
 	setCachedData: <T>(key: string, data: T, config: { ttl: number; version: string }) => void;
-	updateState: (
-		updater: (state: {
-			tasks: Task[];
-			selection: TaskSelection;
-			counts: Record<string, number>;
-			todayCount: number;
-		}) => {
-			tasks: Task[];
-			selection: TaskSelection;
-			counts: Record<string, number>;
-			todayCount: number;
-		}
-	) => void;
+	updateState: (updater: (state: TState) => TState) => void;
 };
 
-type ApplyResponseOptions = {
+type ApplyResponseOptions<TState extends MetaStateBase = MetaStateBase> = {
 	response: TaskListResponse;
 	selection: TaskSelection;
 	lastMeta: { groups: TaskGroup[]; projects: TaskProject[] };
 	setMeta: (meta: { groups: TaskGroup[]; projects: TaskProject[] }) => void;
-	updateState: (
-		updater: (state: {
-			tasks: Task[];
-			groups: TaskGroup[];
-			projects: TaskProject[];
-			todayCount: number;
-			counts: Record<string, number>;
-			error?: string;
-		}) => {
-			tasks: Task[];
-			groups: TaskGroup[];
-			projects: TaskProject[];
-			todayCount: number;
-			counts: Record<string, number>;
-			error?: string;
-		}
-	) => void;
+	updateState: (updater: (state: TState) => TState) => void;
 };
 
 /**
@@ -138,11 +123,13 @@ export const createPreloadAllSelections = (
 export const normalizeCountsCache = (
 	cached: TaskCountsResponse | Record<string, number>
 ): NormalizeCountsResult => {
-	const isCountsResponse =
-		typeof (cached as TaskCountsResponse).counts === 'object' &&
-		Array.isArray((cached as TaskCountsResponse).groups) &&
-		Array.isArray((cached as TaskCountsResponse).projects);
-	if (isCountsResponse) {
+	const isCountsResponse = (
+		value: TaskCountsResponse | Record<string, number>
+	): value is TaskCountsResponse =>
+		typeof (value as TaskCountsResponse).counts === 'object' &&
+		Array.isArray((value as TaskCountsResponse).groups) &&
+		Array.isArray((value as TaskCountsResponse).projects);
+	if (isCountsResponse(cached)) {
 		return { map: buildCountsMap(cached), todayCount: cached.counts.today ?? 0 };
 	}
 	const todayCount = cached.today ?? cached.inbox ?? 0;
@@ -170,7 +157,9 @@ export const buildCountsMap = (counts: TaskCountsResponse): Record<string, numbe
 /**
  * Update today/upcoming caches after changing a task due date.
  */
-export const updateTaskCaches = (options: UpdateTaskCachesOptions): void => {
+export const updateTaskCaches = <TState extends CountsStateBase>(
+	options: UpdateTaskCachesOptions<TState>
+): void => {
 	const todayKey = tasksCacheKey({ type: 'today' });
 	const upcomingKey = tasksCacheKey({ type: 'upcoming' });
 	const todayTasks =
@@ -242,7 +231,9 @@ export const updateTaskCaches = (options: UpdateTaskCachesOptions): void => {
 /**
  * Apply a task list response to store state.
  */
-export const applyTaskListResponse = (options: ApplyResponseOptions): void => {
+export const applyTaskListResponse = <TState extends MetaStateBase>(
+	options: ApplyResponseOptions<TState>
+): void => {
 	const meta = {
 		groups: options.response.groups ?? options.lastMeta.groups,
 		projects: options.response.projects ?? options.lastMeta.projects
@@ -270,7 +261,9 @@ export const applyTaskListResponse = (options: ApplyResponseOptions): void => {
 /**
  * Apply metadata and counts without updating the current task list.
  */
-export const applyTaskMetaCountsOnly = (options: ApplyResponseOptions): void => {
+export const applyTaskMetaCountsOnly = <TState extends MetaStateBase>(
+	options: ApplyResponseOptions<TState>
+): void => {
 	const meta = {
 		groups: options.response.groups ?? options.lastMeta.groups,
 		projects: options.response.projects ?? options.lastMeta.projects
