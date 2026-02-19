@@ -2034,6 +2034,54 @@ def test_parse_url_local_normalizes_youtube_title_suffix(monkeypatch):
     assert parsed.title == "Recovered Video Title"
 
 
+def test_parse_url_local_uses_youtube_duration_for_reading_time(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>Recovered Video Title - YouTube</title>
+        <meta itemprop="duration" content="PT3M34S"/>
+      </head>
+      <body><article><p>Content body</p></article></body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.youtube.com/watch?v=abc123xyzAA", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "_favicon_exists", lambda url, timeout=8: False)
+
+    parsed = web_save_parser.parse_url_local("https://www.youtube.com/watch?v=abc123xyzAA")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["reading_time"] == "4 mins"
+
+
+def test_parse_url_local_uses_youtube_length_seconds_fallback(monkeypatch):
+    html = """
+    <html>
+      <head><title>Recovered Video Title - YouTube</title></head>
+      <body>
+        <script>
+          var ytp = {"videoDetails":{"lengthSeconds":"125"}};
+        </script>
+        <article><p>Content body</p></article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.youtube.com/watch?v=abc123xyzAA", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "_favicon_exists", lambda url, timeout=8: False)
+
+    parsed = web_save_parser.parse_url_local("https://www.youtube.com/watch?v=abc123xyzAA")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["reading_time"] == "3 mins"
+
+
 def test_parse_url_local_tracks_youtube_embed_from_raw_html(monkeypatch):
     html = """
     <html>

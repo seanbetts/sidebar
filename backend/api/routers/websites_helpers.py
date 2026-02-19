@@ -15,15 +15,18 @@ from api.db.session import SessionLocal, set_session_user_id
 from api.models.website import Website
 from api.services.favicon_service import FaviconService
 from api.services.jina_service import JinaService
+from api.services.url_normalization_service import extract_youtube_video_id
 from api.services.web_save_parser import (
     LocalParseFallbackError,
     extract_favicon_url,
     parse_url_local,
 )
+from api.services.web_save_parser_youtube import fetch_youtube_duration_seconds
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_reading_time import (
     extract_reading_time_from_frontmatter,
     normalize_reading_time,
+    reading_time_from_duration_seconds,
 )
 from api.services.website_title_service import resolve_website_title
 from api.services.websites_service import WebsitesService
@@ -36,6 +39,28 @@ def normalize_url(value: str) -> str:
     if value.startswith(("http://", "https://")):
         return value
     return f"https://{value}"
+
+
+def _resolve_jina_reading_time(
+    *,
+    metadata: dict[str, str | None],
+    source: str,
+    fallback_url: str,
+) -> str | None:
+    metadata_reading_time = metadata.get("reading_time")
+    if isinstance(metadata_reading_time, str) and metadata_reading_time.strip():
+        normalized = normalize_reading_time(metadata_reading_time)
+        if normalized:
+            return normalized
+
+    for candidate in (source, fallback_url):
+        if not candidate or extract_youtube_video_id(candidate) is None:
+            continue
+        duration_seconds = fetch_youtube_duration_seconds(candidate)
+        from_duration = reading_time_from_duration_seconds(duration_seconds)
+        if from_duration:
+            return from_duration
+    return None
 
 
 def run_quick_save(
@@ -77,6 +102,9 @@ def run_quick_save(
                         local_parsed = None
 
             if web_save_mode == "local" and local_parsed:
+                local_reading_time = extract_reading_time_from_frontmatter(
+                    local_parsed.content
+                )
                 website = WebsitesService.upsert_website(
                     db,
                     user_id,
@@ -87,6 +115,7 @@ def run_quick_save(
                     url_full=url,
                     saved_at=datetime.now(UTC),
                     published_at=local_parsed.published_at,
+                    reading_time=local_reading_time,
                     pinned=False,
                     archived=False,
                 )
@@ -107,6 +136,11 @@ def run_quick_save(
                 published_at = JinaService.parse_published_at(
                     metadata.get("published_time")
                 )
+                reading_time = _resolve_jina_reading_time(
+                    metadata=metadata,
+                    source=source,
+                    fallback_url=url,
+                )
                 website = WebsitesService.upsert_website(
                     db,
                     user_id,
@@ -117,6 +151,7 @@ def run_quick_save(
                     url_full=url,
                     saved_at=datetime.now(UTC),
                     published_at=published_at,
+                    reading_time=reading_time,
                     pinned=False,
                     archived=False,
                 )

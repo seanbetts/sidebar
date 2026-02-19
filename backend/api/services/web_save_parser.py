@@ -73,11 +73,11 @@ from api.services.web_save_rendering import (
 )
 from api.services.web_save_rules import Rule, RuleEngine, extract_metadata_overrides
 from api.services.web_save_tagger import (
-    calculate_reading_time,
     compute_word_count,
     count_images,
     extract_tags,
 )
+from api.services.website_reading_time import page_reading_time
 from api.services.website_title_service import resolve_website_title
 
 logger = logging.getLogger(__name__)
@@ -891,7 +891,9 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         "published_date": published_at.isoformat() if published_at else None,
         "domain": domain,
         "word_count": word_count,
-        "reading_time": calculate_reading_time(word_count, image_count=image_count),
+        "reading_time": page_reading_time(
+            word_count, image_count, domain, raw_html_original
+        ),
         "tags": tags,
         "used_js_rendering": used_js_rendering,
         "saved_at": datetime.now(UTC).isoformat(),

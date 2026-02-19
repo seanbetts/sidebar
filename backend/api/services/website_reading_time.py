@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import math
 import re
 
+from api.services.web_save_parser_youtube import (
+    extract_youtube_duration_seconds_from_html,
+)
 from api.services.web_save_tagger import (
     calculate_reading_time,
     compute_word_count,
@@ -78,4 +82,33 @@ def derive_reading_time(content: str | None) -> str | None:
     image_count = count_images(content)
     if word_count <= 0 and image_count <= 0:
         return None
+    return calculate_reading_time(word_count, image_count=image_count)
+
+
+def reading_time_from_duration_seconds(seconds: int | None) -> str | None:
+    """Format a duration in seconds as reading-time text."""
+    if not seconds or seconds <= 0:
+        return None
+    mins = max(1, math.ceil(seconds / 60))
+    return normalize_reading_time(f"{mins} min")
+
+
+def page_reading_time(
+    word_count: int,
+    image_count: int,
+    domain: str,
+    raw_html: str | None = None,
+) -> str:
+    """Derive reading time for parsed markdown, preferring YouTube duration."""
+    normalized_domain = domain.lower().strip(".")
+    if (
+        normalized_domain == "youtube.com"
+        or normalized_domain.endswith(".youtube.com")
+        or normalized_domain == "youtu.be"
+        or normalized_domain.endswith(".youtu.be")
+    ):
+        youtube_seconds = extract_youtube_duration_seconds_from_html(raw_html or "")
+        youtube_reading_time = reading_time_from_duration_seconds(youtube_seconds)
+        if youtube_reading_time:
+            return youtube_reading_time
     return calculate_reading_time(word_count, image_count=image_count)

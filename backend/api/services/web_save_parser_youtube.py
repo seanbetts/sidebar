@@ -7,9 +7,11 @@ import re
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
+import requests
 from bs4 import BeautifulSoup
 from lxml import html as lxml_html
 
+from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_includes import find_insertion_point
 from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
 
@@ -76,6 +78,16 @@ JSONLD_MEDIA_PATTERN = re.compile(
 JSONLD_YOUTUBE_PATTERN = re.compile(
     r"https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[A-Za-z0-9_-]+",
     re.IGNORECASE,
+)
+YOUTUBE_LENGTH_SECONDS_PATTERNS = (
+    re.compile(r'"lengthSeconds"\s*:\s*"(\d+)"'),
+    re.compile(r'"lengthSeconds"\s*:\s*(\d+)'),
+    re.compile(r'lengthSeconds\\":\\?"(\d+)"'),
+)
+YOUTUBE_DURATION_MS_PATTERNS = (
+    re.compile(r'"approxDurationMs"\s*:\s*"(\d+)"'),
+    re.compile(r'"approxDurationMs"\s*:\s*(\d+)'),
+    re.compile(r'approxDurationMs\\":\\?"(\d+)"'),
 )
 
 
@@ -235,6 +247,95 @@ def _iter_jsonld_objects(raw_payload: Any) -> list[dict]:
             return _iter_jsonld_objects(graph)
         return [raw_payload]
     return []
+
+
+def _parse_iso8601_duration_seconds(value: str) -> int | None:
+    if not value:
+        return None
+    match = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", value.strip())
+    if not match:
+        return None
+    hours = int(match.group(1) or 0)
+    mins = int(match.group(2) or 0)
+    secs = int(match.group(3) or 0)
+    total = (hours * 3600) + (mins * 60) + secs
+    return total if total > 0 else None
+
+
+def _is_video_object(raw_type: object) -> bool:
+    if isinstance(raw_type, list):
+        return any(str(entry).lower() == "videoobject" for entry in raw_type)
+    if isinstance(raw_type, str):
+        return raw_type.lower() == "videoobject"
+    return False
+
+
+def extract_youtube_duration_seconds_from_html(html: str) -> int | None:
+    """Extract YouTube video duration in seconds from page HTML."""
+    if not html:
+        return None
+
+    soup = BeautifulSoup(html, "html.parser")
+    duration_meta = soup.find("meta", attrs={"itemprop": "duration"})
+    if duration_meta:
+        meta_content = duration_meta.get("content")
+        if isinstance(meta_content, str):
+            from_meta = _parse_iso8601_duration_seconds(meta_content)
+            if from_meta:
+                return from_meta
+
+    for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        if not script.string:
+            continue
+        try:
+            payload = json.loads(script.string)
+        except json.JSONDecodeError:
+            continue
+        for obj in _iter_jsonld_objects(payload):
+            if not _is_video_object(obj.get("@type")):
+                continue
+            duration_value = obj.get("duration")
+            if not isinstance(duration_value, str):
+                continue
+            from_jsonld = _parse_iso8601_duration_seconds(duration_value)
+            if from_jsonld:
+                return from_jsonld
+
+    for pattern in YOUTUBE_LENGTH_SECONDS_PATTERNS:
+        match = pattern.search(html)
+        if not match:
+            continue
+        seconds = int(match.group(1))
+        if seconds > 0:
+            return seconds
+
+    for pattern in YOUTUBE_DURATION_MS_PATTERNS:
+        match = pattern.search(html)
+        if not match:
+            continue
+        milliseconds = int(match.group(1))
+        if milliseconds > 0:
+            return max(1, round(milliseconds / 1000))
+
+    return None
+
+
+def fetch_youtube_duration_seconds(url: str, *, timeout: int = 8) -> int | None:
+    """Fetch a YouTube watch page and extract duration seconds."""
+    video_id = extract_youtube_video_id(url)
+    if not video_id:
+        return None
+    watch_url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        response = requests.get(
+            watch_url,
+            headers={"User-Agent": USER_AGENT},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+    except Exception:
+        return None
+    return extract_youtube_duration_seconds_from_html(response.text)
 
 
 def extract_youtube_anchors_from_jsonld(
