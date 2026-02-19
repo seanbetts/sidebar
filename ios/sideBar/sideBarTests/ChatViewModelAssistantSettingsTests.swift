@@ -11,7 +11,7 @@ final class ChatViewModelAssistantSettingsTests: XCTestCase {
         )
     )
 
-    func testAssistantIdentityUpdateEventPublishesSettingsUpdate() {
+    func testAssistantIdentityUpdateEventPublishesSettingsUpdate() async {
         var receivedUpdate: AssistantSettingsRealtimeUpdate?
         let viewModel = makeViewModel { update in
             receivedUpdate = update
@@ -31,7 +31,7 @@ final class ChatViewModelAssistantSettingsTests: XCTestCase {
         XCTAssertFalse(receivedUpdate?.requiresRefresh ?? true)
     }
 
-    func testAssistantSettingsEventWithoutPayloadRequestsRefresh() {
+    func testAssistantSettingsEventWithoutPayloadRequestsRefresh() async {
         var receivedUpdate: AssistantSettingsRealtimeUpdate?
         let viewModel = makeViewModel { update in
             receivedUpdate = update
