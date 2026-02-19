@@ -80,8 +80,8 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(plan.sidebarSelection, .tasks)
     }
 
-    func testShouldShowPhoneFloatingActionDockForPrimaryPhoneSectionPanelList() {
-        let shouldShow = ContentView.shouldShowPhoneFloatingActionDock(
+    func testShouldDisplayPhoneFloatingActionDockForPrimaryPhoneSectionPanelList() {
+        let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
             isPhonePanelListVisible: true,
             phoneSelection: .chat
@@ -90,8 +90,8 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertTrue(shouldShow)
     }
 
-    func testShouldShowPhoneFloatingActionDockHidesInPhoneDetailWorkspace() {
-        let shouldShow = ContentView.shouldShowPhoneFloatingActionDock(
+    func testShouldDisplayPhoneFloatingActionDockHidesInPhoneDetailWorkspace() {
+        let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
             isPhonePanelListVisible: false,
             phoneSelection: .notes
@@ -100,8 +100,8 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(shouldShow)
     }
 
-    func testShouldShowPhoneFloatingActionDockHidesForNonPhone() {
-        let shouldShow = ContentView.shouldShowPhoneFloatingActionDock(
+    func testShouldDisplayPhoneFloatingActionDockHidesForNonPhone() {
+        let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: false,
             isPhonePanelListVisible: true,
             phoneSelection: .tasks
@@ -110,8 +110,8 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(shouldShow)
     }
 
-    func testShouldShowPhoneFloatingActionDockHidesOutsidePrimaryPhoneSections() {
-        let shouldShow = ContentView.shouldShowPhoneFloatingActionDock(
+    func testShouldDisplayPhoneFloatingActionDockHidesOutsidePrimaryPhoneSections() {
+        let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
             isPhonePanelListVisible: true,
             phoneSelection: .settings

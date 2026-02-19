@@ -113,7 +113,11 @@ extension ContentView {
 
     private var shouldShowPhoneFloatingActionDock: Bool {
         #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        Self.shouldDisplayPhoneFloatingActionDock(
+            isPhoneIdiom: UIDevice.current.userInterfaceIdiom == .phone,
+            isPhonePanelListVisible: isPhonePanelListVisible,
+            phoneSelection: phoneSelection
+        )
         #else
         false
         #endif

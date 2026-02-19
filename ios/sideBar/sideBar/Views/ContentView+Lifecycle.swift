@@ -211,6 +211,16 @@ extension ContentView {
         makeMacInitialSelectionPlan(pendingSelection: phoneSelection)
     }
 
+    static func shouldDisplayPhoneFloatingActionDock(
+        isPhoneIdiom: Bool,
+        isPhonePanelListVisible: Bool,
+        phoneSelection: AppSection
+    ) -> Bool {
+        guard isPhoneIdiom else { return false }
+        guard isPhonePanelListVisible else { return false }
+        return AppSection.primaryNavigationSections.contains(phoneSelection)
+    }
+
     #if !os(macOS)
     func handleHorizontalSizeClassChange(
         oldValue: UserInterfaceSizeClass?,
