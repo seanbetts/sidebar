@@ -387,7 +387,6 @@ private struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
         view.backgroundColor = .clear
         view.isOpaque = false
         view.isUserInteractionEnabled = false
-
         context.coordinator.onSwipeEnded = onSwipeEnded
         context.coordinator.isEnabledProvider = { isEnabled }
         context.coordinator.regionWidthProvider = { regionWidth }
@@ -400,9 +399,9 @@ private struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
         context.coordinator.isEnabledProvider = { isEnabled }
         context.coordinator.regionWidthProvider = { regionWidth }
         context.coordinator.isLeftPanelExpandedProvider = { isLeftPanelExpanded }
-        context.coordinator.attachRecognizerIfNeeded(to: uiView.superview)
+        context.coordinator.attachRecognizerIfNeeded(startingFrom: uiView.superview)
         DispatchQueue.main.async { [weak uiView] in
-            context.coordinator.attachRecognizerIfNeeded(to: uiView?.superview)
+            context.coordinator.attachRecognizerIfNeeded(startingFrom: uiView?.superview)
         }
     }
 
@@ -412,14 +411,16 @@ private struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         weak var hostView: UIView?
+        weak var coordinateSpaceView: UIView?
         weak var panRecognizer: UIPanGestureRecognizer?
         var onSwipeEnded: ((CGSize, CGFloat) -> Void)?
         var isEnabledProvider: (() -> Bool)?
         var regionWidthProvider: (() -> CGFloat)?
         var isLeftPanelExpandedProvider: (() -> Bool)?
 
-        func attachRecognizerIfNeeded(to host: UIView?) {
-            guard let host else { return }
+        func attachRecognizerIfNeeded(startingFrom view: UIView?) {
+            coordinateSpaceView = view
+            guard let host = firstInteractiveAncestor(from: view) else { return }
             if hostView !== host {
                 detachRecognizer()
                 let recognizer = UIPanGestureRecognizer(
@@ -438,24 +439,36 @@ private struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
             panRecognizer?.isEnabled = isEnabledProvider?() ?? false
         }
 
+        private func firstInteractiveAncestor(from view: UIView?) -> UIView? {
+            var current = view
+            while let candidate = current {
+                if candidate.isUserInteractionEnabled {
+                    return candidate
+                }
+                current = candidate.superview
+            }
+            return nil
+        }
+
         func detachRecognizer() {
             if let panRecognizer {
                 panRecognizer.view?.removeGestureRecognizer(panRecognizer)
             }
             panRecognizer = nil
             hostView = nil
+            coordinateSpaceView = nil
         }
 
         @objc func handlePan(_ recognizer: UIPanGestureRecognizer) {
             guard recognizer.state == .ended else { return }
             guard isEnabledProvider?() == true else { return }
-            guard let view = recognizer.view else { return }
-
-            let translationPoint = recognizer.translation(in: view)
+            guard let host = recognizer.view else { return }
+            let coordinateView = coordinateSpaceView ?? host
+            let translationPoint = recognizer.translation(in: coordinateView)
             let translation = CGSize(width: translationPoint.x, height: translationPoint.y)
-            let endLocation = recognizer.location(in: view)
+            let endLocation = recognizer.location(in: coordinateView)
             let startX = endLocation.x - translation.width
-            let regionWidth = regionWidthProvider?() ?? view.bounds.width
+            let regionWidth = regionWidthProvider?() ?? coordinateView.bounds.width
             let isLeftPanelExpanded = isLeftPanelExpandedProvider?() ?? false
             let action = WorkspaceSidebarSwipePolicy.resolveAction(
                 translation: translation,
