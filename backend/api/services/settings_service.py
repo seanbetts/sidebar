@@ -394,6 +394,11 @@ class SettingsService:
         return provider
 
     @staticmethod
+    def normalize_ai_provider(value: Any) -> str | None:
+        """Public wrapper for AI provider normalization."""
+        return SettingsService._clean_ai_primary_provider(value)
+
+    @staticmethod
     def _resolve_ai_primary_provider(value: Any) -> str | None:
         """Resolve ai_primary_provider from storage without raising."""
         if not isinstance(value, str):
@@ -546,8 +551,10 @@ class SettingsService:
                 else None
             ),
             "ai_fallback_to_managed": (
-                bool(ai_fallback_value) if ai_fallback_value is not None else True
+                bool(ai_fallback_value) if ai_fallback_value is not None else False
             ),
+            "ai_primary_provider_has_key": False,
+            "ai_primary_provider_key_last4": None,
         }
 
     @staticmethod
@@ -639,7 +646,7 @@ class SettingsService:
         if "ai_fallback_to_managed" in updates:
             value = updates.get("ai_fallback_to_managed")
             if value is None:
-                updates["ai_fallback_to_managed"] = True
+                updates["ai_fallback_to_managed"] = False
             elif not isinstance(value, bool):
                 raise HTTPException(
                     status_code=400,

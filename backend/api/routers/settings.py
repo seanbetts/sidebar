@@ -13,6 +13,9 @@ from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError
 from api.services.settings_service import SettingsService
+from api.services.user_ai_provider_settings_service import (
+    UserAIProviderSettingsService,
+)
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -63,7 +66,9 @@ class SettingsResponse(BaseModel):
     assistant_soul: AssistantSoulPayload | None = None
     assistant_soul_meta: AgentFieldMetaPayload | None = None
     ai_primary_provider: str | None = None
-    ai_fallback_to_managed: bool = True
+    ai_fallback_to_managed: bool = False
+    ai_primary_provider_has_key: bool = False
+    ai_primary_provider_key_last4: str | None = None
 
 
 class SettingsUpdate(BaseModel):
@@ -91,6 +96,23 @@ class ShortcutsPatResponse(BaseModel):
     token: str
 
 
+class ProviderKeyUpdate(BaseModel):
+    """Request payload for creating or updating a provider API key."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str
+    api_key: str
+
+
+class ProviderKeyStatusResponse(BaseModel):
+    """Response payload for provider key status."""
+
+    provider: str | None = None
+    has_key: bool = False
+    key_last4: str | None = None
+
+
 @router.get("", response_model=SettingsResponse)
 def get_settings(
     db: Session = Depends(get_db),
@@ -107,7 +129,13 @@ def get_settings(
     Returns:
         Current settings payload.
     """
-    return SettingsResponse(**SettingsService.get_settings(db, user_id))
+    payload = SettingsService.get_settings(db, user_id)
+    payload = UserAIProviderSettingsService.attach_primary_provider_key_status(
+        db,
+        user_id=user_id,
+        payload=payload,
+    )
+    return SettingsResponse(**payload)
 
 
 @router.patch("", response_model=SettingsResponse)
@@ -129,7 +157,62 @@ def update_settings(
         Updated settings payload.
     """
     updates = payload.model_dump(exclude_unset=True)
-    return SettingsResponse(**SettingsService.update_settings(db, user_id, updates))
+    response_payload = SettingsService.update_settings(db, user_id, updates)
+    response_payload = UserAIProviderSettingsService.attach_primary_provider_key_status(
+        db,
+        user_id=user_id,
+        payload=response_payload,
+    )
+    return SettingsResponse(**response_payload)
+
+
+@router.get("/ai/provider-key", response_model=ProviderKeyStatusResponse)
+def get_provider_key_status(
+    provider: str | None = None,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Return BYOK status for a provider (defaults to primary provider)."""
+    payload = UserAIProviderSettingsService.get_provider_key_status(
+        db,
+        user_id,
+        provider=provider,
+    )
+    return ProviderKeyStatusResponse(**payload)
+
+
+@router.put("/ai/provider-key", response_model=ProviderKeyStatusResponse)
+def upsert_provider_key(
+    payload: ProviderKeyUpdate,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Create or update a BYOK provider API key."""
+    response_payload = UserAIProviderSettingsService.upsert_provider_key(
+        db,
+        user_id,
+        provider=payload.provider,
+        api_key=payload.api_key,
+    )
+    return ProviderKeyStatusResponse(**response_payload)
+
+
+@router.delete("/ai/provider-key", response_model=ProviderKeyStatusResponse)
+def delete_provider_key(
+    provider: str | None = None,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Soft delete a BYOK provider API key."""
+    payload = UserAIProviderSettingsService.delete_provider_key(
+        db,
+        user_id,
+        provider=provider,
+    )
+    return ProviderKeyStatusResponse(**payload)
 
 
 @router.post("/profile-image")

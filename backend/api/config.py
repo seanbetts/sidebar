@@ -116,6 +116,7 @@ class Settings(BaseSettings):
     # Claude API configuration
     anthropic_api_key: str  # Loaded from Doppler or environment
     model_name: str = "claude-sonnet-4-5-20250929"
+    byok_encryption_key: str | None = os.getenv("BYOK_ENCRYPTION_KEY")
 
     # Jina reader API
     jina_api_key: str = ""

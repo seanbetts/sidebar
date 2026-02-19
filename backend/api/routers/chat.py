@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from datetime import UTC, datetime
-from typing import TypedDict
+from typing import TypedDict, cast
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -27,9 +27,11 @@ from api.metrics import (
 from api.schemas.tool_context import ToolExecutionContext
 from api.services.agent.prompt.composer import PromptContextService
 from api.services.ai.gateway import AIProviderGateway
+from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
 from api.services.claude_client import ClaudeClient
 from api.services.conversation_service import ConversationService
 from api.services.settings_service import SettingsService
+from api.services.user_ai_provider_key_service import UserAIProviderKeyService
 from api.services.user_settings_service import UserSettingsService
 from api.utils.validation import parse_uuid
 
@@ -215,6 +217,40 @@ async def stream_chat(
 
     stream_started_at = time.perf_counter()
 
+    def provider_key_lookup(provider: AIProvider) -> str | None:
+        return UserAIProviderKeyService.get_active_key(db, user_id, provider)
+
+    try:
+        chat_resolution = ai_gateway.resolve_chat(
+            settings_record=settings_record,
+            provider_key_lookup=provider_key_lookup,
+        )
+        if conversation_uuid is not None:
+            ConversationService.set_ai_provider_model(
+                db,
+                user_id,
+                conversation_uuid,
+                provider=chat_resolution.provider,
+                model=chat_resolution.model,
+            )
+    except Exception as error:
+        error_message = str(error)
+
+        async def error_generator():
+            chat_stream_errors_total.labels(type="server_error").inc()
+            error_event = {"type": "error", "error": error_message}
+            yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
+
+        return StreamingResponse(
+            error_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     async def event_generator():
         """Generate SSE events."""
         try:
@@ -225,6 +261,8 @@ async def stream_chat(
                 allowed_skills=enabled_skills,
                 tool_context=tool_context,
                 settings_record=settings_record,
+                provider_key_lookup=provider_key_lookup,
+                chat_resolution=chat_resolution,
             ):
                 event_type = event.get("type")
 
@@ -354,10 +392,21 @@ async def generate_title(
 
     try:
         ai_gateway = AIProviderGateway(settings, google_client_factory=genai.Client)
+
+        def provider_key_lookup(provider: AIProvider) -> str | None:
+            return UserAIProviderKeyService.get_active_key(db, user_id, provider)
+
+        preferred_provider = None
+        if isinstance(conversation.ai_provider, str):
+            candidate = conversation.ai_provider.strip().lower()
+            if candidate in VALID_AI_PROVIDERS:
+                preferred_provider = cast(AIProvider, candidate)
         title_result = await ai_gateway.generate_title(
             user_message=user_msg,
             assistant_message=assistant_msg,
             settings_record=settings_record,
+            preferred_provider=preferred_provider,
+            provider_key_lookup=provider_key_lookup,
         )
         raw_title = title_result.raw_title
         title = _sanitize_title(raw_title)

@@ -78,3 +78,57 @@ def test_update_settings_accepts_ai_provider_preferences(test_client):
     body = response.json()
     assert body["ai_primary_provider"] == "anthropic"
     assert body["ai_fallback_to_managed"] is False
+
+
+def test_provider_key_crud_flow(test_client):
+    update_response = test_client.patch(
+        "/api/settings",
+        headers=_auth_headers(),
+        json={"ai_primary_provider": "openai"},
+    )
+    assert update_response.status_code == 200
+
+    empty_status = test_client.get(
+        "/api/settings/ai/provider-key",
+        headers=_auth_headers(),
+    )
+    assert empty_status.status_code == 200
+    assert empty_status.json() == {
+        "provider": "openai",
+        "has_key": False,
+        "key_last4": None,
+    }
+
+    save_status = test_client.put(
+        "/api/settings/ai/provider-key",
+        headers=_auth_headers(),
+        json={"provider": "openai", "api_key": "sk-openai-provider-1234"},
+    )
+    assert save_status.status_code == 200
+    assert save_status.json() == {
+        "provider": "openai",
+        "has_key": True,
+        "key_last4": "1234",
+    }
+
+    loaded_status = test_client.get(
+        "/api/settings/ai/provider-key?provider=openai",
+        headers=_auth_headers(),
+    )
+    assert loaded_status.status_code == 200
+    assert loaded_status.json() == {
+        "provider": "openai",
+        "has_key": True,
+        "key_last4": "1234",
+    }
+
+    delete_status = test_client.delete(
+        "/api/settings/ai/provider-key?provider=openai",
+        headers=_auth_headers(),
+    )
+    assert delete_status.status_code == 200
+    assert delete_status.json() == {
+        "provider": "openai",
+        "has_key": False,
+        "key_last4": None,
+    }

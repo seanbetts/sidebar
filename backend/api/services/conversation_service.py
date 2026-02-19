@@ -206,6 +206,26 @@ class ConversationService:
         return conversation
 
     @staticmethod
+    def set_ai_provider_model(
+        db: Session,
+        user_id: str,
+        conversation_id: UUID,
+        *,
+        provider: str,
+        model: str,
+    ) -> Conversation:
+        """Persist effective assistant provider/model for a conversation."""
+        conversation = ConversationService.get_conversation(
+            db, user_id, conversation_id
+        )
+        conversation.ai_provider = provider
+        conversation.ai_model = model
+        conversation.updated_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(conversation)
+        return conversation
+
+    @staticmethod
     def search_conversations(
         db: Session,
         user_id: str,

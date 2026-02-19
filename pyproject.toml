@@ -13,6 +13,8 @@ module = [
     "boto3",
     "botocore.*",
     "bs4",
+    "cryptography",
+    "cryptography.*",
     "fastmcp",
     "fastmcp.*",
     "google",

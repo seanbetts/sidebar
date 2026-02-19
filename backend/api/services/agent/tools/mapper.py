@@ -17,6 +17,7 @@ from api.services.agent.tools.execution import (
 )
 from api.services.agent.tools.registry import get_tool_definitions
 from api.services.ai.gateway import AIProviderGateway
+from api.services.user_ai_provider_key_service import UserAIProviderKeyService
 from api.services.user_settings_service import UserSettingsService
 
 SKILLS_REQUIRING_USER_ID = {
@@ -141,6 +142,23 @@ class ToolMapper:
         if db is None or not user_id:
             return None
         return UserSettingsService.get_settings(db, str(user_id))
+
+    @staticmethod
+    def _provider_key_lookup_from_context(
+        context: dict[str, Any] | None,
+    ):
+        """Build a BYOK provider key lookup callback from tool context."""
+        if not context:
+            return None
+        db = context.get("db")
+        user_id = context.get("user_id")
+        if db is None or not user_id:
+            return None
+
+        def _lookup(provider):
+            return UserAIProviderKeyService.get_active_key(db, str(user_id), provider)
+
+        return _lookup
 
     def get_claude_tools(
         self, allowed_skills: list[str] | None = None
@@ -267,17 +285,21 @@ class ToolMapper:
 
             skill = tool_config.get("skill")
             parameters = self._inject_user_id(skill, parameters, context)
+            env_overrides: dict[str, str] | None = None
 
             if display_name in TRANSCRIPTION_TOOL_NAMES:
                 settings_record = self._settings_record_from_context(context)
+                provider_key_lookup = self._provider_key_lookup_from_context(context)
                 resolution = self.ai_gateway.resolve_transcription(
                     settings_record=settings_record,
                     requested_model=parameters.get("model"),
+                    provider_key_lookup=provider_key_lookup,
                 )
                 parameters = {
                     **parameters,
                     "model": resolution.model,
                 }
+                env_overrides = {"OPENAI_API_KEY": resolution.api_key}
 
             # Build arguments using the tool's build function
             args = tool_config["build_args"](parameters)
@@ -289,6 +311,7 @@ class ToolMapper:
                 tool_config["script"],
                 args,
                 expect_json=tool_config.get("expect_json", True),
+                env_overrides=env_overrides,
             )
 
             # Log execution (redact sensitive content)

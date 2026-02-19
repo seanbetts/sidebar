@@ -159,6 +159,7 @@ from api.models.file_ingestion import (  # noqa: F401, E402
 )
 from api.models.note import Note  # noqa: F401, E402
 from api.models.user_memory import UserMemory  # noqa: F401, E402
+from api.models.user_ai_provider_key import UserAIProviderKey  # noqa: F401, E402
 from api.models.user_settings import UserSettings  # noqa: F401, E402
 from api.models.website import Website  # noqa: F401, E402
 from api.models.website_processing_job import WebsiteProcessingJob  # noqa: F401, E402
@@ -177,13 +178,13 @@ def _ensure_user_settings_columns(connection) -> None:
     connection.execute(
         text(
             "ALTER TABLE user_settings "
-            "ADD COLUMN IF NOT EXISTS ai_fallback_to_managed boolean DEFAULT true"
+            "ADD COLUMN IF NOT EXISTS ai_fallback_to_managed boolean DEFAULT false"
         )
     )
     connection.execute(
         text(
             "UPDATE user_settings "
-            "SET ai_fallback_to_managed = true "
+            "SET ai_fallback_to_managed = false "
             "WHERE ai_fallback_to_managed IS NULL"
         )
     )
@@ -191,6 +192,52 @@ def _ensure_user_settings_columns(connection) -> None:
         text(
             "ALTER TABLE user_settings "
             "ALTER COLUMN ai_fallback_to_managed SET NOT NULL"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE conversations "
+            "ADD COLUMN IF NOT EXISTS ai_provider text"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE conversations "
+            "ADD COLUMN IF NOT EXISTS ai_model text"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS user_ai_provider_keys ("
+            "id uuid PRIMARY KEY, "
+            "user_id text NOT NULL, "
+            "provider text NOT NULL, "
+            "encrypted_api_key text NOT NULL, "
+            "key_last4 text NOT NULL, "
+            "created_at timestamptz NOT NULL, "
+            "updated_at timestamptz NOT NULL, "
+            "deleted_at timestamptz NULL"
+            ")"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_user_ai_provider_keys_user_id "
+            "ON user_ai_provider_keys (user_id)"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_user_ai_provider_keys_provider "
+            "ON user_ai_provider_keys (provider)"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "uq_user_ai_provider_keys_active_user_provider "
+            "ON user_ai_provider_keys (user_id, provider) "
+            "WHERE deleted_at IS NULL"
         )
     )
 

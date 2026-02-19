@@ -9,13 +9,21 @@ class DummyExecutor:
     def __init__(self):
         self.calls = []
 
-    async def execute(self, skill, script, args, expect_json=True):
+    async def execute(
+        self,
+        skill,
+        script,
+        args,
+        expect_json=True,
+        env_overrides=None,
+    ):
         self.calls.append(
             {
                 "skill": skill,
                 "script": script,
                 "args": args,
                 "expect_json": expect_json,
+                "env_overrides": env_overrides,
             }
         )
         return {"success": True, "data": {"value": "ok"}}
@@ -287,6 +295,8 @@ async def test_execute_tool_injects_transcription_model_from_gateway(monkeypatch
         lambda **_kwargs: TranscriptionResolution(
             provider="openai",
             model="gpt-4o-transcribe",
+            api_key="sk-test-openai",
+            used_byok=True,
             used_managed_fallback=False,
         ),
     )
@@ -302,6 +312,9 @@ async def test_execute_tool_injects_transcription_model_from_gateway(monkeypatch
         "--user-id",
         "user-1",
     ]
+    assert mapper.executor.calls[0]["env_overrides"] == {
+        "OPENAI_API_KEY": "sk-test-openai"
+    }
 
 
 @pytest.mark.asyncio

@@ -37,7 +37,7 @@ class UserSettings(Base):
     ai_fallback_to_managed: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
-        default=True,
+        default=False,
     )
     shortcuts_pat: Mapped[str | None] = mapped_column(Text, nullable=True)
     tasks_ai_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -16,17 +16,25 @@ from api.services.agent.tools.mapper import ToolMapper
 class ClaudeClient:
     """Handles Claude API interactions with streaming and tool execution."""
 
-    def __init__(self, settings: Settings):
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        api_key: str | None = None,
+        model: str | None = None,
+    ):
         """Initialize the client with model settings and HTTP configuration.
 
         Args:
             settings: Application settings object.
+            api_key: Optional API key override.
+            model: Optional model override.
         """
         self.client = AsyncAnthropic(
-            api_key=settings.anthropic_api_key,
+            api_key=api_key or settings.anthropic_api_key,
             http_client=self._create_http_client(settings),
         )
-        self.model = settings.model_name
+        self.model = model or settings.model_name
         self.tool_mapper = ToolMapper()
 
     def _create_http_client(self, settings: Settings) -> httpx.AsyncClient:

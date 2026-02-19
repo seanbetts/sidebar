@@ -33,6 +33,8 @@ class Conversation(Base):
         Text
     )  # Preview of first message (first 100 chars)
     message_count: Mapped[int] = mapped_column(Integer, default=0)
+    ai_provider: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_model: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Messages stored as JSONB array
     # Each message: {"id": "uuid", "role": "user|assistant", "content": "...",
@@ -53,5 +55,5 @@ class Conversation(Base):
         """Return a readable representation for debugging."""
         return (
             f"<Conversation(id={self.id}, title='{self.title}', "
-            f"message_count={self.message_count})>"
+            f"message_count={self.message_count}, ai_provider={self.ai_provider})>"
         )

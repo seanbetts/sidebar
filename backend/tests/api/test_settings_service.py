@@ -11,6 +11,9 @@ from api.services.settings_service import (
     MAX_ASSISTANT_SOUL_TEXT_CHARS,
     SettingsService,
 )
+from api.services.user_ai_provider_settings_service import (
+    UserAIProviderSettingsService,
+)
 
 
 def test_clean_updates_rejects_agent_owned_fields() -> None:
@@ -314,4 +317,29 @@ def test_clean_updates_rejects_invalid_ai_provider() -> None:
 def test_build_response_defaults_ai_provider_policy() -> None:
     payload = SettingsService.build_response(settings_record=None, user_id="user-1")
     assert payload["ai_primary_provider"] is None
-    assert payload["ai_fallback_to_managed"] is True
+    assert payload["ai_fallback_to_managed"] is False
+
+
+def test_get_settings_includes_primary_provider_key_status(test_db) -> None:
+    user_id = "provider-status-user"
+    SettingsService.update_settings(
+        test_db,
+        user_id,
+        {"ai_primary_provider": "openai"},
+    )
+    UserAIProviderSettingsService.upsert_provider_key(
+        test_db,
+        user_id,
+        provider="openai",
+        api_key="sk-test-openai-4321",
+    )
+
+    payload = SettingsService.get_settings(test_db, user_id)
+    payload = UserAIProviderSettingsService.attach_primary_provider_key_status(
+        test_db,
+        user_id=user_id,
+        payload=payload,
+    )
+    assert payload["ai_primary_provider"] == "openai"
+    assert payload["ai_primary_provider_has_key"] is True
+    assert payload["ai_primary_provider_key_last4"] == "4321"

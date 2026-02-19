@@ -111,6 +111,7 @@ class SkillExecutor:
         args: list[str],
         user_id: str | None = None,
         expect_json: bool = True,
+        env_overrides: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Execute skill script with resource limits and audit logging."""
         start_time = time.time()
@@ -177,6 +178,8 @@ class SkillExecutor:
                 ):
                     if key in os.environ:
                         env[key] = os.environ[key]
+                if env_overrides:
+                    env.update(env_overrides)
 
                 # Execute with strict timeout and no shell
                 result = subprocess.run(

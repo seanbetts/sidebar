@@ -181,7 +181,7 @@ class UserSettingsService:
                 ai_primary_provider=None
                 if ai_primary_provider is UserSettingsService.UNSET
                 else ai_primary_provider,
-                ai_fallback_to_managed=True
+                ai_fallback_to_managed=False
                 if ai_fallback_to_managed is UserSettingsService.UNSET
                 else ai_fallback_to_managed,
                 shortcuts_pat=None
