@@ -153,19 +153,20 @@ def is_warning_in_scope(
     if path and any(fragment in path for fragment in exclude_path_contains):
         return False
 
-    if any(regex.search(message) for regex in exclude_message_regexes):
-        return False
-
-    return True
+    return not any(regex.search(message) for regex in exclude_message_regexes)
 
 
-def evaluate_warning_gates(xcresult_path: Path, warning_config: dict) -> tuple[int, list[str]]:
+def evaluate_warning_gates(
+    xcresult_path: Path,
+    warning_config: dict,
+) -> tuple[int, list[str]]:
     """Evaluate warning-gate config and return `(scoped_count, failures)`."""
     max_warnings = int(warning_config.get("max_warnings", 0))
     include_path_contains = list(warning_config.get("include_path_contains", []))
     exclude_path_contains = list(warning_config.get("exclude_path_contains", []))
     exclude_message_regexes = [
-        re.compile(pattern) for pattern in warning_config.get("exclude_message_regexes", [])
+        re.compile(pattern)
+        for pattern in warning_config.get("exclude_message_regexes", [])
     ]
 
     xcresult_payload = run_xcresulttool(xcresult_path)
@@ -200,7 +201,8 @@ def evaluate_warning_gates(xcresult_path: Path, warning_config: dict) -> tuple[i
     failures: list[str] = []
     if len(scoped_warnings) > max_warnings:
         failures.append(
-            f"Scoped iOS warnings {len(scoped_warnings)} exceed allowed maximum {max_warnings}"
+            "Scoped iOS warnings "
+            f"{len(scoped_warnings)} exceed allowed maximum {max_warnings}"
         )
     return len(scoped_warnings), failures
 
@@ -211,7 +213,7 @@ def extract_coverage_by_target(xccov_report: dict) -> dict[str, float]:
     for target in xccov_report.get("targets", []):
         name = target.get("name")
         line_coverage = target.get("lineCoverage")
-        if not isinstance(name, str) or not isinstance(line_coverage, (int, float)):
+        if not isinstance(name, str) or not isinstance(line_coverage, int | float):
             continue
         result[name] = float(line_coverage) * 100.0
     return result
@@ -326,7 +328,8 @@ def main() -> int:
                 if actual < minimum_allowed:
                     failures.append(
                         f"{target_name} coverage {actual:.2f}% dropped more than "
-                        f"{max_drop_pct_points:.2f}pp from baseline {float(baseline):.2f}%"
+                        f"{max_drop_pct_points:.2f}pp from baseline "
+                        f"{float(baseline):.2f}%"
                     )
 
         ui_test_count = count_deterministic_ui_tests(

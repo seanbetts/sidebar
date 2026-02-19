@@ -14,6 +14,11 @@ LIMITS = {
 }
 
 
+def emit(message: str = "") -> None:
+    """Write one line to stdout."""
+    sys.stdout.write(f"{message}\n")
+
+
 def count_lines(file_path: Path) -> int:
     """Count non-empty lines in a file."""
     try:
@@ -62,19 +67,19 @@ def check_file_sizes(file_paths: list[Path] | None = None) -> bool:
                 break
 
     if warnings:
-        print("\nFile Size Warnings:")
+        emit("\nFile Size Warnings:")
         for warning in warnings:
-            print(warning)
+            emit(warning)
 
     if violations:
-        print("\nFile Size Violations (MUST FIX):")
+        emit("\nFile Size Violations (MUST FIX):")
         for violation in violations:
-            print(violation)
-        print("\nTip: See AGENTS.md for file splitting strategies")
+            emit(violation)
+        emit("\nTip: See AGENTS.md for file splitting strategies")
         return False
 
     if not warnings:
-        print("✅ All files within size limits")
+        emit("✅ All files within size limits")
     return True
 
 
