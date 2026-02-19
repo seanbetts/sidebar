@@ -23,6 +23,7 @@ struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
         view.backgroundColor = .clear
         view.isOpaque = false
         view.isUserInteractionEnabled = false
+
         context.coordinator.onSwipeEnded = onSwipeEnded
         context.coordinator.isEnabledProvider = { isEnabled }
         context.coordinator.regionWidthProvider = { regionWidth }
@@ -35,9 +36,11 @@ struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
         context.coordinator.isEnabledProvider = { isEnabled }
         context.coordinator.regionWidthProvider = { regionWidth }
         context.coordinator.isLeftPanelExpandedProvider = { isLeftPanelExpanded }
-        context.coordinator.attachRecognizerIfNeeded(startingFrom: uiView.superview)
+        context.coordinator.attachRecognizerIfNeeded(anchorView: uiView)
+
         DispatchQueue.main.async { [weak uiView] in
-            context.coordinator.attachRecognizerIfNeeded(startingFrom: uiView?.superview)
+            guard let uiView else { return }
+            context.coordinator.attachRecognizerIfNeeded(anchorView: uiView)
         }
     }
 
@@ -46,100 +49,85 @@ struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        weak var hostView: UIView?
-        weak var coordinateSpaceView: UIView?
-        weak var leftSwipeRecognizer: UISwipeGestureRecognizer?
-        weak var rightSwipeRecognizer: UISwipeGestureRecognizer?
+        weak var anchorView: UIView?
+        weak var hostWindow: UIWindow?
+        weak var panRecognizer: UIPanGestureRecognizer?
+        var gestureStartPoint: CGPoint?
+
         var onSwipeEnded: ((CGSize, CGFloat) -> Void)?
         var isEnabledProvider: (() -> Bool)?
         var regionWidthProvider: (() -> CGFloat)?
         var isLeftPanelExpandedProvider: (() -> Bool)?
 
-        func attachRecognizerIfNeeded(startingFrom view: UIView?) {
-            coordinateSpaceView = view
-            guard let host = firstInteractiveAncestor(from: view) else { return }
-            if hostView !== host {
+        func attachRecognizerIfNeeded(anchorView: UIView) {
+            self.anchorView = anchorView
+            guard let window = anchorView.window else { return }
+
+            if hostWindow !== window {
                 detachRecognizer()
-                let leftRecognizer = UISwipeGestureRecognizer(
+
+                let recognizer = UIPanGestureRecognizer(
                     target: self,
-                    action: #selector(handleSwipe(_:))
+                    action: #selector(handlePan(_:))
                 )
-                leftRecognizer.direction = .left
-                leftRecognizer.numberOfTouchesRequired = 1
-                leftRecognizer.cancelsTouchesInView = false
-                leftRecognizer.delegate = self
+                recognizer.minimumNumberOfTouches = 1
+                recognizer.maximumNumberOfTouches = 1
+                recognizer.cancelsTouchesInView = false
+                recognizer.delaysTouchesBegan = false
+                recognizer.delaysTouchesEnded = false
+                recognizer.delegate = self
 
-                let rightRecognizer = UISwipeGestureRecognizer(
-                    target: self,
-                    action: #selector(handleSwipe(_:))
-                )
-                rightRecognizer.direction = .right
-                rightRecognizer.numberOfTouchesRequired = 1
-                rightRecognizer.cancelsTouchesInView = false
-                rightRecognizer.delegate = self
-
-                host.addGestureRecognizer(leftRecognizer)
-                host.addGestureRecognizer(rightRecognizer)
-                hostView = host
-                leftSwipeRecognizer = leftRecognizer
-                rightSwipeRecognizer = rightRecognizer
+                window.addGestureRecognizer(recognizer)
+                hostWindow = window
+                panRecognizer = recognizer
             }
-            let isEnabled = isEnabledProvider?() ?? false
-            leftSwipeRecognizer?.isEnabled = isEnabled
-            rightSwipeRecognizer?.isEnabled = isEnabled
-        }
 
-        private func firstInteractiveAncestor(from view: UIView?) -> UIView? {
-            var current = view
-            while let candidate = current {
-                if candidate.isUserInteractionEnabled {
-                    return candidate
-                }
-                current = candidate.superview
-            }
-            return nil
+            panRecognizer?.isEnabled = isEnabledProvider?() ?? false
         }
 
         func detachRecognizer() {
-            if let leftSwipeRecognizer {
-                leftSwipeRecognizer.view?.removeGestureRecognizer(leftSwipeRecognizer)
+            if let panRecognizer {
+                panRecognizer.view?.removeGestureRecognizer(panRecognizer)
             }
-            if let rightSwipeRecognizer {
-                rightSwipeRecognizer.view?.removeGestureRecognizer(rightSwipeRecognizer)
-            }
-            leftSwipeRecognizer = nil
-            rightSwipeRecognizer = nil
-            hostView = nil
-            coordinateSpaceView = nil
+            panRecognizer = nil
+            hostWindow = nil
+            anchorView = nil
+            gestureStartPoint = nil
         }
 
-        @objc func handleSwipe(_ recognizer: UISwipeGestureRecognizer) {
+        @objc func handlePan(_ recognizer: UIPanGestureRecognizer) {
             guard isEnabledProvider?() == true else { return }
-            guard let host = recognizer.view else { return }
-            let coordinateView = coordinateSpaceView ?? host
-            let location = recognizer.location(in: coordinateView)
-            let translation: CGSize
-            switch recognizer.direction {
-            case .left:
-                translation = CGSize(width: -WorkspaceSidebarSwipePolicy.minHorizontalDistance, height: 0)
-            case .right:
-                translation = CGSize(width: WorkspaceSidebarSwipePolicy.minHorizontalDistance, height: 0)
-            default:
-                return
-            }
-            let startX = location.x
-            let regionWidth = regionWidthProvider?() ?? coordinateView.bounds.width
-            let isLeftPanelExpanded = isLeftPanelExpandedProvider?() ?? false
-            let action = WorkspaceSidebarSwipePolicy.resolveAction(
-                translation: translation,
-                startX: startX,
-                regionWidth: regionWidth,
-                isLeftPanelExpanded: isLeftPanelExpanded,
-                isIPad: true
-            )
+            guard let anchorView,
+                  let window = hostWindow ?? recognizer.view as? UIWindow else { return }
 
-            guard action != .none else { return }
-            onSwipeEnded?(translation, startX)
+            let locationInWindow = recognizer.location(in: window)
+            let locationInAnchor = anchorView.convert(locationInWindow, from: window)
+
+            switch recognizer.state {
+            case .began:
+                gestureStartPoint = locationInAnchor
+            case .ended, .cancelled, .failed:
+                guard let start = gestureStartPoint else { return }
+                defer { gestureStartPoint = nil }
+
+                let end = locationInAnchor
+                let translation = CGSize(width: end.x - start.x, height: end.y - start.y)
+                let startX = start.x
+                let regionWidth = regionWidthProvider?() ?? anchorView.bounds.width
+                let isLeftPanelExpanded = isLeftPanelExpandedProvider?() ?? false
+
+                let action = WorkspaceSidebarSwipePolicy.resolveAction(
+                    translation: translation,
+                    startX: startX,
+                    regionWidth: regionWidth,
+                    isLeftPanelExpanded: isLeftPanelExpanded,
+                    isIPad: true
+                )
+                guard action != .none else { return }
+                onSwipeEnded?(translation, startX)
+            default:
+                break
+            }
         }
 
         func gestureRecognizer(
@@ -153,7 +141,15 @@ struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
             _ gestureRecognizer: UIGestureRecognizer,
             shouldReceive touch: UITouch
         ) -> Bool {
-            isEnabledProvider?() ?? false
+            guard isEnabledProvider?() == true else { return false }
+            guard let anchorView else { return false }
+
+            let locationInAnchor = touch.location(in: anchorView)
+            let regionWidth = regionWidthProvider?() ?? anchorView.bounds.width
+            return locationInAnchor.y >= 0 &&
+                locationInAnchor.y <= anchorView.bounds.height &&
+                locationInAnchor.x >= 0 &&
+                locationInAnchor.x <= regionWidth
         }
     }
 }
