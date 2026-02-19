@@ -529,7 +529,7 @@ private final class SearchQueueNotesAPI: NotesProviding {
     func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
         _ = limit
         _ = offset
-        FileTree(children: [])
+        return FileTree(children: [])
     }
 
     func getNote(id: String) async throws -> NotePayload {
