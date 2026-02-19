@@ -15,6 +15,7 @@
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import ScratchpadHeader from '$lib/components/scratchpad/ScratchpadHeader.svelte';
 	import { removeEmptyTaskItems, stripHeading, withHeading } from '$lib/utils/scratchpad';
+	import { isIPhoneUserAgent } from '$lib/utils/device';
 	import { logError } from '$lib/utils/errorHandling';
 	import { canShowTooltips } from '$lib/utils/tooltip';
 
@@ -34,6 +35,7 @@
 	let saveTimeout: ReturnType<typeof setTimeout> | undefined;
 	let isClosing = false;
 	let hasUserEdits = false;
+	let isIPhone = false;
 	type MarkdownStorage = {
 		markdown: { getMarkdown: () => string };
 	};
@@ -42,6 +44,7 @@
 
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
+		isIPhone = typeof navigator !== 'undefined' && isIPhoneUserAgent(navigator.userAgent);
 	});
 
 	function applyScratchpadContent(content: string) {
@@ -215,33 +218,35 @@
 	}
 </script>
 
-<Popover.Root bind:open={isOpen}>
-	<Tooltip disabled={!tooltipsEnabled}>
-		<TooltipTrigger>
-			{#snippet child({ props })}
-				<Popover.Trigger
-					class={buttonVariants({ variant: 'outline', size: 'icon' })}
-					aria-label="Open scratchpad"
-					{...props}
-				>
-					<SquarePen size={18} />
-				</Popover.Trigger>
-			{/snippet}
-		</TooltipTrigger>
-		<TooltipContent side="bottom">Quick scratchpad</TooltipContent>
-	</Tooltip>
-	<Popover.Content class="w-[95vw] max-w-[840px] p-0" align="end" sideOffset={8}>
-		<div class="scratchpad-popover">
-			<ScratchpadHeader {isSaving} {saveError} />
-			<div class="scratchpad-body">
-				<div bind:this={editorElement} class="scratchpad-editor"></div>
-				{#if isLoading}
-					<div class="scratchpad-loading">Loading...</div>
-				{/if}
+{#if !isIPhone}
+	<Popover.Root bind:open={isOpen}>
+		<Tooltip disabled={!tooltipsEnabled}>
+			<TooltipTrigger>
+				{#snippet child({ props })}
+					<Popover.Trigger
+						class={buttonVariants({ variant: 'outline', size: 'icon' })}
+						aria-label="Open scratchpad"
+						{...props}
+					>
+						<SquarePen size={18} />
+					</Popover.Trigger>
+				{/snippet}
+			</TooltipTrigger>
+			<TooltipContent side="bottom">Quick scratchpad</TooltipContent>
+		</Tooltip>
+		<Popover.Content class="w-[95vw] max-w-[840px] p-0" align="end" sideOffset={8}>
+			<div class="scratchpad-popover">
+				<ScratchpadHeader {isSaving} {saveError} />
+				<div class="scratchpad-body">
+					<div bind:this={editorElement} class="scratchpad-editor"></div>
+					{#if isLoading}
+						<div class="scratchpad-loading">Loading...</div>
+					{/if}
+				</div>
 			</div>
-		</div>
-	</Popover.Content>
-</Popover.Root>
+		</Popover.Content>
+	</Popover.Root>
+{/if}
 
 <style>
 	.scratchpad-popover {
