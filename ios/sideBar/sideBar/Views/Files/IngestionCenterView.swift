@@ -88,9 +88,7 @@ private struct IngestionCenterRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             HStack(alignment: .center, spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: iconName)
-                    .font(DesignTokens.Typography.subheadlineSemibold)
-                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+                leadingIndicator
                     .frame(width: 18, height: 18)
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
@@ -106,16 +104,25 @@ private struct IngestionCenterRow: View {
 
                 Spacer(minLength: DesignTokens.Spacing.xs)
 
-                trailingStatus
-            }
-
-            if let progress = clampedProgress, !isFailed {
-                ProgressView(value: progress)
-                    .tint(DesignTokens.Colors.textPrimary)
-            }
-
-            if hasActions {
                 HStack(spacing: DesignTokens.Spacing.xs) {
+                    trailingStatus
+
+                    if isFailed, canRetry {
+                        Button("Retry") {
+                            onRetry(item.file.id)
+                        }
+                        .buttonStyle(IngestionCenterActionButtonStyle())
+                        .accessibilityLabel("Retry upload")
+                    }
+
+                    if isFailed {
+                        Button("Dismiss") {
+                            onDismiss(item.file.id)
+                        }
+                        .buttonStyle(IngestionCenterActionButtonStyle())
+                        .accessibilityLabel("Dismiss failed upload")
+                    }
+
                     if canCancel {
                         Button("Cancel") {
                             onCancel(item.file.id)
@@ -123,26 +130,26 @@ private struct IngestionCenterRow: View {
                         .buttonStyle(IngestionCenterActionButtonStyle())
                         .accessibilityLabel("Cancel upload")
                     }
-
-                    if isFailed {
-                        if canRetry {
-                            Button("Retry") {
-                                onRetry(item.file.id)
-                            }
-                            .buttonStyle(IngestionCenterActionButtonStyle())
-                            .accessibilityLabel("Retry upload")
-                        }
-
-                        Button("Dismiss") {
-                            onDismiss(item.file.id)
-                        }
-                        .buttonStyle(IngestionCenterActionButtonStyle())
-                        .accessibilityLabel("Dismiss failed upload")
-                    }
                 }
+            }
+
+            if let progress = clampedProgress, !isFailed {
+                ProgressView(value: progress)
+                    .tint(DesignTokens.Colors.textPrimary)
             }
         }
         .padding(.vertical, DesignTokens.Spacing.sm)
+    }
+
+    @ViewBuilder
+    private var leadingIndicator: some View {
+        if isLoadingState {
+            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+        } else {
+            Image(systemName: iconName)
+                .font(DesignTokens.Typography.subheadlineSemibold)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+        }
     }
 
     @ViewBuilder
@@ -164,8 +171,11 @@ private struct IngestionCenterRow: View {
         [IngestionListItem].normalizedStatus(item.statusValue) == "failed"
     }
 
-    private var hasActions: Bool {
-        canCancel || isFailed
+    private var isLoadingState: Bool {
+        let normalizedStatus = [IngestionListItem].normalizedStatus(item.statusValue)
+        return !normalizedStatus.isEmpty &&
+            ![IngestionListItem].terminalStatuses.contains(normalizedStatus) &&
+            normalizedStatus != "paused"
     }
 
     private var clampedProgress: Double? {
