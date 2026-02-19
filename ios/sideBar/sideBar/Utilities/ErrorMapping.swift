@@ -46,6 +46,8 @@ public enum ErrorMapping {
 
     private static func messageForStatus(_ status: Int) -> String {
         switch status {
+        case 408, 504:
+            return "Network connection failed. Please check your internet."
         case 401:
             return "Session expired. Please sign in again."
         case 403:

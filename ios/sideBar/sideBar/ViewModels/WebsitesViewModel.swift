@@ -154,7 +154,7 @@ public final class WebsitesViewModel: ObservableObject {
             try await store.loadList(force: force)
         } catch {
             if items.isEmpty {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
             }
         }
         isLoading = false
@@ -166,7 +166,7 @@ public final class WebsitesViewModel: ObservableObject {
             try await store.loadList(force: true)
         } catch {
             if items.isEmpty {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
             }
         }
     }
@@ -193,7 +193,7 @@ public final class WebsitesViewModel: ObservableObject {
             try await store.loadDetail(id: id)
         } catch {
             if active == nil {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
             }
         }
         isLoadingDetail = false
@@ -267,7 +267,7 @@ public final class WebsitesViewModel: ObservableObject {
             )
             store.updateListItem(updated, persist: true)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 
@@ -294,7 +294,7 @@ public final class WebsitesViewModel: ObservableObject {
             )
             store.updateListItem(updated, persist: true)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 
@@ -324,7 +324,7 @@ public final class WebsitesViewModel: ObservableObject {
                 clearSelection()
             }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 

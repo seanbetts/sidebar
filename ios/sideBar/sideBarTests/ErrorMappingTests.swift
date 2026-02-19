@@ -22,4 +22,14 @@ final class ErrorMappingTests: XCTestCase {
         let message = ErrorMapping.message(for: APIClientError.invalidUrl, during: "load settings")
         XCTAssertEqual(message, "Failed to load settings: Invalid request URL.")
     }
+
+    func testMapsRequestTimeoutStatus() {
+        let message = ErrorMapping.message(for: APIClientError.requestFailed(408))
+        XCTAssertEqual(message, "Network connection failed. Please check your internet.")
+    }
+
+    func testMapsGatewayTimeoutStatus() {
+        let message = ErrorMapping.message(for: APIClientError.requestFailed(504))
+        XCTAssertEqual(message, "Network connection failed. Please check your internet.")
+    }
 }

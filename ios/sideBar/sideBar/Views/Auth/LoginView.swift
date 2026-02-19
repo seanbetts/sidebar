@@ -464,7 +464,7 @@ private extension LoginView {
             if let authError = error as? AuthAdapterError {
                 errorMessage = authError.errorDescription
             } else {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
             }
             #if os(iOS)
             triggerHaptic(.error)

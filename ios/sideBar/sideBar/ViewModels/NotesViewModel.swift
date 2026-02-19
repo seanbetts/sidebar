@@ -89,7 +89,7 @@ public final class NotesViewModel: ObservableObject {
             try await store.loadTree()
         } catch {
             if tree == nil {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
             }
         }
     }
@@ -127,7 +127,7 @@ public final class NotesViewModel: ObservableObject {
             pendingNoteId = nil
         } catch {
             if activeNote == nil {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
             }
         }
     }
@@ -407,7 +407,7 @@ public final class NotesViewModel: ObservableObject {
             searchResults = results
             isSearching = false
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
             searchResults = []
             isSearching = false
         }

@@ -13,7 +13,7 @@ extension IngestionViewModel {
             try await store.loadList(force: force)
         } catch {
             if items.isEmpty {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
             }
         }
         isLoading = false
@@ -30,7 +30,7 @@ extension IngestionViewModel {
             startJobPollingIfNeeded(fileId: fileId)
             await ensureViewerReady(for: fileId)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 
@@ -98,7 +98,7 @@ extension IngestionViewModel {
             if let previousPinned {
                 store.updatePinned(fileId: fileId, pinned: previousPinned)
             }
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 

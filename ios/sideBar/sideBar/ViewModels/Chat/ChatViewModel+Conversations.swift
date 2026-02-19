@@ -21,7 +21,7 @@ extension ChatViewModel {
             try await chatStore.loadConversations(force: force)
         } catch {
             if conversations.isEmpty {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
             }
         }
         if !silent {
@@ -93,7 +93,7 @@ extension ChatViewModel {
                     )
                 )
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
                 return
             }
         }
@@ -178,7 +178,7 @@ extension ChatViewModel {
                 )
             )
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 
@@ -272,7 +272,7 @@ extension ChatViewModel {
                 title: previousTitle,
                 titleGenerated: previousGenerated
             )
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
             toastCenter?.show(message: "Failed to rename conversation")
         }
     }
@@ -303,7 +303,7 @@ extension ChatViewModel {
                 promptPreview = previousPromptPreview
                 activeTool = previousActiveTool
             }
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
             toastCenter?.show(message: "Failed to delete conversation")
         }
     }
@@ -343,7 +343,7 @@ extension ChatViewModel {
             try await chatStore.loadConversation(id: id)
         } catch {
             if chatStore.conversationDetails[id] == nil {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorMapping.message(for: error)
             }
         }
         if !silent {

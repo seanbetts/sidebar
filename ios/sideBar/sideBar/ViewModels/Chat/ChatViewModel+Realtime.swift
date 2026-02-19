@@ -388,7 +388,7 @@ extension ChatViewModel {
             )
             chatStore.upsertConversation(updated)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 
@@ -425,7 +425,7 @@ extension ChatViewModel {
                 titleGenerated: response.fallback == false
             )
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 

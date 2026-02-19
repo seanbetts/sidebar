@@ -47,7 +47,7 @@ public final class ScratchpadViewModel: ObservableObject {
             })
             scratchpad = response
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 
@@ -58,7 +58,7 @@ public final class ScratchpadViewModel: ObservableObject {
             scratchpad = response
             cache.set(key: CacheKeys.scratchpad, value: response, ttlSeconds: CachePolicy.scratchpad)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 }

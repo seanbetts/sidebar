@@ -14,7 +14,7 @@ extension ChatViewModel {
         } catch is CancellationError {
             // Stream cancellation is user-initiated; avoid surfacing as an error.
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
             finalizeStreaming(status: .error)
         }
         isStreaming = false
@@ -197,7 +197,7 @@ extension ChatViewModel {
             _ = try await conversationsAPI.delete(conversationId: conversationId)
             chatStore.removeConversation(id: conversationId)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
     }
 

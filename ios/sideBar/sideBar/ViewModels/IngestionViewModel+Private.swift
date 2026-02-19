@@ -242,7 +242,7 @@ extension IngestionViewModel {
                 )
             }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ErrorMapping.message(for: error)
         }
         isLoadingContent = false
     }
