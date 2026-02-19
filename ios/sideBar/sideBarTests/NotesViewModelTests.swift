@@ -271,6 +271,65 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedNoteId, created?.path)
     }
 
+    func testRenameNoteAllowsCaseOnlyTitleChanges() async throws {
+        let api = NotesAPISpy()
+        api.listTreeResult = .success(
+            FileTree(children: [
+                FileNode(
+                    name: "Test note for editing.md",
+                    path: "note-id",
+                    type: .file,
+                    size: nil,
+                    modified: nil,
+                    created: nil,
+                    children: nil,
+                    expanded: nil,
+                    pinned: nil,
+                    pinnedOrder: nil,
+                    archived: nil,
+                    folderMarker: nil
+                )
+            ])
+        )
+        api.getNoteResult = .success(
+            NotePayload(
+                id: "uuid-note-1",
+                name: "Test note for editing.md",
+                content: "",
+                path: "note-id",
+                modified: nil,
+                created: nil
+            )
+        )
+        api.renameNoteResult = .success(
+            NotePayload(
+                id: "uuid-note-1",
+                name: "Test Note for Editing.md",
+                content: "",
+                path: "note-id",
+                modified: nil,
+                created: nil
+            )
+        )
+
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.loadTree()
+        await viewModel.renameNote(id: "note-id", newName: "Test Note for Editing")
+
+        XCTAssertEqual(api.renameRequests.count, 1)
+        let request = try XCTUnwrap(api.renameRequests.first)
+        XCTAssertEqual(request.id, "uuid-note-1")
+        XCTAssertEqual(request.newName, "Test Note for Editing.md")
+    }
+
     func testSearchSuccessClearsPreviousSearchError() async throws {
         let match = FileNode(
             name: "Cafe.md",
@@ -330,10 +389,14 @@ private struct TestNetworkStatus: NetworkStatusProviding {
 private final class NotesAPISpy: NotesProviding {
     private(set) var getNoteCallCount = 0
     private(set) var createRequests: [NoteCreateRequest] = []
+    private(set) var renameRequests: [(id: String, newName: String)] = []
+    var listTreeResult: Result<FileTree, Error> = .failure(MockError.forced)
+    var getNoteResult: Result<NotePayload, Error> = .failure(MockError.forced)
     var createNoteResult: Result<NotePayload, Error> = .failure(MockError.forced)
+    var renameNoteResult: Result<NotePayload, Error> = .failure(MockError.forced)
 
     func listTree() async throws -> FileTree {
-        throw MockError.forced
+        try listTreeResult.get()
     }
 
     func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
@@ -345,7 +408,7 @@ private final class NotesAPISpy: NotesProviding {
     func getNote(id: String) async throws -> NotePayload {
         _ = id
         getNoteCallCount += 1
-        throw MockError.forced
+        return try getNoteResult.get()
     }
 
     func search(query: String, limit: Int) async throws -> [FileNode] {
@@ -366,9 +429,8 @@ private final class NotesAPISpy: NotesProviding {
     }
 
     func renameNote(id: String, newName: String) async throws -> NotePayload {
-        _ = id
-        _ = newName
-        throw MockError.forced
+        renameRequests.append((id: id, newName: newName))
+        return try renameNoteResult.get()
     }
 
     func moveNote(id: String, folder: String) async throws -> NotePayload {

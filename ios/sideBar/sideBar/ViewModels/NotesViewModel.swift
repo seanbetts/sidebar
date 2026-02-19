@@ -206,7 +206,7 @@ public final class NotesViewModel: ObservableObject {
         }
         let filename = trimmed.lowercased().hasSuffix(".md") ? trimmed : "\(trimmed).md"
         let currentName = noteNode(id: id)?.name ?? activeNote?.name
-        guard filename.lowercased() != currentName?.lowercased() else {
+        guard filename != currentName else {
             return
         }
         if !networkStatus.isNetworkAvailable {
