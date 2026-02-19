@@ -43,10 +43,7 @@ struct OfflineBanner: View {
     }
 
     private var backgroundColor: Color {
-        if environment.isOffline {
-            return .red
-        }
-        return .orange
+        DesignTokens.Colors.error
     }
 
     private var statusIcon: some View {

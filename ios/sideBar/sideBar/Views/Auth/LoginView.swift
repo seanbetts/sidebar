@@ -125,7 +125,7 @@ public struct LoginView: View {
                     SuccessCheckBadge(size: 18, symbolSize: 10)
                 } else {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(DesignTokens.Colors.error)
                         .font(.callout)
                 }
             }

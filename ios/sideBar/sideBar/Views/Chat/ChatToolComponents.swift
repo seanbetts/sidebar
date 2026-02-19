@@ -128,11 +128,11 @@ struct ToolCallRow: View {
     private var statusColor: Color {
         switch toolCall.status {
         case .pending:
-            return .orange
+            return DesignTokens.Colors.textSecondary
         case .success:
-            return .green
+            return DesignTokens.Colors.textPrimary
         case .error:
-            return .red
+            return DesignTokens.Colors.error
         }
     }
 

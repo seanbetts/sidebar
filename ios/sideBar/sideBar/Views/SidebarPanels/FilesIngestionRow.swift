@@ -41,7 +41,7 @@ struct FilesIngestionRow: View, Equatable {
                 } else if isFailed {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(DesignTokens.Colors.error)
                 } else {
                     Image(systemName: iconName)
                         .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
@@ -111,7 +111,7 @@ struct FilesIngestionRow: View, Equatable {
 
     private var statusTextColor: Color {
         if isFailed {
-            return .orange
+            return DesignTokens.Colors.error
         }
         return secondaryTextColor
     }

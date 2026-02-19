@@ -219,7 +219,7 @@ final class ShareSuccessView: ShareStateView {
     init(message: String) {
         let iconContainerView = NSView()
         iconContainerView.wantsLayer = true
-        iconContainerView.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+        iconContainerView.layer?.backgroundColor = NSColor.labelColor.cgColor
         iconContainerView.layer?.cornerRadius = Layout.iconSize / 2
         iconContainerView.translatesAutoresizingMaskIntoConstraints = false
         iconContainerView.heightAnchor.constraint(equalToConstant: Layout.iconSize).isActive = true
@@ -230,7 +230,7 @@ final class ShareSuccessView: ShareStateView {
         let checkmark = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)?
             .withSymbolConfiguration(symbolConfig)
         checkmarkImageView.image = checkmark
-        checkmarkImageView.contentTintColor = .white
+        checkmarkImageView.contentTintColor = .textBackgroundColor
         checkmarkImageView.imageScaling = .scaleProportionallyUpOrDown
         checkmarkImageView.translatesAutoresizingMaskIntoConstraints = false
         iconContainerView.addSubview(checkmarkImageView)
