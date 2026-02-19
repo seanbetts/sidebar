@@ -8,11 +8,18 @@ import sideBarShared
 final class SafariExtensionCoverageTests: XCTestCase {
     private let suiteName = "SafariExtensionCoverageTests"
     private var temporaryBundles: [URL] = []
+    private var temporarySuiteNames: [String] = []
 
     override func tearDown() {
         if let defaults = UserDefaults(suiteName: suiteName) {
             defaults.removePersistentDomain(forName: suiteName)
         }
+        for temporarySuiteName in temporarySuiteNames {
+            if let defaults = UserDefaults(suiteName: temporarySuiteName) {
+                defaults.removePersistentDomain(forName: temporarySuiteName)
+            }
+        }
+        temporarySuiteNames.removeAll()
         for bundleURL in temporaryBundles {
             try? FileManager.default.removeItem(at: bundleURL)
         }
@@ -81,34 +88,61 @@ final class SafariExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(payload?["error"] as? String, "This action is not supported.")
     }
 
-    func testSafariSaveErrorMessagesMatchShareExtensionMapper() async {
+    func testSafariSaveResponsesMatchQueueAndErrorMapping() async {
         let url = "https://example.com/article"
-        let scenarios: [(error: Error, expectedCode: ExtensionMessageCode)] = [
-            (APIClientError.requestFailed(401), .notAuthenticated),
-            (APIClientError.requestFailed(408), .networkError),
-            (APIClientError.apiError("Unable to save website"), .uploadFailed)
+        let message: [String: Any] = [
+            "action": "save_url",
+            "url": url
         ]
 
-        for scenario in scenarios {
+        do {
             let store = makeStore()
-            let message: [String: Any] = [
-                "action": "save_url",
-                "url": url
-            ]
-
             let payload = await SafariExtensionMessageHandler.responsePayload(
                 for: message,
                 pendingStore: store,
-                saveWebsite: { _ in
-                    throw scenario.error
-                }
+                saveWebsite: { _ in throw APIClientError.requestFailed(401) }
+            )
+
+            XCTAssertEqual(payload["ok"] as? Bool, true)
+            XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
+            XCTAssertEqual(
+                payload["message"] as? String,
+                ExtensionUserMessageCatalog.message(for: .savedForLater)
+            )
+            XCTAssertEqual(store.loadAll().count, 1)
+        }
+
+        do {
+            let store = makeStore()
+            let payload = await SafariExtensionMessageHandler.responsePayload(
+                for: message,
+                pendingStore: store,
+                saveWebsite: { _ in throw APIClientError.requestFailed(408) }
             )
 
             XCTAssertEqual(payload["ok"] as? Bool, false)
-            XCTAssertEqual(payload["code"] as? String, scenario.expectedCode.rawValue)
+            XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.networkError.rawValue)
             XCTAssertEqual(
                 payload["error"] as? String,
-                ShareExtensionMessageMapper.errorMessage(for: scenario.error)
+                ExtensionUserMessageCatalog.message(for: .networkError)
+            )
+            XCTAssertTrue(store.loadAll().isEmpty)
+        }
+
+        do {
+            let store = makeStore()
+            let error = APIClientError.apiError("Unable to save website")
+            let payload = await SafariExtensionMessageHandler.responsePayload(
+                for: message,
+                pendingStore: store,
+                saveWebsite: { _ in throw error }
+            )
+
+            XCTAssertEqual(payload["ok"] as? Bool, false)
+            XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.uploadFailed.rawValue)
+            XCTAssertEqual(
+                payload["error"] as? String,
+                ShareExtensionMessageMapper.errorMessage(for: error)
             )
             XCTAssertTrue(store.loadAll().isEmpty)
         }
@@ -240,7 +274,9 @@ final class SafariExtensionCoverageTests: XCTestCase {
     }
 
     private func makeStore() -> PendingShareStore {
-        let defaults = UserDefaults(suiteName: suiteName)
+        let temporarySuiteName = "\(suiteName).\(UUID().uuidString)"
+        temporarySuiteNames.append(temporarySuiteName)
+        let defaults = UserDefaults(suiteName: temporarySuiteName)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         return PendingShareStore(baseDirectory: directory, userDefaults: defaults)
     }

@@ -4,9 +4,9 @@ import sideBarShared
 
 @MainActor
 final class SettingsVMAssistantDisplayNameTests: XCTestCase {
-    func testAssistantDisplayNameFallsBackWhenSettingsMissing() {
+    func testAssistantDisplayNameFallsBackWhenSettingsMissing() async {
         let viewModel = SettingsViewModel(
-            settingsAPI: AssistantNameMockSettingsAPI(result: .failure(AssistantNameMockError.forced)),
+            settingsAPI: AssistantNameMockSettingsAPI.failing(),
             skillsAPI: AssistantNameMockSkillsAPI(),
             cache: TestCacheClient()
         )
@@ -36,7 +36,7 @@ final class SettingsVMAssistantDisplayNameTests: XCTestCase {
             enabledSkills: []
         )
         let viewModel = SettingsViewModel(
-            settingsAPI: AssistantNameMockSettingsAPI(result: .success(settings)),
+            settingsAPI: AssistantNameMockSettingsAPI.succeeding(settings),
             skillsAPI: AssistantNameMockSkillsAPI(),
             cache: TestCacheClient()
         )
@@ -68,7 +68,7 @@ final class SettingsVMAssistantDisplayNameTests: XCTestCase {
             enabledSkills: []
         )
         let viewModel = SettingsViewModel(
-            settingsAPI: AssistantNameMockSettingsAPI(result: .success(settings)),
+            settingsAPI: AssistantNameMockSettingsAPI.succeeding(settings),
             skillsAPI: AssistantNameMockSkillsAPI(),
             cache: TestCacheClient()
         )
@@ -100,7 +100,7 @@ final class SettingsVMAssistantDisplayNameTests: XCTestCase {
             enabledSkills: []
         )
         let viewModel = SettingsViewModel(
-            settingsAPI: AssistantNameMockSettingsAPI(result: .success(settings)),
+            settingsAPI: AssistantNameMockSettingsAPI.succeeding(settings),
             skillsAPI: AssistantNameMockSkillsAPI(),
             cache: TestCacheClient()
         )
@@ -139,7 +139,7 @@ final class SettingsVMAssistantDisplayNameTests: XCTestCase {
             enabledSkills: []
         )
         let viewModel = SettingsViewModel(
-            settingsAPI: AssistantNameMockSettingsAPI(result: .success(settings)),
+            settingsAPI: AssistantNameMockSettingsAPI.succeeding(settings),
             skillsAPI: AssistantNameMockSkillsAPI(),
             cache: TestCacheClient()
         )
@@ -156,9 +156,9 @@ final class SettingsVMAssistantDisplayNameTests: XCTestCase {
         XCTAssertEqual(viewModel.displayName(for: skill), "Navigator's Soul")
     }
 
-    func testDisplayNameForNonAssistantSkillIsUnchanged() {
+    func testDisplayNameForNonAssistantSkillIsUnchanged() async {
         let viewModel = SettingsViewModel(
-            settingsAPI: AssistantNameMockSettingsAPI(result: .failure(AssistantNameMockError.forced)),
+            settingsAPI: AssistantNameMockSettingsAPI.failing(),
             skillsAPI: AssistantNameMockSkillsAPI(),
             cache: TestCacheClient()
         )
@@ -194,7 +194,7 @@ final class SettingsVMAssistantDisplayNameTests: XCTestCase {
             enabledSkills: []
         )
         let viewModel = SettingsViewModel(
-            settingsAPI: AssistantNameMockSettingsAPI(result: .success(settings)),
+            settingsAPI: AssistantNameMockSettingsAPI.succeeding(settings),
             skillsAPI: AssistantNameMockSkillsAPI(),
             cache: TestCacheClient()
         )
@@ -213,9 +213,9 @@ final class SettingsVMAssistantDisplayNameTests: XCTestCase {
         )
     }
 
-    func testDisplayDescriptionRemovesTrailingPeriodForConsistency() {
+    func testDisplayDescriptionRemovesTrailingPeriodForConsistency() async {
         let viewModel = SettingsViewModel(
-            settingsAPI: AssistantNameMockSettingsAPI(result: .failure(AssistantNameMockError.forced)),
+            settingsAPI: AssistantNameMockSettingsAPI.failing(),
             skillsAPI: AssistantNameMockSkillsAPI(),
             cache: TestCacheClient()
         )
@@ -235,10 +235,21 @@ private enum AssistantNameMockError: Error {
 }
 
 private struct AssistantNameMockSettingsAPI: SettingsProviding {
-    let result: Result<UserSettings, Error>
+    let settings: UserSettings?
+
+    static func succeeding(_ settings: UserSettings) -> Self {
+        Self(settings: settings)
+    }
+
+    static func failing() -> Self {
+        Self(settings: nil)
+    }
 
     func getSettings() async throws -> UserSettings {
-        try result.get()
+        guard let settings else {
+            throw AssistantNameMockError.forced
+        }
+        return settings
     }
 
     func getShortcutsToken() async throws -> ShortcutsTokenResponse {

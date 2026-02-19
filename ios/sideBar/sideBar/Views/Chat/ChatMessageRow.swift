@@ -15,7 +15,7 @@ struct ChatMessageCopyFeedbackState {
     }
 
     var iconName: String {
-        isCopied ? "checkmark.circle" : "doc.on.doc"
+        isCopied ? "checkmark.circle.fill" : "doc.on.doc"
     }
 
     var accessibilityLabel: String {
