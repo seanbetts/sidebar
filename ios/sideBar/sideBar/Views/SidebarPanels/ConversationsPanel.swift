@@ -45,7 +45,8 @@ struct ConversationsPanelView: View {
                 } else if filteredGroups.isEmpty {
                     SidebarPanelPlaceholder(
                         title: searchQuery.isEmpty ? "No conversations" : "No matching conversations",
-                        subtitle: searchQuery.isEmpty ? nil : searchErrorMessage
+                        subtitle: searchQuery.isEmpty ? nil : searchErrorMessage,
+                        style: searchErrorMessage == nil ? .standard : .error
                     )
                 } else {
                     conversationsList

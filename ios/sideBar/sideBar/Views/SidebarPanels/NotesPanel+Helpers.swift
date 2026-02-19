@@ -243,7 +243,8 @@ extension NotesPanelView {
                     SidebarPanelPlaceholder(
                         title: "Search failed",
                         subtitle: error,
-                        actionTitle: "Retry"
+                        actionTitle: "Retry",
+                        style: .error
                     ) {
                         viewModel.updateSearch(query: viewModel.searchQuery)
                     }
@@ -298,7 +299,8 @@ extension NotesPanelView {
                 SidebarPanelPlaceholder(
                     title: "Unable to load notes",
                     subtitle: error,
-                    actionTitle: "Retry"
+                    actionTitle: "Retry",
+                    style: .error
                 ) {
                     Task { await viewModel.loadTree() }
                 }
@@ -318,7 +320,8 @@ extension NotesPanelView {
                 SidebarPanelPlaceholder(
                     title: "Unable to load notes",
                     subtitle: error,
-                    actionTitle: "Retry"
+                    actionTitle: "Retry",
+                    style: .error
                 ) {
                     Task { await viewModel.loadTree() }
                 }

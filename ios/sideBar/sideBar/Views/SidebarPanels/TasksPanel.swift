@@ -161,7 +161,8 @@ extension TasksPanelView {
             SidebarPanelPlaceholder(
                 title: "Unable to load tasks",
                 subtitle: error,
-                actionTitle: "Retry"
+                actionTitle: "Retry",
+                style: .error
             ) {
                 Task { await viewModel.load(selection: viewModel.preferredLoadSelection, force: true) }
             }

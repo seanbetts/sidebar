@@ -83,7 +83,8 @@ struct MemoriesSettingsDetailView: View {
             SidebarPanelPlaceholder(
                 title: "Unable to load memories",
                 subtitle: error,
-                actionTitle: "Retry"
+                actionTitle: "Retry",
+                style: .error
             ) {
                 Task { await viewModel.load() }
             }

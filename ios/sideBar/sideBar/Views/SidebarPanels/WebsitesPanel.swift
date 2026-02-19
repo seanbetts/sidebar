@@ -196,7 +196,8 @@ extension WebsitesPanelView {
             SidebarPanelPlaceholder(
                 title: "Unable to load websites",
                 subtitle: error,
-                actionTitle: "Retry"
+                actionTitle: "Retry",
+                style: .error
             ) {
                 Task { await viewModel.load() }
             }
@@ -302,7 +303,8 @@ extension WebsitesPanelView {
             SidebarPanelPlaceholder(
                 title: "Unable to load websites",
                 subtitle: error,
-                actionTitle: "Retry"
+                actionTitle: "Retry",
+                style: .error
             ) {
                 Task { await viewModel.load() }
             }

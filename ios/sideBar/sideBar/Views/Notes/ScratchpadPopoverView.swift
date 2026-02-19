@@ -159,15 +159,37 @@ private struct ScratchpadHeaderRow: View {
     let errorMessage: String?
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(ScratchpadConstants.title)
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .lineLimit(1)
-            if isSaving {
-                statusText("Saving...", color: .secondary)
-            } else if let errorMessage {
-                statusText(errorMessage, color: .red)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(ScratchpadConstants.title)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(1)
+                if isSaving {
+                    statusText("Saving...", color: .secondary)
+                }
+            }
+            if !isSaving, let errorMessage {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(DesignTokens.Colors.error)
+                        .padding(.top, 1)
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, DesignTokens.Spacing.xs)
+                .padding(.horizontal, DesignTokens.Spacing.sm)
+                .background(DesignTokens.Colors.errorBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
+                        .stroke(DesignTokens.Colors.errorBorder, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous))
+                .accessibilityLabel("Scratchpad error")
+                .accessibilityValue(errorMessage)
             }
         }
     }

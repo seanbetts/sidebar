@@ -153,7 +153,8 @@ extension FilesPanelView {
                 SidebarPanelPlaceholder(
                     title: "Unable to load files",
                     subtitle: message,
-                    actionTitle: "Retry"
+                    actionTitle: "Retry",
+                    style: .error
                 ) {
                     Task { await viewModel.load() }
                 }
