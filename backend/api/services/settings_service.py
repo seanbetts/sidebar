@@ -202,6 +202,18 @@ class SettingsService:
         return SettingsService._normalize_enabled_skills(requested, catalog=catalog)
 
     @staticmethod
+    def resolve_enabled_skills(settings_record) -> list[str]:
+        """Return enabled skills for runtime consumers.
+
+        Args:
+            settings_record: User settings record or None.
+
+        Returns:
+            List of enabled skill IDs.
+        """
+        return SettingsService._resolve_enabled_skills(settings_record)
+
+    @staticmethod
     def _resolve_assistant_identity(settings_record) -> dict[str, str]:
         """Resolve assistant identity settings with defaults.
 
