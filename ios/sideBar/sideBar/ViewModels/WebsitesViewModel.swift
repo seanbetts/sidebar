@@ -303,7 +303,7 @@ public final class WebsitesViewModel: ObservableObject {
         if networkStatus.isOffline {
             do {
                 try await store.enqueueArchive(id: id, archived: archived)
-                if archived, selectedWebsiteId == id {
+                if shouldClearSelectionAfterArchiving(id: id, archived: archived) {
                     clearSelection()
                 }
             } catch WriteQueueError.queueFull {
@@ -320,12 +320,17 @@ public final class WebsitesViewModel: ObservableObject {
                 clientUpdatedAt: store.currentUpdatedAt(id: id)
             )
             store.updateListItem(updated, persist: true)
-            if archived, selectedWebsiteId == id {
+            if shouldClearSelectionAfterArchiving(id: id, archived: archived) {
                 clearSelection()
             }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func shouldClearSelectionAfterArchiving(id: String, archived: Bool) -> Bool {
+        guard archived else { return false }
+        return selectedWebsiteId == id || active?.id == id
     }
 
     public func deleteWebsite(id: String) async {

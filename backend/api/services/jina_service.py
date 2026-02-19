@@ -47,6 +47,7 @@ class JinaService:
             "title": None,
             "url_source": None,
             "published_time": None,
+            "reading_time": None,
         }
 
         title_match = re.search(r"^Title:\s*(.+)$", markdown, re.MULTILINE)
@@ -64,11 +65,19 @@ class JinaService:
             metadata["published_time"] = JinaService._clean_metadata_value(
                 published_match.group(1)
             )
+        reading_time_match = re.search(
+            r"^Reading Time:\s*(.+)$", markdown, re.MULTILINE
+        )
+        if reading_time_match:
+            metadata["reading_time"] = JinaService._clean_metadata_value(
+                reading_time_match.group(1)
+            )
 
         cleaned = markdown
         cleaned = re.sub(r"^Title:.*\n?", "", cleaned, flags=re.MULTILINE)
         cleaned = re.sub(r"^URL Source:.*\n?", "", cleaned, flags=re.MULTILINE)
         cleaned = re.sub(r"^Published Time:.*\n?", "", cleaned, flags=re.MULTILINE)
+        cleaned = re.sub(r"^Reading Time:.*\n?", "", cleaned, flags=re.MULTILINE)
         cleaned = re.sub(r"^Markdown Content:\s*", "", cleaned, flags=re.MULTILINE)
         cleaned = cleaned.lstrip()
 

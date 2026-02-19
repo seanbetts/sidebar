@@ -45,3 +45,18 @@ def test_extract_title_strips_youtube_suffix():
     )
 
     assert title == "OpenAI Super Bowl 2026 | Codex | You Can Just Build Things"
+
+
+def test_parse_metadata_extracts_reading_time():
+    markdown = (
+        "Title: Example Video\n"
+        "URL Source: https://www.youtube.com/watch?v=abc123xyzAA\n"
+        "Reading Time: 11 min\n"
+        "Markdown Content:\n"
+        "[YouTube](https://www.youtube.com/watch?v=abc123xyzAA)\n"
+    )
+
+    metadata, cleaned = JinaService.parse_metadata(markdown)
+
+    assert metadata["reading_time"] == "11 min"
+    assert "Reading Time:" not in cleaned

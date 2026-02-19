@@ -46,30 +46,37 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(plan.shouldConsumeCommandSelection)
     }
 
-    func testMakeInitialPhoneChatActionCreatesConversationWhenNoneExist() {
+    func testMakeInitialPhoneChatActionDoesNothingWhenConversationIsNotSelected() {
         let action = ContentView.makeInitialPhoneChatAction(
-            selectedConversationId: nil,
-            conversationIds: []
-        )
-
-        XCTAssertEqual(action, .createConversation)
-    }
-
-    func testMakeInitialPhoneChatActionSelectsFirstConversationWhenAvailable() {
-        let action = ContentView.makeInitialPhoneChatAction(
-            selectedConversationId: nil,
-            conversationIds: ["conversation-1", "conversation-2"]
-        )
-
-        XCTAssertEqual(action, .selectConversation("conversation-1"))
-    }
-
-    func testMakeInitialPhoneChatActionDoesNothingWhenAlreadySelected() {
-        let action = ContentView.makeInitialPhoneChatAction(
-            selectedConversationId: "conversation-9",
-            conversationIds: ["conversation-1"]
+            selectedConversationId: nil
         )
 
         XCTAssertEqual(action, .none)
+    }
+
+    func testMakeInitialPhoneChatActionClearsSelectedConversation() {
+        let action = ContentView.makeInitialPhoneChatAction(
+            selectedConversationId: "conversation-1"
+        )
+
+        XCTAssertEqual(action, .clearSelection)
+    }
+
+    func testMakeRegularLayoutPlanFromCompactSelectionForChat() {
+        let plan = ContentView.makeRegularLayoutPlanFromCompactSelection(phoneSelection: .chat)
+
+        XCTAssertNil(plan.primarySection)
+        XCTAssertEqual(plan.secondarySection, .chat)
+        XCTAssertNil(plan.lastNonChatSection)
+        XCTAssertEqual(plan.sidebarSelection, .chat)
+    }
+
+    func testMakeRegularLayoutPlanFromCompactSelectionForNonChatSection() {
+        let plan = ContentView.makeRegularLayoutPlanFromCompactSelection(phoneSelection: .tasks)
+
+        XCTAssertEqual(plan.primarySection, .tasks)
+        XCTAssertEqual(plan.secondarySection, .chat)
+        XCTAssertEqual(plan.lastNonChatSection, .tasks)
+        XCTAssertEqual(plan.sidebarSelection, .tasks)
     }
 }

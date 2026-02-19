@@ -2,6 +2,9 @@ import Foundation
 import sideBarShared
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - FilesPanel
 
@@ -130,6 +133,9 @@ extension FilesPanelView {
                     isSearchFocused = true
                 case .newItem:
                     isFileImporterPresented = true
+                case .addYouTubeVideo:
+                    newYouTubeUrl = ""
+                    isYouTubeAlertPresented = true
                 case .navigateList(let direction):
                     navigateFilesList(direction: direction)
                 default:
@@ -167,25 +173,27 @@ extension FilesPanelView {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Files") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
-                    Button {
-                        newYouTubeUrl = ""
-                        isYouTubeAlertPresented = true
-                    } label: {
-                        Image(systemName: "play.rectangle")
-                            .font(DesignTokens.Typography.labelMd)
-                            .frame(width: 28, height: 28)
+                    if !isCompactPhone {
+                        Button {
+                            newYouTubeUrl = ""
+                            isYouTubeAlertPresented = true
+                        } label: {
+                            Image(systemName: "play.rectangle")
+                                .font(DesignTokens.Typography.labelMd)
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Add YouTube video")
+                        Button {
+                            isFileImporterPresented = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(DesignTokens.Typography.labelMd)
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Add file")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add YouTube video")
-                    Button {
-                        isFileImporterPresented = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(DesignTokens.Typography.labelMd)
-                            .frame(width: 28, height: 28)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add file")
                     if isCompact {
                         SettingsAvatarButton()
                     }
@@ -211,6 +219,18 @@ extension FilesPanelView {
         return false
         #else
         return horizontalSizeClass == .compact
+        #endif
+    }
+
+    var isCompactPhone: Bool {
+        isCompact && isPhone
+    }
+
+    private var isPhone: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
         #endif
     }
 

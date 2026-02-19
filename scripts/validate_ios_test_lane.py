@@ -99,7 +99,9 @@ def validate_lane(
     platform = platform_from_destination(destination)
 
     if not effective_targets:
-        errors.append("No effective test targets remain after applying only/skip filters.")
+        errors.append(
+            "No effective test targets remain after applying only/skip filters."
+        )
         return errors
 
     if platform == "macos":
@@ -159,6 +161,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def emit(message: str = "") -> None:
+    """Write one line to stdout."""
+    sys.stdout.write(f"{message}\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run validation and return process exit code."""
     args = parse_args(argv or sys.argv[1:])
@@ -166,18 +173,22 @@ def main(argv: list[str] | None = None) -> int:
     try:
         scheme_targets = read_scheme_test_targets(args.project, args.scheme)
     except (FileNotFoundError, RuntimeError, ET.ParseError) as exc:
-        print(f"Validation failed: {exc}")
+        emit(f"Validation failed: {exc}")
         return 1
 
     only_specs = parse_csv_specs(args.only_testing)
     skip_specs = parse_csv_specs(args.skip_testing)
-    effective_targets_list = effective_test_targets(scheme_targets, only_specs, skip_specs)
+    effective_targets_list = effective_test_targets(
+        scheme_targets,
+        only_specs,
+        skip_specs,
+    )
 
     allowed_macos_targets = {
         item for item in parse_csv_specs(args.allowed_macos_targets) if item
     }
     if not allowed_macos_targets:
-        print("Validation failed: --allowed-macos-targets cannot be empty.")
+        emit("Validation failed: --allowed-macos-targets cannot be empty.")
         return 1
 
     errors = validate_lane(
@@ -187,22 +198,22 @@ def main(argv: list[str] | None = None) -> int:
         allowed_macos_targets,
     )
 
-    print("Lane validation summary:")
-    print(f"- Scheme: {args.scheme}")
-    print(f"- Destination: {args.destination}")
-    print(f"- Scheme test targets: {', '.join(scheme_targets)}")
-    print(
+    emit("Lane validation summary:")
+    emit(f"- Scheme: {args.scheme}")
+    emit(f"- Destination: {args.destination}")
+    emit(f"- Scheme test targets: {', '.join(scheme_targets)}")
+    emit(
         "- Effective test targets: "
         + (", ".join(effective_targets_list) if effective_targets_list else "(none)")
     )
 
     if errors:
-        print("\nLane validation failures:")
+        emit("\nLane validation failures:")
         for error in errors:
-            print(f"- {error}")
+            emit(f"- {error}")
         return 1
 
-    print("\nLane validation passed.")
+    emit("\nLane validation passed.")
     return 0
 
 

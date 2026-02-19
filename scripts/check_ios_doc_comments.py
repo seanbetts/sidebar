@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """Fail if public Swift types in ViewModels/Services are missing doc comments."""
+
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import sys
-
+from pathlib import Path
 
 PUBLIC_TYPE_RE = re.compile(r"\bpublic\s+(final\s+)?(class|struct|enum|protocol)\b")
 DOC_COMMENT_PREFIXES = ("///", "/**")
 
 
 def has_doc_comment(lines: list[str], index: int) -> bool:
+    """Return true when a Swift declaration line has a preceding doc comment."""
     cursor = index - 1
     while cursor >= 0:
         line = lines[cursor].strip()
@@ -23,12 +24,19 @@ def has_doc_comment(lines: list[str], index: int) -> bool:
 
 
 def iter_swift_files(root: Path) -> list[Path]:
+    """Return sorted Swift source files under a root path."""
     if not root.exists():
         return []
     return sorted(path for path in root.rglob("*.swift") if path.is_file())
 
 
+def emit(message: str = "") -> None:
+    """Write one line to stdout."""
+    sys.stdout.write(f"{message}\n")
+
+
 def main() -> int:
+    """Check required Swift folders and fail on missing doc comments."""
     repo_root = Path(__file__).resolve().parents[1]
     targets = [
         repo_root / "ios/sideBar/sideBar/ViewModels",
@@ -41,17 +49,16 @@ def main() -> int:
         for path in iter_swift_files(target):
             lines = path.read_text().splitlines()
             for index, line in enumerate(lines):
-                if PUBLIC_TYPE_RE.search(line):
-                    if not has_doc_comment(lines, index):
-                        missing.append(f"{path}:{index + 1}: {line.strip()}")
+                if PUBLIC_TYPE_RE.search(line) and not has_doc_comment(lines, index):
+                    missing.append(f"{path}:{index + 1}: {line.strip()}")
 
     if missing:
-        print("Missing doc comments for public Swift types:")
+        emit("Missing doc comments for public Swift types:")
         for item in missing:
-            print(f"  {item}")
+            emit(f"  {item}")
         return 1
 
-    print("Doc comment check passed for ViewModels/Services/Stores.")
+    emit("Doc comment check passed for ViewModels/Services/Stores.")
     return 0
 
 

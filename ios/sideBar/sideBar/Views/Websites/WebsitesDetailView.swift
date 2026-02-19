@@ -15,7 +15,9 @@ struct WebsitesDetailView: View {
     @Binding var isRenameDialogPresented: Bool
     @Binding var renameValue: String
     @Binding var isDeleteAlertPresented: Bool
+    #if os(iOS)
     @State private var quickActionsWebsiteId: String?
+    #endif
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
@@ -61,11 +63,11 @@ struct WebsitesDetailView: View {
                 break
             }
         }
+        #if os(iOS)
         .onChange(of: viewModel.active?.id) { _, newValue in
             guard quickActionsWebsiteId != newValue else { return }
             hideQuickActionsPill()
         }
-        #if os(iOS)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let active = viewModel.active, quickActionsWebsiteId == active.id {
                 WebsiteContentQuickActionsPill(
@@ -166,12 +168,20 @@ extension WebsitesDetailView {
                     renderingContext: .website
                 )
             }
+            #if os(iOS)
             .contentShape(Rectangle())
             .simultaneousGesture(
                 TapGesture().onEnded {
                     toggleQuickActionsPill(for: website.id)
                 }
             )
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 10).onChanged { _ in
+                    guard quickActionsWebsiteId == website.id else { return }
+                    hideQuickActionsPill()
+                }
+            )
+            #endif
         } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {
             LoadingView(message: viewModel.detailLoadingMessage)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -435,6 +445,7 @@ extension WebsitesDetailView {
         )
     }
 
+    #if os(iOS)
     private func toggleQuickActionsPill(for websiteId: String) {
         withAnimation {
             quickActionsWebsiteId = quickActionsWebsiteId == websiteId ? nil : websiteId
@@ -461,6 +472,7 @@ extension WebsitesDetailView {
             await viewModel.setArchived(id: active.id, archived: !active.archived)
         }
     }
+    #endif
 
     private static let publishedDateFormatter: DateFormatter = {
         let formatter = DateFormatter()

@@ -201,7 +201,7 @@ extension TasksDetailView {
             if shouldShowExpandButton {
                 expandButton
             }
-            if state.selection != .completed {
+            if state.selection != .completed && shouldShowCompactAddButton {
                 Button {
                     viewModel.startNewTask()
                 } label: {
@@ -220,6 +220,14 @@ extension TasksDetailView {
 
     private var shouldShowExpandButton: Bool {
         guard workspaceColumn == .primary else { return false }
+        #if os(iOS)
+        return !isPhone
+        #else
+        return true
+        #endif
+    }
+
+    private var shouldShowCompactAddButton: Bool {
         #if os(iOS)
         return !isPhone
         #else

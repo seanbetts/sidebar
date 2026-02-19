@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - ContentView+Layout
 
@@ -83,6 +86,18 @@ extension ContentView {
             }
         }
         .tint(tabBarTint)
+        .overlay(alignment: .bottomTrailing) {
+            if shouldShowPhoneFloatingActionDock {
+                phoneFloatingActionDock
+                    .padding(.trailing, DesignTokens.Spacing.lg)
+                    .padding(.bottom, DesignTokens.Spacing.lg)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(
+            .easeInOut(duration: DesignTokens.Animation.standard),
+            value: phoneSelection
+        )
         .sheet(isPresented: $isPhoneScratchpadPresented) {
             ScratchpadPopoverView(
                 api: environment.container.scratchpadAPI,
@@ -90,6 +105,98 @@ extension ContentView {
                 scratchpadStore: environment.scratchpadStore
             )
             .phoneSheetGrabBarVisible()
+        }
+    }
+
+    private var shouldShowPhoneFloatingActionDock: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
+    }
+
+    @ViewBuilder
+    private var phoneFloatingActionDock: some View {
+        switch phoneSelection {
+        case .notes:
+            PhoneFloatingActionDock {
+                PhoneFloatingActionButton(
+                    systemName: "folder",
+                    accessibilityLabel: "Add folder"
+                ) {
+                    environment.emitShortcutAction(.createFolder)
+                }
+                PhoneFloatingActionDivider()
+                PhoneFloatingActionButton(
+                    systemName: "plus",
+                    accessibilityLabel: "Add note"
+                ) {
+                    environment.emitShortcutAction(.newItem)
+                }
+            }
+        case .tasks:
+            PhoneFloatingActionDock {
+                Menu {
+                    Button {
+                        environment.emitShortcutAction(.newItem)
+                    } label: {
+                        Label("New task", systemImage: "checkmark.circle")
+                    }
+                    Button {
+                        environment.emitShortcutAction(.createTaskGroup)
+                    } label: {
+                        Label("New group", systemImage: "folder")
+                    }
+                    Button {
+                        environment.emitShortcutAction(.createTaskProject)
+                    } label: {
+                        Label("New project", systemImage: "list.bullet.rectangle")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(DesignTokens.Typography.labelMd)
+                        .frame(width: DesignTokens.Size.touchTarget, height: DesignTokens.Size.touchTarget)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add")
+            }
+        case .websites:
+            PhoneFloatingActionDock {
+                PhoneFloatingActionButton(
+                    systemName: "plus",
+                    accessibilityLabel: "Add website"
+                ) {
+                    environment.emitShortcutAction(.newItem)
+                }
+            }
+        case .files:
+            PhoneFloatingActionDock {
+                PhoneFloatingActionButton(
+                    systemName: "play.rectangle",
+                    accessibilityLabel: "Add YouTube video"
+                ) {
+                    environment.emitShortcutAction(.addYouTubeVideo)
+                }
+                PhoneFloatingActionDivider()
+                PhoneFloatingActionButton(
+                    systemName: "plus",
+                    accessibilityLabel: "Add file"
+                ) {
+                    environment.emitShortcutAction(.newItem)
+                }
+            }
+        case .chat:
+            PhoneFloatingActionDock {
+                PhoneFloatingActionButton(
+                    systemName: "plus",
+                    accessibilityLabel: "New chat"
+                ) {
+                    environment.emitShortcutAction(.newItem)
+                }
+            }
+        case .settings:
+            EmptyView()
         }
     }
 

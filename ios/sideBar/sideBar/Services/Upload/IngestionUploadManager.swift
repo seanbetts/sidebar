@@ -290,8 +290,8 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     }
 
     private func markUploadStartRequested(uploadId: String) {
-        queue.sync {
-            _ = startingUploadIds.insert(uploadId)
+        _ = queue.sync {
+            startingUploadIds.insert(uploadId)
         }
     }
 
@@ -306,8 +306,8 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     }
 
     private func markUploadStartFinished(uploadId: String) {
-        queue.sync {
-            _ = startingUploadIds.remove(uploadId)
+        _ = queue.sync {
+            startingUploadIds.remove(uploadId)
         }
     }
 

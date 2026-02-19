@@ -25,15 +25,17 @@ public struct ChatView: View {
             .toolbar {
                 if isCompact {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        Button {
-                            Task {
-                                await environment.chatViewModel.startNewConversation()
+                        if !isPhone {
+                            Button {
+                                Task {
+                                    await environment.chatViewModel.startNewConversation()
+                                }
+                            } label: {
+                                Image(systemName: "plus")
                             }
-                        } label: {
-                            Image(systemName: "plus")
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("New chat")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("New chat")
                         if isPhone {
                             Button {
                                 environment.emitShortcutAction(.openScratchpad)

@@ -21,6 +21,7 @@ from datetime import UTC, date, datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
 from threading import Event, Thread
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import pdfplumber
@@ -166,6 +167,8 @@ _COMMON_SHORT_WORDS = {
 
 _audio_transcriber: Callable[..., dict] | None = None
 _youtube_transcriber: Callable[..., dict] | None = None
+_LOCAL_APP_ENVS = {"local", "dev", "development", "test", "testing"}
+_LOCAL_DB_HOSTS = {"localhost", "127.0.0.1", "::1", "postgres", "db"}
 
 
 def _ensure_stdio() -> None:
@@ -344,6 +347,47 @@ def _resolve_worker_user_id() -> str | None:
         fallback_user_id = (settings.default_user_id or "").strip()
         return fallback_user_id or None
     return None
+
+
+def _is_truthy_env(value: str | None) -> bool:
+    return (value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _database_host(database_url: str | None) -> str | None:
+    if not database_url:
+        return None
+    parsed = urlparse(database_url)
+    host = (parsed.hostname or "").strip().lower()
+    return host or None
+
+
+def _is_remote_database(database_url: str | None) -> bool:
+    host = _database_host(database_url)
+    if not host:
+        return False
+    if host in _LOCAL_DB_HOSTS:
+        return False
+    if host.endswith(".local"):
+        return False
+    return True
+
+
+def _enforce_safe_dev_worker_configuration() -> None:
+    app_env = (settings.app_env or "").strip().lower()
+    if app_env not in _LOCAL_APP_ENVS:
+        return
+    if not _is_remote_database(settings.database_url):
+        return
+    if _is_truthy_env(os.getenv("INGESTION_ALLOW_REMOTE_DB")):
+        logger.warning(
+            "Allowing remote DB for local ingestion worker due INGESTION_ALLOW_REMOTE_DB override"
+        )
+        return
+    host = _database_host(settings.database_url) or "unknown"
+    raise RuntimeError(
+        "Refusing to start ingestion worker in local/dev mode against remote DB "
+        f"host '{host}'. Set INGESTION_ALLOW_REMOTE_DB=1 to override."
+    )
 
 
 def _set_worker_claim_scope(db, worker_user_id: str | None) -> None:
@@ -2081,6 +2125,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
 def worker_loop() -> None:
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = _resolve_worker_user_id()
+    _enforce_safe_dev_worker_configuration()
     _ensure_stdio()
     if shutil.which("soffice") is None:
         logger.warning(

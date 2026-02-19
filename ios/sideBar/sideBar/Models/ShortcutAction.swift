@@ -30,6 +30,9 @@ public enum ShortcutAction: Hashable {
     case archiveItem
     case openInBrowser
     case createFolder
+    case createTaskGroup
+    case createTaskProject
+    case addYouTubeVideo
     case navigateList(ShortcutListDirection)
     case openInDefaultApp
     case quickLook
