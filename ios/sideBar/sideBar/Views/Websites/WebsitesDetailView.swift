@@ -175,6 +175,12 @@ extension WebsitesDetailView {
                     toggleQuickActionsPill(for: website.id)
                 }
             )
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 10).onChanged { _ in
+                    guard quickActionsWebsiteId == website.id else { return }
+                    hideQuickActionsPill()
+                }
+            )
             #endif
         } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {
             LoadingView(message: viewModel.detailLoadingMessage)
