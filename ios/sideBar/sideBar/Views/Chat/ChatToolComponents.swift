@@ -39,7 +39,7 @@ struct ToolCallListView: View {
         text: String
     ) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: "hammer.fill")
+            Image(systemName: "command")
                 .font(.caption2)
                 .foregroundStyle(toolPillForeground)
             Text(text)
@@ -58,7 +58,7 @@ struct ToolCallListView: View {
     }
 
     private var toolIconOnlyPill: some View {
-        Image(systemName: "hammer.fill")
+        Image(systemName: "command")
             .font(.caption2)
             .foregroundStyle(toolPillForeground)
             .padding(.horizontal, DesignTokens.Spacing.xs)
