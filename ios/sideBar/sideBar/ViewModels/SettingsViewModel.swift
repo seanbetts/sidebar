@@ -64,7 +64,13 @@ public final class SettingsViewModel: LoadableViewModel {
     }
 
     public func displayDescription(for skill: SkillItem) -> String {
-        skill.description.replacingOccurrences(of: "{name}", with: assistantDisplayName)
+        let personalized = skill.description
+            .replacingOccurrences(of: "{name}", with: assistantDisplayName)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if personalized.hasSuffix(".") {
+            return String(personalized.dropLast())
+        }
+        return personalized
     }
 
     public func load(force: Bool = false) async {

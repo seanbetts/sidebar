@@ -212,6 +212,22 @@ final class SettingsVMAssistantDisplayNameTests: XCTestCase {
             "Allow Navigator to switch between light and dark mode"
         )
     }
+
+    func testDisplayDescriptionRemovesTrailingPeriodForConsistency() {
+        let viewModel = SettingsViewModel(
+            settingsAPI: AssistantNameMockSettingsAPI(result: .failure(AssistantNameMockError.forced)),
+            skillsAPI: AssistantNameMockSkillsAPI(),
+            cache: TestCacheClient()
+        )
+        let skill = SkillItem(
+            id: "notes",
+            name: "Notes",
+            description: "Create and update notes.",
+            category: "Productivity"
+        )
+
+        XCTAssertEqual(viewModel.displayDescription(for: skill), "Create and update notes")
+    }
 }
 
 private enum AssistantNameMockError: Error {
