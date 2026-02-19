@@ -54,7 +54,7 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
-    func testUpdateSearchReturnsToLastNonSearchSelectionWhenQueryCleared() async {
+    func testUpdateSearchReturnsToLastNonSearchSelectionWhenQueryClearedImmediately() async {
         let api = TasksViewModelAPIStub()
         api.enqueueListResponse(scope: "today", tasks: [])
         api.searchResponse = TaskListResponse(
@@ -73,9 +73,29 @@ final class TasksViewModelTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 450_000_000)
         XCTAssertEqual(viewModel.selection, .search(query: "find me"))
 
+        api.enqueueListResponse(scope: "today", tasks: [])
         viewModel.updateSearch(query: "   ")
+        XCTAssertEqual(viewModel.searchQuery, "")
+        await eventually(timeoutNanoseconds: 300_000_000) {
+            viewModel.selection == .today
+        }
+    }
+
+    func testClearSearchQueryCancelsPendingDebouncedSearch() async {
+        let api = TasksViewModelAPIStub()
+        api.enqueueListResponse(scope: "today", tasks: [])
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        let viewModel = sut.viewModel
+        await viewModel.load(selection: .today)
+
+        viewModel.updateSearch(query: "follow up")
+        viewModel.clearSearchQuery()
         try? await Task.sleep(nanoseconds: 450_000_000)
+
+        XCTAssertEqual(api.searchCallCount, 0)
         XCTAssertEqual(viewModel.selection, .today)
+        XCTAssertEqual(viewModel.searchQuery, "")
     }
 
     func testCreateTaskOfflineQueuesPreviewAndClearsDraft() async {

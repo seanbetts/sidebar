@@ -319,21 +319,6 @@ extension TasksViewModel {
         )
     }
 
-    public func updateSearch(query: String) {
-        searchQuery = query
-        searchDebounce?.cancel()
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        searchDebounce = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 350_000_000)
-            guard !Task.isCancelled, let self else { return }
-            if trimmed.isEmpty {
-                await self.load(selection: self.lastNonSearchSelection)
-            } else {
-                await self.load(selection: .search(query: trimmed))
-            }
-        }
-    }
-
     public func startNewTask() {
         let baseSelection = selection.isSearch ? lastNonSearchSelection : selection
         let dueDate: Date
