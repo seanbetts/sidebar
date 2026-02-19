@@ -176,7 +176,7 @@ extension ContentView {
                         systemName: "plus",
                         accessibilityLabel: "New task"
                     ) {
-                        environment.emitShortcutAction(.newItem)
+                        environment.tasksViewModel.startNewTask()
                     }
                 }
             }
