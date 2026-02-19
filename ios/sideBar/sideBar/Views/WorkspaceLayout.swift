@@ -1,4 +1,43 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
+
+enum WorkspaceSidebarSwipeAction: Equatable {
+    case none
+    case collapseLeftPanel
+    case expandLeftPanel
+}
+
+enum WorkspaceSidebarSwipePolicy {
+    static let minHorizontalDistance: CGFloat = 56
+    static let maxVerticalDistance: CGFloat = 96
+    static let edgeActivationDistance: CGFloat = 120
+
+    static func resolveAction(
+        translation: CGSize,
+        startX: CGFloat,
+        regionWidth: CGFloat,
+        isLeftPanelExpanded: Bool,
+        isIPad: Bool
+    ) -> WorkspaceSidebarSwipeAction {
+        guard isIPad else { return .none }
+        guard startX >= 0, startX <= regionWidth else { return .none }
+        guard abs(translation.height) <= maxVerticalDistance else { return .none }
+
+        if isLeftPanelExpanded, translation.width <= -minHorizontalDistance {
+            return .collapseLeftPanel
+        }
+
+        if !isLeftPanelExpanded,
+           startX <= edgeActivationDistance,
+           translation.width >= minHorizontalDistance {
+            return .expandLeftPanel
+        }
+
+        return .none
+    }
+}
 
 // MARK: - WorkspaceLayout
 
@@ -116,6 +155,18 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                                 .ignoresSafeArea(.all, edges: .bottom)
                         }
                     }
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 16, coordinateSpace: .local)
+                            .onEnded { value in
+                                handleMainWorkspaceSwipe(
+                                    translation: value.translation,
+                                    startX: value.startLocation.x,
+                                    regionWidth: widths.main
+                                )
+                            },
+                        including: .subviews
+                    )
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -230,6 +281,48 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         if willExpand, selection == nil {
             selection = .chat
         }
+    }
+
+    private func handleMainWorkspaceSwipe(
+        translation: CGSize,
+        startX: CGFloat,
+        regionWidth: Double
+    ) {
+        let action = WorkspaceSidebarSwipePolicy.resolveAction(
+            translation: translation,
+            startX: startX,
+            regionWidth: regionWidth,
+            isLeftPanelExpanded: isLeftPanelExpanded,
+            isIPad: isIPadSidebarSwipeEnabled
+        )
+        guard action != .none else { return }
+
+        if shouldAnimateSidebar {
+            withAnimation(.smooth(duration: 0.3)) {
+                applyLeftPanelSwipeAction(action)
+            }
+        } else {
+            applyLeftPanelSwipeAction(action)
+        }
+    }
+
+    private func applyLeftPanelSwipeAction(_ action: WorkspaceSidebarSwipeAction) {
+        switch action {
+        case .collapseLeftPanel where isLeftPanelExpanded:
+            toggleLeftPanel()
+        case .expandLeftPanel where !isLeftPanelExpanded:
+            toggleLeftPanel()
+        default:
+            break
+        }
+    }
+
+    private var isIPadSidebarSwipeEnabled: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+        #else
+        false
+        #endif
     }
 
     @ViewBuilder

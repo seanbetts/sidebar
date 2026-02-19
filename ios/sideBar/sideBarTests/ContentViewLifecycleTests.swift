@@ -79,4 +79,76 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(plan.lastNonChatSection, .tasks)
         XCTAssertEqual(plan.sidebarSelection, .tasks)
     }
+
+    func testWorkspaceSidebarSwipePolicyCollapsesExpandedPanelOnLeftSwipe() {
+        let action = WorkspaceSidebarSwipePolicy.resolveAction(
+            translation: CGSize(width: -120, height: 12),
+            startX: 180,
+            regionWidth: 800,
+            isLeftPanelExpanded: true,
+            isIPad: true
+        )
+
+        XCTAssertEqual(action, .collapseLeftPanel)
+    }
+
+    func testWorkspaceSidebarSwipePolicyExpandsCollapsedPanelOnRightSwipeFromEdge() {
+        let action = WorkspaceSidebarSwipePolicy.resolveAction(
+            translation: CGSize(width: 96, height: 10),
+            startX: 24,
+            regionWidth: 800,
+            isLeftPanelExpanded: false,
+            isIPad: true
+        )
+
+        XCTAssertEqual(action, .expandLeftPanel)
+    }
+
+    func testWorkspaceSidebarSwipePolicyIgnoresRightSwipeWhenNotFromEdge() {
+        let action = WorkspaceSidebarSwipePolicy.resolveAction(
+            translation: CGSize(width: 96, height: 6),
+            startX: 280,
+            regionWidth: 800,
+            isLeftPanelExpanded: false,
+            isIPad: true
+        )
+
+        XCTAssertEqual(action, .none)
+    }
+
+    func testWorkspaceSidebarSwipePolicyIgnoresMostlyVerticalSwipes() {
+        let action = WorkspaceSidebarSwipePolicy.resolveAction(
+            translation: CGSize(width: -140, height: 140),
+            startX: 200,
+            regionWidth: 800,
+            isLeftPanelExpanded: true,
+            isIPad: true
+        )
+
+        XCTAssertEqual(action, .none)
+    }
+
+    func testWorkspaceSidebarSwipePolicyDisablesSwipesWhenNotIPad() {
+        let action = WorkspaceSidebarSwipePolicy.resolveAction(
+            translation: CGSize(width: -180, height: 10),
+            startX: 180,
+            regionWidth: 800,
+            isLeftPanelExpanded: true,
+            isIPad: false
+        )
+
+        XCTAssertEqual(action, .none)
+    }
+
+    func testWorkspaceSidebarSwipePolicyIgnoresGesturesOutsideMainRegion() {
+        let action = WorkspaceSidebarSwipePolicy.resolveAction(
+            translation: CGSize(width: -140, height: 8),
+            startX: 920,
+            regionWidth: 800,
+            isLeftPanelExpanded: true,
+            isIPad: true
+        )
+
+        XCTAssertEqual(action, .none)
+    }
 }
