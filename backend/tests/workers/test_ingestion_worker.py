@@ -342,7 +342,8 @@ def test_set_worker_claim_scope_sets_explicit_user(monkeypatch):
     ingestion_worker._set_worker_claim_scope(session, "user-1")
 
     assert scoped_to == ["user-1"]
-    assert session.executed == []
+    assert session.executed
+    assert "set_config('app.ingestion_scope', '', false)" in session.executed[0].lower()
 
 
 def test_set_worker_claim_scope_clears_stale_user_when_unscoped():
@@ -352,5 +353,6 @@ def test_set_worker_claim_scope_clears_stale_user_when_unscoped():
     ingestion_worker._set_worker_claim_scope(session, None)
 
     assert "app_user_id" not in session.info
-    assert session.executed
+    assert len(session.executed) == 2
     assert "set_config('app.user_id', '', false)" in session.executed[0].lower()
+    assert "set_config('app.ingestion_scope', 'all', false)" in session.executed[1].lower()
