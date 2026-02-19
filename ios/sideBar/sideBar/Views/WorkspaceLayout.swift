@@ -372,27 +372,22 @@ private struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
     let isLeftPanelExpanded: Bool
     let onSwipeEnded: (CGSize, CGFloat) -> Void
 
+    final class AnchorView: UIView {
+        override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+            false
+        }
+    }
+
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
+    func makeUIView(context: Context) -> AnchorView {
+        let view = AnchorView()
         view.backgroundColor = .clear
         view.isOpaque = false
+        view.isUserInteractionEnabled = false
 
-        let recognizer = UIPanGestureRecognizer(
-            target: context.coordinator,
-            action: #selector(Coordinator.handlePan(_:))
-        )
-        recognizer.minimumNumberOfTouches = 1
-        recognizer.maximumNumberOfTouches = 1
-        recognizer.cancelsTouchesInView = false
-        recognizer.delaysTouchesBegan = false
-        recognizer.delegate = context.coordinator
-        view.addGestureRecognizer(recognizer)
-
-        context.coordinator.panRecognizer = recognizer
         context.coordinator.onSwipeEnded = onSwipeEnded
         context.coordinator.isEnabledProvider = { isEnabled }
         context.coordinator.regionWidthProvider = { regionWidth }
@@ -400,20 +395,56 @@ private struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
+    func updateUIView(_ uiView: AnchorView, context: Context) {
         context.coordinator.onSwipeEnded = onSwipeEnded
         context.coordinator.isEnabledProvider = { isEnabled }
         context.coordinator.regionWidthProvider = { regionWidth }
         context.coordinator.isLeftPanelExpandedProvider = { isLeftPanelExpanded }
-        context.coordinator.panRecognizer?.isEnabled = isEnabled
+        context.coordinator.attachRecognizerIfNeeded(to: uiView.superview)
+        DispatchQueue.main.async { [weak uiView] in
+            context.coordinator.attachRecognizerIfNeeded(to: uiView?.superview)
+        }
+    }
+
+    static func dismantleUIView(_ uiView: AnchorView, coordinator: Coordinator) {
+        coordinator.detachRecognizer()
     }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        weak var hostView: UIView?
         weak var panRecognizer: UIPanGestureRecognizer?
         var onSwipeEnded: ((CGSize, CGFloat) -> Void)?
         var isEnabledProvider: (() -> Bool)?
         var regionWidthProvider: (() -> CGFloat)?
         var isLeftPanelExpandedProvider: (() -> Bool)?
+
+        func attachRecognizerIfNeeded(to host: UIView?) {
+            guard let host else { return }
+            if hostView !== host {
+                detachRecognizer()
+                let recognizer = UIPanGestureRecognizer(
+                    target: self,
+                    action: #selector(handlePan(_:))
+                )
+                recognizer.minimumNumberOfTouches = 1
+                recognizer.maximumNumberOfTouches = 1
+                recognizer.cancelsTouchesInView = false
+                recognizer.delaysTouchesBegan = false
+                recognizer.delegate = self
+                host.addGestureRecognizer(recognizer)
+                hostView = host
+                panRecognizer = recognizer
+            }
+            panRecognizer?.isEnabled = isEnabledProvider?() ?? false
+        }
+
+        func detachRecognizer() {
+            if let panRecognizer {
+                panRecognizer.view?.removeGestureRecognizer(panRecognizer)
+            }
+            panRecognizer = nil
+            hostView = nil
+        }
 
         @objc func handlePan(_ recognizer: UIPanGestureRecognizer) {
             guard recognizer.state == .ended else { return }
