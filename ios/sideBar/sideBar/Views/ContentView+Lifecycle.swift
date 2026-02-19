@@ -16,8 +16,7 @@ struct MacInitialSelectionPlan {
 
 enum InitialPhoneChatAction: Equatable {
     case none
-    case selectConversation(String)
-    case createConversation
+    case clearSelection
 }
 
 extension ContentView {
@@ -230,16 +229,9 @@ extension ContentView {
     #endif
 
     static func makeInitialPhoneChatAction(
-        selectedConversationId: String?,
-        conversationIds: [String]
+        selectedConversationId: String?
     ) -> InitialPhoneChatAction {
-        if selectedConversationId != nil {
-            return .none
-        }
-        if let firstConversationId = conversationIds.first {
-            return .selectConversation(firstConversationId)
-        }
-        return .createConversation
+        selectedConversationId == nil ? .none : .clearSelection
     }
 
     @MainActor
@@ -278,16 +270,13 @@ extension ContentView {
     @MainActor
     private func performInitialPhoneChatAction() async {
         let action = Self.makeInitialPhoneChatAction(
-            selectedConversationId: environment.chatViewModel.selectedConversationId,
-            conversationIds: environment.chatViewModel.conversations.map(\.id)
+            selectedConversationId: environment.chatViewModel.selectedConversationId
         )
         switch action {
         case .none:
             return
-        case .selectConversation(let conversationId):
-            await environment.chatViewModel.selectConversation(id: conversationId)
-        case .createConversation:
-            await environment.chatViewModel.startNewConversation()
+        case .clearSelection:
+            await environment.chatViewModel.selectConversation(id: nil)
         }
     }
     #endif
