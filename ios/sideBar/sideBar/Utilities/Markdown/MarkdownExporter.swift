@@ -209,11 +209,23 @@ private func appendLineOutput(
     case .imageCaption:
         output.append("\(MarkdownRendering.imageCaptionMarker) \(lineText)")
     default:
-        let prefix = hasExistingBlockPrefix(blockKind: blockKind, lineText: lineText)
-            ? ""
-            : prefix(for: blockKind, listDepth: listDepth)
         let inlineMarkdown = serializeInline(attributedString[lineRange])
-        output.append(prefix + inlineMarkdown)
+        let quotePrefix = leadingBlockquotePrefix(in: lineText)
+        let hasPrefix = hasExistingBlockPrefix(blockKind: blockKind, lineText: lineText)
+        let prefix = hasPrefix
+            ? ""
+            : generatedPrefix(
+                for: blockKind,
+                listDepth: listDepth,
+                quotePrefix: quotePrefix
+            )
+        let normalizedInline = normalizedInlineMarkdown(
+            inlineMarkdown,
+            blockKind: blockKind,
+            quotePrefix: quotePrefix,
+            hasExistingPrefix: hasPrefix
+        )
+        output.append(prefix + normalizedInline)
     }
 }
 
@@ -393,6 +405,44 @@ private func prefix(for blockKind: BlockKind, listDepth: Int?) -> String {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+private func generatedPrefix(
+    for blockKind: BlockKind,
+    listDepth: Int?,
+    quotePrefix: String
+) -> String {
+    let basePrefix = prefix(for: blockKind, listDepth: listDepth)
+    guard isListItemBlockKind(blockKind), !quotePrefix.isEmpty else {
+        return basePrefix
+    }
+    return quotePrefix + basePrefix
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func normalizedInlineMarkdown(
+    _ inlineMarkdown: String,
+    blockKind: BlockKind,
+    quotePrefix: String,
+    hasExistingPrefix: Bool
+) -> String {
+    guard !hasExistingPrefix, isListItemBlockKind(blockKind), !quotePrefix.isEmpty else {
+        return inlineMarkdown
+    }
+    guard inlineMarkdown.hasPrefix(quotePrefix) else {
+        return inlineMarkdown
+    }
+    return String(inlineMarkdown.dropFirst(quotePrefix.count))
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func leadingBlockquotePrefix(in lineText: String) -> String {
+    let pattern = #"^\s*(?:>\s*)+"#
+    guard let range = lineText.range(of: pattern, options: .regularExpression) else {
+        return ""
+    }
+    return String(lineText[range])
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 private func hasExistingBlockPrefix(blockKind: BlockKind, lineText: String) -> Bool {
     let trimmed = lineText.trimmingCharacters(in: .whitespaces)
     if let prefix = headingPrefix(for: blockKind) {
@@ -421,15 +471,15 @@ private func headingPrefix(for blockKind: BlockKind) -> String? {
 private func blockPrefixPattern(for blockKind: BlockKind) -> String? {
     switch blockKind {
     case .bulletList:
-        return #"^[-+*]\s"#
+        return #"^(?:>\s*)*[-+*]\s"#
     case .orderedList:
-        return #"^\d+\.\s"#
+        return #"^(?:>\s*)*\d+\.\s"#
     case .taskChecked:
-        return #"^[-+*]\s+\[[xX]\]\s"#
+        return #"^(?:>\s*)*[-+*]\s+\[[xX]\]\s"#
     case .taskUnchecked:
-        return #"^[-+*]\s+\[\s\]\s"#
+        return #"^(?:>\s*)*[-+*]\s+\[\s\]\s"#
     case .blockquote:
-        return #"^>\s"#
+        return #"^(?:>\s*)+"#
     default:
         return nil
     }

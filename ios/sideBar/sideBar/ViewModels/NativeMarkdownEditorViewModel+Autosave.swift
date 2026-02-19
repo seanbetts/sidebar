@@ -7,7 +7,12 @@ extension NativeMarkdownEditorViewModel {
         autosaveTask?.cancel()
         let delay = max(0.3, autosaveDelay)
         autosaveTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(delay))
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
             guard let self else { return }
             let current = self.currentMarkdown()
             let hasChanges = current != self.lastSavedContent

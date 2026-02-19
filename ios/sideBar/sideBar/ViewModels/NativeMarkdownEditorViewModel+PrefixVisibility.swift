@@ -386,39 +386,9 @@ extension NativeMarkdownEditorViewModel {
     func ensureInlineMarkerRanges(
         in text: inout AttributedString,
         lineRange: Range<AttributedString.Index>,
-        lineText: String
+        lineText _: String
     ) -> [Range<AttributedString.Index>] {
-        let attributedRanges = inlineMarkerRanges(in: text, lineRange: lineRange)
-        if !attributedRanges.isEmpty {
-            return attributedRanges
-        }
-
-        let patterns = [
-            #"\*\*"#,
-            #"__"#,
-            #"~~"#,
-            #"(?<!\*)\*(?!\*)"#,
-            #"(?<!_)_(?!_)"#,
-            #"(?<!`)`(?!`)"#
-        ]
-        var ranges: [Range<AttributedString.Index>] = []
-
-        for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
-            let nsRange = NSRange(location: 0, length: lineText.utf16.count)
-            for match in regex.matches(in: lineText, range: nsRange) {
-                guard let matchRange = Range(match.range, in: lineText) else { continue }
-                let startOffset = lineText.distance(from: lineText.startIndex, to: matchRange.lowerBound)
-                let endOffset = lineText.distance(from: lineText.startIndex, to: matchRange.upperBound)
-                let start = text.index(lineRange.lowerBound, offsetByCharacters: startOffset)
-                let end = text.index(lineRange.lowerBound, offsetByCharacters: endOffset)
-                let range = start..<end
-                text[range].inlineMarker = true
-                ranges.append(range)
-            }
-        }
-
-        return ranges
+        inlineMarkerRanges(in: text, lineRange: lineRange)
     }
 
 }

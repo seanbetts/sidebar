@@ -100,6 +100,74 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.lastSelectionLineSpan, 1...1)
     }
 
+    func testHandleContentChangeMarksUnsavedImmediately() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.autosaveDelay = 2.0
+        viewModel.loadMarkdown("hello")
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        let previous = viewModel.attributedContent
+        viewModel.attributedContent = AttributedString("hello world")
+        viewModel.selection = AttributedTextSelection(range: viewModel.attributedContent.endIndex..<viewModel.attributedContent.endIndex)
+        viewModel.handleContentChange(previous: previous)
+
+        XCTAssertTrue(viewModel.hasUnsavedChanges)
+        XCTAssertEqual(viewModel.autosaveToken, 0)
+    }
+
+    func testScheduleAutosaveCancelsSupersededTask() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.autosaveDelay = 0.5
+        viewModel.loadMarkdown("hello")
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        let initial = viewModel.attributedContent
+        viewModel.attributedContent = AttributedString("hello1")
+        viewModel.selection = AttributedTextSelection(range: viewModel.attributedContent.endIndex..<viewModel.attributedContent.endIndex)
+        viewModel.handleContentChange(previous: initial)
+
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        let secondPrevious = viewModel.attributedContent
+        viewModel.attributedContent = AttributedString("hello2")
+        viewModel.selection = AttributedTextSelection(range: viewModel.attributedContent.endIndex..<viewModel.attributedContent.endIndex)
+        viewModel.handleContentChange(previous: secondPrevious)
+
+        try? await Task.sleep(nanoseconds: 750_000_000)
+
+        XCTAssertEqual(viewModel.autosaveToken, 1)
+        XCTAssertTrue(viewModel.hasUnsavedChanges)
+    }
+
+    func testPlainPunctuationDoesNotBecomeInlineMarker() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("line one\nliteral * punctuation")
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        let text = String(viewModel.attributedContent.characters)
+        guard let markerIndex = text.firstIndex(of: "*") else {
+            XCTFail("Expected a literal marker character")
+            return
+        }
+        let markerOffset = text.distance(from: text.startIndex, to: markerIndex)
+        let attributedIndex = viewModel.attributedContent.index(
+            viewModel.attributedContent.startIndex,
+            offsetByCharacters: markerOffset
+        )
+        let markerRun = viewModel.attributedContent.runs.first { run in
+            run.range.contains(attributedIndex)
+        }
+
+        XCTAssertNotNil(markerRun)
+        XCTAssertNotEqual(markerRun?.inlineMarker, true)
+    }
+
     private func characterRange(
         length: Int,
         in text: AttributedString

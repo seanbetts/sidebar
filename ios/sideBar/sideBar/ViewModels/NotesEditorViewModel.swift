@@ -22,6 +22,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private let networkStatus: any NetworkStatusProviding
     @available(iOS 26.0, macOS 26.0, *)
     private weak var nativeEditorViewModel: NativeMarkdownEditorViewModel?
+    private var syncRequestedWhileSaving = false
     private var cancellables = Set<AnyCancellable>()
 
     init(
@@ -43,6 +44,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     private func handleNoteUpdate(_ note: NotePayload?) {
+        let previousNoteId = currentNoteId
         guard let note else {
             currentNoteId = nil
             content = ""
@@ -52,6 +54,13 @@ public final class NotesEditorViewModel: ObservableObject {
             saveErrorMessage = nil
             isQueuedForSync = false
             conflict = nil
+            syncRequestedWhileSaving = false
+            return
+        }
+        let isSameNote = previousNoteId == note.id
+        if isSameNote, isSaving {
+            // Avoid clobbering pending local edits while an in-flight save publishes
+            // the same note back through NotesStore.
             return
         }
         currentNoteId = note.id
@@ -63,6 +72,9 @@ public final class NotesEditorViewModel: ObservableObject {
         saveErrorMessage = nil
         isQueuedForSync = false
         conflict = nil
+        if !isSameNote {
+            syncRequestedWhileSaving = false
+        }
         Task { [weak self] in
             await self?.applyDraftIfAvailable(for: note)
         }
@@ -129,8 +141,17 @@ public final class NotesEditorViewModel: ObservableObject {
     @available(iOS 26.0, macOS 26.0, *)
     public func syncFromNativeEditor(_ nativeViewModel: NativeMarkdownEditorViewModel) async {
         guard let noteId = currentNoteId else { return }
+        if isSaving {
+            syncRequestedWhileSaving = true
+            return
+        }
+
         let markdown = nativeViewModel.currentMarkdown()
-        guard markdown != content else { return }
+        guard markdown != content else {
+            syncRequestedWhileSaving = false
+            return
+        }
+
         isSaving = true
         saveErrorMessage = nil
         do {
@@ -138,6 +159,7 @@ public final class NotesEditorViewModel: ObservableObject {
         } catch {
             saveErrorMessage = "Failed to save draft"
         }
+
         if !networkStatus.isNetworkAvailable {
             let payload = NoteUpdatePayload(content: markdown)
             let snapshot = makeServerSnapshot(noteId: noteId)
@@ -155,16 +177,20 @@ public final class NotesEditorViewModel: ObservableObject {
                 saveErrorMessage = "Failed to queue changes"
             }
             nativeViewModel.markSaved(markdown: markdown)
+            content = markdown
             isSaving = false
             isDirty = false
             isQueuedForSync = true
+            await syncFromNativeEditorIfRequested(nativeViewModel)
             return
         }
+
         let saved = await notesViewModel.updateNoteContent(id: noteId, content: markdown)
         isSaving = false
         if saved {
             try? draftStorage.markSynced(entityType: "note", entityId: noteId)
             nativeViewModel.markSaved(markdown: markdown)
+            content = markdown
             isDirty = false
             lastSavedAt = Date()
             isQueuedForSync = false
@@ -187,6 +213,7 @@ public final class NotesEditorViewModel: ObservableObject {
             }
             isQueuedForSync = true
         }
+        await syncFromNativeEditorIfRequested(nativeViewModel)
     }
 
     public func saveIfNeeded() async {
@@ -251,6 +278,13 @@ public final class NotesEditorViewModel: ObservableObject {
             guard nativeEditorViewModel.currentMarkdown() != markdown else { return }
             nativeEditorViewModel.loadMarkdown(markdown)
         }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func syncFromNativeEditorIfRequested(_ nativeViewModel: NativeMarkdownEditorViewModel) async {
+        guard syncRequestedWhileSaving else { return }
+        syncRequestedWhileSaving = false
+        await syncFromNativeEditor(nativeViewModel)
     }
 
     private func makeServerSnapshot(noteId: String) -> ServerSnapshot? {

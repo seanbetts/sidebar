@@ -322,6 +322,65 @@ final class NotesEditorViewModelTests: XCTestCase {
         let pending = try await writeQueue.fetchPendingWrites()
         XCTAssertEqual(pending.count, 1)
     }
+
+    func testSyncFromNativeEditorCoalescesRequestDuringInFlightSave() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let updated = NotePayload(id: "n1", name: "Note", content: "Updated", path: "/note.md", modified: 100, created: nil)
+        let api = NotesAPISpy(updateResult: .success(updated))
+        api.updateDelayNanoseconds = 400_000_000
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
+
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        nativeViewModel.attributedContent = AttributedString("First")
+
+        let firstSyncTask = Task {
+            await viewModel.syncFromNativeEditor(nativeViewModel)
+        }
+
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        nativeViewModel.attributedContent = AttributedString("Second")
+        await viewModel.syncFromNativeEditor(nativeViewModel)
+
+        await firstSyncTask.value
+        try await waitUntil(timeoutSeconds: 2.0) {
+            api.updateCallCount == 2
+        }
+
+        XCTAssertEqual(api.updatedContents, ["First", "Second"])
+    }
 }
 private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
     let timeout = Date().addingTimeInterval(timeoutSeconds)
@@ -352,6 +411,8 @@ private struct TestNetworkStatus: NetworkStatusProviding {
 @MainActor
 private final class NotesAPISpy: NotesProviding {
     private(set) var updateCallCount = 0
+    private(set) var updatedContents: [String] = []
+    var updateDelayNanoseconds: UInt64 = 0
     let updateResult: Result<NotePayload, Error>
 
     init(updateResult: Result<NotePayload, Error>) {
@@ -381,8 +442,11 @@ private final class NotesAPISpy: NotesProviding {
 
     func updateNote(id: String, content: String) async throws -> NotePayload {
         _ = id
-        _ = content
         updateCallCount += 1
+        updatedContents.append(content)
+        if updateDelayNanoseconds > 0 {
+            try? await Task.sleep(nanoseconds: updateDelayNanoseconds)
+        }
         return try updateResult.get()
     }
 

@@ -142,4 +142,36 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertTrue(exported.contains("| --- | ---: |"))
         XCTAssertTrue(exported.contains("| Alpha | 1 |"))
     }
+
+    func testBlockquoteBulletListRoundTripPreservesPrefixOrder() {
+        let markdown = """
+        > - Item 1
+        > - Item 2
+        """
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        let first = importer.attributedString(from: markdown).attributedString
+        let exported = exporter.markdown(from: first)
+
+        XCTAssertTrue(exported.contains("> - Item 1"), exported)
+        XCTAssertTrue(exported.contains("> - Item 2"), exported)
+        XCTAssertFalse(exported.contains("- > -"), exported)
+    }
+
+    func testBlockquoteOrderedListRoundTripPreservesPrefixOrder() {
+        let markdown = """
+        > 1. One
+        > 2. Two
+        """
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        let first = importer.attributedString(from: markdown).attributedString
+        let exported = exporter.markdown(from: first)
+
+        XCTAssertTrue(exported.contains("> 1. One"), exported)
+        XCTAssertTrue(exported.contains("> 2. Two"), exported)
+        XCTAssertFalse(exported.contains("1. >"), exported)
+    }
 }

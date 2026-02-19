@@ -215,6 +215,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             isApplyingShortcut = false
         }
 
+        // Mark dirty immediately so close/switch flows can prompt even before autosave fires.
+        hasUnsavedChanges = true
         scheduleAutosave()
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
         updatePrefixVisibility()
