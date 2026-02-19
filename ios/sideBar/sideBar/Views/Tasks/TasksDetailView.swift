@@ -25,6 +25,12 @@ struct TasksDetailView: View {
     @State var deleteTask: TaskItem?
     @State var activeTaskId: String?
     @State private var expandedTaskIds: Set<String> = []
+    @State var showNewGroupAlert: Bool = false
+    @State var showNewProjectAlert: Bool = false
+    @State var showProjectGroupDialog: Bool = false
+    @State var newGroupTitle: String = ""
+    @State var newProjectTitle: String = ""
+    @State var pendingProjectTitle: String = ""
 
     var body: some View {
         let state = viewModel.viewState
@@ -39,6 +45,17 @@ struct TasksDetailView: View {
             content(state: state)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if shouldShowWorkspaceFloatingActionDock(for: state.selection) {
+                HStack {
+                    Spacer(minLength: 0)
+                    workspaceFloatingActionDock
+                        .padding(.trailing, DesignTokens.Spacing.lg)
+                        .padding(.bottom, DesignTokens.Spacing.md)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+        }
         .sheet(item: $renameTask) { task in
             RenameTaskSheet(
                 task: task,
@@ -129,6 +146,29 @@ struct TasksDetailView: View {
                     onDismiss: { viewModel.cancelNewTask() }
                 )
                 .phoneSheetGrabBarVisible()
+            }
+        }
+        .alert("New group", isPresented: $showNewGroupAlert) {
+            TextField("Group name", text: $newGroupTitle)
+            Button("Cancel", role: .cancel) { newGroupTitle = "" }
+            Button("Save") { handleCreateGroup() }
+        } message: {
+            Text("Add a new group for your tasks.")
+        }
+        .alert("New project", isPresented: $showNewProjectAlert) {
+            TextField("Project name", text: $newProjectTitle)
+            Button("Cancel", role: .cancel) { newProjectTitle = "" }
+            Button("Next") { handleProjectTitleNext() }
+        } message: {
+            Text("Name your project, then pick a group.")
+        }
+        .confirmationDialog("Choose group", isPresented: $showProjectGroupDialog, titleVisibility: .visible) {
+            Button("No group") { handleCreateProject(groupId: nil) }
+            let sortedGroups = viewModel.groups.sorted {
+                $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
+            ForEach(sortedGroups, id: \.id) { group in
+                Button(group.title) { handleCreateProject(groupId: group.id) }
             }
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
@@ -442,55 +482,6 @@ extension TasksDetailView {
                 .fontWeight(.semibold)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
-    }
-
-    private func todaySectionSelection(for section: TaskSection, state: TasksViewState) -> TaskSelection? {
-        if section.id.hasPrefix("project:") {
-            let projectId = String(section.id.dropFirst("project:".count))
-            return .project(id: projectId)
-        }
-        if state.groupTitleById[section.id] != nil {
-            return .group(id: section.id)
-        }
-        if state.projectTitleById[section.id] != nil {
-            return .project(id: section.id)
-        }
-        return nil
-    }
-
-    private func taskMenu(for task: TaskItem, selection: TaskSelection) -> some View {
-        Group {
-            Button("Rename") { openRename(task) }
-            Button("Edit notes") { openNotes(task) }
-            Button("Move to...") { openMove(task) }
-            Divider()
-            Button(task.repeating == true ? "Edit repeat..." : "Repeat...") { openRepeat(task) }
-            Divider()
-            if !task.isPreview {
-                if selection != .today {
-                    Button("Set due today") { Task { await viewModel.setDueDate(task: task, date: Date()) } }
-                }
-                Button("Defer to tomorrow") { Task { await viewModel.deferTask(task: task, days: 1) } }
-                Button("Defer to Friday") { Task { await viewModel.deferTask(task: task, days: nextWeekdayOffset(targetWeekday: 5)) } }
-                Button("Defer to weekend") { Task { await viewModel.deferTask(task: task, days: nextWeekdayOffset(targetWeekday: 6)) } }
-                Divider()
-                Button("Set due date...") { openDue(task) }
-                Button("Clear due date") { Task { await viewModel.clearDueDate(task: task) } }
-                Divider()
-            }
-            Button("Delete", role: .destructive) { deleteTask = task }
-        }
-    }
-
-    private func tasksCountLabel(for state: TasksViewState) -> String? {
-        if state.totalCount == 0 { return nil }
-        if state.totalCount == 1 { return "1 task" }
-        return "\(state.totalCount) tasks"
-    }
-
-    private func openRename(_ task: TaskItem) {
-        renameTask = task
-        setActiveTask(task)
     }
 
 }
