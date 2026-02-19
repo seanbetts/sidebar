@@ -22,6 +22,7 @@ repos:
           - pydantic
           - fastapi
           - types-requests
+          - lxml-stubs
 
   # Python - Docstring coverage
   - repo: https://github.com/econchick/interrogate
