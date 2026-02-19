@@ -37,7 +37,7 @@ class ClaudeClient:
             api_key=resolved_api_key,
             http_client=self._create_http_client(settings),
         )
-        self.model = model or settings.model_name
+        self.model = model or settings.anthropic_chat_model
         self.tool_mapper = ToolMapper()
 
     def _create_http_client(self, settings: Settings) -> httpx.AsyncClient:

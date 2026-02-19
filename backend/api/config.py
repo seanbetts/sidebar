@@ -113,9 +113,27 @@ class Settings(BaseSettings):
     db_statement_timeout_ms: int = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "8000"))
     db_slow_query_ms: int = int(os.getenv("DB_SLOW_QUERY_MS", "2000"))
 
-    # Claude API configuration
+    # AI model configuration
     anthropic_api_key: str | None = None
-    model_name: str = "claude-sonnet-4-5-20250929"
+    anthropic_chat_model: str = os.getenv(
+        "ANTHROPIC_CHAT_MODEL",
+        os.getenv("MODEL_NAME", "claude-sonnet-4-6"),
+    )
+    anthropic_title_model: str = os.getenv(
+        "ANTHROPIC_TITLE_MODEL",
+        "claude-haiku-4-5",
+    )
+    openai_chat_model: str = os.getenv("OPENAI_CHAT_MODEL", "gpt-5.2")
+    openai_title_model: str = os.getenv("OPENAI_TITLE_MODEL", "gpt-5-nano")
+    openai_transcription_model: str = os.getenv(
+        "OPENAI_TRANSCRIPTION_MODEL",
+        "gpt-4o-transcribe",
+    )
+    google_chat_model: str = os.getenv("GOOGLE_CHAT_MODEL", "gemini-3.1-pro")
+    google_title_model: str = os.getenv("GOOGLE_TITLE_MODEL", "gemini-3-flash-preview")
+
+    # Backward-compatible alias for legacy callers.
+    model_name: str = anthropic_chat_model
     byok_encryption_key: str | None = os.getenv("BYOK_ENCRYPTION_KEY")
 
     # Jina reader API

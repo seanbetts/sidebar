@@ -60,11 +60,15 @@ class AIProviderGateway:
         *,
         claude_client: Any | None = None,
         google_client_factory: Callable[..., Any] | None = None,
+        openai_client_factory: Callable[..., Any] | None = None,
     ):
         """Initialize the gateway with app settings and provider clients."""
         self._settings = app_settings
         self._claude_client = claude_client
         self._google_client_factory = google_client_factory or genai.Client
+        self._openai_client_factory = (
+            openai_client_factory or self._default_openai_client_factory
+        )
 
     def resolve_chat(
         self,
@@ -75,15 +79,11 @@ class AIProviderGateway:
         """Resolve provider/model/key for chat under the active policy."""
         policy = AIPolicyService.resolve_from_settings(settings_record)
         selection = AIPolicyService.select_provider("chat", policy)
-        if selection.provider != "anthropic":
-            raise AICapabilityUnavailableError(
-                f"Provider '{selection.provider}' is not supported for chat in sideBar"
-            )
         api_key = self._resolve_provider_api_key(
             provider=selection.provider,
             provider_key_lookup=provider_key_lookup,
         )
-        model = get_default_model("anthropic", "chat", self._settings)
+        model = get_default_model(selection.provider, "chat", self._settings)
         return ChatResolution(
             provider=selection.provider,
             model=model,
@@ -107,28 +107,52 @@ class AIProviderGateway:
             settings_record=settings_record,
             provider_key_lookup=provider_key_lookup,
         )
-        if resolution.provider != "anthropic":
-            raise AICapabilityUnavailableError(
-                f"Provider '{resolution.provider}' is not supported for chat in sideBar"
-            )
-        client = self._claude_client
-        if client is None:
-            from api.services.claude_client import ClaudeClient
+        if resolution.provider == "anthropic":
+            client = self._claude_client
+            if client is None:
+                from api.services.claude_client import ClaudeClient
 
-            client = ClaudeClient(
-                self._settings,
-                api_key=resolution.api_key,
+                client = ClaudeClient(
+                    self._settings,
+                    api_key=resolution.api_key,
+                    model=resolution.model,
+                )
+
+            async for event in client.stream_with_tools(
+                message,
+                conversation_history,
+                system_prompt=system_prompt,
+                allowed_skills=allowed_skills,
+                tool_context=tool_context,
+            ):
+                yield event
+            return
+
+        if resolution.provider == "openai":
+            async for event in self._stream_chat_openai(
+                message=message,
+                conversation_history=conversation_history,
+                system_prompt=system_prompt,
                 model=resolution.model,
-            )
+                api_key=resolution.api_key,
+            ):
+                yield event
+            return
 
-        async for event in client.stream_with_tools(
-            message,
-            conversation_history,
-            system_prompt=system_prompt,
-            allowed_skills=allowed_skills,
-            tool_context=tool_context,
-        ):
-            yield event
+        if resolution.provider == "google":
+            async for event in self._stream_chat_google(
+                message=message,
+                conversation_history=conversation_history,
+                system_prompt=system_prompt,
+                model=resolution.model,
+                api_key=resolution.api_key,
+            ):
+                yield event
+            return
+
+        raise AICapabilityUnavailableError(
+            f"Provider '{resolution.provider}' is not supported for chat in sideBar"
+        )
 
     async def generate_title(
         self,
@@ -253,7 +277,6 @@ class AIProviderGateway:
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(
                     disable=True
                 ),
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
         )
         text = getattr(response, "text", None)
@@ -288,8 +311,7 @@ class AIProviderGateway:
 
     async def _generate_title_openai(self, prompt: str, *, api_key: str) -> str:
         """Generate title with OpenAI."""
-        openai_module = __import__("openai")
-        client = openai_module.AsyncOpenAI(api_key=api_key)
+        client = self._openai_client_factory(api_key=api_key)
         response = await client.chat.completions.create(
             model=get_default_model("openai", "title", self._settings),
             messages=[
@@ -309,6 +331,154 @@ class AIProviderGateway:
         if not choice:
             return ""
         return (choice.message.content or "").strip()
+
+    async def _stream_chat_openai(
+        self,
+        *,
+        message: str,
+        conversation_history: list[dict[str, Any]] | None,
+        system_prompt: str | None,
+        model: str,
+        api_key: str,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Stream assistant tokens from OpenAI chat completions."""
+        client = self._openai_client_factory(api_key=api_key)
+        messages = self._build_openai_messages(
+            message=message,
+            conversation_history=conversation_history,
+            system_prompt=system_prompt,
+        )
+        stream = await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            stream=True,
+        )
+        async for chunk in stream:
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            if delta is None:
+                continue
+            content = getattr(delta, "content", None)
+            if isinstance(content, str):
+                if content:
+                    yield {"type": "token", "content": content}
+                continue
+            if isinstance(content, list):
+                for part in content:
+                    part_text = (
+                        part.get("text")
+                        if isinstance(part, dict)
+                        else getattr(part, "text", None)
+                    )
+                    if isinstance(part_text, str) and part_text:
+                        yield {"type": "token", "content": part_text}
+
+    async def _stream_chat_google(
+        self,
+        *,
+        message: str,
+        conversation_history: list[dict[str, Any]] | None,
+        system_prompt: str | None,
+        model: str,
+        api_key: str,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Generate assistant tokens from Google chat (single-response stream shim)."""
+        prompt = self._build_google_chat_prompt(
+            message=message,
+            conversation_history=conversation_history,
+            system_prompt=system_prompt,
+        )
+        client = self._google_client_factory(api_key=api_key)
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model=model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="text/plain",
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                    disable=True
+                ),
+            ),
+        )
+        text = self._extract_google_text(response)
+        if text:
+            yield {"type": "token", "content": text}
+
+    @staticmethod
+    def _build_openai_messages(
+        *,
+        message: str,
+        conversation_history: list[dict[str, Any]] | None,
+        system_prompt: str | None,
+    ) -> list[dict[str, str]]:
+        """Build OpenAI chat messages from system/history/current user message."""
+        messages: list[dict[str, str]] = []
+        if isinstance(system_prompt, str) and system_prompt.strip():
+            messages.append({"role": "system", "content": system_prompt.strip()})
+        for item in conversation_history or []:
+            if not isinstance(item, dict):
+                continue
+            role = item.get("role")
+            if role not in {"user", "assistant", "system"}:
+                continue
+            content = item.get("content")
+            if isinstance(content, str) and content:
+                messages.append({"role": role, "content": content})
+        messages.append({"role": "user", "content": message})
+        return messages
+
+    @staticmethod
+    def _build_google_chat_prompt(
+        *,
+        message: str,
+        conversation_history: list[dict[str, Any]] | None,
+        system_prompt: str | None,
+    ) -> str:
+        """Build a plain-text prompt for Google chat completion."""
+        sections: list[str] = []
+        if isinstance(system_prompt, str) and system_prompt.strip():
+            sections.append(f"System:\n{system_prompt.strip()}")
+        if conversation_history:
+            history_lines: list[str] = []
+            for item in conversation_history:
+                if not isinstance(item, dict):
+                    continue
+                role = item.get("role")
+                if role not in {"user", "assistant"}:
+                    continue
+                content = item.get("content")
+                if not isinstance(content, str) or not content:
+                    continue
+                role_label = "User" if role == "user" else "Assistant"
+                history_lines.append(f"{role_label}: {content}")
+            if history_lines:
+                sections.append("Conversation history:\n" + "\n".join(history_lines))
+        sections.append(f"User: {message}\nAssistant:")
+        return "\n\n".join(sections)
+
+    @staticmethod
+    def _extract_google_text(response: Any) -> str:
+        """Extract plain text from a Google GenAI response payload."""
+        text = getattr(response, "text", None)
+        if isinstance(text, str) and text:
+            return text
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                part_text = getattr(part, "text", None)
+                if isinstance(part_text, str) and part_text:
+                    return part_text
+        return ""
+
+    @staticmethod
+    def _default_openai_client_factory(*, api_key: str) -> Any:
+        """Build an AsyncOpenAI client instance."""
+        openai_module = __import__("openai")
+        return openai_module.AsyncOpenAI(api_key=api_key)
 
     def _resolve_provider_api_key(
         self,
