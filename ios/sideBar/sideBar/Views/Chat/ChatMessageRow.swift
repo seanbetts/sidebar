@@ -52,6 +52,7 @@ struct ChatMessageRow: View {
                     .clipShape(Capsule())
                 if showsHeaderThinkingIndicator {
                     LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                        .padding(.leading, DesignTokens.Spacing.xxs)
                 }
                 Spacer()
                 HStack(spacing: DesignTokens.Spacing.xxs) {
