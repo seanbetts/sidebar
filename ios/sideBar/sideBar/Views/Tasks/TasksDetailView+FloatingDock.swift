@@ -2,10 +2,9 @@ import SwiftUI
 
 extension TasksDetailView {
     static func shouldDisplayWorkspaceFloatingActionDock(
-        isCompact: Bool,
+        isCompact _: Bool,
         selection: TaskSelection
     ) -> Bool {
-        guard !isCompact else { return false }
         return selection != .none
     }
 

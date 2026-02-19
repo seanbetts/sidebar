@@ -20,8 +20,8 @@ final class TasksDetailViewTests: XCTestCase {
         )
     }
 
-    func testShouldDisplayWorkspaceFloatingActionDockWhenCompactHidesDock() {
-        XCTAssertFalse(
+    func testShouldDisplayWorkspaceFloatingActionDockWhenCompactWithSelection() {
+        XCTAssertTrue(
             TasksDetailView.shouldDisplayWorkspaceFloatingActionDock(
                 isCompact: true,
                 selection: .today

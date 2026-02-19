@@ -45,7 +45,7 @@ struct TasksDetailView: View {
                     Spacer(minLength: 0)
                     workspaceFloatingActionDock
                         .padding(.trailing, DesignTokens.Spacing.lg)
-                        .padding(.bottom, DesignTokens.Spacing.md)
+                        .padding(.bottom, 72)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
