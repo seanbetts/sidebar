@@ -16,7 +16,11 @@ import yaml
 from bs4 import BeautifulSoup
 from lxml import html as lxml_html
 from markdownify import MarkdownConverter
-from readability import Document
+
+try:
+    from readability import Document as ReadabilityDocument
+except (ImportError, AttributeError):
+    ReadabilityDocument = None
 
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_includes import apply_include_reinsertion
@@ -586,7 +590,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     raw_dom_original = _safe_html_tree(raw_html_original)
     pre_dom = _safe_html_tree(html)
 
-    document = Document(html)
+    document = ReadabilityDocument(html) if ReadabilityDocument else None
     substack_payload = None
     used_blog_google_ordered_extraction = False
     try:
@@ -602,13 +606,16 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                 _match_substack_host_rules(engine, html, phase="pre"),
             )
     else:
-        try:
-            article_html = document.summary(html_partial=True)
-        except ValueError as exc:
-            logger.warning(
-                "web-save readability failed url=%s error=%s", final_url, exc
-            )
+        if document is None:
             article_html = html
+        else:
+            try:
+                article_html = document.summary(html_partial=True)
+            except ValueError as exc:
+                logger.warning(
+                    "web-save readability failed url=%s error=%s", final_url, exc
+                )
+                article_html = html
         if urlparse(final_url).netloc.endswith("openai.com"):
             openai_html = extract_openai_body_html(raw_html_original)
             if openai_html:
