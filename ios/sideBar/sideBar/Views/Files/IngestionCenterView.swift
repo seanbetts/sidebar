@@ -25,7 +25,7 @@ struct IngestionCenterView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text("Integration Centre")
+            Text("Ingestion Centre")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
