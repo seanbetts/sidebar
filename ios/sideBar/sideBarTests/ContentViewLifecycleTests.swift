@@ -132,7 +132,7 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(action, .collapseLeftPanel)
     }
 
-    func testWorkspaceSidebarSwipePolicyExpandsCollapsedPanelOnRightSwipeFromEdge() {
+    func testWorkspaceSidebarSwipePolicyExpandsCollapsedPanelOnRightSwipe() {
         let action = WorkspaceSidebarSwipePolicy.resolveAction(
             translation: CGSize(width: 96, height: 10),
             startX: 24,
@@ -144,7 +144,7 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(action, .expandLeftPanel)
     }
 
-    func testWorkspaceSidebarSwipePolicyIgnoresRightSwipeWhenNotFromEdge() {
+    func testWorkspaceSidebarSwipePolicyExpandsRightSwipeWhenNotFromEdge() {
         let action = WorkspaceSidebarSwipePolicy.resolveAction(
             translation: CGSize(width: 96, height: 6),
             startX: 280,
@@ -153,7 +153,7 @@ final class ContentViewLifecycleTests: XCTestCase {
             isIPad: true
         )
 
-        XCTAssertEqual(action, .none)
+        XCTAssertEqual(action, .expandLeftPanel)
     }
 
     func testWorkspaceSidebarSwipePolicyIgnoresMostlyVerticalSwipes() {

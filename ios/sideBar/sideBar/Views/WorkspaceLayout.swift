@@ -12,7 +12,6 @@ enum WorkspaceSidebarSwipeAction: Equatable {
 enum WorkspaceSidebarSwipePolicy {
     static let minHorizontalDistance: CGFloat = 56
     static let maxVerticalDistance: CGFloat = 96
-    static let edgeActivationDistance: CGFloat = 120
 
     static func resolveAction(
         translation: CGSize,
@@ -30,7 +29,6 @@ enum WorkspaceSidebarSwipePolicy {
         }
 
         if !isLeftPanelExpanded,
-           startX <= edgeActivationDistance,
            translation.width >= minHorizontalDistance {
             return .expandLeftPanel
         }
