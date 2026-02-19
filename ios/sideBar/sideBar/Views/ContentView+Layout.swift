@@ -86,12 +86,15 @@ extension ContentView {
             }
         }
         .tint(tabBarTint)
-        .overlay(alignment: .bottomTrailing) {
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if shouldShowPhoneFloatingActionDock {
-                phoneFloatingActionDock
-                    .padding(.trailing, DesignTokens.Spacing.lg)
-                    .padding(.bottom, phoneFloatingActionDockBottomPadding)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                HStack {
+                    Spacer(minLength: 0)
+                    phoneFloatingActionDock
+                        .padding(.trailing, DesignTokens.Spacing.lg)
+                        .padding(.bottom, DesignTokens.Spacing.sm)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
         }
         .animation(
@@ -113,15 +116,6 @@ extension ContentView {
         UIDevice.current.userInterfaceIdiom == .phone
         #else
         false
-        #endif
-    }
-
-    private var phoneFloatingActionDockBottomPadding: CGFloat {
-        #if os(iOS)
-        // Keep dock clearly above iPhone tab bar.
-        84
-        #else
-        DesignTokens.Spacing.lg
         #endif
     }
 
