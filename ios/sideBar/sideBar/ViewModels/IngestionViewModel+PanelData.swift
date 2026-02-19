@@ -41,10 +41,13 @@ extension IngestionViewModel {
     }
 
     func updatePanelDerivedState() {
-        let needle = panelSearchQuery.trimmed.lowercased()
+        let needle = SearchTextMatcher.normalizedQuery(panelSearchQuery)
         let baseItems = items.filter { $0.statusValue != "failed" }
         let filtered = needle.isEmpty ? baseItems : baseItems.filter { item in
-            item.file.filenameOriginal.lowercased().contains(needle)
+            SearchTextMatcher.contains(
+                normalizedQuery: needle,
+                in: [item.file.filenameOriginal, item.file.sourceUrl ?? ""]
+            )
         }
         let searchResults = filtered.sorted(by: Self.sortByCreatedDateDescending)
         let pinnedItems = filtered

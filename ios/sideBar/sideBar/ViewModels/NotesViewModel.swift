@@ -403,6 +403,7 @@ public final class NotesViewModel: ObservableObject {
     private func performSearch(query: String) async {
         do {
             let results = try await api.search(query: query, limit: 50)
+            errorMessage = nil
             searchResults = results
             isSearching = false
         } catch {

@@ -270,6 +270,45 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(created?.id, "note-blank")
         XCTAssertEqual(viewModel.selectedNoteId, created?.path)
     }
+
+    func testSearchSuccessClearsPreviousSearchError() async throws {
+        let match = FileNode(
+            name: "Cafe.md",
+            path: "Cafe.md",
+            type: .file,
+            size: nil,
+            modified: nil,
+            created: nil,
+            children: nil,
+            expanded: nil,
+            pinned: nil,
+            pinnedOrder: nil,
+            archived: nil,
+            folderMarker: nil
+        )
+        let api = SearchQueueNotesAPI(results: [
+            .failure(MockError.forced),
+            .success([match])
+        ])
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        viewModel.updateSearch(query: "first")
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        XCTAssertNotNil(viewModel.errorMessage)
+        XCTAssertTrue(viewModel.searchResults.isEmpty)
+
+        viewModel.updateSearch(query: "second")
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(viewModel.searchResults.map(\.path), ["Cafe.md"])
+    }
 }
 
 private enum MockError: Error {
@@ -454,6 +493,100 @@ private struct MockNotesAPI: NotesProviding {
     func deleteNote(id: String) async throws -> NotePayload {
         _ = id
         return try getNoteResult.get()
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
+    }
+}
+
+@MainActor
+private final class SearchQueueNotesAPI: NotesProviding {
+    private var searchResults: [Result<[FileNode], Error>]
+
+    init(results: [Result<[FileNode], Error>]) {
+        searchResults = results
+    }
+
+    func listTree() async throws -> FileTree {
+        FileTree(children: [])
+    }
+
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        FileTree(children: [])
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        guard !searchResults.isEmpty else { return [] }
+        let next = searchResults.removeFirst()
+        return try next.get()
+    }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        throw MockError.forced
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw MockError.forced
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
     }
 
     func createFolder(path: String) async throws {

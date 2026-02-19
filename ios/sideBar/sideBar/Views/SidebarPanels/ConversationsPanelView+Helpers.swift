@@ -35,6 +35,13 @@ enum ConversationCopyFormatter {
 }
 
 extension ConversationsPanelView {
+    static func conversationMatchesSearchQuery(_ normalizedQuery: String, conversation: Conversation) -> Bool {
+        SearchTextMatcher.contains(
+            normalizedQuery: normalizedQuery,
+            in: [conversation.title, conversation.firstMessage ?? ""]
+        )
+    }
+
     var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Chat") {
@@ -144,18 +151,66 @@ extension ConversationsPanelView {
         Task { await viewModel.selectConversation(id: nextId) }
     }
 
+    func updateConversationSearch(query rawQuery: String) {
+        searchTask?.cancel()
+        searchTask = nil
+        searchErrorMessage = nil
+
+        let trimmed = rawQuery.trimmed
+        guard !trimmed.isEmpty else {
+            isSearchLoading = false
+            searchResults = nil
+            return
+        }
+
+        guard !viewModel.networkStatus.isOffline else {
+            isSearchLoading = false
+            searchResults = nil
+            return
+        }
+
+        isSearchLoading = true
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            do {
+                let results = try await viewModel.searchConversations(query: trimmed, limit: 100)
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    searchResults = results
+                    searchErrorMessage = nil
+                    isSearchLoading = false
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    searchResults = nil
+                    searchErrorMessage = error.localizedDescription
+                    isSearchLoading = false
+                }
+            }
+        }
+    }
+
     var filteredGroups: [ConversationGroup] {
-        let query = searchQuery.trimmed
+        let query = SearchTextMatcher.normalizedQuery(searchQuery)
         guard !query.isEmpty else {
             return viewModel.groupedConversations
         }
-        return viewModel.groupedConversations.compactMap { group in
-            let filtered = group.conversations.filter { conversation in
-                conversation.title.localizedCaseInsensitiveContains(query)
+        let source = searchResults ?? viewModel.conversations
+        let filtered = source
+            .filter { conversation in
+                Self.conversationMatchesSearchQuery(query, conversation: conversation)
             }
-            guard !filtered.isEmpty else { return nil }
-            return ConversationGroup(id: group.id, title: group.title, conversations: filtered)
+            .sorted { lhs, rhs in
+                let leftDate = DateParsing.parseISO8601(lhs.updatedAt) ?? .distantPast
+                let rightDate = DateParsing.parseISO8601(rhs.updatedAt) ?? .distantPast
+                return leftDate > rightDate
+            }
+        guard !filtered.isEmpty else {
+            return []
         }
+        return [ConversationGroup(id: "search", title: "Results", conversations: filtered)]
     }
 
     var panelBackground: Color {

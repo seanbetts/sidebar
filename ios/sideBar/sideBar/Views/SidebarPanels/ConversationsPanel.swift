@@ -20,6 +20,10 @@ struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
     @EnvironmentObject var environment: AppEnvironment
     @State var searchQuery: String = ""
+    @State var searchResults: [Conversation]?
+    @State var searchErrorMessage: String?
+    @State var isSearchLoading: Bool = false
+    @State var searchTask: Task<Void, Never>?
     @FocusState var isSearchFocused: Bool
     @State var renameConversationId: String?
     @State var renameValue: String = ""
@@ -36,8 +40,13 @@ struct ConversationsPanelView: View {
             Group {
                 if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
                     SidebarListSkeleton(rowCount: 6, showSubtitle: true)
+                } else if isSearchLoading && filteredGroups.isEmpty {
+                    SidebarListSkeleton(rowCount: 3, showSubtitle: false)
                 } else if filteredGroups.isEmpty {
-                    SidebarPanelPlaceholder(title: searchQuery.isEmpty ? "No conversations" : "No matching conversations")
+                    SidebarPanelPlaceholder(
+                        title: searchQuery.isEmpty ? "No conversations" : "No matching conversations",
+                        subtitle: searchQuery.isEmpty ? nil : searchErrorMessage
+                    )
                 } else {
                     conversationsList
                 }
@@ -75,6 +84,13 @@ struct ConversationsPanelView: View {
             },
             onCancel: clearDeleteTarget
         )
+        .onChange(of: searchQuery) { _, newValue in
+            updateConversationSearch(query: newValue)
+        }
+        .onDisappear {
+            searchTask?.cancel()
+            searchTask = nil
+        }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .chat else { return }
             switch event.action {

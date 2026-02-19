@@ -117,15 +117,16 @@ extension WebsitesViewModel {
     }
 
     func updatePanelDerivedState() {
-        let needle = panelSearchQuery.trimmed.lowercased()
+        let needle = SearchTextMatcher.normalizedQuery(panelSearchQuery)
         let filteredItems: [WebsiteItem]
         if needle.isEmpty {
             filteredItems = items
         } else {
             filteredItems = items.filter { item in
-                item.title.lowercased().contains(needle)
-                    || item.domain.lowercased().contains(needle)
-                    || item.url.lowercased().contains(needle)
+                SearchTextMatcher.contains(
+                    normalizedQuery: needle,
+                    in: [item.title, item.domain, item.url]
+                )
             }
         }
 

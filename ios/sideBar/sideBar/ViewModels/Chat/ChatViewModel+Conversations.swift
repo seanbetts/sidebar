@@ -5,6 +5,13 @@ import Foundation
 // MARK: - ChatViewModel+Conversations
 
 extension ChatViewModel {
+    public func searchConversations(query: String, limit: Int = 50) async throws -> [Conversation] {
+        let trimmed = query.trimmed
+        guard !trimmed.isEmpty else { return [] }
+        let response = try await conversationsAPI.search(query: trimmed, limit: limit)
+        return response.filter { $0.isArchived != true }
+    }
+
     public func loadConversations(force: Bool = false, silent: Bool = false) async {
         errorMessage = nil
         if !silent {
