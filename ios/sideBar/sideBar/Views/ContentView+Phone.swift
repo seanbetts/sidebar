@@ -18,7 +18,7 @@ extension ContentView {
     }
 
     var phoneSections: [AppSection] {
-        [.notes, .tasks, .websites, .files, .chat]
+        AppSection.primaryNavigationSections
     }
 
     func phoneIconName(for section: AppSection) -> String {

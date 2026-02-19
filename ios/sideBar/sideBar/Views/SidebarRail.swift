@@ -11,13 +11,7 @@ public struct SidebarRail: View {
     private let onShowSettings: (() -> Void)?
     private let onSelectSection: ((AppSection) -> Void)?
 
-    private let sections: [AppSection] = [
-        .notes,
-        .tasks,
-        .websites,
-        .files,
-        .chat
-    ]
+    private let sections: [AppSection] = AppSection.primaryNavigationSections
 
     public init(
         selection: Binding<AppSection?>,

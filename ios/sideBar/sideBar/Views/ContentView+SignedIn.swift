@@ -4,9 +4,7 @@ import SwiftUI
 #if os(iOS)
 import UIKit
 #endif
-
 // MARK: - ContentView+SignedIn
-
 extension ContentView {
     var signedInContent: AnyView {
         var content: AnyView = AnyView(
@@ -69,7 +67,6 @@ extension ContentView {
                     }
                 }
                 backgroundedAt = nil
-
                 // Refresh session on activation for both iOS and macOS.
                 if environment.authState != .signedOut {
                     Task {
@@ -124,6 +121,9 @@ extension ContentView {
             sidebarSelection = newValue
             primarySection = newValue
             Task { await loadPhoneSectionIfNeeded(newValue) }
+            if newValue == .chat {
+                Task { await ensureInitialPhoneChatInterfaceIfNeeded() }
+            }
             updateActiveSection()
         })
         content = AnyView(content.onChange(of: sidebarSelection) { _, newValue in
@@ -268,7 +268,9 @@ extension ContentView {
                         await refreshWeatherIfPossible()
                     }
                 }
+                Task { await ensureInitialPhoneChatInterfaceIfNeeded() }
                 } else {
+                    didEnsureInitialPhoneChatInterface = false
                     didLoadSettings = false
                     isBiometricUnlocked = false
                 }
@@ -472,7 +474,7 @@ extension ContentView {
         }
         lastWorkspaceIsPortrait = isPortrait
         guard let section = primaryWorkspaceSectionForRotation,
-              [.chat, .websites, .notes, .tasks, .files].contains(section) else { return }
+              AppSection.primaryNavigationSections.contains(section) else { return }
         if isPortrait {
             if !isWorkspaceExpanded {
                 isWorkspaceExpandedByRotation = true

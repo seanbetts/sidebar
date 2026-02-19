@@ -10,30 +10,15 @@ struct SidebarCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Navigate") {
-            Button("Notes") {
-                environment.commandSelection = .notes
+            ForEach(Array(AppSection.primaryNavigationSections.enumerated()), id: \.element) { index, section in
+                Button(section.title) {
+                    environment.commandSelection = section
+                }
+                .keyboardShortcut(
+                    KeyEquivalent(Character(String(index + 1))),
+                    modifiers: [.command]
+                )
             }
-            .keyboardShortcut("1", modifiers: [.command])
-
-            Button("Tasks") {
-                environment.commandSelection = .tasks
-            }
-            .keyboardShortcut("2", modifiers: [.command])
-
-            Button("Websites") {
-                environment.commandSelection = .websites
-            }
-            .keyboardShortcut("3", modifiers: [.command])
-
-            Button("Files") {
-                environment.commandSelection = .files
-            }
-            .keyboardShortcut("4", modifiers: [.command])
-
-            Button("Chat") {
-                environment.commandSelection = .chat
-            }
-            .keyboardShortcut("5", modifiers: [.command])
         }
 
         CommandGroup(after: .appSettings) {

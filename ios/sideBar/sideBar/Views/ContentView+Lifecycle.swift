@@ -14,6 +14,12 @@ struct MacInitialSelectionPlan {
     let shouldConsumeCommandSelection: Bool
 }
 
+enum InitialPhoneChatAction: Equatable {
+    case none
+    case selectConversation(String)
+    case createConversation
+}
+
 extension ContentView {
     func refreshWeatherIfPossible() async {
         guard environment.authState == .active else { return }
@@ -97,12 +103,13 @@ extension ContentView {
         didSetInitialSelection = true
 #if os(iOS)
         if horizontalSizeClass == .compact {
-            phoneSelection = .tasks
-            sidebarSelection = .tasks
-            primarySection = .tasks
+            phoneSelection = .chat
+            sidebarSelection = .chat
+            primarySection = .chat
         } else {
             primarySection = nil
             secondarySection = .chat
+            sidebarSelection = .chat
             lastNonChatSection = nil
             isLeftPanelExpanded = false
         }
@@ -122,6 +129,9 @@ extension ContentView {
             hasCompletedInitialSetup = true
         }
         updateActiveSection()
+#if os(iOS)
+        Task { await ensureInitialPhoneChatInterfaceIfNeeded() }
+#endif
     }
 
     func updateActiveSection() {
@@ -178,10 +188,10 @@ extension ContentView {
     static func makeMacInitialSelectionPlan(pendingSelection: AppSection?) -> MacInitialSelectionPlan {
         guard let pendingSelection, pendingSelection != .settings else {
             return MacInitialSelectionPlan(
-                primarySection: .notes,
+                primarySection: nil,
                 secondarySection: .chat,
-                lastNonChatSection: .notes,
-                sidebarSelection: .notes,
+                lastNonChatSection: nil,
+                sidebarSelection: .chat,
                 focusedSection: nil,
                 shouldConsumeCommandSelection: false
             )
@@ -196,4 +206,67 @@ extension ContentView {
             shouldConsumeCommandSelection: true
         )
     }
+
+    static func makeInitialPhoneChatAction(
+        selectedConversationId: String?,
+        conversationIds: [String]
+    ) -> InitialPhoneChatAction {
+        if selectedConversationId != nil {
+            return .none
+        }
+        if let firstConversationId = conversationIds.first {
+            return .selectConversation(firstConversationId)
+        }
+        return .createConversation
+    }
+
+    @MainActor
+    func ensureInitialPhoneChatInterfaceIfNeeded() async {
+        #if os(iOS)
+        guard shouldStartInitialPhoneChatFlow else { return }
+        didEnsureInitialPhoneChatInterface = true
+        await environment.chatViewModel.loadConversations()
+        guard !didInitialPhoneChatFlowGetSuperseded else { return }
+        await performInitialPhoneChatAction()
+        #endif
+    }
+
+    #if os(iOS)
+    private var shouldStartInitialPhoneChatFlow: Bool {
+        guard UIDevice.current.userInterfaceIdiom == .phone else { return false }
+        guard horizontalSizeClass == .compact else { return false }
+        guard environment.authState == .active else { return false }
+        guard phoneSelection == .chat else { return false }
+        guard !didEnsureInitialPhoneChatInterface else { return false }
+        guard environment.commandSelection == nil else { return false }
+        guard !environment.pendingNewTaskDeepLink,
+              !environment.pendingNewNoteDeepLink,
+              !environment.pendingScratchpadDeepLink else { return false }
+        return true
+    }
+
+    private var didInitialPhoneChatFlowGetSuperseded: Bool {
+        guard phoneSelection == .chat else { return true }
+        if let commandSelection = environment.commandSelection, commandSelection != .chat {
+            return true
+        }
+        return false
+    }
+
+    @MainActor
+    private func performInitialPhoneChatAction() async {
+        let action = Self.makeInitialPhoneChatAction(
+            selectedConversationId: environment.chatViewModel.selectedConversationId,
+            conversationIds: environment.chatViewModel.conversations.map(\.id)
+        )
+        switch action {
+        case .none:
+            return
+        case .selectConversation(let conversationId):
+            await environment.chatViewModel.selectConversation(id: conversationId)
+        case .createConversation:
+            await environment.chatViewModel.startNewConversation()
+        }
+    }
+    #endif
 }
