@@ -18,15 +18,15 @@ SKILL_DISPLAY = {
     },
     "web-search": {
         "name": "Web Search",
-        "description": "Search the live web for up-to-date information.",
+        "description": "Search the live web for up-to-date information",
     },
     "subdomain-discover": {
         "name": "Subdomain Discovery",
-        "description": "Find subdomains using DNS and certificate sources.",
+        "description": "Find subdomains using DNS and certificate sources",
     },
     "web-crawler-policy": {
         "name": "Crawler Policy",
-        "description": "Analyze robots.txt and llms.txt access policies.",
+        "description": "Analyze robots.txt and llms.txt access policies",
     },
     "audio-transcribe": {
         "name": "Audio Transcription",
@@ -42,7 +42,7 @@ SKILL_DISPLAY = {
     },
     "skill-creator": {
         "name": "Skill Creator",
-        "description": "Guide for creating and updating skills.",
+        "description": "Guide for creating and updating skills",
     },
     "ui-theme": {
         "name": "UI Theme",
@@ -50,25 +50,25 @@ SKILL_DISPLAY = {
     },
     "prompt-preview": {
         "name": "Prompt Preview",
-        "description": "Generate the current system prompt output for preview.",
+        "description": "Generate the current system prompt output for preview",
     },
     "assistant-identity": {
         "name": "Assistant Identity",
-        "description": "Read and update assistant-managed identity settings.",
+        "description": "Read and update assistant-managed identity settings",
         "show_required_badge": False,
     },
     "assistant-soul": {
         "name": "Assistant Soul",
-        "description": "Read and update assistant-managed soul guidance settings.",
+        "description": "Read and update assistant-managed soul guidance settings",
         "show_required_badge": False,
     },
     "settings-profile-user": {
         "name": "Settings Profile/User",
-        "description": "Read and update profile and user settings fields.",
+        "description": "Read and update profile and user settings fields",
     },
     "settings-other-preferences": {
         "name": "Settings Other Preferences",
-        "description": "Update local Other settings preferences.",
+        "description": "Update local Other settings preferences",
     },
     "memory": {
         "name": "Memory",

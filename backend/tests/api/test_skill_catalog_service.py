@@ -49,6 +49,10 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         == "Search, read, create, complete, defer, organize and delete tasks"
     )
     assert str(by_id["web-save"]["description"]) == "Save webpages as clean markdown"
+    assert (
+        str(by_id["web-search"]["description"])
+        == "Search the live web for up-to-date information"
+    )
     assert str(by_id["ui-theme"]["description"]) == "Allow {name} to switch between light and dark mode"
     assert str(by_id["memory"]["description"]) == "Store and manage persistent memories"
 
@@ -56,3 +60,4 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert bool(by_id["assistant-soul"]["user_toggleable"]) is False
     assert bool(by_id["assistant-identity"]["show_required_badge"]) is False
     assert bool(by_id["assistant-soul"]["show_required_badge"]) is False
+    assert all(not str(skill["description"]).endswith(".") for skill in by_id.values())

@@ -78,7 +78,7 @@ class SkillCatalogService:
                     "description": SkillCatalogService._display_str(
                         ui_display, "description"
                     )
-                    or "Allow the assistant to switch light or dark mode.",
+                    or "Allow the assistant to switch light or dark mode",
                     "category": category_map.get("ui-theme", "System"),
                     "user_toggleable": is_skill_user_toggleable("ui-theme"),
                     "show_required_badge": SkillCatalogService._display_bool(
@@ -99,7 +99,7 @@ class SkillCatalogService:
                     "description": SkillCatalogService._display_str(
                         web_display, "description"
                     )
-                    or "Search the live web for up-to-date information.",
+                    or "Search the live web for up-to-date information",
                     "category": category_map.get("web-search", "Web"),
                     "user_toggleable": is_skill_user_toggleable("web-search"),
                     "show_required_badge": SkillCatalogService._display_bool(
@@ -120,7 +120,7 @@ class SkillCatalogService:
                     "description": SkillCatalogService._display_str(
                         memory_display, "description"
                     )
-                    or "Store and manage persistent user memories.",
+                    or "Store and manage persistent user memories",
                     "category": category_map.get("memory", "System"),
                     "user_toggleable": is_skill_user_toggleable("memory"),
                     "show_required_badge": SkillCatalogService._display_bool(
