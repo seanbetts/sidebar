@@ -152,8 +152,8 @@ extension ContentView {
             updateActiveSection()
         })
         #if !os(macOS)
-        content = AnyView(content.onChange(of: horizontalSizeClass) { _, _ in
-            updateActiveSection()
+        content = AnyView(content.onChange(of: horizontalSizeClass) { oldValue, newValue in
+            handleHorizontalSizeClassChange(oldValue: oldValue, newValue: newValue)
         })
         #endif
         content = AnyView(content.onReceive(environment.notesViewModel.$selectedNoteId) { newValue in

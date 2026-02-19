@@ -207,6 +207,28 @@ extension ContentView {
         )
     }
 
+    static func makeRegularLayoutPlanFromCompactSelection(
+        phoneSelection: AppSection
+    ) -> MacInitialSelectionPlan {
+        makeMacInitialSelectionPlan(pendingSelection: phoneSelection)
+    }
+
+    #if !os(macOS)
+    func handleHorizontalSizeClassChange(
+        oldValue: UserInterfaceSizeClass?,
+        newValue: UserInterfaceSizeClass?
+    ) {
+        if oldValue == .compact, newValue != .compact {
+            let plan = Self.makeRegularLayoutPlanFromCompactSelection(phoneSelection: phoneSelection)
+            primarySection = plan.primarySection
+            secondarySection = plan.secondarySection
+            lastNonChatSection = plan.lastNonChatSection
+            sidebarSelection = plan.sidebarSelection
+        }
+        updateActiveSection()
+    }
+    #endif
+
     static func makeInitialPhoneChatAction(
         selectedConversationId: String?,
         conversationIds: [String]

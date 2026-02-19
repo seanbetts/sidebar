@@ -72,4 +72,22 @@ final class ContentViewLifecycleTests: XCTestCase {
 
         XCTAssertEqual(action, .none)
     }
+
+    func testMakeRegularLayoutPlanFromCompactSelectionForChat() {
+        let plan = ContentView.makeRegularLayoutPlanFromCompactSelection(phoneSelection: .chat)
+
+        XCTAssertNil(plan.primarySection)
+        XCTAssertEqual(plan.secondarySection, .chat)
+        XCTAssertNil(plan.lastNonChatSection)
+        XCTAssertEqual(plan.sidebarSelection, .chat)
+    }
+
+    func testMakeRegularLayoutPlanFromCompactSelectionForNonChatSection() {
+        let plan = ContentView.makeRegularLayoutPlanFromCompactSelection(phoneSelection: .tasks)
+
+        XCTAssertEqual(plan.primarySection, .tasks)
+        XCTAssertEqual(plan.secondarySection, .chat)
+        XCTAssertEqual(plan.lastNonChatSection, .tasks)
+        XCTAssertEqual(plan.sidebarSelection, .tasks)
+    }
 }
