@@ -7,6 +7,17 @@ import AppKit
 #endif
 
 extension NotesPanelView {
+    enum NoteContextMenuAction: Equatable {
+        case pin
+        case rename
+        case move
+        case copyMarkdown
+        case shareText
+        case download
+        case archive
+        case delete
+    }
+
     var moveFolderOptions: [FolderOption] {
         FolderOption.build(from: viewModel.tree?.children ?? [])
     }
@@ -17,43 +28,66 @@ extension NotesPanelView {
     }
 
     func noteContextMenuItemsList(for item: FileNodeItem) -> [SidebarMenuItem] {
-        if item.isFile {
-            return [
-                .pin(isPinned: item.pinned) {
+        noteContextMenuActions(for: item).map { action in
+            switch action {
+            case .pin:
+                return .pin(isPinned: item.pinned) {
                     togglePin(for: item)
-                },
-                .rename {
+                }
+            case .rename:
+                return .rename {
                     beginRename(for: item)
-                },
-                .move {
+                }
+            case .move:
+                return .move {
                     beginMove(for: item)
-                },
-                .copyMarkdown {
+                }
+            case .copyMarkdown:
+                return .copyMarkdown {
                     Task { await copyNoteContent(for: item) }
-                },
-                .shareText {
+                }
+            case .shareText:
+                return .shareText {
                     Task { await shareNoteContent(for: item) }
-                },
-                .download {
+                }
+            case .download:
+                return .download {
                     Task { await exportNoteContent(for: item) }
-                },
-                .archive(isArchived: item.archived) {
+                }
+            case .archive:
+                return .archive(isArchived: item.archived) {
                     toggleArchive(for: item)
-                },
-                .delete {
+                }
+            case .delete:
+                return .delete {
                     confirmDelete(for: item)
                 }
+            }
+        }
+    }
+
+    static func noteContextMenuActions(for item: FileNodeItem) -> [NoteContextMenuAction] {
+        if item.isFile {
+            return [
+                .pin,
+                .rename,
+                .move,
+                .copyMarkdown,
+                .shareText,
+                .download,
+                .archive,
+                .delete
             ]
         }
 
         return [
-            .rename {
-                beginRename(for: item)
-            },
-            .delete {
-                confirmDelete(for: item)
-            }
+            .rename,
+            .delete
         ]
+    }
+
+    func noteContextMenuActions(for item: FileNodeItem) -> [NoteContextMenuAction] {
+        Self.noteContextMenuActions(for: item)
     }
 
     private func beginMove(for item: FileNodeItem) {

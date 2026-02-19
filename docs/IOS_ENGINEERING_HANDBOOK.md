@@ -119,9 +119,21 @@ CI workflow (`.github/workflows/ios-ci.yml`):
 Pre-push hook (`.git/hooks/pre-push`):
 
 - Blocks pushes to `main` unless `scripts/test-ios.sh` passes locally.
+- Blocks pushes to `main` unless `scripts/check-main-linear-history.sh` passes:
+  - pushed `main` tip must match local `dev` tip
+  - push range may not include merge commits
+  - non-fast-forward updates to `main` are rejected
 - Pushes to `dev` and other branches are unblocked.
 - Guards against broken builds reaching Xcode Cloud.
 - `pre-commit` push-stage hook `ios-warning-gate` runs `scripts/check-ios-warning-gate.sh` for iOS/script changes and fails on scoped warnings.
+
+Recommended release command:
+
+```bash
+scripts/release-main.sh --push-dev
+```
+
+This keeps `main` linear by rebasing `dev` on `origin/main`, fast-forwarding `main`, then publishing the rebased `dev` branch with `--force-with-lease`.
 
 ## Self-Hosted Runner Setup
 

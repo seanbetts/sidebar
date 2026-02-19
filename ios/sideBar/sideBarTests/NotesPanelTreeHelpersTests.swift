@@ -74,25 +74,19 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
     }
 
     func testNoteContextMenuIncludesShareTextForFileItems() {
-        let tree = FileTree(children: [makeFile(path: "note-1", name: "Note.md", created: 100)])
-        let viewModel = makeViewModel(tree: tree)
-        let panel = NotesPanelView(viewModel: viewModel)
         let item = FileNodeItem(id: "note-1", name: "Note.md", type: .file)
 
-        let items = panel.noteContextMenuItemsList(for: item)
+        let actions = NotesPanelView.noteContextMenuActions(for: item)
 
-        XCTAssertTrue(items.contains(where: { $0.title == "Share Text" }))
+        XCTAssertTrue(actions.contains(.shareText))
     }
 
     func testNoteContextMenuDoesNotIncludeShareTextForFolderItems() {
-        let tree = FileTree(children: [])
-        let viewModel = makeViewModel(tree: tree)
-        let panel = NotesPanelView(viewModel: viewModel)
         let item = FileNodeItem(id: "folder", name: "Folder", type: .directory)
 
-        let items = panel.noteContextMenuItemsList(for: item)
+        let actions = NotesPanelView.noteContextMenuActions(for: item)
 
-        XCTAssertFalse(items.contains(where: { $0.title == "Share Text" }))
+        XCTAssertFalse(actions.contains(.shareText))
     }
 }
 
