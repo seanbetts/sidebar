@@ -90,7 +90,7 @@ extension ContentView {
             if shouldShowPhoneFloatingActionDock {
                 phoneFloatingActionDock
                     .padding(.trailing, DesignTokens.Spacing.lg)
-                    .padding(.bottom, DesignTokens.Spacing.lg)
+                    .padding(.bottom, phoneFloatingActionDockBottomPadding)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -113,6 +113,15 @@ extension ContentView {
         UIDevice.current.userInterfaceIdiom == .phone
         #else
         false
+        #endif
+    }
+
+    private var phoneFloatingActionDockBottomPadding: CGFloat {
+        #if os(iOS)
+        // Keep dock clearly above iPhone tab bar.
+        84
+        #else
+        DesignTokens.Spacing.lg
         #endif
     }
 
@@ -156,7 +165,10 @@ extension ContentView {
                 } label: {
                     Image(systemName: "plus")
                         .font(DesignTokens.Typography.labelMd)
-                        .frame(width: DesignTokens.Size.touchTarget, height: DesignTokens.Size.touchTarget)
+                        .frame(
+                            width: PhoneFloatingActionMetrics.buttonSize,
+                            height: PhoneFloatingActionMetrics.buttonSize
+                        )
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Add")
