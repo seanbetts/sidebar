@@ -14,6 +14,17 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
 
 
+def _managed_fallback_settings() -> SimpleNamespace:
+    return SimpleNamespace(
+        name=None,
+        communication_style=None,
+        working_relationship=None,
+        enabled_skills=None,
+        ai_primary_provider=None,
+        ai_fallback_to_managed=True,
+    )
+
+
 class FakeClaudeClient:
     def __init__(self, *_args, **_kwargs):
         pass
@@ -27,7 +38,7 @@ def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: None),
+        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
     )
 
     response = test_client.post(
@@ -55,7 +66,7 @@ def test_stream_chat_forwards_memory_events(test_client, monkeypatch):
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: None),
+        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
     )
 
     response = test_client.post(
@@ -92,7 +103,7 @@ def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: None),
+        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
     )
 
     response = test_client.post(
@@ -126,7 +137,7 @@ def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch)
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: None),
+        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
     )
 
     response = test_client.post(
@@ -161,7 +172,7 @@ def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypa
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: None),
+        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
     )
     monkeypatch.setattr(
         chat_router.SettingsService,
@@ -176,7 +187,7 @@ def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypa
         json={"message": "Hi"},
     )
     assert response.status_code == 200
-    assert captured["settings_record"] is None
+    assert captured["settings_record"] is not None
     assert captured["allowed_skills"] == ["notes", "assistant-identity"]
 
 
@@ -211,7 +222,7 @@ def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: None),
+        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
     )
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id
@@ -265,7 +276,7 @@ def test_stream_chat_persists_conversation_provider_model(
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: None),
+        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
     )
     monkeypatch.setattr(
         chat_router.SettingsService,
@@ -333,7 +344,7 @@ def test_generate_title_uses_conversation_provider_lock(
     monkeypatch.setattr(
         chat_router.UserSettingsService,
         "get_settings",
-        staticmethod(lambda *_args, **_kwargs: None),
+        staticmethod(lambda *_args, **_kwargs: _managed_fallback_settings()),
     )
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id

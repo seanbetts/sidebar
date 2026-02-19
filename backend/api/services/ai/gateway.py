@@ -163,12 +163,6 @@ class AIProviderGateway:
     ) -> TitleGenerationResult:
         """Generate title text using provider policy and graceful fallback."""
         policy = AIPolicyService.resolve_from_settings(settings_record)
-        selection = AIPolicyService.select_provider("title", policy)
-        selected_provider = selection.provider
-        initial_used_managed_fallback = selection.used_managed_fallback
-        allow_managed_key_for_first_provider = self._allow_managed_provider_key(
-            policy, selection
-        )
         if preferred_provider is not None:
             if not is_provider_supported_for_capability(preferred_provider, "title"):
                 raise AICapabilityUnavailableError(
@@ -179,6 +173,13 @@ class AIProviderGateway:
             initial_used_managed_fallback = False
             # Conversation-level lock should remain robust even if user policy changed.
             allow_managed_key_for_first_provider = True
+        else:
+            selection = AIPolicyService.select_provider("title", policy)
+            selected_provider = selection.provider
+            initial_used_managed_fallback = selection.used_managed_fallback
+            allow_managed_key_for_first_provider = self._allow_managed_provider_key(
+                policy, selection
+            )
 
         prompt = (
             "Generate ONLY a 3-5 word title for this conversation.\n"
@@ -193,7 +194,9 @@ class AIProviderGateway:
             fallback_to_managed=policy.fallback_to_managed,
         )
         first_provider = selected_provider
-        can_use_byok_for_first_provider = policy.primary_provider == first_provider
+        can_use_byok_for_first_provider = policy.primary_provider == first_provider or (
+            preferred_provider is not None and policy.primary_provider is None
+        )
         last_error: Exception | None = None
 
         for provider in provider_order:

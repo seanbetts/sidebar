@@ -57,7 +57,7 @@ class AIPolicyService:
             if settings_record
             else None
         )
-        fallback_to_managed = True if raw_fallback is None else bool(raw_fallback)
+        fallback_to_managed = False if raw_fallback is None else bool(raw_fallback)
         return AIUserPolicy(
             primary_provider=provider,
             fallback_to_managed=fallback_to_managed,
@@ -72,10 +72,14 @@ class AIPolicyService:
         primary = policy.primary_provider
 
         if not primary:
+            if not policy.fallback_to_managed:
+                raise AICapabilityUnavailableError(
+                    "No primary AI provider configured for strict BYOK mode"
+                )
             return ProviderSelection(
                 provider=managed_provider,
                 capability=capability,
-                used_managed_fallback=False,
+                used_managed_fallback=True,
             )
 
         if is_provider_supported_for_capability(primary, capability):

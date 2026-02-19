@@ -17,7 +17,15 @@ def test_policy_defaults_to_managed_provider_when_unset() -> None:
         AIUserPolicy(primary_provider=None, fallback_to_managed=True),
     )
     assert selection.provider == "openai"
-    assert selection.used_managed_fallback is False
+    assert selection.used_managed_fallback is True
+
+
+def test_policy_requires_primary_provider_in_strict_mode_when_unset() -> None:
+    with pytest.raises(AICapabilityUnavailableError):
+        AIPolicyService.select_provider(
+            "audio_transcription",
+            AIUserPolicy(primary_provider=None, fallback_to_managed=False),
+        )
 
 
 def test_policy_uses_primary_provider_when_supported() -> None:
@@ -57,6 +65,12 @@ def test_gateway_resolves_transcription_default_model() -> None:
     )
     assert resolution.provider == "openai"
     assert resolution.model == "gpt-4o-transcribe"
+
+
+def test_policy_resolve_from_settings_defaults_to_strict_mode() -> None:
+    policy = AIPolicyService.resolve_from_settings(None)
+    assert policy.primary_provider is None
+    assert policy.fallback_to_managed is False
 
 
 def test_gateway_resolve_transcription_respects_strict_policy() -> None:
