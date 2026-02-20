@@ -156,21 +156,35 @@ struct AgentSettingsView: View {
                     }
                 }
                 if selectedProviderHasKey {
-                    Text("Key saved (ends in \(selectedProviderKeyLast4 ?? "----"))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: DesignTokens.Spacing.sm) {
+                        Text(maskedProviderKeyText)
+                            .font(DesignTokens.Typography.bodyMd)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        Button {
+                            Task {
+                                await viewModel.deletePrimaryProviderKey(provider: selectedPrimaryProvider)
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.isSavingPrimaryProvider)
+                        .accessibilityLabel("Clear API Key")
+                    }
                 } else {
-                    Text("No API key saved for \(selectedPrimaryProvider.displayName).")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                SecureField("Enter \(selectedPrimaryProvider.displayName) API key", text: $providerKeyInput)
-                #if os(iOS)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                #endif
-                HStack {
-                    Button("Save API Key") {
+                    SecureField("Enter \(selectedPrimaryProvider.displayName) API key", text: $providerKeyInput)
+                    #if os(iOS)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                    #endif
+                    .submitLabel(.done)
+                    .disabled(viewModel.isSavingPrimaryProvider)
+                    .onSubmit {
                         Task {
                             let success = await viewModel.savePrimaryProviderKey(
                                 provider: selectedPrimaryProvider,
@@ -180,22 +194,6 @@ struct AgentSettingsView: View {
                                 providerKeyInput = ""
                             }
                         }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(DesignTokens.Colors.actionPrimary)
-                    .disabled(
-                        viewModel.isSavingPrimaryProvider
-                            || providerKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    )
-
-                    if selectedProviderHasKey {
-                        Button("Remove Key", role: .destructive) {
-                            Task {
-                                await viewModel.deletePrimaryProviderKey(provider: selectedPrimaryProvider)
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(viewModel.isSavingPrimaryProvider)
                     }
                 }
                 if let providerError = viewModel.primaryProviderError, !providerError.isEmpty {
@@ -367,6 +365,10 @@ struct AgentSettingsView: View {
             return nil
         }
         return viewModel.settings?.aiPrimaryProviderKeyLast4
+    }
+
+    private var maskedProviderKeyText: String {
+        "••••••••\(selectedProviderKeyLast4 ?? "----")"
     }
 
     private func syncSelectedProvider(from settings: UserSettings?) {
