@@ -69,20 +69,6 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertFalse(exported.contains("````"))
     }
 
-    func testInlineExportKeepsFormattingWhenLineContainsLiteralMarkerText() {
-        var text = AttributedString("literal *asterisks* and bold")
-        guard let boldRange = text.range(of: "bold") else {
-            XCTFail("Expected test content")
-            return
-        }
-        text[boldRange].inlinePresentationIntent = [.stronglyEmphasized]
-
-        let exported = MarkdownExporter().markdown(from: text)
-
-        XCTAssertTrue(exported.contains("*asterisks*"), exported)
-        XCTAssertTrue(exported.contains("**bold**"), exported)
-    }
-
     func testNestedListPreservesIndentation() {
         let markdown = """
         - Item 1

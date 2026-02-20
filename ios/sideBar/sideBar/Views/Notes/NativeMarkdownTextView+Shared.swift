@@ -6,7 +6,7 @@ func displayText(for text: AttributedString, isEditable: Bool) -> NSAttributedSt
     CodeBlockAttachmentBuilder.displayText(
         from: text,
         renderCodeBlocks: !isEditable,
-        renderHorizontalRules: !isEditable
+        renderHorizontalRules: true
     )
 }
 

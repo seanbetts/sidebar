@@ -48,21 +48,14 @@ struct NativeMarkdownTextView: NSViewRepresentable {
         scrollView.hasVerticalScroller = isScrollEnabled
         context.coordinator.tapRecognizer?.isEnabled = onTap != nil
         let nsText = displayText(for: text, isEditable: isEditable)
-        let didReplaceText = !(textView.attributedString().isEqual(to: nsText))
-        if didReplaceText {
+        if !(textView.attributedString().isEqual(to: nsText)) {
             textView.textStorage?.setAttributedString(nsText)
             textView.needsDisplay = true
         }
         if syncSelection {
             let desiredRange = nsRange(from: selection, in: text)
-            if context.coordinator.shouldApplyDesiredSelection(
-                desiredRange: desiredRange,
-                currentRange: textView.selectedRange(),
-                hasFirstResponder: textView.window?.firstResponder === textView,
-                didReplaceText: didReplaceText
-            ) {
+            if textView.selectedRange() != desiredRange {
                 textView.setSelectedRange(desiredRange)
-                context.coordinator.lastSelectionReportedByAppKit = desiredRange
             }
         }
         if let markdownTextView = textView as? MarkdownTextView {
@@ -79,7 +72,6 @@ struct NativeMarkdownTextView: NSViewRepresentable {
         var parent: NativeMarkdownTextView
         var isUpdating = false
         var tapRecognizer: NSClickGestureRecognizer?
-        var lastSelectionReportedByAppKit: NSRange?
 
         init(_ parent: NativeMarkdownTextView) {
             self.parent = parent
@@ -97,7 +89,6 @@ struct NativeMarkdownTextView: NSViewRepresentable {
                 parent.text = snapshot
             }
             if parent.syncSelection {
-                lastSelectionReportedByAppKit = textView.selectedRange()
                 parent.selection = selectionFromRange(textView.selectedRange(), in: snapshot)
             }
             if let markdownTextView = textView as? MarkdownTextView {
@@ -114,25 +105,11 @@ struct NativeMarkdownTextView: NSViewRepresentable {
             if parent.text != snapshot {
                 parent.text = snapshot
             }
-            lastSelectionReportedByAppKit = textView.selectedRange()
             parent.selection = selectionFromRange(textView.selectedRange(), in: snapshot)
             if let markdownTextView = textView as? MarkdownTextView {
                 markdownTextView.refreshTypingAttributesForSelection()
             }
             textView.needsDisplay = true
-        }
-
-        func shouldApplyDesiredSelection(
-            desiredRange: NSRange,
-            currentRange: NSRange,
-            hasFirstResponder: Bool,
-            didReplaceText: Bool
-        ) -> Bool {
-            guard desiredRange != currentRange else { return false }
-            guard hasFirstResponder else { return true }
-            guard didReplaceText else { return false }
-            guard let lastSelectionReportedByAppKit else { return true }
-            return desiredRange == lastSelectionReportedByAppKit
         }
     }
 }

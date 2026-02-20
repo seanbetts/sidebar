@@ -4,12 +4,6 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeMarkdownEditorViewModel {
-    struct OrderedListLineContext {
-        let isOrdered: Bool
-        let depth: Int
-        let identity: Int?
-    }
-
     func shouldRemoveSpacingBefore(
         blockKind: BlockKind?,
         previousBlockKind: BlockKind?
@@ -27,22 +21,6 @@ extension NativeMarkdownEditorViewModel {
         in text: AttributedString,
         lines: [LineInfo]
     ) -> [Int: Int] {
-        let contexts: [OrderedListLineContext] = lines.map { line in
-            let lineRange = attributedRange(for: line.range, in: text)
-            let blockKind = text.blockKind(in: lineRange) ?? inferredBlockKind(from: line.text)
-            guard blockKind == .orderedList else {
-                return OrderedListLineContext(isOrdered: false, depth: 1, identity: nil)
-            }
-
-            let depth = max(1, text[lineRange].listDepth ?? 1)
-            let identity = listIdentity(in: text, range: lineRange)
-            return OrderedListLineContext(isOrdered: true, depth: depth, identity: identity)
-        }
-
-        return orderedListOrdinals(for: contexts)
-    }
-
-    func orderedListOrdinals(for contexts: [OrderedListLineContext]) -> [Int: Int] {
         struct ListKey: Hashable {
             let identity: Int?
             let fallbackGroup: Int?
@@ -55,23 +33,22 @@ extension NativeMarkdownEditorViewModel {
         var previousDepth: Int?
         var previousIdentity: Int?
 
-        for (index, context) in contexts.enumerated() {
-            guard context.isOrdered else {
+        for (index, line) in lines.enumerated() {
+            let lineRange = attributedRange(for: line.range, in: text)
+            let blockKind = text.blockKind(in: lineRange) ?? inferredBlockKind(from: line.text)
+            guard blockKind == .orderedList else {
                 previousWasOrdered = false
                 previousDepth = nil
                 previousIdentity = nil
                 continue
             }
 
-            let depth = context.depth
-            let identity = context.identity
+            let depth = max(1, text[lineRange].listDepth ?? 1)
+            let identity = listIdentity(in: text, range: lineRange)
             let key: ListKey
 
             if let identity {
                 key = ListKey(identity: identity, fallbackGroup: nil)
-                if !(previousWasOrdered && previousIdentity == identity && previousDepth == depth) {
-                    counters[key] = 0
-                }
             } else {
                 if !(previousWasOrdered && previousIdentity == nil && previousDepth == depth) {
                     fallbackGroup += 1

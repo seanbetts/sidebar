@@ -43,8 +43,7 @@ struct NativeMarkdownTextView: UIViewRepresentable {
         textView.isScrollEnabled = isScrollEnabled
         context.coordinator.tapRecognizer?.isEnabled = onTap != nil
         let nsText = displayText(for: text, isEditable: isEditable)
-        let didReplaceText = !textView.attributedText.isEqual(to: nsText)
-        if didReplaceText {
+        if !textView.attributedText.isEqual(to: nsText) {
             textView.attributedText = nsText
             textView.setNeedsDisplay()
         }
@@ -53,8 +52,7 @@ struct NativeMarkdownTextView: UIViewRepresentable {
             if context.coordinator.shouldApplyDesiredSelection(
                 desiredRange: desiredRange,
                 currentRange: textView.selectedRange,
-                isFirstResponder: textView.isFirstResponder,
-                didReplaceText: didReplaceText
+                isFirstResponder: textView.isFirstResponder
             ) {
                 textView.selectedRange = desiredRange
                 context.coordinator.lastSelectionReportedByUIKit = desiredRange
@@ -118,14 +116,13 @@ struct NativeMarkdownTextView: UIViewRepresentable {
         func shouldApplyDesiredSelection(
             desiredRange: NSRange,
             currentRange: NSRange,
-            isFirstResponder: Bool,
-            didReplaceText: Bool
+            isFirstResponder: Bool
         ) -> Bool {
             guard desiredRange != currentRange else { return false }
             guard isFirstResponder else { return true }
-            guard didReplaceText else { return false }
-            guard let lastSelectionReportedByUIKit else { return true }
-            return desiredRange == lastSelectionReportedByUIKit
+            // While the native control is focused, prefer keyboard-driven selection changes
+            // over stale SwiftUI state to preserve caret navigation and shift-extend behavior.
+            return lastSelectionReportedByUIKit != desiredRange
         }
     }
 }

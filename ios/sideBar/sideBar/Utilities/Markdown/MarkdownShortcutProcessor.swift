@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
+// swiftlint:disable:next type_body_length
 public struct MarkdownShortcutProcessor {
     private struct InlinePattern {
         let prefix: String
@@ -13,12 +14,6 @@ public struct MarkdownShortcutProcessor {
         let prefix: String
         let blockKind: BlockKind
         let listDepth: Int?
-    }
-
-    private struct BlockLineContext {
-        let lineStart: AttributedString.Index
-        let lineEnd: AttributedString.Index
-        let lineText: String
     }
 
     private static let inlinePatterns: [InlinePattern] = [
@@ -39,19 +34,13 @@ public struct MarkdownShortcutProcessor {
         BlockPattern(prefix: "#### ", blockKind: .heading4, listDepth: nil),
         BlockPattern(prefix: "##### ", blockKind: .heading5, listDepth: nil),
         BlockPattern(prefix: "###### ", blockKind: .heading6, listDepth: nil),
-        BlockPattern(prefix: "- [ ] ", blockKind: .taskUnchecked, listDepth: 1),
-        BlockPattern(prefix: "- [x] ", blockKind: .taskChecked, listDepth: 1),
-        BlockPattern(prefix: "- [X] ", blockKind: .taskChecked, listDepth: 1),
-        BlockPattern(prefix: "* [ ] ", blockKind: .taskUnchecked, listDepth: 1),
-        BlockPattern(prefix: "* [x] ", blockKind: .taskChecked, listDepth: 1),
-        BlockPattern(prefix: "* [X] ", blockKind: .taskChecked, listDepth: 1),
-        BlockPattern(prefix: "+ [ ] ", blockKind: .taskUnchecked, listDepth: 1),
-        BlockPattern(prefix: "+ [x] ", blockKind: .taskChecked, listDepth: 1),
-        BlockPattern(prefix: "+ [X] ", blockKind: .taskChecked, listDepth: 1),
         BlockPattern(prefix: "- ", blockKind: .bulletList, listDepth: 1),
         BlockPattern(prefix: "* ", blockKind: .bulletList, listDepth: 1),
         BlockPattern(prefix: "+ ", blockKind: .bulletList, listDepth: 1),
-        BlockPattern(prefix: "> ", blockKind: .blockquote, listDepth: nil)
+        BlockPattern(prefix: "> ", blockKind: .blockquote, listDepth: nil),
+        BlockPattern(prefix: "- [ ] ", blockKind: .taskUnchecked, listDepth: 1),
+        BlockPattern(prefix: "- [x] ", blockKind: .taskChecked, listDepth: 1),
+        BlockPattern(prefix: "- [X] ", blockKind: .taskChecked, listDepth: 1)
     ]
 
     public static func processShortcuts(
@@ -79,29 +68,6 @@ public struct MarkdownShortcutProcessor {
         in text: inout AttributedString,
         at cursorIndex: AttributedString.Index
     ) -> AttributedTextSelection? {
-        guard let lineContext = blockLineContextForShortcut(in: text, at: cursorIndex) else {
-            return nil
-        }
-
-        if let newSelection = applyBlockPatternShortcut(in: &text, lineContext: lineContext) {
-            return newSelection
-        }
-
-        if let newSelection = applyOrderedListShortcut(in: &text, lineContext: lineContext) {
-            return newSelection
-        }
-
-        if let newSelection = applyHorizontalRuleShortcut(in: &text, lineContext: lineContext) {
-            return newSelection
-        }
-
-        return applyCodeFenceShortcut(in: &text, lineContext: lineContext)
-    }
-
-    private static func blockLineContextForShortcut(
-        in text: AttributedString,
-        at cursorIndex: AttributedString.Index
-    ) -> BlockLineContext? {
         guard cursorIndex > text.startIndex else { return nil }
         let previousIndex = text.index(beforeCharacter: cursorIndex)
         guard text.characters[previousIndex].isNewline else { return nil }
@@ -118,110 +84,55 @@ public struct MarkdownShortcutProcessor {
             current = prev
         }
 
-        let lineText = String(text[lineStart..<previousIndex].characters)
-        let lineEnd = nextLineEnd(in: text, from: lineStart)
-        return BlockLineContext(lineStart: lineStart, lineEnd: lineEnd, lineText: lineText)
-    }
+        let lineRange = lineStart..<previousIndex
+        let lineText = String(text[lineRange].characters)
 
-    private static func applyBlockPatternShortcut(
-        in text: inout AttributedString,
-        lineContext: BlockLineContext
-    ) -> AttributedTextSelection? {
-        guard let pattern = blockPatterns.first(where: { lineContext.lineText.hasPrefix($0.prefix) }) else {
-            return nil
+        for pattern in blockPatterns where lineText.hasPrefix(pattern.prefix) {
+            let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
+            if lineStart < updatedLineEnd {
+                text[lineStart..<updatedLineEnd].blockKind = pattern.blockKind
+                if let listDepth = pattern.listDepth {
+                    text[lineStart..<updatedLineEnd].listDepth = listDepth
+                }
+                applyPresentationIntent(
+                    to: &text,
+                    range: lineStart..<updatedLineEnd,
+                    blockKind: pattern.blockKind,
+                    listDepth: pattern.listDepth
+                )
+                applyBlockStyle(
+                    to: &text,
+                    range: lineStart..<updatedLineEnd,
+                    blockKind: pattern.blockKind
+                )
+            }
+
+            return selectionAfterLine(in: text, lineStart: lineStart)
         }
 
-        applyBlockShortcut(
-            in: &text,
-            lineContext: lineContext,
-            blockKind: pattern.blockKind,
-            listDepth: pattern.listDepth
-        )
-        return selectionAfterLine(in: text, lineStart: lineContext.lineStart)
-    }
+        if let match = lineText.wholeMatch(of: /^(\d+)\.\s/) {
+            _ = match
+            let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
+            if lineStart < updatedLineEnd {
+                text[lineStart..<updatedLineEnd].blockKind = .orderedList
+                text[lineStart..<updatedLineEnd].listDepth = 1
+                applyPresentationIntent(
+                    to: &text,
+                    range: lineStart..<updatedLineEnd,
+                    blockKind: .orderedList,
+                    listDepth: 1
+                )
+                applyBlockStyle(
+                    to: &text,
+                    range: lineStart..<updatedLineEnd,
+                    blockKind: .orderedList
+                )
+            }
 
-    private static func applyOrderedListShortcut(
-        in text: inout AttributedString,
-        lineContext: BlockLineContext
-    ) -> AttributedTextSelection? {
-        guard lineContext.lineText.wholeMatch(of: /^(\d+)\.\s/) != nil else {
-            return nil
+            return selectionAfterLine(in: text, lineStart: lineStart)
         }
 
-        applyBlockShortcut(
-            in: &text,
-            lineContext: lineContext,
-            blockKind: .orderedList,
-            listDepth: 1
-        )
-        return selectionAfterLine(in: text, lineStart: lineContext.lineStart)
-    }
-
-    private static func applyHorizontalRuleShortcut(
-        in text: inout AttributedString,
-        lineContext: BlockLineContext
-    ) -> AttributedTextSelection? {
-        guard isHorizontalRuleShortcut(lineContext.lineText) else {
-            return nil
-        }
-
-        applyBlockShortcut(
-            in: &text,
-            lineContext: lineContext,
-            blockKind: .horizontalRule,
-            listDepth: nil
-        )
-        return selectionAfterLine(in: text, lineStart: lineContext.lineStart)
-    }
-
-    private static func applyCodeFenceShortcut(
-        in text: inout AttributedString,
-        lineContext: BlockLineContext
-    ) -> AttributedTextSelection? {
-        guard isCodeFenceShortcut(lineContext.lineText) else {
-            return nil
-        }
-
-        applyBlockShortcut(
-            in: &text,
-            lineContext: lineContext,
-            blockKind: .codeBlock,
-            listDepth: nil,
-            codeLanguage: codeFenceLanguage(from: lineContext.lineText)
-        )
-        return selectionAfterLine(in: text, lineStart: lineContext.lineStart)
-    }
-
-    private static func applyBlockShortcut(
-        in text: inout AttributedString,
-        lineContext: BlockLineContext,
-        blockKind: BlockKind,
-        listDepth: Int?,
-        codeLanguage: String? = nil
-    ) {
-        guard lineContext.lineStart < lineContext.lineEnd else {
-            return
-        }
-
-        let lineRange = lineContext.lineStart..<lineContext.lineEnd
-        text[lineRange].blockKind = blockKind
-        if let listDepth {
-            text[lineRange].listDepth = listDepth
-        }
-        if let codeLanguage {
-            text[lineRange].codeLanguage = codeLanguage
-        }
-        applyPresentationIntent(
-            to: &text,
-            range: lineRange,
-            blockKind: blockKind,
-            listDepth: listDepth
-        )
-        applyBlockStyle(
-            to: &text,
-            range: lineRange,
-            blockKind: blockKind
-        )
+        return nil
     }
 
     private static func processInlineShortcuts(
@@ -342,32 +253,6 @@ public struct MarkdownShortcutProcessor {
         return current
     }
 
-    private static func isHorizontalRuleShortcut(_ lineText: String) -> Bool {
-        let trimmed = lineText.trimmingCharacters(in: .whitespaces)
-        return trimmed == "---" || trimmed == "***" || trimmed == "___"
-    }
-
-    private static func isCodeFenceShortcut(_ lineText: String) -> Bool {
-        let trimmed = lineText.trimmingCharacters(in: .whitespaces)
-        return trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~")
-    }
-
-    private static func codeFenceLanguage(from lineText: String) -> String? {
-        let trimmed = lineText.trimmingCharacters(in: .whitespaces)
-        let language: Substring
-
-        if trimmed.hasPrefix("```") {
-            language = trimmed.dropFirst(3)
-        } else if trimmed.hasPrefix("~~~") {
-            language = trimmed.dropFirst(3)
-        } else {
-            return nil
-        }
-
-        let normalized = language.trimmingCharacters(in: .whitespaces)
-        return normalized.isEmpty ? nil : normalized
-    }
-
     private static func selectionAfterLine(
         in text: AttributedString,
         lineStart: AttributedString.Index
@@ -393,4 +278,220 @@ public struct MarkdownShortcutProcessor {
         }
     }
 
+    private static func applyPresentationIntent(
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        blockKind: BlockKind,
+        listDepth: Int?
+    ) {
+        if let headingLevel = headingLevel(for: blockKind) {
+            applyHeadingIntent(to: &text, range: range, level: headingLevel)
+            return
+        }
+        if applyListIntent(to: &text, range: range, blockKind: blockKind, listDepth: listDepth) {
+            return
+        }
+        switch blockKind {
+        case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
+            return
+        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            return
+        case .blockquote:
+            let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: quoteIntent
+            )
+        case .codeBlock:
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .codeBlock(languageHint: nil),
+                identity: 1
+            )
+        case .horizontalRule:
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .thematicBreak,
+                identity: 1
+            )
+        case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1
+            )
+        @unknown default:
+            return
+        }
+    }
+
+    private static func headingLevel(for blockKind: BlockKind) -> Int? {
+        switch blockKind {
+        case .heading1: return 1
+        case .heading2: return 2
+        case .heading3: return 3
+        case .heading4: return 4
+        case .heading5: return 5
+        case .heading6: return 6
+        default: return nil
+        }
+    }
+
+    private static func applyHeadingIntent(
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        level: Int
+    ) {
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .header(level: level),
+            identity: level
+        )
+    }
+
+    private static func applyListIntent(
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        blockKind: BlockKind,
+        listDepth: Int?
+    ) -> Bool {
+        guard blockKind == .bulletList
+            || blockKind == .orderedList
+            || blockKind == .taskChecked
+            || blockKind == .taskUnchecked
+        else { return false }
+        let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
+        let listId = listDepth ?? 1
+        let listIntent = PresentationIntent(listKind, identity: listId)
+        let listItemIntent = PresentationIntent(
+            .listItem(ordinal: 1),
+            identity: listId * 1000 + 1,
+            parent: listIntent
+        )
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .paragraph,
+            identity: 1,
+            parent: listItemIntent
+        )
+        text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
+        return true
+    }
+
+    private static func listDelimiter(for blockKind: BlockKind) -> Character? {
+        switch blockKind {
+        case .bulletList:
+            return "•"
+        case .taskChecked:
+            return "☑"
+        case .taskUnchecked:
+            return "☐"
+        default:
+            return nil
+        }
+    }
+
+    private static func applyBlockStyle(
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        blockKind: BlockKind
+    ) {
+        text[range].font = blockFont(for: blockKind)
+        if let backgroundColor = blockBackgroundColor(for: blockKind) {
+            text[range].backgroundColor = backgroundColor
+        }
+        text[range].foregroundColor = blockForegroundColor(for: blockKind)
+        if blockKind == .taskChecked {
+            text[range].strikethroughStyle = .single
+        }
+    }
+
+    private static func applyTypingAttributes(
+        to attrs: inout AttributeContainer,
+        blockKind: BlockKind,
+        listDepth: Int?
+    ) {
+        attrs.font = blockFont(for: blockKind)
+        attrs.foregroundColor = blockForegroundColor(for: blockKind)
+        if let backgroundColor = blockBackgroundColor(for: blockKind) {
+            attrs.backgroundColor = backgroundColor
+        }
+        if blockKind == .taskChecked {
+            attrs.strikethroughStyle = .single
+        }
+
+        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
+
+        if let listKind = listKind(for: blockKind) {
+            let listId = listDepth ?? 1
+            let listIntent = PresentationIntent(listKind, identity: listId)
+            let listItemIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: listItemIntent
+            )
+        } else if blockKind == .blockquote {
+            let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: quoteIntent
+            )
+        } else if blockKind == .codeBlock {
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .codeBlock(languageHint: nil),
+                identity: 1
+            )
+        } else {
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
+        }
+    }
+
+    private static func blockFont(for blockKind: BlockKind) -> Font {
+        if let level = headingLevel(for: blockKind) {
+            return headingFont(for: level)
+        }
+        if blockKind == .codeBlock {
+            return Font.system(size: 14, weight: .regular, design: .monospaced)
+        }
+        return Font.system(size: 16)
+    }
+
+    private static func headingFont(for level: Int) -> Font {
+        switch level {
+        case 1:
+            return .system(size: 32, weight: .bold)
+        case 2:
+            return .system(size: 24, weight: .semibold)
+        case 3:
+            return .system(size: 20, weight: .semibold)
+        case 4:
+            return .system(size: 18, weight: .semibold)
+        case 5:
+            return .system(size: 17, weight: .semibold)
+        default:
+            return .system(size: 16, weight: .semibold)
+        }
+    }
+
+    private static func blockForegroundColor(for blockKind: BlockKind) -> Color {
+        switch blockKind {
+        case .blockquote, .taskChecked:
+            return DesignTokens.Colors.textSecondary
+        default:
+            return DesignTokens.Colors.textPrimary
+        }
+    }
+
+    private static func blockBackgroundColor(for blockKind: BlockKind) -> Color? {
+        blockKind == .codeBlock ? DesignTokens.Colors.muted : nil
+    }
+
+    private static func listKind(for blockKind: BlockKind) -> PresentationIntent.Kind? {
+        switch blockKind {
+        case .orderedList:
+            return .orderedList
+        case .bulletList, .taskChecked, .taskUnchecked:
+            return .unorderedList
+        default:
+            return nil
+        }
+    }
 }
