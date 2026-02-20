@@ -49,15 +49,6 @@ public struct NotesView: View {
                         if environment.notesViewModel.activeNote != nil, !isPhone {
                             noteToolbarMenu
                         }
-                        if isPhone {
-                            Button {
-                                environment.emitShortcutAction(.openScratchpad)
-                            } label: {
-                                Image(systemName: "square.and.pencil")
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Scratchpad")
-                        }
                     }
                 }
             }
