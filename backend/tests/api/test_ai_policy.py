@@ -370,6 +370,57 @@ async def test_gateway_stream_chat_google_executes_tools(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_gateway_stream_chat_google_emits_error_for_empty_response(
+    monkeypatch,
+) -> None:
+    class FakeModels:
+        def generate_content(self, **_kwargs):
+            return SimpleNamespace(
+                text="",
+                function_calls=[],
+                candidates=[SimpleNamespace(finish_reason="SAFETY")],
+                prompt_feedback=SimpleNamespace(block_reason="SAFETY"),
+            )
+
+    class FakeGoogleClient:
+        def __init__(self):
+            self.models = FakeModels()
+
+    gateway = AIProviderGateway(
+        settings,
+        google_client_factory=lambda **_kwargs: FakeGoogleClient(),
+    )
+    monkeypatch.setattr(
+        gateway,
+        "_get_tool_mapper",
+        lambda: SimpleNamespace(
+            get_claude_tools=lambda _allowed: [],
+            get_tool_display_name=lambda name: name,
+            execute_tool=None,
+        ),
+    )
+
+    events = [
+        event
+        async for event in gateway.stream_chat_with_tools(
+            message="Test",
+            conversation_history=[],
+            system_prompt=None,
+            allowed_skills=None,
+            tool_context=None,
+            settings_record=SimpleNamespace(ai_primary_provider="google"),
+            provider_key_lookup=lambda _provider: "sk-google-test",
+        )
+    ]
+
+    assert len(events) == 1
+    assert events[0]["type"] == "error"
+    assert "no text and no tool calls" in events[0]["error"]
+    assert "prompt_block_reason=SAFETY" in events[0]["error"]
+    assert "finish_reason=SAFETY" in events[0]["error"]
+
+
+@pytest.mark.asyncio
 async def test_gateway_generate_title_openai_uses_locked_model() -> None:
     captured: dict[str, Any] = {}
 

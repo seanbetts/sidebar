@@ -174,6 +174,11 @@ class ProviderToolOrchestrator:
 
             function_calls = self._parse_google_tool_calls(response)
             if not function_calls:
+                if not text:
+                    yield {
+                        "type": "error",
+                        "error": self._google_empty_response_error(response),
+                    }
                 return
 
             candidate_content = self._extract_google_candidate_content(response)
@@ -321,6 +326,38 @@ class ProviderToolOrchestrator:
             arguments = args if isinstance(args, dict) else {}
             parsed.append(LLMToolCall(call_id=call_id, name=name, arguments=arguments))
         return parsed
+
+    @staticmethod
+    def _google_empty_response_error(response: Any) -> str:
+        """Describe why Google returned no text and no tool calls."""
+        details: list[str] = []
+
+        prompt_feedback = getattr(response, "prompt_feedback", None)
+        block_reason = getattr(prompt_feedback, "block_reason", None)
+        if block_reason:
+            details.append(f"prompt_block_reason={block_reason}")
+
+        candidates = getattr(response, "candidates", None) or []
+        if candidates:
+            candidate = candidates[0]
+            finish_reason = getattr(candidate, "finish_reason", None)
+            if finish_reason:
+                details.append(f"finish_reason={finish_reason}")
+
+            blocked_categories: list[str] = []
+            for rating in getattr(candidate, "safety_ratings", None) or []:
+                if getattr(rating, "blocked", False):
+                    category = getattr(rating, "category", None)
+                    blocked_categories.append(str(category) if category else "unknown")
+            if blocked_categories:
+                details.append(
+                    "safety_blocked_categories=" + ",".join(blocked_categories)
+                )
+
+        base = "Google response contained no text and no tool calls"
+        if not details:
+            return base
+        return f"{base} ({'; '.join(details)})"
 
     async def _execute_tool_calls(
         self, tool_calls: list[LLMToolCall]
