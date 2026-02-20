@@ -86,7 +86,10 @@ def _build_pooler_database_url() -> str | None:
     hostname = None
     if parsed and parsed.hostname:
         hostname = parsed.hostname
-        username = username or parsed.username
+        if parsed.username:
+            # Keep precedence aligned with scripts/migrate.sh:
+            # parsed pooler URL identity overrides a separately configured user.
+            username = parsed.username
         if parsed.path and parsed.path.strip("/"):
             db_name = parsed.path.strip("/")
         if parsed.port:
