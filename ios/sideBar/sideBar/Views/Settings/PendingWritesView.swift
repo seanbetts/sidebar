@@ -102,6 +102,7 @@ private struct PendingWriteRow: View {
                         onResolveConflict(.keepServer)
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(DesignTokens.Colors.actionPrimary)
                 }
             }
             if write.conflictReason == nil, let error = write.lastError {

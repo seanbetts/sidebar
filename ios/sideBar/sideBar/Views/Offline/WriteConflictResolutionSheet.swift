@@ -27,6 +27,7 @@ struct WriteConflictResolutionSheet: View {
                         onResolve(.keepServer)
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(DesignTokens.Colors.actionPrimary)
                 }
             }
             .padding(DesignTokens.Spacing.lg)

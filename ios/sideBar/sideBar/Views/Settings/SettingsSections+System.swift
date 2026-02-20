@@ -182,6 +182,7 @@ struct AgentSettingsView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(DesignTokens.Colors.actionPrimary)
                     .disabled(
                         viewModel.isSavingPrimaryProvider
                             || providerKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

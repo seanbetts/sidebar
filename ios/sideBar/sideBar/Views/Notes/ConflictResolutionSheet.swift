@@ -73,6 +73,7 @@ struct ConflictResolutionSheet: View {
                 action()
             }
             .buttonStyle(.borderedProminent)
+            .tint(DesignTokens.Colors.actionPrimary)
         }
         .frame(maxWidth: .infinity)
     }
