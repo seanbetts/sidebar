@@ -158,7 +158,7 @@ struct AgentSettingsView: View {
                 if selectedProviderHasKey {
                     HStack(spacing: DesignTokens.Spacing.sm) {
                         Text(maskedProviderKeyText)
-                            .font(DesignTokens.Typography.bodyMd)
+                            .font(DesignTokens.Typography.body)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
 
