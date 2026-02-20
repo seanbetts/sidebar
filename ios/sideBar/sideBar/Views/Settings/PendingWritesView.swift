@@ -90,19 +90,20 @@ private struct PendingWriteRow: View {
                     .foregroundStyle(statusColor)
             }
             if let conflictReason = write.conflictReason {
-                Text(conflictReason)
-                    .font(DesignTokens.Typography.caption)
-                    .foregroundStyle(DesignTokens.Colors.error)
                 HStack(spacing: DesignTokens.Spacing.sm) {
+                    Text(conflictReason)
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundStyle(DesignTokens.Colors.error)
+                        .lineLimit(2)
+                    Spacer(minLength: 0)
                     Button("Keep Local") {
                         onResolveConflict(.keepLocal)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(PendingWriteActionButtonStyle())
                     Button("Keep Server") {
                         onResolveConflict(.keepServer)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(DesignTokens.Colors.actionPrimary)
+                    .buttonStyle(PendingWriteActionButtonStyle())
                 }
             }
             if write.conflictReason == nil, let error = write.lastError {
@@ -159,5 +160,23 @@ private struct PendingWriteRow: View {
         default:
             return DesignTokens.Colors.warning
         }
+    }
+}
+
+private struct PendingWriteActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(DesignTokens.Typography.captionSemibold)
+            .foregroundStyle(DesignTokens.Colors.textPrimary)
+            .padding(.horizontal, DesignTokens.Spacing.xs)
+            .padding(.vertical, DesignTokens.Spacing.xxs)
+            .background(DesignTokens.Colors.surface)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(DesignTokens.Colors.border, lineWidth: 1)
+            )
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .animation(.easeOut(duration: DesignTokens.Animation.quick), value: configuration.isPressed)
     }
 }

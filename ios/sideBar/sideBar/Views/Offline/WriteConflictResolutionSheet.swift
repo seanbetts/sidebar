@@ -6,29 +6,19 @@ struct WriteConflictResolutionSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                    Text("Resolve Sync Conflict")
-                        .font(DesignTokens.Typography.title3Semibold)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                header
+
+                if let subtitleText {
                     Text(subtitleText)
-                        .font(DesignTokens.Typography.body)
+                        .font(DesignTokens.Typography.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                detailsCard
-
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    Button("Keep Local") {
-                        onResolve(.keepLocal)
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button("Keep Server") {
-                        onResolve(.keepServer)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(DesignTokens.Colors.actionPrimary)
-                }
+                Divider()
+                detailContent
+                Divider()
+                actionsRow
             }
             .padding(DesignTokens.Spacing.lg)
             .navigationTitle("Conflict")
@@ -38,40 +28,51 @@ struct WriteConflictResolutionSheet: View {
         }
     }
 
-    private var detailsCard: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            detailRow(title: "Change", value: operationLabel)
-            detailRow(title: "Item", value: entityLabel)
-            detailRow(title: "Queued", value: conflict.createdAt.formatted(date: .abbreviated, time: .shortened))
+    private var header: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(DesignTokens.Typography.subheadlineSemibold)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+            Text("Resolve Sync Conflict")
+                .font(DesignTokens.Typography.title3Semibold)
+        }
+    }
+
+    private var detailContent: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            Text("\(operationLabel) \(entityLabel)")
+                .font(DesignTokens.Typography.subheadlineSemibold)
+                .foregroundStyle(.primary)
+            Text("Queued \(conflict.createdAt.formatted(date: .abbreviated, time: .shortened))")
+                .font(DesignTokens.Typography.caption)
+                .foregroundStyle(.secondary)
             if let conflictReason = conflict.conflictReason {
                 Text(conflictReason)
                     .font(DesignTokens.Typography.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
+                    .lineLimit(2)
             }
         }
-        .padding(DesignTokens.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DesignTokens.Colors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous))
     }
 
-    private func detailRow(title: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
-            Text(title)
-                .font(DesignTokens.Typography.captionSemibold)
-                .foregroundStyle(.secondary)
-                .frame(width: 72, alignment: .leading)
-            Text(value)
-                .font(DesignTokens.Typography.body)
-                .foregroundStyle(.primary)
+    private var actionsRow: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            Spacer(minLength: 0)
+            Button("Keep Local") {
+                onResolve(.keepLocal)
+            }
+            .buttonStyle(ConflictActionButtonStyle())
+            Button("Keep Server") {
+                onResolve(.keepServer)
+            }
+            .buttonStyle(ConflictActionButtonStyle())
         }
     }
 
-    private var subtitleText: String {
-        if let reason = conflict.conflictReason {
-            return reason
-        }
-        return "This change couldn’t sync because the server has newer data."
+    private var subtitleText: String? {
+        conflict.conflictReason == nil
+            ? "This change couldn’t sync because the server has newer data."
+            : nil
     }
 
     private var operationLabel: String {
@@ -80,5 +81,23 @@ struct WriteConflictResolutionSheet: View {
 
     private var entityLabel: String {
         conflict.entityType.capitalized
+    }
+}
+
+private struct ConflictActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(DesignTokens.Typography.captionSemibold)
+            .foregroundStyle(DesignTokens.Colors.textPrimary)
+            .padding(.horizontal, DesignTokens.Spacing.xs)
+            .padding(.vertical, DesignTokens.Spacing.xxs)
+            .background(DesignTokens.Colors.surface)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(DesignTokens.Colors.border, lineWidth: 1)
+            )
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .animation(.easeOut(duration: DesignTokens.Animation.quick), value: configuration.isPressed)
     }
 }
