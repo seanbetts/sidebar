@@ -165,8 +165,10 @@ struct AgentSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 SecureField("Enter \(selectedPrimaryProvider.displayName) API key", text: $providerKeyInput)
+                #if os(iOS)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
+                #endif
                 HStack {
                     Button("Save API Key") {
                         Task {
