@@ -7,7 +7,6 @@ from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from anthropic import AsyncAnthropic
 from google import genai
 from google.genai import types
 
@@ -259,12 +258,24 @@ class AIProviderGateway:
         for attempt in range(3):
             try:
                 if provider == "google":
-                    return await self._generate_title_google(prompt, api_key=api_key)
-                if provider == "anthropic":
-                    return await self._generate_title_anthropic(prompt, api_key=api_key)
-                if provider == "openai":
-                    return await self._generate_title_openai(prompt, api_key=api_key)
-                raise ValueError(f"Unsupported provider for title: {provider}")
+                    raw_title = await self._generate_title_google(
+                        prompt, api_key=api_key
+                    )
+                elif provider == "anthropic":
+                    raw_title = await self._generate_title_anthropic(
+                        prompt, api_key=api_key
+                    )
+                elif provider == "openai":
+                    raw_title = await self._generate_title_openai(
+                        prompt, api_key=api_key
+                    )
+                else:
+                    raise ValueError(f"Unsupported provider for title: {provider}")
+
+                cleaned_title = raw_title.strip()
+                if cleaned_title:
+                    return cleaned_title
+                raise RuntimeError(f"Empty title response from provider '{provider}'")
             except Exception as error:
                 last_error = error
                 if not self._is_retryable_error(error) or attempt == 2:
@@ -283,16 +294,14 @@ class AIProviderGateway:
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0,
-                max_output_tokens=20,
+                max_output_tokens=64,
                 response_mime_type="text/plain",
-                automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                    disable=True
-                ),
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
         )
         text = getattr(response, "text", None)
         if text:
-            return text
+            return text.strip()
 
         candidates = getattr(response, "candidates", None) or []
         for candidate in candidates:
@@ -301,12 +310,18 @@ class AIProviderGateway:
             for part in parts:
                 part_text = getattr(part, "text", None)
                 if part_text:
-                    return part_text
+                    return part_text.strip()
         return ""
 
     async def _generate_title_anthropic(self, prompt: str, *, api_key: str) -> str:
         """Generate title with Anthropic."""
-        client = AsyncAnthropic(api_key=api_key)
+        from api.services.claude_client import ClaudeClient
+
+        client = ClaudeClient(
+            self._settings,
+            api_key=api_key,
+            model=get_default_model("anthropic", "title", self._settings),
+        ).client
         response = await client.messages.create(
             model=get_default_model("anthropic", "title", self._settings),
             max_tokens=20,
@@ -323,9 +338,10 @@ class AIProviderGateway:
     async def _generate_title_openai(self, prompt: str, *, api_key: str) -> str:
         """Generate title with OpenAI."""
         client = self._openai_client_factory(api_key=api_key)
-        response = await client.chat.completions.create(
-            model=get_default_model("openai", "title", self._settings),
-            messages=[
+        model = get_default_model("openai", "title", self._settings)
+        request_kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": [
                 {
                     "role": "system",
                     "content": (
@@ -335,8 +351,16 @@ class AIProviderGateway:
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0,
-            max_tokens=20,
+        }
+        if model.startswith("gpt-5"):
+            request_kwargs["max_completion_tokens"] = 64
+            request_kwargs["reasoning_effort"] = "minimal"
+        else:
+            request_kwargs["temperature"] = 0
+            request_kwargs["max_tokens"] = 20
+
+        response = await client.chat.completions.create(
+            **request_kwargs,
         )
         choice = response.choices[0] if response.choices else None
         if not choice:

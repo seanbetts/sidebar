@@ -53,7 +53,7 @@ def test_default_model_matrix_matches_locked_policy() -> None:
     assert get_default_model("anthropic", "title", settings) == "claude-haiku-4-5"
     assert get_default_model("openai", "chat", settings) == "gpt-5.2"
     assert get_default_model("openai", "title", settings) == "gpt-5-nano"
-    assert get_default_model("google", "chat", settings) == "gemini-3.1-pro"
+    assert get_default_model("google", "chat", settings) == "gemini-3.1-pro-preview"
     assert get_default_model("google", "title", settings) == "gemini-3-flash-preview"
     assert (
         get_default_model("openai", "audio_transcription", settings)
@@ -94,7 +94,7 @@ def test_gateway_resolve_chat_returns_provider_model_and_key() -> None:
             settings_record=SimpleNamespace(ai_primary_provider="google"),
             provider_key_lookup=lambda _provider: "sk-google-test",
         ).model
-        == "gemini-3.1-pro"
+        == "gemini-3.1-pro-preview"
     )
 
 
@@ -288,7 +288,7 @@ async def test_gateway_stream_chat_google_emits_tokens_and_uses_model(monkeypatc
         )
     ]
     assert events == [{"type": "token", "content": "Google response"}]
-    assert captured["kwargs"]["model"] == "gemini-3.1-pro"
+    assert captured["kwargs"]["model"] == "gemini-3.1-pro-preview"
 
 
 @pytest.mark.asyncio
@@ -401,6 +401,10 @@ async def test_gateway_generate_title_openai_uses_locked_model() -> None:
     assert result.provider == "openai"
     assert result.raw_title == "OpenAI Title"
     assert captured["kwargs"]["model"] == "gpt-5-nano"
+    assert captured["kwargs"]["max_completion_tokens"] == 64
+    assert captured["kwargs"]["reasoning_effort"] == "minimal"
+    assert "max_tokens" not in captured["kwargs"]
+    assert "temperature" not in captured["kwargs"]
 
 
 @pytest.mark.asyncio
@@ -429,26 +433,31 @@ async def test_gateway_generate_title_google_uses_locked_model() -> None:
     assert result.provider == "google"
     assert result.raw_title == "Google Title"
     assert captured["kwargs"]["model"] == "gemini-3-flash-preview"
+    config = captured["kwargs"]["config"]
+    assert config.max_output_tokens == 64
+    assert config.thinking_config.thinking_budget == 0
 
 
 @pytest.mark.asyncio
 async def test_gateway_generate_title_anthropic_uses_locked_model(monkeypatch) -> None:
     captured: dict[str, Any] = {}
 
-    class FakeMessages:
+    class FakeMessagesClient:
         async def create(self, **kwargs):
             captured["kwargs"] = kwargs
             return SimpleNamespace(
                 content=[SimpleNamespace(type="text", text="Anthropic Title")]
             )
 
-    class FakeAsyncAnthropic:
-        def __init__(self, **_kwargs):
-            self.messages = FakeMessages()
+    class FakeClaudeClient:
+        def __init__(self, _settings, *, api_key=None, model=None):
+            assert api_key == "sk-anthropic-test"
+            assert model == "claude-haiku-4-5"
+            self.client = SimpleNamespace(messages=FakeMessagesClient())
 
-    from api.services.ai import gateway as gateway_module
+    from api.services import claude_client as claude_client_module
 
-    monkeypatch.setattr(gateway_module, "AsyncAnthropic", FakeAsyncAnthropic)
+    monkeypatch.setattr(claude_client_module, "ClaudeClient", FakeClaudeClient)
     gateway = AIProviderGateway(settings)
     result = await gateway.generate_title(
         user_message="Review roadmap",
@@ -459,6 +468,37 @@ async def test_gateway_generate_title_anthropic_uses_locked_model(monkeypatch) -
     assert result.provider == "anthropic"
     assert result.raw_title == "Anthropic Title"
     assert captured["kwargs"]["model"] == "claude-haiku-4-5"
+
+
+@pytest.mark.asyncio
+async def test_gateway_generate_title_google_retries_when_empty_response() -> None:
+    call_count = 0
+
+    class FakeModels:
+        def generate_content(self, **_kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return SimpleNamespace(text="")
+            return SimpleNamespace(text="Recovered Title")
+
+    class FakeGoogleClient:
+        def __init__(self):
+            self.models = FakeModels()
+
+    gateway = AIProviderGateway(
+        settings,
+        google_client_factory=lambda **_kwargs: FakeGoogleClient(),
+    )
+    result = await gateway.generate_title(
+        user_message="Write update",
+        assistant_message="Here is a summary",
+        settings_record=SimpleNamespace(ai_primary_provider="google"),
+        provider_key_lookup=lambda _provider: "sk-google-test",
+    )
+    assert call_count == 2
+    assert result.provider == "google"
+    assert result.raw_title == "Recovered Title"
 
 
 def test_gateway_resolves_transcription_default_model() -> None:

@@ -129,7 +129,7 @@ class Settings(BaseSettings):
         "OPENAI_TRANSCRIPTION_MODEL",
         "gpt-4o-transcribe",
     )
-    google_chat_model: str = os.getenv("GOOGLE_CHAT_MODEL", "gemini-3.1-pro")
+    google_chat_model: str = os.getenv("GOOGLE_CHAT_MODEL", "gemini-3.1-pro-preview")
     google_title_model: str = os.getenv("GOOGLE_TITLE_MODEL", "gemini-3-flash-preview")
 
     # Backward-compatible alias for legacy callers.
