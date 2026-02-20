@@ -7,6 +7,7 @@ from google.genai import types
 from api.config import settings
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import AIProvider, get_default_model
+from api.services.ai.tool_orchestrator import ProviderToolOrchestrator
 from api.services.ai.policy import (
     AICapabilityUnavailableError,
     AIPolicyService,
@@ -96,6 +97,47 @@ def test_gateway_resolve_chat_returns_provider_model_and_key() -> None:
         ).model
         == "gemini-3.1-pro-preview"
     )
+
+
+def test_google_schema_normalizer_handles_nullable_union_type() -> None:
+    normalized = ProviderToolOrchestrator._normalize_google_schema(
+        {
+            "type": "object",
+            "properties": {
+                "recurrence_rule": {
+                    "type": ["object", "null"],
+                    "description": "Repeat rule object or null",
+                }
+            },
+            "required": ["recurrence_rule"],
+        }
+    )
+    recurrence_schema = normalized["properties"]["recurrence_rule"]
+    assert recurrence_schema["type"] == "object"
+    assert recurrence_schema["nullable"] is True
+
+
+def test_google_function_declarations_normalize_input_schema() -> None:
+    declarations = ProviderToolOrchestrator._build_google_function_declarations(
+        [
+            {
+                "name": "set_task_repeat",
+                "description": "Set task repeat",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "recurrence_rule": {
+                            "type": ["object", "null"],
+                        }
+                    },
+                    "required": ["recurrence_rule"],
+                },
+            }
+        ]
+    )
+    recurrence_schema = declarations[0].parameters.properties["recurrence_rule"]
+    assert recurrence_schema.type.value == "OBJECT"
+    assert recurrence_schema.nullable is True
 
 
 @pytest.mark.asyncio

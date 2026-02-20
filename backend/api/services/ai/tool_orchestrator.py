@@ -138,14 +138,7 @@ class ProviderToolOrchestrator:
     ) -> AsyncIterator[dict[str, Any]]:
         """Run Google chat with multi-turn function calling."""
         tools = self._tool_mapper.get_claude_tools(self._allowed_skills)
-        function_declarations = [
-            types.FunctionDeclaration(
-                name=tool["name"],
-                description=tool["description"],
-                parameters=tool["input_schema"],
-            )
-            for tool in tools
-        ]
+        function_declarations = self._build_google_function_declarations(tools)
         google_tools: list[Any] = [
             types.Tool(function_declarations=function_declarations)
         ]
@@ -430,6 +423,58 @@ class ProviderToolOrchestrator:
             ),
             thinking_config=types.ThinkingConfig(thinking_budget=0),
         )
+
+    @staticmethod
+    def _build_google_function_declarations(
+        tools: list[dict[str, Any]],
+    ) -> list[types.FunctionDeclaration]:
+        declarations: list[types.FunctionDeclaration] = []
+        for tool in tools:
+            parameters = ProviderToolOrchestrator._normalize_google_schema(
+                tool.get("input_schema", {})
+            )
+            declarations.append(
+                types.FunctionDeclaration(
+                    name=tool["name"],
+                    description=tool["description"],
+                    parameters=parameters,
+                )
+            )
+        return declarations
+
+    @staticmethod
+    def _normalize_google_schema(value: Any) -> Any:
+        if isinstance(value, dict):
+            normalized: dict[str, Any] = {}
+            nullable = False
+            schema_type = value.get("type")
+            if isinstance(schema_type, list):
+                type_options = [
+                    option.lower() for option in schema_type if isinstance(option, str)
+                ]
+                non_null_options = [
+                    option for option in type_options if option != "null"
+                ]
+                nullable = "null" in type_options
+                if non_null_options:
+                    normalized["type"] = non_null_options[0]
+            for key, entry in value.items():
+                if key == "type":
+                    if "type" not in normalized and isinstance(entry, str):
+                        normalized["type"] = entry.lower()
+                    continue
+                normalized[key] = ProviderToolOrchestrator._normalize_google_schema(
+                    entry
+                )
+            if nullable:
+                normalized["nullable"] = True
+            return normalized
+        if isinstance(value, list):
+            return [
+                ProviderToolOrchestrator._normalize_google_schema(item)
+                for item in value
+            ]
+        return value
 
     @staticmethod
     def _google_response_is_blocked(response: Any) -> bool:
