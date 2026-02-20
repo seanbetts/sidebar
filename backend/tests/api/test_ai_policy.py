@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from google.genai import types
 
 from api.config import settings
 from api.services.ai.gateway import AIProviderGateway
@@ -98,36 +99,20 @@ def test_gateway_resolve_chat_returns_provider_model_and_key() -> None:
 
 
 @pytest.mark.asyncio
-async def test_gateway_stream_chat_openai_emits_tokens_and_uses_model() -> None:
+async def test_gateway_stream_chat_openai_emits_tokens_and_uses_model(monkeypatch) -> None:
     captured: dict[str, Any] = {}
-
-    class FakeDelta:
-        def __init__(self, content: str):
-            self.content = content
-
-    class FakeChoice:
-        def __init__(self, content: str):
-            self.delta = FakeDelta(content)
-
-    class FakeChunk:
-        def __init__(self, content: str):
-            self.choices = [FakeChoice(content)]
-
-    class FakeStream:
-        def __aiter__(self):
-            self._chunks = iter([FakeChunk("Hello "), FakeChunk("world")])
-            return self
-
-        async def __anext__(self):
-            try:
-                return next(self._chunks)
-            except StopIteration as exc:
-                raise StopAsyncIteration from exc
+    call_kwargs: list[dict[str, Any]] = []
 
     class FakeCompletions:
         async def create(self, **kwargs):
-            captured["kwargs"] = kwargs
-            return FakeStream()
+            call_kwargs.append(kwargs)
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(content="Hello world", tool_calls=[])
+                    )
+                ]
+            )
 
     class FakeChat:
         def __init__(self):
@@ -141,6 +126,15 @@ async def test_gateway_stream_chat_openai_emits_tokens_and_uses_model() -> None:
         settings,
         openai_client_factory=lambda **_kwargs: FakeOpenAIClient(),
     )
+    monkeypatch.setattr(
+        gateway,
+        "_get_tool_mapper",
+        lambda: SimpleNamespace(
+            get_claude_tools=lambda _allowed: [],
+            get_tool_display_name=lambda name: name,
+            execute_tool=None,
+        ),
+    )
     events = [
         event
         async for event in gateway.stream_chat_with_tools(
@@ -153,18 +147,116 @@ async def test_gateway_stream_chat_openai_emits_tokens_and_uses_model() -> None:
             provider_key_lookup=lambda _provider: "sk-openai-test",
         )
     ]
-    assert [event["content"] for event in events] == ["Hello ", "world"]
-    assert captured["kwargs"]["model"] == "gpt-5.2"
+    assert [event["content"] for event in events] == ["Hello world"]
+    assert call_kwargs[0]["model"] == "gpt-5.2"
+    captured["kwargs"] = call_kwargs[0]
 
 
 @pytest.mark.asyncio
-async def test_gateway_stream_chat_google_emits_tokens_and_uses_model() -> None:
+async def test_gateway_stream_chat_openai_executes_tools(monkeypatch) -> None:
+    class FakeCompletions:
+        def __init__(self):
+            self._responses = [
+                SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            message=SimpleNamespace(
+                                content="",
+                                tool_calls=[
+                                    SimpleNamespace(
+                                        id="call-1",
+                                        function=SimpleNamespace(
+                                            name="create_note",
+                                            arguments='{"title":"Test note"}',
+                                        ),
+                                    )
+                                ],
+                            )
+                        )
+                    ]
+                ),
+                SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            message=SimpleNamespace(
+                                content="Done",
+                                tool_calls=[],
+                            )
+                        )
+                    ]
+                ),
+            ]
+
+        async def create(self, **_kwargs):
+            return self._responses.pop(0)
+
+    class FakeChat:
+        def __init__(self):
+            self.completions = FakeCompletions()
+
+    class FakeOpenAIClient:
+        def __init__(self):
+            self.chat = FakeChat()
+
+    class FakeToolMapper:
+        def get_claude_tools(self, _allowed):
+            return [
+                {
+                    "name": "create_note",
+                    "description": "Create a note",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {"title": {"type": "string"}},
+                    },
+                }
+            ]
+
+        def get_tool_display_name(self, name):
+            return "Create Note" if name == "create_note" else name
+
+        async def execute_tool(
+            self, name, parameters, allowed_skills=None, context=None
+        ):
+            assert name == "create_note"
+            assert parameters == {"title": "Test note"}
+            assert allowed_skills is None
+            assert context == {"user_id": "user-1"}
+            return {
+                "success": True,
+                "data": {"id": "note-1", "title": "Test note", "folder": "notes"},
+            }
+
+    gateway = AIProviderGateway(
+        settings,
+        openai_client_factory=lambda **_kwargs: FakeOpenAIClient(),
+    )
+    monkeypatch.setattr(gateway, "_get_tool_mapper", lambda: FakeToolMapper())
+    events = [
+        event
+        async for event in gateway.stream_chat_with_tools(
+            message="Please create a note",
+            conversation_history=[],
+            system_prompt=None,
+            allowed_skills=None,
+            tool_context={"user_id": "user-1"},
+            settings_record=SimpleNamespace(ai_primary_provider="openai"),
+            provider_key_lookup=lambda _provider: "sk-openai-test",
+        )
+    ]
+    assert any(event["type"] == "tool_call" for event in events)
+    assert any(event["type"] == "tool_result" for event in events)
+    assert any(event["type"] == "note_created" for event in events)
+    assert any(event["type"] == "token" and event["content"] == "Done" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_gateway_stream_chat_google_emits_tokens_and_uses_model(monkeypatch) -> None:
     captured: dict[str, Any] = {}
 
     class FakeModels:
         def generate_content(self, **kwargs):
             captured["kwargs"] = kwargs
-            return SimpleNamespace(text="Google response")
+            return SimpleNamespace(text="Google response", function_calls=[])
 
     class FakeGoogleClient:
         def __init__(self):
@@ -173,6 +265,15 @@ async def test_gateway_stream_chat_google_emits_tokens_and_uses_model() -> None:
     gateway = AIProviderGateway(
         settings,
         google_client_factory=lambda **_kwargs: FakeGoogleClient(),
+    )
+    monkeypatch.setattr(
+        gateway,
+        "_get_tool_mapper",
+        lambda: SimpleNamespace(
+            get_claude_tools=lambda _allowed: [],
+            get_tool_display_name=lambda name: name,
+            execute_tool=None,
+        ),
     )
     events = [
         event
@@ -188,6 +289,84 @@ async def test_gateway_stream_chat_google_emits_tokens_and_uses_model() -> None:
     ]
     assert events == [{"type": "token", "content": "Google response"}]
     assert captured["kwargs"]["model"] == "gemini-3.1-pro"
+
+
+@pytest.mark.asyncio
+async def test_gateway_stream_chat_google_executes_tools(monkeypatch) -> None:
+    class FakeModels:
+        def __init__(self):
+            self._responses = [
+                SimpleNamespace(
+                    text="",
+                    function_calls=[
+                        SimpleNamespace(
+                            id="google-call-1",
+                            name="create_note",
+                            args={"title": "Google note"},
+                        )
+                    ],
+                    candidates=[SimpleNamespace(content=types.Content(role="model", parts=[]))],
+                ),
+                SimpleNamespace(text="Completed", function_calls=[], candidates=[]),
+            ]
+
+        def generate_content(self, **_kwargs):
+            return self._responses.pop(0)
+
+    class FakeGoogleClient:
+        def __init__(self):
+            self.models = FakeModels()
+
+    class FakeToolMapper:
+        def get_claude_tools(self, _allowed):
+            return [
+                {
+                    "name": "create_note",
+                    "description": "Create a note",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {"title": {"type": "string"}},
+                    },
+                }
+            ]
+
+        def get_tool_display_name(self, name):
+            return "Create Note" if name == "create_note" else name
+
+        async def execute_tool(
+            self, name, parameters, allowed_skills=None, context=None
+        ):
+            assert name == "create_note"
+            assert parameters == {"title": "Google note"}
+            assert context == {"user_id": "user-1"}
+            return {
+                "success": True,
+                "data": {"id": "note-2", "title": "Google note", "folder": "notes"},
+            }
+
+    gateway = AIProviderGateway(
+        settings,
+        google_client_factory=lambda **_kwargs: FakeGoogleClient(),
+    )
+    monkeypatch.setattr(gateway, "_get_tool_mapper", lambda: FakeToolMapper())
+    events = [
+        event
+        async for event in gateway.stream_chat_with_tools(
+            message="Create note in google",
+            conversation_history=[],
+            system_prompt=None,
+            allowed_skills=None,
+            tool_context={"user_id": "user-1"},
+            settings_record=SimpleNamespace(ai_primary_provider="google"),
+            provider_key_lookup=lambda _provider: "sk-google-test",
+        )
+    ]
+    assert any(event["type"] == "tool_call" for event in events)
+    assert any(event["type"] == "tool_result" for event in events)
+    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "token" and event["content"] == "Completed" for event in events
+    )
 
 
 @pytest.mark.asyncio
