@@ -21,7 +21,8 @@ final class NativeMarkdownTextViewSelectionSyncTests: XCTestCase {
         let shouldApply = coordinator.shouldApplyDesiredSelection(
             desiredRange: NSRange(location: 3, length: 0),
             currentRange: NSRange(location: 3, length: 0),
-            isFirstResponder: true
+            isFirstResponder: true,
+            didReplaceText: false
         )
 
         XCTAssertFalse(shouldApply)
@@ -34,23 +35,25 @@ final class NativeMarkdownTextViewSelectionSyncTests: XCTestCase {
         let shouldApply = coordinator.shouldApplyDesiredSelection(
             desiredRange: NSRange(location: 2, length: 0),
             currentRange: NSRange(location: 4, length: 0),
-            isFirstResponder: true
+            isFirstResponder: true,
+            didReplaceText: false
         )
 
         XCTAssertFalse(shouldApply)
     }
 
-    func testShouldApplyDesiredSelectionAllowsExternalSelectionWhileFocused() {
+    func testShouldApplyDesiredSelectionSkipsExternalSelectionWhileFocused() {
         let coordinator = makeCoordinator()
         coordinator.lastSelectionReportedByUIKit = NSRange(location: 2, length: 0)
 
         let shouldApply = coordinator.shouldApplyDesiredSelection(
             desiredRange: NSRange(location: 1, length: 2),
             currentRange: NSRange(location: 4, length: 0),
-            isFirstResponder: true
+            isFirstResponder: true,
+            didReplaceText: false
         )
 
-        XCTAssertTrue(shouldApply)
+        XCTAssertFalse(shouldApply)
     }
 
     func testShouldApplyDesiredSelectionAppliesWhenNotFocused() {
@@ -60,10 +63,39 @@ final class NativeMarkdownTextViewSelectionSyncTests: XCTestCase {
         let shouldApply = coordinator.shouldApplyDesiredSelection(
             desiredRange: NSRange(location: 2, length: 0),
             currentRange: NSRange(location: 0, length: 0),
-            isFirstResponder: false
+            isFirstResponder: false,
+            didReplaceText: false
         )
 
         XCTAssertTrue(shouldApply)
+    }
+
+    func testShouldApplyDesiredSelectionRestoresUIKitSelectionAfterTextReplacement() {
+        let coordinator = makeCoordinator()
+        coordinator.lastSelectionReportedByUIKit = NSRange(location: 2, length: 0)
+
+        let shouldApply = coordinator.shouldApplyDesiredSelection(
+            desiredRange: NSRange(location: 2, length: 0),
+            currentRange: NSRange(location: 0, length: 0),
+            isFirstResponder: true,
+            didReplaceText: true
+        )
+
+        XCTAssertTrue(shouldApply)
+    }
+
+    func testShouldApplyDesiredSelectionSkipsMismatchedSelectionAfterTextReplacement() {
+        let coordinator = makeCoordinator()
+        coordinator.lastSelectionReportedByUIKit = NSRange(location: 2, length: 0)
+
+        let shouldApply = coordinator.shouldApplyDesiredSelection(
+            desiredRange: NSRange(location: 3, length: 0),
+            currentRange: NSRange(location: 0, length: 0),
+            isFirstResponder: true,
+            didReplaceText: true
+        )
+
+        XCTAssertFalse(shouldApply)
     }
 }
 #endif

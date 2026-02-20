@@ -3,12 +3,13 @@ import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
 func serializeInline(_ attributed: AttributedSubstring) -> String {
-    let lineText = filteredText(from: attributed)
-    let hasInlineMarkers = lineHasInlineMarkers(lineText)
     var output = ""
 
     for run in attributed.runs {
         if run.listMarker == true {
+            continue
+        }
+        if run.inlineMarker == true {
             continue
         }
 
@@ -47,8 +48,6 @@ func serializeInline(_ attributed: AttributedSubstring) -> String {
 
         if let link {
             output += "[\(text)](\(link.absoluteString))"
-        } else if hasInlineMarkers {
-            output += text
         } else {
             output += "\(prefix)\(text)\(suffix)"
         }
@@ -67,22 +66,4 @@ func filteredText(from attributed: AttributedSubstring) -> String {
         result += String(attributed[run.range].characters)
     }
     return result
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func lineHasInlineMarkers(_ lineText: String) -> Bool {
-    let patterns = [
-        #"\*\*[^*]+?\*\*"#,
-        #"__[^_]+?__"#,
-        #"~~[^~]+?~~"#,
-        #"`[^`]+?`"#,
-        #"\*[^*]+?\*"#,
-        #"_[^_]+?_"#
-    ]
-
-    for pattern in patterns where lineText.range(of: pattern, options: .regularExpression) != nil {
-        return true
-    }
-
-    return false
 }

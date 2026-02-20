@@ -149,14 +149,10 @@ extension NativeMarkdownEditorViewModel {
                 ?? NSMutableParagraphStyle()
             currentStyle.tabStops = tabStops
             currentStyle.defaultTabInterval = tabStops.last?.location ?? currentStyle.defaultTabInterval
-            let baseHead = currentStyle.headIndent
-            currentStyle.headIndent = baseHead + cellPaddingX
-            currentStyle.firstLineHeadIndent = baseHead + cellPaddingX
-            if currentStyle.tailIndent == 0 {
-                currentStyle.tailIndent = -cellPaddingX
-            } else {
-                currentStyle.tailIndent -= cellPaddingX
-            }
+            // Keep table cell padding idempotent across repeated layout passes.
+            currentStyle.headIndent = cellPaddingX
+            currentStyle.firstLineHeadIndent = cellPaddingX
+            currentStyle.tailIndent = -cellPaddingX
             text[range].paragraphStyle = currentStyle
         }
     }
