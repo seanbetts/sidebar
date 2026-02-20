@@ -57,9 +57,11 @@ extension ChatViewModel {
             .complete: { [weak self] (_: ChatStreamEvent) in
                 self?.finalizeStreaming(status: .complete)
             },
-            .error: { [weak self] (_: ChatStreamEvent) in
-                self?.errorMessage = "Chat stream error"
-                self?.finalizeStreaming(status: .error)
+            .error: { [weak self] (event: ChatStreamEvent) in
+                let streamError = self?.stringValue(from: event.data, key: "error")?.trimmedOrNil
+                    ?? "Chat stream error"
+                self?.errorMessage = streamError
+                self?.finalizeStreaming(status: .error, streamError: streamError)
             },
             .noteCreated: { [weak self] (event: ChatStreamEvent) in
                 self?.handleNoteCreate(event)
@@ -455,43 +457,4 @@ extension ChatViewModel {
         }
     }
 
-    func finalizeStreaming(status: MessageStatus) {
-        guard let messageId = activeStreamingMessageId else {
-            clearTypingRevealState(flushDisplayedContent: false)
-            isStreaming = false
-            return
-        }
-        flushTypingRevealContent(for: messageId)
-        updateMessage(id: messageId, persist: false) { message in
-            Message(
-                id: message.id,
-                role: message.role,
-                content: message.content,
-                status: status,
-                toolCalls: message.toolCalls,
-                needsNewline: message.needsNewline,
-                timestamp: message.timestamp,
-                error: message.error
-            )
-        }
-        typingRevealTargetsByMessageId[messageId] = nil
-        if typingRevealTargetsByMessageId.isEmpty {
-            typingRevealTask?.cancel()
-            typingRevealTask = nil
-        }
-        syncMessagesToStore(conversationId: streamingConversationId ?? selectedConversationId, persist: true)
-        if let conversationId = streamingConversationId ?? selectedConversationId,
-           let assistantMessage = messages.first(where: { $0.id == messageId }) {
-            Task { [weak self] in
-                await self?.persistMessage(conversationId: conversationId, message: assistantMessage)
-                await self?.refreshConversations(silent: true)
-                if status == .complete {
-                    await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
-                }
-            }
-        }
-        isStreaming = false
-        streamingConversationId = nil
-        currentStreamMessageId = nil
-    }
 }

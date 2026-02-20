@@ -48,6 +48,51 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         XCTAssertNil(viewModel.streamingConversationId)
     }
 
+    func testErrorEventWithEmptyAssistantMessageDoesNotPersistPlaceholder() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingMessage(on: viewModel)
+        viewModel.messages = [initialMessage]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        viewModel.handle(
+            event: ChatStreamEvent(
+                type: .error,
+                data: AnyCodable(["error": "Google response contained no text and no tool calls"])
+            )
+        )
+
+        XCTAssertFalse(viewModel.messages.contains(where: { $0.id == "assistant-1" }))
+        XCTAssertEqual(viewModel.errorMessage, "Google response contained no text and no tool calls")
+        XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
+    }
+
+    func testCompleteEventWithEmptyAssistantMessageIsTreatedAsError() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: FailingChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingMessage(on: viewModel)
+        viewModel.messages = [initialMessage]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        viewModel.handle(event: ChatStreamEvent(type: .complete, data: AnyCodable([:])))
+
+        XCTAssertFalse(viewModel.messages.contains(where: { $0.id == "assistant-1" }))
+        XCTAssertEqual(viewModel.errorMessage, "Assistant returned an empty response. Please try again.")
+        XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
+    }
+
     func testTokenUpdatesDoNotPersistUntilFinalize() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
@@ -311,7 +356,9 @@ private final class FailingChatStreamClient: ChatStreamClient {
     }
 }
 
-private struct StubConversationsAPI: ConversationsAPIProviding, ConversationsProviding {
+private final class StubConversationsAPI: ConversationsAPIProviding, ConversationsProviding {
+    private(set) var addMessageCalls: [ConversationMessageCreate] = []
+
     func list() async throws -> [Conversation] {
         []
     }
@@ -349,7 +396,7 @@ private struct StubConversationsAPI: ConversationsAPIProviding, ConversationsPro
 
     func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
         _ = conversationId
-        _ = message
+        addMessageCalls.append(message)
         return deletedConversation
     }
 
