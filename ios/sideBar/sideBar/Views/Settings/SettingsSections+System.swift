@@ -204,7 +204,7 @@ struct AgentSettingsView: View {
             } header: {
                 sectionHeader(
                     title: "AI Provider",
-                    subtitle: "Choose one provider for \(assistantPossessiveDisplayName) brain."
+                    subtitle: "Choose a provider for \(assistantPossessiveDisplayName) brain."
                 )
             }
             Section {
