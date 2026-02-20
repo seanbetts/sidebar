@@ -206,10 +206,6 @@ struct AgentSettingsView: View {
                     title: "AI Provider",
                     subtitle: "Choose one provider for assistant replies and conversation titles."
                 )
-            } footer: {
-                Text("Strict BYOK mode: add one key for your selected provider.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             Section {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.name))
