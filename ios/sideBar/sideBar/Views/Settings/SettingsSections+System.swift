@@ -144,9 +144,72 @@ struct UserSettingsView: View {
 
 struct AgentSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
+    @State private var selectedPrimaryProvider: AIPrimaryProvider = .anthropic
+    @State private var providerKeyInput: String = ""
 
     var body: some View {
         Form {
+            Section {
+                Picker("Provider", selection: $selectedPrimaryProvider) {
+                    ForEach(viewModel.supportedPrimaryProviders) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
+                }
+                if selectedProviderHasKey {
+                    Text("Key saved (ends in \(selectedProviderKeyLast4 ?? "----"))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("No API key saved for \(selectedPrimaryProvider.displayName).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                SecureField("Enter \(selectedPrimaryProvider.displayName) API key", text: $providerKeyInput)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                HStack {
+                    Button("Save API Key") {
+                        Task {
+                            let success = await viewModel.savePrimaryProviderKey(
+                                provider: selectedPrimaryProvider,
+                                apiKey: providerKeyInput
+                            )
+                            if success {
+                                providerKeyInput = ""
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(
+                        viewModel.isSavingPrimaryProvider
+                            || providerKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    )
+
+                    if selectedProviderHasKey {
+                        Button("Remove Key", role: .destructive) {
+                            Task {
+                                await viewModel.deletePrimaryProviderKey(provider: selectedPrimaryProvider)
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(viewModel.isSavingPrimaryProvider)
+                    }
+                }
+                if let providerError = viewModel.primaryProviderError, !providerError.isEmpty {
+                    Text(providerError)
+                        .font(.caption)
+                        .foregroundStyle(DesignTokens.Colors.error)
+                }
+            } header: {
+                sectionHeader(
+                    title: "AI Provider",
+                    subtitle: "Choose one provider for assistant replies and conversation titles."
+                )
+            } footer: {
+                Text("Strict BYOK mode: add one key for your selected provider.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.name))
             } header: {
@@ -254,6 +317,20 @@ struct AgentSettingsView: View {
                 LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
+        .onAppear {
+            syncSelectedProvider(from: viewModel.settings)
+        }
+        .onChange(of: primaryProviderSignature) { _, _ in
+            syncSelectedProvider(from: viewModel.settings)
+        }
+        .onChange(of: selectedPrimaryProvider) { previous, next in
+            if previous == next {
+                return
+            }
+            Task {
+                await viewModel.savePrimaryProvider(next)
+            }
+        }
     }
 
     private func resolvedText(_ value: String?) -> String {
@@ -269,6 +346,32 @@ struct AgentSettingsView: View {
 
     private var assistantPossessiveDisplayName: String {
         "\(assistantDisplayName)'s"
+    }
+
+    private var primaryProviderSignature: String {
+        viewModel.settings?.aiPrimaryProvider ?? ""
+    }
+
+    private var selectedProviderHasKey: Bool {
+        guard viewModel.settings?.aiPrimaryProvider == selectedPrimaryProvider.rawValue else {
+            return false
+        }
+        return viewModel.settings?.aiPrimaryProviderHasKey ?? false
+    }
+
+    private var selectedProviderKeyLast4: String? {
+        guard viewModel.settings?.aiPrimaryProvider == selectedPrimaryProvider.rawValue else {
+            return nil
+        }
+        return viewModel.settings?.aiPrimaryProviderKeyLast4
+    }
+
+    private func syncSelectedProvider(from settings: UserSettings?) {
+        guard let rawProvider = settings?.aiPrimaryProvider,
+              let provider = AIPrimaryProvider(rawValue: rawProvider) else {
+            return
+        }
+        selectedPrimaryProvider = provider
     }
 
     private func readOnlySectionText(_ value: String) -> some View {

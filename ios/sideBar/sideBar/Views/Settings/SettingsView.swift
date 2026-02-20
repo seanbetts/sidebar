@@ -76,12 +76,18 @@ public struct SettingsView: View {
 
     private var isSavingAnySettings: Bool {
         let viewModel = environment.settingsViewModel
-        return viewModel.isSavingProfile || viewModel.isSavingSystem || viewModel.isSavingSkills
+        return viewModel.isSavingProfile
+            || viewModel.isSavingSystem
+            || viewModel.isSavingSkills
+            || viewModel.isSavingPrimaryProvider
     }
 
     private var currentSaveError: String? {
         let viewModel = environment.settingsViewModel
-        return viewModel.profileSaveError ?? viewModel.systemSaveError ?? viewModel.skillsError
+        return viewModel.profileSaveError
+            ?? viewModel.systemSaveError
+            ?? viewModel.skillsError
+            ?? viewModel.primaryProviderError
     }
 
     private var saveStatusSignature: String {

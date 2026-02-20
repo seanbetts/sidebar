@@ -110,24 +110,32 @@ class AIProviderGateway:
             provider_key_lookup=provider_key_lookup,
         )
         if resolution.provider == "anthropic":
-            client = self._claude_client
-            if client is None:
+            claude_client = self._claude_client
+            owns_client = False
+            if claude_client is None:
                 from api.services.claude_client import ClaudeClient
 
-                client = ClaudeClient(
+                claude_client = ClaudeClient(
                     self._settings,
                     api_key=resolution.api_key,
                     model=resolution.model,
                 )
+                owns_client = True
 
-            async for event in client.stream_with_tools(
-                message,
-                conversation_history,
-                system_prompt=system_prompt,
-                allowed_skills=allowed_skills,
-                tool_context=tool_context,
-            ):
-                yield event
+            try:
+                async for event in claude_client.stream_with_tools(
+                    message,
+                    conversation_history,
+                    system_prompt=system_prompt,
+                    allowed_skills=allowed_skills,
+                    tool_context=tool_context,
+                ):
+                    yield event
+            finally:
+                if owns_client:
+                    await self._close_async_client_if_possible(
+                        getattr(claude_client, "client", None)
+                    )
             return
 
         if resolution.provider == "openai":
@@ -317,22 +325,26 @@ class AIProviderGateway:
         """Generate title with Anthropic."""
         from api.services.claude_client import ClaudeClient
 
-        client = ClaudeClient(
+        claude_client = ClaudeClient(
             self._settings,
             api_key=api_key,
             model=get_default_model("anthropic", "title", self._settings),
-        ).client
-        response = await client.messages.create(
-            model=get_default_model("anthropic", "title", self._settings),
-            max_tokens=20,
-            temperature=0,
-            messages=[{"role": "user", "content": prompt}],
         )
-        for block in response.content:
-            if getattr(block, "type", None) == "text":
-                text_value = getattr(block, "text", "")
-                if text_value:
-                    return text_value
+        client = claude_client.client
+        try:
+            response = await client.messages.create(
+                model=get_default_model("anthropic", "title", self._settings),
+                max_tokens=20,
+                temperature=0,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            for block in response.content:
+                if getattr(block, "type", None) == "text":
+                    text_value = getattr(block, "text", "")
+                    if text_value:
+                        return text_value
+        finally:
+            await self._close_async_client_if_possible(client)
         return ""
 
     async def _generate_title_openai(self, prompt: str, *, api_key: str) -> str:
@@ -359,13 +371,16 @@ class AIProviderGateway:
             request_kwargs["temperature"] = 0
             request_kwargs["max_tokens"] = 20
 
-        response = await client.chat.completions.create(
-            **request_kwargs,
-        )
-        choice = response.choices[0] if response.choices else None
-        if not choice:
-            return ""
-        return (choice.message.content or "").strip()
+        try:
+            response = await client.chat.completions.create(
+                **request_kwargs,
+            )
+            choice = response.choices[0] if response.choices else None
+            if not choice:
+                return ""
+            return (choice.message.content or "").strip()
+        finally:
+            await self._close_async_client_if_possible(client)
 
     async def _stream_chat_openai(
         self,
@@ -381,19 +396,22 @@ class AIProviderGateway:
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream assistant tokens from OpenAI chat completions."""
         client = self._openai_client_factory(api_key=api_key)
-        orchestrator = ProviderToolOrchestrator(
-            tool_mapper=tool_mapper,
-            allowed_skills=allowed_skills,
-            tool_context=self._normalize_tool_context(tool_context),
-        )
-        async for event in orchestrator.run_openai(
-            client=client,
-            model=model,
-            message=message,
-            conversation_history=conversation_history,
-            system_prompt=system_prompt,
-        ):
-            yield event
+        try:
+            orchestrator = ProviderToolOrchestrator(
+                tool_mapper=tool_mapper,
+                allowed_skills=allowed_skills,
+                tool_context=self._normalize_tool_context(tool_context),
+            )
+            async for event in orchestrator.run_openai(
+                client=client,
+                model=model,
+                message=message,
+                conversation_history=conversation_history,
+                system_prompt=system_prompt,
+            ):
+                yield event
+        finally:
+            await self._close_async_client_if_possible(client)
 
     async def _stream_chat_google(
         self,
@@ -469,3 +487,19 @@ class AIProviderGateway:
         error_name = error.__class__.__name__
         non_retryable = {"AuthenticationError", "PermissionDenied", "InvalidArgument"}
         return error_name not in non_retryable
+
+    @staticmethod
+    async def _close_async_client_if_possible(client: Any | None) -> None:
+        """Close provider SDK clients when they expose an async close method."""
+        if client is None:
+            return
+        close_method = getattr(client, "close", None)
+        if not callable(close_method):
+            return
+        try:
+            close_result = close_method()
+            if asyncio.iscoroutine(close_result):
+                await close_result
+        except Exception:
+            # Avoid surfacing close-time cleanup errors to request flows.
+            return

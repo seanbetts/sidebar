@@ -23,10 +23,12 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var profileSaveError: String?
     @Published public private(set) var isSavingSystem: Bool = false
     @Published public private(set) var systemSaveError: String?
+    @Published public private(set) var isSavingPrimaryProvider: Bool = false
+    @Published public private(set) var primaryProviderError: String?
 
-    private let settingsAPI: any SettingsProviding
-    private let skillsAPI: any SkillsProviding
-    private let cache: CacheClient
+    let settingsAPI: any SettingsProviding
+    let skillsAPI: any SkillsProviding
+    let cache: CacheClient
 
     public init(settingsAPI: any SettingsProviding, skillsAPI: any SkillsProviding, cache: CacheClient) {
         self.settingsAPI = settingsAPI
@@ -43,40 +45,11 @@ public final class SettingsViewModel: LoadableViewModel {
         return trimmed.isEmpty ? Self.defaultAssistantDisplayName : trimmed
     }
 
-    public func displayName(for skill: SkillItem) -> String {
-        let normalizedSkillName = skill.name
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        switch skill.id {
-        case "assistant-identity":
-            return "\(assistantDisplayName)'s Identity"
-        case "assistant-soul":
-            return "\(assistantDisplayName)'s Soul"
-        default:
-            if normalizedSkillName == "assistant identity" || normalizedSkillName == "assisstant identity" {
-                return "\(assistantDisplayName)'s Identity"
-            }
-            if normalizedSkillName == "assistant soul" || normalizedSkillName == "assisstant soul" {
-                return "\(assistantDisplayName)'s Soul"
-            }
-            return skill.name
-        }
-    }
-
-    public func displayDescription(for skill: SkillItem) -> String {
-        let personalized = skill.description
-            .replacingOccurrences(of: "{name}", with: assistantDisplayName)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        if personalized.hasSuffix(".") {
-            return String(personalized.dropLast())
-        }
-        return personalized
-    }
-
     public func load(force: Bool = false) async {
         clearError()
         profileSaveError = nil
         systemSaveError = nil
+        primaryProviderError = nil
         setLoading(true)
         let loader = CachedLoader(
             cache: cache,
@@ -337,6 +310,9 @@ public final class SettingsViewModel: LoadableViewModel {
             assistantIdentityMeta: update.assistantIdentityMeta ?? current.assistantIdentityMeta,
             assistantSoul: update.assistantSoul ?? current.assistantSoul,
             assistantSoulMeta: update.assistantSoulMeta ?? current.assistantSoulMeta,
+            aiPrimaryProvider: current.aiPrimaryProvider,
+            aiPrimaryProviderHasKey: current.aiPrimaryProviderHasKey,
+            aiPrimaryProviderKeyLast4: current.aiPrimaryProviderKeyLast4,
             enabledSkills: current.enabledSkills
         )
         settings = next
@@ -373,6 +349,9 @@ public final class SettingsViewModel: LoadableViewModel {
                 assistantIdentityMeta: current.assistantIdentityMeta,
                 assistantSoul: current.assistantSoul,
                 assistantSoulMeta: current.assistantSoulMeta,
+                aiPrimaryProvider: current.aiPrimaryProvider,
+                aiPrimaryProviderHasKey: current.aiPrimaryProviderHasKey,
+                aiPrimaryProviderKeyLast4: current.aiPrimaryProviderKeyLast4,
                 enabledSkills: normalized
             )
         }
@@ -411,6 +390,23 @@ public final class SettingsViewModel: LoadableViewModel {
         }
 
         return normalized
+    }
+
+    func setPrimaryProviderSaving(_ isSaving: Bool) {
+        isSavingPrimaryProvider = isSaving
+    }
+
+    func setPrimaryProviderError(_ error: String?) {
+        primaryProviderError = error
+    }
+
+    func applySettingsResponse(_ response: UserSettings) {
+        settings = response
+        cache.set(
+            key: CacheKeys.userSettings,
+            value: response,
+            ttlSeconds: CachePolicy.userSettings
+        )
     }
 
     private static func dateOnlyString(from date: Date) -> String {

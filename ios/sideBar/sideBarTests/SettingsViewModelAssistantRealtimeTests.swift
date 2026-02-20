@@ -162,6 +162,22 @@ private final class SequencedSettingsAPI: SettingsProviding {
         throw SettingsRealtimeTestError.forced
     }
 
+    func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        throw SettingsRealtimeTestError.forced
+    }
+
+    func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        _ = apiKey
+        throw SettingsRealtimeTestError.forced
+    }
+
+    func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        throw SettingsRealtimeTestError.forced
+    }
+
     func getProfileImage() async throws -> Data {
         throw SettingsRealtimeTestError.forced
     }

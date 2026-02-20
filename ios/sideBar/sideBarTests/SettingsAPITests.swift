@@ -49,6 +49,9 @@ final class SettingsAPITests: XCTestCase {
                 "version": 1,
                 "reason": "Bootstrap initialization"
               },
+              "ai_primary_provider": "openai",
+              "ai_primary_provider_has_key": true,
+              "ai_primary_provider_key_last4": "1234",
               "enabled_skills": []
             }
             """
@@ -62,6 +65,9 @@ final class SettingsAPITests: XCTestCase {
         XCTAssertEqual(settings.assistantIdentity?.name, "sideBar")
         XCTAssertEqual(settings.assistantSoul?.purpose, "Help with durable progress.")
         XCTAssertEqual(settings.assistantSoulMeta?.version, 1)
+        XCTAssertEqual(settings.aiPrimaryProvider, "openai")
+        XCTAssertTrue(settings.aiPrimaryProviderHasKey)
+        XCTAssertEqual(settings.aiPrimaryProviderKeyLast4, "1234")
     }
 
     func testUpdateSettingsUsesPatchWithSnakeCaseKeys() async throws {
@@ -178,6 +184,77 @@ final class SettingsAPITests: XCTestCase {
         let response = try await api.rotateShortcutsToken()
 
         XCTAssertEqual(response.token, "abc")
+    }
+
+    func testGetProviderKeyStatusUsesProviderQuery() async throws {
+        let api = SettingsAPI(client: makeClient())
+        SettingsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertTrue(request.url?.absoluteString.contains("settings/ai/provider-key") == true)
+            XCTAssertTrue(request.url?.absoluteString.contains("provider=openai") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"provider\":\"openai\",\"has_key\":true,\"key_last4\":\"5678\"}".utf8))
+        }
+
+        let status = try await api.getProviderKeyStatus(provider: "openai")
+
+        XCTAssertEqual(status.provider, "openai")
+        XCTAssertTrue(status.hasKey)
+        XCTAssertEqual(status.keyLast4, "5678")
+    }
+
+    func testUpsertProviderKeyUsesPutAndApiKeyBody() async throws {
+        let api = SettingsAPI(client: makeClient())
+        SettingsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertTrue(request.url?.absoluteString.contains("settings/ai/provider-key") == true)
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+            )
+            XCTAssertEqual(body["provider"] as? String, "anthropic")
+            XCTAssertEqual(body["api_key"] as? String, "sk-ant-test")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"provider\":\"anthropic\",\"has_key\":true,\"key_last4\":\"9999\"}".utf8))
+        }
+
+        let status = try await api.upsertProviderKey(provider: "anthropic", apiKey: "sk-ant-test")
+
+        XCTAssertEqual(status.provider, "anthropic")
+        XCTAssertTrue(status.hasKey)
+        XCTAssertEqual(status.keyLast4, "9999")
+    }
+
+    func testDeleteProviderKeyUsesDeleteWithQuery() async throws {
+        let api = SettingsAPI(client: makeClient())
+        SettingsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "DELETE")
+            XCTAssertTrue(request.url?.absoluteString.contains("settings/ai/provider-key") == true)
+            XCTAssertTrue(request.url?.absoluteString.contains("provider=google") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"provider\":\"google\",\"has_key\":false,\"key_last4\":null}".utf8))
+        }
+
+        let status = try await api.deleteProviderKey(provider: "google")
+
+        XCTAssertEqual(status.provider, "google")
+        XCTAssertFalse(status.hasKey)
+        XCTAssertNil(status.keyLast4)
     }
 
     func testGetProfileImageUsesRequestData() async throws {

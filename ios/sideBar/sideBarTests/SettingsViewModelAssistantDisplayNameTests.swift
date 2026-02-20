@@ -264,6 +264,22 @@ private struct AssistantNameMockSettingsAPI: SettingsProviding {
         throw AssistantNameMockError.forced
     }
 
+    func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        throw AssistantNameMockError.forced
+    }
+
+    func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        _ = apiKey
+        throw AssistantNameMockError.forced
+    }
+
+    func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        throw AssistantNameMockError.forced
+    }
+
     func getProfileImage() async throws -> Data {
         throw AssistantNameMockError.forced
     }

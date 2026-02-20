@@ -35,6 +35,26 @@ public struct AgentFieldMeta: Codable, Equatable {
     public let reason: String?
 }
 
+/// Supported primary AI providers for strict BYOK mode.
+public enum AIPrimaryProvider: String, Codable, CaseIterable, Identifiable {
+    case anthropic
+    case openai
+    case google
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .anthropic:
+            return "Anthropic"
+        case .openai:
+            return "OpenAI"
+        case .google:
+            return "Google"
+        }
+    }
+}
+
 /// Represents an user settings struct.
 public struct UserSettings: Codable {
     /// The user id value.
@@ -67,8 +87,36 @@ public struct UserSettings: Codable {
     public let assistantSoul: AssistantSoulSettings?
     /// Metadata about assistant soul updates.
     public let assistantSoulMeta: AgentFieldMeta?
+    /// Primary AI provider selected for assistant and title generation.
+    public let aiPrimaryProvider: String?
+    /// Whether the selected primary provider currently has a saved key.
+    public let aiPrimaryProviderHasKey: Bool
+    /// Last 4 characters of the selected primary provider key.
+    public let aiPrimaryProviderKeyLast4: String?
     /// The enabled skills value.
     public let enabledSkills: [String]
+
+    private enum CodingKeys: String, CodingKey {
+        case userId
+        case communicationStyle
+        case workingRelationship
+        case name
+        case jobTitle
+        case employer
+        case dateOfBirth
+        case gender
+        case pronouns
+        case location
+        case profileImageUrl
+        case assistantIdentity
+        case assistantIdentityMeta
+        case assistantSoul
+        case assistantSoulMeta
+        case aiPrimaryProvider
+        case aiPrimaryProviderHasKey
+        case aiPrimaryProviderKeyLast4
+        case enabledSkills
+    }
 
     public init(
         userId: String,
@@ -86,6 +134,9 @@ public struct UserSettings: Codable {
         assistantIdentityMeta: AgentFieldMeta? = nil,
         assistantSoul: AssistantSoulSettings? = nil,
         assistantSoulMeta: AgentFieldMeta? = nil,
+        aiPrimaryProvider: String? = nil,
+        aiPrimaryProviderHasKey: Bool = false,
+        aiPrimaryProviderKeyLast4: String? = nil,
         enabledSkills: [String]
     ) {
         self.userId = userId
@@ -103,7 +154,51 @@ public struct UserSettings: Codable {
         self.assistantIdentityMeta = assistantIdentityMeta
         self.assistantSoul = assistantSoul
         self.assistantSoulMeta = assistantSoulMeta
+        self.aiPrimaryProvider = aiPrimaryProvider
+        self.aiPrimaryProviderHasKey = aiPrimaryProviderHasKey
+        self.aiPrimaryProviderKeyLast4 = aiPrimaryProviderKeyLast4
         self.enabledSkills = enabledSkills
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try container.decode(String.self, forKey: .userId)
+        communicationStyle = try container.decodeIfPresent(String.self, forKey: .communicationStyle)
+        workingRelationship = try container.decodeIfPresent(String.self, forKey: .workingRelationship)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        jobTitle = try container.decodeIfPresent(String.self, forKey: .jobTitle)
+        employer = try container.decodeIfPresent(String.self, forKey: .employer)
+        dateOfBirth = try container.decodeIfPresent(String.self, forKey: .dateOfBirth)
+        gender = try container.decodeIfPresent(String.self, forKey: .gender)
+        pronouns = try container.decodeIfPresent(String.self, forKey: .pronouns)
+        location = try container.decodeIfPresent(String.self, forKey: .location)
+        profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
+        assistantIdentity = try container.decodeIfPresent(
+            AssistantIdentitySettings.self,
+            forKey: .assistantIdentity
+        )
+        assistantIdentityMeta = try container.decodeIfPresent(
+            AgentFieldMeta.self,
+            forKey: .assistantIdentityMeta
+        )
+        assistantSoul = try container.decodeIfPresent(
+            AssistantSoulSettings.self,
+            forKey: .assistantSoul
+        )
+        assistantSoulMeta = try container.decodeIfPresent(
+            AgentFieldMeta.self,
+            forKey: .assistantSoulMeta
+        )
+        aiPrimaryProvider = try container.decodeIfPresent(String.self, forKey: .aiPrimaryProvider)
+        aiPrimaryProviderHasKey = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .aiPrimaryProviderHasKey
+        ) ?? false
+        aiPrimaryProviderKeyLast4 = try container.decodeIfPresent(
+            String.self,
+            forKey: .aiPrimaryProviderKeyLast4
+        )
+        enabledSkills = try container.decodeIfPresent([String].self, forKey: .enabledSkills) ?? []
     }
 }
 
@@ -129,6 +224,8 @@ public struct SettingsUpdate: Encodable {
     public let location: String?
     /// The assistant identity value.
     public let assistantIdentity: AssistantIdentitySettings?
+    /// Optional strict-BYOK primary provider update.
+    public let aiPrimaryProvider: String?
     /// The enabled skills value.
     public let enabledSkills: [String]?
     /// Includes `date_of_birth` even when nil so callers can clear it.
@@ -145,6 +242,7 @@ public struct SettingsUpdate: Encodable {
         pronouns: String? = nil,
         location: String? = nil,
         assistantIdentity: AssistantIdentitySettings? = nil,
+        aiPrimaryProvider: String? = nil,
         enabledSkills: [String]? = nil,
         includeDateOfBirth: Bool = false
     ) {
@@ -158,6 +256,7 @@ public struct SettingsUpdate: Encodable {
         self.pronouns = pronouns
         self.location = location
         self.assistantIdentity = assistantIdentity
+        self.aiPrimaryProvider = aiPrimaryProvider
         self.enabledSkills = enabledSkills
         self.includeDateOfBirth = includeDateOfBirth
     }
@@ -173,6 +272,7 @@ public struct SettingsUpdate: Encodable {
         case pronouns
         case location
         case assistantIdentity = "assistant_identity"
+        case aiPrimaryProvider = "ai_primary_provider"
         case enabledSkills = "enabled_skills"
     }
 
@@ -192,7 +292,31 @@ public struct SettingsUpdate: Encodable {
         try container.encodeIfPresent(pronouns, forKey: .pronouns)
         try container.encodeIfPresent(location, forKey: .location)
         try container.encodeIfPresent(assistantIdentity, forKey: .assistantIdentity)
+        try container.encodeIfPresent(aiPrimaryProvider, forKey: .aiPrimaryProvider)
         try container.encodeIfPresent(enabledSkills, forKey: .enabledSkills)
+    }
+}
+
+/// Provider-key status payload for strict BYOK settings.
+public struct ProviderKeyStatusResponse: Codable {
+    public let provider: String?
+    public let hasKey: Bool
+    public let keyLast4: String?
+}
+
+/// Request payload for creating/updating a provider key.
+public struct ProviderKeyUpdate: Encodable {
+    public let provider: String
+    public let apiKey: String
+
+    public init(provider: String, apiKey: String) {
+        self.provider = provider
+        self.apiKey = apiKey
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case provider
+        case apiKey = "api_key"
     }
 }
 

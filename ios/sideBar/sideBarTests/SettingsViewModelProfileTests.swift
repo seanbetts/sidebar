@@ -58,6 +58,62 @@ final class SettingsViewModelProfileTests: XCTestCase {
         XCTAssertEqual(viewModel.settings?.location, "Seattle")
     }
 
+    func testSaveProfileSettingsClearingDateEncodesNullDate() async throws {
+        let initial = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Sam",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: "1990-04-12",
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let updated = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Sam",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let api = RecordingSettingsAPI(initial: initial, updated: updated)
+        let viewModel = SettingsViewModel(
+            settingsAPI: api,
+            skillsAPI: EmptySkillsAPI(),
+            cache: TestCacheClient()
+        )
+
+        await viewModel.load()
+        await viewModel.saveProfileSettings(
+            name: "Sam",
+            jobTitle: "",
+            employer: "",
+            dateOfBirth: nil,
+            dateOfBirthEnabled: false,
+            gender: "",
+            pronouns: "",
+            location: ""
+        )
+
+        XCTAssertEqual(api.updateCallCount, 1)
+        let payload = try encodedPayload(try XCTUnwrap(api.lastUpdate))
+        XCTAssertTrue(payload.keys.contains("date_of_birth"))
+        XCTAssertTrue(payload["date_of_birth"] is NSNull)
+        XCTAssertNil(payload["dateOfBirth"])
+        XCTAssertNil(viewModel.settings?.dateOfBirth)
+    }
+
     private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {
         let data = try JSONEncoder().encode(update)
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -84,6 +140,22 @@ private final class RecordingSettingsAPI: SettingsProviding {
         updateCallCount += 1
         lastUpdate = update
         return updated
+    }
+
+    func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        return ProviderKeyStatusResponse(provider: nil, hasKey: false, keyLast4: nil)
+    }
+
+    func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        _ = apiKey
+        return ProviderKeyStatusResponse(provider: nil, hasKey: true, keyLast4: "1234")
+    }
+
+    func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        return ProviderKeyStatusResponse(provider: nil, hasKey: false, keyLast4: nil)
     }
 
     func getShortcutsToken() async throws -> ShortcutsTokenResponse {

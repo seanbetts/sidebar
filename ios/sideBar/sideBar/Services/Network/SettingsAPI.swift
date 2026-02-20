@@ -5,6 +5,9 @@ import sideBarShared
 public protocol SettingsProviding {
     func getSettings() async throws -> UserSettings
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings
+    func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse
+    func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse
+    func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse
     func getShortcutsToken() async throws -> ShortcutsTokenResponse
     func rotateShortcutsToken() async throws -> ShortcutsTokenResponse
     func uploadProfileImage(data: Data, contentType: String, filename: String) async throws
@@ -28,6 +31,30 @@ public struct SettingsAPI {
 
     public func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
         try await client.request("settings", method: "PATCH", body: update)
+    }
+
+    public func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse {
+        let path = APIClient.path(
+            "settings/ai/provider-key",
+            queryItems: [URLQueryItem(name: "provider", value: provider)]
+        )
+        return try await client.request(path)
+    }
+
+    public func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
+        try await client.request(
+            "settings/ai/provider-key",
+            method: "PUT",
+            body: ProviderKeyUpdate(provider: provider, apiKey: apiKey)
+        )
+    }
+
+    public func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse {
+        let path = APIClient.path(
+            "settings/ai/provider-key",
+            queryItems: [URLQueryItem(name: "provider", value: provider)]
+        )
+        return try await client.request(path, method: "DELETE")
     }
 
     public func getShortcutsToken() async throws -> ShortcutsTokenResponse {
