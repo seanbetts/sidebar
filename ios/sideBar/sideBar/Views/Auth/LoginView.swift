@@ -320,8 +320,7 @@ public struct LoginView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(.white)
-            .foregroundStyle(.black)
+            .tint(DesignTokens.Colors.actionPrimary)
             .disabled(isOfflineUnlocking)
         }
         .padding(DesignTokens.Spacing.sm)
@@ -380,8 +379,7 @@ public struct LoginView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .tint(.white)
-        .foregroundStyle(isSignInDisabled ? Color.secondary : Color.black)
+        .tint(DesignTokens.Colors.actionPrimary)
         .disabled(isSignInDisabled)
         .accessibilitySortPriority(1)
     }

@@ -35,7 +35,7 @@ public struct BiometricLockView: View {
             DesignTokens.Colors.background
                 .ignoresSafeArea()
 
-            // Only show the card UI if there's an error or fallback needed
+            // Only show the fallback UI if there's an error or cancellation.
             if showFallbackUI {
                 VStack(spacing: 20) {
                     LoadingIndicatorView(size: LoadingIndicatorSize.hero, variant: .hero)
@@ -61,8 +61,7 @@ public struct BiometricLockView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .tint(.white)
-                    .foregroundStyle(.black)
+                    .tint(DesignTokens.Colors.actionPrimary)
                     .keyboardShortcut(.defaultAction)
                     .disabled(isAuthenticating)
 
@@ -88,7 +87,6 @@ public struct BiometricLockView: View {
                 }
                 .frame(maxWidth: 420)
                 .padding(DesignTokens.Spacing.xl)
-                .cardStyle()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
