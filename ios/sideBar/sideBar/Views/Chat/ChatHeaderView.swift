@@ -7,35 +7,12 @@ struct ChatHeaderView: View {
     #if os(iOS)
     @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
     #endif
-    #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    #endif
 
     var body: some View {
-        if showExtendedContent {
-            VStack(alignment: .leading, spacing: 6) {
-                headerContent
-
-                if let activeTool = viewModel.activeTool {
-                    ChatActiveToolBanner(activeTool: activeTool)
-                }
-            }
+        headerContent
             .padding(DesignTokens.Spacing.md)
-            .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
+            .frame(height: LayoutMetrics.contentHeaderMinHeight)
             .background(headerBackground)
-        } else {
-            headerContent
-                .padding(DesignTokens.Spacing.md)
-                .frame(height: LayoutMetrics.contentHeaderMinHeight)
-                .background(headerBackground)
-        }
-    }
-
-    private var showExtendedContent: Bool {
-        if isCompact {
-            return false
-        }
-        return viewModel.activeTool != nil
     }
 
     private var headerContent: some View {
@@ -45,12 +22,6 @@ struct ChatHeaderView: View {
             titleLineLimit: 1
         , trailing: {
             HStack(spacing: 12) {
-                if viewModel.isStreaming {
-                    Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
-                        .font(DesignTokens.Typography.captionSemibold)
-                        .foregroundStyle(.secondary)
-                        .labelStyle(.titleAndIcon)
-                }
                 if showNewChatButton || showCloseButton {
                     HeaderActionRow {
                         if shouldShowExpandButton {
@@ -105,14 +76,6 @@ struct ChatHeaderView: View {
 
     private var headerBackground: Color {
         DesignTokens.Colors.background
-    }
-
-    private var isCompact: Bool {
-        #if os(macOS)
-        return false
-        #else
-        return horizontalSizeClass == .compact
-        #endif
     }
 
     private var shouldShowExpandButton: Bool {
