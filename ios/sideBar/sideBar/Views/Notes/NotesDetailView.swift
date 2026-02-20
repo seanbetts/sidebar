@@ -20,6 +20,7 @@ struct NotesDetailView: View {
     @Binding var isExporting: Bool
     @Binding var exportDocument: MarkdownFileDocument?
     @Binding var exportFilename: String
+    @State private var quickActionsNoteId: String?
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0
     @State private var savedIndicatorTask: Task<Void, Never>?
@@ -87,7 +88,37 @@ struct NotesDetailView: View {
                 break
             }
         }
+        .onChange(of: viewModel.activeNote?.id) { _, newValue in
+            guard quickActionsNoteId != newValue else { return }
+            hideQuickActionsPill()
+        }
         #if os(iOS)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let activeNote = viewModel.activeNote, quickActionsNoteId == activeNote.id {
+                NoteContentQuickActionsPill(
+                    isPinned: isPinned,
+                    isArchived: isArchived,
+                    onPinToggle: {
+                        togglePinnedForActiveNote()
+                    },
+                    onArchiveToggle: {
+                        hideQuickActionsPill()
+                        archiveActiveNote()
+                    },
+                    onDelete: {
+                        hideQuickActionsPill()
+                        isDeleteAlertPresented = true
+                    }
+                )
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.bottom, DesignTokens.Spacing.sm)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(
+            .easeInOut(duration: DesignTokens.Animation.standard),
+            value: quickActionsNoteId
+        )
         .toolbar {
             if isCompact, viewModel.activeNote != nil, isPhone {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -149,63 +180,79 @@ extension NotesDetailView {
 
     @ViewBuilder
     private var content: some View {
-            if viewModel.activeNote != nil {
-                if #available(iOS 26.0, macOS 26.0, *), useNativeMarkdownEditor {
-                    NativeMarkdownEditorContainer(
-                        editorViewModel: editorViewModel,
-                        maxContentWidth: contentMaxWidth
-                    )
-                } else {
-                    SideBarMarkdownContainer(text: editorViewModel.content)
-                        .onAppear {
-                            editorViewModel.setReadOnly(true)
+        if let activeNote = viewModel.activeNote {
+            if #available(iOS 26.0, macOS 26.0, *), useNativeMarkdownEditor {
+                NativeMarkdownEditorContainer(
+                    editorViewModel: editorViewModel,
+                    maxContentWidth: contentMaxWidth
+                )
+                #if os(iOS)
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        toggleQuickActionsPill(for: activeNote.id)
+                    }
+                )
+                #endif
+            } else {
+                SideBarMarkdownContainer(text: editorViewModel.content)
+                    .onAppear {
+                        editorViewModel.setReadOnly(true)
+                    }
+                    #if os(iOS)
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(
+                        TapGesture().onEnded {
+                            toggleQuickActionsPill(for: activeNote.id)
                         }
+                    )
+                    #endif
+            }
+        } else if viewModel.selectedNoteId != nil {
+            if let error = viewModel.errorMessage {
+                PlaceholderView(
+                    title: "Unable to load note",
+                    subtitle: environment.isOffline ? "This note isn't available offline yet." : error,
+                    actionTitle: "Retry"
+                ) {
+                    guard let selectedId = viewModel.selectedNoteId else { return }
+                    Task { await viewModel.loadNote(id: selectedId) }
                 }
-            } else if viewModel.selectedNoteId != nil {
-                if let error = viewModel.errorMessage {
-                    PlaceholderView(
-                        title: "Unable to load note",
-                        subtitle: environment.isOffline ? "This note isn't available offline yet." : error,
-                        actionTitle: "Retry"
-                    ) {
-                        guard let selectedId = viewModel.selectedNoteId else { return }
-                        Task { await viewModel.loadNote(id: selectedId) }
-                    }
-                } else if !environment.isNetworkAvailable {
-                    PlaceholderView(
-                        title: "Unable to load note",
-                        subtitle: "This note isn't available offline yet.",
-                        actionTitle: "Retry"
-                    ) {
-                        guard let selectedId = viewModel.selectedNoteId else { return }
-                        Task { await viewModel.loadNote(id: selectedId) }
-                    }
-                } else {
-                    LoadingView(message: "Loading note…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if !environment.isNetworkAvailable {
+                PlaceholderView(
+                    title: "Unable to load note",
+                    subtitle: "This note isn't available offline yet.",
+                    actionTitle: "Retry"
+                ) {
+                    guard let selectedId = viewModel.selectedNoteId else { return }
+                    Task { await viewModel.loadNote(id: selectedId) }
                 }
             } else {
-                #if os(macOS)
-                if viewModel.tree == nil {
-                    LoadingView(message: "Loading notes…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    WelcomeEmptyView()
-                }
-                #else
-                if viewModel.tree == nil {
-                    LoadingView(message: "Loading notes…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    PlaceholderView(
-                        title: "Select a note",
-                        subtitle: "Choose a note from the sidebar to start reading.",
-                        iconName: "text.document"
-                    )
-                }
-                #endif
+                LoadingView(message: "Loading note…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        } else {
+            #if os(macOS)
+            if viewModel.tree == nil {
+                LoadingView(message: "Loading notes…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                WelcomeEmptyView()
+            }
+            #else
+            if viewModel.tree == nil {
+                LoadingView(message: "Loading notes…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                PlaceholderView(
+                    title: "Select a note",
+                    subtitle: "Choose a note from the sidebar to start reading.",
+                    iconName: "text.document"
+                )
+            }
+            #endif
         }
+    }
 
     private var contentWithToolbar: some View {
         VStack(spacing: 0) {
@@ -297,6 +344,25 @@ extension NotesDetailView {
     private func resetSavedIndicator() {
         hideSavedIndicator()
         lastSavedTimestamp = 0
+    }
+
+    private func toggleQuickActionsPill(for noteId: String) {
+        withAnimation {
+            quickActionsNoteId = quickActionsNoteId == noteId ? nil : noteId
+        }
+    }
+
+    private func hideQuickActionsPill() {
+        withAnimation {
+            quickActionsNoteId = nil
+        }
+    }
+
+    private func togglePinnedForActiveNote() {
+        guard let noteId = viewModel.activeNote?.path else { return }
+        Task {
+            await viewModel.setPinned(id: noteId, pinned: !isPinned)
+        }
     }
 
     private var conflictBinding: Binding<NoteSyncConflict?> {
