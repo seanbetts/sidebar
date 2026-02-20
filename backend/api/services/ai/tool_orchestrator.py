@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -16,6 +17,8 @@ from api.services.ai.tool_event_mapper import (
     tool_result_content,
     tool_side_effect_events,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -150,16 +153,15 @@ class ProviderToolOrchestrator:
             message=message,
             conversation_history=conversation_history,
         )
-        config = types.GenerateContentConfig(
-            system_instruction=system_prompt.strip()
-            if isinstance(system_prompt, str) and system_prompt.strip()
-            else None,
+        config = self._build_google_config(
+            system_prompt=system_prompt,
             tools=google_tools,
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                disable=True
-            ),
-            response_mime_type="text/plain",
         )
+        fallback_no_tools_config = self._build_google_config(
+            system_prompt=system_prompt,
+            tools=[],
+        )
+        empty_response_retry_used = False
 
         for _ in range(ChatConstants.MAX_TOOL_ROUNDS):
             response = await asyncio.to_thread(
@@ -175,11 +177,58 @@ class ProviderToolOrchestrator:
             function_calls = self._parse_google_tool_calls(response)
             if not function_calls:
                 if not text:
-                    yield {
-                        "type": "error",
-                        "error": self._google_empty_response_error(response),
-                    }
-                return
+                    if (
+                        not empty_response_retry_used
+                        and not self._google_response_is_blocked(response)
+                    ):
+                        empty_response_retry_used = True
+                        logger.warning(
+                            (
+                                "Google returned empty response; "
+                                "retrying once without tools"
+                            ),
+                            extra={"model": model},
+                        )
+                        retry_response = await asyncio.to_thread(
+                            client.models.generate_content,
+                            model=model,
+                            contents=contents,
+                            config=fallback_no_tools_config,
+                        )
+                        retry_text = self._extract_google_text(retry_response)
+                        retry_function_calls = self._parse_google_tool_calls(
+                            retry_response
+                        )
+                        if retry_text:
+                            yield {"type": "token", "content": retry_text}
+                        if retry_function_calls:
+                            response = retry_response
+                            function_calls = retry_function_calls
+                        else:
+                            if retry_text:
+                                return
+                            error_message = self._google_empty_response_error(
+                                retry_response
+                            )
+                            logger.warning(
+                                (
+                                    "Google retry without tools still "
+                                    "returned empty response"
+                                ),
+                                extra={"model": model, "error": error_message},
+                            )
+                            yield {"type": "error", "error": error_message}
+                            return
+                    else:
+                        error_message = self._google_empty_response_error(response)
+                        logger.warning(
+                            "Google response contained no text and no tool calls",
+                            extra={"model": model, "error": error_message},
+                        )
+                        yield {"type": "error", "error": error_message}
+                        return
+                else:
+                    return
 
             candidate_content = self._extract_google_candidate_content(response)
             if candidate_content is not None:
@@ -335,15 +384,23 @@ class ProviderToolOrchestrator:
             parts = getattr(content, "parts", None) or []
             for part in parts:
                 function_call = getattr(part, "function_call", None)
+                if function_call is None:
+                    function_call = getattr(part, "functionCall", None)
                 if function_call is None and isinstance(part, dict):
-                    function_call = part.get("function_call")
+                    function_call = part.get("function_call") or part.get(
+                        "functionCall"
+                    )
                 if function_call is None:
                     continue
 
                 if isinstance(function_call, dict):
                     name = function_call.get("name")
-                    call_id = function_call.get("id") or str(uuid.uuid4())
-                    args = function_call.get("args")
+                    call_id = (
+                        function_call.get("id")
+                        or function_call.get("call_id")
+                        or str(uuid.uuid4())
+                    )
+                    args = function_call.get("args") or function_call.get("arguments")
                 else:
                     name = getattr(function_call, "name", None)
                     call_id = getattr(function_call, "id", None) or str(uuid.uuid4())
@@ -356,6 +413,36 @@ class ProviderToolOrchestrator:
                     LLMToolCall(call_id=call_id, name=name, arguments=arguments)
                 )
         return parsed
+
+    @staticmethod
+    def _build_google_config(
+        *,
+        system_prompt: str | None,
+        tools: list[Any],
+    ) -> types.GenerateContentConfig:
+        return types.GenerateContentConfig(
+            system_instruction=system_prompt.strip()
+            if isinstance(system_prompt, str) and system_prompt.strip()
+            else None,
+            tools=tools,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                disable=True
+            ),
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        )
+
+    @staticmethod
+    def _google_response_is_blocked(response: Any) -> bool:
+        prompt_feedback = getattr(response, "prompt_feedback", None)
+        if getattr(prompt_feedback, "block_reason", None):
+            return True
+
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            for rating in getattr(candidate, "safety_ratings", None) or []:
+                if getattr(rating, "blocked", False):
+                    return True
+        return False
 
     @staticmethod
     def _google_empty_response_error(response: Any) -> str:

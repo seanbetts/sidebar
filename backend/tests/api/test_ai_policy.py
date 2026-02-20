@@ -458,6 +458,98 @@ async def test_gateway_stream_chat_google_executes_tools_from_candidate_parts(
 
 
 @pytest.mark.asyncio
+async def test_gateway_stream_chat_google_executes_tools_from_candidate_part_dict(
+    monkeypatch,
+) -> None:
+    class FakeModels:
+        def __init__(self):
+            self._responses = [
+                SimpleNamespace(
+                    text="",
+                    function_calls=[],
+                    candidates=[
+                        SimpleNamespace(
+                            content=SimpleNamespace(
+                                parts=[
+                                    {
+                                        "functionCall": {
+                                            "id": "google-call-3",
+                                            "name": "create_note",
+                                            "arguments": {"title": "Dict candidate note"},
+                                        }
+                                    }
+                                ]
+                            )
+                        )
+                    ],
+                ),
+                SimpleNamespace(text="Completed", function_calls=[], candidates=[]),
+            ]
+
+        def generate_content(self, **_kwargs):
+            return self._responses.pop(0)
+
+    class FakeGoogleClient:
+        def __init__(self):
+            self.models = FakeModels()
+
+    class FakeToolMapper:
+        def get_claude_tools(self, _allowed):
+            return [
+                {
+                    "name": "create_note",
+                    "description": "Create a note",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {"title": {"type": "string"}},
+                    },
+                }
+            ]
+
+        def get_tool_display_name(self, name):
+            return "Create Note" if name == "create_note" else name
+
+        async def execute_tool(
+            self, name, parameters, allowed_skills=None, context=None
+        ):
+            assert name == "create_note"
+            assert parameters == {"title": "Dict candidate note"}
+            assert context == {"user_id": "user-1"}
+            return {
+                "success": True,
+                "data": {
+                    "id": "note-4",
+                    "title": "Dict candidate note",
+                    "folder": "notes",
+                },
+            }
+
+    gateway = AIProviderGateway(
+        settings,
+        google_client_factory=lambda **_kwargs: FakeGoogleClient(),
+    )
+    monkeypatch.setattr(gateway, "_get_tool_mapper", lambda: FakeToolMapper())
+    events = [
+        event
+        async for event in gateway.stream_chat_with_tools(
+            message="Create note in google",
+            conversation_history=[],
+            system_prompt=None,
+            allowed_skills=None,
+            tool_context={"user_id": "user-1"},
+            settings_record=SimpleNamespace(ai_primary_provider="google"),
+            provider_key_lookup=lambda _provider: "sk-google-test",
+        )
+    ]
+    assert any(event["type"] == "tool_call" for event in events)
+    assert any(event["type"] == "tool_result" for event in events)
+    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "token" and event["content"] == "Completed" for event in events
+    )
+
+
+@pytest.mark.asyncio
 async def test_gateway_stream_chat_google_emits_error_for_empty_response(
     monkeypatch,
 ) -> None:
@@ -506,6 +598,60 @@ async def test_gateway_stream_chat_google_emits_error_for_empty_response(
     assert "no text and no tool calls" in events[0]["error"]
     assert "prompt_block_reason=SAFETY" in events[0]["error"]
     assert "finish_reason=SAFETY" in events[0]["error"]
+
+
+@pytest.mark.asyncio
+async def test_gateway_stream_chat_google_retries_without_tools_on_empty_response(
+    monkeypatch,
+) -> None:
+    captured_configs: list[Any] = []
+
+    class FakeModels:
+        def __init__(self):
+            self._responses = [
+                SimpleNamespace(text="", function_calls=[], candidates=[]),
+                SimpleNamespace(text="Recovered reply", function_calls=[], candidates=[]),
+            ]
+
+        def generate_content(self, **kwargs):
+            captured_configs.append(kwargs.get("config"))
+            return self._responses.pop(0)
+
+    class FakeGoogleClient:
+        def __init__(self):
+            self.models = FakeModels()
+
+    gateway = AIProviderGateway(
+        settings,
+        google_client_factory=lambda **_kwargs: FakeGoogleClient(),
+    )
+    monkeypatch.setattr(
+        gateway,
+        "_get_tool_mapper",
+        lambda: SimpleNamespace(
+            get_claude_tools=lambda _allowed: [],
+            get_tool_display_name=lambda name: name,
+            execute_tool=None,
+        ),
+    )
+
+    events = [
+        event
+        async for event in gateway.stream_chat_with_tools(
+            message="Test",
+            conversation_history=[],
+            system_prompt="Short answer",
+            allowed_skills=None,
+            tool_context=None,
+            settings_record=SimpleNamespace(ai_primary_provider="google"),
+            provider_key_lookup=lambda _provider: "sk-google-test",
+        )
+    ]
+
+    assert events == [{"type": "token", "content": "Recovered reply"}]
+    assert len(captured_configs) == 2
+    assert getattr(captured_configs[0], "tools", None)
+    assert getattr(captured_configs[1], "tools", None) == []
 
 
 @pytest.mark.asyncio
