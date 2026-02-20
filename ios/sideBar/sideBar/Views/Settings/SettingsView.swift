@@ -349,42 +349,33 @@ private struct SettingsTabsView: View {
 
     var body: some View {
         TabView {
-            ProfileSettingsView(viewModel: viewModel)
+            settingsTabContent(ProfileSettingsView(viewModel: viewModel))
                 .tabItem {
                     Label("Profile", systemImage: "person.crop.circle")
                 }
-            UserSettingsView(viewModel: viewModel)
+            settingsTabContent(UserSettingsView(viewModel: viewModel))
                 .tabItem {
                     Label("User", systemImage: "person.line.dotted.person")
                 }
-            AgentSettingsView(viewModel: viewModel)
+            settingsTabContent(AgentSettingsView(viewModel: viewModel))
                 .tabItem {
                     Label("Agent", systemImage: "brain.fill")
                 }
-            SkillsSettingsView(viewModel: viewModel)
+            settingsTabContent(SkillsSettingsView(viewModel: viewModel))
                 .tabItem {
                     Label("Skills", systemImage: "command.circle.fill")
                 }
-            MemoriesSettingsView(viewModel: memoriesViewModel)
+            settingsTabContent(MemoriesSettingsView(viewModel: memoriesViewModel))
                 .tabItem {
                     Label("Memories", systemImage: "bookmark")
                 }
-            GeneralSettingsView()
+            settingsTabContent(GeneralSettingsView())
                 .tabItem {
                     Label("Other", systemImage: "gearshape")
                 }
         }
         .padding(DesignTokens.Spacing.md)
         .background(settingsBackground)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let savePillState {
-                SettingsSaveStatusPill(state: savePillState)
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
-                    .padding(.bottom, DesignTokens.Spacing.sm)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .allowsHitTesting(false)
-            }
-        }
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -400,5 +391,19 @@ private struct SettingsTabsView: View {
         await viewModel.loadSkills()
         await viewModel.loadShortcutsToken()
         await viewModel.loadProfileImage()
+    }
+
+    @ViewBuilder
+    private func settingsTabContent<Content: View>(_ content: Content) -> some View {
+        content
+            .overlay(alignment: .bottom) {
+                if let savePillState {
+                    SettingsSaveStatusPill(state: savePillState)
+                        .padding(.horizontal, DesignTokens.Spacing.lg)
+                        .padding(.bottom, DesignTokens.Spacing.sm)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .allowsHitTesting(false)
+                }
+            }
     }
 }
