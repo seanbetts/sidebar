@@ -143,7 +143,9 @@ class ProviderToolOrchestrator:
             )
             for tool in tools
         ]
-        google_tools = [types.Tool(function_declarations=function_declarations)]
+        google_tools: list[Any] = [
+            types.Tool(function_declarations=function_declarations)
+        ]
         contents = self._build_google_contents(
             message=message,
             conversation_history=conversation_history,

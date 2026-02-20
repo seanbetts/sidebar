@@ -148,6 +148,22 @@ def test_get_claude_tools_filters_skills():
     assert mapper.tool_name_reverse["Create Note"] not in names
 
 
+def test_get_claude_tools_allows_files_alias_for_fs_skill():
+    tools = {
+        "Read File": {
+            "description": "read file",
+            "input_schema": {"type": "object"},
+            "skill": "fs",
+            "script": "read.py",
+            "build_args": lambda _: [],
+        }
+    }
+    mapper = _build_mapper(tools)
+    claude_tools = mapper.get_claude_tools(allowed_skills=["files"])
+    names = {tool["name"] for tool in claude_tools}
+    assert mapper.tool_name_reverse["Read File"] in names
+
+
 @pytest.mark.asyncio
 async def test_execute_tool_requires_user_id():
     tools = {

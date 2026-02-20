@@ -30,7 +30,15 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     skills = SkillCatalogService.list_skills(skills_dir)
     by_id = {str(skill["id"]): skill for skill in skills}
 
-    assert str(by_id["fs"]["description"]) == "Search, read, write, rename, pin and delete files"
+    assert str(by_id["files"]["description"]) == "Search, read, write, rename, pin and delete files"
+    assert by_id["files"]["legacy_ids"] == ["fs"]
+    assert by_id["files"]["tier"] == "standard"
+    assert by_id["files"]["installable"] is False
+    assert by_id["files"]["default_enabled"] is True
+    assert by_id["audio-transcribe"]["tier"] == "store"
+    assert by_id["audio-transcribe"]["installable"] is True
+    assert by_id["audio-transcribe"]["provider_dependency"] == "openai"
+    assert by_id["audio-transcribe"]["credential_requirements"]
     assert (
         str(by_id["audio-transcribe"]["description"])
         == "Transcribe audio files into text and save the transcripts"
@@ -61,3 +69,7 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert bool(by_id["assistant-identity"]["show_required_badge"]) is False
     assert bool(by_id["assistant-soul"]["show_required_badge"]) is False
     assert all(not str(skill["description"]).endswith(".") for skill in by_id.values())
+
+
+def test_catalog_version_exposed() -> None:
+    assert SkillCatalogService.catalog_version() == 2

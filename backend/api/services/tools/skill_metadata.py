@@ -1,7 +1,23 @@
-"""Skill metadata for display in tool listings."""
+"""Skill metadata and catalog helpers for tool listings."""
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+CATALOG_VERSION = 2
+
+SkillTier = Literal["required", "standard", "store"]
+
+SKILL_ID_ALIASES = {
+    "fs": "files",
+}
+
+LEGACY_SKILL_IDS: dict[str, list[str]] = {
+    "files": ["fs"],
+}
 
 SKILL_DISPLAY = {
-    "fs": {
+    "files": {
         "name": "Files",
         "description": "Search, read, write, rename, pin and delete files",
     },
@@ -82,33 +98,118 @@ SKILL_DISPLAY = {
     },
 }
 
-EXPOSED_SKILLS = {
-    "fs",
+REQUIRED_SKILLS = {
+    "assistant-identity",
+    "assistant-soul",
+}
+
+STANDARD_SKILLS = {
+    "files",
     "notes",
     "tasks",
     "web-save",
     "web-search",
-    "assistant-identity",
-    "assistant-soul",
-    "settings-profile-user",
-    "settings-other-preferences",
     "memory",
+    "settings-profile-user",
     "ui-theme",
-    "prompt-preview",
+}
+
+STORE_SKILLS = {
     "audio-transcribe",
     "youtube-download",
     "youtube-transcribe",
     "subdomain-discover",
     "web-crawler-policy",
     "skill-creator",
+    "prompt-preview",
+    "settings-other-preferences",
 }
 
-NON_TOGGLEABLE_SKILLS = {
-    "assistant-identity",
-    "assistant-soul",
+EXPOSED_SKILLS = REQUIRED_SKILLS | STANDARD_SKILLS | STORE_SKILLS
+
+NON_TOGGLEABLE_SKILLS = set(REQUIRED_SKILLS)
+INSTALLABLE_SKILLS = set(STORE_SKILLS)
+DEFAULT_ENABLED_SKILLS = REQUIRED_SKILLS | STANDARD_SKILLS
+
+SKILL_PROVIDER_DEPENDENCY: dict[str, str] = {
+    "audio-transcribe": "openai",
+    "youtube-transcribe": "openai",
+    "web-crawler-policy": "openai",
 }
+
+SKILL_CREDENTIAL_REQUIREMENTS: dict[str, list[dict[str, Any]]] = {
+    "audio-transcribe": [
+        {
+            "provider": "openai",
+            "key_kind": "api_key",
+            "required": True,
+            "source": "provider_or_skill",
+        }
+    ],
+    "youtube-transcribe": [
+        {
+            "provider": "openai",
+            "key_kind": "api_key",
+            "required": True,
+            "source": "provider_or_skill",
+        }
+    ],
+    "web-crawler-policy": [
+        {
+            "provider": "openai",
+            "key_kind": "api_key",
+            "required": False,
+            "mode": "llm_report",
+            "source": "provider_or_skill",
+        }
+    ],
+}
+
+
+def canonicalize_skill_id(skill_id: str) -> str:
+    """Return canonical skill ID, resolving known legacy aliases."""
+    return SKILL_ID_ALIASES.get(skill_id, skill_id)
+
+
+def get_legacy_skill_ids(skill_id: str) -> list[str]:
+    """Return legacy IDs accepted for a canonical skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    return list(LEGACY_SKILL_IDS.get(canonical, []))
+
+
+def get_skill_tier(skill_id: str) -> SkillTier:
+    """Return tier for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    if canonical in REQUIRED_SKILLS:
+        return "required"
+    if canonical in STORE_SKILLS:
+        return "store"
+    return "standard"
 
 
 def is_skill_user_toggleable(skill_id: str) -> bool:
     """Return whether a skill can be disabled by users."""
-    return skill_id not in NON_TOGGLEABLE_SKILLS
+    return canonicalize_skill_id(skill_id) not in NON_TOGGLEABLE_SKILLS
+
+
+def is_skill_installable(skill_id: str) -> bool:
+    """Return whether a skill can be installed from Store skills."""
+    return canonicalize_skill_id(skill_id) in INSTALLABLE_SKILLS
+
+
+def is_skill_default_enabled(skill_id: str) -> bool:
+    """Return whether a skill defaults to enabled."""
+    return canonicalize_skill_id(skill_id) in DEFAULT_ENABLED_SKILLS
+
+
+def get_provider_dependency(skill_id: str) -> str:
+    """Return provider dependency metadata for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    return SKILL_PROVIDER_DEPENDENCY.get(canonical, "none")
+
+
+def get_credential_requirements(skill_id: str) -> list[dict[str, Any]]:
+    """Return credential requirements metadata for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    requirements = SKILL_CREDENTIAL_REQUIREMENTS.get(canonical, [])
+    return [dict(requirement) for requirement in requirements]

@@ -13,6 +13,7 @@ from api.config import settings
 from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.ai.registry import VALID_AI_PROVIDERS
 from api.services.storage.service import get_storage_backend
+from api.services.tools.skill_metadata import canonicalize_skill_id
 from api.services.user_settings_service import UserSettingsService
 
 logger = logging.getLogger(__name__)
@@ -150,7 +151,7 @@ class SettingsService:
         return None
 
     @staticmethod
-    def _required_skill_ids(catalog: list[dict[str, str | bool]]) -> list[str]:
+    def _required_skill_ids(catalog: list[dict[str, Any]]) -> list[str]:
         """Return skill IDs that users are not allowed to disable."""
         return [
             str(skill["id"])
@@ -162,7 +163,7 @@ class SettingsService:
     def _normalize_enabled_skills(
         requested: list[str],
         *,
-        catalog: list[dict[str, str | bool]],
+        catalog: list[dict[str, Any]],
     ) -> list[str]:
         """Normalize enabled skills, preserving order and forcing required skills."""
         allowed = {str(skill["id"]) for skill in catalog}
@@ -171,9 +172,10 @@ class SettingsService:
         seen: set[str] = set()
 
         for skill_id in requested:
-            if skill_id in allowed and skill_id not in seen:
-                normalized.append(skill_id)
-                seen.add(skill_id)
+            canonical_id = canonicalize_skill_id(skill_id)
+            if canonical_id in allowed and canonical_id not in seen:
+                normalized.append(canonical_id)
+                seen.add(canonical_id)
 
         for skill_id in required:
             if skill_id not in seen:
@@ -202,6 +204,34 @@ class SettingsService:
             if isinstance(skill_id, str)
         ]
         return SettingsService._normalize_enabled_skills(requested, catalog=catalog)
+
+    @staticmethod
+    def _resolve_installed_store_skills(settings_record) -> list[str]:
+        """Resolve installed store skills against the catalog and aliases."""
+        catalog = SkillCatalogService.list_skills(settings.skills_dir)
+        store_ids = {
+            str(skill["id"])
+            for skill in catalog
+            if str(skill.get("tier", "")) == "store"
+        }
+        installed_store_skills = (
+            getattr(settings_record, "installed_store_skills", None)
+            if settings_record
+            else None
+        )
+        if installed_store_skills is None:
+            return []
+
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for skill_id in installed_store_skills:
+            if not isinstance(skill_id, str):
+                continue
+            canonical_id = canonicalize_skill_id(skill_id)
+            if canonical_id in store_ids and canonical_id not in seen:
+                normalized.append(canonical_id)
+                seen.add(canonical_id)
+        return normalized
 
     @staticmethod
     def resolve_enabled_skills(settings_record) -> list[str]:
@@ -524,6 +554,9 @@ class SettingsService:
             "location": settings_record.location if settings_record else None,
             "profile_image_url": SettingsService._profile_image_url(settings_record),
             "enabled_skills": SettingsService._resolve_enabled_skills(settings_record),
+            "installed_store_skills": SettingsService._resolve_installed_store_skills(
+                settings_record
+            ),
             "assistant_identity": SettingsService._resolve_assistant_identity(
                 settings_record
             ),
@@ -619,9 +652,14 @@ class SettingsService:
         if "enabled_skills" in updates and updates["enabled_skills"] is not None:
             catalog = SkillCatalogService.list_skills(settings.skills_dir)
             allowed = {str(skill["id"]) for skill in catalog}
-            invalid = [
-                skill for skill in updates["enabled_skills"] if skill not in allowed
-            ]
+            invalid = []
+            for skill in updates["enabled_skills"]:
+                if not isinstance(skill, str):
+                    invalid.append(str(skill))
+                    continue
+                canonical_id = canonicalize_skill_id(skill)
+                if canonical_id not in allowed:
+                    invalid.append(skill)
             if invalid:
                 raise HTTPException(
                     status_code=400,

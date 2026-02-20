@@ -17,6 +17,7 @@ from api.services.agent.tools.execution import (
 )
 from api.services.agent.tools.registry import get_tool_definitions
 from api.services.ai.gateway import AIProviderGateway
+from api.services.tools.skill_metadata import canonicalize_skill_id
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
 from api.services.user_settings_service import UserSettingsService
 
@@ -25,6 +26,7 @@ SKILLS_REQUIRING_USER_ID = {
     "assistant-soul",
     "settings-profile-user",
     "fs",
+    "files",
     "notes",
     "tasks",
     "web-save",
@@ -364,4 +366,9 @@ class ToolMapper:
             return True
         if allowed_skills is None:
             return True
-        return skill_name in set(allowed_skills)
+        normalized_allowed = {
+            canonicalize_skill_id(skill_id)
+            for skill_id in allowed_skills
+            if isinstance(skill_id, str)
+        }
+        return canonicalize_skill_id(skill_name) in normalized_allowed

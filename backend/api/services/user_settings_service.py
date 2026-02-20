@@ -62,6 +62,7 @@ class UserSettingsService:
         location: Any = UNSET,
         profile_image_path: Any = UNSET,
         enabled_skills: Any = UNSET,
+        installed_store_skills: Any = UNSET,
         assistant_identity: Any = UNSET,
         assistant_soul: Any = UNSET,
         ai_primary_provider: Any = UNSET,
@@ -86,6 +87,7 @@ class UserSettingsService:
             location: Optional location.
             profile_image_path: Optional profile image path.
             enabled_skills: Optional list of enabled skills.
+            installed_store_skills: Optional list of installed store skills.
             assistant_identity: Optional assistant identity payload.
             assistant_soul: Optional assistant soul payload.
             ai_primary_provider: Optional primary AI provider override.
@@ -125,6 +127,9 @@ class UserSettingsService:
             if enabled_skills is not UserSettingsService.UNSET:
                 settings.enabled_skills = enabled_skills
                 flag_modified(settings, "enabled_skills")
+            if installed_store_skills is not UserSettingsService.UNSET:
+                settings.installed_store_skills = installed_store_skills
+                flag_modified(settings, "installed_store_skills")
             if assistant_identity is not UserSettingsService.UNSET:
                 settings.assistant_identity = assistant_identity
                 flag_modified(settings, "assistant_identity")
@@ -168,6 +173,9 @@ class UserSettingsService:
                 enabled_skills=None
                 if enabled_skills is UserSettingsService.UNSET
                 else enabled_skills,
+                installed_store_skills=None
+                if installed_store_skills is UserSettingsService.UNSET
+                else installed_store_skills,
                 assistant_identity=None
                 if assistant_identity is UserSettingsService.UNSET
                 else assistant_identity,

@@ -47,6 +47,8 @@ def test_update_settings_forces_required_skills(test_client):
         json={"enabled_skills": ["fs"]},
     )
     assert response.status_code == 200
+    assert "files" in response.json()["enabled_skills"]
+    assert "fs" not in response.json()["enabled_skills"]
     assert "assistant-identity" in response.json()["enabled_skills"]
     assert "assistant-soul" in response.json()["enabled_skills"]
 

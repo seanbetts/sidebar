@@ -177,6 +177,12 @@ def _ensure_user_settings_columns(connection) -> None:
     )
     connection.execute(
         text(
+            "ALTER TABLE user_settings "
+            "ADD COLUMN IF NOT EXISTS installed_store_skills jsonb"
+        )
+    )
+    connection.execute(
+        text(
             "ALTER TABLE conversations "
             "ADD COLUMN IF NOT EXISTS ai_provider text"
         )

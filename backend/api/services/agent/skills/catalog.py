@@ -8,8 +8,16 @@ from typing import Any
 import yaml
 
 from api.services.tools.skill_metadata import (
+    CATALOG_VERSION,
     EXPOSED_SKILLS,
     SKILL_DISPLAY,
+    canonicalize_skill_id,
+    get_credential_requirements,
+    get_legacy_skill_ids,
+    get_provider_dependency,
+    get_skill_tier,
+    is_skill_default_enabled,
+    is_skill_installable,
     is_skill_user_toggleable,
 )
 
@@ -18,7 +26,12 @@ class SkillCatalogService:
     """Load skill metadata from SKILL.md frontmatter."""
 
     @staticmethod
-    def list_skills(skills_dir: Path) -> list[dict[str, str | bool]]:
+    def catalog_version() -> int:
+        """Return the current catalog version."""
+        return CATALOG_VERSION
+
+    @staticmethod
+    def list_skills(skills_dir: Path) -> list[dict[str, Any]]:
         """List available skills with display metadata.
 
         Args:
@@ -27,111 +40,81 @@ class SkillCatalogService:
         Returns:
             List of skill metadata dicts.
         """
-        skills: list[dict[str, str | bool]] = []
+        skills: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
         category_map = SkillCatalogService._category_map()
 
-        if not skills_dir.exists():
-            return skills
+        if skills_dir.exists():
+            for skill_path in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
+                skill_md = skill_path / "SKILL.md"
+                if not skill_md.exists():
+                    continue
 
-        for skill_path in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
-            skill_md = skill_path / "SKILL.md"
-            if not skill_md.exists():
-                continue
+                metadata = SkillCatalogService._read_frontmatter(skill_md)
+                canonical_id = canonicalize_skill_id(skill_path.name)
+                if canonical_id in seen_ids:
+                    continue
 
-            metadata = SkillCatalogService._read_frontmatter(skill_md)
-            skill_id = skill_path.name
-            display = SkillCatalogService._display_metadata(skill_id)
-            name = (
+                skills.append(
+                    SkillCatalogService._build_skill_entry(
+                        skill_id=canonical_id,
+                        metadata=metadata,
+                        category=category_map.get(canonical_id, "Other"),
+                    )
+                )
+                seen_ids.add(canonical_id)
+
+        for fallback_id in ("ui-theme", "web-search", "memory"):
+            if fallback_id not in seen_ids:
+                skills.append(
+                    SkillCatalogService._build_skill_entry(
+                        skill_id=fallback_id,
+                        metadata={},
+                        category=category_map.get(fallback_id, "System"),
+                    )
+                )
+                seen_ids.add(fallback_id)
+
+        return [skill for skill in skills if str(skill["id"]) in EXPOSED_SKILLS]
+
+    @staticmethod
+    def _build_skill_entry(
+        *,
+        skill_id: str,
+        metadata: dict[str, str],
+        category: str,
+    ) -> dict[str, Any]:
+        """Build one normalized catalog entry."""
+        display = SkillCatalogService._display_metadata(skill_id)
+        user_toggleable = is_skill_user_toggleable(skill_id)
+        return {
+            "id": skill_id,
+            "legacy_ids": get_legacy_skill_ids(skill_id),
+            "name": (
                 SkillCatalogService._display_str(display, "name")
                 or metadata.get("name")
                 or skill_id
-            ).strip()
-            description = (
+            ).strip(),
+            "description": (
                 SkillCatalogService._display_str(display, "description")
                 or metadata.get("description")
                 or ""
-            ).strip()
-            category = category_map.get(skill_id, "Other")
-            user_toggleable = is_skill_user_toggleable(skill_id)
-            skills.append(
-                {
-                    "id": skill_id,
-                    "name": name,
-                    "description": description,
-                    "category": category,
-                    "user_toggleable": user_toggleable,
-                    "show_required_badge": SkillCatalogService._display_bool(
-                        display,
-                        "show_required_badge",
-                        not user_toggleable,
-                    ),
-                }
-            )
-
-        if "ui-theme" not in {str(skill["id"]) for skill in skills}:
-            ui_display = SkillCatalogService._display_metadata("ui-theme")
-            skills.append(
-                {
-                    "id": "ui-theme",
-                    "name": SkillCatalogService._display_str(ui_display, "name")
-                    or "UI Theme",
-                    "description": SkillCatalogService._display_str(
-                        ui_display, "description"
-                    )
-                    or "Allow the assistant to switch light or dark mode",
-                    "category": category_map.get("ui-theme", "System"),
-                    "user_toggleable": is_skill_user_toggleable("ui-theme"),
-                    "show_required_badge": SkillCatalogService._display_bool(
-                        ui_display,
-                        "show_required_badge",
-                        False,
-                    ),
-                }
-            )
-
-        if "web-search" not in {str(skill["id"]) for skill in skills}:
-            web_display = SkillCatalogService._display_metadata("web-search")
-            skills.append(
-                {
-                    "id": "web-search",
-                    "name": SkillCatalogService._display_str(web_display, "name")
-                    or "Web Search",
-                    "description": SkillCatalogService._display_str(
-                        web_display, "description"
-                    )
-                    or "Search the live web for up-to-date information",
-                    "category": category_map.get("web-search", "Web"),
-                    "user_toggleable": is_skill_user_toggleable("web-search"),
-                    "show_required_badge": SkillCatalogService._display_bool(
-                        web_display,
-                        "show_required_badge",
-                        False,
-                    ),
-                }
-            )
-
-        if "memory" not in {str(skill["id"]) for skill in skills}:
-            memory_display = SkillCatalogService._display_metadata("memory")
-            skills.append(
-                {
-                    "id": "memory",
-                    "name": SkillCatalogService._display_str(memory_display, "name")
-                    or "Memory",
-                    "description": SkillCatalogService._display_str(
-                        memory_display, "description"
-                    )
-                    or "Store and manage persistent user memories",
-                    "category": category_map.get("memory", "System"),
-                    "user_toggleable": is_skill_user_toggleable("memory"),
-                    "show_required_badge": SkillCatalogService._display_bool(
-                        memory_display,
-                        "show_required_badge",
-                        False,
-                    ),
-                }
-            )
-
-        return [skill for skill in skills if str(skill["id"]) in EXPOSED_SKILLS]
+            ).strip(),
+            "category": category,
+            "icon_key": skill_id,
+            "tier": get_skill_tier(skill_id),
+            "provider_dependency": get_provider_dependency(skill_id),
+            "credential_requirements": get_credential_requirements(skill_id),
+            "user_toggleable": user_toggleable,
+            "default_enabled": is_skill_default_enabled(skill_id),
+            "installable": is_skill_installable(skill_id),
+            "status": "active",
+            "show_required_badge": SkillCatalogService._display_bool(
+                display,
+                "show_required_badge",
+                not user_toggleable,
+            ),
+        }
 
     @staticmethod
     def _read_frontmatter(skill_md: Path) -> dict[str, str]:
@@ -186,7 +169,7 @@ class SkillCatalogService:
     def _category_map() -> dict[str, str]:
         """Return the static skill category map."""
         return {
-            "fs": "Documents",
+            "files": "Documents",
             "notes": "Productivity",
             "tasks": "Productivity",
             "docx": "Documents",

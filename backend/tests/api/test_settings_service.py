@@ -246,10 +246,11 @@ def test_clean_updates_forces_required_skills(monkeypatch) -> None:
         staticmethod(
             lambda _skills_dir: [
                 {
-                    "id": "fs",
+                    "id": "files",
                     "name": "Files",
                     "description": "File access",
                     "category": "Documents",
+                    "tier": "standard",
                     "user_toggleable": True,
                 },
                 {
@@ -257,6 +258,7 @@ def test_clean_updates_forces_required_skills(monkeypatch) -> None:
                     "name": "Assistant Identity",
                     "description": "Assistant identity controls",
                     "category": "System",
+                    "tier": "required",
                     "user_toggleable": False,
                 },
             ]
@@ -264,7 +266,7 @@ def test_clean_updates_forces_required_skills(monkeypatch) -> None:
     )
 
     cleaned = SettingsService.clean_updates({"enabled_skills": ["fs"]})
-    assert cleaned["enabled_skills"] == ["fs", "assistant-identity"]
+    assert cleaned["enabled_skills"] == ["files", "assistant-identity"]
 
 
 def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
@@ -274,10 +276,11 @@ def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
         staticmethod(
             lambda _skills_dir: [
                 {
-                    "id": "fs",
+                    "id": "files",
                     "name": "Files",
                     "description": "File access",
                     "category": "Documents",
+                    "tier": "standard",
                     "user_toggleable": True,
                 },
                 {
@@ -285,6 +288,7 @@ def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
                     "name": "Assistant Identity",
                     "description": "Assistant identity controls",
                     "category": "System",
+                    "tier": "required",
                     "user_toggleable": False,
                 },
             ]
@@ -293,7 +297,27 @@ def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
     settings_record = SimpleNamespace(enabled_skills=["fs"])
 
     resolved = SettingsService._resolve_enabled_skills(settings_record)
-    assert resolved == ["fs", "assistant-identity"]
+    assert resolved == ["files", "assistant-identity"]
+
+
+def test_resolve_installed_store_skills_filters_non_store_and_aliases(monkeypatch) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {"id": "files", "tier": "standard"},
+                {"id": "audio-transcribe", "tier": "store"},
+                {"id": "youtube-transcribe", "tier": "store"},
+            ]
+        ),
+    )
+    settings_record = SimpleNamespace(
+        installed_store_skills=["audio-transcribe", "files", "fs", "youtube-transcribe"]
+    )
+
+    resolved = SettingsService._resolve_installed_store_skills(settings_record)
+    assert resolved == ["audio-transcribe", "youtube-transcribe"]
 
 
 def test_clean_updates_accepts_ai_provider_fields() -> None:

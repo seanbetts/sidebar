@@ -61,6 +61,7 @@ class SettingsResponse(BaseModel):
     location: str | None = None
     profile_image_url: str | None = None
     enabled_skills: list[str] = []
+    installed_store_skills: list[str] = []
     assistant_identity: AssistantIdentityPayload | None = None
     assistant_identity_meta: AgentFieldMetaPayload | None = None
     assistant_soul: AssistantSoulPayload | None = None
