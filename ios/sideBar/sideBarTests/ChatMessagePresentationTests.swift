@@ -37,6 +37,42 @@ final class ChatMessagePresentationTests: XCTestCase {
         XCTAssertFalse(ChatMessagePresentation.showsHeaderThinkingIndicator(for: message))
     }
 
+    func testShouldAnimateThinkingDismissalWhenStreamingAssistantTransitionsFromEmptyToContent() {
+        let message = makeMessage(role: .assistant, status: .streaming, content: "Hello")
+
+        XCTAssertTrue(
+            ChatMessagePresentation.shouldAnimateThinkingDismissal(
+                for: message,
+                previousContent: " \n ",
+                newContent: "Hello"
+            )
+        )
+    }
+
+    func testShouldNotAnimateThinkingDismissalWhenStreamingAssistantAlreadyHasContent() {
+        let message = makeMessage(role: .assistant, status: .streaming, content: "Hello again")
+
+        XCTAssertFalse(
+            ChatMessagePresentation.shouldAnimateThinkingDismissal(
+                for: message,
+                previousContent: "Hello",
+                newContent: "Hello again"
+            )
+        )
+    }
+
+    func testShouldNotAnimateThinkingDismissalForCompleteAssistantMessage() {
+        let message = makeMessage(role: .assistant, status: .complete, content: "Hello")
+
+        XCTAssertFalse(
+            ChatMessagePresentation.shouldAnimateThinkingDismissal(
+                for: message,
+                previousContent: "",
+                newContent: "Hello"
+            )
+        )
+    }
+
     private func makeMessage(role: MessageRole, status: MessageStatus, content: String) -> Message {
         Message(
             id: UUID().uuidString,

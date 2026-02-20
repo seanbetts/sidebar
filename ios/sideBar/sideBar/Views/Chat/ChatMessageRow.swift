@@ -30,6 +30,9 @@ struct ChatMessageRow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var copyFeedback = ChatMessageCopyFeedbackState()
     @State private var resetCopyFeedbackTask: Task<Void, Never>?
+    @State private var thinkingText = ChatMessagePresentation.thinkingPlaceholderText
+    @State private var isAnimatingThinkingDismissal = false
+    @State private var thinkingDismissalTask: Task<Void, Never>?
     private let maxBubbleWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
 
     var body: some View {
@@ -71,16 +74,23 @@ struct ChatMessageRow: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .disabled(showsThinkingPlaceholder)
-                    .opacity(showsThinkingPlaceholder ? 0.45 : 1.0)
+                    .disabled(showsThinkingBody)
+                    .opacity(showsThinkingBody ? 0.45 : 1.0)
                     .accessibilityLabel(copyFeedback.accessibilityLabel)
                 }
                 .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
 
-            SideBarMarkdown(text: message.content, style: .chat)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if showsThinkingBody {
+                Text(thinkingText)
+                    .font(DesignTokens.Typography.body)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                SideBarMarkdown(text: message.content, style: .chat)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             if message.status == .error, let error = message.error {
                 Text(error)
@@ -108,6 +118,19 @@ struct ChatMessageRow: View {
         .onDisappear {
             resetCopyFeedbackTask?.cancel()
             resetCopyFeedbackTask = nil
+            thinkingDismissalTask?.cancel()
+            thinkingDismissalTask = nil
+        }
+        .onAppear {
+            syncThinkingPlaceholder()
+        }
+        .onChange(of: message.content) { oldContent, newContent in
+            handleMessageContentChange(from: oldContent, to: newContent)
+        }
+        .onChange(of: message.status) { _, newStatus in
+            if newStatus != .streaming {
+                stopThinkingDismissalAnimation(resetText: true)
+            }
         }
     }
 
@@ -164,8 +187,71 @@ struct ChatMessageRow: View {
         ChatMessagePresentation.showsThinkingPlaceholder(for: message)
     }
 
+    private var showsThinkingBody: Bool {
+        showsThinkingPlaceholder || isAnimatingThinkingDismissal
+    }
+
     private var showsHeaderThinkingIndicator: Bool {
         ChatMessagePresentation.showsHeaderThinkingIndicator(for: message)
+    }
+
+    private func handleMessageContentChange(from oldContent: String, to newContent: String) {
+        if ChatMessagePresentation.shouldAnimateThinkingDismissal(
+            for: message,
+            previousContent: oldContent,
+            newContent: newContent
+        ) {
+            startThinkingDismissalAnimationIfNeeded()
+            return
+        }
+
+        if ChatMessagePresentation.isContentEffectivelyEmpty(newContent) {
+            syncThinkingPlaceholder()
+            return
+        }
+
+        if message.status != .streaming {
+            stopThinkingDismissalAnimation(resetText: true)
+        }
+    }
+
+    private func startThinkingDismissalAnimationIfNeeded() {
+        guard !isAnimatingThinkingDismissal else {
+            return
+        }
+        isAnimatingThinkingDismissal = true
+        thinkingDismissalTask?.cancel()
+        thinkingDismissalTask = Task { @MainActor in
+            while !thinkingText.isEmpty {
+                try? await Task.sleep(nanoseconds: ChatMessagePresentation.thinkingDismissalFrameIntervalNanoseconds)
+                if Task.isCancelled {
+                    return
+                }
+                thinkingText.removeLast()
+            }
+            isAnimatingThinkingDismissal = false
+            thinkingText = ChatMessagePresentation.thinkingPlaceholderText
+            thinkingDismissalTask = nil
+        }
+    }
+
+    private func syncThinkingPlaceholder() {
+        guard showsThinkingPlaceholder else {
+            return
+        }
+        thinkingText = ChatMessagePresentation.thinkingPlaceholderText
+        if isAnimatingThinkingDismissal {
+            stopThinkingDismissalAnimation(resetText: true)
+        }
+    }
+
+    private func stopThinkingDismissalAnimation(resetText: Bool) {
+        thinkingDismissalTask?.cancel()
+        thinkingDismissalTask = nil
+        isAnimatingThinkingDismissal = false
+        if resetText {
+            thinkingText = ChatMessagePresentation.thinkingPlaceholderText
+        }
     }
 
     private func copyMessage() {
@@ -205,15 +291,33 @@ struct ChatMessageRow: View {
 }
 
 enum ChatMessagePresentation {
+    static let thinkingPlaceholderText = "Thinking..."
+    static let thinkingDismissalFrameIntervalNanoseconds: UInt64 = 20_000_000
+
     static func showsThinkingPlaceholder(for message: Message) -> Bool {
         guard isAssistantStreaming(message) else {
             return false
         }
-        return message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return isContentEffectivelyEmpty(message.content)
     }
 
     static func showsHeaderThinkingIndicator(for message: Message) -> Bool {
         isAssistantStreaming(message)
+    }
+
+    static func shouldAnimateThinkingDismissal(
+        for message: Message,
+        previousContent: String,
+        newContent: String
+    ) -> Bool {
+        guard isAssistantStreaming(message) else {
+            return false
+        }
+        return isContentEffectivelyEmpty(previousContent) && !isContentEffectivelyEmpty(newContent)
+    }
+
+    static func isContentEffectivelyEmpty(_ content: String) -> Bool {
+        content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private static func isAssistantStreaming(_ message: Message) -> Bool {
