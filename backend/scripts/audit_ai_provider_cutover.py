@@ -19,7 +19,7 @@ if str(BACKEND_ROOT) not in sys.path:
 # Keep script behavior deterministic if local env omits legacy provider vars.
 os.environ.setdefault("ANTHROPIC_API_KEY", "local-dev-placeholder")
 
-from api.db.session import SessionLocal  # noqa: E402
+from api.db.session import SessionLocal, set_session_user_id  # noqa: E402
 from api.services.ai.registry import AIProvider, VALID_AI_PROVIDERS  # noqa: E402
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService  # noqa: E402
 from api.services.user_settings_service import UserSettingsService  # noqa: E402
@@ -58,6 +58,8 @@ def _parse_providers(raw: str | None) -> list[AIProvider]:
 def _discover_user_ids(db, explicit_user_ids: list[str]) -> list[str]:
     """Discover users from settings and provider-key tables."""
     user_ids = {user_id.strip() for user_id in explicit_user_ids if user_id.strip()}
+    if user_ids:
+        return sorted(user_ids)
 
     settings_ids = db.execute(
         text("SELECT DISTINCT user_id FROM user_settings WHERE user_id IS NOT NULL")
@@ -142,14 +144,16 @@ def run_audit(*, user_ids: list[str], required_providers: list[AIProvider]) -> i
             print("No user IDs discovered; nothing to audit.")
             return 0
 
-        results: list[UserAuditResult] = [
-            _audit_user(
-                db,
-                user_id=user_id,
-                required_providers=required_providers,
+        results: list[UserAuditResult] = []
+        for user_id in resolved_user_ids:
+            set_session_user_id(db, user_id)
+            results.append(
+                _audit_user(
+                    db,
+                    user_id=user_id,
+                    required_providers=required_providers,
+                )
             )
-            for user_id in resolved_user_ids
-        ]
 
     print("AI provider cutover audit")
     print(

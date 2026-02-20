@@ -19,7 +19,7 @@ if str(BACKEND_ROOT) not in sys.path:
 # Settings requires an Anthropic key value, even when not used by this script.
 os.environ.setdefault("ANTHROPIC_API_KEY", "local-dev-placeholder")
 
-from api.db.session import SessionLocal  # noqa: E402
+from api.db.session import SessionLocal, set_session_user_id  # noqa: E402
 from api.services.ai.registry import AIProvider, VALID_AI_PROVIDERS  # noqa: E402
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService  # noqa: E402
 from api.services.user_settings_service import UserSettingsService  # noqa: E402
@@ -98,6 +98,8 @@ def _resolve_selected_provider(
 
 def _discover_user_ids(db, explicit_user_ids: list[str]) -> list[str]:
     user_ids = {user_id.strip() for user_id in explicit_user_ids if user_id.strip()}
+    if user_ids:
+        return sorted(user_ids)
 
     settings_ids = db.execute(
         text("SELECT DISTINCT user_id FROM user_settings WHERE user_id IS NOT NULL")
@@ -127,6 +129,7 @@ def run_backfill(*, apply: bool, seed_from_managed: bool, user_ids: list[str]) -
             return 0
 
         for user_id in resolved_user_ids:
+            set_session_user_id(db, user_id)
             seeded_providers: list[str] = []
             if seed_from_managed:
                 seeded_providers = _seed_managed_keys(db, user_id, apply=apply)
@@ -134,7 +137,8 @@ def run_backfill(*, apply: bool, seed_from_managed: bool, user_ids: list[str]) -
             settings_record = UserSettingsService.get_settings(db, user_id)
             existing_primary = (
                 settings_record.ai_primary_provider
-                if settings_record and isinstance(settings_record.ai_primary_provider, str)
+                if settings_record
+                and isinstance(settings_record.ai_primary_provider, str)
                 else None
             )
             providers_with_keys = _active_key_providers(db, user_id)
@@ -174,7 +178,9 @@ def run_backfill(*, apply: bool, seed_from_managed: bool, user_ids: list[str]) -
 
         print(f"mode={'apply' if apply else 'dry-run'}")
         for outcome in outcomes:
-            seeded = ",".join(outcome.seeded_providers) if outcome.seeded_providers else "-"
+            seeded = (
+                ",".join(outcome.seeded_providers) if outcome.seeded_providers else "-"
+            )
             provider = outcome.selected_provider or "-"
             print(
                 f"user_id={outcome.user_id} status={outcome.status} "
