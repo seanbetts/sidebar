@@ -325,6 +325,36 @@ class ProviderToolOrchestrator:
             args = getattr(call, "args", None)
             arguments = args if isinstance(args, dict) else {}
             parsed.append(LLMToolCall(call_id=call_id, name=name, arguments=arguments))
+        if parsed:
+            return parsed
+
+        # Some Google responses surface function calls only in candidate parts.
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                function_call = getattr(part, "function_call", None)
+                if function_call is None and isinstance(part, dict):
+                    function_call = part.get("function_call")
+                if function_call is None:
+                    continue
+
+                if isinstance(function_call, dict):
+                    name = function_call.get("name")
+                    call_id = function_call.get("id") or str(uuid.uuid4())
+                    args = function_call.get("args")
+                else:
+                    name = getattr(function_call, "name", None)
+                    call_id = getattr(function_call, "id", None) or str(uuid.uuid4())
+                    args = getattr(function_call, "args", None)
+                if not isinstance(name, str) or not name:
+                    continue
+
+                arguments = args if isinstance(args, dict) else {}
+                parsed.append(
+                    LLMToolCall(call_id=call_id, name=name, arguments=arguments)
+                )
         return parsed
 
     @staticmethod
