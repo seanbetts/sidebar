@@ -242,7 +242,10 @@ extension TasksPanelView {
     }
 
     private func handleNewTaskTap() {
-        if isCompact {
+        if Self.shouldDeepLinkForCompactNewTask(
+            isCompact: isCompact,
+            tasksPhoneDetailRouteId: environment.tasksPhoneDetailRouteId
+        ) {
             environment.commandSelection = .tasks
             environment.pendingNewTaskDeepLink = true
             environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
@@ -281,6 +284,15 @@ extension TasksPanelView {
         }
     }
 
+}
+
+extension TasksPanelView {
+    static func shouldDeepLinkForCompactNewTask(
+        isCompact: Bool,
+        tasksPhoneDetailRouteId: String?
+    ) -> Bool {
+        isCompact && tasksPhoneDetailRouteId == nil
+    }
 }
 
 private extension TasksPanelView {

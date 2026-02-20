@@ -144,6 +144,12 @@ struct TasksDetailView: View {
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == .tasks else { return }
+            if Self.shortcutActionDoesNotRequireActiveTask(event.action) {
+                if event.action == .newItem {
+                    viewModel.startNewTask()
+                }
+                return
+            }
             guard let task = activeTask(in: state) else { return }
             switch event.action {
             case .completeTask:

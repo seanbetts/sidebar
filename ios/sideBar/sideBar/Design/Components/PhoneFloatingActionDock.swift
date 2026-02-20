@@ -30,8 +30,11 @@ struct PhoneFloatingActionButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(DesignTokens.Typography.labelMd)
-                .frame(width: PhoneFloatingActionMetrics.buttonSize, height: PhoneFloatingActionMetrics.buttonSize)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
         }
+        .frame(width: PhoneFloatingActionMetrics.buttonSize, height: PhoneFloatingActionMetrics.buttonSize)
+        .contentShape(Rectangle())
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
     }

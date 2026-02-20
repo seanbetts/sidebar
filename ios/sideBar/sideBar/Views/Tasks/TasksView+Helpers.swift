@@ -1,6 +1,10 @@
 import SwiftUI
 
 extension TasksDetailView {
+    static func shortcutActionDoesNotRequireActiveTask(_ action: ShortcutAction) -> Bool {
+        action == .newItem
+    }
+
     func openNotes(_ task: TaskItem) {
         notesTask = task
         setActiveTask(task)
