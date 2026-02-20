@@ -137,6 +137,7 @@ def test_pin():
 
 ```bash
 # Backend
+./backend/scripts/setup_test_db.sh
 cd backend
 UV_NATIVE_TLS=1 uv run python scripts/check_test_db_connectivity.py
 DATABASE_URL=postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test UV_NATIVE_TLS=1 uv run pytest -q -rs
@@ -171,6 +172,7 @@ xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
 ```
 
 The default backend lane targets local Postgres on `localhost:5433/sidebar_test`.
+`setup_test_db.sh` recreates the DB and applies Alembic migrations, and preflight now also checks schema baseline/stamping consistency.
 Hosted Supabase runs require `USE_SUPABASE_TEST_DB=1` plus dedicated non-placeholder test credentials.
 Hosted credentials are read from `backend/.env.test` for test runs.
 If `.env.test` keeps `SUPABASE_POSTGRES_PSWD` as a placeholder, Doppler-backed runs can hydrate the real value at runtime via `DOPPLER_TOKEN`.

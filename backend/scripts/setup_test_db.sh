@@ -8,7 +8,6 @@ echo "Setting up test database..."
 
 # Database credentials (must match .env.test)
 DB_USER="sidebar"
-# shellcheck disable=SC2034  # DB_PASSWORD used by docker-compose.test.yml
 DB_PASSWORD="sidebar_dev"
 DB_NAME="sidebar_test"
 CONTAINER_NAME="sidebar-test-postgres"
@@ -49,7 +48,23 @@ echo "Creating test database: $DB_NAME"
 docker exec "$CONTAINER_NAME" psql -h localhost -U "$DB_USER" -d postgres \
     -c "CREATE DATABASE $DB_NAME;"
 
-echo "✓ Test database created successfully!"
+TEST_DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5433/${DB_NAME}"
+BACKEND_ROOT="${SCRIPT_DIR}/.."
+
+echo "Applying Alembic migrations to test database..."
+if command -v uv >/dev/null 2>&1; then
+    (
+        cd "$BACKEND_ROOT"
+        DATABASE_URL_DIRECT="$TEST_DATABASE_URL" UV_NATIVE_TLS=1 uv run alembic -c api/alembic.ini upgrade head
+    )
+else
+    (
+        cd "$BACKEND_ROOT"
+        DATABASE_URL_DIRECT="$TEST_DATABASE_URL" alembic -c api/alembic.ini upgrade head
+    )
+fi
+
+echo "✓ Test database created and migrated successfully!"
 echo ""
 echo "You can now run tests with:"
 echo "  pytest tests/"

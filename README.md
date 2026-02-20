@@ -250,6 +250,7 @@ CLEANUP_TEST_DB=1 ./backend/scripts/run_tests.sh
 Backend tests now default to a local test database:
 
 ```bash
+./backend/scripts/setup_test_db.sh
 cd backend
 UV_NATIVE_TLS=1 uv run python scripts/check_test_db_connectivity.py
 DATABASE_URL=postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test UV_NATIVE_TLS=1 uv run pytest -q -rs
@@ -275,6 +276,7 @@ When `USE_SUPABASE_TEST_DB=1` is set, keep hosted project/user settings in `back
 You can keep `SUPABASE_POSTGRES_PSWD` as a placeholder there when Doppler is configured (`DOPPLER_TOKEN`); the hosted lane fetches the real DB password at runtime.
 `SUPABASE_APP_PSWD` is supported only as a legacy fallback and is not required in `backend/.env.test`.
 Preflight validation checks for common misconfiguration and runs `SELECT 1` before pytest.
+It also verifies the Alembic baseline so test schemas are never unstamped/drifted.
 
 ### Frontend Tests
 

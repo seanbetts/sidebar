@@ -441,10 +441,9 @@ def mock_env_vars(monkeypatch, mock_service_account_json):
 def test_db_engine():
     """Create a test database engine for PostgreSQL.
 
-    This is a session-scoped fixture that creates the test database schema once
-    and tears it down after all tests complete.
+    This is a session-scoped fixture that validates database connectivity.
+    Schema lifecycle for the local lane is Alembic-managed via setup_test_db.sh.
     """
-    from api.db.base import Base
     from sqlalchemy import create_engine, text
 
     # Use the test database URL
@@ -460,20 +459,8 @@ def test_db_engine():
         engine.dispose()
         pytest.skip(f"Test database unavailable: {exc}")
 
-    if not use_supabase_db:
-        # Local lane owns table lifecycle for deterministic setup.
-        with engine.connect() as connection:
-            connection.execute(text("SET search_path TO public"))
-            Base.metadata.create_all(bind=connection)
-            _ensure_user_settings_columns(connection)
-
     yield engine
 
-    if not use_supabase_db:
-        # Local lane cleans up after the suite; hosted lane must not drop tables.
-        with engine.connect() as connection:
-            connection.execute(text("SET search_path TO public"))
-            Base.metadata.drop_all(bind=connection)
     engine.dispose()
 
 
@@ -516,8 +503,6 @@ def test_db(test_db_engine):
     db = TestSessionLocal()
     db.info["force_public_search_path"] = True
     db.execute(text("SET search_path TO public"))
-    Base.metadata.create_all(bind=db.connection())
-    _ensure_user_settings_columns(db.connection())
 
     try:
         yield db

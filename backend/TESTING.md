@@ -13,6 +13,7 @@ Guide for running tests in the sideBar backend.
    ```bash
    ./scripts/setup_test_db.sh
    ```
+   This script recreates `sidebar_test` and applies all Alembic migrations to `head`.
 
 ## Running Tests
 
@@ -57,16 +58,13 @@ Tests automatically load from `.env.test`:
 
 ### Database Setup
 
-The test database is managed by pytest fixtures:
+Database schema lifecycle is Alembic-managed:
 
-1. **`test_db_engine`** (session-scoped)
-   - Creates database schema once before all tests
-   - Drops schema after all tests complete
+1. Run `./scripts/setup_test_db.sh` to recreate `sidebar_test` and migrate to `head`
+2. Run `python scripts/check_test_db_connectivity.py` to verify connectivity and baseline
+3. Run pytest
 
-2. **`test_db`** (function-scoped)
-   - Provides clean database session for each test
-   - Truncates all tables after each test
-   - Ensures test isolation
+The `test_db` fixture still truncates tables after each test to preserve isolation.
 
 ## Test Structure
 
@@ -135,6 +133,12 @@ ERROR: PostgreSQL is not running on localhost:5433
 sqlalchemy.exc.OperationalError: database "sidebar_test" does not exist
 ```
 **Solution**: Run `./scripts/setup_test_db.sh`
+
+### Baseline/stamping mismatch
+```
+DB preflight failed: schema tables exist but alembic_version is empty
+```
+**Solution**: Recreate and migrate test DB with `./scripts/setup_test_db.sh`
 
 ### Permission denied on test database
 ```
