@@ -27,7 +27,7 @@ from api.config import settings  # noqa: E402
 from api.db.session import SessionLocal, set_session_user_id  # noqa: E402
 from api.services.ai.gateway import AIProviderGateway  # noqa: E402
 from api.services.ai.policy import AICapabilityUnavailableError  # noqa: E402
-from api.services.ai.registry import AIProvider  # noqa: E402
+from api.services.ai.registry import AIProvider, get_default_model  # noqa: E402
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService  # noqa: E402
 
 
@@ -222,19 +222,24 @@ def main() -> int:
                     continue
 
                 if not args.dry_run:
-                    events = asyncio.run(
-                        _collect_chat_events(
-                            gateway,
-                            provider=provider,
-                            user_message="Reply with exactly: smoke-ok",
-                            db=db,
-                            user_id=args.user_id,
-                            provider_key_lookup=provider_key_lookup,
-                            allowed_skills=[],
+                    chat_error: str | None = None
+                    token_text = ""
+                    try:
+                        events = asyncio.run(
+                            _collect_chat_events(
+                                gateway,
+                                provider=provider,
+                                user_message="Reply with exactly: smoke-ok",
+                                db=db,
+                                user_id=args.user_id,
+                                provider_key_lookup=provider_key_lookup,
+                                allowed_skills=[],
+                            )
                         )
-                    )
-                    chat_error = _has_stream_error(events)
-                    token_text = _token_text(events)
+                        chat_error = _has_stream_error(events)
+                        token_text = _token_text(events)
+                    except Exception as error:  # pragma: no cover - smoke script resilience
+                        chat_error = str(error)
                     results.append(
                         CheckResult(
                             name=f"{provider}: chat live",
@@ -243,51 +248,77 @@ def main() -> int:
                         )
                     )
 
-                try:
-                    title_result = asyncio.run(
-                        gateway.generate_title(
-                            user_message="Plan sprint goals",
-                            assistant_message="Let's define top priorities",
-                            settings_record=SimpleNamespace(ai_primary_provider=provider),
-                            provider_key_lookup=provider_key_lookup,
+                if args.dry_run:
+                    try:
+                        title_model = get_default_model(provider, "title", settings)
+                        results.append(
+                            CheckResult(
+                                name=f"{provider}: title model",
+                                ok=True,
+                                details=title_model,
+                            )
                         )
-                    )
-                    title_text = (title_result.raw_title or "").strip()
-                    results.append(
-                        CheckResult(
-                            name=f"{provider}: title model",
-                            ok=bool(title_text),
-                            details=f"{title_result.provider} -> {title_text[:80]}",
+                    except Exception as error:  # pragma: no cover - smoke script resilience
+                        results.append(
+                            CheckResult(
+                                name=f"{provider}: title model",
+                                ok=False,
+                                details=str(error),
+                            )
                         )
-                    )
-                except Exception as error:  # pragma: no cover - smoke script resilience
-                    results.append(
-                        CheckResult(
-                            name=f"{provider}: title model",
-                            ok=False,
-                            details=str(error),
+                else:
+                    try:
+                        title_result = asyncio.run(
+                            gateway.generate_title(
+                                user_message="Plan sprint goals",
+                                assistant_message="Let's define top priorities",
+                                settings_record=SimpleNamespace(ai_primary_provider=provider),
+                                provider_key_lookup=provider_key_lookup,
+                            )
                         )
-                    )
+                        title_text = (title_result.raw_title or "").strip()
+                        results.append(
+                            CheckResult(
+                                name=f"{provider}: title model",
+                                ok=bool(title_text),
+                                details=f"{title_result.provider} -> {title_text[:80]}",
+                            )
+                        )
+                    except Exception as error:  # pragma: no cover - smoke script resilience
+                        results.append(
+                            CheckResult(
+                                name=f"{provider}: title model",
+                                ok=False,
+                                details=str(error),
+                            )
+                        )
 
                 if not args.dry_run and not args.skip_tools:
-                    tool_events = asyncio.run(
-                        _collect_chat_events(
-                            gateway,
-                            provider=provider,
-                            user_message=(
-                                "You must call the Generate_Prompts tool once before "
-                                "replying. After tool execution, reply with exactly: tool-ok"
-                            ),
-                            db=db,
-                            user_id=args.user_id,
-                            provider_key_lookup=provider_key_lookup,
-                            allowed_skills=["prompt-preview"],
+                    tool_error: str | None = None
+                    tool_call_count = 0
+                    try:
+                        tool_events = asyncio.run(
+                            _collect_chat_events(
+                                gateway,
+                                provider=provider,
+                                user_message=(
+                                    "You must call the Generate_Prompts tool once before "
+                                    "replying. After tool execution, reply with exactly: tool-ok"
+                                ),
+                                db=db,
+                                user_id=args.user_id,
+                                provider_key_lookup=provider_key_lookup,
+                                allowed_skills=["prompt-preview"],
+                            )
                         )
-                    )
-                    tool_error = _has_stream_error(tool_events)
-                    tool_call_count = sum(
-                        1 for event in tool_events if event.get("type") == "tool_call"
-                    )
+                        tool_error = _has_stream_error(tool_events)
+                        tool_call_count = sum(
+                            1
+                            for event in tool_events
+                            if event.get("type") == "tool_call"
+                        )
+                    except Exception as error:  # pragma: no cover - smoke script resilience
+                        tool_error = str(error)
                     results.append(
                         CheckResult(
                             name=f"{provider}: tool orchestration",
