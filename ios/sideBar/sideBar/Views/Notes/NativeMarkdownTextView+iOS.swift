@@ -49,8 +49,13 @@ struct NativeMarkdownTextView: UIViewRepresentable {
         }
         if syncSelection {
             let desiredRange = nsRange(from: selection, in: text)
-            if textView.selectedRange != desiredRange {
+            if context.coordinator.shouldApplyDesiredSelection(
+                desiredRange: desiredRange,
+                currentRange: textView.selectedRange,
+                isFirstResponder: textView.isFirstResponder
+            ) {
                 textView.selectedRange = desiredRange
+                context.coordinator.lastSelectionReportedByUIKit = desiredRange
             }
         }
         if let markdownTextView = textView as? MarkdownTextView {
@@ -67,6 +72,7 @@ struct NativeMarkdownTextView: UIViewRepresentable {
         var parent: NativeMarkdownTextView
         var isUpdating = false
         var tapRecognizer: UITapGestureRecognizer?
+        var lastSelectionReportedByUIKit: NSRange?
 
         init(_ parent: NativeMarkdownTextView) {
             self.parent = parent
@@ -83,6 +89,7 @@ struct NativeMarkdownTextView: UIViewRepresentable {
                 parent.text = snapshot
             }
             if parent.syncSelection {
+                lastSelectionReportedByUIKit = textView.selectedRange
                 parent.selection = selectionFromRange(textView.selectedRange, in: snapshot)
             }
             if let markdownTextView = textView as? MarkdownTextView {
@@ -98,11 +105,24 @@ struct NativeMarkdownTextView: UIViewRepresentable {
             if parent.text != snapshot {
                 parent.text = snapshot
             }
+            lastSelectionReportedByUIKit = textView.selectedRange
             parent.selection = selectionFromRange(textView.selectedRange, in: snapshot)
             if let markdownTextView = textView as? MarkdownTextView {
                 markdownTextView.refreshTypingAttributesForSelection()
             }
             textView.setNeedsDisplay()
+        }
+
+        func shouldApplyDesiredSelection(
+            desiredRange: NSRange,
+            currentRange: NSRange,
+            isFirstResponder: Bool
+        ) -> Bool {
+            guard desiredRange != currentRange else { return false }
+            guard isFirstResponder else { return true }
+            // While the native control is focused, prefer keyboard-driven selection changes
+            // over stale SwiftUI state to preserve caret navigation and shift-extend behavior.
+            return lastSelectionReportedByUIKit != desiredRange
         }
     }
 }
