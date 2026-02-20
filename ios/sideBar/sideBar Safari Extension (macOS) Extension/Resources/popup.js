@@ -1,19 +1,19 @@
 const status = document.getElementById("status");
 const stateIcon = document.getElementById("state-icon");
-const STATUS_TONES = ["tone-pending", "tone-success", "tone-error"];
-const TONE_TO_GLYPH = {
-    pending: "…",
-    success: "✓",
-    error: "!"
-};
+const stateGlyph = document.getElementById("state-glyph");
 
 const setStatus = (text, tone = "pending") => {
-    STATUS_TONES.forEach((className) => status.classList.remove(className));
-    STATUS_TONES.forEach((className) => stateIcon.classList.remove(className));
-    const toneClass = `tone-${tone}`;
-    status.classList.add(toneClass);
-    stateIcon.classList.add(toneClass);
-    stateIcon.textContent = TONE_TO_GLYPH[tone] ?? TONE_TO_GLYPH.pending;
+    stateIcon.classList.remove("kind-pending", "kind-success", "kind-error");
+    stateIcon.classList.add(`kind-${tone}`);
+
+    if (tone === "success") {
+        stateGlyph.textContent = "✓";
+    } else if (tone === "error") {
+        stateGlyph.textContent = "✕";
+    } else {
+        stateGlyph.textContent = "";
+    }
+
     status.textContent = text;
 };
 
@@ -61,22 +61,6 @@ const saveUrl = async (url) => {
     return false;
 };
 
-const saveCurrentTab = async () => {
-    setStatus("Saving...", "pending");
-    try {
-        const tab = await getActiveTab();
-        const url = tab?.url ?? null;
-        if (!url) {
-            setStatus(CODE_TO_MESSAGE.no_active_url, "error");
-            return false;
-        }
-        return await saveUrl(url);
-    } catch (_error) {
-        setStatus(CODE_TO_MESSAGE.network_error, "error");
-        return false;
-    }
-};
-
 const saveWithRetry = async (retries, delayMs) => {
     try {
         const tab = await getActiveTab();
@@ -103,5 +87,6 @@ const saveWithRetry = async (retries, delayMs) => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+    setStatus("Saving website...", "pending");
     saveWithRetry(12, 150);
 });

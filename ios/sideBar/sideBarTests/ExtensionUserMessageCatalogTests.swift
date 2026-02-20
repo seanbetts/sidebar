@@ -91,7 +91,14 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
             targetDirectory: "sideBar Safari Extension (macOS) Extension/Resources"
         )
 
-        for resource in ["popup.html", "popup.css", "popup.js"] {
+        for resource in [
+            "popup.html",
+            "popup.css",
+            "popup.js",
+            "manifest.json",
+            "background.js",
+            "content.js"
+        ] {
             let iosText = try resourceText(
                 in: iosResources,
                 filename: resource

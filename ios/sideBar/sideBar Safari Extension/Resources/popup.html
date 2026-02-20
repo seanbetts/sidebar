@@ -6,16 +6,16 @@
     <script type="module" src="popup.js"></script>
 </head>
 <body>
-    <div class="shell">
-        <div class="container">
-            <picture class="logo-wrap">
-                <source srcset="images/logo-dark.png" media="(prefers-color-scheme: dark)">
-                <img class="logo" src="images/logo-light.png" alt="sideBar logo">
+    <div class="share-state">
+        <div class="grab-handle" aria-hidden="true"></div>
+        <div id="state-icon" class="state-icon kind-pending" aria-hidden="true">
+            <picture class="loading-wrap">
+                <source srcset="images/loading-dark.gif" media="(prefers-color-scheme: dark)">
+                <img id="loading-gif" class="loading-gif" src="images/loading-light.gif" alt="" />
             </picture>
-            <div class="title">sideBar</div>
-            <div id="state-icon" class="state-icon tone-pending" aria-hidden="true">…</div>
-            <div id="status" class="status tone-pending" role="status" aria-live="polite">Saving...</div>
+            <span id="state-glyph" class="state-glyph"></span>
         </div>
+        <div id="status" class="status" role="status" aria-live="polite">Saving website...</div>
     </div>
 </body>
 </html>

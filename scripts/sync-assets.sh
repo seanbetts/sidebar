@@ -79,6 +79,8 @@ sync_file "${LIGHT_128_SRC}" "ios/sideBar/ShareExtension/Resources/images/loadin
 sync_file "${DARK_128_SRC}" "ios/sideBar/ShareExtension/Resources/images/loading-dark-128.gif"
 sync_file "${LIGHT_SRC}" "ios/sideBar/sideBar Safari Extension/Resources/images/loading-light.gif"
 sync_file "${DARK_SRC}" "ios/sideBar/sideBar Safari Extension/Resources/images/loading-dark.gif"
+sync_file "${LIGHT_SRC}" "ios/sideBar/sideBar Safari Extension (macOS) Extension/Resources/images/loading-light.gif"
+sync_file "${DARK_SRC}" "ios/sideBar/sideBar Safari Extension (macOS) Extension/Resources/images/loading-dark.gif"
 
 # Group: extension logos
 LOGO_LIGHT_SRC="${ROOT_DIR}/assets/branding/logo-light.png"
