@@ -29,6 +29,7 @@ public final class WriteQueue: ObservableObject {
         self.autoProcessEnabled = autoProcessEnabled
         self.maxPendingWrites = maxPendingWrites
         Task { [weak self] in
+            await self?.restoreConflictPauseState()
             await self?.loadPendingCount()
         }
         observeNetwork()
@@ -244,11 +245,11 @@ public final class WriteQueue: ObservableObject {
                 case .keepServer:
                     context.delete(write)
                 case .keepLocal:
-                    if write.entityType == WriteEntityType.task.rawValue,
-                       let rebasedPayload = self.rebaseTaskPayload(
+                    if let rebasedPayload = rebaseConflictPayload(
+                        entityType: write.entityType,
                         payloadData: write.payload,
                         serverSnapshot: write.serverSnapshot
-                       ) {
+                    ) {
                         write.payload = rebasedPayload
                     }
                     write.status = WriteQueueStatus.pending.rawValue
@@ -263,6 +264,10 @@ public final class WriteQueue: ObservableObject {
             return
         }
         await loadPendingCount()
+        await restoreConflictPauseState()
+        if isPausedForConflict {
+            return
+        }
         resumeProcessing()
     }
 }
@@ -456,27 +461,22 @@ private extension WriteQueue {
         return try encoder.encode(snapshot)
     }
 
-    private func rebaseTaskPayload(payloadData: Data, serverSnapshot: Data?) -> Data? {
-        guard let serverSnapshot else { return nil }
-        let decoder = JSONDecoder()
-        guard let conflict = try? decoder.decode(TaskSyncConflict.self, from: serverSnapshot),
-              let serverUpdatedAt = conflict.serverUpdatedAt,
-              let payload = try? decoder.decode(TaskOperationPayload.self, from: payloadData) else {
-            return nil
+    private func restoreConflictPauseState() async {
+        do {
+            let hasConflict = try await hasOutstandingConflictWrites()
+            isPausedForConflict = hasConflict
+        } catch {
+            logger.error("Failed to restore conflict pause state: \(error.localizedDescription, privacy: .public)")
         }
-        let rebased = TaskOperationPayload(
-            operationId: payload.operationId,
-            op: payload.op,
-            id: payload.id,
-            title: payload.title,
-            notes: payload.notes,
-            listId: payload.listId,
-            dueDate: payload.dueDate,
-            startDate: payload.startDate,
-            recurrenceRule: payload.recurrenceRule,
-            clientUpdatedAt: serverUpdatedAt
-        )
-        return try? encoder.encode(rebased)
+    }
+
+    private func hasOutstandingConflictWrites() async throws -> Bool {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "conflictReason != nil")
+            return try context.count(for: request) > 0
+        }
     }
 
     private func performBackgroundTask<T>(
