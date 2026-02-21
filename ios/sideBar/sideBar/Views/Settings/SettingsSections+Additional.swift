@@ -72,6 +72,7 @@ struct SkillsSettingsView: View {
                                 if selectedTier == .store {
                                     storeRequirementLines(skill)
                                     storeInstallButton(skill)
+                                    storeCredentialsControls(skill)
                                     if let installError = installErrors[skill.id], !installError.isEmpty {
                                         Text(installError)
                                             .font(.caption)
@@ -238,6 +239,16 @@ struct SkillsSettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private func storeCredentialsControls(_ skill: SkillItem) -> some View {
+        if isStoreSkillInstalled(skill) {
+            StoreSkillCredentialsView(
+                viewModel: viewModel,
+                skill: skill
+            )
+        }
+    }
+
     private func beginStoreInstall(for skill: SkillItem) async {
         guard !isStoreInstallBusy(skill.id) else { return }
         installErrors[skill.id] = nil
@@ -339,49 +350,15 @@ struct SkillsSettingsView: View {
     }
 
     private func requiredProviders(for skill: SkillItem) -> [String] {
-        var orderedProviders: [String] = []
-        var seen: Set<String> = []
-        for requirement in skill.credentialRequirements where requirement.required {
-            if requirement.keyKind.lowercased() != "api_key" {
-                continue
-            }
-            let provider = requirement.provider.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if provider.isEmpty || seen.contains(provider) {
-                continue
-            }
-            orderedProviders.append(provider)
-            seen.insert(provider)
-        }
-        return orderedProviders
+        SkillsStoreLogic.requiredProviders(for: skill)
     }
 
     private func requirementLines(for skill: SkillItem) -> [String] {
-        if skill.credentialRequirements.isEmpty {
-            return ["No API key required"]
-        }
-        return skill.credentialRequirements.map { requirement in
-            let provider = providerDisplayName(requirement.provider)
-            if requirement.required {
-                return "Requires \(provider) API key"
-            }
-            if let mode = requirement.mode, !mode.isEmpty {
-                return "Optional \(provider) API key (\(mode.replacingOccurrences(of: "_", with: " ")))"
-            }
-            return "Optional \(provider) API key"
-        }
+        SkillsStoreLogic.requirementLines(for: skill)
     }
 
     private func providerDisplayName(_ raw: String) -> String {
-        switch raw.lowercased() {
-        case "openai":
-            return "OpenAI"
-        case "anthropic":
-            return "Anthropic"
-        case "google":
-            return "Google"
-        default:
-            return raw.capitalized
-        }
+        SkillsStoreLogic.providerDisplayName(raw)
     }
 
     private var filteredSkills: [SkillItem] {

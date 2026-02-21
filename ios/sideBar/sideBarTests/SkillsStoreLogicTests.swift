@@ -97,6 +97,44 @@ final class SkillsStoreLogicTests: XCTestCase {
         XCTAssertEqual(SkillsStoreLogic.providerDisplayName("custom_provider"), "Custom_Provider")
     }
 
+    func testInstalledStoreSkillsRequiringProviderFiltersInstalledAndSortsByName() {
+        let skills = [
+            makeSkill(
+                id: "planner",
+                name: "Planner",
+                tier: .store,
+                credentialRequirements: [SkillCredentialRequirement(provider: "openai", required: true)]
+            ),
+            makeSkill(
+                id: "audio",
+                name: "Audio",
+                tier: .store,
+                credentialRequirements: [SkillCredentialRequirement(provider: "google", required: true)]
+            ),
+            makeSkill(
+                id: "briefs",
+                name: "Briefs",
+                tier: .store,
+                credentialRequirements: [SkillCredentialRequirement(provider: "openai", required: true)]
+            ),
+            makeSkill(
+                id: "standard",
+                name: "Standard",
+                tier: .standard,
+                credentialRequirements: [SkillCredentialRequirement(provider: "openai", required: true)]
+            )
+        ]
+
+        let installed = Set(["planner", "briefs", "audio"])
+        let result = SkillsStoreLogic.installedStoreSkillsRequiringProvider(
+            " OpenAI ",
+            skills: skills,
+            installedStoreSkillIds: installed
+        )
+
+        XCTAssertEqual(result.map(\.id), ["briefs", "planner"])
+    }
+
     private func makeSkill(
         id: String,
         name: String,

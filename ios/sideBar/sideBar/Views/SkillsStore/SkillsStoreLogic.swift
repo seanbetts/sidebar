@@ -71,6 +71,22 @@ enum SkillsStoreLogic {
         }
     }
 
+    static func installedStoreSkillsRequiringProvider(
+        _ provider: String,
+        skills: [SkillItem],
+        installedStoreSkillIds: Set<String>
+    ) -> [SkillItem] {
+        let normalizedProvider = provider.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalizedProvider.isEmpty else { return [] }
+
+        return skills
+            .filter { $0.tier == .store && installedStoreSkillIds.contains($0.id) }
+            .filter { requiredProviders(for: $0).contains(normalizedProvider) }
+            .sorted { lhs, rhs in
+                lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+    }
+
     static func providerDisplayName(_ raw: String) -> String {
         switch raw.lowercased() {
         case "openai":

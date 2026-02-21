@@ -29,21 +29,10 @@ extension SettingsViewModel {
         provider: AIPrimaryProvider,
         apiKey: String
     ) async -> Bool {
-        let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedKey.isEmpty else {
-            setPrimaryProviderError("API key is required")
-            return false
-        }
-
         setPrimaryProviderSaving(true)
         setPrimaryProviderError(nil)
         do {
-            _ = try await settingsAPI.upsertProviderKey(
-                provider: provider.rawValue,
-                apiKey: trimmedKey
-            )
-            let refreshed = try await settingsAPI.getSettings()
-            applySettingsResponse(refreshed)
+            _ = try await saveProviderKey(provider: provider.rawValue, apiKey: apiKey)
             setPrimaryProviderSaving(false)
             return true
         } catch {
@@ -57,9 +46,7 @@ extension SettingsViewModel {
         setPrimaryProviderSaving(true)
         setPrimaryProviderError(nil)
         do {
-            _ = try await settingsAPI.deleteProviderKey(provider: provider.rawValue)
-            let refreshed = try await settingsAPI.getSettings()
-            applySettingsResponse(refreshed)
+            _ = try await deleteProviderKey(provider: provider.rawValue)
         } catch {
             setPrimaryProviderError(error.localizedDescription)
         }
