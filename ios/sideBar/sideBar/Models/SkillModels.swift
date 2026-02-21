@@ -306,6 +306,19 @@ public struct StoreSkillInstallRequest: Encodable {
     }
 }
 
+/// Request payload for Store skill uninstall.
+public struct StoreSkillUninstallRequest: Encodable {
+    public let skillId: String
+
+    public init(skillId: String) {
+        self.skillId = skillId
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case skillId = "skill_id"
+    }
+}
+
 /// Response payload for Store skill install.
 public struct StoreSkillInstallResponse: Codable, Equatable {
     public let skillId: String

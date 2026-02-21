@@ -32,7 +32,7 @@ extension ContentView {
         case .files:
             return "folder"
         case .skillsStore:
-            return "storefront"
+            return "text.and.command.macwindow"
         case .chat:
             return "bubble"
         default:

@@ -275,4 +275,77 @@ final class SettingsViewModelStoreInstallTests: XCTestCase {
         XCTAssertFalse(succeeded)
         XCTAssertNotNil(viewModel.skillsError)
     }
+
+    func testUninstallStoreSkillForwardsSkillIDToSkillsAPI() async {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let uninstallRecorder = SkillsUninstallRecorder()
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .success(settings)),
+            skillsAPI: MockSkillsAPI(
+                result: .success(SkillsResponse(skills: [])),
+                uninstallResult: .success(
+                    StoreSkillInstallResponse(
+                        skillId: "planner",
+                        installed: false,
+                        enabled: false,
+                        enabledSkills: [],
+                        installedStoreSkills: []
+                    )
+                ),
+                uninstallRecorder: uninstallRecorder
+            ),
+            cache: TestCacheClient()
+        )
+        await viewModel.load()
+
+        let succeeded = await viewModel.uninstallStoreSkill(id: "planner")
+
+        XCTAssertTrue(succeeded)
+        XCTAssertEqual(uninstallRecorder.callCount, 1)
+        XCTAssertEqual(uninstallRecorder.lastSkillId, "planner")
+    }
+
+    func testUninstallStoreSkillSetsErrorAndReturnsFalseOnFailure() async {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .success(settings)),
+            skillsAPI: MockSkillsAPI(
+                result: .success(SkillsResponse(skills: [])),
+                uninstallResult: .failure(SettingsViewModelMockError.forced)
+            ),
+            cache: TestCacheClient()
+        )
+        await viewModel.load()
+
+        let succeeded = await viewModel.uninstallStoreSkill(id: "planner")
+
+        XCTAssertFalse(succeeded)
+        XCTAssertNotNil(viewModel.skillsError)
+    }
 }

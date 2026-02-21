@@ -461,19 +461,25 @@ struct MockSettingsAPI: SettingsProviding {
 struct MockSkillsAPI: SkillsProviding {
     let result: Result<SkillsResponse, Error>
     let installResult: Result<StoreSkillInstallResponse, Error>
+    let uninstallResult: Result<StoreSkillInstallResponse, Error>
     let listRecorder: SkillsListRecorder?
     let installRecorder: SkillsInstallRecorder?
+    let uninstallRecorder: SkillsUninstallRecorder?
 
     init(
         result: Result<SkillsResponse, Error>,
         installResult: Result<StoreSkillInstallResponse, Error> = .failure(SettingsViewModelMockError.forced),
+        uninstallResult: Result<StoreSkillInstallResponse, Error> = .failure(SettingsViewModelMockError.forced),
         listRecorder: SkillsListRecorder? = nil,
-        installRecorder: SkillsInstallRecorder? = nil
+        installRecorder: SkillsInstallRecorder? = nil,
+        uninstallRecorder: SkillsUninstallRecorder? = nil
     ) {
         self.result = result
         self.installResult = installResult
+        self.uninstallResult = uninstallResult
         self.listRecorder = listRecorder
         self.installRecorder = installRecorder
+        self.uninstallRecorder = uninstallRecorder
     }
 
     func list() async throws -> SkillsResponse {
@@ -489,6 +495,14 @@ struct MockSkillsAPI: SkillsProviding {
         installRecorder?.lastSkillId = skillId
         installRecorder?.lastProviderKeys = providerKeys
         return try installResult.get()
+    }
+
+    func uninstallStoreSkill(
+        skillId: String
+    ) async throws -> StoreSkillInstallResponse {
+        uninstallRecorder?.callCount += 1
+        uninstallRecorder?.lastSkillId = skillId
+        return try uninstallResult.get()
     }
 }
 
@@ -516,6 +530,11 @@ final class SkillsInstallRecorder {
     var callCount: Int = 0
     var lastSkillId: String?
     var lastProviderKeys: [StoreSkillProviderKeyInput]?
+}
+
+final class SkillsUninstallRecorder {
+    var callCount: Int = 0
+    var lastSkillId: String?
 }
 
 final class SkillsListRecorder {

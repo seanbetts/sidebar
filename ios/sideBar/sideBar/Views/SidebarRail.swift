@@ -135,7 +135,7 @@ public struct SidebarRail: View {
         case .tasks:
             return "checkmark.square"
         case .skillsStore:
-            return "storefront"
+            return "text.and.command.macwindow"
         default:
             return "square.grid.2x2"
         }

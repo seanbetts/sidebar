@@ -3,6 +3,10 @@ import sideBarShared
 
 public struct SkillsStoreView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
+
     @State private var hasLoaded = false
     @State private var selectedCategory: String?
     @State private var searchQuery: String = ""
@@ -10,8 +14,11 @@ public struct SkillsStoreView: View {
 
     @State private var installInFlight: Set<String> = []
     @State private var installChecksInFlight: Set<String> = []
+    @State private var uninstallInFlight: Set<String> = []
     @State private var installErrors: [String: String] = [:]
+
     @State private var storeInstallPrompt: StoreInstallPrompt?
+    @State private var storeUninstallPrompt: StoreUninstallPrompt?
     @State private var providerKeyDrafts: [String: String] = [:]
     @State private var storeInstallPromptError: String?
     @State private var isSubmittingStoreInstallPrompt = false
@@ -30,16 +37,7 @@ public struct SkillsStoreView: View {
                     iconName: "exclamationmark.triangle"
                 )
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                        workspaceHeader
-                        categoryFilter
-                        content
-                    }
-                    .frame(maxWidth: 760, alignment: .leading)
-                    .padding(DesignTokens.Spacing.lg)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
+                skillsStoreContent
             }
         }
         .navigationTitle("Skills Store")
@@ -61,61 +59,26 @@ public struct SkillsStoreView: View {
             }
         }
         .sheet(item: $storeInstallPrompt, onDismiss: clearStoreInstallPromptState) { prompt in
-            NavigationStack {
-                Form {
-                    Section {
-                        Text(viewModel.displayDescription(for: prompt.skill))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } header: {
-                        Text(viewModel.displayName(for: prompt.skill))
-                    }
-
-                    Section("Required Provider Keys") {
-                        ForEach(prompt.missingProviders, id: \.self) { provider in
-                            SecureField(
-                                "\(SkillsStoreLogic.providerDisplayName(provider)) API key",
-                                text: providerKeyBinding(for: provider)
-                            )
-                            #if os(iOS)
-                            .textInputAutocapitalization(.never)
-                            .disableAutocorrection(true)
-                            #endif
-                        }
-                        if let storeInstallPromptError, !storeInstallPromptError.isEmpty {
-                            Text(storeInstallPromptError)
-                                .font(.caption)
-                                .foregroundStyle(DesignTokens.Colors.error)
-                        }
-                    }
-
-                    Section {
-                        Button {
-                            Task {
-                                await submitStoreInstallPrompt(prompt)
-                            }
-                        } label: {
-                            if isSubmittingStoreInstallPrompt {
-                                ProgressView()
-                            } else {
-                                Text("Install Skill")
-                            }
-                        }
-                        .disabled(isSubmittingStoreInstallPrompt)
-                    } footer: {
-                        Text("Keys are saved for future installs and reused automatically.")
-                    }
-                }
-                .navigationTitle("Install Skill")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            storeInstallPrompt = nil
-                        }
+            storeInstallSheet(prompt)
+        }
+        .alert(
+            "Uninstall skill?",
+            isPresented: isStoreUninstallPromptPresented,
+            presenting: storeUninstallPrompt
+        ) { prompt in
+            Button("Uninstall", role: .destructive) {
+                Task {
+                    let succeeded = await performStoreUninstall(skillId: prompt.skill.id)
+                    if succeeded {
+                        storeUninstallPrompt = nil
                     }
                 }
             }
-            .phoneSheetGrabBarVisible()
+            Button("Cancel", role: .cancel) {
+                storeUninstallPrompt = nil
+            }
+        } message: { prompt in
+            Text("This will uninstall \(viewModel.displayName(for: prompt.skill)).")
         }
     }
 
@@ -123,53 +86,76 @@ public struct SkillsStoreView: View {
         environment.settingsViewModel
     }
 
-    private var workspaceHeader: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text("Discover skills")
-                .font(DesignTokens.Typography.title2Semibold)
-            Text("Install what you need. Skill enablement is managed in Settings.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            SearchField(
-                text: $searchQuery,
-                placeholder: "Search store skills",
-                isFocused: $isSearchFocused
-            )
+    private var skillsStoreContent: some View {
+        VStack(spacing: 0) {
+            if !isCompact {
+                headerBar
+                Divider()
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                    if isCompact {
+                        compactSearchField
+                    }
+                    categoryFilter
+                    content
+                }
+                .padding(DesignTokens.Spacing.lg)
+                .frame(maxWidth: 920, alignment: .topLeading)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
         }
     }
 
-    @ViewBuilder
+    private var headerBar: some View {
+        ContentHeaderRow(
+            iconName: "text.and.command.macwindow",
+            title: "Skills Store",
+            titleFont: .subheadline.weight(.semibold),
+            titleLineLimit: 1,
+            trailing: {
+                SearchField(
+                    text: $searchQuery,
+                    placeholder: "Search store skills",
+                    isFocused: $isSearchFocused
+                )
+                .frame(width: 280)
+            }
+        )
+        .padding(DesignTokens.Spacing.md)
+        .frame(height: LayoutMetrics.contentHeaderMinHeight)
+    }
+
+    private var compactSearchField: some View {
+        SearchField(
+            text: $searchQuery,
+            placeholder: "Search store skills",
+            isFocused: $isSearchFocused
+        )
+    }
+
     private var categoryFilter: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: DesignTokens.Spacing.xs) {
-                filterChip(title: "All", category: nil)
+                SkillsStoreFilterChip(
+                    title: "All",
+                    iconName: SkillsStoreCategoryIcon.iconName(for: "all"),
+                    isSelected: selectedCategory == nil
+                ) {
+                    selectedCategory = nil
+                }
                 ForEach(storeCategories, id: \.self) { category in
-                    filterChip(title: category, category: category)
+                    SkillsStoreFilterChip(
+                        title: category,
+                        iconName: SkillsStoreCategoryIcon.iconName(for: category),
+                        isSelected: selectedCategory == category
+                    ) {
+                        selectedCategory = category
+                    }
                 }
             }
             .padding(.vertical, 2)
         }
-    }
-
-    private func filterChip(title: String, category: String?) -> some View {
-        let isSelected = selectedCategory == category
-        return Button {
-            selectedCategory = category
-        } label: {
-            Text(title)
-                .font(.caption)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule().fill(
-                        isSelected
-                            ? Color.accentColor.opacity(0.18)
-                            : DesignTokens.Colors.surface
-                    )
-                )
-                .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-        }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -181,7 +167,7 @@ public struct SkillsStoreView: View {
                 iconName: "magnifyingglass"
             )
         } else {
-            LazyVStack(spacing: DesignTokens.Spacing.md) {
+            LazyVGrid(columns: skillGridColumns, spacing: DesignTokens.Spacing.md) {
                 ForEach(filteredSkills, id: \.id) { skill in
                     skillCard(skill)
                 }
@@ -190,82 +176,26 @@ public struct SkillsStoreView: View {
     }
 
     private func skillCard(_ skill: SkillItem) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
-                Image(systemName: SkillsStoreLogic.iconName(for: skill))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18, height: 18)
-                    .padding(.top, 2)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.displayName(for: skill))
-                        .font(DesignTokens.Typography.subheadlineSemibold)
-                    Text(viewModel.displayDescription(for: skill))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(skill.category)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 0)
-
-                installButton(skill)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(Array(SkillsStoreLogic.requirementLines(for: skill).enumerated()), id: \.offset) { _, line in
-                    Label(line, systemImage: "key")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            if let installError = installErrors[skill.id], !installError.isEmpty {
-                Text(installError)
-                    .font(.caption)
-                    .foregroundStyle(DesignTokens.Colors.error)
-            }
-        }
-        .padding(DesignTokens.Spacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(DesignTokens.Colors.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
-    }
-
-    @ViewBuilder
-    private func installButton(_ skill: SkillItem) -> some View {
-        let busy = isStoreInstallBusy(skill.id)
+        let busy = isStoreActionBusy(skill.id)
         let installed = isInstalled(skill)
 
-        Button {
-            Task {
-                await beginStoreInstall(for: skill)
+        return SkillsStoreCard(
+            skillIconName: SkillsStoreLogic.iconName(for: skill),
+            typeTitle: formattedSkillType(skill.category),
+            typeIconName: SkillsStoreCategoryIcon.iconName(for: skill.category),
+            displayName: viewModel.displayName(for: skill),
+            displayDescription: viewModel.displayDescription(for: skill),
+            installError: installErrors[skill.id],
+            isBusy: busy,
+            isInstalled: installed,
+            onInstall: {
+                Task {
+                    await beginStoreInstall(for: skill)
+                }
+            },
+            onInstalledTap: {
+                storeUninstallPrompt = StoreUninstallPrompt(skill: skill)
             }
-        } label: {
-            if busy {
-                ProgressView()
-                    .controlSize(.small)
-            } else if installed {
-                Text("Installed")
-            } else {
-                Text("Install")
-            }
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.small)
-        .disabled(
-            installed
-            || busy
-            || viewModel.isSavingSkills
-            || viewModel.settings == nil
-            || !skill.installable
         )
     }
 
@@ -292,7 +222,7 @@ public struct SkillsStoreView: View {
     }
 
     private func beginStoreInstall(for skill: SkillItem) async {
-        guard !isStoreInstallBusy(skill.id) else { return }
+        guard !isStoreActionBusy(skill.id) else { return }
         installErrors[skill.id] = nil
         let requiredProviders = SkillsStoreLogic.requiredProviders(for: skill)
         guard !requiredProviders.isEmpty else {
@@ -368,6 +298,23 @@ public struct SkillsStoreView: View {
         return false
     }
 
+    private func performStoreUninstall(skillId: String) async -> Bool {
+        guard !uninstallInFlight.contains(skillId) else { return false }
+        uninstallInFlight.insert(skillId)
+        defer { uninstallInFlight.remove(skillId) }
+
+        installErrors[skillId] = nil
+        let succeeded = await viewModel.uninstallStoreSkill(id: skillId)
+        if succeeded {
+            installErrors[skillId] = nil
+            return true
+        }
+
+        let message = viewModel.skillsError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        installErrors[skillId] = (message?.isEmpty == false) ? message : "Uninstall failed."
+        return false
+    }
+
     private func providerKeyBinding(for provider: String) -> Binding<String> {
         Binding(
             get: { providerKeyDrafts[provider] ?? "" },
@@ -381,18 +328,120 @@ public struct SkillsStoreView: View {
         isSubmittingStoreInstallPrompt = false
     }
 
-    private func isStoreInstallBusy(_ skillId: String) -> Bool {
-        installInFlight.contains(skillId) || installChecksInFlight.contains(skillId)
+    private func isStoreActionBusy(_ skillId: String) -> Bool {
+        installInFlight.contains(skillId)
+            || installChecksInFlight.contains(skillId)
+            || uninstallInFlight.contains(skillId)
     }
 
     private func isInstalled(_ skill: SkillItem) -> Bool {
         viewModel.settings?.installedStoreSkills.contains(skill.id) ?? false
+    }
+
+    private var skillGridColumns: [GridItem] {
+        [
+            GridItem(
+                .adaptive(minimum: 380, maximum: 460),
+                spacing: DesignTokens.Spacing.md,
+                alignment: .top
+            )
+        ]
+    }
+
+    private func formattedSkillType(_ raw: String) -> String {
+        raw
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .capitalized
+    }
+
+    private var isStoreUninstallPromptPresented: Binding<Bool> {
+        Binding(
+            get: { storeUninstallPrompt != nil },
+            set: { isPresented in
+                if !isPresented {
+                    storeUninstallPrompt = nil
+                }
+            }
+        )
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private func storeInstallSheet(_ prompt: StoreInstallPrompt) -> some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(viewModel.displayDescription(for: prompt.skill))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text(viewModel.displayName(for: prompt.skill))
+                }
+
+                Section("Required Provider Keys") {
+                    ForEach(prompt.missingProviders, id: \.self) { provider in
+                        SecureField(
+                            "\(SkillsStoreLogic.providerDisplayName(provider)) API key",
+                            text: providerKeyBinding(for: provider)
+                        )
+                        #if os(iOS)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                        #endif
+                    }
+                    if let storeInstallPromptError, !storeInstallPromptError.isEmpty {
+                        Text(storeInstallPromptError)
+                            .font(.caption)
+                            .foregroundStyle(DesignTokens.Colors.error)
+                    }
+                }
+
+                Section {
+                    Button {
+                        Task {
+                            await submitStoreInstallPrompt(prompt)
+                        }
+                    } label: {
+                        if isSubmittingStoreInstallPrompt {
+                            ProgressView()
+                        } else {
+                            Text("Install Skill")
+                        }
+                    }
+                    .disabled(isSubmittingStoreInstallPrompt)
+                } footer: {
+                    Text("Keys are saved for future installs and reused automatically.")
+                }
+            }
+            .navigationTitle("Install Skill")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        storeInstallPrompt = nil
+                    }
+                }
+            }
+        }
+        .phoneSheetGrabBarVisible()
     }
 }
 
 private struct StoreInstallPrompt: Identifiable {
     let skill: SkillItem
     let missingProviders: [String]
+
+    var id: String { skill.id }
+}
+
+private struct StoreUninstallPrompt: Identifiable {
+    let skill: SkillItem
 
     var id: String { skill.id }
 }

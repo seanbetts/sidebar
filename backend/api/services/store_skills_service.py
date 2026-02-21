@@ -244,3 +244,64 @@ class StoreSkillsService:
             "enabled_skills": payload["enabled_skills"],
             "installed_store_skills": payload["installed_store_skills"],
         }
+
+    @staticmethod
+    def uninstall_store_skill(
+        db: Session,
+        *,
+        user_id: str,
+        skill_id: str,
+    ) -> dict[str, Any]:
+        """Uninstall a Store skill and disable it in one transaction."""
+        normalized_input = (skill_id or "").strip()
+        canonical_id = canonicalize_skill_id(normalized_input)
+        catalog = SkillCatalogService.list_skills(settings.skills_dir)
+        catalog_by_id = {str(skill["id"]): skill for skill in catalog}
+        skill_entry = catalog_by_id.get(canonical_id)
+
+        if not skill_entry:
+            raise BadRequestError("Invalid skill ID")
+        if str(skill_entry.get("tier", "")) != "store" or not bool(
+            skill_entry.get("installable", False)
+        ):
+            raise BadRequestError("Skill is not installable from Store skills")
+
+        current_settings = UserSettingsService.get_settings(db, user_id)
+        enabled_skills = SettingsService.resolve_enabled_skills(current_settings)
+        installed_store_skills = SettingsService._resolve_installed_store_skills(
+            current_settings
+        )
+
+        filtered_enabled_skills = [
+            skill for skill in enabled_skills if skill != canonical_id
+        ]
+        filtered_installed_store_skills = [
+            skill for skill in installed_store_skills if skill != canonical_id
+        ]
+
+        normalized_enabled_skills = SettingsService._normalize_enabled_skills(
+            filtered_enabled_skills,
+            catalog=catalog,
+        )
+        normalized_installed_store_skills = (
+            StoreSkillsService._normalize_installed_store_skills(
+                filtered_installed_store_skills,
+                catalog=catalog,
+            )
+        )
+
+        updated_settings = UserSettingsService.upsert_settings(
+            db,
+            user_id,
+            enabled_skills=normalized_enabled_skills,
+            installed_store_skills=normalized_installed_store_skills,
+        )
+        payload = SettingsService.build_response(updated_settings, user_id)
+
+        return {
+            "skill_id": canonical_id,
+            "installed": canonical_id in payload["installed_store_skills"],
+            "enabled": canonical_id in payload["enabled_skills"],
+            "enabled_skills": payload["enabled_skills"],
+            "installed_store_skills": payload["installed_store_skills"],
+        }

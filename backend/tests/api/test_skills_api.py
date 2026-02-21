@@ -176,3 +176,63 @@ def test_install_store_skill_rejects_unknown_skill_id(test_client) -> None:
     )
     assert response.status_code == 400
     assert "Invalid skill ID" in error_message(response)
+
+
+def test_uninstall_store_skill_removes_install_and_enabled_state(test_client) -> None:
+    _seed_openai_provider_key(test_client)
+    install_response = test_client.post(
+        "/api/skills/store/install",
+        headers=_auth_headers(),
+        json={"skill_id": "audio-transcribe"},
+    )
+    assert install_response.status_code == 200
+
+    uninstall_response = test_client.post(
+        "/api/skills/store/uninstall",
+        headers=_auth_headers(),
+        json={"skill_id": "audio-transcribe"},
+    )
+    assert uninstall_response.status_code == 200
+    body = uninstall_response.json()
+    assert body["skill_id"] == "audio-transcribe"
+    assert body["installed"] is False
+    assert body["enabled"] is False
+    assert "audio-transcribe" not in body["installed_store_skills"]
+    assert "audio-transcribe" not in body["enabled_skills"]
+
+
+def test_uninstall_store_skill_is_idempotent(test_client) -> None:
+    _seed_openai_provider_key(test_client)
+    install_response = test_client.post(
+        "/api/skills/store/install",
+        headers=_auth_headers(),
+        json={"skill_id": "audio-transcribe"},
+    )
+    assert install_response.status_code == 200
+
+    first = test_client.post(
+        "/api/skills/store/uninstall",
+        headers=_auth_headers(),
+        json={"skill_id": "audio-transcribe"},
+    )
+    assert first.status_code == 200
+
+    second = test_client.post(
+        "/api/skills/store/uninstall",
+        headers=_auth_headers(),
+        json={"skill_id": "audio-transcribe"},
+    )
+    assert second.status_code == 200
+    body = second.json()
+    assert body["installed_store_skills"].count("audio-transcribe") == 0
+    assert body["enabled_skills"].count("audio-transcribe") == 0
+
+
+def test_uninstall_store_skill_rejects_unknown_skill_id(test_client) -> None:
+    response = test_client.post(
+        "/api/skills/store/uninstall",
+        headers=_auth_headers(),
+        json={"skill_id": "not-a-skill"},
+    )
+    assert response.status_code == 400
+    assert "Invalid skill ID" in error_message(response)

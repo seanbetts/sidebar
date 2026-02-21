@@ -466,4 +466,19 @@ extension SettingsViewModel {
             return false
         }
     }
+
+    public func uninstallStoreSkill(id: String) async -> Bool {
+        skillsError = nil
+        isSavingSkills = true
+        defer { isSavingSkills = false }
+
+        do {
+            _ = try await skillsAPI.uninstallStoreSkill(skillId: id)
+            await invalidateAndRefreshSkillsState()
+            return true
+        } catch {
+            skillsError = ErrorMapping.message(for: error)
+            return false
+        }
+    }
 }

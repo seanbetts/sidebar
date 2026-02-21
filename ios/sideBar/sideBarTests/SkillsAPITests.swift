@@ -195,6 +195,46 @@ final class SkillsAPITests: XCTestCase {
         XCTAssertEqual(response.installedStoreSkills, ["audio-transcribe"])
     }
 
+    func testUninstallStoreSkillPostsPayloadAndDecodesResponse() async throws {
+        let api = SkillsAPI(client: makeClient())
+        SkillsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.url?.absoluteString.contains("skills/store/uninstall") == true)
+
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let object = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: bodyData, options: []) as? [String: Any]
+            )
+            XCTAssertEqual(object["skill_id"] as? String, "audio-transcribe")
+            XCTAssertNil(object["provider_keys"])
+
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "skill_id": "audio-transcribe",
+              "installed": false,
+              "enabled": false,
+              "enabled_skills": ["files"],
+              "installed_store_skills": []
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        let response = try await api.uninstallStoreSkill(skillId: "audio-transcribe")
+
+        XCTAssertEqual(response.skillId, "audio-transcribe")
+        XCTAssertFalse(response.installed)
+        XCTAssertFalse(response.enabled)
+        XCTAssertFalse(response.enabledSkills.contains("audio-transcribe"))
+        XCTAssertEqual(response.installedStoreSkills, [])
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

@@ -88,24 +88,35 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     public var body: some View {
         GeometryReader { proxy in
             let widths = layoutWidths(for: proxy)
+            let leftPanelVisible = isLeftPanelVisible
             HStack(alignment: .top, spacing: 0) {
                 SidebarRail(
                     selection: $selection,
                     onTogglePanel: toggleLeftPanel,
                     onShowSettings: onShowSettings,
                     onSelectSection: { section in
-                        if isLeftPanelExpanded && selection == section {
-                            toggleLeftPanel()
+                        let supportsPanel = supportsLeftPanel(for: section)
+
+                        if selection == section {
+                            if supportsPanel {
+                                toggleLeftPanel()
+                            }
                             return
                         }
-                        if !isLeftPanelExpanded {
+
+                        selection = section
+
+                        if supportsPanel {
+                            if !isLeftPanelExpanded {
+                                toggleLeftPanel()
+                            }
+                        } else if isLeftPanelExpanded {
                             toggleLeftPanel()
                         }
-                        selection = section
                     }
                 )
 
-                if isLeftPanelExpanded {
+                if leftPanelVisible {
                     panelView(for: selection)
                         .trackShortcutFocus(section: selection)
                         .frame(width: widths.leftPanel)
@@ -159,7 +170,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                             WorkspaceSidebarSwipeCaptureView(
                                 isEnabled: true,
                                 regionWidth: widths.main + (isRightSidebarCollapsed ? 0 : widths.right + dividerWidth),
-                                isLeftPanelExpanded: isLeftPanelExpanded
+                                isLeftPanelExpanded: leftPanelVisible
                             ) { translation, startX in
                                 handleMainWorkspaceSwipe(
                                     translation: translation,
@@ -179,7 +190,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
 
     private func layoutWidths(for proxy: GeometryProxy) -> LayoutWidths {
         let total = proxy.size.width
-        let leftPanel = isLeftPanelExpanded ? leftPanelWidth : 0
+        let leftPanel = isLeftPanelVisible ? leftPanelWidth : 0
         let divider = isRightSidebarCollapsed ? 0 : dividerWidth
         let right = isRightSidebarCollapsed
             ? 0
@@ -280,6 +291,9 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
 
     private func toggleLeftPanel() {
         let willExpand = !isLeftPanelExpanded
+        if willExpand, !supportsLeftPanel(for: selection) {
+            return
+        }
         isLeftPanelExpanded.toggle()
         if willExpand, selection == nil {
             selection = .chat
@@ -295,7 +309,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
             translation: translation,
             startX: startX,
             regionWidth: regionWidth,
-            isLeftPanelExpanded: isLeftPanelExpanded,
+            isLeftPanelExpanded: isLeftPanelVisible,
             isIPad: isIPadSidebarSwipeEnabled
         )
         guard action != .none else { return }
@@ -313,11 +327,19 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         switch action {
         case .collapseLeftPanel where isLeftPanelExpanded:
             toggleLeftPanel()
-        case .expandLeftPanel where !isLeftPanelExpanded:
+        case .expandLeftPanel where !isLeftPanelExpanded && supportsLeftPanel(for: selection):
             toggleLeftPanel()
         default:
             break
         }
+    }
+
+    private var isLeftPanelVisible: Bool {
+        isLeftPanelExpanded && supportsLeftPanel(for: selection)
+    }
+
+    private func supportsLeftPanel(for section: AppSection?) -> Bool {
+        section != .skillsStore
     }
 
     private var isIPadSidebarSwipeEnabled: Bool {

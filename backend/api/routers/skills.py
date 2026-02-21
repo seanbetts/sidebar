@@ -67,6 +67,13 @@ class StoreSkillInstallResponse(BaseModel):
     installed_store_skills: list[str]
 
 
+class StoreSkillUninstallRequest(BaseModel):
+    """Request payload for uninstalling a Store skill."""
+
+    model_config = ConfigDict(extra="forbid")
+    skill_id: str
+
+
 @router.get("", response_model=SkillsResponse)
 async def list_skills(_: str = Depends(verify_bearer_token)):
     """List available skills from the skills directory.
@@ -124,5 +131,21 @@ def install_store_skill(
         user_id=user_id,
         skill_id=payload.skill_id,
         provider_keys=[item.model_dump() for item in payload.provider_keys],
+    )
+    return StoreSkillInstallResponse(**result)
+
+
+@router.post("/store/uninstall", response_model=StoreSkillInstallResponse)
+def uninstall_store_skill(
+    payload: StoreSkillUninstallRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Uninstall a Store skill and auto-disable it for the user."""
+    result = StoreSkillsService.uninstall_store_skill(
+        db,
+        user_id=user_id,
+        skill_id=payload.skill_id,
     )
     return StoreSkillInstallResponse(**result)
