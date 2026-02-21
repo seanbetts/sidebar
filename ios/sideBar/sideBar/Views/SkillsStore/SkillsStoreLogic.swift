@@ -2,6 +2,27 @@ import Foundation
 import sideBarShared
 
 enum SkillsStoreLogic {
+    private static let skillSymbols: [String: String] = [
+        "assistant-identity": "person.crop.circle.badge.checkmark",
+        "assistant-soul": "sparkles",
+        "audio-transcribe": "waveform",
+        "files": "doc.on.doc",
+        "memory": "brain",
+        "notes": "note.text",
+        "prompt-preview": "eye",
+        "settings-other-preferences": "gearshape",
+        "settings-profile-user": "person.crop.circle",
+        "skill-creator": "hammer",
+        "subdomain-discover": "globe",
+        "tasks": "checkmark.square",
+        "ui-theme": "paintpalette",
+        "web-crawler-policy": "shield",
+        "web-save": "square.and.arrow.down",
+        "web-search": "magnifyingglass",
+        "youtube-download": "play.rectangle",
+        "youtube-transcribe": "captions.bubble"
+    ]
+
     static func storeSkills(from skills: [SkillItem]) -> [SkillItem] {
         skills
             .filter { $0.tier == .store && $0.status != "hidden" }
@@ -98,5 +119,14 @@ enum SkillsStoreLogic {
         default:
             return raw.capitalized
         }
+    }
+
+    static func iconName(for skill: SkillItem) -> String {
+        let iconKey = skill.iconKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if let mapped = skillSymbols[iconKey] {
+            return mapped
+        }
+        let skillId = skill.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return skillSymbols[skillId] ?? "puzzlepiece.extension"
     }
 }

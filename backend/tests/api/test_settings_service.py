@@ -380,13 +380,22 @@ def test_resolve_installed_store_skills_filters_non_store_and_aliases(monkeypatc
         staticmethod(
             lambda _skills_dir: [
                 {"id": "files", "tier": "standard"},
+                {"id": "prompt-preview", "tier": "standard"},
+                {"id": "settings-other-preferences", "tier": "standard"},
                 {"id": "audio-transcribe", "tier": "store"},
                 {"id": "youtube-transcribe", "tier": "store"},
             ]
         ),
     )
     settings_record = SimpleNamespace(
-        installed_store_skills=["audio-transcribe", "files", "fs", "youtube-transcribe"]
+        installed_store_skills=[
+            "audio-transcribe",
+            "files",
+            "fs",
+            "prompt-preview",
+            "settings-other-preferences",
+            "youtube-transcribe",
+        ]
     )
 
     resolved = SettingsService._resolve_installed_store_skills(settings_record)

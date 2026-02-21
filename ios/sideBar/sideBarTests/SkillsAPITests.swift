@@ -112,7 +112,7 @@ final class SkillsAPITests: XCTestCase {
     func testListSkillsDecodesStoreRequirementMetadata() throws {
         let payload = """
         {
-          "catalog_version": 2,
+          "catalog_version": 3,
           "skills": [
             {
               "id": "audio-transcribe",
@@ -139,7 +139,7 @@ final class SkillsAPITests: XCTestCase {
 
         let response = try JSONDecoder().decode(SkillsResponse.self, from: Data(payload.utf8))
 
-        XCTAssertEqual(response.catalogVersion, 2)
+        XCTAssertEqual(response.catalogVersion, 3)
         XCTAssertEqual(response.skills.first?.tier, .store)
         XCTAssertEqual(response.skills.first?.providerDependency, "openai")
         XCTAssertEqual(response.skills.first?.installable, true)

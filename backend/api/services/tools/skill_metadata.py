@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 2
+CATALOG_VERSION = 3
 
 SkillTier = Literal["required", "standard", "store"]
 
@@ -83,7 +83,7 @@ SKILL_DISPLAY = {
         "description": "Read and update profile and user settings fields",
     },
     "settings-other-preferences": {
-        "name": "Settings Other Preferences",
+        "name": "Settings",
         "description": "Update local Other settings preferences",
     },
     "memory": {
@@ -112,6 +112,8 @@ STANDARD_SKILLS = {
     "memory",
     "settings-profile-user",
     "ui-theme",
+    "prompt-preview",
+    "settings-other-preferences",
 }
 
 STORE_SKILLS = {
@@ -121,8 +123,6 @@ STORE_SKILLS = {
     "subdomain-discover",
     "web-crawler-policy",
     "skill-creator",
-    "prompt-preview",
-    "settings-other-preferences",
 }
 
 EXPOSED_SKILLS = REQUIRED_SKILLS | STANDARD_SKILLS | STORE_SKILLS

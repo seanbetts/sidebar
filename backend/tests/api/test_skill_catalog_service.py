@@ -22,6 +22,8 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         "audio-transcribe",
         "youtube-download",
         "youtube-transcribe",
+        "prompt-preview",
+        "settings-other-preferences",
         "assistant-identity",
         "assistant-soul",
     ]:
@@ -37,6 +39,11 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert by_id["files"]["default_enabled"] is True
     assert by_id["audio-transcribe"]["tier"] == "store"
     assert by_id["audio-transcribe"]["installable"] is True
+    assert by_id["prompt-preview"]["tier"] == "standard"
+    assert by_id["prompt-preview"]["installable"] is False
+    assert by_id["settings-other-preferences"]["tier"] == "standard"
+    assert by_id["settings-other-preferences"]["installable"] is False
+    assert str(by_id["settings-other-preferences"]["name"]) == "Settings"
     assert by_id["audio-transcribe"]["provider_dependency"] == "openai"
     assert by_id["audio-transcribe"]["credential_requirements"]
     assert (
@@ -72,4 +79,4 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 2
+    assert SkillCatalogService.catalog_version() == 3

@@ -174,16 +174,7 @@ extension ContentView {
             section: .skillsStore,
             panelView: { AnyView(SkillsStorePanel()) },
             detailView: { AnyView(SkillsStoreView()) },
-            phoneSelection: {
-                Binding(
-                    get: { environment.skillsStoreSelectedSkillId.map(PhoneDetailRoute.init) },
-                    set: { route in
-                        if route == nil {
-                            environment.skillsStoreSelectedSkillId = nil
-                        }
-                    }
-                )
-            }
+            phoneSelection: { Binding(get: { nil }, set: { _ in }) }
         )
     }
 

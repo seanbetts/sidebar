@@ -97,7 +97,7 @@ extension ContentView {
         case .tasks:
             return environment.tasksPhoneDetailRouteId == nil
         case .skillsStore:
-            return environment.skillsStoreSelectedSkillId == nil
+            return true
         case .settings:
             return true
         }

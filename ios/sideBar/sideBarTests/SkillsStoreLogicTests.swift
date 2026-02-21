@@ -135,6 +135,14 @@ final class SkillsStoreLogicTests: XCTestCase {
         XCTAssertEqual(result.map(\.id), ["briefs", "planner"])
     }
 
+    func testIconNameUsesKnownMappingsAndFallback() {
+        let mapped = makeSkill(id: "audio-transcribe", name: "Audio", tier: .store)
+        XCTAssertEqual(SkillsStoreLogic.iconName(for: mapped), "waveform")
+
+        let unknown = makeSkill(id: "unknown-skill", name: "Unknown", tier: .store)
+        XCTAssertEqual(SkillsStoreLogic.iconName(for: unknown), "puzzlepiece.extension")
+    }
+
     private func makeSkill(
         id: String,
         name: String,

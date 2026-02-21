@@ -6,13 +6,7 @@ import sideBarShared
 struct SkillsSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @State private var selectedTier: SkillsTierFilter = .standard
-    @State private var installInFlight: Set<String> = []
-    @State private var installChecksInFlight: Set<String> = []
-    @State private var installErrors: [String: String] = [:]
-    @State private var storeInstallPrompt: StoreInstallPrompt?
-    @State private var providerKeyDrafts: [String: String] = [:]
-    @State private var storeInstallPromptError: String?
-    @State private var isSubmittingStoreInstallPrompt = false
+    @State private var selectedStoreSkill: SkillItem?
 
     var body: some View {
         Form {
@@ -27,16 +21,22 @@ struct SkillsSettingsView: View {
                 Toggle("Enable all", isOn: Binding(
                     get: { allSkillsEnabled },
                     set: { isEnabled in
-                        Task { await viewModel.setAllSkillsEnabled(isEnabled, scopeSkillIds: enableAllScopeSkillIds) }
+                        Task {
+                            await viewModel.setAllSkillsEnabled(
+                                isEnabled,
+                                scopeSkillIds: enableAllScopeSkillIds
+                            )
+                        }
                     }
                 ))
                 .disabled(
-                    viewModel.isSavingSkills ||
-                    viewModel.isLoadingSkills ||
-                    viewModel.settings == nil ||
-                    !hasToggleableSkills
+                    viewModel.isSavingSkills
+                    || viewModel.isLoadingSkills
+                    || viewModel.settings == nil
+                    || !hasToggleableSkills
                 )
             }
+
             if let error = viewModel.skillsError {
                 Section {
                     Text(error)
@@ -44,6 +44,7 @@ struct SkillsSettingsView: View {
                         .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
+
             if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
                 Section {
                     Text("No skills available.")
@@ -53,32 +54,10 @@ struct SkillsSettingsView: View {
                 ForEach(groupedSkills, id: \.0) { category, skills in
                     Section(category) {
                         ForEach(skills, id: \.id) { skill in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Toggle(isOn: Binding(
-                                    get: { isSkillEnabled(skill.id) },
-                                    set: { isEnabled in
-                                        Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
-                                    }
-                                )) {
-                                    skillLabel(skill)
-                                }
-                                .disabled(
-                                    viewModel.isSavingSkills ||
-                                    viewModel.settings == nil ||
-                                    !skill.userToggleable ||
-                                    (selectedTier == .store && !isStoreSkillInstalled(skill))
-                                )
-
-                                if selectedTier == .store {
-                                    storeRequirementLines(skill)
-                                    storeInstallButton(skill)
-                                    storeCredentialsControls(skill)
-                                    if let installError = installErrors[skill.id], !installError.isEmpty {
-                                        Text(installError)
-                                            .font(.caption)
-                                            .foregroundStyle(DesignTokens.Colors.error)
-                                    }
-                                }
+                            if selectedTier == .store {
+                                storeSkillRow(skill)
+                            } else {
+                                skillToggleRow(skill)
                             }
                         }
                     }
@@ -88,60 +67,17 @@ struct SkillsSettingsView: View {
         #if os(macOS)
         .formStyle(.grouped)
         #endif
-        .sheet(item: $storeInstallPrompt, onDismiss: clearStoreInstallPromptState) { prompt in
+        .sheet(item: $selectedStoreSkill) { skill in
             NavigationStack {
-                Form {
-                    Section {
-                        Text(viewModel.displayDescription(for: prompt.skill))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } header: {
-                        Text(viewModel.displayName(for: prompt.skill))
-                    }
-
-                    Section("Required Provider Keys") {
-                        ForEach(prompt.missingProviders, id: \.self) { provider in
-                            SecureField(
-                                "\(providerDisplayName(provider)) API key",
-                                text: providerKeyBinding(for: provider)
-                            )
-                            #if os(iOS)
-                            .textInputAutocapitalization(.never)
-                            .disableAutocorrection(true)
-                            #endif
-                        }
-                        if let storeInstallPromptError, !storeInstallPromptError.isEmpty {
-                            Text(storeInstallPromptError)
-                                .font(.caption)
-                                .foregroundStyle(DesignTokens.Colors.error)
-                        }
-                    }
-
-                    Section {
-                        Button {
-                            Task {
-                                await submitStoreInstallPrompt(prompt)
-                            }
-                        } label: {
-                            if isSubmittingStoreInstallPrompt {
-                                ProgressView()
-                            } else {
-                                Text("Install Skill")
+                StoreSkillConfigView(viewModel: viewModel, skill: skill)
+                    .navigationTitle(viewModel.displayName(for: skill))
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") {
+                                selectedStoreSkill = nil
                             }
                         }
-                        .disabled(isSubmittingStoreInstallPrompt)
-                    } footer: {
-                        Text("Keys are saved for future installs and reused automatically.")
                     }
-                }
-                .navigationTitle("Install Skill")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            storeInstallPrompt = nil
-                        }
-                    }
-                }
             }
             .phoneSheetGrabBarVisible()
         }
@@ -171,194 +107,75 @@ struct SkillsSettingsView: View {
         }
     }
 
-    private struct StoreInstallPrompt: Identifiable {
-        let skill: SkillItem
-        let missingProviders: [String]
-
-        var id: String { skill.id }
-    }
-
     @ViewBuilder
-    private func skillLabel(_ skill: SkillItem) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(viewModel.displayName(for: skill))
-                    .font(DesignTokens.Typography.subheadlineSemibold)
+    private func skillLabel(_ skill: SkillItem, includeRequiredBadge: Bool = true) -> some View {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+            Image(systemName: SkillsStoreLogic.iconName(for: skill))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 18, height: 18)
+                .padding(.top, 2)
 
-                if selectedTier == .store && isStoreSkillInstalled(skill) {
-                    Text("Installed")
-                        .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(DesignTokens.Colors.success.opacity(0.18)))
-                        .foregroundStyle(DesignTokens.Colors.success)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(viewModel.displayName(for: skill))
+                        .font(DesignTokens.Typography.subheadlineSemibold)
+
+                    if includeRequiredBadge && !skill.userToggleable && skill.showRequiredBadge {
+                        Text("Required")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                    }
                 }
 
-                if !skill.userToggleable && skill.showRequiredBadge {
-                    Text("Required")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
-                }
+                Text(viewModel.displayDescription(for: skill))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-
-            Text(viewModel.displayDescription(for: skill))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
     }
 
-    @ViewBuilder
-    private func storeRequirementLines(_ skill: SkillItem) -> some View {
-        ForEach(Array(requirementLines(for: skill).enumerated()), id: \.offset) { _, line in
-            Label(line, systemImage: "key")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private func skillToggleRow(_ skill: SkillItem) -> some View {
+        Toggle(isOn: Binding(
+            get: { isSkillEnabled(skill.id) },
+            set: { isEnabled in
+                Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+            }
+        )) {
+            skillLabel(skill)
         }
+        .disabled(
+            viewModel.isSavingSkills
+            || viewModel.settings == nil
+            || !skill.userToggleable
+        )
     }
 
-    @ViewBuilder
-    private func storeInstallButton(_ skill: SkillItem) -> some View {
-        if skill.installable && !isStoreSkillInstalled(skill) {
+    private func storeSkillRow(_ skill: SkillItem) -> some View {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             Button {
-                Task {
-                    await beginStoreInstall(for: skill)
-                }
+                selectedStoreSkill = skill
             } label: {
-                if isStoreInstallBusy(skill.id) {
-                    ProgressView()
-                } else {
-                    Text("Install")
-                }
+                skillLabel(skill, includeRequiredBadge: false)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+
+            Toggle("", isOn: Binding(
+                get: { isSkillEnabled(skill.id) },
+                set: { isEnabled in
+                    Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+                }
+            ))
+            .labelsHidden()
             .disabled(
-                isStoreInstallBusy(skill.id) ||
-                viewModel.isSavingSkills ||
-                viewModel.settings == nil
+                viewModel.isSavingSkills
+                || viewModel.settings == nil
+                || !skill.userToggleable
             )
         }
-    }
-
-    @ViewBuilder
-    private func storeCredentialsControls(_ skill: SkillItem) -> some View {
-        if isStoreSkillInstalled(skill) {
-            StoreSkillCredentialsView(
-                viewModel: viewModel,
-                skill: skill
-            )
-        }
-    }
-
-    private func beginStoreInstall(for skill: SkillItem) async {
-        guard !isStoreInstallBusy(skill.id) else { return }
-        installErrors[skill.id] = nil
-        let requiredProviders = requiredProviders(for: skill)
-        guard !requiredProviders.isEmpty else {
-            _ = await performStoreInstall(skillId: skill.id, providerKeys: [])
-            return
-        }
-
-        installChecksInFlight.insert(skill.id)
-        defer { installChecksInFlight.remove(skill.id) }
-
-        do {
-            var missingProviders: [String] = []
-            for provider in requiredProviders {
-                let hasKey = try await viewModel.providerHasKey(provider: provider)
-                if !hasKey {
-                    missingProviders.append(provider)
-                }
-            }
-
-            if missingProviders.isEmpty {
-                _ = await performStoreInstall(skillId: skill.id, providerKeys: [])
-                return
-            }
-
-            storeInstallPrompt = StoreInstallPrompt(skill: skill, missingProviders: missingProviders)
-            providerKeyDrafts = Dictionary(
-                uniqueKeysWithValues: missingProviders.map { ($0, "") }
-            )
-            storeInstallPromptError = nil
-        } catch {
-            installErrors[skill.id] = ErrorMapping.message(for: error)
-        }
-    }
-
-    private func submitStoreInstallPrompt(_ prompt: StoreInstallPrompt) async {
-        storeInstallPromptError = nil
-        let providerKeys = prompt.missingProviders.compactMap { provider -> StoreSkillProviderKeyInput? in
-            let key = providerKeyDrafts[provider]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            guard !key.isEmpty else { return nil }
-            return StoreSkillProviderKeyInput(provider: provider, apiKey: key)
-        }
-        guard providerKeys.count == prompt.missingProviders.count else {
-            storeInstallPromptError = "All required provider keys must be entered."
-            return
-        }
-
-        isSubmittingStoreInstallPrompt = true
-        defer { isSubmittingStoreInstallPrompt = false }
-
-        let succeeded = await performStoreInstall(
-            skillId: prompt.skill.id,
-            providerKeys: providerKeys
-        )
-        if succeeded {
-            storeInstallPrompt = nil
-            clearStoreInstallPromptState()
-        } else {
-            storeInstallPromptError = installErrors[prompt.skill.id] ?? "Install failed."
-        }
-    }
-
-    private func performStoreInstall(
-        skillId: String,
-        providerKeys: [StoreSkillProviderKeyInput]
-    ) async -> Bool {
-        guard !installInFlight.contains(skillId) else { return false }
-        installInFlight.insert(skillId)
-        defer { installInFlight.remove(skillId) }
-        let succeeded = await viewModel.installStoreSkill(
-            id: skillId,
-            providerKeys: providerKeys
-        )
-        if succeeded {
-            installErrors[skillId] = nil
-            return true
-        }
-        let message = viewModel.skillsError?.trimmingCharacters(in: .whitespacesAndNewlines)
-        installErrors[skillId] = (message?.isEmpty == false) ? message : "Install failed."
-        return false
-    }
-
-    private func clearStoreInstallPromptState() {
-        providerKeyDrafts = [:]
-        storeInstallPromptError = nil
-        isSubmittingStoreInstallPrompt = false
-    }
-
-    private func providerKeyBinding(for provider: String) -> Binding<String> {
-        Binding(
-            get: { providerKeyDrafts[provider] ?? "" },
-            set: { providerKeyDrafts[provider] = $0 }
-        )
-    }
-
-    private func isStoreInstallBusy(_ skillId: String) -> Bool {
-        installInFlight.contains(skillId) || installChecksInFlight.contains(skillId)
-    }
-
-    private func requiredProviders(for skill: SkillItem) -> [String] {
-        SkillsStoreLogic.requiredProviders(for: skill)
-    }
-
-    private func requirementLines(for skill: SkillItem) -> [String] {
-        SkillsStoreLogic.requirementLines(for: skill)
-    }
-
-    private func providerDisplayName(_ raw: String) -> String {
-        SkillsStoreLogic.providerDisplayName(raw)
     }
 
     private var filteredSkills: [SkillItem] {
@@ -367,7 +184,9 @@ struct SkillsSettingsView: View {
             case .standard:
                 return skill.tier == .standard
             case .store:
-                return skill.tier == .store && skill.status != "hidden"
+                return skill.tier == .store
+                    && skill.status != "hidden"
+                    && isStoreSkillInstalled(skill)
             case .required:
                 return skill.tier == .required
             }
@@ -385,7 +204,6 @@ struct SkillsSettingsView: View {
         Set(
             filteredSkills
                 .filter { $0.userToggleable }
-                .filter { selectedTier != .store || isStoreSkillInstalled($0) }
                 .map(\.id)
         )
     }
@@ -405,7 +223,40 @@ struct SkillsSettingsView: View {
     }
 
     private func isStoreSkillInstalled(_ skill: SkillItem) -> Bool {
-        guard skill.installable else { return true }
-        return viewModel.settings?.installedStoreSkills.contains(skill.id) ?? false
+        viewModel.settings?.installedStoreSkills.contains(skill.id) ?? false
+    }
+}
+
+private struct StoreSkillConfigView: View {
+    @ObservedObject var viewModel: SettingsViewModel
+    let skill: SkillItem
+
+    var body: some View {
+        Form {
+            Section {
+                HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+                    Image(systemName: SkillsStoreLogic.iconName(for: skill))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18, height: 18)
+                        .padding(.top, 2)
+                    Text(viewModel.displayDescription(for: skill))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("Requirements") {
+                ForEach(Array(SkillsStoreLogic.requirementLines(for: skill).enumerated()), id: \.offset) { _, line in
+                    Label(line, systemImage: "key")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section {
+                StoreSkillCredentialsView(viewModel: viewModel, skill: skill)
+            }
+        }
     }
 }
