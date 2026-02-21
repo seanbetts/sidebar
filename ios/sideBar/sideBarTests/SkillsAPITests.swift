@@ -109,6 +109,92 @@ final class SkillsAPITests: XCTestCase {
         XCTAssertEqual(response.skills.first?.showRequiredBadge, false)
     }
 
+    func testListSkillsDecodesStoreRequirementMetadata() throws {
+        let payload = """
+        {
+          "catalog_version": 2,
+          "skills": [
+            {
+              "id": "audio-transcribe",
+              "name": "Audio Transcription",
+              "description": "Transcribe audio",
+              "category": "Media",
+              "tier": "store",
+              "provider_dependency": "openai",
+              "credential_requirements": [
+                {
+                  "provider": "openai",
+                  "key_kind": "api_key",
+                  "required": true,
+                  "source": "provider_or_skill"
+                }
+              ],
+              "installable": true,
+              "default_enabled": false,
+              "status": "active"
+            }
+          ]
+        }
+        """
+
+        let response = try JSONDecoder().decode(SkillsResponse.self, from: Data(payload.utf8))
+
+        XCTAssertEqual(response.catalogVersion, 2)
+        XCTAssertEqual(response.skills.first?.tier, .store)
+        XCTAssertEqual(response.skills.first?.providerDependency, "openai")
+        XCTAssertEqual(response.skills.first?.installable, true)
+        XCTAssertEqual(response.skills.first?.credentialRequirements.count, 1)
+        XCTAssertEqual(response.skills.first?.credentialRequirements.first?.provider, "openai")
+        XCTAssertEqual(response.skills.first?.credentialRequirements.first?.keyKind, "api_key")
+        XCTAssertEqual(response.skills.first?.credentialRequirements.first?.required, true)
+    }
+
+    func testInstallStoreSkillPostsPayloadAndDecodesResponse() async throws {
+        let api = SkillsAPI(client: makeClient())
+        SkillsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.url?.absoluteString.contains("skills/store/install") == true)
+
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let object = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: bodyData, options: []) as? [String: Any]
+            )
+            XCTAssertEqual(object["skill_id"] as? String, "audio-transcribe")
+            let providerKeys = try XCTUnwrap(object["provider_keys"] as? [[String: String]])
+            XCTAssertEqual(providerKeys.count, 1)
+            XCTAssertEqual(providerKeys.first?["provider"], "openai")
+            XCTAssertEqual(providerKeys.first?["api_key"], "sk-openai-test-1234")
+
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "skill_id": "audio-transcribe",
+              "installed": true,
+              "enabled": true,
+              "enabled_skills": ["files", "audio-transcribe"],
+              "installed_store_skills": ["audio-transcribe"]
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        let response = try await api.installStoreSkill(
+            skillId: "audio-transcribe",
+            providerKeys: [StoreSkillProviderKeyInput(provider: "openai", apiKey: "sk-openai-test-1234")]
+        )
+
+        XCTAssertEqual(response.skillId, "audio-transcribe")
+        XCTAssertTrue(response.installed)
+        XCTAssertTrue(response.enabled)
+        XCTAssertTrue(response.enabledSkills.contains("audio-transcribe"))
+        XCTAssertEqual(response.installedStoreSkills, ["audio-transcribe"])
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

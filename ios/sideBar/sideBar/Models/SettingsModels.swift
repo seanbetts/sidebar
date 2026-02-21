@@ -95,6 +95,8 @@ public struct UserSettings: Codable {
     public let aiPrimaryProviderKeyLast4: String?
     /// The enabled skills value.
     public let enabledSkills: [String]
+    /// Installed Store skills.
+    public let installedStoreSkills: [String]
 
     private enum CodingKeys: String, CodingKey {
         case userId
@@ -116,6 +118,7 @@ public struct UserSettings: Codable {
         case aiPrimaryProviderHasKey
         case aiPrimaryProviderKeyLast4
         case enabledSkills
+        case installedStoreSkills
     }
 
     public init(
@@ -137,7 +140,8 @@ public struct UserSettings: Codable {
         aiPrimaryProvider: String? = nil,
         aiPrimaryProviderHasKey: Bool = false,
         aiPrimaryProviderKeyLast4: String? = nil,
-        enabledSkills: [String]
+        enabledSkills: [String],
+        installedStoreSkills: [String] = []
     ) {
         self.userId = userId
         self.communicationStyle = communicationStyle
@@ -158,6 +162,7 @@ public struct UserSettings: Codable {
         self.aiPrimaryProviderHasKey = aiPrimaryProviderHasKey
         self.aiPrimaryProviderKeyLast4 = aiPrimaryProviderKeyLast4
         self.enabledSkills = enabledSkills
+        self.installedStoreSkills = installedStoreSkills
     }
 
     public init(from decoder: Decoder) throws {
@@ -199,6 +204,10 @@ public struct UserSettings: Codable {
             forKey: .aiPrimaryProviderKeyLast4
         )
         enabledSkills = try container.decodeIfPresent([String].self, forKey: .enabledSkills) ?? []
+        installedStoreSkills = try container.decodeIfPresent(
+            [String].self,
+            forKey: .installedStoreSkills
+        ) ?? []
     }
 }
 
@@ -318,87 +327,6 @@ public struct ProviderKeyUpdate: Encodable {
         case provider
         case apiKey = "api_key"
     }
-}
-
-/// Represents a skill item struct.
-public struct SkillItem: Codable, Identifiable {
-    /// The id value.
-    public let id: String
-    /// The name value.
-    public let name: String
-    /// The description value.
-    public let description: String
-    /// The category value.
-    public let category: String
-    /// Whether users are allowed to toggle this skill.
-    public let userToggleable: Bool
-    /// Whether non-toggleable skills should show a "Required" badge.
-    public let showRequiredBadge: Bool
-
-    public init(
-        id: String,
-        name: String,
-        description: String,
-        category: String,
-        userToggleable: Bool = true,
-        showRequiredBadge: Bool? = nil
-    ) {
-        self.id = id
-        self.name = name
-        self.description = description
-        self.category = category
-        self.userToggleable = userToggleable
-        self.showRequiredBadge = showRequiredBadge ?? !userToggleable
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case id
-        case name
-        case description
-        case category
-        case userToggleable
-        case showRequiredBadge
-        case legacyUserToggleable = "user_toggleable"
-        case legacyShowRequiredBadge = "show_required_badge"
-    }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
-        description = try container.decode(String.self, forKey: .description)
-        category = try container.decode(String.self, forKey: .category)
-        if let toggleable = try container.decodeIfPresent(Bool.self, forKey: .userToggleable) {
-            userToggleable = toggleable
-        } else if let legacyToggleable = try container.decodeIfPresent(Bool.self, forKey: .legacyUserToggleable) {
-            userToggleable = legacyToggleable
-        } else {
-            userToggleable = true
-        }
-        if let showBadge = try container.decodeIfPresent(Bool.self, forKey: .showRequiredBadge) {
-            showRequiredBadge = showBadge
-        } else if let legacyShowBadge = try container.decodeIfPresent(Bool.self, forKey: .legacyShowRequiredBadge) {
-            showRequiredBadge = legacyShowBadge
-        } else {
-            showRequiredBadge = !userToggleable
-        }
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(name, forKey: .name)
-        try container.encode(description, forKey: .description)
-        try container.encode(category, forKey: .category)
-        try container.encode(userToggleable, forKey: .userToggleable)
-        try container.encode(showRequiredBadge, forKey: .showRequiredBadge)
-    }
-}
-
-/// Represents a skills response struct.
-public struct SkillsResponse: Codable {
-    /// The skills value.
-    public let skills: [SkillItem]
 }
 
 /// Represents a shortcuts token response struct.

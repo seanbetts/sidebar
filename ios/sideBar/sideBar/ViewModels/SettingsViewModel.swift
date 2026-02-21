@@ -313,7 +313,8 @@ public final class SettingsViewModel: LoadableViewModel {
             aiPrimaryProvider: current.aiPrimaryProvider,
             aiPrimaryProviderHasKey: current.aiPrimaryProviderHasKey,
             aiPrimaryProviderKeyLast4: current.aiPrimaryProviderKeyLast4,
-            enabledSkills: current.enabledSkills
+            enabledSkills: current.enabledSkills,
+            installedStoreSkills: current.installedStoreSkills
         )
         settings = next
         cache.set(
@@ -352,7 +353,8 @@ public final class SettingsViewModel: LoadableViewModel {
                 aiPrimaryProvider: current.aiPrimaryProvider,
                 aiPrimaryProviderHasKey: current.aiPrimaryProviderHasKey,
                 aiPrimaryProviderKeyLast4: current.aiPrimaryProviderKeyLast4,
-                enabledSkills: normalized
+                enabledSkills: normalized,
+                installedStoreSkills: current.installedStoreSkills
             )
         }
         do {
@@ -415,5 +417,47 @@ public final class SettingsViewModel: LoadableViewModel {
         let month = components.month ?? 1
         let day = components.day ?? 1
         return String(format: "%04d-%02d-%02d", year, month, day)
+    }
+}
+
+@MainActor
+extension SettingsViewModel {
+    public func setAllSkillsEnabled(_ enabled: Bool, scopeSkillIds: Set<String>) async {
+        let currentEnabled = settings?.enabledSkills ?? []
+        let toggleableSkillIds = Set(
+            skills
+                .filter(\.userToggleable)
+                .map(\.id)
+                .filter { scopeSkillIds.contains($0) }
+        )
+        let requiredSkillIds = Set(skills.filter { !$0.userToggleable }.map(\.id))
+        var next = Set(currentEnabled)
+        if enabled {
+            next.formUnion(toggleableSkillIds)
+        } else {
+            next.subtract(toggleableSkillIds)
+        }
+        next.formUnion(requiredSkillIds)
+        let ordered = skills.map(\.id).filter { next.contains($0) }
+        await updateEnabledSkills(ordered)
+    }
+
+    public func installStoreSkill(
+        id: String,
+        providerKeys: [StoreSkillProviderKeyInput] = []
+    ) async {
+        skillsError = nil
+        isSavingSkills = true
+        defer { isSavingSkills = false }
+
+        do {
+            _ = try await skillsAPI.installStoreSkill(skillId: id, providerKeys: providerKeys)
+            cache.remove(key: CacheKeys.userSettings)
+            cache.remove(key: CacheKeys.skillsList)
+            await load(force: true)
+            await loadSkills()
+        } catch {
+            skillsError = ErrorMapping.message(for: error)
+        }
     }
 }

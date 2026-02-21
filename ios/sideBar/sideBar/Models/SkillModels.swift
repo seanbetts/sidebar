@@ -1,0 +1,365 @@
+import Foundation
+
+/// Skill tier from catalog metadata.
+public enum SkillTier: String, Codable {
+    case required
+    case standard
+    case store
+}
+
+/// Credential requirement metadata for a skill.
+public struct SkillCredentialRequirement: Codable, Equatable {
+    public let provider: String
+    public let keyKind: String
+    public let required: Bool
+    public let source: String?
+    public let mode: String?
+
+    public init(
+        provider: String,
+        keyKind: String = "api_key",
+        required: Bool,
+        source: String? = nil,
+        mode: String? = nil
+    ) {
+        self.provider = provider
+        self.keyKind = keyKind
+        self.required = required
+        self.source = source
+        self.mode = mode
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case provider
+        case keyKind
+        case required
+        case source
+        case mode
+        case legacyKeyKind = "key_kind"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        provider = try container.decode(String.self, forKey: .provider)
+        keyKind = try container.decodeIfPresent(String.self, forKey: .keyKind)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyKeyKind)
+            ?? "api_key"
+        required = try container.decodeIfPresent(Bool.self, forKey: .required) ?? false
+        source = try container.decodeIfPresent(String.self, forKey: .source)
+        mode = try container.decodeIfPresent(String.self, forKey: .mode)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(provider, forKey: .provider)
+        try container.encode(keyKind, forKey: .keyKind)
+        try container.encode(required, forKey: .required)
+        try container.encodeIfPresent(source, forKey: .source)
+        try container.encodeIfPresent(mode, forKey: .mode)
+    }
+}
+
+/// Represents a skill item struct.
+public struct SkillItem: Codable, Identifiable {
+    /// The id value.
+    public let id: String
+    /// Legacy IDs accepted by backend.
+    public let legacyIds: [String]
+    /// The name value.
+    public let name: String
+    /// The description value.
+    public let description: String
+    /// The category value.
+    public let category: String
+    /// Symbol/icon key for UI rendering.
+    public let iconKey: String
+    /// Skill tier for skills/settings grouping.
+    public let tier: SkillTier
+    /// Provider dependency metadata.
+    public let providerDependency: String
+    /// Credential requirements for install/execution.
+    public let credentialRequirements: [SkillCredentialRequirement]
+    /// Whether users are allowed to toggle this skill.
+    public let userToggleable: Bool
+    /// Whether this skill is enabled by default.
+    public let defaultEnabled: Bool
+    /// Whether this skill can be installed from Store.
+    public let installable: Bool
+    /// Catalog status (active, beta, hidden, deprecated).
+    public let status: String
+    /// Whether non-toggleable skills should show a "Required" badge.
+    public let showRequiredBadge: Bool
+
+    public init(
+        id: String,
+        legacyIds: [String] = [],
+        name: String,
+        description: String,
+        category: String,
+        iconKey: String? = nil,
+        tier: SkillTier = .standard,
+        providerDependency: String = "none",
+        credentialRequirements: [SkillCredentialRequirement] = [],
+        userToggleable: Bool = true,
+        defaultEnabled: Bool = false,
+        installable: Bool = false,
+        status: String = "active",
+        showRequiredBadge: Bool? = nil
+    ) {
+        self.id = id
+        self.legacyIds = legacyIds
+        self.name = name
+        self.description = description
+        self.category = category
+        self.iconKey = iconKey ?? id
+        self.tier = tier
+        self.providerDependency = providerDependency
+        self.credentialRequirements = credentialRequirements
+        self.userToggleable = userToggleable
+        self.defaultEnabled = defaultEnabled
+        self.installable = installable
+        self.status = status
+        self.showRequiredBadge = showRequiredBadge ?? !userToggleable
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case legacyIds
+        case name
+        case description
+        case category
+        case iconKey
+        case tier
+        case providerDependency
+        case credentialRequirements
+        case userToggleable
+        case defaultEnabled
+        case installable
+        case status
+        case showRequiredBadge
+        case legacyLegacyIds = "legacy_ids"
+        case legacyIconKey = "icon_key"
+        case legacyProviderDependency = "provider_dependency"
+        case legacyCredentialRequirements = "credential_requirements"
+        case legacyUserToggleable = "user_toggleable"
+        case legacyDefaultEnabled = "default_enabled"
+        case legacyShowRequiredBadge = "show_required_badge"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        legacyIds = try Self.decodePreferred(
+            [String].self,
+            from: container,
+            primary: .legacyIds,
+            legacy: .legacyLegacyIds,
+            default: []
+        )
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decode(String.self, forKey: .description)
+        category = try container.decode(String.self, forKey: .category)
+        iconKey = try Self.decodePreferred(
+            String.self,
+            from: container,
+            primary: .iconKey,
+            legacy: .legacyIconKey,
+            default: id
+        )
+        tier = try container.decodeIfPresent(SkillTier.self, forKey: .tier) ?? .standard
+        providerDependency = try Self.decodePreferred(
+            String.self,
+            from: container,
+            primary: .providerDependency,
+            legacy: .legacyProviderDependency,
+            default: "none"
+        )
+        credentialRequirements = try Self.decodePreferred(
+            [SkillCredentialRequirement].self,
+            from: container,
+            primary: .credentialRequirements,
+            legacy: .legacyCredentialRequirements,
+            default: []
+        )
+        userToggleable = try Self.decodePreferred(
+            Bool.self,
+            from: container,
+            primary: .userToggleable,
+            legacy: .legacyUserToggleable,
+            default: true
+        )
+        defaultEnabled = try Self.decodePreferred(
+            Bool.self,
+            from: container,
+            primary: .defaultEnabled,
+            legacy: .legacyDefaultEnabled,
+            default: false
+        )
+        installable = try container.decodeIfPresent(Bool.self, forKey: .installable) ?? false
+        status = try container.decodeIfPresent(String.self, forKey: .status) ?? "active"
+        showRequiredBadge = try Self.decodePreferred(
+            Bool.self,
+            from: container,
+            primary: .showRequiredBadge,
+            legacy: .legacyShowRequiredBadge,
+            default: !userToggleable
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(legacyIds, forKey: .legacyIds)
+        try container.encode(name, forKey: .name)
+        try container.encode(description, forKey: .description)
+        try container.encode(category, forKey: .category)
+        try container.encode(iconKey, forKey: .iconKey)
+        try container.encode(tier, forKey: .tier)
+        try container.encode(providerDependency, forKey: .providerDependency)
+        try container.encode(credentialRequirements, forKey: .credentialRequirements)
+        try container.encode(userToggleable, forKey: .userToggleable)
+        try container.encode(defaultEnabled, forKey: .defaultEnabled)
+        try container.encode(installable, forKey: .installable)
+        try container.encode(status, forKey: .status)
+        try container.encode(showRequiredBadge, forKey: .showRequiredBadge)
+    }
+
+    private static func decodePreferred<T: Decodable>(
+        _ type: T.Type,
+        from container: KeyedDecodingContainer<CodingKeys>,
+        primary: CodingKeys,
+        legacy: CodingKeys,
+        default defaultValue: @autoclosure () -> T
+    ) throws -> T {
+        if let modern = try container.decodeIfPresent(type, forKey: primary) {
+            return modern
+        }
+        if let legacyValue = try container.decodeIfPresent(type, forKey: legacy) {
+            return legacyValue
+        }
+        return defaultValue()
+    }
+}
+
+/// Represents a skills response struct.
+public struct SkillsResponse: Codable {
+    /// Catalog version for cache-busting client behavior.
+    public let catalogVersion: Int
+    /// The skills value.
+    public let skills: [SkillItem]
+
+    private enum CodingKeys: String, CodingKey {
+        case catalogVersion
+        case skills
+        case legacyCatalogVersion = "catalog_version"
+    }
+
+    public init(catalogVersion: Int = 1, skills: [SkillItem]) {
+        self.catalogVersion = catalogVersion
+        self.skills = skills
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        catalogVersion = try container.decodeIfPresent(Int.self, forKey: .catalogVersion)
+            ?? container.decodeIfPresent(Int.self, forKey: .legacyCatalogVersion)
+            ?? 1
+        skills = try container.decodeIfPresent([SkillItem].self, forKey: .skills) ?? []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(catalogVersion, forKey: .catalogVersion)
+        try container.encode(skills, forKey: .skills)
+    }
+}
+
+/// Install-time provider key input for Store skill installs.
+public struct StoreSkillProviderKeyInput: Encodable, Equatable {
+    public let provider: String
+    public let apiKey: String
+
+    public init(provider: String, apiKey: String) {
+        self.provider = provider
+        self.apiKey = apiKey
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case provider
+        case apiKey = "api_key"
+    }
+}
+
+/// Request payload for Store skill install.
+public struct StoreSkillInstallRequest: Encodable {
+    public let skillId: String
+    public let providerKeys: [StoreSkillProviderKeyInput]
+
+    public init(skillId: String, providerKeys: [StoreSkillProviderKeyInput] = []) {
+        self.skillId = skillId
+        self.providerKeys = providerKeys
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case skillId = "skill_id"
+        case providerKeys = "provider_keys"
+    }
+}
+
+/// Response payload for Store skill install.
+public struct StoreSkillInstallResponse: Codable, Equatable {
+    public let skillId: String
+    public let installed: Bool
+    public let enabled: Bool
+    public let enabledSkills: [String]
+    public let installedStoreSkills: [String]
+
+    private enum CodingKeys: String, CodingKey {
+        case skillId
+        case installed
+        case enabled
+        case enabledSkills
+        case installedStoreSkills
+        case legacySkillId = "skill_id"
+        case legacyEnabledSkills = "enabled_skills"
+        case legacyInstalledStoreSkills = "installed_store_skills"
+    }
+
+    public init(
+        skillId: String,
+        installed: Bool,
+        enabled: Bool,
+        enabledSkills: [String],
+        installedStoreSkills: [String]
+    ) {
+        self.skillId = skillId
+        self.installed = installed
+        self.enabled = enabled
+        self.enabledSkills = enabledSkills
+        self.installedStoreSkills = installedStoreSkills
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        skillId = try container.decodeIfPresent(String.self, forKey: .skillId)
+            ?? container.decodeIfPresent(String.self, forKey: .legacySkillId)
+            ?? ""
+        installed = try container.decodeIfPresent(Bool.self, forKey: .installed) ?? false
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        enabledSkills = try container.decodeIfPresent([String].self, forKey: .enabledSkills)
+            ?? container.decodeIfPresent([String].self, forKey: .legacyEnabledSkills)
+            ?? []
+        installedStoreSkills = try container.decodeIfPresent([String].self, forKey: .installedStoreSkills)
+            ?? container.decodeIfPresent([String].self, forKey: .legacyInstalledStoreSkills)
+            ?? []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(skillId, forKey: .skillId)
+        try container.encode(installed, forKey: .installed)
+        try container.encode(enabled, forKey: .enabled)
+        try container.encode(enabledSkills, forKey: .enabledSkills)
+        try container.encode(installedStoreSkills, forKey: .installedStoreSkills)
+    }
+}
