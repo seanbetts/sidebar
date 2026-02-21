@@ -1120,7 +1120,6 @@
 				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
 				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				"KEYCHAIN_ACCESS_GROUP[arch=*]" = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				"KEYCHAIN_SERVICE[arch=*]" = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1128,6 +1127,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1158,7 +1158,6 @@
 				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
 				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				"KEYCHAIN_ACCESS_GROUP[arch=*]" = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				"KEYCHAIN_SERVICE[arch=*]" = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1166,6 +1165,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1194,10 +1194,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = sideBarWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				"INFOPLIST_KEY_R2_ENDPOINT[arch=*]" = "$(R2_ENDPOINT)";
 				"INFOPLIST_KEY_R2_FAVICON_BUCKET[arch=*]" = "$(R2_FAVICON_BUCKET)";
 				"INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL[arch=*]" = "$(R2_FAVICON_PUBLIC_BASE_URL)";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
@@ -1233,10 +1233,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = sideBarWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				"INFOPLIST_KEY_R2_ENDPOINT[arch=*]" = "$(R2_ENDPOINT)";
 				"INFOPLIST_KEY_R2_FAVICON_BUCKET[arch=*]" = "$(R2_FAVICON_BUCKET)";
 				"INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL[arch=*]" = "$(R2_FAVICON_PUBLIC_BASE_URL)";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
