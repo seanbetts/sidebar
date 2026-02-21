@@ -174,7 +174,8 @@ public enum MarkdownRendering {
         let normalizedSubstackArtifacts = normalizeSubstackArtifacts(normalizedTasks)
         let normalizedLinkedImages = normalizeLinkedImageWrappers(normalizedSubstackArtifacts)
         let normalizedBracketWrappedImages = normalizeBracketWrappedImages(normalizedLinkedImages)
-        return normalizeImageCaptions(normalizedBracketWrappedImages)
+        let normalizedBoilerplate = normalizeWebsiteBoilerplate(normalizedBracketWrappedImages)
+        return normalizeImageCaptions(normalizedBoilerplate)
     }
 
     public nonisolated static func splitMarkdownContent(_ text: String) -> [MarkdownContentBlock] {
@@ -274,6 +275,32 @@ public enum MarkdownRendering {
     private nonisolated static func makeGalleryImageRegex() -> NSRegularExpression {
         let pattern = #"<img[^>]*\s+src=\"([^\"]+)\"[^>]*/?>"#
         return makeRegex(pattern: pattern, options: [.dotMatchesLineSeparators])
+    }
+
+    private nonisolated static func normalizeWebsiteBoilerplate(_ text: String) -> String {
+        var output = text
+        let patterns = [
+            #"(?m)^\s*Advertisement\s*$\n?"#,
+            #"(?m)^\s*\[SKIP ADVERTISEMENT\]\([^)]+\)\s*$\n?"#,
+            #"(?m)^\s*Credit\s+Credit\.\.\..+\s*$\n?"#,
+            #"(?m)^\s*\[Subscribe to The Times\]\([^)]+\)\s+to read as many articles as you like\.\s*$\n?"#
+        ]
+
+        for pattern in patterns {
+            let regex = makeRegex(pattern: pattern, options: [.caseInsensitive])
+            output = regex.stringByReplacingMatches(
+                in: output,
+                range: NSRange(location: 0, length: output.utf16.count),
+                withTemplate: ""
+            )
+        }
+
+        let extraBlankRegex = makeRegex(pattern: #"\n{3,}"#)
+        return extraBlankRegex.stringByReplacingMatches(
+            in: output,
+            range: NSRange(location: 0, length: output.utf16.count),
+            withTemplate: "\n\n"
+        )
     }
 
     nonisolated static func makeRegex(

@@ -92,10 +92,16 @@ final class MarkdownRenderingTests: XCTestCase {
     }
 
     func testNormalizedWebsiteBlocksUnwrapsSubstackSplitImageWrapper() {
+        let wrappedTarget =
+            "https://substackcdn.com/image/fetch/$s_!IOnc!,f_auto,q_auto:good,fl_progressive:steep/" +
+            "https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fcc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png"
+        let expectedImage =
+            "![Image](https://substack-post-media.s3.amazonaws.com/public/images/" +
+            "cc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png \"Image\")"
         let input = """
         [![Image](https://substack-post-media.s3.amazonaws.com/public/images/cc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png "Image")
 
-        ](https://substackcdn.com/image/fetch/$s_!IOnc!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fcc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png)
+        ](\(wrappedTarget))
         """
         let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
 
@@ -104,17 +110,20 @@ final class MarkdownRenderingTests: XCTestCase {
             return
         }
 
-        XCTAssertTrue(normalized.contains("![Image](https://substack-post-media.s3.amazonaws.com/public/images/cc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png \"Image\")"))
+        XCTAssertTrue(normalized.contains(expectedImage))
         XCTAssertFalse(normalized.contains("](https://substackcdn.com/image/fetch/"))
     }
 
     func testNormalizedWebsiteBlocksRemovesSubstackWrapperPreludeArtifacts() {
+        let wrappedTarget =
+            "https://substackcdn.com/image/fetch/$s_!5NR5!,f_auto,q_auto:good,fl_progressive:steep/" +
+            "https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F933c53d7-43f9-455e-b4e7-2ee52f4a33ee_1565x1184.png"
         let input = """
         Before
 
         [, ask questions of the sources and material (the middle) and turn them into things like slide shows (on the right)")
 
-        ](https://substackcdn.com/image/fetch/$s_!5NR5!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F933c53d7-43f9-455e-b4e7-2ee52f4a33ee_1565x1184.png)
+        ](\(wrappedTarget))
 
         After
         """
@@ -129,6 +138,37 @@ final class MarkdownRenderingTests: XCTestCase {
         XCTAssertTrue(normalized.contains("After"))
         XCTAssertFalse(normalized.contains("[, ask questions of the sources"))
         XCTAssertFalse(normalized.contains("](https://substackcdn.com/image/fetch/"))
+    }
+
+    func testNormalizedWebsiteBlocksRemovesNYTimesBoilerplateArtifacts() {
+        let input = """
+        Advertisement
+
+        [SKIP ADVERTISEMENT](https://www.nytimes.com/example#after-top)
+
+        The A.I. Disruption We’ve Been Waiting for Has Arrived
+
+        Credit Credit...Brendan Conroy
+
+        By Paul Ford
+
+        [Subscribe to The Times](https://www.nytimes.com/subscription) to read as many articles as you like.
+
+        Advertisement
+        """
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        guard case .markdown(let normalized)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+
+        XCTAssertTrue(normalized.contains("The A.I. Disruption We’ve Been Waiting for Has Arrived"))
+        XCTAssertTrue(normalized.contains("By Paul Ford"))
+        XCTAssertFalse(normalized.contains("Advertisement"))
+        XCTAssertFalse(normalized.contains("SKIP ADVERTISEMENT"))
+        XCTAssertFalse(normalized.contains("Credit Credit"))
+        XCTAssertFalse(normalized.contains("Subscribe to The Times"))
     }
 
     func testSplitMarkdownContentExtractsGallery() {
@@ -241,6 +281,30 @@ final class MarkdownRenderingTests: XCTestCase {
         XCTAssertFalse(sharedText.contains("Transcript of Example video"))
         XCTAssertTrue(sharedText.contains("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
         XCTAssertTrue(sharedText.contains("Article body."))
+    }
+
+    func testPlainTextForWebsiteShareRemovesNYTimesBoilerplateArtifacts() {
+        let input = """
+        Advertisement
+        [SKIP ADVERTISEMENT](https://www.nytimes.com/example#after-top)
+        Credit Credit...Brendan Conroy
+
+        By Paul Ford
+        [Subscribe to The Times](https://www.nytimes.com/subscription) to read as many articles as you like.
+
+        On weekday evenings, heading home on the subway.
+
+        Advertisement
+        """
+
+        let sharedText = MarkdownRendering.plainTextForWebsiteShare(input)
+
+        XCTAssertTrue(sharedText.contains("By Paul Ford"))
+        XCTAssertTrue(sharedText.contains("On weekday evenings, heading home on the subway."))
+        XCTAssertFalse(sharedText.contains("Advertisement"))
+        XCTAssertFalse(sharedText.contains("SKIP ADVERTISEMENT"))
+        XCTAssertFalse(sharedText.contains("Credit Credit"))
+        XCTAssertFalse(sharedText.contains("Subscribe to The Times"))
     }
 
     func testNormalizedWebsiteBlocksSuppressesInlineSVG() {
