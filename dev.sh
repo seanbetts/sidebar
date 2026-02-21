@@ -40,6 +40,8 @@ TEST_DB_DATA_DIR="${HOME}/.sidebar/test-postgres"
 TEST_DB_LOG="/tmp/sidebar-test-postgres.log"
 use_doppler=0
 RESTART_LOCK="/tmp/sidebar-dev-restart.lock"
+STARTUP_DETECT_ATTEMPTS=40
+STARTUP_DETECT_INTERVAL_SECONDS="0.5"
 
 load_env() {
   if [[ -f ".env" ]]; then
@@ -360,6 +362,54 @@ resolve_pid_for_port() {
   return 1
 }
 
+wait_for_role_port() {
+  local port="$1"
+  local role="$2"
+  local pid_file="$3"
+  local pid
+  local any_pid
+  local attempt
+
+  for ((attempt = 1; attempt <= STARTUP_DETECT_ATTEMPTS; attempt++)); do
+    pid=$(resolve_pid_for_port "${port}" "${role}" || true)
+    if [[ -n "${pid}" ]]; then
+      echo "${pid}" >"${pid_file}"
+      return 0
+    fi
+
+    # During startup/reload, strict command matching can lag behind the actual
+    # listener becoming available.
+    if port_in_use "${port}"; then
+      any_pid=$(port_pid "${port}")
+      if [[ -n "${any_pid}" ]]; then
+        echo "${any_pid}" >"${pid_file}"
+        return 0
+      fi
+    fi
+
+    sleep "${STARTUP_DETECT_INTERVAL_SECONDS}"
+  done
+
+  return 1
+}
+
+wait_for_ingestion_process() {
+  local pid_file="$1"
+  local pid
+  local attempt
+
+  for ((attempt = 1; attempt <= STARTUP_DETECT_ATTEMPTS; attempt++)); do
+    pid=$(resolve_ingestion_pid || true)
+    if [[ -n "${pid}" ]]; then
+      echo "${pid}" >"${pid_file}"
+      return 0
+    fi
+    sleep "${STARTUP_DETECT_INTERVAL_SECONDS}"
+  done
+
+  return 1
+}
+
 resolve_ingestion_pid() {
   if ! command -v pgrep >/dev/null 2>&1; then
     return 1
@@ -497,18 +547,7 @@ start_backend() {
     fi
   }) >"${BACKEND_LOG}" 2>&1 </dev/null &
   echo $! >"${BACKEND_PID}"
-  local started=0
-  for _ in {1..10}; do
-    local pid
-    pid=$(resolve_pid_for_port 8001 backend || true)
-    if [[ -n "${pid}" ]]; then
-      echo "${pid}" >"${BACKEND_PID}"
-      started=1
-      break
-    fi
-    sleep 0.5
-  done
-  if [[ "${started}" -ne 1 ]]; then
+  if ! wait_for_role_port 8001 backend "${BACKEND_PID}"; then
     echo "Backend failed to bind to port 8001. Check logs: ${BACKEND_LOG}"
   fi
 }
@@ -531,18 +570,7 @@ start_frontend() {
     (cd frontend && npm run dev -- --host 0.0.0.0 --port 3000 --strictPort) >"${FRONTEND_LOG}" 2>&1 </dev/null &
   fi
   echo $! >"${FRONTEND_PID}"
-  local started=0
-  for _ in {1..10}; do
-    local pid
-    pid=$(resolve_pid_for_port 3000 frontend || true)
-    if [[ -n "${pid}" ]]; then
-      echo "${pid}" >"${FRONTEND_PID}"
-      started=1
-      break
-    fi
-    sleep 0.5
-  done
-  if [[ "${started}" -ne 1 ]]; then
+  if ! wait_for_role_port 3000 frontend "${FRONTEND_PID}"; then
     echo "Frontend failed to bind to port 3000. Check logs: ${FRONTEND_LOG}"
   fi
 }
@@ -575,18 +603,7 @@ start_ingestion_worker() {
     fi
   }) >"${INGESTION_LOG}" 2>&1 </dev/null &
   echo $! >"${INGESTION_PID}"
-  local started=0
-  for _ in {1..10}; do
-    local pid
-    pid=$(resolve_ingestion_pid || true)
-    if [[ -n "${pid}" ]]; then
-      echo "${pid}" >"${INGESTION_PID}"
-      started=1
-      break
-    fi
-    sleep 0.5
-  done
-  if [[ "${started}" -ne 1 ]]; then
+  if ! wait_for_ingestion_process "${INGESTION_PID}"; then
     echo "Ingestion worker did not stay running. Check logs: ${INGESTION_LOG}"
   fi
 }
