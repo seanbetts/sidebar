@@ -91,6 +91,46 @@ final class MarkdownRenderingTests: XCTestCase {
         XCTAssertEqual(normalized, "![](https://example.com/image.png)")
     }
 
+    func testNormalizedWebsiteBlocksUnwrapsSubstackSplitImageWrapper() {
+        let input = """
+        [![Image](https://substack-post-media.s3.amazonaws.com/public/images/cc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png "Image")
+
+        ](https://substackcdn.com/image/fetch/$s_!IOnc!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fcc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png)
+        """
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        guard case .markdown(let normalized)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+
+        XCTAssertTrue(normalized.contains("![Image](https://substack-post-media.s3.amazonaws.com/public/images/cc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png \"Image\")"))
+        XCTAssertFalse(normalized.contains("](https://substackcdn.com/image/fetch/"))
+    }
+
+    func testNormalizedWebsiteBlocksRemovesSubstackWrapperPreludeArtifacts() {
+        let input = """
+        Before
+
+        [, ask questions of the sources and material (the middle) and turn them into things like slide shows (on the right)")
+
+        ](https://substackcdn.com/image/fetch/$s_!5NR5!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F933c53d7-43f9-455e-b4e7-2ee52f4a33ee_1565x1184.png)
+
+        After
+        """
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        guard case .markdown(let normalized)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+
+        XCTAssertTrue(normalized.contains("Before"))
+        XCTAssertTrue(normalized.contains("After"))
+        XCTAssertFalse(normalized.contains("[, ask questions of the sources"))
+        XCTAssertFalse(normalized.contains("](https://substackcdn.com/image/fetch/"))
+    }
+
     func testSplitMarkdownContentExtractsGallery() {
         let html = "<figure class=\"image-gallery\" data-caption=\"Hello\"><img src=\"https://example.com/a.png\" /></figure>"
         let blocks = MarkdownRendering.splitMarkdownContent(html)

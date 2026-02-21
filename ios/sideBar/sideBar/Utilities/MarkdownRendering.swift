@@ -171,7 +171,8 @@ public enum MarkdownRendering {
 
     private nonisolated static func normalizeWebsiteMarkdownText(_ text: String) -> String {
         let normalizedTasks = normalizeTaskLists(text)
-        let normalizedLinkedImages = normalizeLinkedImageWrappers(normalizedTasks)
+        let normalizedSubstackArtifacts = normalizeSubstackArtifacts(normalizedTasks)
+        let normalizedLinkedImages = normalizeLinkedImageWrappers(normalizedSubstackArtifacts)
         let normalizedBracketWrappedImages = normalizeBracketWrappedImages(normalizedLinkedImages)
         return normalizeImageCaptions(normalizedBracketWrappedImages)
     }

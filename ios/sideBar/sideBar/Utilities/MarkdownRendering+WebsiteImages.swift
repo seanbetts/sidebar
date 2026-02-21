@@ -1,9 +1,25 @@
 import Foundation
 
 extension MarkdownRendering {
+    nonisolated static func makeSubstackSplitImageWrapperRegex() -> NSRegularExpression {
+        let pattern =
+            #"\[\s*(!\[[^\]]*\]\([^\)\s]+(?:\s+(?:\"[^\"]*\"|'[^']*'))?\))\s*\]\((https?://substackcdn\.com/image/fetch/[^\)\s]+)\)"#
+        return makeRegex(pattern: pattern, options: [.dotMatchesLineSeparators, .caseInsensitive])
+    }
+
+    nonisolated static func makeSubstackWrapperPreludeRegex() -> NSRegularExpression {
+        let pattern = #"(?ms)^\s*\[\s*,[^\n]*\n\s*\]\((https?://substackcdn\.com/image/fetch/[^\)\s]+)\)\s*$"#
+        return makeRegex(pattern: pattern, options: [.caseInsensitive])
+    }
+
+    nonisolated static func makeSubstackOrphanTailRegex() -> NSRegularExpression {
+        let pattern = #"(?m)^\s*\]\((https?://substackcdn\.com/image/fetch/[^\)\s]+)\)\s*$"#
+        return makeRegex(pattern: pattern, options: [.caseInsensitive])
+    }
+
     nonisolated static func makeLinkedImageRegex() -> NSRegularExpression {
-        let pattern = #"\[!\[([^\]]*)\]\(([^)\s]+)(?:\s+(?:\"([^\"]*)\"|'([^']*)'))?\)\]\(([^)\s]+)\)"#
-        return makeRegex(pattern: pattern)
+        let pattern = #"\[\s*!\[([^\]]*)\]\(([^)\s]+)(?:\s+(?:\"([^\"]*)\"|'([^']*)'))?\)\s*\]\(([^)\s]+)\)"#
+        return makeRegex(pattern: pattern, options: [.dotMatchesLineSeparators])
     }
 
     nonisolated static func makeBracketOnlyImageRegex() -> NSRegularExpression {
@@ -45,6 +61,69 @@ extension MarkdownRendering {
             }
             replacement += ")"
             output.replaceSubrange(fullRange, with: replacement)
+        }
+        return output
+    }
+
+    nonisolated static func normalizeSubstackArtifacts(_ text: String) -> String {
+        var output = text
+
+        let splitWrapperRegex = makeSubstackSplitImageWrapperRegex()
+        output = replaceMatches(
+            in: output,
+            regex: splitWrapperRegex
+        ) { match, content in
+            guard let imageRange = Range(match.range(at: 1), in: content),
+                  let linkRange = Range(match.range(at: 2), in: content) else {
+                return nil
+            }
+            let imageMarkdown = String(content[imageRange])
+            let wrapperURL = String(content[linkRange])
+            guard canonicalImageURL(wrapperURL).contains("substack-post-media.s3.amazonaws.com") else {
+                return nil
+            }
+            return imageMarkdown
+        }
+
+        let wrapperPreludeRegex = makeSubstackWrapperPreludeRegex()
+        output = wrapperPreludeRegex.stringByReplacingMatches(
+            in: output,
+            range: NSRange(location: 0, length: output.utf16.count),
+            withTemplate: ""
+        )
+
+        let orphanTailRegex = makeSubstackOrphanTailRegex()
+        output = orphanTailRegex.stringByReplacingMatches(
+            in: output,
+            range: NSRange(location: 0, length: output.utf16.count),
+            withTemplate: ""
+        )
+
+        let extraBlankRegex = makeRegex(pattern: #"\n{3,}"#)
+        output = extraBlankRegex.stringByReplacingMatches(
+            in: output,
+            range: NSRange(location: 0, length: output.utf16.count),
+            withTemplate: "\n\n"
+        )
+
+        return output
+    }
+
+    nonisolated static func replaceMatches(
+        in text: String,
+        regex: NSRegularExpression,
+        replacement: (NSTextCheckingResult, String) -> String?
+    ) -> String {
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.utf16.count))
+        guard !matches.isEmpty else { return text }
+
+        var output = text
+        for match in matches.reversed() {
+            guard let fullRange = Range(match.range, in: output),
+                  let updated = replacement(match, output) else {
+                continue
+            }
+            output.replaceSubrange(fullRange, with: updated)
         }
         return output
     }
