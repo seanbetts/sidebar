@@ -474,6 +474,25 @@ def test_campaignlive_paywall_rule_matches_pre_phase():
     assert "campaignlive-paywall-discard" in matched_ids
 
 
+def test_campaignlive_paywall_rule_matches_post_phase():
+    html = """
+    <html>
+      <body>
+        <h1>Eight principles for ad practitioners to use AI responsibly</h1>
+        <h2>Sign in to continue</h2>
+      </body>
+    </html>
+    """
+    engine = web_save_parser.get_rule_engine()
+    matched = engine.match_rules(
+        "https://www.campaignlive.co.uk/article/example/1947988",
+        html,
+        phase="post",
+    )
+    matched_ids = {rule.id for rule in matched}
+    assert "campaignlive-paywall-discard" in matched_ids
+
+
 def test_parse_url_local_campaignlive_paywall_discards_content(monkeypatch):
     html = """
     <html>

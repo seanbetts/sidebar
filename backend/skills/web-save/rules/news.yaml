@@ -461,7 +461,7 @@
 # Campaignlive article pages often render paywall/login chrome and cookie panels
 # as the dominant readable content for anonymous sessions.
 - id: campaignlive-paywall-discard
-  phase: pre
+  phase: both
   priority: 95
   trigger:
     host:
