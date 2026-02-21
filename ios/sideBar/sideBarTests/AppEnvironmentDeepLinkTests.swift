@@ -241,6 +241,19 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         #endif
     }
 
+    func testActiveShortcutContextsTreatSkillsStoreAsUniversal() async {
+        let environment = requireEnvironment()
+        environment.activeSection = .skillsStore
+        environment.focusedSection = .chat
+
+        #if os(iOS)
+        XCTAssertEqual(environment.activeShortcutContexts, [.universal])
+        #else
+        XCTAssertTrue(environment.activeShortcutContexts.contains(.chat))
+        XCTAssertFalse(environment.activeShortcutContexts.contains(.notes))
+        #endif
+    }
+
     #if os(iOS)
     func testShortcutActionRouterCloseItemUsesActiveSectionWhenFocusIsStale() async {
         let environment = requireEnvironment()
@@ -266,6 +279,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.pendingNewNoteDeepLink = true
         environment.pendingScratchpadDeepLink = true
         environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
+        environment.skillsStoreSelectedSkillId = "audio-transcribe"
         environment.tasksViewModel.updateSearch(query: "follow up")
         environment.tasksViewModel.startNewTask()
         environment.notesViewModel.updateSearch(query: "project")
@@ -321,6 +335,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertNil(environment.tasksViewModel.newTaskDraft)
         XCTAssertEqual(environment.tasksViewModel.searchQuery, "")
         XCTAssertNil(environment.tasksPhoneDetailRouteId)
+        XCTAssertNil(environment.skillsStoreSelectedSkillId)
         XCTAssertFalse(environment.pendingNewTaskDeepLink)
         XCTAssertFalse(environment.pendingNewNoteDeepLink)
         XCTAssertFalse(environment.pendingScratchpadDeepLink)

@@ -181,44 +181,32 @@ private struct SkillsStorePanelView: View {
     }
 
     private var storeSkills: [SkillItem] {
-        viewModel.skills
-            .filter { $0.tier == .store && $0.status != "hidden" }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        SkillsStoreLogic.storeSkills(from: viewModel.skills)
     }
 
     private var storeCategories: [String] {
-        Array(Set(storeSkills.map(\.category)))
-            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        SkillsStoreLogic.categories(from: storeSkills)
     }
 
     private var filteredSkills: [SkillItem] {
-        let trimmedQuery = searchQuery.trimmed.lowercased()
-        return storeSkills.filter { skill in
-            if let selectedCategory, skill.category != selectedCategory {
-                return false
-            }
-            guard !trimmedQuery.isEmpty else { return true }
-            let searchText = [
+        SkillsStoreLogic.filteredStoreSkills(
+            storeSkills,
+            selectedCategory: selectedCategory,
+            searchQuery: searchQuery
+        ) { skill in
+            [
                 viewModel.displayName(for: skill),
                 viewModel.displayDescription(for: skill),
                 skill.category
-            ]
-                .joined(separator: " ")
-                .lowercased()
-            return searchText.contains(trimmedQuery)
+            ].joined(separator: " ")
         }
     }
 
     private func ensureDefaultSelection() {
-        guard !filteredSkills.isEmpty else {
-            environment.skillsStoreSelectedSkillId = nil
-            return
-        }
-        guard let selectedId = environment.skillsStoreSelectedSkillId,
-              filteredSkills.contains(where: { $0.id == selectedId }) else {
-            environment.skillsStoreSelectedSkillId = filteredSkills.first?.id
-            return
-        }
+        environment.skillsStoreSelectedSkillId = SkillsStoreLogic.resolvedSelection(
+            currentSelection: environment.skillsStoreSelectedSkillId,
+            filteredSkills: filteredSkills
+        )
     }
 
     private func isInstalled(_ skill: SkillItem) -> Bool {

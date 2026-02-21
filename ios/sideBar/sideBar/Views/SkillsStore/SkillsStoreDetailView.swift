@@ -49,7 +49,7 @@ public struct SkillsStoreView: View {
                     Section("Required Provider Keys") {
                         ForEach(prompt.missingProviders, id: \.self) { provider in
                             SecureField(
-                                "\(providerDisplayName(provider)) API key",
+                                "\(SkillsStoreLogic.providerDisplayName(provider)) API key",
                                 text: providerKeyBinding(for: provider)
                             )
                             #if os(iOS)
@@ -160,7 +160,7 @@ public struct SkillsStoreView: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text("Requirements")
                 .font(DesignTokens.Typography.subheadlineSemibold)
-            ForEach(Array(requirementLines(for: skill).enumerated()), id: \.offset) { _, line in
+            ForEach(Array(SkillsStoreLogic.requirementLines(for: skill).enumerated()), id: \.offset) { _, line in
                 Label(line, systemImage: "key")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -171,7 +171,7 @@ public struct SkillsStoreView: View {
     private func beginStoreInstall(for skill: SkillItem) async {
         guard !installInFlight, !installChecksInFlight else { return }
         installError = nil
-        let requiredProviders = requiredProviders(for: skill)
+        let requiredProviders = SkillsStoreLogic.requiredProviders(for: skill)
         guard !requiredProviders.isEmpty else {
             _ = await performStoreInstall(skillId: skill.id, providerKeys: [])
             return
@@ -247,52 +247,6 @@ public struct SkillsStoreView: View {
         providerKeyDrafts = [:]
         storeInstallPromptError = nil
         isSubmittingStoreInstallPrompt = false
-    }
-
-    private func requiredProviders(for skill: SkillItem) -> [String] {
-        var orderedProviders: [String] = []
-        var seen: Set<String> = []
-        for requirement in skill.credentialRequirements where requirement.required {
-            if requirement.keyKind.lowercased() != "api_key" {
-                continue
-            }
-            let provider = requirement.provider.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if provider.isEmpty || seen.contains(provider) {
-                continue
-            }
-            orderedProviders.append(provider)
-            seen.insert(provider)
-        }
-        return orderedProviders
-    }
-
-    private func requirementLines(for skill: SkillItem) -> [String] {
-        if skill.credentialRequirements.isEmpty {
-            return ["No API key required"]
-        }
-        return skill.credentialRequirements.map { requirement in
-            let provider = providerDisplayName(requirement.provider)
-            if requirement.required {
-                return "Requires \(provider) API key"
-            }
-            if let mode = requirement.mode, !mode.isEmpty {
-                return "Optional \(provider) API key (\(mode.replacingOccurrences(of: "_", with: " ")))"
-            }
-            return "Optional \(provider) API key"
-        }
-    }
-
-    private func providerDisplayName(_ raw: String) -> String {
-        switch raw.lowercased() {
-        case "openai":
-            return "OpenAI"
-        case "anthropic":
-            return "Anthropic"
-        case "google":
-            return "Google"
-        default:
-            return raw.capitalized
-        }
     }
 
     private func providerKeyBinding(for provider: String) -> Binding<String> {
