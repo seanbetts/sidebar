@@ -8,7 +8,8 @@ from api.services.web_save_parser_cleanup import _canonical_image_url
 
 _LINKED_IMAGE_PATTERN = re.compile(
     (
-        r"\[\s*!\[(?P<alt>[^\]]*)\]\((?P<image>[^)\s]+)\)"
+        r"\[\s*!\[(?P<alt>[^\]]*)\]\((?P<image>[^)\s]+)"
+        r"(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)"
         r"(?:\s*<svg\b[^>]*>.*?</svg>\s*)*"
         r"\s*]\((?P<link>https?://[^)\s]+)\)"
     ),
@@ -23,6 +24,9 @@ _FOOTNOTE_ANCHOR_PATTERN = re.compile(
     r"^\[(?P<num>\d+)]\(#footnote-anchor-(?P=num)\)\s*$"
 )
 _EMPTY_HEADING_PATTERN = re.compile(r"^#{1,6}$")
+_EMPTY_IMAGE_PATTERN = re.compile(
+    r"!\[\]\((?P<image>[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)"
+)
 
 
 def _normalize_footnotes(markdown: str) -> str:
@@ -123,9 +127,9 @@ def cleanup_substack_markdown(markdown: str) -> str:
             line = line.replace("*", "")
             line = re.sub(r"[ \t]{2,}", " ", line).strip()
         if "![](" in line:
-            without_images = re.sub(r"!\[\]\([^)]+\)", "", line)
+            without_images = _EMPTY_IMAGE_PATTERN.sub("", line)
             if re.search(r"[A-Za-z0-9]", without_images):
-                line = re.sub(r"\s*!\[\]\([^)]+\)\s*", " ", line)
+                line = _EMPTY_IMAGE_PATTERN.sub(" ", line)
                 line = re.sub(r"[ \t]{2,}", " ", line).rstrip()
         cleaned_lines.append(line)
 
@@ -134,6 +138,10 @@ def cleanup_substack_markdown(markdown: str) -> str:
         (r"<svg\b[^>]*>.*?</svg>", re.IGNORECASE | re.DOTALL),
         (
             r"^\s*\[\s*]\(https://substackcdn\.com/image/fetch/[^)]+\)\s*$\n?",
+            re.IGNORECASE | re.MULTILINE,
+        ),
+        (
+            r"^\s*\]\(https://substackcdn\.com/image/fetch/[^)]+\)\s*$\n?",
             re.IGNORECASE | re.MULTILINE,
         ),
     ):

@@ -1515,6 +1515,39 @@ def test_cleanup_substack_markdown_normalizes_footnotes_and_editor_markup():
     assert "Editor: Ankit Maloo blogs at <https://ankitmaloo.com/>" in cleaned
 
 
+def test_cleanup_substack_markdown_handles_titled_proxy_linked_images():
+    markdown = "\n".join(
+        [
+            "Before image.",
+            "",
+            '[![Image](https://substack-post-media.s3.amazonaws.com/public/images/cc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png "Image")',
+            "",
+            "<svg viewBox='0 0 24 24'><path d='M1 1'></path></svg>"
+            "<svg viewBox='0 0 24 24'><path d='M2 2'></path></svg>](https://substackcdn.com/image/fetch/$s_!IOnc!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fcc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png)",
+            "",
+            '[![](https://substack-post-media.s3.amazonaws.com/public/images/933c53d7-43f9-455e-b4e7-2ee52f4a33ee_1565x1184.png "NotebookLM lets you conduct research reports and gather source documents (on the left), ask questions of the sources and material (the middle) and turn them into things like slide shows (on the right)")',
+            "",
+            "<svg viewBox='0 0 24 24'><path d='M1 1'></path></svg>](https://substackcdn.com/image/fetch/$s_!5NR5!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F933c53d7-43f9-455e-b4e7-2ee52f4a33ee_1565x1184.png)",
+            "",
+            "After image.",
+        ]
+    )
+
+    cleaned = web_save_parser.cleanup_substack_markdown(markdown)
+
+    assert (
+        "https://substack-post-media.s3.amazonaws.com/public/images/cc527f70-b3e4-498b-80bb-bfa03f24dd5b_1900x1175.png"
+        in cleaned
+    )
+    assert (
+        "![](https://substack-post-media.s3.amazonaws.com/public/images/933c53d7-43f9-455e-b4e7-2ee52f4a33ee_1565x1184.png)"
+        in cleaned
+    )
+    assert "substackcdn.com/image/fetch" not in cleaned
+    assert "[, ask questions of the sources and material" not in cleaned
+    assert "<svg" not in cleaned
+
+
 def test_insert_youtube_placeholders_handles_comment_sibling():
     extracted_html = "<article><p>Anchor</p></article>"
     raw_html = """
