@@ -300,6 +300,79 @@ def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
     assert resolved == ["files", "assistant-identity"]
 
 
+def test_resolve_enabled_skills_defaults_to_required_and_standard_only(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {
+                    "id": "files",
+                    "tier": "standard",
+                    "default_enabled": True,
+                    "user_toggleable": True,
+                },
+                {
+                    "id": "assistant-identity",
+                    "tier": "required",
+                    "default_enabled": True,
+                    "user_toggleable": False,
+                },
+                {
+                    "id": "audio-transcribe",
+                    "tier": "store",
+                    "default_enabled": False,
+                    "user_toggleable": True,
+                },
+            ]
+        ),
+    )
+    settings_record = SimpleNamespace(enabled_skills=None, installed_store_skills=None)
+
+    resolved = SettingsService._resolve_enabled_skills(settings_record)
+    assert resolved == ["files", "assistant-identity"]
+
+
+def test_resolve_enabled_skills_filters_uninstalled_store_skill(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {
+                    "id": "files",
+                    "tier": "standard",
+                    "default_enabled": True,
+                    "user_toggleable": True,
+                },
+                {
+                    "id": "assistant-identity",
+                    "tier": "required",
+                    "default_enabled": True,
+                    "user_toggleable": False,
+                },
+                {
+                    "id": "audio-transcribe",
+                    "tier": "store",
+                    "default_enabled": False,
+                    "user_toggleable": True,
+                },
+            ]
+        ),
+    )
+    settings_record = SimpleNamespace(
+        enabled_skills=["files", "audio-transcribe"],
+        installed_store_skills=[],
+    )
+
+    resolved = SettingsService._resolve_enabled_skills(settings_record)
+    assert resolved == ["files", "assistant-identity"]
+
+
 def test_resolve_installed_store_skills_filters_non_store_and_aliases(monkeypatch) -> None:
     monkeypatch.setattr(
         SkillCatalogService,

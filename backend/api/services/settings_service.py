@@ -160,6 +160,22 @@ class SettingsService:
         ]
 
     @staticmethod
+    def _default_enabled_skill_ids(catalog: list[dict[str, Any]]) -> list[str]:
+        """Return skill IDs enabled by default in catalog order."""
+        return [
+            str(skill["id"]) for skill in catalog if bool(skill.get("default_enabled"))
+        ]
+
+    @staticmethod
+    def _store_skill_ids(catalog: list[dict[str, Any]]) -> set[str]:
+        """Return store-tier skill IDs."""
+        return {
+            str(skill["id"])
+            for skill in catalog
+            if str(skill.get("tier", "")) == "store"
+        }
+
+    @staticmethod
     def _normalize_enabled_skills(
         requested: list[str],
         *,
@@ -195,25 +211,47 @@ class SettingsService:
             List of enabled skill IDs.
         """
         catalog = SkillCatalogService.list_skills(settings.skills_dir)
-        all_ids = [str(skill["id"]) for skill in catalog]
+        installed_store_skills = (
+            SettingsService._resolve_installed_store_skills_from_catalog(
+                settings_record,
+                catalog=catalog,
+            )
+        )
         if not settings_record or settings_record.enabled_skills is None:
-            return all_ids
-        requested = [
-            skill_id
-            for skill_id in settings_record.enabled_skills
-            if isinstance(skill_id, str)
-        ]
-        return SettingsService._normalize_enabled_skills(requested, catalog=catalog)
+            requested = SettingsService._default_enabled_skill_ids(catalog)
+            for skill_id in installed_store_skills:
+                if skill_id not in requested:
+                    requested.append(skill_id)
+        else:
+            requested = [
+                skill_id
+                for skill_id in settings_record.enabled_skills
+                if isinstance(skill_id, str)
+            ]
+            requested = SettingsService._normalize_enabled_skills(
+                requested, catalog=catalog
+            )
+
+        store_ids = SettingsService._store_skill_ids(catalog)
+        resolved: list[str] = []
+        seen: set[str] = set()
+        installed_store_set = set(installed_store_skills)
+        for skill_id in requested:
+            if skill_id in store_ids and skill_id not in installed_store_set:
+                continue
+            if skill_id not in seen:
+                resolved.append(skill_id)
+                seen.add(skill_id)
+        return resolved
 
     @staticmethod
-    def _resolve_installed_store_skills(settings_record) -> list[str]:
-        """Resolve installed store skills against the catalog and aliases."""
-        catalog = SkillCatalogService.list_skills(settings.skills_dir)
-        store_ids = {
-            str(skill["id"])
-            for skill in catalog
-            if str(skill.get("tier", "")) == "store"
-        }
+    def _resolve_installed_store_skills_from_catalog(
+        settings_record,
+        *,
+        catalog: list[dict[str, Any]],
+    ) -> list[str]:
+        """Resolve installed store skills against the provided catalog."""
+        store_ids = SettingsService._store_skill_ids(catalog)
         installed_store_skills = (
             getattr(settings_record, "installed_store_skills", None)
             if settings_record
@@ -232,6 +270,15 @@ class SettingsService:
                 normalized.append(canonical_id)
                 seen.add(canonical_id)
         return normalized
+
+    @staticmethod
+    def _resolve_installed_store_skills(settings_record) -> list[str]:
+        """Resolve installed store skills against the catalog and aliases."""
+        catalog = SkillCatalogService.list_skills(settings.skills_dir)
+        return SettingsService._resolve_installed_store_skills_from_catalog(
+            settings_record,
+            catalog=catalog,
+        )
 
     @staticmethod
     def resolve_enabled_skills(settings_record) -> list[str]:
