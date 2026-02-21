@@ -216,6 +216,8 @@ extension ContentView {
             }
         case .settings:
             EmptyView()
+        case .skillsStore:
+            EmptyView()
         }
     }
 

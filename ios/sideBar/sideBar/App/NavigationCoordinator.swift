@@ -13,6 +13,7 @@ public final class NavigationCoordinator: ObservableObject {
     @Published public var pendingScratchpadDeepLink: Bool = false
     @Published public var shortcutActionEvent: ShortcutActionEvent?
     @Published public var tasksPhoneDetailRouteId: String?
+    @Published public var skillsStoreSelectedSkillId: String?
 
     public init() {
     }
@@ -27,5 +28,6 @@ public final class NavigationCoordinator: ObservableObject {
         pendingScratchpadDeepLink = false
         shortcutActionEvent = nil
         tasksPhoneDetailRouteId = nil
+        skillsStoreSelectedSkillId = nil
     }
 }

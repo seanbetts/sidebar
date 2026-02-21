@@ -43,6 +43,11 @@ extension ContentView {
             await environment.ingestionViewModel.load()
         case .chat:
             await environment.chatViewModel.loadConversations()
+        case .skillsStore:
+            if environment.settingsViewModel.settings == nil {
+                await environment.settingsViewModel.load()
+            }
+            await environment.settingsViewModel.loadSkills()
         case .tasks, .settings:
             break
         }
@@ -91,6 +96,8 @@ extension ContentView {
             return environment.websitesViewModel.selectedWebsiteId == nil
         case .tasks:
             return environment.tasksPhoneDetailRouteId == nil
+        case .skillsStore:
+            return environment.skillsStoreSelectedSkillId == nil
         case .settings:
             return true
         }
@@ -219,6 +226,7 @@ extension ContentView {
         guard isPhoneIdiom else { return false }
         if isPhonePanelListVisible {
             return AppSection.primaryNavigationSections.contains(phoneSelection)
+                && phoneSelection != .skillsStore
         }
         // In compact tasks detail routes, keep showing the dock for quick add.
         return phoneSelection == .tasks

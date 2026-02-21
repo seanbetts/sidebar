@@ -106,6 +106,8 @@ public struct SidebarSplitView<Detail: View>: View {
             FilesPanel()
         case .websites:
             WebsitesPanel()
+        case .skillsStore:
+            SkillsStorePanel()
         case .none:
             SidebarPanelPlaceholder(title: "Select a section")
         default:

@@ -267,4 +267,10 @@ public final class AppEnvironment: ObservableObject {
         get { navigation.tasksPhoneDetailRouteId }
         set { navigation.tasksPhoneDetailRouteId = newValue }
     }
+
+    /// Active skill route identifier used for Skills Store selection state.
+    public var skillsStoreSelectedSkillId: String? {
+        get { navigation.skillsStoreSelectedSkillId }
+        set { navigation.skillsStoreSelectedSkillId = newValue }
+    }
 }

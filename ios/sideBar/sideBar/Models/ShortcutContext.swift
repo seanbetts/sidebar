@@ -42,7 +42,7 @@ public enum ShortcutContext: String, CaseIterable, Identifiable {
             return .websites
         case .tasks:
             return .tasks
-        case .settings:
+        case .settings, .skillsStore:
             return .universal
         }
     }

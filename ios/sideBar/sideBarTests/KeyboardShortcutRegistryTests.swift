@@ -16,6 +16,7 @@ final class KeyboardShortcutRegistryTests: XCTestCase {
         XCTAssertEqual(navigateByInput["3"], .tasks)
         XCTAssertEqual(navigateByInput["4"], .websites)
         XCTAssertEqual(navigateByInput["5"], .files)
+        XCTAssertEqual(navigateByInput["6"], .skillsStore)
         XCTAssertEqual(navigateByInput.count, AppSection.primaryNavigationSections.count)
     }
 

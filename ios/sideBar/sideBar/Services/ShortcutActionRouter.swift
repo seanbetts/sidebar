@@ -65,7 +65,7 @@ public final class ShortcutActionRouter {
             environment.emitShortcutAction(.newItem)
         case .tasks:
             environment.tasksViewModel.startNewTask()
-        case .settings, .none:
+        case .skillsStore, .settings, .none:
             break
         }
     }
@@ -80,7 +80,7 @@ public final class ShortcutActionRouter {
             environment.websitesViewModel.clearSelection()
         case .files:
             environment.ingestionViewModel.clearSelection()
-        case .tasks, .settings, .none:
+        case .tasks, .skillsStore, .settings, .none:
             break
         }
     }
@@ -98,6 +98,8 @@ public final class ShortcutActionRouter {
         case .tasks:
             Task { await environment.tasksViewModel.load(selection: environment.tasksViewModel.selection, force: true) }
             Task { await environment.tasksViewModel.loadCounts(force: true) }
+        case .skillsStore:
+            Task { await environment.settingsViewModel.loadSkills() }
         case .settings, .none:
             break
         }
@@ -117,7 +119,7 @@ public final class ShortcutActionRouter {
                   let item = environment.ingestionViewModel.items.first(where: { $0.file.id == fileId }) else { return }
             let pinned = item.file.pinned ?? false
             Task { await environment.ingestionViewModel.togglePinned(fileId: fileId, pinned: !pinned) }
-        case .chat, .tasks, .settings, .none:
+        case .chat, .tasks, .skillsStore, .settings, .none:
             break
         }
     }

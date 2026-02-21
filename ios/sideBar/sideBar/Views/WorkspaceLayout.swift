@@ -341,6 +341,8 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
             FilesPanel()
         case .websites:
             WebsitesPanel()
+        case .skillsStore:
+            SkillsStorePanel()
         case .none:
             SidebarPanelPlaceholder(title: "Select a section")
         default:

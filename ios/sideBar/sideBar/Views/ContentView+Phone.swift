@@ -31,6 +31,8 @@ extension ContentView {
             return "globe"
         case .files:
             return "folder"
+        case .skillsStore:
+            return "storefront"
         case .chat:
             return "bubble"
         default:
@@ -64,6 +66,8 @@ extension ContentView {
             return filesSectionDefinition
         case .websites:
             return websitesSectionDefinition
+        case .skillsStore:
+            return skillsStoreSectionDefinition
         case .settings:
             return settingsSectionDefinition
         case .tasks:
@@ -159,6 +163,24 @@ extension ContentView {
                     set: { route in
                         guard route == nil else { return }
                         environment.tasksPhoneDetailRouteId = nil
+                    }
+                )
+            }
+        )
+    }
+
+    private var skillsStoreSectionDefinition: SectionDefinition {
+        SectionDefinition(
+            section: .skillsStore,
+            panelView: { AnyView(SkillsStorePanel()) },
+            detailView: { AnyView(SkillsStoreView()) },
+            phoneSelection: {
+                Binding(
+                    get: { environment.skillsStoreSelectedSkillId.map(PhoneDetailRoute.init) },
+                    set: { route in
+                        if route == nil {
+                            environment.skillsStoreSelectedSkillId = nil
+                        }
                     }
                 )
             }

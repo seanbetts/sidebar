@@ -134,6 +134,8 @@ public struct SidebarRail: View {
             return "globe"
         case .tasks:
             return "checkmark.square"
+        case .skillsStore:
+            return "storefront"
         default:
             return "square.grid.2x2"
         }

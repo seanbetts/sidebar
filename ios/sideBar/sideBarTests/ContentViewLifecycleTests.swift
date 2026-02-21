@@ -130,6 +130,16 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(shouldShow)
     }
 
+    func testShouldDisplayPhoneFloatingActionDockHidesForSkillsStore() {
+        let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
+            isPhoneIdiom: true,
+            isPhonePanelListVisible: true,
+            phoneSelection: .skillsStore
+        )
+
+        XCTAssertFalse(shouldShow)
+    }
+
     func testWorkspaceSidebarSwipePolicyCollapsesExpandedPanelOnLeftSwipe() {
         let action = WorkspaceSidebarSwipePolicy.resolveAction(
             translation: CGSize(width: -120, height: 12),
