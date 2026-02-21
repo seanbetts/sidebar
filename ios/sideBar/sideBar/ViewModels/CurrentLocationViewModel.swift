@@ -39,10 +39,6 @@ public final class CurrentLocationViewModel: ObservableObject {
 
     /// Starts location tracking flow.
     public func startTracking() {
-        guard provider.isLocationServicesEnabled else {
-            clearCurrentLocation()
-            return
-        }
         applyAuthorizationStatus(provider.authorizationStatus)
     }
 

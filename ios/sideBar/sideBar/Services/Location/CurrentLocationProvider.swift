@@ -7,8 +7,6 @@ import MapKit
 public protocol CurrentLocationProviding: AnyObject {
     /// Current authorization status for location access.
     var authorizationStatus: CLAuthorizationStatus { get }
-    /// Whether location services are enabled on this device.
-    var isLocationServicesEnabled: Bool { get }
     /// Publisher for authorization status changes.
     var authorizationStatusPublisher: AnyPublisher<CLAuthorizationStatus, Never> { get }
     /// Publisher for location updates.
@@ -31,10 +29,6 @@ public final class CoreLocationProvider: NSObject, CurrentLocationProviding {
 
     public var authorizationStatus: CLAuthorizationStatus {
         manager.authorizationStatus
-    }
-
-    public var isLocationServicesEnabled: Bool {
-        CLLocationManager.locationServicesEnabled()
     }
 
     public var authorizationStatusPublisher: AnyPublisher<CLAuthorizationStatus, Never> {

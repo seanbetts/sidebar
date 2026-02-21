@@ -105,7 +105,6 @@ final class CurrentLocationViewModelTests: XCTestCase {
 @MainActor
 private final class MockCurrentLocationProvider: CurrentLocationProviding {
     var authorizationStatus: CLAuthorizationStatus
-    var isLocationServicesEnabled: Bool
 
     private let authorizationSubject = PassthroughSubject<CLAuthorizationStatus, Never>()
     private let locationSubject = PassthroughSubject<CLLocation, Never>()
@@ -122,12 +121,8 @@ private final class MockCurrentLocationProvider: CurrentLocationProviding {
     private(set) var startUpdatingLocationCallCount = 0
     private(set) var stopUpdatingLocationCallCount = 0
 
-    init(
-        status: CLAuthorizationStatus,
-        isLocationServicesEnabled: Bool = true
-    ) {
+    init(status: CLAuthorizationStatus) {
         self.authorizationStatus = status
-        self.isLocationServicesEnabled = isLocationServicesEnabled
     }
 
     func requestWhenInUseAuthorization() {

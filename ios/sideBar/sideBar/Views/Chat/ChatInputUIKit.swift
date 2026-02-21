@@ -114,7 +114,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
         attachButton.tintColor = isEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
         placeholderLabel.isHidden = !text.trimmed.isEmpty
         context.coordinator.applyResetIfNeeded(token: resetToken, textView: textView)
-        context.coordinator.applySizing(for: textView)
+        context.coordinator.applySizing(for: textView, deferStateMutation: true)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -172,7 +172,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
         func textViewDidChange(_ textView: UITextView) {
             text.wrappedValue = textView.text
             placeholderLabel?.isHidden = !textView.text.trimmed.isEmpty
-            applySizing(for: textView)
+            applySizing(for: textView, deferStateMutation: false)
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
@@ -196,7 +196,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
             onAttach()
         }
 
-        func applySizing(for textView: UITextView) {
+        func applySizing(for textView: UITextView, deferStateMutation: Bool) {
             let fittingWidth = max(textView.bounds.width, 1)
             let size = textView.sizeThatFits(CGSize(width: fittingWidth, height: .greatestFiniteMagnitude))
             let sizing = ChatInputSizing.resolve(
@@ -205,7 +205,15 @@ struct ChatInputUIKitView: UIViewRepresentable {
                 maxHeight: maxHeight
             )
             if measuredHeight.wrappedValue != sizing.measuredHeight {
-                measuredHeight.wrappedValue = sizing.measuredHeight
+                if deferStateMutation {
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        guard self.measuredHeight.wrappedValue != sizing.measuredHeight else { return }
+                        self.measuredHeight.wrappedValue = sizing.measuredHeight
+                    }
+                } else {
+                    measuredHeight.wrappedValue = sizing.measuredHeight
+                }
             }
             if textView.isScrollEnabled != sizing.isOverflowing {
                 textView.isScrollEnabled = sizing.isOverflowing
