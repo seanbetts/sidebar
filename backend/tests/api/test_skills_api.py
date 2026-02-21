@@ -22,7 +22,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert response.status_code == 200
 
     payload = response.json()
-    assert payload["catalog_version"] == 3
+    assert payload["catalog_version"] == 4
     assert isinstance(payload["skills"], list)
     assert payload["skills"]
 
@@ -34,6 +34,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["files"]["installable"] is False
 
     assert "audio-transcribe" in by_id
+    assert "skill-creator" not in by_id
     assert by_id["audio-transcribe"]["tier"] == "store"
     assert by_id["audio-transcribe"]["provider_dependency"] == "openai"
     assert by_id["audio-transcribe"]["credential_requirements"]

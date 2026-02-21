@@ -18,7 +18,7 @@ final class SkillsStoreLogicTests: XCTestCase {
     func testFilteredStoreSkillsAppliesCategoryAndSearchQuery() {
         let skills = [
             makeSkill(id: "audio", name: "Audio Transcribe", category: "Media", tier: .store),
-            makeSkill(id: "youtube", name: "YouTube Download", category: "Media", tier: .store),
+            makeSkill(id: "youtube", name: "YouTube", category: "Media", tier: .store),
             makeSkill(id: "crawler", name: "Web Crawler", category: "Web", tier: .store)
         ]
 

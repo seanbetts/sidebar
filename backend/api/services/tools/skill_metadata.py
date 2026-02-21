@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 3
+CATALOG_VERSION = 4
 
 SkillTier = Literal["required", "standard", "store"]
 
@@ -49,7 +49,7 @@ SKILL_DISPLAY = {
         "description": "Transcribe audio files into text and save the transcripts",
     },
     "youtube-download": {
-        "name": "YouTube Download",
+        "name": "YouTube",
         "description": "Save YouTube videos",
     },
     "youtube-transcribe": {
@@ -122,7 +122,6 @@ STORE_SKILLS = {
     "youtube-transcribe",
     "subdomain-discover",
     "web-crawler-policy",
-    "skill-creator",
 }
 
 EXPOSED_SKILLS = REQUIRED_SKILLS | STANDARD_SKILLS | STORE_SKILLS

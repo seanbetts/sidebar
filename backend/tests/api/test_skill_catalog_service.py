@@ -22,6 +22,7 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         "audio-transcribe",
         "youtube-download",
         "youtube-transcribe",
+        "skill-creator",
         "prompt-preview",
         "settings-other-preferences",
         "assistant-identity",
@@ -39,6 +40,7 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert by_id["files"]["default_enabled"] is True
     assert by_id["audio-transcribe"]["tier"] == "store"
     assert by_id["audio-transcribe"]["installable"] is True
+    assert "skill-creator" not in by_id
     assert by_id["prompt-preview"]["tier"] == "standard"
     assert by_id["prompt-preview"]["installable"] is False
     assert by_id["settings-other-preferences"]["tier"] == "standard"
@@ -79,4 +81,4 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 3
+    assert SkillCatalogService.catalog_version() == 4
