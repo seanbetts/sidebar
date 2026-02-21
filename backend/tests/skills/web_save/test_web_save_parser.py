@@ -504,6 +504,67 @@ def test_parse_url_local_campaignlive_paywall_discards_content(monkeypatch):
     assert "[Content discarded by parsing rule]" in parsed.content
 
 
+def test_tryprofound_article_override_rule_matches_pre_phase():
+    html = """
+    <html>
+      <body>
+        <main>
+          <div class="content-grid">
+            <article><h1>How ChatGPT cites social media</h1></article>
+            <article><h2>Teaser</h2></article>
+          </div>
+        </main>
+      </body>
+    </html>
+    """
+    engine = web_save_parser.get_rule_engine()
+    matched = engine.match_rules(
+        "https://www.tryprofound.com/blog/chatgpt-reddit-youtube-citations",
+        html,
+        phase="pre",
+    )
+    matched_ids = {rule.id for rule in matched}
+    assert "tryprofound-article-override" in matched_ids
+
+
+def test_parse_url_local_tryprofound_scopes_to_primary_article(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>How ChatGPT cites social media</title>
+        <meta property="og:image" content="https://cdn.sanity.io/images/example.png"/>
+      </head>
+      <body>
+        <main>
+          <div class="content-grid">
+            <article>
+              <h1>How ChatGPT cites social media</h1>
+              <p>When AI models answer questions, they increasingly turn to social platforms as sources of truth.</p>
+              <p>Reddit and YouTube now dominate citations in several categories.</p>
+            </article>
+            <article>
+              <h2>Profound now integrates with Slack</h2>
+              <p>Adding a Slack node to a Profound Agent helps teams stay aligned.</p>
+            </article>
+          </div>
+        </main>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.tryprofound.com/blog/chatgpt-reddit-youtube-citations", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.tryprofound.com/blog/chatgpt-reddit-youtube-citations"
+    )
+    assert "When AI models answer questions" in parsed.content
+    assert "Reddit and YouTube now dominate citations" in parsed.content
+    assert "Profound now integrates with Slack" not in parsed.content
+
+
 def test_airbnb_listing_rule_matches_pre_phase():
     html = """
     <html>

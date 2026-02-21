@@ -449,6 +449,15 @@
     - ".article__footer"
     - ".article__share"
 
+- id: tryprofound-article-override
+  phase: pre
+  priority: 90
+  trigger:
+    host:
+      ends_with: "tryprofound.com"
+  selector_overrides:
+    article: "main article"
+
 # Campaignlive article pages often render paywall/login chrome and cookie panels
 # as the dominant readable content for anonymous sessions.
 - id: campaignlive-paywall-discard
