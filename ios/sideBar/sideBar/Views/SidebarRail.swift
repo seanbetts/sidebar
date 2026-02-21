@@ -30,9 +30,10 @@ public struct SidebarRail: View {
             Button(
                 action: { onTogglePanel?() },
                 label: {
-                    Image(systemName: "sidebar.left")
-                        .font(DesignTokens.Typography.titleLg)
-                        .frame(width: 32, height: 32)
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 26, height: 26)
                 }
             )
             .buttonStyle(.plain)
