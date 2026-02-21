@@ -22,8 +22,8 @@ final class SettingsViewModelTests: XCTestCase {
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.userSettings, value: cached, ttlSeconds: 60)
         let viewModel = SettingsViewModel(
-            settingsAPI: MockSettingsAPI(result: .failure(MockError.forced)),
-            skillsAPI: MockSkillsAPI(result: .failure(MockError.forced)),
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .failure(SettingsViewModelMockError.forced)),
             cache: cache
         )
 
@@ -39,7 +39,7 @@ final class SettingsViewModelTests: XCTestCase {
         ])
         let cache = TestCacheClient()
         let viewModel = SettingsViewModel(
-            settingsAPI: MockSettingsAPI(result: .failure(MockError.forced)),
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
             skillsAPI: MockSkillsAPI(result: .success(response)),
             cache: cache
         )
@@ -227,7 +227,7 @@ final class SettingsViewModelTests: XCTestCase {
         let viewModel = SettingsViewModel(
             settingsAPI: MockSettingsAPI(
                 result: .success(settings),
-                profileImageResult: .failure(MockError.forced)
+                profileImageResult: .failure(SettingsViewModelMockError.forced)
             ),
             skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
             cache: cache
@@ -353,12 +353,12 @@ final class SettingsViewModelTests: XCTestCase {
     }
 }
 
-private enum MockError: Error {
+enum SettingsViewModelMockError: Error {
     case forced
 }
 
 @MainActor
-private struct MockSettingsAPI: SettingsProviding {
+struct MockSettingsAPI: SettingsProviding {
     let result: Result<UserSettings, Error>
     let tokenResult: Result<ShortcutsTokenResponse, Error>
     let updateResult: Result<UserSettings, Error>
@@ -368,9 +368,9 @@ private struct MockSettingsAPI: SettingsProviding {
 
     init(
         result: Result<UserSettings, Error>,
-        tokenResult: Result<ShortcutsTokenResponse, Error> = .failure(MockError.forced),
-        updateResult: Result<UserSettings, Error> = .failure(MockError.forced),
-        profileImageResult: Result<Data, Error> = .failure(MockError.forced),
+        tokenResult: Result<ShortcutsTokenResponse, Error> = .failure(SettingsViewModelMockError.forced),
+        updateResult: Result<UserSettings, Error> = .failure(SettingsViewModelMockError.forced),
+        profileImageResult: Result<Data, Error> = .failure(SettingsViewModelMockError.forced),
         updateRecorder: UpdateRecorder? = nil,
         providerKeyRecorder: ProviderKeyRecorder? = nil
     ) {
@@ -403,7 +403,9 @@ private struct MockSettingsAPI: SettingsProviding {
     func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse {
         providerKeyRecorder?.statusCallCount += 1
         providerKeyRecorder?.lastStatusProvider = provider
-        return ProviderKeyStatusResponse(provider: nil, hasKey: false, keyLast4: nil)
+        let normalizedProvider = provider?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let hasKey = normalizedProvider.flatMap { providerKeyRecorder?.statusByProvider[$0] } ?? false
+        return ProviderKeyStatusResponse(provider: normalizedProvider, hasKey: hasKey, keyLast4: nil)
     }
 
     func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
@@ -433,20 +435,42 @@ private struct MockSettingsAPI: SettingsProviding {
     }
 }
 
-private struct MockSkillsAPI: SkillsProviding {
+struct MockSkillsAPI: SkillsProviding {
     let result: Result<SkillsResponse, Error>
+    let installResult: Result<StoreSkillInstallResponse, Error>
+    let installRecorder: SkillsInstallRecorder?
+
+    init(
+        result: Result<SkillsResponse, Error>,
+        installResult: Result<StoreSkillInstallResponse, Error> = .failure(SettingsViewModelMockError.forced),
+        installRecorder: SkillsInstallRecorder? = nil
+    ) {
+        self.result = result
+        self.installResult = installResult
+        self.installRecorder = installRecorder
+    }
 
     func list() async throws -> SkillsResponse {
         try result.get()
     }
+
+    func installStoreSkill(
+        skillId: String,
+        providerKeys: [StoreSkillProviderKeyInput]
+    ) async throws -> StoreSkillInstallResponse {
+        installRecorder?.callCount += 1
+        installRecorder?.lastSkillId = skillId
+        installRecorder?.lastProviderKeys = providerKeys
+        return try installResult.get()
+    }
 }
 
-private final class UpdateRecorder {
+final class UpdateRecorder {
     var callCount: Int = 0
     var lastUpdate: SettingsUpdate?
 }
 
-private final class ProviderKeyRecorder {
+final class ProviderKeyRecorder {
     var statusCallCount: Int = 0
     var upsertCallCount: Int = 0
     var deleteCallCount: Int = 0
@@ -454,4 +478,11 @@ private final class ProviderKeyRecorder {
     var lastUpsertProvider: String?
     var lastUpsertApiKey: String?
     var lastDeleteProvider: String?
+    var statusByProvider: [String: Bool] = [:]
+}
+
+final class SkillsInstallRecorder {
+    var callCount: Int = 0
+    var lastSkillId: String?
+    var lastProviderKeys: [StoreSkillProviderKeyInput]?
 }

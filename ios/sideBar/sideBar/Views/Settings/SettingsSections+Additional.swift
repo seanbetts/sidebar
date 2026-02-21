@@ -7,6 +7,12 @@ struct SkillsSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @State private var selectedTier: SkillsTierFilter = .standard
     @State private var installInFlight: Set<String> = []
+    @State private var installChecksInFlight: Set<String> = []
+    @State private var installErrors: [String: String] = [:]
+    @State private var storeInstallPrompt: StoreInstallPrompt?
+    @State private var providerKeyDrafts: [String: String] = [:]
+    @State private var storeInstallPromptError: String?
+    @State private var isSubmittingStoreInstallPrompt = false
 
     var body: some View {
         Form {
@@ -66,6 +72,11 @@ struct SkillsSettingsView: View {
                                 if selectedTier == .store {
                                     storeRequirementLines(skill)
                                     storeInstallButton(skill)
+                                    if let installError = installErrors[skill.id], !installError.isEmpty {
+                                        Text(installError)
+                                            .font(.caption)
+                                            .foregroundStyle(DesignTokens.Colors.error)
+                                    }
                                 }
                             }
                         }
@@ -76,6 +87,63 @@ struct SkillsSettingsView: View {
         #if os(macOS)
         .formStyle(.grouped)
         #endif
+        .sheet(item: $storeInstallPrompt, onDismiss: clearStoreInstallPromptState) { prompt in
+            NavigationStack {
+                Form {
+                    Section {
+                        Text(viewModel.displayDescription(for: prompt.skill))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } header: {
+                        Text(viewModel.displayName(for: prompt.skill))
+                    }
+
+                    Section("Required Provider Keys") {
+                        ForEach(prompt.missingProviders, id: \.self) { provider in
+                            SecureField(
+                                "\(providerDisplayName(provider)) API key",
+                                text: providerKeyBinding(for: provider)
+                            )
+                            #if os(iOS)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            #endif
+                        }
+                        if let storeInstallPromptError, !storeInstallPromptError.isEmpty {
+                            Text(storeInstallPromptError)
+                                .font(.caption)
+                                .foregroundStyle(DesignTokens.Colors.error)
+                        }
+                    }
+
+                    Section {
+                        Button {
+                            Task {
+                                await submitStoreInstallPrompt(prompt)
+                            }
+                        } label: {
+                            if isSubmittingStoreInstallPrompt {
+                                ProgressView()
+                            } else {
+                                Text("Install Skill")
+                            }
+                        }
+                        .disabled(isSubmittingStoreInstallPrompt)
+                    } footer: {
+                        Text("Keys are saved for future installs and reused automatically.")
+                    }
+                }
+                .navigationTitle("Install Skill")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            storeInstallPrompt = nil
+                        }
+                    }
+                }
+            }
+            .phoneSheetGrabBarVisible()
+        }
         .overlay {
             if viewModel.isLoadingSkills && viewModel.skills.isEmpty {
                 LoadingIndicatorView(size: LoadingIndicatorSize.page)
@@ -100,6 +168,13 @@ struct SkillsSettingsView: View {
                 return "Required"
             }
         }
+    }
+
+    private struct StoreInstallPrompt: Identifiable {
+        let skill: SkillItem
+        let missingProviders: [String]
+
+        var id: String { skill.id }
     }
 
     @ViewBuilder
@@ -146,28 +221,138 @@ struct SkillsSettingsView: View {
         if skill.installable && !isStoreSkillInstalled(skill) {
             Button {
                 Task {
-                    await installStoreSkill(skill.id)
+                    await beginStoreInstall(for: skill)
                 }
             } label: {
-                if installInFlight.contains(skill.id) {
+                if isStoreInstallBusy(skill.id) {
                     ProgressView()
                 } else {
                     Text("Install")
                 }
             }
             .disabled(
-                installInFlight.contains(skill.id) ||
+                isStoreInstallBusy(skill.id) ||
                 viewModel.isSavingSkills ||
                 viewModel.settings == nil
             )
         }
     }
 
-    private func installStoreSkill(_ skillId: String) async {
-        guard !installInFlight.contains(skillId) else { return }
+    private func beginStoreInstall(for skill: SkillItem) async {
+        guard !isStoreInstallBusy(skill.id) else { return }
+        installErrors[skill.id] = nil
+        let requiredProviders = requiredProviders(for: skill)
+        guard !requiredProviders.isEmpty else {
+            _ = await performStoreInstall(skillId: skill.id, providerKeys: [])
+            return
+        }
+
+        installChecksInFlight.insert(skill.id)
+        defer { installChecksInFlight.remove(skill.id) }
+
+        do {
+            var missingProviders: [String] = []
+            for provider in requiredProviders {
+                let hasKey = try await viewModel.providerHasKey(provider: provider)
+                if !hasKey {
+                    missingProviders.append(provider)
+                }
+            }
+
+            if missingProviders.isEmpty {
+                _ = await performStoreInstall(skillId: skill.id, providerKeys: [])
+                return
+            }
+
+            storeInstallPrompt = StoreInstallPrompt(skill: skill, missingProviders: missingProviders)
+            providerKeyDrafts = Dictionary(
+                uniqueKeysWithValues: missingProviders.map { ($0, "") }
+            )
+            storeInstallPromptError = nil
+        } catch {
+            installErrors[skill.id] = ErrorMapping.message(for: error)
+        }
+    }
+
+    private func submitStoreInstallPrompt(_ prompt: StoreInstallPrompt) async {
+        storeInstallPromptError = nil
+        let providerKeys = prompt.missingProviders.compactMap { provider -> StoreSkillProviderKeyInput? in
+            let key = providerKeyDrafts[provider]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !key.isEmpty else { return nil }
+            return StoreSkillProviderKeyInput(provider: provider, apiKey: key)
+        }
+        guard providerKeys.count == prompt.missingProviders.count else {
+            storeInstallPromptError = "All required provider keys must be entered."
+            return
+        }
+
+        isSubmittingStoreInstallPrompt = true
+        defer { isSubmittingStoreInstallPrompt = false }
+
+        let succeeded = await performStoreInstall(
+            skillId: prompt.skill.id,
+            providerKeys: providerKeys
+        )
+        if succeeded {
+            storeInstallPrompt = nil
+            clearStoreInstallPromptState()
+        } else {
+            storeInstallPromptError = installErrors[prompt.skill.id] ?? "Install failed."
+        }
+    }
+
+    private func performStoreInstall(
+        skillId: String,
+        providerKeys: [StoreSkillProviderKeyInput]
+    ) async -> Bool {
+        guard !installInFlight.contains(skillId) else { return false }
         installInFlight.insert(skillId)
         defer { installInFlight.remove(skillId) }
-        await viewModel.installStoreSkill(id: skillId)
+        let succeeded = await viewModel.installStoreSkill(
+            id: skillId,
+            providerKeys: providerKeys
+        )
+        if succeeded {
+            installErrors[skillId] = nil
+            return true
+        }
+        let message = viewModel.skillsError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        installErrors[skillId] = (message?.isEmpty == false) ? message : "Install failed."
+        return false
+    }
+
+    private func clearStoreInstallPromptState() {
+        providerKeyDrafts = [:]
+        storeInstallPromptError = nil
+        isSubmittingStoreInstallPrompt = false
+    }
+
+    private func providerKeyBinding(for provider: String) -> Binding<String> {
+        Binding(
+            get: { providerKeyDrafts[provider] ?? "" },
+            set: { providerKeyDrafts[provider] = $0 }
+        )
+    }
+
+    private func isStoreInstallBusy(_ skillId: String) -> Bool {
+        installInFlight.contains(skillId) || installChecksInFlight.contains(skillId)
+    }
+
+    private func requiredProviders(for skill: SkillItem) -> [String] {
+        var orderedProviders: [String] = []
+        var seen: Set<String> = []
+        for requirement in skill.credentialRequirements where requirement.required {
+            if requirement.keyKind.lowercased() != "api_key" {
+                continue
+            }
+            let provider = requirement.provider.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if provider.isEmpty || seen.contains(provider) {
+                continue
+            }
+            orderedProviders.append(provider)
+            seen.insert(provider)
+        }
+        return orderedProviders
     }
 
     private func requirementLines(for skill: SkillItem) -> [String] {
@@ -243,158 +428,7 @@ struct SkillsSettingsView: View {
     }
 
     private func isStoreSkillInstalled(_ skill: SkillItem) -> Bool {
-        guard selectedTier == .store else { return true }
         guard skill.installable else { return true }
         return viewModel.settings?.installedStoreSkills.contains(skill.id) ?? false
-    }
-}
-
-struct MemoriesSettingsView: View {
-    @ObservedObject var viewModel: MemoriesViewModel
-
-    var body: some View {
-        #if os(macOS)
-        Form {
-            Section("Memories") {
-                Text("Manage and view memories in the main workspace.")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
-        #else
-        MemoriesSettingsDetailView(viewModel: viewModel)
-        #endif
-    }
-}
-
-struct ShortcutsSettingsView: View {
-    @ObservedObject var viewModel: SettingsViewModel
-    @State private var copied = false
-
-    var body: some View {
-        Form {
-            Section("Shortcuts") {
-                Text("Use this token in Apple Shortcuts to authorize quick capture.")
-                    .foregroundStyle(.secondary)
-                TextField("Token", text: .constant(viewModel.shortcutsToken))
-                    .textFieldStyle(.roundedBorder)
-                HStack(spacing: 12) {
-                    Button(copied ? "Copied" : "Copy") {
-                        copyToken()
-                    }
-                    .disabled(viewModel.shortcutsToken.isEmpty)
-
-                    Button(viewModel.isRotatingShortcuts ? "Regenerating..." : "Regenerate") {
-                        Task { await viewModel.rotateShortcutsToken() }
-                    }
-                    .disabled(viewModel.isRotatingShortcuts || viewModel.isLoadingShortcuts)
-                }
-                if let error = viewModel.shortcutsError {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(DesignTokens.Colors.error)
-                }
-            }
-        }
-        #if os(macOS)
-        .formStyle(.grouped)
-        #endif
-        .overlay {
-            if viewModel.isLoadingShortcuts && viewModel.shortcutsToken.isEmpty {
-                LoadingIndicatorView(size: LoadingIndicatorSize.page)
-            }
-        }
-    }
-
-    private func copyToken() {
-        guard !viewModel.shortcutsToken.isEmpty else { return }
-        let token = viewModel.shortcutsToken
-        #if os(macOS)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(token, forType: .string)
-        #else
-        let pasteboard = UIPasteboard.general
-        pasteboard.string = token
-        #endif
-        copied = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            copied = false
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-            #if os(macOS)
-            let pasteboard = NSPasteboard.general
-            if pasteboard.string(forType: .string) == token {
-                pasteboard.clearContents()
-            }
-            #else
-            let pasteboard = UIPasteboard.general
-            if pasteboard.string == token {
-                pasteboard.string = ""
-            }
-            #endif
-        }
-    }
-}
-
-struct TasksSettingsView: View {
-    var body: some View {
-        Form {
-            Section("Tasks") {
-                Text("Tasks sync uses the built-in sideBar task system.")
-                    .foregroundStyle(.secondary)
-                Text("Set up your tasks in sideBar to see them here.")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        #if os(macOS)
-        .formStyle(.grouped)
-        #endif
-    }
-}
-
-struct APISettingsView: View {
-    let settings: UserSettings?
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        Form {
-            Section("API") {
-                if let userId = settings?.userId {
-                    LabeledContent("User ID", value: userId)
-                }
-                Text("API settings are managed by your server configuration.")
-                    .foregroundStyle(.secondary)
-            }
-#if DEBUG
-            Section("Debug") {
-                HStack(spacing: 16) {
-                    VStack(spacing: 8) {
-                        Image("AppLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 32, height: 32)
-                        Text("AppLogo (system)")
-                            .font(.caption)
-                    }
-                    VStack(spacing: 8) {
-                        Image("AppLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 32, height: 32)
-                            .environment(\.colorScheme, .dark)
-                        Text("AppLogo (forced dark)")
-                            .font(.caption)
-                    }
-                }
-                Text("Color scheme: \(colorScheme == .dark ? "dark" : "light")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-#endif
-        }
-        #if os(macOS)
-        .formStyle(.grouped)
-        #endif
     }
 }

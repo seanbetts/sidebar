@@ -442,10 +442,19 @@ extension SettingsViewModel {
         await updateEnabledSkills(ordered)
     }
 
+    public func providerHasKey(provider: String) async throws -> Bool {
+        let normalizedProvider = provider.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if settings?.aiPrimaryProvider == normalizedProvider {
+            return settings?.aiPrimaryProviderHasKey ?? false
+        }
+        let status = try await settingsAPI.getProviderKeyStatus(provider: normalizedProvider)
+        return status.hasKey
+    }
+
     public func installStoreSkill(
         id: String,
         providerKeys: [StoreSkillProviderKeyInput] = []
-    ) async {
+    ) async -> Bool {
         skillsError = nil
         isSavingSkills = true
         defer { isSavingSkills = false }
@@ -456,8 +465,10 @@ extension SettingsViewModel {
             cache.remove(key: CacheKeys.skillsList)
             await load(force: true)
             await loadSkills()
+            return true
         } catch {
             skillsError = ErrorMapping.message(for: error)
+            return false
         }
     }
 }
