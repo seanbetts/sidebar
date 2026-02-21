@@ -363,7 +363,7 @@ public final class SettingsViewModel: LoadableViewModel {
             )
             let response = try await settingsAPI.updateSettings(update)
             settings = response
-            cache.set(key: CacheKeys.userSettings, value: response, ttlSeconds: CachePolicy.userSettings)
+            await invalidateAndRefreshSkillsState()
         } catch {
             settings = previous
             skillsError = error.localizedDescription
@@ -418,6 +418,13 @@ public final class SettingsViewModel: LoadableViewModel {
         let day = components.day ?? 1
         return String(format: "%04d-%02d-%02d", year, month, day)
     }
+
+    private func invalidateAndRefreshSkillsState() async {
+        cache.remove(key: CacheKeys.userSettings)
+        cache.remove(key: CacheKeys.skillsList)
+        await load(force: true)
+        await loadSkills()
+    }
 }
 
 @MainActor
@@ -461,10 +468,7 @@ extension SettingsViewModel {
 
         do {
             _ = try await skillsAPI.installStoreSkill(skillId: id, providerKeys: providerKeys)
-            cache.remove(key: CacheKeys.userSettings)
-            cache.remove(key: CacheKeys.skillsList)
-            await load(force: true)
-            await loadSkills()
+            await invalidateAndRefreshSkillsState()
             return true
         } catch {
             skillsError = ErrorMapping.message(for: error)

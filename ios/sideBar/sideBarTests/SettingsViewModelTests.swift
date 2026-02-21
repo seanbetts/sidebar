@@ -51,8 +51,8 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.skills.first?.id, "s1")
     }
 
-    func testSetSkillEnabledUpdatesSettings() async {
-        let settings = UserSettings(
+    func testSetSkillEnabledInvalidatesCachesAndForceRefreshesSettingsAndSkills() async {
+        let initial = UserSettings(
             userId: "user-1",
             communicationStyle: nil,
             workingRelationship: nil,
@@ -66,7 +66,7 @@ final class SettingsViewModelTests: XCTestCase {
             profileImageUrl: nil,
             enabledSkills: []
         )
-        let updated = UserSettings(
+        let refreshed = UserSettings(
             userId: "user-1",
             communicationStyle: nil,
             workingRelationship: nil,
@@ -80,19 +80,38 @@ final class SettingsViewModelTests: XCTestCase {
             profileImageUrl: nil,
             enabledSkills: ["s1"]
         )
+        let settingsReadRecorder = SettingsReadRecorder()
+        let skillsListRecorder = SkillsListRecorder()
         let cache = TestCacheClient()
+        cache.set(key: CacheKeys.userSettings, value: initial, ttlSeconds: 60)
+        cache.set(key: CacheKeys.skillsList, value: SkillsResponse(skills: []), ttlSeconds: 60)
         let viewModel = SettingsViewModel(
             settingsAPI: MockSettingsAPI(
-                result: .success(settings),
-                updateResult: .success(updated)
+                result: .success(refreshed),
+                updateResult: .success(refreshed),
+                readRecorder: settingsReadRecorder
             ),
-            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            skillsAPI: MockSkillsAPI(
+                result: .success(
+                    SkillsResponse(skills: [
+                        SkillItem(id: "s1", name: "Skill", description: "Desc", category: "General")
+                    ])
+                ),
+                listRecorder: skillsListRecorder
+            ),
             cache: cache
         )
 
-        await viewModel.load()
+        viewModel.applySettingsResponse(initial)
+        await viewModel.loadSkills()
+        XCTAssertEqual(skillsListRecorder.listCallCount, 0)
         await viewModel.setSkillEnabled(id: "s1", enabled: true)
 
+        XCTAssertEqual(settingsReadRecorder.getSettingsCallCount, 1)
+        XCTAssertEqual(skillsListRecorder.listCallCount, 1)
+        let removedKeys = cache.removedKeysSnapshot()
+        XCTAssertTrue(removedKeys.contains(CacheKeys.userSettings))
+        XCTAssertTrue(removedKeys.contains(CacheKeys.skillsList))
         XCTAssertEqual(viewModel.settings?.enabledSkills, ["s1"])
     }
 
@@ -363,6 +382,7 @@ struct MockSettingsAPI: SettingsProviding {
     let tokenResult: Result<ShortcutsTokenResponse, Error>
     let updateResult: Result<UserSettings, Error>
     let profileImageResult: Result<Data, Error>
+    let readRecorder: SettingsReadRecorder?
     let updateRecorder: UpdateRecorder?
     let providerKeyRecorder: ProviderKeyRecorder?
 
@@ -371,6 +391,7 @@ struct MockSettingsAPI: SettingsProviding {
         tokenResult: Result<ShortcutsTokenResponse, Error> = .failure(SettingsViewModelMockError.forced),
         updateResult: Result<UserSettings, Error> = .failure(SettingsViewModelMockError.forced),
         profileImageResult: Result<Data, Error> = .failure(SettingsViewModelMockError.forced),
+        readRecorder: SettingsReadRecorder? = nil,
         updateRecorder: UpdateRecorder? = nil,
         providerKeyRecorder: ProviderKeyRecorder? = nil
     ) {
@@ -378,12 +399,14 @@ struct MockSettingsAPI: SettingsProviding {
         self.tokenResult = tokenResult
         self.updateResult = updateResult
         self.profileImageResult = profileImageResult
+        self.readRecorder = readRecorder
         self.updateRecorder = updateRecorder
         self.providerKeyRecorder = providerKeyRecorder
     }
 
     func getSettings() async throws -> UserSettings {
-        try result.get()
+        readRecorder?.getSettingsCallCount += 1
+        return try result.get()
     }
 
     func getShortcutsToken() async throws -> ShortcutsTokenResponse {
@@ -438,20 +461,24 @@ struct MockSettingsAPI: SettingsProviding {
 struct MockSkillsAPI: SkillsProviding {
     let result: Result<SkillsResponse, Error>
     let installResult: Result<StoreSkillInstallResponse, Error>
+    let listRecorder: SkillsListRecorder?
     let installRecorder: SkillsInstallRecorder?
 
     init(
         result: Result<SkillsResponse, Error>,
         installResult: Result<StoreSkillInstallResponse, Error> = .failure(SettingsViewModelMockError.forced),
+        listRecorder: SkillsListRecorder? = nil,
         installRecorder: SkillsInstallRecorder? = nil
     ) {
         self.result = result
         self.installResult = installResult
+        self.listRecorder = listRecorder
         self.installRecorder = installRecorder
     }
 
     func list() async throws -> SkillsResponse {
-        try result.get()
+        listRecorder?.listCallCount += 1
+        return try result.get()
     }
 
     func installStoreSkill(
@@ -470,6 +497,10 @@ final class UpdateRecorder {
     var lastUpdate: SettingsUpdate?
 }
 
+final class SettingsReadRecorder {
+    var getSettingsCallCount: Int = 0
+}
+
 final class ProviderKeyRecorder {
     var statusCallCount: Int = 0
     var upsertCallCount: Int = 0
@@ -485,4 +516,8 @@ final class SkillsInstallRecorder {
     var callCount: Int = 0
     var lastSkillId: String?
     var lastProviderKeys: [StoreSkillProviderKeyInput]?
+}
+
+final class SkillsListRecorder {
+    var listCallCount: Int = 0
 }

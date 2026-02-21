@@ -10,6 +10,7 @@ final class TestCacheClient: CacheClient, @unchecked Sendable {
     }
 
     private var storage: [String: Entry] = [:]
+    private var removedKeys: [String] = []
     private let lock = NSLock()
 
     func get<T: Codable>(key: String) -> T? {
@@ -41,6 +42,7 @@ final class TestCacheClient: CacheClient, @unchecked Sendable {
     func remove(key: String) {
         lock.lock()
         _ = storage.removeValue(forKey: key)
+        removedKeys.append(key)
         lock.unlock()
     }
 
@@ -48,5 +50,11 @@ final class TestCacheClient: CacheClient, @unchecked Sendable {
         lock.lock()
         storage.removeAll()
         lock.unlock()
+    }
+
+    func removedKeysSnapshot() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return removedKeys
     }
 }
