@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -16,7 +16,9 @@ from api.services.web_save_includes import find_insertion_point
 from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
 
 YOUTUBE_ID_PATTERN = re.compile(
-    r"(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([A-Za-z0-9_-]+)"
+    r"(?:youtube\.com/"
+    r"(?:watch\?(?:[^#\s]*?&)?v=|embed/|shorts/|live/|v/)"
+    r"|youtu\.be/)([A-Za-z0-9_-]+)"
 )
 YOUTUBE_EMBED_PATTERN = re.compile(
     r"(?:youtube(?:-nocookie)?\.com/(?:embed/|v/))([A-Za-z0-9_-]+)"
@@ -76,7 +78,9 @@ JSONLD_MEDIA_PATTERN = re.compile(
     r"\[(?:Media|Video):\s*(https?://[^\]]+)\]", re.IGNORECASE
 )
 JSONLD_YOUTUBE_PATTERN = re.compile(
-    r"https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[A-Za-z0-9_-]+",
+    r"https?://(?:www\.)?(?:youtube\.com/"
+    r"(?:watch\?(?:[^#\s]*?&)?v=|shorts/|live/|embed/|v/)"
+    r"|youtu\.be/)[A-Za-z0-9_-]+",
     re.IGNORECASE,
 )
 YOUTUBE_LENGTH_SECONDS_PATTERNS = (
@@ -91,9 +95,42 @@ YOUTUBE_DURATION_MS_PATTERNS = (
 )
 
 
+def _is_youtube_host(host: str) -> bool:
+    """Return True when a hostname belongs to YouTube or youtu.be."""
+    normalized = host.lower().strip(".")
+    return (
+        normalized == "youtube.com"
+        or normalized.endswith(".youtube.com")
+        or normalized == "youtu.be"
+        or normalized.endswith(".youtu.be")
+    )
+
+
 def extract_youtube_video_id(url: str) -> str | None:
     """Extract a YouTube video id from a URL."""
-    match = YOUTUBE_ID_PATTERN.search(url)
+    if not url:
+        return None
+
+    normalized = url.replace("\\/", "/")
+    candidate = normalized
+    if not candidate.startswith(("http://", "https://")):
+        candidate = f"https://{candidate.lstrip('/')}"
+    parsed = urlparse(candidate)
+    host = (parsed.hostname or "").lower().strip(".")
+    if _is_youtube_host(host):
+        if host == "youtu.be" or host.endswith(".youtu.be"):
+            parts = [part for part in parsed.path.split("/") if part]
+            if parts:
+                return parts[0]
+            return None
+        query = parse_qs(parsed.query)
+        if query.get("v"):
+            return query["v"][0]
+        parts = [part for part in parsed.path.split("/") if part]
+        if len(parts) >= 2 and parts[0] in {"shorts", "embed", "live", "v"}:
+            return parts[1]
+
+    match = YOUTUBE_ID_PATTERN.search(normalized)
     return match.group(1) if match else None
 
 

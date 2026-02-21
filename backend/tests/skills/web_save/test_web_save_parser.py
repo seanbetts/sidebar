@@ -1068,6 +1068,17 @@ def test_cleanup_youtube_markdown_keeps_single_embed():
     assert cleaned.strip() == "[YouTube](https://www.youtube.com/watch?v=FUq9qRwrDrI)"
 
 
+def test_cleanup_youtube_markdown_handles_shorts_source_url():
+    markdown = (
+        '<svg class="external-icon"></svg>[About](https://www.youtube.com/about/)'
+        "[Privacy](https://www.youtube.com/t/privacy)"
+    )
+    cleaned = web_save_parser.cleanup_youtube_markdown(
+        markdown, "https://www.youtube.com/shorts/Kg3VeW7yEyY"
+    )
+    assert cleaned.strip() == "[YouTube](https://www.youtube.com/watch?v=Kg3VeW7yEyY)"
+
+
 def test_cleanup_openai_markdown_removes_credits_block():
     markdown = "\n".join(
         [
@@ -2032,6 +2043,30 @@ def test_parse_url_local_normalizes_youtube_title_suffix(monkeypatch):
 
     parsed = web_save_parser.parse_url_local("https://www.youtube.com/watch?v=abc123xyzAA")
     assert parsed.title == "Recovered Video Title"
+
+
+def test_parse_url_local_collapses_youtube_shorts_footer_chrome(monkeypatch):
+    html = """
+    <html>
+      <head><title>Recovered Shorts Title - YouTube</title></head>
+      <body>
+        <article>
+          <svg class="external-icon"></svg>
+          <a href="https://www.youtube.com/about/">About</a>
+          <a href="https://www.youtube.com/t/privacy">Privacy</a>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.youtube.com/shorts/Kg3VeW7yEyY", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("https://www.youtube.com/watch?v=Kg3VeW7yEyY")
+    assert "[YouTube](https://www.youtube.com/watch?v=Kg3VeW7yEyY)" in parsed.content
+    assert "https://www.youtube.com/about/" not in parsed.content
 
 
 def test_parse_url_local_uses_youtube_duration_for_reading_time(monkeypatch):
