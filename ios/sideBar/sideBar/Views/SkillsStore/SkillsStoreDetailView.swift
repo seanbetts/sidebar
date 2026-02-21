@@ -101,7 +101,6 @@ public struct SkillsStoreView: View {
                     content
                 }
                 .padding(DesignTokens.Spacing.lg)
-                .frame(maxWidth: 920, alignment: .topLeading)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
@@ -182,7 +181,6 @@ public struct SkillsStoreView: View {
         return SkillsStoreCard(
             skillIconName: SkillsStoreLogic.iconName(for: skill),
             typeTitle: formattedSkillType(skill.category),
-            typeIconName: SkillsStoreCategoryIcon.iconName(for: skill.category),
             displayName: viewModel.displayName(for: skill),
             displayDescription: viewModel.displayDescription(for: skill),
             installError: installErrors[skill.id],
@@ -339,12 +337,14 @@ public struct SkillsStoreView: View {
     }
 
     private var skillGridColumns: [GridItem] {
-        [
-            GridItem(
-                .adaptive(minimum: 380, maximum: 460),
-                spacing: DesignTokens.Spacing.md,
-                alignment: .top
-            )
+        if isCompact {
+            return [
+                GridItem(.flexible(minimum: 0, maximum: .infinity), spacing: DesignTokens.Spacing.md)
+            ]
+        }
+        return [
+            GridItem(.flexible(minimum: 0, maximum: .infinity), spacing: DesignTokens.Spacing.md),
+            GridItem(.flexible(minimum: 0, maximum: .infinity), spacing: DesignTokens.Spacing.md)
         ]
     }
 

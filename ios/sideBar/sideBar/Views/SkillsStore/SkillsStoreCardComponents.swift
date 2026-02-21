@@ -70,7 +70,6 @@ struct SkillsStoreFilterChip: View {
 struct SkillsStoreCard: View {
     let skillIconName: String
     let typeTitle: String
-    let typeIconName: String
     let displayName: String
     let displayDescription: String
     let installError: String?
@@ -79,15 +78,17 @@ struct SkillsStoreCard: View {
     let onInstall: () -> Void
     let onInstalledTap: () -> Void
 
-    private let cardHeight: CGFloat = 132
+    private let cardHeight: CGFloat = 96
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
                 SkillsStoreAppIcon(iconName: skillIconName)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    SkillsStoreTypePill(title: typeTitle, iconName: typeIconName)
+                    Text(typeTitle.uppercased())
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                     Text(displayName)
                         .font(DesignTokens.Typography.subheadlineSemibold)
                         .lineLimit(1)
@@ -108,10 +109,10 @@ struct SkillsStoreCard: View {
                     .foregroundStyle(DesignTokens.Colors.error)
                     .lineLimit(1)
             }
-            Spacer(minLength: 0)
         }
         .padding(DesignTokens.Spacing.md)
-        .frame(height: cardHeight, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: cardHeight, alignment: .center)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(DesignTokens.Colors.surface)
@@ -136,33 +137,9 @@ struct SkillsStoreCard: View {
                 .accessibilityLabel("Install")
             }
         }
+        .frame(width: 44, height: 44)
+        .contentShape(Rectangle())
         .buttonStyle(.plain)
-    }
-}
-
-private struct SkillsStoreTypePill: View {
-    let title: String
-    let iconName: String
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: iconName)
-                .font(.caption2)
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(
-            Capsule()
-                .fill(DesignTokens.Colors.surface)
-        )
-        .overlay(
-            Capsule()
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
-        .foregroundStyle(.secondary)
     }
 }
 
@@ -174,7 +151,7 @@ private struct SkillsStoreAppIcon: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color.white)
             Image(systemName: iconName)
-                .font(.title2)
+                .font(.system(size: 28, weight: .medium))
                 .foregroundStyle(Color.black.opacity(0.75))
         }
         .frame(width: 62, height: 62)
@@ -190,25 +167,26 @@ private struct SkillsStoreInstallPill: View {
     let busy: Bool
 
     var body: some View {
-        Group {
+        ZStack {
             if busy {
                 ProgressView()
                     .controlSize(.small)
+                    .tint(Color.primary)
             } else {
                 Image(systemName: systemName)
-                    .font(.subheadline)
+                    .font(.system(size: 24, weight: .semibold))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(iconForeground, Color.primary)
             }
         }
-        .foregroundStyle(DesignTokens.Colors.textSecondary)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(DesignTokens.Colors.surface)
-        )
-        .overlay(
-            Capsule()
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var iconForeground: Color {
+        #if os(macOS)
+        return Color(nsColor: .windowBackgroundColor)
+        #else
+        return Color(uiColor: .systemBackground)
+        #endif
     }
 }
