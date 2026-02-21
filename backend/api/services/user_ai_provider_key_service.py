@@ -49,6 +49,8 @@ class UserAIProviderKeyService:
         user_id: str,
         provider: AIProvider,
         api_key: str,
+        *,
+        commit: bool = True,
     ) -> UserAIProviderKey:
         """Create or update an encrypted key for a user/provider."""
         normalized = api_key.strip()
@@ -63,8 +65,11 @@ class UserAIProviderKeyService:
             existing.encrypted_api_key = encrypted
             existing.key_last4 = key_last4
             existing.updated_at = now
-            db.commit()
-            db.refresh(existing)
+            if commit:
+                db.commit()
+                db.refresh(existing)
+            else:
+                db.flush()
             return existing
 
         record = UserAIProviderKey(
@@ -77,8 +82,11 @@ class UserAIProviderKeyService:
             deleted_at=None,
         )
         db.add(record)
-        db.commit()
-        db.refresh(record)
+        if commit:
+            db.commit()
+            db.refresh(record)
+        else:
+            db.flush()
         return record
 
     @staticmethod

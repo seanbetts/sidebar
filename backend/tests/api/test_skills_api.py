@@ -8,6 +8,15 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
 
 
+def _seed_openai_provider_key(test_client, api_key: str = "sk-test-openai-1234") -> None:
+    response = test_client.put(
+        "/api/settings/ai/provider-key",
+        headers=_auth_headers(),
+        json={"provider": "openai", "api_key": api_key},
+    )
+    assert response.status_code == 200
+
+
 def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None:
     response = test_client.get("/api/skills", headers=_auth_headers())
     assert response.status_code == 200
@@ -31,6 +40,8 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
 
 
 def test_install_store_skill_auto_enables_and_persists(test_client) -> None:
+    _seed_openai_provider_key(test_client)
+
     install_response = test_client.post(
         "/api/skills/store/install",
         headers=_auth_headers(),
@@ -47,6 +58,8 @@ def test_install_store_skill_auto_enables_and_persists(test_client) -> None:
 
 
 def test_install_store_skill_is_idempotent(test_client) -> None:
+    _seed_openai_provider_key(test_client)
+
     first = test_client.post(
         "/api/skills/store/install",
         headers=_auth_headers(),
@@ -63,6 +76,81 @@ def test_install_store_skill_is_idempotent(test_client) -> None:
     body = second.json()
     assert body["installed_store_skills"].count("audio-transcribe") == 1
     assert body["enabled_skills"].count("audio-transcribe") == 1
+
+
+def test_install_store_skill_rejects_when_required_key_missing(test_client) -> None:
+    delete_status = test_client.delete(
+        "/api/settings/ai/provider-key",
+        headers=_auth_headers(),
+        params={"provider": "openai"},
+    )
+    assert delete_status.status_code == 200
+
+    response = test_client.post(
+        "/api/skills/store/install",
+        headers=_auth_headers(),
+        json={"skill_id": "audio-transcribe"},
+    )
+    assert response.status_code == 400
+    body = response.json()["error"]
+    assert body["message"] == "Skill install requires provider API key"
+    assert body["details"]["error_type"] == "SKILL_CREDENTIAL_REQUIRED"
+    assert body["details"]["skill_id"] == "audio-transcribe"
+    assert body["details"]["required_providers"] == ["openai"]
+    assert body["details"]["missing_requirements"] == [
+        {
+            "provider": "openai",
+            "key_kind": "api_key",
+            "required": True,
+        }
+    ]
+
+
+def test_install_store_skill_accepts_install_time_provider_key(test_client) -> None:
+    install_response = test_client.post(
+        "/api/skills/store/install",
+        headers=_auth_headers(),
+        json={
+            "skill_id": "audio-transcribe",
+            "provider_keys": [
+                {"provider": "openai", "api_key": "sk-test-openai-install-9876"}
+            ],
+        },
+    )
+    assert install_response.status_code == 200
+    body = install_response.json()
+    assert body["installed"] is True
+    assert body["enabled"] is True
+
+    key_status = test_client.get(
+        "/api/settings/ai/provider-key",
+        headers=_auth_headers(),
+        params={"provider": "openai"},
+    )
+    assert key_status.status_code == 200
+    status_body = key_status.json()
+    assert status_body["has_key"] is True
+    assert status_body["key_last4"] == "9876"
+
+
+def test_install_store_skill_rejects_unexpected_provider_key(test_client) -> None:
+    response = test_client.post(
+        "/api/skills/store/install",
+        headers=_auth_headers(),
+        json={
+            "skill_id": "audio-transcribe",
+            "provider_keys": [
+                {"provider": "anthropic", "api_key": "sk-ant-key-12345678"}
+            ],
+        },
+    )
+    assert response.status_code == 400
+    body = response.json()["error"]
+    assert body["message"] == "Unexpected provider key for skill install"
+    assert body["details"]["error_type"] == "SKILL_CREDENTIAL_UNEXPECTED_PROVIDER"
+    assert body["details"]["skill_id"] == "audio-transcribe"
+    assert body["details"]["required_providers"] == ["openai"]
+    assert body["details"]["unexpected_providers"] == ["anthropic"]
 
 
 def test_install_store_skill_rejects_non_store_skill(test_client) -> None:

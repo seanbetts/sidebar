@@ -2,7 +2,7 @@
 # ruff: noqa: B008
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
@@ -41,11 +41,20 @@ class SkillsResponse(BaseModel):
     skills: list[SkillItem]
 
 
+class StoreSkillProviderKey(BaseModel):
+    """Install-time provider key payload for key-required skills."""
+
+    model_config = ConfigDict(extra="forbid")
+    provider: str
+    api_key: str
+
+
 class StoreSkillInstallRequest(BaseModel):
     """Request payload for installing a Store skill."""
 
     model_config = ConfigDict(extra="forbid")
     skill_id: str
+    provider_keys: list[StoreSkillProviderKey] = Field(default_factory=list)
 
 
 class StoreSkillInstallResponse(BaseModel):
@@ -114,5 +123,6 @@ def install_store_skill(
         db,
         user_id=user_id,
         skill_id=payload.skill_id,
+        provider_keys=[item.model_dump() for item in payload.provider_keys],
     )
     return StoreSkillInstallResponse(**result)
