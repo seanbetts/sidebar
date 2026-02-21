@@ -455,6 +455,55 @@ def test_parse_url_local_archiveis_captcha_requests_fallback(monkeypatch):
     assert exc_info.value.rule_id == "archiveis-captcha-discard"
 
 
+def test_campaignlive_paywall_rule_matches_pre_phase():
+    html = """
+    <html>
+      <body>
+        <h1>Eight principles for ad practitioners to use AI responsibly</h1>
+        <h2>Sign in to continue</h2>
+      </body>
+    </html>
+    """
+    engine = web_save_parser.get_rule_engine()
+    matched = engine.match_rules(
+        "https://www.campaignlive.co.uk/article/example/1947988",
+        html,
+        phase="pre",
+    )
+    matched_ids = {rule.id for rule in matched}
+    assert "campaignlive-paywall-discard" in matched_ids
+
+
+def test_parse_url_local_campaignlive_paywall_discards_content(monkeypatch):
+    html = """
+    <html>
+      <head><title>Eight principles</title></head>
+      <body>
+        <h1>Eight principles for ad practitioners to use AI responsibly</h1>
+        <h2>Sign in to continue</h2>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html,
+            "https://www.campaignlive.co.uk/article/eight-principles/1947988",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.campaignlive.co.uk/article/eight-principles/1947988"
+    )
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["discarded"] is True
+    assert data["rule_id"] == "campaignlive-paywall-discard"
+    assert "[Content discarded by parsing rule]" in parsed.content
+
+
 def test_airbnb_listing_rule_matches_pre_phase():
     html = """
     <html>

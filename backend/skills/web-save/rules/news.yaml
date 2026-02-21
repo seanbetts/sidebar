@@ -449,6 +449,20 @@
     - ".article__footer"
     - ".article__share"
 
+# Campaignlive article pages often render paywall/login chrome and cookie panels
+# as the dominant readable content for anonymous sessions.
+- id: campaignlive-paywall-discard
+  phase: pre
+  priority: 95
+  trigger:
+    host:
+      ends_with: "campaignlive.co.uk"
+    dom:
+      any_text_contains:
+        - "sign in to continue"
+        - "need to activate your membership"
+  discard: true
+
 - id: lifehacker-cleanup
   phase: post
   trigger:
