@@ -14,7 +14,6 @@ from urllib.parse import urljoin, urlparse
 import requests
 import yaml
 from bs4 import BeautifulSoup
-from lxml import html as lxml_html
 from markdownify import MarkdownConverter
 
 try:
@@ -47,7 +46,11 @@ from api.services.web_save_parser_cleanup import (
 )
 from api.services.web_save_parser_github import cleanup_github_markdown
 from api.services.web_save_parser_hbr import extract_hbr_body_html
-from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
+from api.services.web_save_parser_html import (
+    _safe_html_tostring,
+    _safe_html_tree,
+    decode_html_response,
+)
 from api.services.web_save_parser_openai import cleanup_openai_markdown
 from api.services.web_save_parser_substack import cleanup_substack_markdown
 from api.services.web_save_parser_youtube import (
@@ -86,12 +89,7 @@ RULES_DIR = Path(__file__).resolve().parents[2] / "skills" / "web-save" / "rules
 PLAYWRIGHT_ALLOWLIST_PATH = RULES_DIR / "playwright_allowlist.yaml"
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 
-
-def _iter_youtube_elements(
-    raw_dom: lxml_html.HtmlElement, base_url: str
-) -> list[tuple[str, lxml_html.HtmlElement]]:
-    """Compatibility wrapper for older imports/tests."""
-    return _iter_youtube_elements_impl(raw_dom, base_url)
+_iter_youtube_elements = _iter_youtube_elements_impl
 
 
 @dataclass(frozen=True)
@@ -149,7 +147,7 @@ def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str, bool]:
     try:
         response = requests.get(url, headers=headers, timeout=timeout)
         response.raise_for_status()
-        return response.text, str(response.url), False
+        return decode_html_response(response), str(response.url), False
     except requests.HTTPError as exc:
         status_code = None
         if exc.response is not None:

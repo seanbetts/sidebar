@@ -2384,6 +2384,61 @@ def test_fetch_html_falls_back_to_playwright_on_forbidden(monkeypatch):
     assert used_js_rendering is True
 
 
+def test_fetch_html_prefers_utf8_when_server_defaults_to_latin1(monkeypatch):
+    class FakeResponse:
+        def __init__(self):
+            self.status_code = 200
+            self.url = "https://example.com/page"
+            self.encoding = "ISO-8859-1"
+            self.content = (
+                "<html><body>What Apple can’t offer gamers.</body></html>".encode(
+                    "utf-8"
+                )
+            )
+            self.text = self.content.decode("latin-1")
+
+        def raise_for_status(self):
+            return None
+
+    def fake_get(url: str, headers=None, timeout: int = 30):
+        return FakeResponse()
+
+    monkeypatch.setattr(web_save_parser.requests, "get", fake_get)
+
+    html, final_url, used_js_rendering = web_save_parser.fetch_html(
+        "https://example.com/page"
+    )
+    assert "can’t" in html
+    assert "canât" not in html
+    assert final_url == "https://example.com/page"
+    assert used_js_rendering is False
+
+
+def test_fetch_html_uses_declared_encoding_when_utf8_decode_fails(monkeypatch):
+    class FakeResponse:
+        def __init__(self):
+            self.status_code = 200
+            self.url = "https://example.com/page"
+            self.encoding = "windows-1252"
+            self.content = b"<html><body>caf\xe9</body></html>"
+            self.text = self.content.decode("windows-1252")
+
+        def raise_for_status(self):
+            return None
+
+    def fake_get(url: str, headers=None, timeout: int = 30):
+        return FakeResponse()
+
+    monkeypatch.setattr(web_save_parser.requests, "get", fake_get)
+
+    html, final_url, used_js_rendering = web_save_parser.fetch_html(
+        "https://example.com/page"
+    )
+    assert "café" in html
+    assert final_url == "https://example.com/page"
+    assert used_js_rendering is False
+
+
 def test_parse_url_local_returns_paywall_message(monkeypatch):
     html = """
     <html>
