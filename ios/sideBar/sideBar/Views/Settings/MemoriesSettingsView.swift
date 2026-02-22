@@ -2,7 +2,7 @@ import SwiftUI
 import sideBarShared
 import MarkdownUI
 
-// MARK: - MemoriesSettingsView
+// MARK: - MemoriesSettingsDetailView
 
 struct MemoriesSettingsDetailView: View {
     @ObservedObject var viewModel: MemoriesViewModel
@@ -10,7 +10,6 @@ struct MemoriesSettingsDetailView: View {
     @State private var selection: String?
     @State private var hasLoaded = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         NavigationSplitView {
@@ -18,10 +17,10 @@ struct MemoriesSettingsDetailView: View {
                 header
                 listContent
             }
-            .background(listBackground)
+            .background(DesignTokens.Colors.settingsFormBackground)
         } detail: {
             detailContent
-                .background(DesignTokens.Colors.background)
+                .background(DesignTokens.Colors.settingsFormBackground)
         }
         .navigationSplitViewStyle(.balanced)
         .onAppear {
@@ -46,7 +45,7 @@ struct MemoriesSettingsDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
                 TextField("Search memories", text: $searchQuery)
                     .textFieldStyle(.plain)
                 if !searchQuery.isEmpty {
@@ -54,7 +53,7 @@ struct MemoriesSettingsDetailView: View {
                         searchQuery = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DesignTokens.Colors.textSecondary)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Clear search")
@@ -65,11 +64,11 @@ struct MemoriesSettingsDetailView: View {
             .font(.subheadline)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(searchFill)
+                    .fill(DesignTokens.Colors.settingsBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(searchBorder, lineWidth: 1)
+                    .stroke(DesignTokens.Colors.border, lineWidth: 1)
             )
         }
         .padding(DesignTokens.Spacing.md)
@@ -105,7 +104,7 @@ struct MemoriesSettingsDetailView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
-            .background(listBackground)
+            .background(DesignTokens.Colors.settingsFormBackground)
             .refreshable {
                 await viewModel.load()
             }
@@ -166,7 +165,7 @@ struct MemoriesSettingsDetailView: View {
         HStack(spacing: 12) {
             Image(systemName: "bookmark")
                 .font(DesignTokens.Typography.titleLg)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(memory.path))
                     .font(.headline)
@@ -196,29 +195,6 @@ struct MemoriesSettingsDetailView: View {
         return trimmed.isEmpty ? "untitled" : trimmed
     }
 
-    private func formattedDate(_ value: String) -> String? {
-        guard let date = DateParsing.parseISO8601(value) else { return nil }
-        return Self.dateFormatter.string(from: date)
-    }
-
-    private var searchFill: Color {
-        if colorScheme == .dark {
-            return DesignTokens.Colors.surface
-        }
-        return DesignTokens.Colors.input
-    }
-
-    private var listBackground: Color {
-        if colorScheme == .dark {
-            return DesignTokens.Colors.background
-        }
-        return DesignTokens.Colors.sidebar
-    }
-
-    private var searchBorder: Color {
-        DesignTokens.Colors.border
-    }
-
     fileprivate static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -230,10 +206,9 @@ struct MemoriesSettingsDetailView: View {
 private struct MemoryRow: View {
     let item: MemoryItem
     let isSelected: Bool
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        SelectableRow(isSelected: isSelected, rowBackground: rowBackground) {
+        SelectableRow(isSelected: isSelected) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(item.path))
                     .font(DesignTokens.Typography.subheadlineSemibold)
@@ -241,10 +216,6 @@ private struct MemoryRow: View {
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
             }
         }
-    }
-
-    private var rowBackground: Color {
-        colorScheme == .dark ? DesignTokens.Colors.surface : DesignTokens.Colors.background
     }
 
     private func displayName(_ path: String) -> String {
@@ -257,10 +228,4 @@ private struct MemoryRow: View {
         }
         return trimmed.isEmpty ? "untitled" : trimmed
     }
-
-    private func formattedDate(_ value: String) -> String? {
-        guard let date = DateParsing.parseISO8601(value) else { return nil }
-        return MemoriesSettingsDetailView.dateFormatter.string(from: date)
-    }
-
 }

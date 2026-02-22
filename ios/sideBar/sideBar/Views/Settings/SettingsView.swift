@@ -13,7 +13,6 @@ import UIKit
 
 public struct SettingsView: View {
     @EnvironmentObject private var environment: AppEnvironment
-    @Environment(\.colorScheme) private var colorScheme
     @State private var savePillState: SettingsSavePillState?
     @State private var wasSaving = false
     @State private var savingDelayTask: Task<Void, Never>?
@@ -24,20 +23,17 @@ public struct SettingsView: View {
 
     public var body: some View {
         ZStack {
-            settingsBackground
+            DesignTokens.Colors.settingsBackground
                 .ignoresSafeArea()
             #if os(macOS)
             SettingsSplitView(
                 viewModel: environment.settingsViewModel,
-                memoriesViewModel: environment.memoriesViewModel,
-                settingsBackground: settingsBackground,
-                listBackground: listBackground
+                memoriesViewModel: environment.memoriesViewModel
             )
             #else
             SettingsTabsView(
                 viewModel: environment.settingsViewModel,
                 memoriesViewModel: environment.memoriesViewModel,
-                settingsBackground: settingsBackground,
                 savePillState: savePillState
             )
             #endif
@@ -64,14 +60,6 @@ public struct SettingsView: View {
             savingDelayTask?.cancel()
             hideSavedTask?.cancel()
         }
-    }
-
-    private var settingsBackground: Color {
-        colorScheme == .dark ? DesignTokens.Colors.background : DesignTokens.Colors.surface
-    }
-
-    private var listBackground: Color {
-        colorScheme == .dark ? DesignTokens.Colors.surface : DesignTokens.Colors.background
     }
 
     private var isSavingAnySettings: Bool {
@@ -205,7 +193,7 @@ private struct SettingsSaveStatusPill: View {
         case .saved:
             return "Saved"
         case .error:
-            return "Couldn’t save settings"
+            return "Couldn't save settings"
         }
     }
 }
@@ -266,8 +254,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 private struct SettingsSplitView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var memoriesViewModel: MemoriesViewModel
-    let settingsBackground: Color
-    let listBackground: Color
     @State private var selection: SettingsSection? = .profile
     @State private var hasLoaded = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -280,19 +266,19 @@ private struct SettingsSplitView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
-            .background(listBackground)
+            .background(DesignTokens.Colors.settingsFormBackground)
             .modifier(SidebarToggleHider())
         } detail: {
             settingsDetailView(for: selection ?? .profile)
                 .navigationTitle((selection ?? .profile).displayTitle(assistantDisplayName: viewModel.assistantDisplayName))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .modifier(SidebarToggleHider())
-                .background(settingsBackground)
+                .background(DesignTokens.Colors.settingsBackground)
         }
         .navigationSplitViewStyle(.balanced)
         .modifier(SidebarToggleHider())
         .frame(minWidth: 680, minHeight: 460)
-        .background(settingsBackground)
+        .background(DesignTokens.Colors.settingsBackground)
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -350,7 +336,6 @@ private struct SidebarToggleHider: ViewModifier {
 private struct SettingsTabsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var memoriesViewModel: MemoriesViewModel
-    let settingsBackground: Color
     let savePillState: SettingsSavePillState?
     @State private var hasLoaded = false
 
@@ -382,7 +367,11 @@ private struct SettingsTabsView: View {
                 }
         }
         .padding(DesignTokens.Spacing.md)
-        .background(settingsBackground)
+        .background(DesignTokens.Colors.settingsBackground)
+        .background(
+            NativeMoreTabStyleConfigurator()
+                .frame(width: 0, height: 0)
+        )
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -414,3 +403,59 @@ private struct SettingsTabsView: View {
             }
     }
 }
+
+#if os(iOS)
+private struct NativeMoreTabStyleConfigurator: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        let controller = UIViewController()
+        controller.view.isUserInteractionEnabled = false
+        controller.view.backgroundColor = .clear
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        guard let tabBarController = tabBarController(from: uiViewController) else {
+            return
+        }
+
+        let moreNavigationController = tabBarController.moreNavigationController
+        moreNavigationController.loadViewIfNeeded()
+        moreNavigationController.view.backgroundColor = .systemGroupedBackground
+
+        if let tableView = findTableView(in: moreNavigationController.view) {
+            tableView.backgroundColor = .systemGroupedBackground
+        }
+    }
+
+    private func tabBarController(from viewController: UIViewController) -> UITabBarController? {
+        if let tabBarController = viewController.tabBarController {
+            return tabBarController
+        }
+
+        var parent = viewController.parent
+        while let current = parent {
+            if let tabBarController = current as? UITabBarController {
+                return tabBarController
+            }
+            if let tabBarController = current.tabBarController {
+                return tabBarController
+            }
+            parent = current.parent
+        }
+
+        return nil
+    }
+
+    private func findTableView(in rootView: UIView) -> UITableView? {
+        if let tableView = rootView as? UITableView {
+            return tableView
+        }
+        for subview in rootView.subviews {
+            if let tableView = findTableView(in: subview) {
+                return tableView
+            }
+        }
+        return nil
+    }
+}
+#endif

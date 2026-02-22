@@ -70,7 +70,7 @@ extension ConversationsPanelView {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
-        .background(panelHeaderBackground(colorScheme))
+        .background(panelHeaderBackground())
     }
 
     var isCompact: Bool {

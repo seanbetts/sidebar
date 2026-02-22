@@ -106,7 +106,7 @@ struct SkillsSettingsView: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             Image(systemName: SkillsStoreLogic.iconName(for: skill))
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
                 .frame(width: 18, height: 18)
                 .padding(.top, 2)
 

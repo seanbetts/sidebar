@@ -1,5 +1,5 @@
 import SwiftUI
 
-func panelHeaderBackground(_ colorScheme: ColorScheme) -> Color {
-    PlatformTokens.panelHeaderBackground(colorScheme)
+func panelHeaderBackground() -> Color {
+    PlatformTokens.panelHeaderBackground
 }

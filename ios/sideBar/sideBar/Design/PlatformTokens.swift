@@ -1,14 +1,9 @@
 import SwiftUI
 
 enum PlatformTokens {
-    static func panelHeaderBackground(_ colorScheme: ColorScheme) -> Color {
-        #if os(macOS)
-        if colorScheme == .light {
-            return DesignTokens.Colors.sidebar
-        }
-        return DesignTokens.Colors.surface
-        #else
-        return DesignTokens.Colors.surface
-        #endif
+    /// Background color for panel headers (title bar / search bar row).
+    /// Uses an adaptive color that automatically resolves for light and dark mode.
+    static var panelHeaderBackground: Color {
+        DesignTokens.Colors.sidebar
     }
 }

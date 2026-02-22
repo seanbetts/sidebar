@@ -64,6 +64,11 @@ enum DesignTokens {
         static let actionPrimary = Color.blue
         static let actionDestructive = Color.red
 
+        /// Outer chrome/wrapper for settings panels.
+        static let settingsBackground = Color.appSettingsBackground
+        /// Inner form/list surface for settings panels.
+        static let settingsFormBackground = Color.appSettingsFormBackground
+
         static var sidebarRowBackground: Color {
             .clear
         }

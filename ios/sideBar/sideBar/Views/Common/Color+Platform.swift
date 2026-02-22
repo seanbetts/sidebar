@@ -164,4 +164,24 @@ extension Color {
     static var appSelection: Color {
         Color.accentColor.opacity(0.18)
     }
+
+    /// Outer chrome/wrapper background for settings panels.
+    /// Uses the grouped surface hierarchy so it naturally contrasts with form content.
+    static var appSettingsBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: MacOSPalette.background)
+        #else
+        return Color(uiColor: .systemGroupedBackground)
+        #endif
+    }
+
+    /// Inner form/list background for settings panels.
+    /// Sits on top of appSettingsBackground to create the layered grouped-form look.
+    static var appSettingsFormBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: MacOSPalette.card)
+        #else
+        return Color(uiColor: .secondarySystemGroupedBackground)
+        #endif
+    }
 }
