@@ -5,6 +5,7 @@ import { ingestionStore } from '$lib/stores/ingestion';
 import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { logError } from '$lib/utils/errorHandling';
+import { toast } from 'svelte-sonner';
 
 type IngestionActionOptions = {
 	scope?: string;
@@ -32,6 +33,7 @@ export function useIngestionActions() {
 			ingestionStore.removeItem(fileId);
 			return true;
 		} catch (error) {
+			toast.error('Failed to delete file');
 			logError('Failed to delete ingestion', error, {
 				scope: options.scope ?? defaultScope('delete'),
 				fileId
@@ -51,6 +53,7 @@ export function useIngestionActions() {
 			ingestionViewerStore.updatePinned(fileId, pinned);
 			return true;
 		} catch (error) {
+			toast.error('Failed to pin file');
 			logError('Failed to update pin', error, {
 				scope: options.scope ?? defaultScope('pin'),
 				fileId,
@@ -64,11 +67,21 @@ export function useIngestionActions() {
 		order: string[],
 		options: IngestionActionOptions = {}
 	): Promise<boolean> => {
+		const previousOrder = get(ingestionStore)
+			.items.filter((item) => item.file.pinned)
+			.sort(
+				(a, b) =>
+					(a.file.pinned_order ?? Number.POSITIVE_INFINITY) -
+					(b.file.pinned_order ?? Number.POSITIVE_INFINITY)
+			)
+			.map((item) => item.file.id);
 		ingestionStore.setPinnedOrder(order);
 		try {
 			await ingestionAPI.updatePinnedOrder(order);
 			return true;
 		} catch (error) {
+			ingestionStore.setPinnedOrder(previousOrder);
+			toast.error('Failed to reorder pinned files');
 			logError('Failed to update pinned order', error, {
 				scope: options.scope ?? defaultScope('pinnedOrder')
 			});
@@ -92,6 +105,7 @@ export function useIngestionActions() {
 			URL.revokeObjectURL(url);
 			return true;
 		} catch (error) {
+			toast.error('Failed to download file');
 			logError('Failed to download file', error, {
 				scope: options.scope ?? defaultScope('download'),
 				fileId: item.file.id
@@ -111,6 +125,7 @@ export function useIngestionActions() {
 			ingestionViewerStore.updateFilename(fileId, filename);
 			return true;
 		} catch (error) {
+			toast.error('Failed to rename file');
 			logError('Failed to rename ingestion', error, {
 				scope: options.scope ?? defaultScope('rename'),
 				fileId

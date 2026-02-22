@@ -173,6 +173,7 @@
 		gap: 0.25rem;
 		padding: 0.35rem 0.5rem;
 		border-radius: 0.4rem;
+		background: var(--color-card);
 		background: color-mix(in oklab, var(--color-destructive) 8%, transparent);
 	}
 

@@ -172,6 +172,19 @@
 		opacity: 1;
 	}
 
+	/* Always show menu button on touch devices */
+	@media (pointer: coarse) {
+		.ingested-menu {
+			opacity: 0.5;
+			pointer-events: auto;
+		}
+
+		.ingested-row:hover .ingested-menu,
+		.ingested-menu:active {
+			opacity: 1;
+		}
+	}
+
 	.ingested-menu:hover {
 		background-color: var(--color-accent);
 	}
