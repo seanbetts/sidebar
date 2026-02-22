@@ -29,9 +29,7 @@ private struct OrderedListLevel {
 private struct OrderedListState {
     var levels: [OrderedListLevel] = []
 
-    mutating func reset() {
-        levels.removeAll()
-    }
+    mutating func reset() { levels.removeAll() }
 
     mutating func nextOrdinal(key: String, depth: Int) -> Int {
         trimToDepth(depth)
@@ -40,24 +38,30 @@ private struct OrderedListState {
             trimAfter(index: index)
             return levels[index].ordinal
         }
-
         if let index = levels.firstIndex(where: { $0.depth == depth }) {
             levels[index] = OrderedListLevel(key: key, depth: depth, ordinal: 1)
             trimAfter(index: index)
             return 1
         }
-
         levels.append(OrderedListLevel(key: key, depth: depth, ordinal: 1))
         levels.sort { $0.depth < $1.depth }
         return 1
     }
 
-    private mutating func trimToDepth(_ depth: Int) {
-        levels.removeAll { $0.depth > depth }
-    }
+    private mutating func trimToDepth(_ depth: Int) { levels.removeAll { $0.depth > depth } }
 
-    private mutating func trimAfter(index: Int) {
-        levels = Array(levels.prefix(index + 1))
+    private mutating func trimAfter(index: Int) { levels = Array(levels.prefix(index + 1)) }
+
+    mutating func handleNonOrderedBlock(blockKind: BlockKind, listDepth: Int?) {
+        switch blockKind {
+        case .bulletList, .taskChecked, .taskUnchecked:
+            let depth = max(1, listDepth ?? 1)
+            levels.removeAll { $0.depth >= depth }
+        case .orderedList:
+            break
+        default:
+            reset()
+        }
     }
 }
 
@@ -71,9 +75,7 @@ private func mergeFrontmatter(_ frontmatter: String?, body: String) -> String {
     guard let frontmatter, !frontmatter.isEmpty else {
         return body
     }
-    if body.isEmpty {
-        return frontmatter
-    }
+    if body.isEmpty { return frontmatter }
     return frontmatter + "\n\n" + body
 }
 
@@ -488,7 +490,7 @@ private func resolvedOrderedListOrdinal(
     orderedListState: inout OrderedListState
 ) -> Int? {
     guard blockKind == .orderedList else {
-        orderedListState.reset()
+        orderedListState.handleNonOrderedBlock(blockKind: blockKind, listDepth: listDepth)
         return nil
     }
 

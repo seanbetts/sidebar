@@ -160,6 +160,26 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertFalse(exported.contains("1. Parent 2"), exported)
     }
 
+    func testNestedBulletUnderOrderedParentDoesNotResetParentOrdinal() {
+        var attributed = AttributedString("Parent 1\nChild bullet\nParent 2")
+        let ranges = lineRanges(in: attributed)
+        XCTAssertEqual(ranges.count, 3)
+
+        attributed[ranges[0]].blockKind = .orderedList
+        attributed[ranges[0]].listDepth = 1
+        attributed[ranges[1]].blockKind = .bulletList
+        attributed[ranges[1]].listDepth = 2
+        attributed[ranges[2]].blockKind = .orderedList
+        attributed[ranges[2]].listDepth = 1
+
+        let exported = MarkdownExporter().markdown(from: attributed)
+
+        XCTAssertTrue(exported.contains("1. Parent 1"), exported)
+        XCTAssertTrue(exported.contains("  - Child bullet"), exported)
+        XCTAssertTrue(exported.contains("2. Parent 2"), exported)
+        XCTAssertFalse(exported.contains("1. Parent 2"), exported)
+    }
+
     func testBlockTypesRoundTrip() {
         let markdown = """
         # Heading
