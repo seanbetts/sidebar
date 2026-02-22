@@ -11,7 +11,7 @@ This file is auto-generated from skill frontmatter. Do not edit manually.
 
 ### Filesystem
 
-#### [fs](./skills/fs/SKILL.md) `[reads, writes]`
+#### [files](./skills/files/SKILL.md) `[reads, writes]`
 Filesystem operations backed by ingestion - list, read, write, delete, move, search files. Use for file management tasks in storage.
 
 ### Notes

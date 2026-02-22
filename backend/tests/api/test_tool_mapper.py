@@ -64,7 +64,7 @@ async def test_execute_tool_blocks_disabled_skill():
         "Write File": {
             "description": "write file",
             "input_schema": {},
-            "skill": "fs",
+            "skill": "files",
             "script": "write.py",
             "build_args": lambda _: [],
         }
@@ -81,7 +81,7 @@ async def test_execute_tool_validates_write_path():
         "Write File": {
             "description": "write file",
             "input_schema": {},
-            "skill": "fs",
+            "skill": "files",
             "script": "write.py",
             "build_args": lambda params: [params["path"]],
             "validate_write": True,
@@ -129,7 +129,7 @@ def test_get_claude_tools_filters_skills():
         "Read File": {
             "description": "read file",
             "input_schema": {"type": "object"},
-            "skill": "fs",
+            "skill": "files",
             "script": "read.py",
             "build_args": lambda _: [],
         },
@@ -142,26 +142,41 @@ def test_get_claude_tools_filters_skills():
         },
     }
     mapper = _build_mapper(tools)
-    claude_tools = mapper.get_claude_tools(allowed_skills=["fs"])
+    claude_tools = mapper.get_claude_tools(allowed_skills=["files"])
     names = {tool["name"] for tool in claude_tools}
     assert mapper.tool_name_reverse["Read File"] in names
     assert mapper.tool_name_reverse["Create Note"] not in names
 
 
-def test_get_claude_tools_allows_files_alias_for_fs_skill():
+def test_get_claude_tools_filters_out_disabled_skill():
     tools = {
         "Read File": {
             "description": "read file",
             "input_schema": {"type": "object"},
-            "skill": "fs",
+            "skill": "files",
             "script": "read.py",
             "build_args": lambda _: [],
         }
     }
     mapper = _build_mapper(tools)
-    claude_tools = mapper.get_claude_tools(allowed_skills=["files"])
+    claude_tools = mapper.get_claude_tools(allowed_skills=["notes"])
     names = {tool["name"] for tool in claude_tools}
-    assert mapper.tool_name_reverse["Read File"] in names
+    assert mapper.tool_name_reverse["Read File"] not in names
+
+
+def test_get_claude_tools_does_not_treat_fs_as_files():
+    tools = {
+        "Read File": {
+            "description": "read file",
+            "input_schema": {"type": "object"},
+            "skill": "files",
+            "script": "read.py",
+            "build_args": lambda _: [],
+        }
+    }
+    mapper = _build_mapper(tools)
+    claude_tools = mapper.get_claude_tools(allowed_skills=["fs"])
+    assert claude_tools == []
 
 
 @pytest.mark.asyncio
@@ -170,7 +185,7 @@ async def test_execute_tool_requires_user_id():
         "Read File": {
             "description": "read file",
             "input_schema": {},
-            "skill": "fs",
+            "skill": "files",
             "script": "read.py",
             "build_args": lambda _: [],
         }

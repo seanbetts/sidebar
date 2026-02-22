@@ -34,7 +34,7 @@ def test_update_settings_rejects_invalid_skills(test_client):
     response = test_client.patch(
         "/api/settings",
         headers=_auth_headers(),
-        json={"enabled_skills": ["fs", "not-a-skill"]},
+        json={"enabled_skills": ["files", "not-a-skill"]},
     )
     assert response.status_code == 400
     assert "Invalid skills" in error_message(response)
@@ -44,7 +44,7 @@ def test_update_settings_forces_required_skills(test_client):
     response = test_client.patch(
         "/api/settings",
         headers=_auth_headers(),
-        json={"enabled_skills": ["fs"]},
+        json={"enabled_skills": ["files"]},
     )
     assert response.status_code == 200
     assert "files" in response.json()["enabled_skills"]

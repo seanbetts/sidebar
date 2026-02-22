@@ -22,14 +22,14 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert response.status_code == 200
 
     payload = response.json()
-    assert payload["catalog_version"] == 6
+    assert payload["catalog_version"] == 7
     assert isinstance(payload["skills"], list)
     assert payload["skills"]
 
     by_id = {item["id"]: item for item in payload["skills"]}
     assert "files" in by_id
     assert "fs" not in by_id
-    assert by_id["files"]["legacy_ids"] == ["fs"]
+    assert by_id["files"]["legacy_ids"] == []
     assert by_id["files"]["tier"] == "standard"
     assert by_id["files"]["installable"] is False
 

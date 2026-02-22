@@ -303,7 +303,7 @@ function createChatStore() {
 			if (
 				status === 'success' &&
 				toolName &&
-				(toolName.includes('fs.write') || toolName === 'write file')
+				(toolName.includes('files.write') || toolName === 'write file')
 			) {
 				const fileId = result?.data?.file_id ?? result?.data?.fileId;
 				if (!fileId) return;

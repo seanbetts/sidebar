@@ -66,7 +66,7 @@ def generate_skills_md():
 
     # Categorize skills
     categories = {
-        "Filesystem": ["fs", "folder-config"],
+        "Filesystem": ["files", "folder-config"],
         "Notes": ["notes"],
         "Web": ["web-save", "web-crawler-policy", "subdomain-discover", "jina-reader"],
         "Media": ["youtube-download", "youtube-transcribe", "audio-transcribe"],

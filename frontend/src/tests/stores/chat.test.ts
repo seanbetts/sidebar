@@ -148,12 +148,12 @@ describe('chatStore', () => {
 		expect(assistant?.content).toBe('World');
 	});
 
-	it('updates tool calls and fetches ingestion metadata on fs.write', async () => {
+	it('updates tool calls and fetches ingestion metadata on files.write', async () => {
 		const { assistantMessageId } = await chatStore.sendMessage('Hello');
 
 		chatStore.addToolCall(assistantMessageId, {
 			id: 'tool-1',
-			name: 'fs.write',
+			name: 'files.write',
 			parameters: {},
 			status: 'pending'
 		});

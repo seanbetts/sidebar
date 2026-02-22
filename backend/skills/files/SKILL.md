@@ -1,5 +1,5 @@
 ---
-name: fs
+name: files
 description: Filesystem operations backed by ingestion - list, read, write, rename, pin, delete, and search files. Use for file management tasks in storage.
 metadata:
   capabilities:
@@ -9,7 +9,7 @@ metadata:
     external_apis: false
 ---
 
-# Filesystem Operations (fs)
+# Filesystem Operations (files)
 
 Filesystem operations for ingestion-backed files.
 

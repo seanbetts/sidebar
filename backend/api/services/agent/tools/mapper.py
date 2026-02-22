@@ -25,7 +25,6 @@ SKILLS_REQUIRING_USER_ID = {
     "assistant-identity",
     "assistant-soul",
     "settings-profile-user",
-    "fs",
     "files",
     "notes",
     "tasks",

@@ -39,7 +39,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
         if recursive:
             args.append("--recursive")
 
-        result = await executor.execute("fs", "list.py", args)
+        result = await executor.execute("files", "list.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="fs_list",
@@ -75,7 +75,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
         elif end_line:
             args.extend(["--lines", str(end_line)])
 
-        result = await executor.execute("fs", "read.py", args)
+        result = await executor.execute("files", "read.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="fs_read",
@@ -129,7 +129,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
             "--user-id",
             default_user_id,
         ]
-        result = await executor.execute("fs", "write.py", args)
+        result = await executor.execute("files", "write.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="fs_write",
@@ -173,7 +173,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
             )
 
         args = [path, "--user-id", default_user_id]
-        result = await executor.execute("fs", "delete.py", args)
+        result = await executor.execute("files", "delete.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="fs_delete",
@@ -218,7 +218,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
             )
 
         args = [source, destination, "--user-id", default_user_id]
-        result = await executor.execute("fs", "move.py", args)
+        result = await executor.execute("files", "move.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="fs_move",
@@ -258,7 +258,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
             )
 
         args = [path, new_name, "--user-id", default_user_id]
-        result = await executor.execute("fs", "rename.py", args)
+        result = await executor.execute("files", "rename.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="fs_rename",
@@ -303,7 +303,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
             )
 
         args = [source, destination, "--user-id", default_user_id]
-        result = await executor.execute("fs", "copy.py", args)
+        result = await executor.execute("files", "copy.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="fs_copy",
@@ -337,7 +337,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
             args.append("--case-sensitive")
         args.extend(["--max-results", str(max_results)])
 
-        result = await executor.execute("fs", "search.py", args)
+        result = await executor.execute("files", "search.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="fs_search",

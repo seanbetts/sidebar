@@ -265,8 +265,27 @@ def test_clean_updates_forces_required_skills(monkeypatch) -> None:
         ),
     )
 
-    cleaned = SettingsService.clean_updates({"enabled_skills": ["fs"]})
+    cleaned = SettingsService.clean_updates({"enabled_skills": ["files"]})
     assert cleaned["enabled_skills"] == ["files", "assistant-identity"]
+
+
+def test_clean_updates_rejects_legacy_fs_skill_id(monkeypatch) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {"id": "files", "user_toggleable": True},
+                {"id": "assistant-identity", "user_toggleable": False},
+            ]
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_updates({"enabled_skills": ["fs"]})
+
+    assert exc_info.value.status_code == 400
+    assert "Invalid skills: fs" in str(exc_info.value.detail)
 
 
 def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
@@ -294,7 +313,7 @@ def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
             ]
         ),
     )
-    settings_record = SimpleNamespace(enabled_skills=["fs"])
+    settings_record = SimpleNamespace(enabled_skills=["files"])
 
     resolved = SettingsService._resolve_enabled_skills(settings_record)
     assert resolved == ["files", "assistant-identity"]
@@ -373,7 +392,7 @@ def test_resolve_enabled_skills_filters_uninstalled_store_skill(
     assert resolved == ["files", "assistant-identity"]
 
 
-def test_resolve_installed_store_skills_filters_non_store_and_aliases(monkeypatch) -> None:
+def test_resolve_installed_store_skills_filters_non_store_entries(monkeypatch) -> None:
     monkeypatch.setattr(
         SkillCatalogService,
         "list_skills",
@@ -391,7 +410,7 @@ def test_resolve_installed_store_skills_filters_non_store_and_aliases(monkeypatc
         installed_store_skills=[
             "audio-transcribe",
             "files",
-            "fs",
+            "unknown-skill",
             "prompt-preview",
             "settings-other-preferences",
             "youtube-transcribe",

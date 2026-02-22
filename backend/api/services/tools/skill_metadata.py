@@ -4,17 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 6
+CATALOG_VERSION = 7
 
 SkillTier = Literal["required", "standard", "store"]
 
-SKILL_ID_ALIASES = {
-    "fs": "files",
-}
+SKILL_ID_ALIASES: dict[str, str] = {}
 
-LEGACY_SKILL_IDS: dict[str, list[str]] = {
-    "files": ["fs"],
-}
+LEGACY_SKILL_IDS: dict[str, list[str]] = {}
 
 SKILL_DISPLAY = {
     "files": {
