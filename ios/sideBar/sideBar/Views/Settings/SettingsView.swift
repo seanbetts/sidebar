@@ -343,6 +343,7 @@ private struct SidebarToggleHider: ViewModifier {
 private struct SettingsTabsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var memoriesViewModel: MemoriesViewModel
+    @Environment(\.colorScheme) private var colorScheme
     let settingsBackground: Color
     let savePillState: SettingsSavePillState?
     @State private var hasLoaded = false
@@ -376,6 +377,10 @@ private struct SettingsTabsView: View {
         }
         .padding(DesignTokens.Spacing.md)
         .background(settingsBackground)
+        .background(
+            MoreTabListIconColorConfigurator(useMonochromeIcons: colorScheme == .dark)
+                .frame(width: 0, height: 0)
+        )
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -407,3 +412,49 @@ private struct SettingsTabsView: View {
             }
     }
 }
+
+#if os(iOS)
+private struct MoreTabListIconColorConfigurator: UIViewControllerRepresentable {
+    let useMonochromeIcons: Bool
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        let controller = UIViewController()
+        controller.view.isUserInteractionEnabled = false
+        controller.view.backgroundColor = .clear
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        DispatchQueue.main.async {
+            guard let tabBarController = tabBarController(from: uiViewController) else {
+                return
+            }
+
+            let tintColor: UIColor? = useMonochromeIcons ? .label : nil
+            let moreNavigationController = tabBarController.moreNavigationController
+            moreNavigationController.view.tintColor = tintColor
+            moreNavigationController.navigationBar.tintColor = tintColor
+            moreNavigationController.topViewController?.view.tintColor = tintColor
+        }
+    }
+
+    private func tabBarController(from viewController: UIViewController) -> UITabBarController? {
+        if let tabBarController = viewController.tabBarController {
+            return tabBarController
+        }
+
+        var parent = viewController.parent
+        while let current = parent {
+            if let tabBarController = current as? UITabBarController {
+                return tabBarController
+            }
+            if let tabBarController = current.tabBarController {
+                return tabBarController
+            }
+            parent = current.parent
+        }
+
+        return nil
+    }
+}
+#endif
