@@ -41,6 +41,8 @@ private func exportLines(in attributedString: AttributedString) -> [String] {
     var isInCodeBlock = false
     var lineIndex = 0
     var previousContext: ExportLineContext?
+    var activeOrderedListKey: String?
+    var activeOrderedListOrdinal = 0
 
     while lineIndex < lines.count {
         if let tableResult = exportTableBlock(
@@ -61,7 +63,9 @@ private func exportLines(in attributedString: AttributedString) -> [String] {
             lineRange: lines[lineIndex],
             lineIndex: lineIndex,
             isInCodeBlock: &isInCodeBlock,
-            previousContext: previousContext
+            previousContext: previousContext,
+            activeOrderedListKey: &activeOrderedListKey,
+            activeOrderedListOrdinal: &activeOrderedListOrdinal
         )
         output.append(contentsOf: lineResult.output)
         previousContext = lineResult.context
@@ -109,7 +113,9 @@ private func exportStandardLine(
     lineRange: Range<AttributedString.Index>,
     lineIndex: Int,
     isInCodeBlock: inout Bool,
-    previousContext: ExportLineContext?
+    previousContext: ExportLineContext?,
+    activeOrderedListKey: inout String?,
+    activeOrderedListOrdinal: inout Int
 ) -> ExportLineResult {
     var output: [String] = []
     let lineText = filteredText(from: attributedString[lineRange])
@@ -129,13 +135,23 @@ private func exportStandardLine(
     }
 
     let listDepth = listDepth(in: attributedString, range: lineRange)
+    let listIdentity = listIdentity(in: attributedString, range: lineRange)
+    let blockquoteDepth = blockquoteDepth(in: attributedString, range: lineRange)
+    let listOrdinal = resolvedOrderedListOrdinal(
+        blockKind: blockKind,
+        listDepth: listDepth,
+        listIdentity: listIdentity,
+        blockquoteDepth: blockquoteDepth,
+        previousContext: previousContext,
+        activeOrderedListKey: &activeOrderedListKey,
+        activeOrderedListOrdinal: &activeOrderedListOrdinal
+    )
     let codeLanguage = codeLanguage(in: attributedString, range: lineRange)
     let currentContext = exportLineContext(
-        attributedString: attributedString,
-        lineRange: lineRange,
-        lineText: lineText,
         blockKind: blockKind,
-        listDepth: listDepth
+        listDepth: listDepth,
+        listIdentity: listIdentity,
+        blockquoteDepth: blockquoteDepth
     )
     if shouldInsertBlankLine(
         previous: previousContext,
@@ -151,6 +167,8 @@ private func exportStandardLine(
         lineText: lineText,
         lineRange: lineRange,
         listDepth: listDepth,
+        listOrdinal: listOrdinal,
+        blockquoteDepth: blockquoteDepth,
         codeLanguage: codeLanguage,
         isInCodeBlock: &isInCodeBlock,
         attributedString: attributedString
@@ -166,18 +184,17 @@ private func exportStandardLine(
 
 @available(iOS 26.0, macOS 26.0, *)
 private func exportLineContext(
-    attributedString: AttributedString,
-    lineRange: Range<AttributedString.Index>,
-    lineText: String,
     blockKind: BlockKind,
-    listDepth: Int?
+    listDepth: Int?,
+    listIdentity: Int?,
+    blockquoteDepth: Int
 ) -> ExportLineContext {
     ExportLineContext(
         blockKind: blockKind,
         listDepth: listDepth,
-        listIdentity: listIdentity(in: attributedString, range: lineRange),
+        listIdentity: listIdentity,
         isListItem: isListItemBlockKind(blockKind),
-        isBlockquote: isBlockquoteLine(blockKind: blockKind, lineText: lineText),
+        isBlockquote: blockquoteDepth > 0 || blockKind == .blockquote,
         isCodeBlock: blockKind == .codeBlock,
         isTableBlock: false
     )
@@ -190,6 +207,8 @@ private func appendLineOutput(
     lineText: String,
     lineRange: Range<AttributedString.Index>,
     listDepth: Int?,
+    listOrdinal: Int?,
+    blockquoteDepth: Int,
     codeLanguage: String?,
     isInCodeBlock: inout Bool,
     attributedString: AttributedString
@@ -210,22 +229,13 @@ private func appendLineOutput(
         output.append("\(MarkdownRendering.imageCaptionMarker) \(lineText)")
     default:
         let inlineMarkdown = serializeInline(attributedString[lineRange])
-        let quotePrefix = leadingBlockquotePrefix(in: lineText)
-        let hasPrefix = hasExistingBlockPrefix(blockKind: blockKind, lineText: lineText)
-        let prefix = hasPrefix
-            ? ""
-            : generatedPrefix(
-                for: blockKind,
-                listDepth: listDepth,
-                quotePrefix: quotePrefix
-            )
-        let normalizedInline = normalizedInlineMarkdown(
-            inlineMarkdown,
-            blockKind: blockKind,
-            quotePrefix: quotePrefix,
-            hasExistingPrefix: hasPrefix
+        let prefix = generatedPrefix(
+            for: blockKind,
+            listDepth: listDepth,
+            listOrdinal: listOrdinal,
+            blockquoteDepth: blockquoteDepth
         )
-        output.append(prefix + normalizedInline)
+        output.append(prefix + inlineMarkdown)
     }
 }
 
@@ -338,15 +348,6 @@ private func isListItemBlockKind(_ blockKind: BlockKind) -> Bool {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func isBlockquoteLine(blockKind: BlockKind, lineText: String) -> Bool {
-    if blockKind == .blockquote {
-        return true
-    }
-    let trimmed = lineText.trimmingCharacters(in: .whitespaces)
-    return trimmed.hasPrefix(">")
-}
-
-@available(iOS 26.0, macOS 26.0, *)
 private func shouldInsertBlankLine(
     previous: ExportLineContext?,
     current: ExportLineContext,
@@ -378,7 +379,7 @@ private func shouldInsertBlankLine(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func prefix(for blockKind: BlockKind, listDepth: Int?) -> String {
+private func prefix(for blockKind: BlockKind, listDepth: Int?, listOrdinal: Int?) -> String {
     let indent = String(repeating: "  ", count: max(0, (listDepth ?? 1) - 1))
     let headingPrefixes: [BlockKind: String] = [
         .heading1: "# ",
@@ -391,96 +392,78 @@ private func prefix(for blockKind: BlockKind, listDepth: Int?) -> String {
     if let headingPrefix = headingPrefixes[blockKind] {
         return headingPrefix
     }
-    let indentedPrefixes: [BlockKind: String] = [
-        .bulletList: "- ",
-        .orderedList: "1. ",
-        .taskChecked: "- [x] ",
-        .taskUnchecked: "- [ ] ",
-        .blockquote: "> "
-    ]
-    if let indentedPrefix = indentedPrefixes[blockKind] {
-        return indent + indentedPrefix
+    switch blockKind {
+    case .bulletList:
+        return indent + "- "
+    case .orderedList:
+        return indent + "\(max(1, listOrdinal ?? 1)). "
+    case .taskChecked:
+        return indent + "- [x] "
+    case .taskUnchecked:
+        return indent + "- [ ] "
+    case .blockquote:
+        return ""
+    default:
+        return ""
     }
-    return ""
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 private func generatedPrefix(
     for blockKind: BlockKind,
     listDepth: Int?,
-    quotePrefix: String
+    listOrdinal: Int?,
+    blockquoteDepth: Int
 ) -> String {
-    let basePrefix = prefix(for: blockKind, listDepth: listDepth)
-    guard isListItemBlockKind(blockKind), !quotePrefix.isEmpty else {
-        return basePrefix
+    let effectiveQuoteDepth = blockKind == .blockquote ? max(1, blockquoteDepth) : blockquoteDepth
+    let quotePrefix = String(repeating: "> ", count: max(0, effectiveQuoteDepth))
+    let basePrefix = prefix(for: blockKind, listDepth: listDepth, listOrdinal: listOrdinal)
+    if blockKind == .blockquote {
+        return quotePrefix
     }
     return quotePrefix + basePrefix
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func normalizedInlineMarkdown(
-    _ inlineMarkdown: String,
+private func blockquoteDepth(in text: AttributedString, range: Range<AttributedString.Index>) -> Int {
+    var maximumDepth = 0
+    for run in text[range].runs {
+        guard let intent = run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] else {
+            continue
+        }
+        let depth = intent.components.reduce(into: 0) { result, component in
+            if case .blockQuote = component.kind {
+                result += 1
+            }
+        }
+        maximumDepth = max(maximumDepth, depth)
+    }
+    return maximumDepth
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func resolvedOrderedListOrdinal(
     blockKind: BlockKind,
-    quotePrefix: String,
-    hasExistingPrefix: Bool
-) -> String {
-    guard !hasExistingPrefix, isListItemBlockKind(blockKind), !quotePrefix.isEmpty else {
-        return inlineMarkdown
-    }
-    guard inlineMarkdown.hasPrefix(quotePrefix) else {
-        return inlineMarkdown
-    }
-    return String(inlineMarkdown.dropFirst(quotePrefix.count))
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func leadingBlockquotePrefix(in lineText: String) -> String {
-    let pattern = #"^\s*(?:>\s*)+"#
-    guard let range = lineText.range(of: pattern, options: .regularExpression) else {
-        return ""
-    }
-    return String(lineText[range])
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func hasExistingBlockPrefix(blockKind: BlockKind, lineText: String) -> Bool {
-    let trimmed = lineText.trimmingCharacters(in: .whitespaces)
-    if let prefix = headingPrefix(for: blockKind) {
-        return trimmed.hasPrefix(prefix)
-    }
-    if let pattern = blockPrefixPattern(for: blockKind) {
-        return trimmed.range(of: pattern, options: .regularExpression) != nil
-    }
-    return false
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func headingPrefix(for blockKind: BlockKind) -> String? {
-    switch blockKind {
-    case .heading1: return "# "
-    case .heading2: return "## "
-    case .heading3: return "### "
-    case .heading4: return "#### "
-    case .heading5: return "##### "
-    case .heading6: return "###### "
-    default: return nil
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func blockPrefixPattern(for blockKind: BlockKind) -> String? {
-    switch blockKind {
-    case .bulletList:
-        return #"^(?:>\s*)*[-+*]\s"#
-    case .orderedList:
-        return #"^(?:>\s*)*\d+\.\s"#
-    case .taskChecked:
-        return #"^(?:>\s*)*[-+*]\s+\[[xX]\]\s"#
-    case .taskUnchecked:
-        return #"^(?:>\s*)*[-+*]\s+\[\s\]\s"#
-    case .blockquote:
-        return #"^(?:>\s*)+"#
-    default:
+    listDepth: Int?,
+    listIdentity: Int?,
+    blockquoteDepth: Int,
+    previousContext: ExportLineContext?,
+    activeOrderedListKey: inout String?,
+    activeOrderedListOrdinal: inout Int
+) -> Int? {
+    guard blockKind == .orderedList else {
+        activeOrderedListKey = nil
+        activeOrderedListOrdinal = 0
         return nil
     }
+
+    let key = "\(listIdentity ?? 0):\(listDepth ?? 1):\(blockquoteDepth)"
+    let continuesOrderedList = previousContext?.blockKind == .orderedList && activeOrderedListKey == key
+    if continuesOrderedList {
+        activeOrderedListOrdinal += 1
+    } else {
+        activeOrderedListKey = key
+        activeOrderedListOrdinal = 1
+    }
+    return activeOrderedListOrdinal
 }

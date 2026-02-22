@@ -62,7 +62,6 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
 
         if blockquoteDepth > 0 {
-            paragraphText = prefixBlock(paragraphText, with: String(repeating: "> ", count: blockquoteDepth))
             applyBlockKind(.blockquote, to: &paragraphText)
             paragraphText[fullRange(in: paragraphText)].foregroundColor = DesignTokens.Colors.textSecondary
             paragraphText[fullRange(in: paragraphText)].paragraphStyle = paragraphStyle(
@@ -81,7 +80,11 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
 
         paragraphText[fullRange(in: paragraphText)].font = bodyFont
-        applyPresentationIntent(for: blockquoteDepth > 0 ? .blockquote : .paragraph, to: &paragraphText)
+        applyPresentationIntent(
+            for: blockquoteDepth > 0 ? .blockquote : .paragraph,
+            blockquoteDepth: blockquoteDepth,
+            to: &paragraphText
+        )
         appendBlock(paragraphText)
     }
 
@@ -117,7 +120,11 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
         headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle
 
         headingText[fullRange(in: headingText)].foregroundColor = DesignTokens.Colors.textPrimary
-        applyPresentationIntent(for: blockKindForHeading(level: heading.level), to: &headingText)
+        applyPresentationIntent(
+            for: blockKindForHeading(level: heading.level),
+            blockquoteDepth: blockquoteDepth,
+            to: &headingText
+        )
         appendBlock(headingText)
     }
 
@@ -227,30 +234,19 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
             }
         }
 
-        if !itemText.characters.isEmpty || listItem.checkbox != nil {
-            if let checkbox = listItem.checkbox {
-                let isChecked = checkbox == .checked
-                applyBlockKind(isChecked ? .taskChecked : .taskUnchecked, to: &itemText)
-                if isChecked {
-                    applyStrikethrough(to: &itemText)
-                    itemText[fullRange(in: itemText)].foregroundColor = DesignTokens.Colors.textSecondary
-                }
-            } else {
-                applyBlockKind(context.ordered ? .orderedList : .bulletList, to: &itemText)
-            }
+        let explicitTaskChecked = listItem.checkbox.map { $0 == .checked }
+        let inferredTaskChecked = inferredTaskCheckedState(from: itemText)
+        if explicitTaskChecked != nil || inferredTaskChecked != nil {
+            itemText = stripTaskCheckboxPrefix(from: itemText)
+        }
 
-            let indent = String(repeating: "  ", count: max(0, context.depth - 1))
-            let listPrefix: String
-            if let checkbox = listItem.checkbox {
-                let isChecked = checkbox == .checked
-                listPrefix = indent + "- [" + (isChecked ? "x" : " ") + "] "
-            } else if context.ordered {
-                listPrefix = indent + "\(context.itemIndex). "
-            } else {
-                listPrefix = indent + "- "
-            }
-            let quotePrefix = blockquoteDepth > 0 ? String(repeating: "> ", count: blockquoteDepth) : ""
-            itemText = prefixBlock(itemText, with: quotePrefix + listPrefix)
+        if !itemText.characters.isEmpty || explicitTaskChecked != nil || inferredTaskChecked != nil {
+            let blockKind = applyListItemBlockKind(
+                to: &itemText,
+                explicitTaskChecked: explicitTaskChecked,
+                inferredTaskChecked: inferredTaskChecked,
+                ordered: context.ordered
+            )
 
             itemText[fullRange(in: itemText)].listDepth = context.depth
             itemText[fullRange(in: itemText)].font = bodyFont
@@ -263,13 +259,14 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
             )
             itemText[fullRange(in: itemText)].paragraphStyle = adjustedSpacingBeforeIfNeeded(
                 listStyle,
-                blockKind: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph
+                blockKind: blockKind
             )
             applyPresentationIntent(
-                for: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph,
+                for: blockKind,
                 listDepth: context.depth,
                 listOrdinal: context.ordered ? context.itemIndex : nil,
                 listId: context.listId,
+                blockquoteDepth: blockquoteDepth,
                 to: &itemText
             )
             appendBlock(itemText)
@@ -278,6 +275,58 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
         for nested in nestedBlocks {
             visit(nested)
         }
+    }
+
+    func stripTaskCheckboxPrefix(from text: AttributedString) -> AttributedString {
+        let raw = String(text.characters)
+        guard let markerRange = raw.range(of: #"^\s*\[[ xX]\]\s+"#, options: .regularExpression) else {
+            return text
+        }
+        let prefixLength = raw.distance(from: raw.startIndex, to: markerRange.upperBound)
+        guard prefixLength > 0 else { return text }
+        var trimmed = text
+        let end = trimmed.index(trimmed.startIndex, offsetByCharacters: prefixLength)
+        trimmed.removeSubrange(trimmed.startIndex..<end)
+        return trimmed
+    }
+
+    func inferredTaskCheckedState(from text: AttributedString) -> Bool? {
+        let raw = String(text.characters)
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        if trimmed.hasPrefix("[x] ") || trimmed.hasPrefix("[X] ") {
+            return true
+        }
+        if trimmed.hasPrefix("[ ] ") {
+            return false
+        }
+        return nil
+    }
+
+    func applyListItemBlockKind(
+        to text: inout AttributedString,
+        explicitTaskChecked: Bool?,
+        inferredTaskChecked: Bool?,
+        ordered: Bool
+    ) -> BlockKind {
+        if let explicitTaskChecked {
+            return applyTaskBlockKind(to: &text, isChecked: explicitTaskChecked)
+        }
+        if let inferredTaskChecked {
+            return applyTaskBlockKind(to: &text, isChecked: inferredTaskChecked)
+        }
+        let blockKind: BlockKind = ordered ? .orderedList : .bulletList
+        applyBlockKind(blockKind, to: &text)
+        return blockKind
+    }
+
+    func applyTaskBlockKind(to text: inout AttributedString, isChecked: Bool) -> BlockKind {
+        let blockKind: BlockKind = isChecked ? .taskChecked : .taskUnchecked
+        applyBlockKind(blockKind, to: &text)
+        if isChecked {
+            applyStrikethrough(to: &text)
+            text[fullRange(in: text)].foregroundColor = DesignTokens.Colors.textSecondary
+        }
+        return blockKind
     }
 
     mutating func visitTable(_ table: Markdown.Table) {

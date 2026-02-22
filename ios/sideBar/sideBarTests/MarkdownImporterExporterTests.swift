@@ -79,6 +79,21 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertFalse(text.contains("#"))
     }
 
+    func testImportListAndBlockquoteOmitLiteralMarkdownMarkersInAttributedText() {
+        let markdown = """
+        > - Bullet
+        > 1. Ordered
+        > - [ ] Task
+        """
+        let result = MarkdownImporter().attributedString(from: markdown)
+        let text = String(result.attributedString.characters)
+
+        XCTAssertEqual(text, "Bullet\nOrdered\nTask")
+        XCTAssertFalse(text.contains(">"))
+        XCTAssertFalse(text.contains("- "))
+        XCTAssertFalse(text.contains("[ ]"))
+    }
+
     func testNestedListPreservesIndentation() {
         let markdown = """
         - Item 1

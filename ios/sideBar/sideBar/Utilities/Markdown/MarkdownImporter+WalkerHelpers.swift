@@ -122,49 +122,42 @@ extension MarkdownToAttributedStringWalker {
         listDepth: Int? = nil,
         listOrdinal: Int? = nil,
         listId: Int? = nil,
+        blockquoteDepth: Int = 0,
         codeLanguage: String? = nil,
         to text: inout AttributedString
     ) {
         let range = fullRange(in: text)
         if let headingLevel = headingLevel(for: blockKind) {
-            applyHeadingIntent(level: headingLevel, to: &text, range: range)
+            applyHeadingIntent(
+                level: headingLevel,
+                blockquoteDepth: blockquoteDepth,
+                to: &text,
+                range: range
+            )
             return
         }
 
-        switch blockKind {
-        case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
-            return
-        case .blockquote:
-            let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
-                .paragraph,
-                identity: 1,
-                parent: quoteIntent
-            )
-        case .codeBlock:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
-                .codeBlock(languageHint: codeLanguage),
-                identity: 1
-            )
-        case .horizontalRule:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
-                .thematicBreak,
-                identity: 1
-            )
-        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+        if isListBlockKind(blockKind) {
             applyListPresentationIntent(
                 blockKind,
                 listDepth: listDepth,
                 listOrdinal: listOrdinal,
                 listId: listId,
+                blockquoteDepth: blockquoteDepth,
                 to: &text,
                 range: range
             )
-        case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
-            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
-        @unknown default:
             return
         }
+
+        guard let intent = nonListPresentationIntent(
+            for: blockKind,
+            blockquoteDepth: blockquoteDepth,
+            codeLanguage: codeLanguage
+        ) else {
+            return
+        }
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = intent
     }
 
     func headingLevel(for blockKind: BlockKind) -> Int? {
@@ -181,12 +174,14 @@ extension MarkdownToAttributedStringWalker {
 
     func applyHeadingIntent(
         level: Int,
+        blockquoteDepth: Int,
         to text: inout AttributedString,
         range: Range<AttributedString.Index>
     ) {
-        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
-            .header(level: level),
-            identity: level
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = scopedPresentationIntent(
+            kind: .header(level: level),
+            identity: level,
+            blockquoteDepth: blockquoteDepth
         )
     }
 
@@ -195,12 +190,18 @@ extension MarkdownToAttributedStringWalker {
         listDepth: Int?,
         listOrdinal: Int?,
         listId: Int?,
+        blockquoteDepth: Int,
         to text: inout AttributedString,
         range: Range<AttributedString.Index>
     ) {
         let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
         let listIdentity = listId ?? (listDepth ?? 1)
-        let listIntent = PresentationIntent(listKind, identity: listIdentity)
+        let listIntent: PresentationIntent
+        if let quoteIntent = blockquoteIntent(depth: blockquoteDepth) {
+            listIntent = PresentationIntent(listKind, identity: listIdentity, parent: quoteIntent)
+        } else {
+            listIntent = PresentationIntent(listKind, identity: listIdentity)
+        }
         let ordinal = listOrdinal ?? 1
         let listItemIntent = PresentationIntent(
             .listItem(ordinal: ordinal),
@@ -237,6 +238,76 @@ extension MarkdownToAttributedStringWalker {
         case 5: return .heading5
         default: return .heading6
         }
+    }
+
+    func isListBlockKind(_ blockKind: BlockKind) -> Bool {
+        switch blockKind {
+        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            return true
+        default:
+            return false
+        }
+    }
+
+    func nonListPresentationIntent(
+        for blockKind: BlockKind,
+        blockquoteDepth: Int,
+        codeLanguage: String?
+    ) -> PresentationIntent? {
+        switch blockKind {
+        case .blockquote:
+            return scopedPresentationIntent(
+                kind: .paragraph,
+                identity: 1,
+                blockquoteDepth: blockquoteDepth,
+                minimumBlockquoteDepth: 1
+            )
+        case .codeBlock:
+            return scopedPresentationIntent(
+                kind: .codeBlock(languageHint: codeLanguage),
+                identity: 1,
+                blockquoteDepth: blockquoteDepth
+            )
+        case .horizontalRule:
+            return scopedPresentationIntent(
+                kind: .thematicBreak,
+                identity: 1,
+                blockquoteDepth: blockquoteDepth
+            )
+        case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
+            return scopedPresentationIntent(
+                kind: .paragraph,
+                identity: 1,
+                blockquoteDepth: blockquoteDepth
+            )
+        case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
+            return nil
+        @unknown default:
+            return nil
+        }
+    }
+
+    func scopedPresentationIntent(
+        kind: PresentationIntent.Kind,
+        identity: Int,
+        blockquoteDepth: Int,
+        minimumBlockquoteDepth: Int = 0
+    ) -> PresentationIntent {
+        let depth = max(minimumBlockquoteDepth, blockquoteDepth)
+        if let quoteIntent = blockquoteIntent(depth: depth) {
+            return PresentationIntent(kind, identity: identity, parent: quoteIntent)
+        }
+        return PresentationIntent(kind, identity: identity)
+    }
+
+    func blockquoteIntent(depth: Int) -> PresentationIntent? {
+        guard depth > 0 else { return nil }
+        var current = PresentationIntent(.blockQuote, identity: 1)
+        guard depth > 1 else { return current }
+        for level in 2...depth {
+            current = PresentationIntent(.blockQuote, identity: level, parent: current)
+        }
+        return current
     }
 }
 
