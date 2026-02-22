@@ -237,6 +237,20 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.attributedContent.runs.contains { $0.listMarker == true })
     }
 
+    func testUpdatePrefixVisibilityDoesNotInferHorizontalRuleWhenInjectedMarkersDisabled() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.attributedContent = AttributedString("---")
+        viewModel.usesInjectedListMarkers = false
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        viewModel.updatePrefixVisibility()
+
+        XCTAssertEqual(String(viewModel.attributedContent.characters), "---")
+        let line = firstLine(in: viewModel.attributedContent)
+        XCTAssertNil(viewModel.attributedContent.blockKind(in: line))
+    }
+
     func testApplyFormattingStrikethroughTogglesTypingAttributesAtInsertionPoint() async {
         let viewModel = NativeMarkdownEditorViewModel()
         viewModel.loadMarkdown("hello")

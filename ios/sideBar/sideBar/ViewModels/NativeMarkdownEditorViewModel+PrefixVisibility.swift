@@ -7,9 +7,10 @@ extension NativeMarkdownEditorViewModel {
     func updatePrefixVisibility() {
         let originalSnapshot = selectionSnapshot(in: attributedContent)
         var updated = attributedContent
+        let useLegacyMarkerHeuristics = usesInjectedListMarkers
 
         let adjustedSnapshot: SelectionSnapshot
-        if usesInjectedListMarkers {
+        if useLegacyMarkerHeuristics {
             let originalLines = lineInfos(in: updated)
             let listOrdinals = orderedListOrdinals(in: updated, lines: originalLines)
             adjustedSnapshot = normalizeListMarkers(
@@ -30,21 +31,23 @@ extension NativeMarkdownEditorViewModel {
             let lineEnd = updated.index(updated.startIndex, offsetByCharacters: line.range.upperBound)
             let lineRange = lineStart..<lineEnd
             let shouldShow = shouldShowPrefix(for: line.range, selection: adjustedSnapshot)
-            let blockKind = resolvedBlockKind(in: &updated, lineRange: lineRange, lineText: line.text)
+            let blockKind = resolvedBlockKind(
+                in: &updated,
+                lineRange: lineRange,
+                lineText: line.text,
+                allowInference: useLegacyMarkerHeuristics
+            )
             let previousBlockKind: BlockKind? = {
                 guard index > 0 else { return nil }
                 let previous = lines[index - 1]
                 let prevStart = updated.index(updated.startIndex, offsetByCharacters: previous.range.lowerBound)
                 let prevEnd = updated.index(updated.startIndex, offsetByCharacters: previous.range.upperBound)
                 let prevRange = prevStart..<prevEnd
-                return updated.blockKind(in: prevRange) ?? inferredBlockKind(from: previous.text)
+                if useLegacyMarkerHeuristics {
+                    return updated.blockKind(in: prevRange) ?? inferredBlockKind(from: previous.text)
+                }
+                return updated.blockKind(in: prevRange)
             }()
-            let prefixRange = markdownPrefixRange(
-                in: updated,
-                lineRange: lineRange,
-                lineText: line.text,
-                blockKind: blockKind
-            )
 
             if shouldRemoveSpacingBefore(blockKind: blockKind, previousBlockKind: previousBlockKind) {
                 let listDepth = updated[lineRange].listDepth
@@ -58,25 +61,14 @@ extension NativeMarkdownEditorViewModel {
             }
 
             applyInlineIntentStyling(in: &updated, lineRange: lineRange, blockKind: blockKind)
-
-            if let prefixRange {
-                applyPrefixVisibility(
-                    in: &updated,
-                    range: prefixRange,
-                    blockKind: blockKind,
-                    shouldShow: shouldShow
-                )
-            }
-
-            let inlineRanges = ensureInlineMarkerRanges(in: &updated, lineRange: lineRange, lineText: line.text)
-            for inlineRange in inlineRanges {
-                applyInlineMarkerVisibility(
-                    in: &updated,
-                    range: inlineRange,
-                    blockKind: blockKind,
-                    shouldShow: shouldShow
-                )
-            }
+            applyLegacyMarkerVisibilityIfNeeded(
+                in: &updated,
+                lineRange: lineRange,
+                lineText: line.text,
+                blockKind: blockKind,
+                shouldShow: shouldShow,
+                useLegacyMarkerHeuristics: useLegacyMarkerHeuristics
+            )
         }
 
         if updated != attributedContent {
@@ -141,17 +133,64 @@ extension NativeMarkdownEditorViewModel {
     func resolvedBlockKind(
         in text: inout AttributedString,
         lineRange: Range<AttributedString.Index>,
-        lineText: String
+        lineText: String,
+        allowInference: Bool
     ) -> BlockKind? {
+        let explicitBlockKind = text.blockKind(in: lineRange)
+        guard allowInference else {
+            return explicitBlockKind
+        }
+
         let inferred = inferredBlockKind(from: lineText)
-        let blockKind = text.blockKind(in: lineRange) ?? inferred
-        if blockKind == .horizontalRule, text.blockKind(in: lineRange) == nil {
+        let blockKind = explicitBlockKind ?? inferred
+        if blockKind == .horizontalRule, explicitBlockKind == nil {
             text[lineRange].blockKind = .horizontalRule
             if let paragraphStyle = paragraphStyle(for: .horizontalRule) {
                 text[lineRange].paragraphStyle = paragraphStyle
             }
         }
         return blockKind
+    }
+
+    func applyLegacyMarkerVisibilityIfNeeded(
+        in text: inout AttributedString,
+        lineRange: Range<AttributedString.Index>,
+        lineText: String,
+        blockKind: BlockKind?,
+        shouldShow: Bool,
+        useLegacyMarkerHeuristics: Bool
+    ) {
+        guard useLegacyMarkerHeuristics else { return }
+
+        let prefixRange = markdownPrefixRange(
+            in: text,
+            lineRange: lineRange,
+            lineText: lineText,
+            blockKind: blockKind
+        )
+
+        if let prefixRange {
+            applyPrefixVisibility(
+                in: &text,
+                range: prefixRange,
+                blockKind: blockKind,
+                shouldShow: shouldShow
+            )
+        }
+
+        let inlineRanges = ensureInlineMarkerRanges(
+            in: &text,
+            lineRange: lineRange,
+            lineText: lineText
+        )
+        for inlineRange in inlineRanges {
+            applyInlineMarkerVisibility(
+                in: &text,
+                range: inlineRange,
+                blockKind: blockKind,
+                shouldShow: shouldShow
+            )
+        }
     }
 
     func applyPrefixVisibility(
