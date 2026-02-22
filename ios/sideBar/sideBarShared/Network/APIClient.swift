@@ -162,6 +162,7 @@ public final class APIClient {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            logTransportError(error, request: request)
             NotificationCenter.default.post(
                 name: .apiClientRequestFailed,
                 object: nil,
@@ -216,6 +217,7 @@ public final class APIClient {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            logTransportError(error, request: request)
             NotificationCenter.default.post(
                 name: .apiClientRequestFailed,
                 object: nil,
@@ -272,6 +274,27 @@ public final class APIClient {
     private func attemptAuthRefreshIfNeeded() async -> Bool {
         guard let refresh = config.refreshAuthIfNeeded else { return false }
         return await authRefreshCoordinator.refreshIfNeeded(using: refresh)
+    }
+
+    private func logTransportError(_ error: Error, request: URLRequest) {
+        let nsError = error as NSError
+        let method = request.httpMethod ?? "?"
+        let url = request.url?.absoluteString ?? "?"
+        let hadToken = request.value(forHTTPHeaderField: "Authorization") != nil
+        logger.error(
+            "Transport error \(method, privacy: .public) \(url, privacy: .public) hadToken=\(hadToken)"
+        )
+        logger.error(
+            "Transport error detail: domain=\(nsError.domain, privacy: .public) code=\(nsError.code)"
+        )
+        if nsError.userInfo[NSURLErrorFailingURLPeerTrustErrorKey] != nil {
+            logger.error("Transport error has peer-trust key — likely TLS/cert-pinning cancellation")
+        }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            logger.error(
+                "Underlying error: domain=\(underlying.domain, privacy: .public) code=\(underlying.code)"
+            )
+        }
     }
 
     private func logDecodingError<T>(_ error: Error, data: Data, type: T.Type) {

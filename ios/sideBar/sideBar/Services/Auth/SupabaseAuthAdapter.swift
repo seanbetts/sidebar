@@ -214,14 +214,18 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
 
     public func refreshSession() async {
         guard authClient.currentSession != nil else {
+            logger.debug("refreshSession: skipped — no current session (authState=\(authState.rawValue, privacy: .public))")
             return
         }
         if let task = refreshInFlightTask {
+            logger.debug("refreshSession: awaiting in-flight refresh")
             _ = await task.value
             return
         }
         let now = Date()
         if let lastRefreshAttempt, now.timeIntervalSince(lastRefreshAttempt) < refreshCooldown {
+            let remaining = Int(refreshCooldown - now.timeIntervalSince(lastRefreshAttempt))
+            logger.debug("refreshSession: skipped — cooldown active (\(remaining)s remaining)")
             return
         }
         lastRefreshAttempt = now
