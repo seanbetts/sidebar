@@ -67,7 +67,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     public func currentMarkdown() -> String {
-        exporter.markdown(from: attributedContent, frontmatter: frontmatter)
+        let constrained = MarkdownFormattingDefinition().constrainedDocument(attributedContent)
+        return exporter.markdown(from: constrained, frontmatter: frontmatter)
     }
 
     public func markSaved(markdown: String) {

@@ -224,6 +224,16 @@ public final class NotesEditorViewModel: ObservableObject {
         }
     }
 
+    public func currentMarkdownSnapshot(fallback: String = "") -> String {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            if let nativeEditorViewModel {
+                let markdown = nativeEditorViewModel.currentMarkdown()
+                return markdown.isEmpty ? fallback : markdown
+            }
+        }
+        return content.isEmpty ? fallback : content
+    }
+
     public func resolveConflictKeepLocal() async {
         guard let conflict else { return }
         content = conflict.localContent
