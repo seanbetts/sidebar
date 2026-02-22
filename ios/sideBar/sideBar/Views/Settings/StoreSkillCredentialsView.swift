@@ -112,39 +112,39 @@ struct StoreSkillCredentialsView: View {
         let normalizedProvider = normalizedProviderName(provider)
         let isConnected = providerStatus(for: normalizedProvider)?.hasKey ?? false
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
                 Text(providerDisplayName(normalizedProvider))
                     .font(.caption)
                     .foregroundStyle(.primary)
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 8) {
+                HStack(spacing: 6) {
                     Text(providerStatusLabel(for: normalizedProvider))
                         .font(.caption2)
                         .foregroundStyle(providerStatusColor(for: normalizedProvider))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
 
-                    HStack(spacing: 8) {
-                        Button {
-                            beginCredentialEditor(provider: normalizedProvider)
+                    Button {
+                        beginCredentialEditor(provider: normalizedProvider)
+                    } label: {
+                        Image(systemName: isConnected ? "pencil.circle.fill" : "plus.circle.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                    }
+                    .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
+                    .frame(width: 48, height: 48)
+                    .disabled(isProviderActionBusy(normalizedProvider))
+
+                    if isConnected {
+                        Button(role: .destructive) {
+                            beginCredentialRemoval(provider: normalizedProvider)
                         } label: {
-                            Image(systemName: isConnected ? "pencil.circle.fill" : "plus.circle.fill")
-                                .font(.system(size: 18, weight: .semibold))
+                            Image(systemName: "trash.circle.fill")
+                                .font(.system(size: 20, weight: .semibold))
                         }
-                        .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
-                        .frame(width: DesignTokens.Size.touchTarget, height: DesignTokens.Size.touchTarget)
+                        .accessibilityLabel("Remove Key")
+                        .frame(width: 48, height: 48)
                         .disabled(isProviderActionBusy(normalizedProvider))
-
-                        if isConnected {
-                            Button(role: .destructive) {
-                                beginCredentialRemoval(provider: normalizedProvider)
-                            } label: {
-                                Image(systemName: "trash.circle.fill")
-                                    .font(.system(size: 18, weight: .semibold))
-                            }
-                            .accessibilityLabel("Remove Key")
-                            .frame(width: DesignTokens.Size.touchTarget, height: DesignTokens.Size.touchTarget)
-                            .disabled(isProviderActionBusy(normalizedProvider))
-                        }
                     }
                 }
             }
@@ -179,6 +179,9 @@ struct StoreSkillCredentialsView: View {
         }
         if let status = providerStatus(for: normalizedProvider) {
             if status.hasKey {
+                if let keyLast4 = status.keyLast4, !keyLast4.isEmpty {
+                    return "Connected (Key: API key ****\(keyLast4))"
+                }
                 return "Connected (Key: API key)"
             }
             return "Missing"
