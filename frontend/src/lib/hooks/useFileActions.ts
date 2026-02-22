@@ -75,7 +75,8 @@ export function useFileActions(ctx: FileActionsContext) {
 	const saveRename = async () => {
 		const node = ctx.getNode();
 		const trimmed = ctx.getEditedName().trim();
-		if (trimmed && trimmed !== node.name) {
+		const compareName = ctx.getDisplayName();
+		if (trimmed && trimmed !== compareName) {
 			try {
 				let newName = trimmed;
 				if (ctx.getHideExtensions() && node.type === 'file') {

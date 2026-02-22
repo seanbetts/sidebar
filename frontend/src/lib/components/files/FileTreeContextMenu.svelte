@@ -104,11 +104,15 @@
 		closeMenu();
 	};
 
-	$: if (showMenu) {
+	function resetMenuTimeout() {
 		if (menuTimeout) clearTimeout(menuTimeout);
 		menuTimeout = setTimeout(() => {
 			closeMenu();
 		}, 4000);
+	}
+
+	$: if (showMenu) {
+		resetMenuTimeout();
 
 		if (!removeOutsideListener) {
 			const handleOutsideClick = (event: MouseEvent) => {
@@ -156,7 +160,15 @@
 </Tooltip>
 
 {#if showMenu}
-	<div class="menu" role="menu" tabindex="-1" bind:this={menuElement}>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="menu"
+		role="menu"
+		tabindex="-1"
+		bind:this={menuElement}
+		on:pointerenter={resetMenuTimeout}
+		on:pointermove={resetMenuTimeout}
+	>
 		<button class="menu-item" on:click={handleRename}>
 			<Pencil size={16} />
 			<span>Rename</span>
@@ -266,6 +278,19 @@
 
 	:global(.node-content:hover) .menu-btn {
 		opacity: 1;
+	}
+
+	/* Always show menu button on touch devices */
+	@media (pointer: coarse) {
+		.menu-btn {
+			opacity: 0.5;
+			pointer-events: auto;
+		}
+
+		:global(.node-content:hover) .menu-btn,
+		.menu-btn:active {
+			opacity: 1;
+		}
 	}
 
 	.menu-btn:hover {
