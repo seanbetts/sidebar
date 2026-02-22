@@ -46,6 +46,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     var autosaveTask: Task<Void, Never>?
     var isApplyingShortcut = false
     var isUpdatingPrefixVisibility = false
+    var usesInjectedListMarkers = true
     var lastSelectionLineSpan: ClosedRange<Int>?
     static let headingRegex = try? NSRegularExpression(pattern: #"^#{1,6}\s"#)
     static let bulletRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s"#)

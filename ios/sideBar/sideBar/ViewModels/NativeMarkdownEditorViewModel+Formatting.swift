@@ -89,6 +89,34 @@ extension NativeMarkdownEditorViewModel {
         }
     }
 
+    func selectedParagraphRanges() -> [Range<AttributedString.Index>] {
+        var ranges: [Range<AttributedString.Index>] = []
+        var seen = Set<String>()
+
+        for selectionRange in selectionRanges().ranges {
+            let paragraphRange = findParagraphRange(containing: selectionRange)
+            guard !paragraphRange.isEmpty else { continue }
+
+            let lower = attributedContent.characters.distance(from: attributedContent.startIndex, to: paragraphRange.lowerBound)
+            let upper = attributedContent.characters.distance(from: attributedContent.startIndex, to: paragraphRange.upperBound)
+            let key = "\(lower):\(upper)"
+            guard seen.insert(key).inserted else { continue }
+            ranges.append(paragraphRange)
+        }
+
+        return ranges
+    }
+
+    func indentListItems() {
+        guard !isReadOnly else { return }
+        AttributedNoteListCommands.indent(on: self)
+    }
+
+    func outdentListItems() {
+        guard !isReadOnly else { return }
+        AttributedNoteListCommands.outdent(on: self)
+    }
+
     func findParagraphRange(containing range: Range<AttributedString.Index>) -> Range<AttributedString.Index> {
         var start = range.lowerBound
         var end = range.upperBound

@@ -44,6 +44,7 @@ struct AttributedNoteEditorContainer: View {
             }
         }
         .onAppear {
+            nativeViewModel.usesInjectedListMarkers = false
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
             applyAutosaveDelay(isOffline: environment.isOffline)

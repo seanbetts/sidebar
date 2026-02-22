@@ -251,6 +251,25 @@ extension NativeMarkdownEditorViewModel {
         return text.index(text.startIndex, offsetByCharacters: offset)
     }
 
+    func removeInjectedListMarkers(
+        in text: inout AttributedString,
+        selection: SelectionSnapshot
+    ) -> SelectionSnapshot {
+        let markerRanges = text.runs.compactMap { run -> Range<AttributedString.Index>? in
+            run.listMarker == true ? run.range : nil
+        }
+
+        guard !markerRanges.isEmpty else { return selection }
+        var updated = selection
+        for range in markerRanges.reversed() {
+            let startOffset = text.characters.distance(from: text.startIndex, to: range.lowerBound)
+            let length = text.characters.distance(from: range.lowerBound, to: range.upperBound)
+            text.removeSubrange(range)
+            updated = adjustSnapshot(updated, removing: length, at: startOffset)
+        }
+        return updated
+    }
+
     func listMarkerRanges(
         in text: AttributedString,
         lineRange: Range<AttributedString.Index>

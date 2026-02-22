@@ -40,6 +40,7 @@ struct NativeMarkdownEditorContainer: View {
             }
         }
         .onAppear {
+            nativeViewModel.usesInjectedListMarkers = true
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
             applyAutosaveDelay(isOffline: environment.isOffline)
