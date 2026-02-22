@@ -4,6 +4,8 @@ import sideBarShared
 struct StoreSkillCredentialsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     let skill: SkillItem
+    let showHeader: Bool
+    let showEmptyState: Bool
 
     @State private var providerKeyStatuses: [String: ProviderKeyStatusResponse] = [:]
     @State private var providerKeyStatusInFlight: Set<String> = []
@@ -14,16 +16,32 @@ struct StoreSkillCredentialsView: View {
     @State private var credentialEditorError: String?
     @State private var removeCredentialPrompt: RemoveCredentialPrompt?
 
+    init(
+        viewModel: SettingsViewModel,
+        skill: SkillItem,
+        showHeader: Bool = true,
+        showEmptyState: Bool = true
+    ) {
+        self.viewModel = viewModel
+        self.skill = skill
+        self.showHeader = showHeader
+        self.showEmptyState = showEmptyState
+    }
+
     var body: some View {
         if providers.isEmpty {
-            Text("No provider API keys required.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Credentials")
+            if showEmptyState {
+                Text("No provider API keys required.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                if showHeader {
+                    Text("Credentials")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
                 ForEach(Array(providers.enumerated()), id: \.offset) { index, provider in
                     storeProviderCredentialRow(provider: provider)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 5
+CATALOG_VERSION = 6
 
 SkillTier = Literal["required", "standard", "store"]
 

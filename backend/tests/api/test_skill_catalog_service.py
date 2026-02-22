@@ -45,6 +45,8 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
                     "  how_it_works: Friendly explanation\n"
                     "  requirements:\n"
                     "    - OpenAI API key\n"
+                    "    - ffmpeg installed for local audio processing\n"
+                    "    - Internet connection\n"
                     "  version: 1.0.0\n"
                     "  updated_at: 2026-02-22\n"
                 ),
@@ -64,7 +66,7 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert by_id["audio-transcribe"]["installable"] is True
     assert by_id["audio-transcribe"]["long_description"] == "Long detail"
     assert by_id["audio-transcribe"]["how_it_works"] == "Friendly explanation"
-    assert by_id["audio-transcribe"]["requirements"] == ["OpenAI API key"]
+    assert by_id["audio-transcribe"]["requirements"] == ["Internet connection"]
     assert by_id["audio-transcribe"]["version"] == "1.0.0"
     assert by_id["audio-transcribe"]["updated_at"] == "2026-02-22"
     assert by_id["audio-transcribe"]["install_count"] is None
@@ -112,4 +114,4 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 5
+    assert SkillCatalogService.catalog_version() == 6

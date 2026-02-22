@@ -26,6 +26,17 @@ from api.services.tools.skill_metadata import (
 class SkillCatalogService:
     """Load skill metadata from SKILL.md frontmatter."""
 
+    _DEVELOPER_REQUIREMENT_MARKERS: tuple[str, ...] = (
+        "ffmpeg",
+        "installed via",
+        "system package",
+        "python package",
+        "runtime",
+        "doppler",
+        "environment variable",
+        "pyproject",
+    )
+
     @staticmethod
     def catalog_version() -> int:
         """Return the current catalog version."""
@@ -96,8 +107,13 @@ class SkillCatalogService:
         how_it_works = SkillCatalogService._coalesce_str(
             frontmatter_metadata.get("how_it_works"),
         )
-        requirements = SkillCatalogService._coalesce_str_list(
+        raw_requirements = SkillCatalogService._coalesce_str_list(
             frontmatter_metadata.get("requirements"),
+        )
+        credential_requirements = get_credential_requirements(skill_id)
+        requirements = SkillCatalogService._normalize_user_requirements(
+            raw_requirements,
+            credential_requirements,
         )
         version = SkillCatalogService._coalesce_str(
             frontmatter_metadata.get("version"),
@@ -123,7 +139,7 @@ class SkillCatalogService:
             "icon_key": skill_id,
             "tier": get_skill_tier(skill_id),
             "provider_dependency": get_provider_dependency(skill_id),
-            "credential_requirements": get_credential_requirements(skill_id),
+            "credential_requirements": credential_requirements,
             "user_toggleable": user_toggleable,
             "default_enabled": is_skill_default_enabled(skill_id),
             "installable": is_skill_installable(skill_id),
@@ -223,6 +239,56 @@ class SkillCatalogService:
             if normalized:
                 return normalized
         return []
+
+    @staticmethod
+    def _normalize_user_requirements(
+        requirements: list[str],
+        credential_requirements: list[dict[str, Any]],
+    ) -> list[str]:
+        providers: set[str] = set()
+        for credential_requirement in credential_requirements:
+            provider = credential_requirement.get("provider")
+            if not isinstance(provider, str):
+                continue
+            normalized_provider = provider.strip().lower()
+            if normalized_provider:
+                providers.add(normalized_provider)
+
+        seen: set[str] = set()
+        normalized_requirements: list[str] = []
+        for requirement_text in requirements:
+            normalized_requirement = requirement_text.strip().lower()
+            if not normalized_requirement:
+                continue
+            if any(
+                marker in normalized_requirement
+                for marker in SkillCatalogService._DEVELOPER_REQUIREMENT_MARKERS
+            ):
+                continue
+            if SkillCatalogService._is_credential_requirement_line(
+                normalized_requirement,
+                providers,
+            ):
+                continue
+            if normalized_requirement in seen:
+                continue
+            seen.add(normalized_requirement)
+            normalized_requirements.append(requirement_text.strip())
+
+        return normalized_requirements
+
+    @staticmethod
+    def _is_credential_requirement_line(
+        normalized_requirement: str,
+        providers: set[str],
+    ) -> bool:
+        if not providers:
+            return False
+        if "api key" in normalized_requirement:
+            return True
+        if "key" not in normalized_requirement:
+            return False
+        return any(provider in normalized_requirement for provider in providers)
 
     @staticmethod
     def _category_map() -> dict[str, str]:

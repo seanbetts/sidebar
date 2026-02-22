@@ -66,7 +66,17 @@ public struct SkillsStoreView: View {
             StoreSkillDetailSheet(
                 viewModel: viewModel,
                 skill: skill,
-                onDismiss: { selectedStoreSkill = nil }
+                isStoreActionBusy: isStoreActionBusy(skill.id),
+                isInstalled: isInstalled(skill),
+                installError: installErrors[skill.id],
+                onInstallTap: {
+                    Task {
+                        await beginStoreInstall(for: skill)
+                    }
+                },
+                onConfirmUninstall: {
+                    _ = await performStoreUninstall(skillId: skill.id)
+                }
             )
         }
         .alert(
@@ -384,8 +394,10 @@ public struct SkillsStoreView: View {
         return horizontalSizeClass == .compact
         #endif
     }
+}
 
-    private func storeInstallSheet(_ prompt: StoreInstallPrompt) -> some View {
+private extension SkillsStoreView {
+    func storeInstallSheet(_ prompt: StoreInstallPrompt) -> some View {
         NavigationStack {
             Form {
                 Section {
@@ -439,40 +451,6 @@ public struct SkillsStoreView: View {
                     }
                 }
             }
-        }
-        .phoneSheetGrabBarVisible()
-    }
-}
-
-private struct StoreInstallPrompt: Identifiable {
-    let skill: SkillItem
-    let missingProviders: [String]
-
-    var id: String { skill.id }
-}
-
-private struct StoreUninstallPrompt: Identifiable {
-    let skill: SkillItem
-
-    var id: String { skill.id }
-}
-
-private struct StoreSkillDetailSheet: View {
-    @ObservedObject var viewModel: SettingsViewModel
-    let skill: SkillItem
-    let onDismiss: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            StoreSkillConfigView(viewModel: viewModel, skill: skill)
-                .navigationTitle(viewModel.displayName(for: skill))
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") {
-                            onDismiss()
-                        }
-                    }
-                }
         }
         .phoneSheetGrabBarVisible()
     }
