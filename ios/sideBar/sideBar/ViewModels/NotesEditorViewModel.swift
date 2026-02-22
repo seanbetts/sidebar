@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import OSLog
 
 // MARK: - NotesEditorViewModel
 
@@ -20,6 +21,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private let draftStorage: DraftStorage
     private let writeQueue: WriteQueue
     private let networkStatus: any NetworkStatusProviding
+    private let logger = Logger(subsystem: "sideBar", category: "AttributedEditorMigration")
     @available(iOS 26.0, macOS 26.0, *)
     private weak var nativeEditorViewModel: NativeMarkdownEditorViewModel?
     private var syncRequestedWhileSaving = false
@@ -306,7 +308,24 @@ public final class NotesEditorViewModel: ObservableObject {
     private func canonicalMarkdownSnapshot(from markdown: String) -> String {
         let nativeViewModel = NativeMarkdownEditorViewModel()
         nativeViewModel.loadMarkdown(markdown)
-        return nativeViewModel.currentMarkdown()
+        let firstPass = nativeViewModel.currentMarkdown()
+
+        let stabilityProbe = NativeMarkdownEditorViewModel()
+        stabilityProbe.loadMarkdown(firstPass)
+        let secondPass = stabilityProbe.currentMarkdown()
+        guard firstPass != secondPass else {
+            return firstPass
+        }
+
+        logger.error(
+            """
+            Markdown canonicalization drift detected during snapshot normalization \
+            (input=\(markdown.count, privacy: .public), \
+            first=\(firstPass.count, privacy: .public), \
+            second=\(secondPass.count, privacy: .public))
+            """
+        )
+        return secondPass
     }
 
     @available(iOS 26.0, macOS 26.0, *)
