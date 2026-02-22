@@ -50,7 +50,7 @@ enum AttributedNoteFormattingCommands {
             viewModel.setBlockKind(.orderedList, listDepth: 1)
             return true
         case .taskList:
-            viewModel.setBlockKind(.taskUnchecked, listDepth: 1)
+            toggleTaskList(on: viewModel)
             return true
         case .indentList:
             viewModel.indentListItems()
@@ -66,6 +66,43 @@ enum AttributedNoteFormattingCommands {
             return true
         default:
             return false
+        }
+    }
+
+    private static func toggleTaskList(on viewModel: NativeMarkdownEditorViewModel) {
+        let paragraphRanges = viewModel.selectedParagraphRanges()
+        guard !paragraphRanges.isEmpty else {
+            viewModel.setBlockKind(.taskUnchecked, listDepth: 1)
+            return
+        }
+
+        for paragraphRange in paragraphRanges {
+            let currentKind = viewModel.attributedContent[paragraphRange].blockKind
+                ?? viewModel.attributedContent.blockKind(in: paragraphRange)
+                ?? .paragraph
+            let currentDepth = max(1, viewModel.attributedContent[paragraphRange].listDepth ?? 1)
+            let nextKind: BlockKind
+            switch currentKind {
+            case .taskUnchecked:
+                nextKind = .taskChecked
+            case .taskChecked:
+                nextKind = .taskUnchecked
+            default:
+                nextKind = .taskUnchecked
+            }
+
+            let nextDepth: Int? = viewModel.isListBlockKind(currentKind) ? currentDepth : 1
+            viewModel.attributedContent[paragraphRange].blockKind = nextKind
+            viewModel.attributedContent[paragraphRange].listDepth = nextDepth
+            if nextKind != .codeBlock {
+                viewModel.attributedContent[paragraphRange].codeLanguage = nil
+            }
+            viewModel.applyBlockStyle(blockKind: nextKind, range: paragraphRange)
+            viewModel.applyPresentationIntent(
+                blockKind: nextKind,
+                listDepth: nextDepth,
+                range: paragraphRange
+            )
         }
     }
 

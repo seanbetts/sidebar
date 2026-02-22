@@ -65,6 +65,39 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent.blockKind(in: firstLineRange), .taskUnchecked)
     }
 
+    func testApplyFormattingTaskListTogglesUncheckedTaskToChecked() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("hello")
+        let line = firstLine(in: viewModel.attributedContent)
+        viewModel.attributedContent[line].blockKind = .taskUnchecked
+        viewModel.attributedContent[line].listDepth = 1
+        let selectedLine = firstLine(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: selectedLine.lowerBound..<selectedLine.upperBound)
+
+        viewModel.applyFormatting(.taskList)
+
+        let updatedLine = firstLine(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedLine), .taskChecked)
+        XCTAssertEqual(viewModel.attributedContent[updatedLine].strikethroughStyle, .single)
+    }
+
+    func testApplyFormattingTaskListTogglesCheckedTaskToUnchecked() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("hello")
+        let line = firstLine(in: viewModel.attributedContent)
+        viewModel.attributedContent[line].blockKind = .taskChecked
+        viewModel.attributedContent[line].listDepth = 1
+        viewModel.attributedContent[line].strikethroughStyle = .single
+        let selectedLine = firstLine(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: selectedLine.lowerBound..<selectedLine.upperBound)
+
+        viewModel.applyFormatting(.taskList)
+
+        let updatedLine = firstLine(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedLine), .taskUnchecked)
+        XCTAssertNil(viewModel.attributedContent[updatedLine].strikethroughStyle)
+    }
+
     func testIndentAndOutdentListItemsAdjustDepthDeterministically() async {
         let viewModel = NativeMarkdownEditorViewModel()
         viewModel.loadMarkdown("hello")

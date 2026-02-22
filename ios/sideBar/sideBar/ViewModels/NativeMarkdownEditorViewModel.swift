@@ -298,6 +298,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         if blockKind == .taskChecked {
             setStrikethrough(true, in: &attributedContent, range: range)
             setForegroundColor(DesignTokens.Colors.textSecondary, in: &attributedContent, range: range)
+        } else if blockKind == .taskUnchecked {
+            setStrikethrough(false, in: &attributedContent, range: range)
+            setForegroundColor(baseForegroundColor(for: blockKind), in: &attributedContent, range: range)
         }
     }
 
