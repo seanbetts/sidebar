@@ -7,6 +7,71 @@ struct TableBlock {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+enum ListKind {
+    case ordered
+    case unordered
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+struct ExportListContext: Equatable {
+    let kind: ListKind
+    let depth: Int
+    let identity: Int?
+    let blockquoteDepth: Int
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+enum ExportBlockPath: Equatable {
+    case codeBlock
+    case list(ExportListContext)
+    case blockquote(depth: Int)
+    case table
+    case other
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func exportListContext(
+    blockKind: BlockKind,
+    listDepth: Int?,
+    listIdentity: Int?,
+    blockquoteDepth: Int
+) -> ExportListContext? {
+    guard let kind = listKind(for: blockKind) else {
+        return nil
+    }
+
+    return ExportListContext(
+        kind: kind,
+        depth: max(1, listDepth ?? 1),
+        identity: listIdentity,
+        blockquoteDepth: blockquoteDepth
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func listKind(for blockKind: BlockKind) -> ListKind? {
+    switch blockKind {
+    case .orderedList:
+        return .ordered
+    case .bulletList, .taskChecked, .taskUnchecked:
+        return .unordered
+    default:
+        return nil
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func isContinuingList(previous: ExportListContext, current: ExportListContext) -> Bool {
+    if let previousIdentity = previous.identity, let currentIdentity = current.identity {
+        return previousIdentity == currentIdentity
+    }
+
+    return previous.kind == current.kind &&
+        previous.depth == current.depth &&
+        previous.blockquoteDepth == current.blockquoteDepth
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func tableBlock(
     from text: AttributedString,
     lines: [Range<AttributedString.Index>],

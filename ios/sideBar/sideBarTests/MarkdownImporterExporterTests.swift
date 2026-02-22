@@ -180,6 +180,38 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertFalse(exported.contains("1. Parent 2"), exported)
     }
 
+    func testListKindTransitionWithoutIdentityInsertsBlankLine() {
+        var attributed = AttributedString("Bullet\nOrdered")
+        let ranges = lineRanges(in: attributed)
+        XCTAssertEqual(ranges.count, 2)
+
+        attributed[ranges[0]].blockKind = .bulletList
+        attributed[ranges[0]].listDepth = 1
+        attributed[ranges[1]].blockKind = .orderedList
+        attributed[ranges[1]].listDepth = 1
+
+        let exported = MarkdownExporter().markdown(from: attributed)
+
+        XCTAssertEqual(exported, "- Bullet\n\n1. Ordered", exported)
+    }
+
+    func testUnorderedListTransitionsWithoutIdentityStayContiguous() {
+        var attributed = AttributedString("Bullet\nOpen\nDone")
+        let ranges = lineRanges(in: attributed)
+        XCTAssertEqual(ranges.count, 3)
+
+        attributed[ranges[0]].blockKind = .bulletList
+        attributed[ranges[0]].listDepth = 1
+        attributed[ranges[1]].blockKind = .taskUnchecked
+        attributed[ranges[1]].listDepth = 1
+        attributed[ranges[2]].blockKind = .taskChecked
+        attributed[ranges[2]].listDepth = 1
+
+        let exported = MarkdownExporter().markdown(from: attributed)
+
+        XCTAssertEqual(exported, "- Bullet\n- [ ] Open\n- [x] Done", exported)
+    }
+
     func testBlockTypesRoundTrip() {
         let markdown = """
         # Heading

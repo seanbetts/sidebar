@@ -229,15 +229,24 @@ private func exportLineContext(
     listIdentity: Int?,
     blockquoteDepth: Int
 ) -> ExportLineContext {
-    ExportLineContext(
+    if blockKind == .codeBlock {
+        return ExportLineContext(path: .codeBlock)
+    }
+
+    if let listContext = exportListContext(
         blockKind: blockKind,
         listDepth: listDepth,
         listIdentity: listIdentity,
-        isListItem: isListItemBlockKind(blockKind),
-        isBlockquote: blockquoteDepth > 0 || blockKind == .blockquote,
-        isCodeBlock: blockKind == .codeBlock,
-        isTableBlock: false
-    )
+        blockquoteDepth: blockquoteDepth
+    ) {
+        return ExportLineContext(path: .list(listContext))
+    }
+
+    if blockquoteDepth > 0 || blockKind == .blockquote {
+        return ExportLineContext(path: .blockquote(depth: max(1, blockquoteDepth)))
+    }
+
+    return ExportLineContext(path: .other)
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -281,24 +290,10 @@ private func appendLineOutput(
 
 @available(iOS 26.0, macOS 26.0, *)
 private struct ExportLineContext: Equatable {
-    let blockKind: BlockKind
-    let listDepth: Int?
-    let listIdentity: Int?
-    let isListItem: Bool
-    let isBlockquote: Bool
-    let isCodeBlock: Bool
-    let isTableBlock: Bool
+    let path: ExportBlockPath
 
     static func tableBlock() -> ExportLineContext {
-        ExportLineContext(
-            blockKind: .htmlBlock,
-            listDepth: nil,
-            listIdentity: nil,
-            isListItem: false,
-            isBlockquote: false,
-            isCodeBlock: false,
-            isTableBlock: true
-        )
+        ExportLineContext(path: .table)
     }
 }
 
@@ -378,16 +373,6 @@ private func listIdentity(in text: AttributedString, range: Range<AttributedStri
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func isListItemBlockKind(_ blockKind: BlockKind) -> Bool {
-    switch blockKind {
-    case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
-        return true
-    default:
-        return false
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
 private func shouldInsertBlankLine(
     previous: ExportLineContext?,
     current: ExportLineContext,
@@ -397,24 +382,19 @@ private func shouldInsertBlankLine(
     if isSoftBreak {
         return false
     }
-    if previous.isCodeBlock && current.isCodeBlock {
+    switch (previous.path, current.path) {
+    case (.codeBlock, .codeBlock):
         return false
-    }
-    if previous.isBlockquote && current.isBlockquote {
+    case (.blockquote, .blockquote):
         return false
-    }
-    if previous.isListItem && current.isListItem {
-        if let previousListId = previous.listIdentity, let currentListId = current.listIdentity {
-            if previousListId == currentListId {
-                return false
-            }
-        } else if previous.listDepth == current.listDepth {
-            return false
-        }
-    }
-    if previous.isTableBlock && current.isTableBlock {
+    case let (.list(previousList), .list(currentList)):
+        return !isContinuingList(previous: previousList, current: currentList)
+    case (.table, .table):
         return false
+    default:
+        break
     }
+
     return true
 }
 
