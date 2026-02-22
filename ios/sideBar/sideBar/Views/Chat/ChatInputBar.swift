@@ -5,8 +5,8 @@ enum ChatInputReturnIntent: Equatable {
     case send
 }
 
-func chatInputReturnIntent(commandPressed: Bool) -> ChatInputReturnIntent {
-    commandPressed ? .send : .insertNewline
+func chatInputReturnIntent(shiftPressed: Bool) -> ChatInputReturnIntent {
+    shiftPressed ? .insertNewline : .send
 }
 
 struct ChatInputBar: View {

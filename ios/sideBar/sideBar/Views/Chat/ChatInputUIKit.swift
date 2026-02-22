@@ -27,8 +27,9 @@ struct ChatInputUIKitView: UIViewRepresentable {
         textView.textContainerInset = UIEdgeInsets(top: 12, left: 44, bottom: 10, right: 48)
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false
+        textView.returnKeyType = .send
         textView.delegate = context.coordinator
-        textView.onCommandEnter = onSend
+        textView.onEnter = onSend
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         textView.accessibilityLabel = "Message"
@@ -185,7 +186,15 @@ struct ChatInputUIKitView: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            true
+            guard text == "\n" else { return true }
+            if let chatTextView = textView as? ChatInputTextView, chatTextView.consumeShiftNewlineInsertionFlag() {
+                return true
+            }
+            if chatInputReturnIntent(shiftPressed: false) == .send {
+                onSend()
+                return false
+            }
+            return true
         }
 
         @objc func didTapSend() {
@@ -226,22 +235,41 @@ struct ChatInputUIKitView: UIViewRepresentable {
 }
 
 final class ChatInputTextView: UITextView {
-    var onCommandEnter: (() -> Void)?
+    var onEnter: (() -> Void)?
+    private var isInsertingShiftNewline = false
 
     override var keyCommands: [UIKeyCommand]? {
         [
             UIKeyCommand(
                 input: "\r",
-                modifierFlags: .command,
-                action: #selector(handleCommandEnter)
+                modifierFlags: [],
+                action: #selector(handleEnter)
+            ),
+            UIKeyCommand(
+                input: "\r",
+                modifierFlags: .shift,
+                action: #selector(handleShiftEnter)
             )
         ]
     }
 
-    @objc private func handleCommandEnter() {
-        if chatInputReturnIntent(commandPressed: true) == .send {
-            onCommandEnter?()
+    @objc private func handleEnter() {
+        if chatInputReturnIntent(shiftPressed: false) == .send {
+            onEnter?()
         }
+    }
+
+    @objc private func handleShiftEnter() {
+        if chatInputReturnIntent(shiftPressed: true) == .insertNewline {
+            isInsertingShiftNewline = true
+            insertText("\n")
+        }
+    }
+
+    func consumeShiftNewlineInsertionFlag() -> Bool {
+        let shouldInsertNewline = isInsertingShiftNewline
+        isInsertingShiftNewline = false
+        return shouldInsertNewline
     }
 }
 #endif

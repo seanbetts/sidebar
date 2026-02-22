@@ -2,11 +2,11 @@ import XCTest
 @testable import sideBar
 
 final class ChatInputKeyBehaviorTests: XCTestCase {
-    func testReturnWithoutCommandInsertsNewline() {
-        XCTAssertEqual(chatInputReturnIntent(commandPressed: false), .insertNewline)
+    func testReturnWithoutShiftSends() {
+        XCTAssertEqual(chatInputReturnIntent(shiftPressed: false), .send)
     }
 
-    func testReturnWithCommandSends() {
-        XCTAssertEqual(chatInputReturnIntent(commandPressed: true), .send)
+    func testReturnWithShiftInsertsNewline() {
+        XCTAssertEqual(chatInputReturnIntent(shiftPressed: true), .insertNewline)
     }
 }
