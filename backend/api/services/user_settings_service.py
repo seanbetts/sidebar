@@ -68,6 +68,7 @@ class UserSettingsService:
         ai_primary_provider: Any = UNSET,
         shortcuts_pat: Any = UNSET,
         tasks_ai_snapshot: Any = UNSET,
+        commit: bool = True,
     ) -> UserSettings:
         """Create or update a user's settings.
 
@@ -93,6 +94,7 @@ class UserSettingsService:
             ai_primary_provider: Optional primary AI provider override.
             shortcuts_pat: Optional shortcuts PAT token.
             tasks_ai_snapshot: Optional tasks AI snapshot payload.
+            commit: Whether to commit the transaction before returning.
 
         Returns:
             Upserted UserSettings record.
@@ -197,7 +199,8 @@ class UserSettingsService:
             db.add(settings)
 
         db.flush()
-        db.commit()
+        if commit:
+            db.commit()
         return settings
 
     @staticmethod

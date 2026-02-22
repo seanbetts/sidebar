@@ -2,6 +2,7 @@
 # ruff: noqa: B008
 
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import Response
@@ -112,6 +113,49 @@ class ProviderKeyStatusResponse(BaseModel):
     key_last4: str | None = None
 
 
+class ProviderKeyDisconnectRequest(BaseModel):
+    """Request payload for provider-key consumer disconnect operations."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str
+    source: Literal["skill", "ai_provider"]
+    skill_id: str | None = None
+
+
+class ProviderKeyDisconnectActionsResponse(BaseModel):
+    """Actions performed during provider-key disconnect."""
+
+    disabled_skill_ids: list[str] = []
+    detached_ai_provider: bool = False
+    deleted_provider_key: bool = False
+
+
+class ProviderKeyDisconnectRemainingConsumersResponse(BaseModel):
+    """Remaining provider consumers after disconnect."""
+
+    ai_provider: bool = False
+    skill_ids: list[str] = []
+
+
+class ProviderKeyDisconnectSettingsResponse(BaseModel):
+    """Settings snapshot returned after disconnect."""
+
+    enabled_skills: list[str] = []
+    installed_store_skills: list[str] = []
+    ai_primary_provider: str | None = None
+
+
+class ProviderKeyDisconnectResponse(BaseModel):
+    """Response payload for provider-key consumer disconnect."""
+
+    provider: str
+    source: Literal["skill", "ai_provider"]
+    actions: ProviderKeyDisconnectActionsResponse
+    remaining_consumers: ProviderKeyDisconnectRemainingConsumersResponse
+    settings: ProviderKeyDisconnectSettingsResponse
+
+
 @router.get("", response_model=SettingsResponse)
 def get_settings(
     db: Session = Depends(get_db),
@@ -212,6 +256,27 @@ def delete_provider_key(
         provider=provider,
     )
     return ProviderKeyStatusResponse(**payload)
+
+
+@router.post(
+    "/ai/provider-key/disconnect",
+    response_model=ProviderKeyDisconnectResponse,
+)
+def disconnect_provider_key_consumer(
+    payload: ProviderKeyDisconnectRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Disconnect provider usage for a skill or AI provider context."""
+    response_payload = UserAIProviderSettingsService.disconnect_provider_consumer(
+        db,
+        user_id,
+        provider=payload.provider,
+        source=payload.source,
+        skill_id=payload.skill_id,
+    )
+    return ProviderKeyDisconnectResponse(**response_payload)
 
 
 @router.post("/profile-image")

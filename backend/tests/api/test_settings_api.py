@@ -130,3 +130,66 @@ def test_provider_key_crud_flow(test_client):
         "has_key": False,
         "key_last4": None,
     }
+
+
+def test_provider_key_disconnect_flow_skill_then_ai_provider(test_client):
+    save_status = test_client.put(
+        "/api/settings/ai/provider-key",
+        headers=_auth_headers(),
+        json={"provider": "openai", "api_key": "sk-openai-provider-5678"},
+    )
+    assert save_status.status_code == 200
+
+    install_response = test_client.post(
+        "/api/skills/store/install",
+        headers=_auth_headers(),
+        json={"skill_id": "audio-transcribe"},
+    )
+    assert install_response.status_code == 200
+
+    set_provider = test_client.patch(
+        "/api/settings",
+        headers=_auth_headers(),
+        json={"ai_primary_provider": "openai"},
+    )
+    assert set_provider.status_code == 200
+
+    disconnect_skill = test_client.post(
+        "/api/settings/ai/provider-key/disconnect",
+        headers=_auth_headers(),
+        json={
+            "provider": "openai",
+            "source": "skill",
+            "skill_id": "audio-transcribe",
+        },
+    )
+    assert disconnect_skill.status_code == 200
+    disconnect_skill_body = disconnect_skill.json()
+    assert disconnect_skill_body["actions"]["disabled_skill_ids"] == [
+        "audio-transcribe"
+    ]
+    assert disconnect_skill_body["actions"]["detached_ai_provider"] is False
+    assert disconnect_skill_body["actions"]["deleted_provider_key"] is False
+    assert disconnect_skill_body["remaining_consumers"]["ai_provider"] is True
+    assert "audio-transcribe" not in disconnect_skill_body["settings"]["enabled_skills"]
+
+    disconnect_ai = test_client.post(
+        "/api/settings/ai/provider-key/disconnect",
+        headers=_auth_headers(),
+        json={"provider": "openai", "source": "ai_provider"},
+    )
+    assert disconnect_ai.status_code == 200
+    disconnect_ai_body = disconnect_ai.json()
+    assert disconnect_ai_body["actions"]["disabled_skill_ids"] == []
+    assert disconnect_ai_body["actions"]["detached_ai_provider"] is True
+    assert disconnect_ai_body["actions"]["deleted_provider_key"] is True
+    assert disconnect_ai_body["remaining_consumers"]["ai_provider"] is False
+    assert disconnect_ai_body["remaining_consumers"]["skill_ids"] == []
+    assert disconnect_ai_body["settings"]["ai_primary_provider"] is None
+
+    final_status = test_client.get(
+        "/api/settings/ai/provider-key?provider=openai",
+        headers=_auth_headers(),
+    )
+    assert final_status.status_code == 200
+    assert final_status.json()["has_key"] is False

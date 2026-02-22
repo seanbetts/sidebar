@@ -90,7 +90,13 @@ class UserAIProviderKeyService:
         return record
 
     @staticmethod
-    def soft_delete_key(db: Session, user_id: str, provider: AIProvider) -> bool:
+    def soft_delete_key(
+        db: Session,
+        user_id: str,
+        provider: AIProvider,
+        *,
+        commit: bool = True,
+    ) -> bool:
         """Soft delete the active key for a user/provider."""
         existing = UserAIProviderKeyService.get_active_record(db, user_id, provider)
         if not existing:
@@ -98,5 +104,8 @@ class UserAIProviderKeyService:
         now = datetime.now(UTC)
         existing.deleted_at = now
         existing.updated_at = now
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         return True
