@@ -188,10 +188,113 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertEqual(canonicalAgain, canonical)
     }
 
+    func testGoldenFixturesExportCanonicalMarkdown() throws {
+        let fixtures = try loadGoldenFixtures()
+        XCTAssertFalse(fixtures.isEmpty, "Expected at least one golden markdown fixture")
+
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        for fixture in fixtures {
+            let input = try String(contentsOf: fixture.inputURL, encoding: .utf8)
+            let expectedCanonical = try String(contentsOf: fixture.canonicalURL, encoding: .utf8)
+            let imported = importer.attributedString(from: input)
+            let actualCanonical = exporter.markdown(
+                from: imported.attributedString,
+                frontmatter: imported.frontmatter
+            )
+
+            XCTAssertEqual(
+                normalizedFixtureText(actualCanonical),
+                normalizedFixtureText(expectedCanonical),
+                "Fixture canonical mismatch: \(fixture.name)"
+            )
+        }
+    }
+
+    func testGoldenFixtureCanonicalRoundTripIsStable() throws {
+        let fixtures = try loadGoldenFixtures()
+        XCTAssertFalse(fixtures.isEmpty, "Expected at least one golden markdown fixture")
+
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        for fixture in fixtures {
+            let canonical = try String(contentsOf: fixture.canonicalURL, encoding: .utf8)
+            let imported = importer.attributedString(from: canonical)
+            let reExported = exporter.markdown(
+                from: imported.attributedString,
+                frontmatter: imported.frontmatter
+            )
+
+            XCTAssertEqual(
+                normalizedFixtureText(reExported),
+                normalizedFixtureText(canonical),
+                "Fixture round-trip instability: \(fixture.name)"
+            )
+        }
+    }
+
     private func loadFixture(named name: String) throws -> String {
         let fileURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .appendingPathComponent("Fixtures/Markdown/\(name).md")
         return try String(contentsOf: fileURL, encoding: .utf8)
+    }
+
+    private struct GoldenFixture {
+        let name: String
+        let inputURL: URL
+        let canonicalURL: URL
+    }
+
+    private func loadGoldenFixtures() throws -> [GoldenFixture] {
+        let fixturesDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/Markdown")
+        let fileManager = FileManager.default
+        let fixtureURLs = try fileManager.contentsOfDirectory(
+            at: fixturesDirectory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )
+
+        var fixtures: [GoldenFixture] = []
+        for canonicalURL in fixtureURLs
+            .filter({ $0.lastPathComponent.hasSuffix(".canonical.md") })
+            .sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            let canonicalName = canonicalURL.deletingPathExtension().deletingPathExtension().lastPathComponent
+            let baseName = canonicalName.replacingOccurrences(of: ".canonical", with: "")
+            let preferredInput = fixturesDirectory.appendingPathComponent("\(baseName).input.md")
+            let fallbackInput = fixturesDirectory.appendingPathComponent("\(baseName).md")
+            let inputURL = fileManager.fileExists(atPath: preferredInput.path) ? preferredInput : fallbackInput
+
+            XCTAssertTrue(
+                fileManager.fileExists(atPath: inputURL.path),
+                "Missing input fixture for canonical fixture \(canonicalURL.lastPathComponent)"
+            )
+
+            guard fileManager.fileExists(atPath: inputURL.path) else {
+                continue
+            }
+
+            fixtures.append(
+                GoldenFixture(
+                    name: baseName,
+                    inputURL: inputURL,
+                    canonicalURL: canonicalURL
+                )
+            )
+        }
+
+        return fixtures
+    }
+
+    private func normalizedFixtureText(_ text: String) -> String {
+        var normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
+        while normalized.hasSuffix("\n") {
+            normalized.removeLast()
+        }
+        return normalized
     }
 }
