@@ -105,6 +105,32 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent.blockKind(in: lineRange), .paragraph)
     }
 
+    func testApplyFormattingIndentAndOutdentRoutesThroughCommandLayer() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("hello")
+        let insertion = viewModel.attributedContent.startIndex
+        let next = viewModel.attributedContent.index(afterCharacter: insertion)
+        viewModel.selection = AttributedTextSelection(range: insertion..<next)
+        viewModel.applyFormatting(.bulletList)
+
+        var lineRange = firstLine(in: viewModel.attributedContent)
+        let indentStart = lineRange.lowerBound
+        let indentNext = viewModel.attributedContent.index(afterCharacter: indentStart)
+        viewModel.selection = AttributedTextSelection(range: indentStart..<indentNext)
+
+        viewModel.applyFormatting(.indentList)
+        lineRange = firstLine(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent[lineRange].listDepth, 2)
+
+        let outdentStart = lineRange.lowerBound
+        let outdentNext = viewModel.attributedContent.index(afterCharacter: outdentStart)
+        viewModel.selection = AttributedTextSelection(range: outdentStart..<outdentNext)
+
+        viewModel.applyFormatting(.outdentList)
+        lineRange = firstLine(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent[lineRange].listDepth, 1)
+    }
+
     func testUpdatePrefixVisibilityRemovesInjectedListMarkersWhenDisabled() async {
         let viewModel = NativeMarkdownEditorViewModel()
         var content = AttributedString("• Item")

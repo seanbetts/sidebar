@@ -52,6 +52,12 @@ enum AttributedNoteFormattingCommands {
         case .taskList:
             viewModel.setBlockKind(.taskUnchecked, listDepth: 1)
             return true
+        case .indentList:
+            viewModel.indentListItems()
+            return true
+        case .outdentList:
+            viewModel.outdentListItems()
+            return true
         case .blockquote:
             viewModel.setBlockKind(.blockquote)
             return true

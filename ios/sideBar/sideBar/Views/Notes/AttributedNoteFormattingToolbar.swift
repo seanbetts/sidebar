@@ -58,6 +58,18 @@ struct AttributedNoteFormattingToolbar: View {
                     viewModel.applyFormatting(.taskList)
                 }
                 toolbarButton(
+                    title: "Indent",
+                    systemImage: "increase.indent"
+                ) {
+                    viewModel.applyFormatting(.indentList)
+                }
+                toolbarButton(
+                    title: "Outdent",
+                    systemImage: "decrease.indent"
+                ) {
+                    viewModel.applyFormatting(.outdentList)
+                }
+                toolbarButton(
                     title: "Quote",
                     systemImage: "text.quote"
                 ) {

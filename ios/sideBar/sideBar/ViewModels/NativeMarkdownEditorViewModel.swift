@@ -417,6 +417,8 @@ public enum MarkdownFormatting {
     case bulletList
     case orderedList
     case taskList
+    case indentList
+    case outdentList
     case blockquote
     case codeBlock
     case link(URL)
