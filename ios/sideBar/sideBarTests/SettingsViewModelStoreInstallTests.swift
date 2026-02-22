@@ -189,6 +189,48 @@ final class SettingsViewModelStoreInstallTests: XCTestCase {
         XCTAssertEqual(readRecorder.getSettingsCallCount, 2)
     }
 
+    func testDisconnectProviderConsumerForSkillNormalizesProviderAndRefreshesSettings() async throws {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            aiPrimaryProvider: "openai",
+            aiPrimaryProviderHasKey: true,
+            enabledSkills: ["audio-transcribe"],
+            installedStoreSkills: ["audio-transcribe"]
+        )
+        let readRecorder = SettingsReadRecorder()
+        let providerRecorder = ProviderKeyRecorder()
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(settings),
+                readRecorder: readRecorder,
+                providerKeyRecorder: providerRecorder
+            ),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: TestCacheClient()
+        )
+
+        await viewModel.load()
+        _ = try await viewModel.disconnectProviderConsumer(
+            provider: "  OpenAI ",
+            source: .skill,
+            skillId: " audio-transcribe "
+        )
+
+        XCTAssertEqual(providerRecorder.deleteCallCount, 1)
+        XCTAssertEqual(providerRecorder.lastDeleteProvider, "openai")
+        XCTAssertEqual(readRecorder.getSettingsCallCount, 2)
+    }
+
     func testInstallStoreSkillForwardsProviderKeysToSkillsAPI() async {
         let settings = UserSettings(
             userId: "user-1",

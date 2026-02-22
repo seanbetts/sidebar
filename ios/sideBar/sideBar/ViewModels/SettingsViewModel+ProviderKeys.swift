@@ -5,6 +5,7 @@ extension SettingsViewModel {
     private enum ProviderKeyOperationError: LocalizedError {
         case missingProvider
         case missingApiKey
+        case missingSkillId
 
         var errorDescription: String? {
             switch self {
@@ -12,6 +13,8 @@ extension SettingsViewModel {
                 return "Provider is required"
             case .missingApiKey:
                 return "API key is required"
+            case .missingSkillId:
+                return "Skill ID is required"
             }
         }
     }
@@ -72,6 +75,33 @@ extension SettingsViewModel {
             hasKey: status.hasKey,
             keyLast4: status.keyLast4
         )
+    }
+
+    public func disconnectProviderConsumer(
+        provider: String,
+        source: ProviderKeyDisconnectSource,
+        skillId: String? = nil
+    ) async throws -> ProviderKeyDisconnectResponse {
+        let normalizedProvider = try normalizedProviderIdentifier(provider)
+        let normalizedSkillId: String?
+        if source == .skill {
+            let trimmedSkillId = (skillId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedSkillId.isEmpty else {
+                throw ProviderKeyOperationError.missingSkillId
+            }
+            normalizedSkillId = trimmedSkillId
+        } else {
+            normalizedSkillId = nil
+        }
+
+        let response = try await settingsAPI.disconnectProviderConsumer(
+            provider: normalizedProvider,
+            source: source,
+            skillId: normalizedSkillId
+        )
+        let refreshed = try await settingsAPI.getSettings()
+        applySettingsResponse(refreshed)
+        return response
     }
 
     private func normalizedProviderIdentifier(_ provider: String) throws -> String {

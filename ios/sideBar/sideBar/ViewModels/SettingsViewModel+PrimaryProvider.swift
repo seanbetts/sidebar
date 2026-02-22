@@ -46,7 +46,10 @@ extension SettingsViewModel {
         setPrimaryProviderSaving(true)
         setPrimaryProviderError(nil)
         do {
-            _ = try await deleteProviderKey(provider: provider.rawValue)
+            _ = try await disconnectProviderConsumer(
+                provider: provider.rawValue,
+                source: .aiProvider
+            )
         } catch {
             setPrimaryProviderError(error.localizedDescription)
         }

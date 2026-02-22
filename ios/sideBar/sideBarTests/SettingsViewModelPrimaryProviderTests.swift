@@ -74,13 +74,45 @@ final class SettingsViewModelPrimaryProviderTests: XCTestCase {
         XCTAssertEqual(api.lastUpsertApiKey, "test-google-key")
     }
 
+    func testDeletePrimaryProviderKeyUsesDisconnectIntent() async throws {
+        let initial = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            aiPrimaryProvider: "google",
+            aiPrimaryProviderHasKey: true,
+            enabledSkills: []
+        )
+        let api = PrimaryProviderSettingsAPI(initial: initial)
+        let viewModel = SettingsViewModel(
+            settingsAPI: api,
+            skillsAPI: PrimaryProviderEmptySkillsAPI(),
+            cache: TestCacheClient()
+        )
+
+        await viewModel.load()
+        await viewModel.deletePrimaryProviderKey(provider: .google)
+
+        XCTAssertEqual(api.disconnectCallCount, 1)
+        XCTAssertEqual(api.lastDisconnectProvider, "google")
+        XCTAssertEqual(api.lastDisconnectSource, .aiProvider)
+        XCTAssertNil(api.lastDisconnectSkillId)
+    }
+
     private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {
         let data = try JSONEncoder().encode(update)
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 }
 
-@MainActor
 private final class PrimaryProviderSettingsAPI: SettingsProviding {
     var current: UserSettings
     var updateCallCount = 0
@@ -88,6 +120,10 @@ private final class PrimaryProviderSettingsAPI: SettingsProviding {
     var upsertCallCount = 0
     var lastUpsertProvider: String?
     var lastUpsertApiKey: String?
+    var disconnectCallCount = 0
+    var lastDisconnectProvider: String?
+    var lastDisconnectSource: ProviderKeyDisconnectSource?
+    var lastDisconnectSkillId: String?
 
     init(initial: UserSettings) {
         current = initial
@@ -185,6 +221,60 @@ private final class PrimaryProviderSettingsAPI: SettingsProviding {
             enabledSkills: current.enabledSkills
         )
         return ProviderKeyStatusResponse(provider: provider, hasKey: false, keyLast4: nil)
+    }
+
+    func disconnectProviderConsumer(
+        provider: String,
+        source: ProviderKeyDisconnectSource,
+        skillId: String?
+    ) async throws -> ProviderKeyDisconnectResponse {
+        disconnectCallCount += 1
+        lastDisconnectProvider = provider
+        lastDisconnectSource = source
+        lastDisconnectSkillId = skillId
+
+        let shouldDetachAIProvider = source == .aiProvider && current.aiPrimaryProvider == provider
+        current = UserSettings(
+            userId: current.userId,
+            communicationStyle: current.communicationStyle,
+            workingRelationship: current.workingRelationship,
+            name: current.name,
+            jobTitle: current.jobTitle,
+            employer: current.employer,
+            dateOfBirth: current.dateOfBirth,
+            gender: current.gender,
+            pronouns: current.pronouns,
+            location: current.location,
+            profileImageUrl: current.profileImageUrl,
+            assistantIdentity: current.assistantIdentity,
+            assistantIdentityMeta: current.assistantIdentityMeta,
+            assistantSoul: current.assistantSoul,
+            assistantSoulMeta: current.assistantSoulMeta,
+            aiPrimaryProvider: shouldDetachAIProvider ? nil : current.aiPrimaryProvider,
+            aiPrimaryProviderHasKey: false,
+            aiPrimaryProviderKeyLast4: nil,
+            enabledSkills: current.enabledSkills,
+            installedStoreSkills: current.installedStoreSkills
+        )
+
+        return ProviderKeyDisconnectResponse(
+            provider: provider,
+            source: source,
+            actions: ProviderKeyDisconnectActions(
+                disabledSkillIds: source == .skill ? [skillId].compactMap { $0 } : [],
+                detachedAIProvider: shouldDetachAIProvider,
+                deletedProviderKey: true
+            ),
+            remainingConsumers: ProviderKeyDisconnectRemainingConsumers(
+                aiProvider: current.aiPrimaryProvider == provider,
+                skillIds: []
+            ),
+            settings: ProviderKeyDisconnectSettings(
+                enabledSkills: current.enabledSkills,
+                installedStoreSkills: current.installedStoreSkills,
+                aiPrimaryProvider: current.aiPrimaryProvider
+            )
+        )
     }
 
     func getShortcutsToken() async throws -> ShortcutsTokenResponse {

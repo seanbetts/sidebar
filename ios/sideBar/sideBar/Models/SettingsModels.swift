@@ -329,6 +329,70 @@ public struct ProviderKeyUpdate: Encodable {
     }
 }
 
+/// Consumer source for provider-key disconnect operations.
+public enum ProviderKeyDisconnectSource: String, Codable {
+    case skill
+    case aiProvider = "ai_provider"
+}
+
+/// Request payload for provider-key consumer disconnect.
+public struct ProviderKeyDisconnectRequest: Encodable {
+    public let provider: String
+    public let source: ProviderKeyDisconnectSource
+    public let skillId: String?
+
+    public init(
+        provider: String,
+        source: ProviderKeyDisconnectSource,
+        skillId: String? = nil
+    ) {
+        self.provider = provider
+        self.source = source
+        self.skillId = skillId
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case provider
+        case source
+        case skillId = "skill_id"
+    }
+}
+
+/// Actions performed by provider-key disconnect.
+public struct ProviderKeyDisconnectActions: Codable {
+    public let disabledSkillIds: [String]
+    public let detachedAIProvider: Bool
+    public let deletedProviderKey: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case disabledSkillIds
+        case detachedAIProvider = "detachedAiProvider"
+        case deletedProviderKey
+    }
+}
+
+/// Remaining provider consumers after disconnect.
+public struct ProviderKeyDisconnectRemainingConsumers: Codable {
+    public let aiProvider: Bool
+    public let skillIds: [String]
+}
+
+/// Settings snapshot returned by provider-key disconnect.
+public struct ProviderKeyDisconnectSettings: Codable {
+    public let enabledSkills: [String]
+    public let installedStoreSkills: [String]
+    public let aiPrimaryProvider: String?
+}
+
+/// Response payload for provider-key consumer disconnect.
+public struct ProviderKeyDisconnectResponse: Codable {
+    public let provider: String
+    public let source: ProviderKeyDisconnectSource
+    public let actions: ProviderKeyDisconnectActions
+    public let remainingConsumers: ProviderKeyDisconnectRemainingConsumers
+    public let settings: ProviderKeyDisconnectSettings
+}
+
 /// Represents a shortcuts token response struct.
 public struct ShortcutsTokenResponse: Codable {
     /// The token value.

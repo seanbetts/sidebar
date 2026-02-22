@@ -293,23 +293,19 @@ struct StoreSkillCredentialsView: View {
         providerKeyMutationInFlight.insert(normalizedProvider)
         defer { providerKeyMutationInFlight.remove(normalizedProvider) }
 
-        guard skill.userToggleable else {
-            providerKeyErrors[normalizedProvider] = "This skill cannot be turned off."
-            return
-        }
-
-        let wasEnabled = viewModel.settings?.enabledSkills.contains(skill.id) ?? false
-        await viewModel.setSkillEnabled(id: skill.id, enabled: false)
-
-        let isStillEnabled = viewModel.settings?.enabledSkills.contains(skill.id) ?? false
-        if wasEnabled && isStillEnabled {
-            providerKeyErrors[normalizedProvider] = viewModel.skillsError ?? "Couldn't turn off this skill."
-            return
-        }
-
-        providerKeyErrors[normalizedProvider] = nil
-        if credentialEditorPrompt?.provider == normalizedProvider {
-            clearCredentialEditor()
+        do {
+            _ = try await viewModel.disconnectProviderConsumer(
+                provider: normalizedProvider,
+                source: .skill,
+                skillId: skill.id
+            )
+            await refreshProviderStatus(provider: normalizedProvider)
+            providerKeyErrors[normalizedProvider] = nil
+            if credentialEditorPrompt?.provider == normalizedProvider {
+                clearCredentialEditor()
+            }
+        } catch {
+            providerKeyErrors[normalizedProvider] = ErrorMapping.message(for: error)
         }
     }
 
@@ -317,7 +313,7 @@ struct StoreSkillCredentialsView: View {
         let skillName = viewModel.displayName(for: skill)
         let providerName = providerDisplayName(prompt.provider)
         guard !prompt.otherImpactedSkills.isEmpty else {
-            return "This turns off \(skillName) in Settings. Your \(providerName) key stays available for other skills."
+            return "This turns off \(skillName). If no other active consumers remain, your \(providerName) key is removed."
         }
         let previewCount = min(prompt.otherImpactedSkills.count, 3)
         let previewList = prompt.otherImpactedSkills.prefix(previewCount).joined(separator: ", ")

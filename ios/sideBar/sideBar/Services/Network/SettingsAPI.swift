@@ -8,6 +8,11 @@ public protocol SettingsProviding {
     func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse
     func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse
     func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse
+    func disconnectProviderConsumer(
+        provider: String,
+        source: ProviderKeyDisconnectSource,
+        skillId: String?
+    ) async throws -> ProviderKeyDisconnectResponse
     func getShortcutsToken() async throws -> ShortcutsTokenResponse
     func rotateShortcutsToken() async throws -> ShortcutsTokenResponse
     func uploadProfileImage(data: Data, contentType: String, filename: String) async throws
@@ -57,6 +62,22 @@ public struct SettingsAPI {
         return try await client.request(path, method: "DELETE")
     }
 
+    public func disconnectProviderConsumer(
+        provider: String,
+        source: ProviderKeyDisconnectSource,
+        skillId: String?
+    ) async throws -> ProviderKeyDisconnectResponse {
+        try await client.request(
+            "settings/ai/provider-key/disconnect",
+            method: "POST",
+            body: ProviderKeyDisconnectRequest(
+                provider: provider,
+                source: source,
+                skillId: skillId
+            )
+        )
+    }
+
     public func getShortcutsToken() async throws -> ShortcutsTokenResponse {
         try await client.request("settings/shortcuts/pat")
     }
@@ -96,6 +117,34 @@ public struct SettingsAPI {
 
     public func deleteProfileImage() async throws {
         try await client.requestVoid("settings/profile-image", method: "DELETE")
+    }
+}
+
+public extension SettingsProviding {
+    func disconnectProviderConsumer(
+        provider: String,
+        source: ProviderKeyDisconnectSource,
+        skillId: String?
+    ) async throws -> ProviderKeyDisconnectResponse {
+        _ = try await deleteProviderKey(provider: provider)
+        return ProviderKeyDisconnectResponse(
+            provider: provider,
+            source: source,
+            actions: ProviderKeyDisconnectActions(
+                disabledSkillIds: source == .skill ? [skillId].compactMap { $0 } : [],
+                detachedAIProvider: source == .aiProvider,
+                deletedProviderKey: true
+            ),
+            remainingConsumers: ProviderKeyDisconnectRemainingConsumers(
+                aiProvider: false,
+                skillIds: []
+            ),
+            settings: ProviderKeyDisconnectSettings(
+                enabledSkills: [],
+                installedStoreSkills: [],
+                aiPrimaryProvider: nil
+            )
+        )
     }
 }
 
