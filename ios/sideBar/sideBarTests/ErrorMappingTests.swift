@@ -18,6 +18,21 @@ final class ErrorMappingTests: XCTestCase {
         XCTAssertEqual(message, "Network connection failed. Please check your internet.")
     }
 
+    func testMapsTimeoutError() {
+        let message = ErrorMapping.message(for: URLError(.timedOut))
+        XCTAssertEqual(message, "Server took too long to respond. Please try again.")
+    }
+
+    func testMapsSecureConnectionError() {
+        let message = ErrorMapping.message(for: URLError(.secureConnectionFailed))
+        XCTAssertEqual(message, "Secure connection to server failed. The server certificate may have changed.")
+    }
+
+    func testMapsCancelledRequestError() {
+        let message = ErrorMapping.message(for: URLError(.cancelled))
+        XCTAssertEqual(message, "Request was interrupted. Please try again.")
+    }
+
     func testMapsOperationMessage() {
         let message = ErrorMapping.message(for: APIClientError.invalidUrl, during: "load settings")
         XCTAssertEqual(message, "Failed to load settings: Invalid request URL.")
@@ -31,5 +46,10 @@ final class ErrorMappingTests: XCTestCase {
     func testMapsGatewayTimeoutStatus() {
         let message = ErrorMapping.message(for: APIClientError.requestFailed(504))
         XCTAssertEqual(message, "Network connection failed. Please check your internet.")
+    }
+
+    func testMapsAuthSignalFromAPIErrorMessage() {
+        let message = ErrorMapping.message(for: APIClientError.apiError("Not authenticated"))
+        XCTAssertEqual(message, "Session expired. Please sign in again.")
     }
 }

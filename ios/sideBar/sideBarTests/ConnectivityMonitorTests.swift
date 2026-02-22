@@ -99,6 +99,66 @@ final class ConnectivityMonitorTests: XCTestCase {
         monitor = nil
     }
 
+    func testTimeoutOnlyMarksServerUnreachable() async {
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        guard let strongMonitor = monitor else {
+            XCTFail("Expected monitor")
+            return
+        }
+
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["error": URLError(.timedOut)]
+        )
+        await waitForMainQueueDrain()
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["error": URLError(.timedOut)]
+        )
+        await waitForMainQueueDrain()
+
+        XCTAssertTrue(strongMonitor.isNetworkAvailable)
+        XCTAssertFalse(strongMonitor.isOffline)
+        XCTAssertFalse(strongMonitor.isServerReachable)
+
+        monitor = nil
+    }
+
+    func testSecureConnectionFailureOnlyMarksServerUnreachable() async {
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        guard let strongMonitor = monitor else {
+            XCTFail("Expected monitor")
+            return
+        }
+
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["error": URLError(.secureConnectionFailed)]
+        )
+        await waitForMainQueueDrain()
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["error": URLError(.secureConnectionFailed)]
+        )
+        await waitForMainQueueDrain()
+
+        XCTAssertTrue(strongMonitor.isNetworkAvailable)
+        XCTAssertFalse(strongMonitor.isOffline)
+        XCTAssertFalse(strongMonitor.isServerReachable)
+
+        monitor = nil
+    }
+
     private func waitForMainQueueDrain() async {
         let expectation = expectation(description: "Drain main queue")
         DispatchQueue.main.async {

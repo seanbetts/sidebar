@@ -1,6 +1,60 @@
 import Foundation
 import sideBarShared
 
+enum URLRequestErrorCategory {
+    case offline
+    case timeout
+    case serverUnreachable
+    case secureConnection
+    case authRequired
+    case cancelled
+    case other
+}
+
+enum URLRequestErrorClassifier {
+    static func category(for error: Error) -> URLRequestErrorCategory? {
+        guard let code = urlErrorCode(from: error) else {
+            return nil
+        }
+
+        switch code {
+        case .notConnectedToInternet, .networkConnectionLost:
+            return .offline
+        case .timedOut:
+            return .timeout
+        case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
+            return .serverUnreachable
+        case .secureConnectionFailed,
+             .appTransportSecurityRequiresSecureConnection,
+             .serverCertificateHasBadDate,
+             .serverCertificateUntrusted,
+             .serverCertificateHasUnknownRoot,
+             .serverCertificateNotYetValid,
+             .clientCertificateRejected,
+             .clientCertificateRequired:
+            return .secureConnection
+        case .userAuthenticationRequired, .userCancelledAuthentication:
+            return .authRequired
+        case .cancelled:
+            return .cancelled
+        default:
+            return .other
+        }
+    }
+
+    static func urlErrorCode(from error: Error) -> URLError.Code? {
+        if let urlError = error as? URLError {
+            return urlError.code
+        }
+
+        let nsError = error as NSError
+        guard nsError.domain == NSURLErrorDomain else {
+            return nil
+        }
+        return URLError.Code(rawValue: nsError.code)
+    }
+}
+
 public enum ErrorMapping {
     public static func message(for error: Error) -> String {
         if let apiError = error as? APIClientError {
@@ -12,8 +66,8 @@ public enum ErrorMapping {
         if let keychainError = error as? KeychainError {
             return keychainError.errorDescription ?? "Keychain error."
         }
-        if error is URLError {
-            return "Network connection failed. Please check your internet."
+        if let category = URLRequestErrorClassifier.category(for: error) {
+            return messageForURLRequestErrorCategory(category)
         }
         if error is DecodingError {
             return "Received invalid data from server."
@@ -28,6 +82,9 @@ public enum ErrorMapping {
     private static func mapAPIError(_ apiError: APIClientError) -> String {
         switch apiError {
         case .apiError(let message):
+            if isAuthenticationErrorMessage(message) {
+                return "Session expired. Please sign in again."
+            }
             return message
         case .missingToken:
             return "Authentication required. Please sign in."
@@ -59,5 +116,37 @@ public enum ErrorMapping {
         default:
             return "Request failed (HTTP \(status))."
         }
+    }
+
+    private static func messageForURLRequestErrorCategory(_ category: URLRequestErrorCategory) -> String {
+        switch category {
+        case .offline:
+            return "Network connection failed. Please check your internet."
+        case .timeout:
+            return "Server took too long to respond. Please try again."
+        case .serverUnreachable:
+            return "Could not reach the server. Please try again."
+        case .secureConnection:
+            return "Secure connection to server failed. The server certificate may have changed."
+        case .authRequired:
+            return "Session expired. Please sign in again."
+        case .cancelled:
+            return "Request was interrupted. Please try again."
+        case .other:
+            return "Network request failed. Please try again."
+        }
+    }
+
+    private static func isAuthenticationErrorMessage(_ message: String) -> Bool {
+        let lowered = message.lowercased()
+        let signals = [
+            "unauthorized",
+            "forbidden",
+            "not authenticated",
+            "invalid token",
+            "token expired",
+            "session expired"
+        ]
+        return signals.contains(where: lowered.contains)
     }
 }

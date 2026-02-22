@@ -89,22 +89,24 @@ final class ConnectivityMonitor: ObservableObject {
     private func handleRequestFailure(_ notification: Notification) {
         let statusCode = notification.userInfo?["statusCode"] as? Int
         let error = notification.userInfo?["error"] as? Error
-        if let urlError = error as? URLError {
-            switch urlError.code {
-            case .notConnectedToInternet, .networkConnectionLost:
+        if let error,
+           let category = URLRequestErrorClassifier.category(for: error) {
+            switch category {
+            case .offline:
                 recordInternetFailure()
                 recordServerFailure()
                 return
-            case .cannotFindHost, .cannotConnectToHost:
-                // Host lookup/connect failures typically mean backend unreachability,
-                // not loss of device internet connectivity.
+            case .timeout, .serverUnreachable, .secureConnection:
+                // Endpoint-specific reachability/TLS failures should mark server status
+                // without treating the device as offline.
                 recordServerFailure()
                 scheduleProbe(immediate: false)
                 return
-            default:
+            case .authRequired, .cancelled, .other:
                 break
             }
         }
+
         if let statusCode, statusCode >= 500 {
             recordServerFailure()
         }
