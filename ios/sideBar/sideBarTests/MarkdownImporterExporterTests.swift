@@ -45,15 +45,16 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertTrue(exported.contains("[Link](https://example.com)"))
     }
 
-    func testInlineMarkersPreservedInImport() {
+    func testImportInlineStylesOmitLiteralMarkdownMarkersInAttributedText() {
         let markdown = "**bold** *italic* `code` ~~strike~~"
         let result = MarkdownImporter().attributedString(from: markdown)
         let text = String(result.attributedString.characters)
 
-        XCTAssertTrue(text.contains("**bold**"))
-        XCTAssertTrue(text.contains("*italic*"))
-        XCTAssertTrue(text.contains("`code`"))
-        XCTAssertTrue(text.contains("~~strike~~"))
+        XCTAssertEqual(text, "bold italic code strike")
+        XCTAssertFalse(text.contains("**"))
+        XCTAssertFalse(text.contains("*"))
+        XCTAssertFalse(text.contains("`"))
+        XCTAssertFalse(text.contains("~~"))
     }
 
     func testInlineMarkersDoNotDoubleOnExport() {
@@ -67,6 +68,15 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertTrue(exported.contains("~~strike~~"))
         XCTAssertFalse(exported.contains("****"))
         XCTAssertFalse(exported.contains("````"))
+    }
+
+    func testImportHeadingOmitsLiteralHeadingMarkersInAttributedText() {
+        let markdown = "# Title"
+        let result = MarkdownImporter().attributedString(from: markdown)
+        let text = String(result.attributedString.characters)
+
+        XCTAssertEqual(text, "Title")
+        XCTAssertFalse(text.contains("#"))
     }
 
     func testNestedListPreservesIndentation() {

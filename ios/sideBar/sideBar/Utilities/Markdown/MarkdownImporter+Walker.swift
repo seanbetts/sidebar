@@ -90,8 +90,6 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
         for child in heading.children {
             headingText.append(inlineAttributedString(for: child))
         }
-        let prefix = String(repeating: "#", count: heading.level) + " "
-        headingText = prefixBlock(headingText, with: prefix)
 
         let fontSize = MarkdownHeadingMetrics.fontSize(for: heading.level)
         let weight: Font.Weight = MarkdownHeadingMetrics.isBold(level: heading.level) ? .bold : .semibold

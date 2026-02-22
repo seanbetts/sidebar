@@ -47,7 +47,7 @@ extension MarkdownToAttributedStringWalker {
         for child in emphasis.children {
             inner.append(inlineAttributedString(for: child, intents: mergedIntents, isStrikethrough: isStrikethrough))
         }
-        return wrapInlineMarkers(inner, prefix: "*", suffix: "*")
+        return inner
     }
 
     private func strongAttributedString(
@@ -60,7 +60,7 @@ extension MarkdownToAttributedStringWalker {
         for child in strong.children {
             inner.append(inlineAttributedString(for: child, intents: mergedIntents, isStrikethrough: isStrikethrough))
         }
-        return wrapInlineMarkers(inner, prefix: "**", suffix: "**")
+        return inner
     }
 
     private func strikethroughAttributedString(
@@ -71,7 +71,7 @@ extension MarkdownToAttributedStringWalker {
         for child in strike.children {
             inner.append(inlineAttributedString(for: child, intents: intents, isStrikethrough: true))
         }
-        return wrapInlineMarkers(inner, prefix: "~~", suffix: "~~")
+        return inner
     }
 
     private func inlineCodeAttributedString(
@@ -88,7 +88,7 @@ extension MarkdownToAttributedStringWalker {
         if isStrikethrough {
             applyStrikethrough(to: &inner)
         }
-        return wrapInlineMarkers(inner, prefix: "`", suffix: "`")
+        return inner
     }
 
     private func inlineLinkAttributedString(

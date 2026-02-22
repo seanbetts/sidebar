@@ -104,26 +104,6 @@ extension MarkdownToAttributedStringWalker {
         return result
     }
 
-    func wrapInlineMarkers(
-        _ inner: AttributedString,
-        prefix: String,
-        suffix: String
-    ) -> AttributedString {
-        var prefixText = AttributedString(prefix)
-        if !prefixText.characters.isEmpty {
-            prefixText[prefixText.startIndex..<prefixText.endIndex].inlineMarker = true
-        }
-        var suffixText = AttributedString(suffix)
-        if !suffixText.characters.isEmpty {
-            suffixText[suffixText.startIndex..<suffixText.endIndex].inlineMarker = true
-        }
-
-        var result = prefixText
-        result.append(inner)
-        result.append(suffixText)
-        return result
-    }
-
     func fullRange(in text: AttributedString) -> Range<AttributedString.Index> {
         text.startIndex..<text.endIndex
     }
