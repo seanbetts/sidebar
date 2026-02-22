@@ -158,11 +158,6 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
     }
 
     private func canonicalizedNoteContent(_ content: String) -> String {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            return content
-        }
-        let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown(content)
-        return viewModel.currentMarkdown()
+        MarkdownCanonicalizer.canonicalized(content)
     }
 }
