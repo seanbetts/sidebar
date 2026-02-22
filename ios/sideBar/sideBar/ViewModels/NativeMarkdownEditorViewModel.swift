@@ -1,4 +1,3 @@
-// swiftlint:disable type_body_length
 @preconcurrency import Foundation
 import Combine
 import SwiftUI
@@ -128,68 +127,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     public func applyFormatting(_ formatting: MarkdownFormatting) {
         guard !isReadOnly else { return }
-        if applyInlineFormatting(formatting) {
-            return
-        }
-        if applyBlockFormatting(formatting) {
-            return
-        }
-        applySpecialFormatting(formatting)
-    }
-
-    private func applyInlineFormatting(_ formatting: MarkdownFormatting) -> Bool {
-        switch formatting {
-        case .bold:
-            toggleInlineIntent(.stronglyEmphasized)
-            return true
-        case .italic:
-            toggleInlineIntent(.emphasized)
-            return true
-        case .inlineCode:
-            toggleInlineIntent(.code)
-            return true
-        case .strikethrough:
-            toggleStrikethrough()
-            return true
-        default:
-            return false
-        }
-    }
-
-    private func applyBlockFormatting(_ formatting: MarkdownFormatting) -> Bool {
-        switch formatting {
-        case .heading(let level):
-            setBlockKind(headingKind(for: level))
-            return true
-        case .bulletList:
-            setBlockKind(.bulletList, listDepth: 1)
-            return true
-        case .orderedList:
-            setBlockKind(.orderedList, listDepth: 1)
-            return true
-        case .taskList:
-            setBlockKind(.taskUnchecked, listDepth: 1)
-            return true
-        case .blockquote:
-            setBlockKind(.blockquote)
-            return true
-        case .codeBlock:
-            setBlockKind(.codeBlock)
-            return true
-        default:
-            return false
-        }
-    }
-
-    private func applySpecialFormatting(_ formatting: MarkdownFormatting) {
-        switch formatting {
-        case .link(let url):
-            insertLink(url)
-        case .horizontalRule:
-            insertHorizontalRule()
-        default:
-            return
-        }
+        AttributedNoteFormattingCommands.apply(formatting, on: self)
     }
 
     public func handleContentChange(previous: AttributedString) {
@@ -483,5 +421,3 @@ public enum MarkdownFormatting {
     case link(URL)
     case horizontalRule
 }
-
-// swiftlint:enable type_body_length
