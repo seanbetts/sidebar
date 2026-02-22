@@ -72,6 +72,14 @@ extension ContentView {
         #endif
     }
 
+    var isDesktopLikeLayout: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return horizontalSizeClass != .compact
+        #endif
+    }
+
     var isFilesSectionVisible: Bool {
         #if os(macOS)
         return primarySection == .files || secondarySection == .files
@@ -116,7 +124,7 @@ extension ContentView {
             secondarySection = .chat
             sidebarSelection = .chat
             lastNonChatSection = nil
-            isLeftPanelExpanded = false
+            isLeftPanelExpanded = true
         }
 #else
         let plan = Self.makeMacInitialSelectionPlan(pendingSelection: environment.commandSelection)
@@ -130,6 +138,7 @@ extension ContentView {
         }
         isLeftPanelExpanded = true
 #endif
+        ensureChatSidebarVisibleIfNeeded(for: sidebarSelection)
         DispatchQueue.main.async {
             hasCompletedInitialSetup = true
         }
@@ -230,6 +239,24 @@ extension ContentView {
         }
         // In compact tasks detail routes, keep showing the dock for quick add.
         return phoneSelection == .tasks
+    }
+
+    static func shouldAutoExpandChatSidebar(
+        section: AppSection?,
+        isDesktopLikeLayout: Bool
+    ) -> Bool {
+        guard isDesktopLikeLayout else { return false }
+        return section == .chat
+    }
+
+    func ensureChatSidebarVisibleIfNeeded(for section: AppSection?) {
+        guard Self.shouldAutoExpandChatSidebar(
+            section: section,
+            isDesktopLikeLayout: isDesktopLikeLayout
+        ) else { return }
+        if !isLeftPanelExpanded {
+            isLeftPanelExpanded = true
+        }
     }
 
     #if !os(macOS)

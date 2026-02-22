@@ -129,6 +129,7 @@ extension ContentView {
         content = AnyView(content.onChange(of: sidebarSelection) { _, newValue in
             if let newValue {
                 environment.focusedSection = newValue
+                ensureChatSidebarVisibleIfNeeded(for: newValue)
             }
             updateActiveSection()
             #if !os(macOS)
@@ -485,7 +486,6 @@ extension ContentView {
             isWorkspaceExpanded = false
         }
     }
-
     private var primaryWorkspaceSectionForRotation: AppSection? {
         #if os(macOS)
         return primarySection ?? sidebarSelection

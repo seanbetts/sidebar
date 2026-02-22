@@ -140,6 +140,33 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(shouldShow)
     }
 
+    func testShouldAutoExpandChatSidebarWhenDesktopLayoutAndChatSelected() {
+        let shouldExpand = ContentView.shouldAutoExpandChatSidebar(
+            section: .chat,
+            isDesktopLikeLayout: true
+        )
+
+        XCTAssertTrue(shouldExpand)
+    }
+
+    func testShouldAutoExpandChatSidebarWhenDesktopLayoutAndNonChatSelected() {
+        let shouldExpand = ContentView.shouldAutoExpandChatSidebar(
+            section: .tasks,
+            isDesktopLikeLayout: true
+        )
+
+        XCTAssertFalse(shouldExpand)
+    }
+
+    func testShouldAutoExpandChatSidebarWhenNotDesktopLayout() {
+        let shouldExpand = ContentView.shouldAutoExpandChatSidebar(
+            section: .chat,
+            isDesktopLikeLayout: false
+        )
+
+        XCTAssertFalse(shouldExpand)
+    }
+
     func testWorkspaceSidebarSwipePolicyCollapsesExpandedPanelOnLeftSwipe() {
         let action = WorkspaceSidebarSwipePolicy.resolveAction(
             translation: CGSize(width: -120, height: 12),
