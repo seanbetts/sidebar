@@ -70,7 +70,10 @@ enum URLRequestErrorClassifier {
         }
 
         // Check if our pinning delegate recorded a cancellation for this host.
-        if let failingURL = nsError.userInfo[NSURLErrorFailingURLKey] as? URL,
+        let failingURL =
+            (nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL)
+            ?? (nsError.userInfo["NSErrorFailingURLKey"] as? URL)
+        if let failingURL,
            let host = failingURL.host?.lowercased(),
            CertPinCancellationRegistry.shared.wasCancelled(host: host) {
             return true

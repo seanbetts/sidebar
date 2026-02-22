@@ -213,6 +213,7 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
 
     // Internal for unit testing.
     static func notAfterDate(for certificate: SecCertificate) -> Date? {
+#if os(macOS)
         var cfError: Unmanaged<CFError>?
         guard let values = SecCertificateCopyValues(
             certificate,
@@ -238,6 +239,11 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
             return Date(timeIntervalSinceReferenceDate: number.doubleValue)
         }
         return nil
+#else
+        _ = certificate
+        // Security's certificate-value dictionary APIs are unavailable on iOS.
+        return nil
+#endif
     }
 }
 

@@ -55,7 +55,7 @@ final class ErrorMappingTests: XCTestCase {
         CertPinCancellationRegistry.shared.record(host: host)
         let error = URLError(
             .cancelled,
-            userInfo: [NSURLErrorFailingURLKey: URL(string: "https://\(host)/v1/test")!]
+            userInfo: [NSURLErrorFailingURLErrorKey: URL(string: "https://\(host)/v1/test")!]
         )
         let message = ErrorMapping.message(for: error)
         XCTAssertEqual(
@@ -68,7 +68,7 @@ final class ErrorMappingTests: XCTestCase {
         // A plain cancellation with no registry entry stays as .cancelled.
         let error = URLError(
             .cancelled,
-            userInfo: [NSURLErrorFailingURLKey: URL(string: "https://unknown-host.example.com/v1/test")!]
+            userInfo: [NSURLErrorFailingURLErrorKey: URL(string: "https://unknown-host.example.com/v1/test")!]
         )
         let message = ErrorMapping.message(for: error)
         XCTAssertEqual(message, "Request was interrupted. Please try again.")
