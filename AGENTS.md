@@ -42,6 +42,8 @@ ruff check backend/ && npm run lint  # lint
 - Fix root causes. Avoid band-aids that hide symptoms
 - Do not delete or rename unexpected files/behaviour. Stop and ask if deletion/rename is required.
 - If unexpected modified/untracked files exist, default to option 1: stage and commit only task-related files, leave other files untouched, and continue without asking.
+- Do not bypass git hooks (`--no-verify`) unless the user explicitly asks for that in the current request.
+- If a push is blocked by hooks/checks: report the exact failure, fix it, rerun checks, and push normally only after passing.
 
 ## Anti-Patterns
 
