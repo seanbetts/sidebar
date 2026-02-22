@@ -19,7 +19,7 @@ final class CurrentLocationViewModelTests: XCTestCase {
     }
 
     func testStartTrackingBeginsUpdatesWhenAuthorized() {
-        let provider = MockCurrentLocationProvider(status: .authorizedWhenInUse)
+        let provider = MockCurrentLocationProvider(status: authorizedLocationStatus)
         let viewModel = CurrentLocationViewModel(
             provider: provider,
             labelResolver: MockCurrentLocationLabelResolver(label: "Tignes, France")
@@ -32,7 +32,7 @@ final class CurrentLocationViewModelTests: XCTestCase {
     }
 
     func testDeniedAuthorizationClearsCurrentLocation() async {
-        let provider = MockCurrentLocationProvider(status: .authorizedWhenInUse)
+        let provider = MockCurrentLocationProvider(status: authorizedLocationStatus)
         let viewModel = CurrentLocationViewModel(
             provider: provider,
             labelResolver: MockCurrentLocationLabelResolver(label: "Tignes, France"),
@@ -53,7 +53,7 @@ final class CurrentLocationViewModelTests: XCTestCase {
     }
 
     func testLocationUpdatePublishesCoordinateAndResolvedLabel() async throws {
-        let provider = MockCurrentLocationProvider(status: .authorizedWhenInUse)
+        let provider = MockCurrentLocationProvider(status: authorizedLocationStatus)
         let resolver = MockCurrentLocationLabelResolver(label: "Tignes, France")
         let viewModel = CurrentLocationViewModel(
             provider: provider,
@@ -75,7 +75,7 @@ final class CurrentLocationViewModelTests: XCTestCase {
     }
 
     func testLocationWithinMinimumDistanceIsIgnored() async {
-        let provider = MockCurrentLocationProvider(status: .authorizedWhenInUse)
+        let provider = MockCurrentLocationProvider(status: authorizedLocationStatus)
         let viewModel = CurrentLocationViewModel(
             provider: provider,
             labelResolver: MockCurrentLocationLabelResolver(label: "Tignes, France"),
@@ -99,6 +99,14 @@ final class CurrentLocationViewModelTests: XCTestCase {
         for _ in 0..<8 {
             await Task.yield()
         }
+    }
+
+    private var authorizedLocationStatus: CLAuthorizationStatus {
+#if os(macOS)
+        return .authorizedAlways
+#else
+        return .authorizedWhenInUse
+#endif
     }
 }
 

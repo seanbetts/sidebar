@@ -462,4 +462,10 @@ private struct NativeMoreTabStyleConfigurator: UIViewControllerRepresentable {
         return nil
     }
 }
+#else
+private struct NativeMoreTabStyleConfigurator: View {
+    var body: some View {
+        EmptyView()
+    }
+}
 #endif
