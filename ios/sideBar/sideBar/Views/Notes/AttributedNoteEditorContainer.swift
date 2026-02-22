@@ -14,33 +14,9 @@ struct AttributedNoteEditorContainer: View {
     var body: some View {
         Group {
             if isEditing {
-                VStack(spacing: 0) {
-                    AttributedNoteFormattingToolbar(viewModel: nativeViewModel)
-                    Divider()
-                    AttributedNoteEditorView(
-                        viewModel: nativeViewModel,
-                        maxContentWidth: maxContentWidth
-                    )
-                }
-                .focused($isTextEditorFocused)
-                .onKeyPress(.escape) {
-                    guard isEditing else { return .ignored }
-                    isEditing = false
-                    return .handled
-                }
+                editingView
             } else {
-                AttributedNoteReadOnlyView(
-                    attributedContent: nativeViewModel.attributedContent,
-                    maxContentWidth: maxContentWidth,
-                    onTap: {
-                        isEditing = true
-                    }
-                )
-                .onKeyPress(.escape) {
-                    guard !isEditing, editorViewModel.currentNoteId != nil else { return .ignored }
-                    environment.emitShortcutAction(.closeItem)
-                    return .handled
-                }
+                readOnlyView
             }
         }
         .onAppear {
@@ -88,6 +64,43 @@ struct AttributedNoteEditorContainer: View {
             if focused && !isEditing {
                 isEditing = true
             }
+        }
+    }
+
+    private var editingView: some View {
+        VStack(spacing: 0) {
+            AttributedNoteFormattingToolbar(viewModel: nativeViewModel)
+            Divider()
+            AttributedNoteEditorView(
+                viewModel: nativeViewModel,
+                maxContentWidth: maxContentWidth
+            )
+        }
+        .focused($isTextEditorFocused)
+        .onKeyPress(.escape) {
+            guard isEditing else { return .ignored }
+            isEditing = false
+            return .handled
+        }
+        .onKeyPress(.tab, phases: .down) { keyPress in
+            guard isEditing else { return .ignored }
+            let outdent = keyPress.modifiers.contains(.shift)
+            return nativeViewModel.handleListDepthKeyboardShortcut(outdent: outdent) ? .handled : .ignored
+        }
+    }
+
+    private var readOnlyView: some View {
+        AttributedNoteReadOnlyView(
+            attributedContent: nativeViewModel.attributedContent,
+            maxContentWidth: maxContentWidth,
+            onTap: {
+                isEditing = true
+            }
+        )
+        .onKeyPress(.escape) {
+            guard !isEditing, editorViewModel.currentNoteId != nil else { return .ignored }
+            environment.emitShortcutAction(.closeItem)
+            return .handled
         }
     }
 

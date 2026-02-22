@@ -131,6 +131,89 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent[lineRange].listDepth, 1)
     }
 
+    func testIndentListItemsAppliesToEachSelectedParagraphAcrossMixedListKinds() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("Bullet line\nTask line\nPlain line")
+        let initialRanges = lineRanges(in: viewModel.attributedContent)
+        XCTAssertEqual(initialRanges.count, 3)
+
+        viewModel.attributedContent[initialRanges[0]].blockKind = .bulletList
+        viewModel.attributedContent[initialRanges[0]].listDepth = 1
+        viewModel.attributedContent[initialRanges[1]].blockKind = .taskUnchecked
+        viewModel.attributedContent[initialRanges[1]].listDepth = 1
+
+        let selectionRanges = lineRanges(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(
+            range: selectionRanges[0].lowerBound..<selectionRanges[1].upperBound
+        )
+        viewModel.indentListItems()
+
+        let updatedRanges = lineRanges(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[0]), .bulletList)
+        XCTAssertEqual(viewModel.attributedContent[updatedRanges[0]].listDepth, 2)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[1]), .taskUnchecked)
+        XCTAssertEqual(viewModel.attributedContent[updatedRanges[1]].listDepth, 2)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[2]), .paragraph)
+        XCTAssertNil(viewModel.attributedContent[updatedRanges[2]].listDepth)
+    }
+
+    func testOutdentListItemsConvertsEachSelectedDepthOneParagraphToParagraph() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("Bullet line\nOrdered line\nPlain line")
+        let initialRanges = lineRanges(in: viewModel.attributedContent)
+        XCTAssertEqual(initialRanges.count, 3)
+
+        viewModel.attributedContent[initialRanges[0]].blockKind = .bulletList
+        viewModel.attributedContent[initialRanges[0]].listDepth = 1
+        viewModel.attributedContent[initialRanges[1]].blockKind = .orderedList
+        viewModel.attributedContent[initialRanges[1]].listDepth = 1
+
+        let selectionRanges = lineRanges(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(
+            range: selectionRanges[0].lowerBound..<selectionRanges[1].upperBound
+        )
+        viewModel.outdentListItems()
+
+        let updatedRanges = lineRanges(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[0]), .paragraph)
+        XCTAssertNil(viewModel.attributedContent[updatedRanges[0]].listDepth)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[1]), .paragraph)
+        XCTAssertNil(viewModel.attributedContent[updatedRanges[1]].listDepth)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[2]), .paragraph)
+        XCTAssertNil(viewModel.attributedContent[updatedRanges[2]].listDepth)
+    }
+
+    func testHandleListDepthKeyboardShortcutReturnsFalseForNonListSelection() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("Plain line")
+        let line = firstLine(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: line.lowerBound..<line.upperBound)
+
+        let handled = viewModel.handleListDepthKeyboardShortcut(outdent: false)
+
+        XCTAssertFalse(handled)
+        let updatedLine = firstLine(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedLine), .paragraph)
+        XCTAssertNil(viewModel.attributedContent[updatedLine].listDepth)
+    }
+
+    func testHandleListDepthKeyboardShortcutOutdentsWhenListSelected() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("List item")
+        var line = firstLine(in: viewModel.attributedContent)
+        viewModel.attributedContent[line].blockKind = .bulletList
+        viewModel.attributedContent[line].listDepth = 2
+        line = firstLine(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: line.lowerBound..<line.upperBound)
+
+        let handled = viewModel.handleListDepthKeyboardShortcut(outdent: true)
+
+        XCTAssertTrue(handled)
+        line = firstLine(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: line), .bulletList)
+        XCTAssertEqual(viewModel.attributedContent[line].listDepth, 1)
+    }
+
     func testUpdatePrefixVisibilityRemovesInjectedListMarkersWhenDisabled() async {
         let viewModel = NativeMarkdownEditorViewModel()
         var content = AttributedString("• Item")
@@ -335,5 +418,27 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
             cursor = text.index(afterCharacter: cursor)
         }
         return text.startIndex..<text.endIndex
+    }
+
+    private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
+        var ranges: [Range<AttributedString.Index>] = []
+        var start = text.startIndex
+        var cursor = text.startIndex
+
+        while cursor < text.endIndex {
+            if text.characters[cursor].isNewline {
+                ranges.append(start..<cursor)
+                start = text.index(afterCharacter: cursor)
+                cursor = start
+            } else {
+                cursor = text.index(afterCharacter: cursor)
+            }
+        }
+
+        if start <= text.endIndex {
+            ranges.append(start..<text.endIndex)
+        }
+
+        return ranges
     }
 }
