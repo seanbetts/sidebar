@@ -7,8 +7,8 @@ struct ToolCallListView: View {
     let role: MessageRole
     @Environment(\.colorScheme) private var colorScheme
     @State private var showPopover = false
-    private let maxPillWidth: CGFloat = 180
-    private let minTextPillWidth: CGFloat = 70
+    private let maxToolPillTextWidth: CGFloat = 120
+    private let headerPillMinHeight: CGFloat = 22
 
     var body: some View {
         Button {
@@ -16,10 +16,10 @@ struct ToolCallListView: View {
         } label: {
             ViewThatFits(in: .horizontal) {
                 toolPill(text: summaryText)
-                    .frame(minWidth: minTextPillWidth, maxWidth: maxPillWidth, alignment: .leading)
                 toolIconOnlyPill
             }
         }
+        .fixedSize(horizontal: true, vertical: false)
         .buttonStyle(.plain)
         .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
             ToolCallPopoverContent(toolCalls: toolCalls)
@@ -46,10 +46,12 @@ struct ToolCallListView: View {
                 .font(DesignTokens.Typography.captionSemibold)
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .frame(maxWidth: maxToolPillTextWidth, alignment: .leading)
                 .foregroundStyle(toolPillForeground)
         }
         .padding(.horizontal, DesignTokens.Spacing.xs)
         .padding(.vertical, DesignTokens.Spacing.xxs)
+        .frame(minHeight: headerPillMinHeight)
         .background(
             Capsule(style: .continuous)
                 .fill(toolPillBackground)
@@ -63,6 +65,7 @@ struct ToolCallListView: View {
             .foregroundStyle(toolPillForeground)
             .padding(.horizontal, DesignTokens.Spacing.xs)
             .padding(.vertical, DesignTokens.Spacing.xxs)
+            .frame(minHeight: headerPillMinHeight)
             .background(
                 Capsule(style: .continuous)
                     .fill(toolPillBackground)

@@ -34,6 +34,7 @@ struct ChatMessageRow: View {
     @State private var isAnimatingThinkingDismissal = false
     @State private var thinkingDismissalTask: Task<Void, Never>?
     private let maxBubbleWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
+    private let headerPillMinHeight: CGFloat = 22
 
     var body: some View {
         bubble
@@ -49,6 +50,7 @@ struct ChatMessageRow: View {
                     .layoutPriority(1)
                     .padding(.horizontal, DesignTokens.Spacing.xs)
                     .padding(.vertical, DesignTokens.Spacing.xxs)
+                    .frame(minHeight: headerPillMinHeight)
                     .background(rolePillBackground)
                     .foregroundStyle(rolePillText)
                     .overlay(rolePillBorder)
@@ -165,14 +167,15 @@ struct ChatMessageRow: View {
 
     @ViewBuilder
     private var rolePillBorder: some View {
-        if colorScheme == .light, message.role == .assistant {
-            Capsule()
-                .stroke(pillBorderColor, lineWidth: 1)
-        }
+        Capsule()
+            .stroke(pillBorderColor, lineWidth: 1)
     }
 
     private var pillBorderColor: Color {
-        DesignTokens.Colors.border
+        if colorScheme == .light, message.role == .assistant {
+            return DesignTokens.Colors.border
+        }
+        return .clear
     }
 
     private var copiedIconForeground: Color {
