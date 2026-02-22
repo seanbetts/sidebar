@@ -35,6 +35,31 @@ enum ConversationCopyFormatter {
 }
 
 extension ConversationsPanelView {
+    static func loadErrorMessageForEmptyState(
+        searchQuery: String,
+        conversations: [Conversation],
+        errorMessage: String?
+    ) -> String? {
+        guard searchQuery.trimmed.isEmpty else {
+            return nil
+        }
+        guard conversations.isEmpty else {
+            return nil
+        }
+        guard let errorMessage = errorMessage?.trimmedOrNil else {
+            return nil
+        }
+        return errorMessage
+    }
+
+    var listLoadErrorMessage: String? {
+        Self.loadErrorMessageForEmptyState(
+            searchQuery: searchQuery,
+            conversations: viewModel.conversations,
+            errorMessage: viewModel.errorMessage
+        )
+    }
+
     static func conversationMatchesSearchQuery(_ normalizedQuery: String, conversation: Conversation) -> Bool {
         SearchTextMatcher.contains(
             normalizedQuery: normalizedQuery,

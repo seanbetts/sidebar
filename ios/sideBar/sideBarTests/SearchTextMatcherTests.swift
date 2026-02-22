@@ -44,6 +44,26 @@ final class SearchTextMatcherTests: XCTestCase {
         XCTAssertFalse(matches)
     }
 
+    func testConversationPanelLoadErrorShownWhenSearchEmptyAndNoConversations() {
+        let message = ConversationsPanelView.loadErrorMessageForEmptyState(
+            searchQuery: "",
+            conversations: [],
+            errorMessage: "Network connection failed. Please check your internet."
+        )
+
+        XCTAssertEqual(message, "Network connection failed. Please check your internet.")
+    }
+
+    func testConversationPanelLoadErrorHiddenWhileSearching() {
+        let message = ConversationsPanelView.loadErrorMessageForEmptyState(
+            searchQuery: "project",
+            conversations: [],
+            errorMessage: "Network connection failed. Please check your internet."
+        )
+
+        XCTAssertNil(message)
+    }
+
     private func makeConversation(title: String, firstMessage: String?) -> Conversation {
         Conversation(
             id: "conv-1",

@@ -42,6 +42,15 @@ struct ConversationsPanelView: View {
                     SidebarListSkeleton(rowCount: 6, showSubtitle: true)
                 } else if isSearchLoading && filteredGroups.isEmpty {
                     SidebarListSkeleton(rowCount: 3, showSubtitle: false)
+                } else if let loadErrorMessage = listLoadErrorMessage {
+                    SidebarPanelPlaceholder(
+                        title: "Unable to load chats",
+                        subtitle: loadErrorMessage,
+                        actionTitle: "Retry",
+                        style: .error
+                    ) {
+                        Task { await viewModel.loadConversations(force: true) }
+                    }
                 } else if filteredGroups.isEmpty {
                     SidebarPanelPlaceholder(
                         title: searchQuery.isEmpty ? "No conversations" : "No matching conversations",
