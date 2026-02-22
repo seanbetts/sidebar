@@ -19,6 +19,49 @@ private struct ExportLineResult {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+private struct OrderedListLevel {
+    let key: String
+    let depth: Int
+    var ordinal: Int
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private struct OrderedListState {
+    var levels: [OrderedListLevel] = []
+
+    mutating func reset() {
+        levels.removeAll()
+    }
+
+    mutating func nextOrdinal(key: String, depth: Int) -> Int {
+        trimToDepth(depth)
+        if let index = levels.firstIndex(where: { $0.depth == depth && $0.key == key }) {
+            levels[index].ordinal += 1
+            trimAfter(index: index)
+            return levels[index].ordinal
+        }
+
+        if let index = levels.firstIndex(where: { $0.depth == depth }) {
+            levels[index] = OrderedListLevel(key: key, depth: depth, ordinal: 1)
+            trimAfter(index: index)
+            return 1
+        }
+
+        levels.append(OrderedListLevel(key: key, depth: depth, ordinal: 1))
+        levels.sort { $0.depth < $1.depth }
+        return 1
+    }
+
+    private mutating func trimToDepth(_ depth: Int) {
+        levels.removeAll { $0.depth > depth }
+    }
+
+    private mutating func trimAfter(index: Int) {
+        levels = Array(levels.prefix(index + 1))
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 private func exportBody(from attributedString: AttributedString) -> String {
     exportLines(in: attributedString).joined(separator: "\n")
 }
@@ -41,8 +84,7 @@ private func exportLines(in attributedString: AttributedString) -> [String] {
     var isInCodeBlock = false
     var lineIndex = 0
     var previousContext: ExportLineContext?
-    var activeOrderedListKey: String?
-    var activeOrderedListOrdinal = 0
+    var orderedListState = OrderedListState()
 
     while lineIndex < lines.count {
         if let tableResult = exportTableBlock(
@@ -64,8 +106,7 @@ private func exportLines(in attributedString: AttributedString) -> [String] {
             lineIndex: lineIndex,
             isInCodeBlock: &isInCodeBlock,
             previousContext: previousContext,
-            activeOrderedListKey: &activeOrderedListKey,
-            activeOrderedListOrdinal: &activeOrderedListOrdinal
+            orderedListState: &orderedListState
         )
         output.append(contentsOf: lineResult.output)
         previousContext = lineResult.context
@@ -114,8 +155,7 @@ private func exportStandardLine(
     lineIndex: Int,
     isInCodeBlock: inout Bool,
     previousContext: ExportLineContext?,
-    activeOrderedListKey: inout String?,
-    activeOrderedListOrdinal: inout Int
+    orderedListState: inout OrderedListState
 ) -> ExportLineResult {
     var output: [String] = []
     let lineText = filteredText(from: attributedString[lineRange])
@@ -142,9 +182,7 @@ private func exportStandardLine(
         listDepth: listDepth,
         listIdentity: listIdentity,
         blockquoteDepth: blockquoteDepth,
-        previousContext: previousContext,
-        activeOrderedListKey: &activeOrderedListKey,
-        activeOrderedListOrdinal: &activeOrderedListOrdinal
+        orderedListState: &orderedListState
     )
     let codeLanguage = codeLanguage(in: attributedString, range: lineRange)
     let currentContext = exportLineContext(
@@ -447,23 +485,14 @@ private func resolvedOrderedListOrdinal(
     listDepth: Int?,
     listIdentity: Int?,
     blockquoteDepth: Int,
-    previousContext: ExportLineContext?,
-    activeOrderedListKey: inout String?,
-    activeOrderedListOrdinal: inout Int
+    orderedListState: inout OrderedListState
 ) -> Int? {
     guard blockKind == .orderedList else {
-        activeOrderedListKey = nil
-        activeOrderedListOrdinal = 0
+        orderedListState.reset()
         return nil
     }
 
-    let key = "\(listIdentity ?? 0):\(listDepth ?? 1):\(blockquoteDepth)"
-    let continuesOrderedList = previousContext?.blockKind == .orderedList && activeOrderedListKey == key
-    if continuesOrderedList {
-        activeOrderedListOrdinal += 1
-    } else {
-        activeOrderedListKey = key
-        activeOrderedListOrdinal = 1
-    }
-    return activeOrderedListOrdinal
+    let depth = max(1, listDepth ?? 1)
+    let key = "\(listIdentity ?? 0):\(depth):\(blockquoteDepth)"
+    return orderedListState.nextOrdinal(key: key, depth: depth)
 }

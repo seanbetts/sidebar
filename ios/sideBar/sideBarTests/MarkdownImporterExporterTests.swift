@@ -140,6 +140,26 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertTrue(exported.contains("  - Item 1.1"))
     }
 
+    func testNestedOrderedListPreservesParentOrdinalProgression() {
+        var attributed = AttributedString("Parent 1\nChild 1.1\nParent 2")
+        let ranges = lineRanges(in: attributed)
+        XCTAssertEqual(ranges.count, 3)
+
+        attributed[ranges[0]].blockKind = .orderedList
+        attributed[ranges[0]].listDepth = 1
+        attributed[ranges[1]].blockKind = .orderedList
+        attributed[ranges[1]].listDepth = 2
+        attributed[ranges[2]].blockKind = .orderedList
+        attributed[ranges[2]].listDepth = 1
+
+        let exported = MarkdownExporter().markdown(from: attributed)
+
+        XCTAssertTrue(exported.contains("1. Parent 1"), exported)
+        XCTAssertTrue(exported.contains("  1. Child 1.1"), exported)
+        XCTAssertTrue(exported.contains("2. Parent 2"), exported)
+        XCTAssertFalse(exported.contains("1. Parent 2"), exported)
+    }
+
     func testBlockTypesRoundTrip() {
         let markdown = """
         # Heading
@@ -372,5 +392,26 @@ final class MarkdownImporterExporterTests: XCTestCase {
             normalized.removeLast()
         }
         return normalized
+    }
+
+    private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
+        var ranges: [Range<AttributedString.Index>] = []
+        var lineStart = text.startIndex
+        var current = text.startIndex
+
+        while current < text.endIndex {
+            if text.characters[current].isNewline {
+                ranges.append(lineStart..<current)
+                lineStart = text.index(afterCharacter: current)
+                current = lineStart
+            } else {
+                current = text.index(afterCharacter: current)
+            }
+        }
+
+        if lineStart <= text.endIndex {
+            ranges.append(lineStart..<text.endIndex)
+        }
+        return ranges
     }
 }
