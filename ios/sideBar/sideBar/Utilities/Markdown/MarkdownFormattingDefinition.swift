@@ -28,6 +28,7 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
         in text: inout AttributedString,
         range: Range<AttributedString.Index>
     ) {
+        let existingPresentationIntent = presentationIntent(in: text, range: range)
         let blockKind = normalizedBlockKind(text.blockKind(in: range))
         text[range].blockKind = blockKind
 
@@ -52,7 +53,8 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
         text[range].listMarker = nil
         text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = normalizedPresentationIntent(
             for: blockKind,
-            listDepth: text[range].listDepth
+            listDepth: text[range].listDepth,
+            existingIntent: existingPresentationIntent
         )
     }
 
@@ -117,31 +119,65 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
 
     private func normalizedPresentationIntent(
         for blockKind: BlockKind,
-        listDepth: Int?
+        listDepth: Int?,
+        existingIntent: PresentationIntent?
     ) -> PresentationIntent {
+        let quoteDepth = blockquoteDepth(in: existingIntent)
         if let level = headingLevel(for: blockKind) {
-            return PresentationIntent(.header(level: level), identity: level)
+            return scopedPresentationIntent(
+                kind: .header(level: level),
+                identity: level,
+                quoteDepth: quoteDepth
+            )
         }
 
-        if let listIntent = listPresentationIntent(for: blockKind, listDepth: listDepth) {
+        if let listIntent = listPresentationIntent(
+            for: blockKind,
+            listDepth: listDepth,
+            quoteDepth: quoteDepth,
+            existingIntent: existingIntent
+        ) {
             return listIntent
         }
 
         switch blockKind {
         case .blockquote:
-            let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
-            return PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
+            return scopedPresentationIntent(
+                kind: .paragraph,
+                identity: 1,
+                quoteDepth: max(1, quoteDepth)
+            )
         case .codeBlock:
-            return PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
+            return scopedPresentationIntent(
+                kind: .codeBlock(languageHint: nil),
+                identity: 1,
+                quoteDepth: quoteDepth
+            )
         case .horizontalRule:
-            return PresentationIntent(.thematicBreak, identity: 1)
+            return scopedPresentationIntent(
+                kind: .thematicBreak,
+                identity: 1,
+                quoteDepth: quoteDepth
+            )
         case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
-            return PresentationIntent(.paragraph, identity: 1)
+            return scopedPresentationIntent(
+                kind: .paragraph,
+                identity: 1,
+                quoteDepth: quoteDepth
+            )
         case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6,
              .bulletList, .orderedList, .taskUnchecked, .taskChecked:
-            return PresentationIntent(.paragraph, identity: 1)
+            return scopedPresentationIntent(
+                kind: .paragraph,
+                identity: 1,
+                quoteDepth: quoteDepth
+            )
         @unknown default:
-            return PresentationIntent(.paragraph, identity: 1)
+            return scopedPresentationIntent(
+                kind: .paragraph,
+                identity: 1,
+                quoteDepth: quoteDepth
+            )
         }
     }
 
@@ -157,7 +193,12 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
         }
     }
 
-    private func listPresentationIntent(for blockKind: BlockKind, listDepth: Int?) -> PresentationIntent? {
+    private func listPresentationIntent(
+        for blockKind: BlockKind,
+        listDepth: Int?,
+        quoteDepth: Int,
+        existingIntent: PresentationIntent?
+    ) -> PresentationIntent? {
         let listKind: PresentationIntent.Kind
         switch blockKind {
         case .orderedList:
@@ -169,10 +210,18 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
         }
 
         let depth = max(1, listDepth ?? 1)
-        let listIntent = PresentationIntent(listKind, identity: depth)
+        let listIdentity = existingListIdentity(in: existingIntent) ?? depth
+        let listOrdinal = blockKind == .orderedList ? (existingListOrdinal(in: existingIntent) ?? 1) : 1
+        let quoteIntent = blockquoteIntent(depth: quoteDepth)
+        let listIntent: PresentationIntent
+        if let quoteIntent {
+            listIntent = PresentationIntent(listKind, identity: listIdentity, parent: quoteIntent)
+        } else {
+            listIntent = PresentationIntent(listKind, identity: listIdentity)
+        }
         let listItemIntent = PresentationIntent(
-            .listItem(ordinal: 1),
-            identity: depth * 1000 + 1,
+            .listItem(ordinal: listOrdinal),
+            identity: existingListItemIdentity(in: existingIntent) ?? (listIdentity * 1000 + listOrdinal),
             parent: listIntent
         )
         return PresentationIntent(
@@ -180,6 +229,83 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
             identity: 1,
             parent: listItemIntent
         )
+    }
+
+    private func presentationIntent(
+        in text: AttributedString,
+        range: Range<AttributedString.Index>
+    ) -> PresentationIntent? {
+        for run in text[range].runs {
+            if let intent = run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] {
+                return intent
+            }
+        }
+        return nil
+    }
+
+    private func blockquoteDepth(in intent: PresentationIntent?) -> Int {
+        guard let intent else { return 0 }
+        return intent.components.reduce(into: 0) { result, component in
+            if case .blockQuote = component.kind {
+                result += 1
+            }
+        }
+    }
+
+    private func existingListIdentity(in intent: PresentationIntent?) -> Int? {
+        guard let intent else { return nil }
+        for component in intent.components {
+            switch component.kind {
+            case .orderedList, .unorderedList:
+                return component.identity
+            default:
+                break
+            }
+        }
+        return nil
+    }
+
+    private func existingListItemIdentity(in intent: PresentationIntent?) -> Int? {
+        guard let intent else { return nil }
+        for component in intent.components {
+            if case .listItem = component.kind {
+                return component.identity
+            }
+        }
+        return nil
+    }
+
+    private func existingListOrdinal(in intent: PresentationIntent?) -> Int? {
+        guard let intent else { return nil }
+        for component in intent.components {
+            if case .listItem(let ordinal) = component.kind {
+                return ordinal
+            }
+        }
+        return nil
+    }
+
+    private func scopedPresentationIntent(
+        kind: PresentationIntent.Kind,
+        identity: Int,
+        quoteDepth: Int
+    ) -> PresentationIntent {
+        if let quoteIntent = blockquoteIntent(depth: quoteDepth) {
+            return PresentationIntent(kind, identity: identity, parent: quoteIntent)
+        }
+        return PresentationIntent(kind, identity: identity)
+    }
+
+    private func blockquoteIntent(depth: Int) -> PresentationIntent? {
+        guard depth > 0 else { return nil }
+        var current = PresentationIntent(.blockQuote, identity: 1)
+        if depth == 1 {
+            return current
+        }
+        for _ in 2...depth {
+            current = PresentationIntent(.blockQuote, identity: 1, parent: current)
+        }
+        return current
     }
 }
 

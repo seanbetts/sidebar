@@ -234,6 +234,23 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertFalse(exported.contains("1. >"), exported)
     }
 
+    func testConstrainedDocumentPreservesBlockquoteListSemantics() {
+        let markdown = """
+        > - Item 1
+        > - Item 2
+        """
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        let imported = importer.attributedString(from: markdown).attributedString
+        let constrained = MarkdownFormattingDefinition().constrainedDocument(imported)
+        let exported = exporter.markdown(from: constrained)
+
+        XCTAssertTrue(exported.contains("> - Item 1"), exported)
+        XCTAssertTrue(exported.contains("> - Item 2"), exported)
+        XCTAssertFalse(exported.contains("- Item 1\n- Item 2"), exported)
+    }
+
     func testFixtureRoundTripStabilizesCanonicalMarkdown() throws {
         let markdown = try loadFixture(named: "TestNoteForReading")
         let importer = MarkdownImporter()
