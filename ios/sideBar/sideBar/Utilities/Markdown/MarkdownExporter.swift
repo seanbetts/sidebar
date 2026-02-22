@@ -161,7 +161,8 @@ private func exportStandardLine(
 ) -> ExportLineResult {
     var output: [String] = []
     let lineText = filteredText(from: attributedString[lineRange])
-    let blockKind = attributedString.blockKind(in: lineRange) ?? .paragraph
+    let rawBlockKind = attributedString.blockKind(in: lineRange) ?? .paragraph
+    let blockKind = normalizedBlockKind(rawBlockKind: rawBlockKind, lineText: lineText)
 
     if isInCodeBlock && blockKind != .codeBlock {
         closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
@@ -370,6 +371,14 @@ private func listIdentity(in text: AttributedString, range: Range<AttributedStri
         }
     }
     return nil
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func normalizedBlockKind(rawBlockKind: BlockKind, lineText: String) -> BlockKind {
+    if rawBlockKind == .paragraph && lineText.isEmpty {
+        return .blankLine
+    }
+    return rawBlockKind
 }
 
 @available(iOS 26.0, macOS 26.0, *)

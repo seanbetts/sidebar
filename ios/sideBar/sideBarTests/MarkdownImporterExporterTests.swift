@@ -323,6 +323,30 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertFalse(exported.contains("- Item 1\n- Item 2"), exported)
     }
 
+    func testCodeBlockToHorizontalRuleUsesSingleBlankLineSeparator() {
+        let markdown = """
+        ```
+        print("hello")
+        ```
+
+        ---
+        """
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        let imported = importer.attributedString(from: markdown).attributedString
+        let exported = exporter.markdown(from: imported)
+        let expected = """
+        ```
+        print("hello")
+        ```
+
+        ---
+        """
+
+        XCTAssertEqual(exported, expected)
+    }
+
     func testFixtureRoundTripStabilizesCanonicalMarkdown() throws {
         let markdown = try loadFixture(named: "TestNoteForReading")
         let importer = MarkdownImporter()
