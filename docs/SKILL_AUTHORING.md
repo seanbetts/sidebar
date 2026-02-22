@@ -2,6 +2,15 @@
 
 This guide covers how to create a new skill that the sideBar AI agent can use, and how to register that skill in the Skills Store catalog.
 
+## Skill Types
+
+There are two skill types in sideBar:
+
+- Instruction-only skills: used for guidance/discovery and catalog metadata, with no runtime tool wiring.
+- Tool-backed skills: executable agent tools that map to scripts under `backend/skills/<skill-id>/scripts/`.
+
+If users should be able to run actions through the agent, the skill must be tool-backed.
+
 ## Skill Folder Structure
 
 Create a new folder under `backend/skills/<skill-id>/`:
@@ -45,9 +54,9 @@ Notes:
 - Keep frontmatter keys minimal (`name`, `description`; optional metadata keys may be used if required by your tooling).
 - Put trigger conditions in `description`, not only in body text.
 
-### Optional Detail Metadata (Recommended for Store Skills)
+### Detail Metadata (`metadata`)
 
-To power the Skills Store detail modal, add optional fields under `metadata`:
+To power the Skills Store detail modal, add fields under `metadata`:
 
 ```markdown
 ---
@@ -57,17 +66,20 @@ metadata:
   long_description: Clear user-facing description for the detail modal.
   how_it_works: Non-technical explanation of the workflow.
   requirements:
-    - A public URL to analyze
-    - A file to process
+    - Access to the source system this skill reads from
   version: 1.0.0
   updated_at: 2026-02-22
 ---
 ```
 
-These fields are optional but strongly recommended for any skill that appears in the Skills Store.
+Policy:
+- For Store skills, `metadata.long_description`, `metadata.how_it_works`, `metadata.version`, and `metadata.updated_at` are required.
+- For required/standard skills, metadata is optional but recommended when shown in Skills UI.
+- `metadata.requirements` is optional and should list only user-facing setup prerequisites.
 
 `metadata.requirements` should only include user-facing prerequisites. Do not include:
 - API key/credential requirements
+- usage-time inputs (for example "a file to transcribe", "a URL to analyze")
 - local runtime/setup dependencies (for example `ffmpeg`, `pip install`, `brew install`)
 
 Credential requirements belong in `backend/api/services/tools/skill_metadata.py` (`SKILL_CREDENTIAL_REQUIREMENTS`).
@@ -80,7 +92,7 @@ Do not rely on hardcoded fallback maps for long-term content.
 
 ### Validation Rules For Detail Metadata
 
-`backend/skills/skill-creator/scripts/quick_validate.py` validates these optional metadata fields when present:
+`backend/skills/skill-creator/scripts/quick_validate.py` validates these metadata fields when present:
 
 - `metadata.long_description`: non-empty string
 - `metadata.how_it_works`: non-empty string
@@ -90,6 +102,7 @@ Do not rely on hardcoded fallback maps for long-term content.
 
 If any of these fields are invalid, skill validation will fail.
 The validator also rejects `metadata.requirements` entries that look like credential or developer dependency instructions.
+Store-skill metadata presence is enforced by authoring policy/review and publish checklist.
 
 ### UI Fallback Behavior
 
@@ -138,6 +151,42 @@ if __name__ == "__main__":
     main()
 ```
 
+## Tool-Backed Script Contract
+
+Tool-backed skills must follow this execution contract:
+
+- Accept `--json`.
+- Accept `--user-id` for user-scoped operations.
+- Print success payload as JSON to stdout:
+  - `{"success": true, "data": ...}`
+- Print error payload as JSON to stderr and exit non-zero:
+  - `{"success": false, "error": "..."}`
+- Keep scripts deterministic and argument-driven (no hidden prompts/interactive input).
+
+## Register Tool-Backed Skills In Agent Runtime
+
+Creating `backend/skills/<skill-id>/scripts/*.py` is not sufficient by itself. Wire the skill into runtime:
+
+1. Add tool definitions in the appropriate definitions module under `backend/api/services/tools/definitions_*.py`.
+2. Ensure that definitions module is aggregated by `backend/api/services/agent/tools/registry.py`.
+3. Add argument builders in `backend/api/services/tools/parameter_builders/` and mapper functions in `backend/api/services/tools/parameter_mapper.py`.
+4. Use `skill: "<skill-id>"` in tool definitions, matching the folder name in `backend/skills/<skill-id>/`.
+5. If the tool requires per-user context, add the skill ID to `SKILLS_REQUIRING_USER_ID` in `backend/api/services/agent/tools/mapper.py`.
+6. Add `validate_read` and/or `validate_write` in tool definitions when path safety is required.
+
+## Skill ID Stability And Renames
+
+Skill IDs are stable once shipped. Prefer introducing a new skill over renaming.
+
+If a rename is unavoidable pre-release, perform a full sweep:
+
+1. Rename `backend/skills/<old-id>/` to `backend/skills/<new-id>/`.
+2. Update catalog metadata/tier sets and display fields in `backend/api/services/tools/skill_metadata.py`.
+3. Update tool definitions/runtime wiring to the new ID.
+4. Update any client logic keyed by tool names and skill IDs.
+5. Add/adjust migrations for persisted settings arrays if data already exists.
+6. Update tests and docs in the same change set.
+
 ## Validation Workflow
 
 1. Initialize a new skeleton (optional but recommended):
@@ -162,6 +211,11 @@ done
 ```
 
 3. Add or update tests for behavior you introduce (for scripts and API integration).
+   Minimum expected coverage for tool-backed skills:
+   - `backend/tests/api/test_tool_mapper.py` (routing/filtering/execution path)
+   - `backend/tests/api/test_skill_catalog_service.py`
+   - `backend/tests/api/test_skills_api.py`
+   - Store install/update tests when tier is `store`
 
 ## Add Skill To Skills Store Catalog
 
@@ -175,12 +229,17 @@ To make a skill appear in the Skills Store UI, update backend catalog metadata:
 3. If it is a store skill with provider requirements, update:
    - `SKILL_PROVIDER_DEPENDENCY`
    - `SKILL_CREDENTIAL_REQUIREMENTS`
-4. Ensure skill detail metadata is present in `SKILL.md` frontmatter `metadata` (recommended for all Store skills).
+4. Ensure skill detail metadata is present in `SKILL.md` frontmatter `metadata` (`long_description`, `how_it_works`, `version`, `updated_at` required for Store skills; add `requirements` when setup prerequisites exist).
 5. Bump `CATALOG_VERSION` in `backend/api/services/tools/skill_metadata.py`.
 6. Add category mapping in `backend/api/services/agent/skills/catalog.py` (`_category_map`).
 7. Add or update API/service tests:
    - `backend/tests/api/test_skill_catalog_service.py`
    - `backend/tests/api/test_skills_api.py`
+8. If skill inventory changed, regenerate `backend/SKILLS.md`:
+
+```bash
+python backend/scripts/generate_skills_md.py
+```
 
 ## iOS Presentation Updates (when applicable)
 
@@ -194,8 +253,10 @@ If the skill is visible in iOS Skills Store, update symbol mappings:
 - Skill folder exists in `backend/skills/<skill-id>/`.
 - `SKILL.md` validates.
 - All skills pass quick validation (local loop or CI `Skills Validation` workflow).
-- Store skill includes `metadata.long_description`, `metadata.how_it_works`, `metadata.requirements`, `metadata.version`, and `metadata.updated_at`.
+- Store skill includes `metadata.long_description`, `metadata.how_it_works`, `metadata.version`, and `metadata.updated_at` (`metadata.requirements` included when setup prerequisites exist).
+- Tool-backed skills are wired through definitions, registry, and parameter builders/mappers.
 - Catalog metadata, tier, and category are updated.
 - `CATALOG_VERSION` is bumped.
-- Backend tests for catalog/API pass.
+- Backend tests for mapper + catalog/API pass.
+- `backend/SKILLS.md` is regenerated when skill inventory changes.
 - UI icon/category mappings are updated where needed.
