@@ -310,6 +310,7 @@ class SkillCatalogService:
             "assistant-soul": "System",
             "settings-profile-user": "System",
             "settings-other-preferences": "System",
+            "product-feedback": "Development",
             "audio-transcribe": "Media",
             "youtube-download": "Media",
             "youtube-transcribe": "Media",

@@ -22,6 +22,7 @@ class ToolExecutionContext:
     assistant_message_id: UUID | None = None
     notes_context: str | None = None
     user_agent: str | None = None
+    app_version: str | None = None
     current_location: str | None = None
     current_location_levels: dict[str, Any] | str | None = None
     current_weather: dict[str, Any] | str | None = None
@@ -45,6 +46,7 @@ class ToolExecutionContext:
             else None,
             "notes_context": self.notes_context,
             "user_agent": self.user_agent,
+            "app_version": self.app_version,
             "current_location": self.current_location,
             "current_location_levels": self.current_location_levels,
             "current_weather": self.current_weather,

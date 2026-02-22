@@ -180,6 +180,7 @@ async def stream_chat(
 
     settings_record = UserSettingsService.get_settings(db, user_id)
     user_agent = request.headers.get("user-agent")
+    app_version = request.headers.get("x-app-version")
     now = datetime.now(UTC)
     prompt_bundle = PromptContextService.build_prompts(
         db=db,
@@ -207,6 +208,7 @@ async def stream_chat(
         conversation_id=conversation_uuid,
         user_message_id=user_message_id,
         user_agent=user_agent,
+        app_version=app_version,
         current_location=current_location,
         current_location_levels=current_location_levels,
         current_weather=current_weather,

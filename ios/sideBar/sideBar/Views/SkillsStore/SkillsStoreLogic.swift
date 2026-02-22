@@ -9,6 +9,7 @@ enum SkillsStoreLogic {
         "files": "doc.on.doc",
         "memory": "brain",
         "notes": "note.text",
+        "product-feedback": "exclamationmark.bubble",
         "prompt-preview": "eye",
         "settings-other-preferences": "gearshape",
         "settings-profile-user": "person.crop.circle",

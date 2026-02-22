@@ -9,6 +9,7 @@ declare module '$env/static/public' {
 	export const PUBLIC_SENTRY_DSN_FRONTEND: string | undefined;
 	export const PUBLIC_SENTRY_ENVIRONMENT: string | undefined;
 	export const PUBLIC_SENTRY_SAMPLE_RATE: string | undefined;
+	export const PUBLIC_APP_VERSION: string | undefined;
 }
 
 declare global {
@@ -21,6 +22,7 @@ declare global {
 		PUBLIC_SENTRY_DSN_FRONTEND?: string;
 		PUBLIC_SENTRY_ENVIRONMENT?: string;
 		PUBLIC_SENTRY_SAMPLE_RATE?: string;
+		PUBLIC_APP_VERSION?: string;
 	}
 
 	interface ImportMeta {

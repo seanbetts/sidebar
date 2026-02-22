@@ -36,6 +36,9 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let appVersion = AppVersionHeader.currentValue() {
+            urlRequest.setValue(appVersion, forHTTPHeaderField: AppVersionHeader.fieldName)
+        }
         if let token = accessTokenProvider() {
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }

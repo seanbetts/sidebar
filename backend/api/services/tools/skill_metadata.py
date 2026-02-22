@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 7
+CATALOG_VERSION = 8
 
 SkillTier = Literal["required", "standard", "store"]
 
@@ -82,6 +82,10 @@ SKILL_DISPLAY = {
         "name": "Settings",
         "description": "Update local Other settings preferences",
     },
+    "product-feedback": {
+        "name": "Product Feedback",
+        "description": "Submit bug reports and feature requests to the product team",
+    },
     "memory": {
         "name": "Memory",
         "description": "Store and manage persistent memories",
@@ -110,6 +114,7 @@ STANDARD_SKILLS = {
     "ui-theme",
     "prompt-preview",
     "settings-other-preferences",
+    "product-feedback",
 }
 
 STORE_SKILLS = {

@@ -121,3 +121,36 @@ class SkillsParameterBuilder(BaseParameterBuilder):
         args: list[str] = []
         SkillsParameterBuilder.append_user_id(args, params)
         return args
+
+    @staticmethod
+    def build_submit_bug_report_args(params: dict) -> list:
+        """Build CLI arguments for bug report submissions."""
+        return SkillsParameterBuilder._build_submit_feedback_args(params, "bug")
+
+    @staticmethod
+    def build_submit_feature_request_args(params: dict) -> list:
+        """Build CLI arguments for feature request submissions."""
+        return SkillsParameterBuilder._build_submit_feedback_args(params, "feature")
+
+    @staticmethod
+    def _build_submit_feedback_args(params: dict, issue_kind: str) -> list:
+        """Build shared CLI arguments for feedback issue submissions."""
+        args: list[str] = ["--kind", issue_kind]
+        SkillsParameterBuilder.append_user_id(args, params)
+
+        field_map = (
+            ("summary", "--summary"),
+            ("details", "--details"),
+            ("user_agent", "--user-agent"),
+            ("app_version", "--app-version"),
+            ("conversation_id", "--conversation-id"),
+            ("user_message_id", "--user-message-id"),
+            ("assistant_message_id", "--assistant-message-id"),
+        )
+        for field_name, flag_name in field_map:
+            value = params.get(field_name)
+            if value is not None:
+                trimmed_value = str(value).strip()
+                if trimmed_value:
+                    args.extend([flag_name, trimmed_value])
+        return args

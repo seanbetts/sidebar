@@ -24,6 +24,7 @@ from api.services.user_settings_service import UserSettingsService
 SKILLS_REQUIRING_USER_ID = {
     "assistant-identity",
     "assistant-soul",
+    "product-feedback",
     "settings-profile-user",
     "files",
     "notes",
@@ -36,6 +37,15 @@ SKILLS_REQUIRING_USER_ID = {
 }
 
 TRANSCRIPTION_TOOL_NAMES = {"Transcribe Audio", "Transcribe YouTube"}
+SKILL_CONTEXT_FIELDS: dict[str, tuple[str, ...]] = {
+    "product-feedback": (
+        "user_agent",
+        "app_version",
+        "conversation_id",
+        "user_message_id",
+        "assistant_message_id",
+    )
+}
 
 
 class ToolMapper:
@@ -120,6 +130,35 @@ class ToolMapper:
         if parameters.get("user_id") == user_id:
             return parameters
         return {**parameters, "user_id": user_id}
+
+    @staticmethod
+    def _inject_skill_context(
+        skill: str | None,
+        parameters: dict[str, Any],
+        context: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Inject selected request context fields for specific skills."""
+        if not skill or not context:
+            return parameters
+
+        fields = SKILL_CONTEXT_FIELDS.get(skill)
+        if not fields:
+            return parameters
+
+        enriched = dict(parameters)
+        for field_name in fields:
+            if enriched.get(field_name) is not None:
+                continue
+            context_value = context.get(field_name)
+            if context_value is None:
+                continue
+            if isinstance(context_value, str):
+                normalized_value = context_value.strip()
+            else:
+                normalized_value = str(context_value).strip()
+            if normalized_value:
+                enriched[field_name] = normalized_value
+        return enriched
 
     @staticmethod
     def _ensure_user_id_arg(
@@ -286,6 +325,7 @@ class ToolMapper:
 
             skill = tool_config.get("skill")
             parameters = self._inject_user_id(skill, parameters, context)
+            parameters = self._inject_skill_context(skill, parameters, context)
             env_overrides: dict[str, str] | None = None
 
             if display_name in TRANSCRIPTION_TOOL_NAMES:

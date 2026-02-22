@@ -275,6 +275,50 @@ async def test_execute_tool_appends_user_id_for_profile_user_settings_skill():
 
 
 @pytest.mark.asyncio
+async def test_execute_tool_injects_product_feedback_context_fields():
+    captured_params: dict[str, object] = {}
+
+    def _build_args(params):
+        captured_params.update(params)
+        return ["--summary", "Unable to rename a task"]
+
+    tools = {
+        "Submit Bug Report": {
+            "description": "submit bug report",
+            "input_schema": {},
+            "skill": "product-feedback",
+            "script": "submit_feedback.py",
+            "build_args": _build_args,
+        }
+    }
+    mapper = _build_mapper(tools)
+    result = await mapper.execute_tool(
+        "Submit Bug Report",
+        {"summary": "Unable to rename a task"},
+        context={
+            "user_id": "user-1",
+            "user_agent": "Mozilla/5.0 (Macintosh)",
+            "app_version": "1.4.2",
+            "conversation_id": "conv-1",
+            "user_message_id": "msg-1",
+            "assistant_message_id": "asst-1",
+        },
+    )
+    assert result["success"] is True
+    assert captured_params["user_id"] == "user-1"
+    assert captured_params["app_version"] == "1.4.2"
+    assert captured_params["conversation_id"] == "conv-1"
+    assert captured_params["user_message_id"] == "msg-1"
+    assert captured_params["assistant_message_id"] == "asst-1"
+    assert mapper.executor.calls[0]["args"] == [
+        "--summary",
+        "Unable to rename a task",
+        "--user-id",
+        "user-1",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_execute_tool_other_preferences_handler(monkeypatch):
     tools = {
         "Set Other Preferences": {

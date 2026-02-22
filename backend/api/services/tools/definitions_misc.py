@@ -201,6 +201,61 @@ def get_misc_definitions() -> dict:
             "script": None,
             "build_args": None,
         },
+        "Submit Bug Report": {
+            "description": (
+                "Submit a user bug report to the product team as a GitHub issue. "
+                "Infer a concise summary from the user's request and submit "
+                "without unnecessary follow-up questions."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "type": "string",
+                        "description": (
+                            "Short bug summary inferred from the user's message."
+                        ),
+                    },
+                    "details": {
+                        "type": "string",
+                        "description": (
+                            "Optional bug details inferred from conversation context."
+                        ),
+                    },
+                },
+            },
+            "skill": "product-feedback",
+            "script": "submit_feedback.py",
+            "build_args": pm.build_submit_bug_report_args,
+        },
+        "Submit Feature Request": {
+            "description": (
+                "Submit a user feature request to the product team as a GitHub issue. "
+                "Infer a concise summary from the user's request and submit "
+                "without unnecessary follow-up questions."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "type": "string",
+                        "description": (
+                            "Short feature summary inferred from the user's message."
+                        ),
+                    },
+                    "details": {
+                        "type": "string",
+                        "description": (
+                            "Optional feature details inferred from "
+                            "conversation context."
+                        ),
+                    },
+                },
+            },
+            "skill": "product-feedback",
+            "script": "submit_feedback.py",
+            "build_args": pm.build_submit_feature_request_args,
+        },
         "Memory Tool": {
             "description": (
                 "Create, update, and manage persistent memory files. "

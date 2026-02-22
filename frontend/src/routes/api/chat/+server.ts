@@ -11,6 +11,7 @@ const API_URL = getApiUrl();
 export const POST: RequestHandler = async ({ locals, request }) => {
 	try {
 		const userAgent = request.headers.get('user-agent') || '';
+		const appVersion = request.headers.get('x-app-version') || '';
 		const {
 			message,
 			history,
@@ -33,7 +34,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			method: 'POST',
 			headers: buildAuthHeaders(locals, {
 				'Content-Type': 'application/json',
-				...(userAgent ? { 'User-Agent': userAgent } : {})
+				...(userAgent ? { 'User-Agent': userAgent } : {}),
+				...(appVersion ? { 'X-App-Version': appVersion } : {})
 			}),
 			body: JSON.stringify({
 				message,

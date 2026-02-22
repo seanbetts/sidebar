@@ -2,7 +2,14 @@ import type { RequestHandler } from './$types';
 import { buildAuthHeaders, getApiUrl } from '$lib/server/api';
 
 const API_URL = getApiUrl();
-const FORWARD_HEADERS = ['accept', 'content-type', 'if-modified-since', 'if-none-match', 'range'];
+const FORWARD_HEADERS = [
+	'accept',
+	'content-type',
+	'if-modified-since',
+	'if-none-match',
+	'range',
+	'x-app-version'
+];
 
 const handler: RequestHandler = async ({ request, url, locals, fetch }) => {
 	const rawPath = url.pathname.replace(/^\/api\/v1/, '');

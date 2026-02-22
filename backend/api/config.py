@@ -143,6 +143,14 @@ class Settings(BaseSettings):
     # Google Places API
     google_places_api_key: str | None = None
 
+    # GitHub issues integration (product feedback skill)
+    github_issues_token: str | None = os.getenv("GITHUB_ISSUES_TOKEN")
+    github_issues_owner: str | None = os.getenv("GITHUB_ISSUES_OWNER")
+    github_issues_repo: str | None = os.getenv("GITHUB_ISSUES_REPO")
+    github_issues_api_base: str = os.getenv(
+        "GITHUB_ISSUES_API_BASE", "https://api.github.com"
+    )
+
     # Write allowlist - only these paths can be written
     writable_paths: list[str] = [
         str(Path(os.getenv("WORKSPACE_BASE", "/tmp/skills")) / "notes"),

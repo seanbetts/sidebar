@@ -258,6 +258,16 @@ def build_profile_image_delete_args(params: dict) -> list:
     return SkillsParameterBuilder.build_profile_image_delete_args(params)
 
 
+def build_submit_bug_report_args(params: dict) -> list:
+    """Build CLI arguments for bug report submission."""
+    return SkillsParameterBuilder.build_submit_bug_report_args(params)
+
+
+def build_submit_feature_request_args(params: dict) -> list:
+    """Build CLI arguments for feature request submission."""
+    return SkillsParameterBuilder.build_submit_feature_request_args(params)
+
+
 def build_tasks_list_args(params: dict) -> list:
     """Build CLI arguments for list tasks."""
     return TasksParameterBuilder.build_list_args(params)

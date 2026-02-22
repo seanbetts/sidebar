@@ -114,4 +114,4 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 7
+    assert SkillCatalogService.catalog_version() == 8

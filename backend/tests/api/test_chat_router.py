@@ -200,6 +200,42 @@ def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypa
     assert captured["allowed_skills"] == ["notes", "assistant-identity"]
 
 
+def test_stream_chat_passes_app_version_to_tool_context(test_client, monkeypatch):
+    captured: dict[str, object] = {}
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **kwargs):
+            captured["tool_context"] = kwargs.get("tool_context")
+            yield {"type": "token", "content": "Hello"}
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers={**_auth_headers(), "X-App-Version": "1.4.2"},
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+    context = captured["tool_context"]
+    assert context is not None
+    assert getattr(context, "app_version", None) == "1.4.2"
+
+
 def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
     user_id = "user-1"
     conversation = ConversationService.create_conversation(

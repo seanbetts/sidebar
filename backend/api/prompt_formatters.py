@@ -13,12 +13,12 @@ def detect_operating_system(user_agent: str | None) -> str | None:
     agent = user_agent.lower()
     if "windows" in agent:
         return "Windows"
+    if "iphone" in agent or "ipad" in agent or "ios" in agent:
+        return "iOS"
     if "mac os" in agent or "macos" in agent or "macintosh" in agent:
         return "macOS"
     if "android" in agent:
         return "Android"
-    if "iphone" in agent or "ipad" in agent or "ios" in agent:
-        return "iOS"
     if "linux" in agent:
         return "Linux"
     return None

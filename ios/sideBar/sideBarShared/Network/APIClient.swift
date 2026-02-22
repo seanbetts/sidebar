@@ -128,6 +128,7 @@ public final class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        applyAppVersionHeader(to: &request)
         if let token = config.accessTokenProvider() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -142,6 +143,14 @@ public final class APIClient {
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
         return request
+    }
+
+    private func applyAppVersionHeader(to request: inout URLRequest) {
+        guard request.value(forHTTPHeaderField: AppVersionHeader.fieldName) == nil,
+              let appVersion = AppVersionHeader.currentValue() else {
+            return
+        }
+        request.setValue(appVersion, forHTTPHeaderField: AppVersionHeader.fieldName)
     }
 
     private func performRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
