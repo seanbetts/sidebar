@@ -196,7 +196,9 @@ struct SkillsSettingsView: View {
     private var allSkillsEnabled: Bool {
         let enabled = Set(viewModel.settings?.enabledSkills ?? [])
         let all = enableAllScopeSkillIds
-        return !all.isEmpty && enabled.isSuperset(of: all)
+        // When a tier has no toggleable skills (for example Required),
+        // keep the disabled "Enable all" toggle visually on.
+        return all.isEmpty || enabled.isSuperset(of: all)
     }
 
     private var hasToggleableSkills: Bool {
