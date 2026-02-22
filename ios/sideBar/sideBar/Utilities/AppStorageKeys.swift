@@ -13,6 +13,5 @@ public enum AppStorageKeys {
     public nonisolated static let weatherUsesFahrenheit = "sidebar.weatherUsesFahrenheit"
     public nonisolated static let lastAuthTimestamp = "sidebar.lastAuthTimestamp"
     public nonisolated static let hasShownBiometricHint = "sidebar.hasShownBiometricHint"
-    public nonisolated static let useNativeMarkdownEditor = "sidebar.useNativeMarkdownEditor"
     public nonisolated static let useAttributedNoteEditorV2 = "sidebar.useAttributedNoteEditorV2"
 }

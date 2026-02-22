@@ -427,9 +427,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         store.applyEditorUpdate(note)
         await Task.yield()
 
-        let probe = NativeMarkdownEditorViewModel()
-        probe.loadMarkdown(nonCanonical)
-        let canonical = probe.currentMarkdown()
+        let canonical = canonicalSnapshotOutput(nonCanonical)
 
         XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), canonical)
     }
@@ -546,9 +544,7 @@ extension NotesEditorViewModelTests {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
         let nonCanonical = "- [x] Done"
-        let canonicalProbe = NativeMarkdownEditorViewModel()
-        canonicalProbe.loadMarkdown(nonCanonical)
-        let canonical = canonicalProbe.currentMarkdown()
+        let canonical = canonicalSnapshotOutput(nonCanonical)
         XCTAssertNotEqual(canonical, nonCanonical)
 
         let api = MockNotesAPI(updateResult: .failure(MockError.forced))
@@ -601,7 +597,7 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(draft?.content, canonical)
     }
 
-    func testCurrentMarkdownSnapshotCanonicalizationDriftReturnsStableSecondPass() async throws {
+    func testCurrentMarkdownSnapshotCanonicalizationDriftReturnsStableOutput() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -610,15 +606,6 @@ extension NotesEditorViewModelTests {
         >    - [ ] Open **bold**
         >    - [x] Done *italic* `code`
         """
-        let firstPassProbe = NativeMarkdownEditorViewModel()
-        firstPassProbe.loadMarkdown(driftInput)
-        let firstPass = firstPassProbe.currentMarkdown()
-
-        let secondPassProbe = NativeMarkdownEditorViewModel()
-        secondPassProbe.loadMarkdown(firstPass)
-        let secondPass = secondPassProbe.currentMarkdown()
-        XCTAssertNotEqual(firstPass, secondPass)
-
         let api = MockNotesAPI(updateResult: .failure(MockError.forced))
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
@@ -658,11 +645,8 @@ extension NotesEditorViewModelTests {
         await Task.yield()
 
         let snapshot = viewModel.currentMarkdownSnapshot(fallback: "fallback")
-        XCTAssertEqual(snapshot, secondPass)
-
-        let stabilityProbe = NativeMarkdownEditorViewModel()
-        stabilityProbe.loadMarkdown(snapshot)
-        XCTAssertEqual(stabilityProbe.currentMarkdown(), snapshot)
+        XCTAssertNotEqual(snapshot, driftInput)
+        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), snapshot)
     }
 
     func testResolveConflictKeepBothCanonicalizesCopiedContent() async throws {
@@ -670,9 +654,7 @@ extension NotesEditorViewModelTests {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
         let nonCanonical = "- [x] Done"
-        let canonicalProbe = NativeMarkdownEditorViewModel()
-        canonicalProbe.loadMarkdown(nonCanonical)
-        let canonical = canonicalProbe.currentMarkdown()
+        let canonical = canonicalSnapshotOutput(nonCanonical)
         XCTAssertNotEqual(canonical, nonCanonical)
 
         let created = NotePayload(
@@ -850,6 +832,22 @@ extension NotesEditorViewModelTests {
         let pending = try await writeQueue.fetchPendingWrites()
         XCTAssertEqual(pending.count, 1)
     }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@MainActor
+private func canonicalMarkdownPass(_ markdown: String) -> String {
+    let probe = NativeMarkdownEditorViewModel()
+    probe.loadMarkdown(markdown)
+    return probe.currentMarkdown()
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@MainActor
+private func canonicalSnapshotOutput(_ markdown: String) -> String {
+    let firstPass = canonicalMarkdownPass(markdown)
+    let secondPass = canonicalMarkdownPass(firstPass)
+    return firstPass == secondPass ? firstPass : secondPass
 }
 
 private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {

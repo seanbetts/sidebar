@@ -5,7 +5,6 @@ final class NotesDetailViewTests: XCTestCase {
     func testResolveEditorRenderingModeFallsBackToLegacyWhenNativeUnavailable() {
         let mode = NotesDetailView.resolveEditorRenderingMode(
             osSupportsNative: false,
-            useNativeMarkdownEditor: true,
             useAttributedNoteEditorV2: true
         )
 
@@ -15,27 +14,24 @@ final class NotesDetailViewTests: XCTestCase {
     func testResolveEditorRenderingModeUsesV2WhenEnabled() {
         let mode = NotesDetailView.resolveEditorRenderingMode(
             osSupportsNative: true,
-            useNativeMarkdownEditor: true,
             useAttributedNoteEditorV2: true
         )
 
         XCTAssertEqual(mode, .attributedV2)
     }
 
-    func testResolveEditorRenderingModeUsesNativeV1WhenV2Disabled() {
+    func testResolveEditorRenderingModeUsesLegacyWhenV2Disabled() {
         let mode = NotesDetailView.resolveEditorRenderingMode(
             osSupportsNative: true,
-            useNativeMarkdownEditor: true,
             useAttributedNoteEditorV2: false
         )
 
-        XCTAssertEqual(mode, .nativeMarkdownV1)
+        XCTAssertEqual(mode, .markdownLegacy)
     }
 
-    func testResolveEditorRenderingModeUsesLegacyWhenNativeDisabled() {
+    func testResolveEditorRenderingModeUsesLegacyWhenNativeUnavailableAndV2Disabled() {
         let mode = NotesDetailView.resolveEditorRenderingMode(
-            osSupportsNative: true,
-            useNativeMarkdownEditor: false,
+            osSupportsNative: false,
             useAttributedNoteEditorV2: false
         )
 

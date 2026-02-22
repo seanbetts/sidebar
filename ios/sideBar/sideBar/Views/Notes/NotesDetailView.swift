@@ -8,7 +8,6 @@ import AppKit
 
 enum NotesEditorRenderingMode: Equatable {
     case markdownLegacy
-    case nativeMarkdownV1
     case attributedV2
 }
 
@@ -34,8 +33,7 @@ struct NotesDetailView: View {
     #if os(iOS)
     @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
     #endif
-    @AppStorage(AppStorageKeys.useNativeMarkdownEditor) private var useNativeMarkdownEditor = true
-    @AppStorage(AppStorageKeys.useAttributedNoteEditorV2) private var useAttributedNoteEditorV2 = false
+    @AppStorage(AppStorageKeys.useAttributedNoteEditorV2) private var useAttributedNoteEditorV2 = true
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -164,11 +162,6 @@ extension NotesDetailView {
                             editorViewModel: editorViewModel,
                             maxContentWidth: contentMaxWidth
                         )
-                    case .nativeMarkdownV1:
-                        NativeMarkdownEditorContainer(
-                            editorViewModel: editorViewModel,
-                            maxContentWidth: contentMaxWidth
-                        )
                     case .markdownLegacy:
                         SideBarMarkdownContainer(text: editorViewModel.content)
                             .onAppear {
@@ -270,14 +263,12 @@ extension NotesDetailView {
     private var editorRenderingMode: NotesEditorRenderingMode {
         Self.resolveEditorRenderingMode(
             osSupportsNative: true,
-            useNativeMarkdownEditor: useNativeMarkdownEditor,
             useAttributedNoteEditorV2: useAttributedNoteEditorV2
         )
     }
 
     static func resolveEditorRenderingMode(
         osSupportsNative: Bool,
-        useNativeMarkdownEditor: Bool,
         useAttributedNoteEditorV2: Bool
     ) -> NotesEditorRenderingMode {
         guard osSupportsNative else {
@@ -285,9 +276,6 @@ extension NotesDetailView {
         }
         if useAttributedNoteEditorV2 {
             return .attributedV2
-        }
-        if useNativeMarkdownEditor {
-            return .nativeMarkdownV1
         }
         return .markdownLegacy
     }
