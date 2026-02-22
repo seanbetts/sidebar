@@ -226,7 +226,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .profile:
             return "Profile"
         case .settings:
-            return "Other"
+            return "App"
         case .user:
             return "User"
         case .agent:
@@ -236,6 +236,13 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .memories:
             return "Memories"
         }
+    }
+
+    func displayTitle(assistantDisplayName: String) -> String {
+        if self == .agent {
+            return assistantDisplayName
+        }
+        return title
     }
 
     var systemImage: String {
@@ -268,7 +275,7 @@ private struct SettingsSplitView: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             List(SettingsSection.allCases, selection: $selection) { section in
-                Label(section.title, systemImage: section.systemImage)
+                Label(section.displayTitle(assistantDisplayName: viewModel.assistantDisplayName), systemImage: section.systemImage)
                     .tag(section)
             }
             .listStyle(.sidebar)
@@ -277,7 +284,7 @@ private struct SettingsSplitView: View {
             .modifier(SidebarToggleHider())
         } detail: {
             settingsDetailView(for: selection ?? .profile)
-                .navigationTitle(selection?.title ?? "Settings")
+                .navigationTitle((selection ?? .profile).displayTitle(assistantDisplayName: viewModel.assistantDisplayName))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .modifier(SidebarToggleHider())
                 .background(settingsBackground)
@@ -359,7 +366,7 @@ private struct SettingsTabsView: View {
                 }
             settingsTabContent(AgentSettingsView(viewModel: viewModel))
                 .tabItem {
-                    Label("Agent", systemImage: "brain.fill")
+                    Label(viewModel.assistantDisplayName, systemImage: "brain.fill")
                 }
             settingsTabContent(SkillsSettingsView(viewModel: viewModel))
                 .tabItem {
@@ -371,7 +378,7 @@ private struct SettingsTabsView: View {
                 }
             settingsTabContent(GeneralSettingsView())
                 .tabItem {
-                    Label("Other", systemImage: "gearshape")
+                    Label("App", systemImage: "gearshape")
                 }
         }
         .padding(DesignTokens.Spacing.md)
