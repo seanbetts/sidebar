@@ -70,6 +70,40 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertFalse(exported.contains("````"))
     }
 
+    func testInlineExportEscapesLiteralMarkersAndSerializesSemanticStyles() {
+        var attributed = AttributedString("literal **stars** and styled")
+        guard let styledRange = attributed.range(of: "styled") else {
+            XCTFail("Expected styled range")
+            return
+        }
+        attributed[styledRange].inlinePresentationIntent = [.stronglyEmphasized]
+
+        let exported = MarkdownExporter().markdown(from: attributed)
+
+        XCTAssertEqual(exported, #"literal \*\*stars\*\* and **styled**"#)
+    }
+
+    func testInlineExportPreservesLinkWithInlineStyleSemantics() {
+        var attributed = AttributedString("Link")
+        let range = attributed.startIndex..<attributed.endIndex
+        attributed[range].inlinePresentationIntent = [.stronglyEmphasized]
+        attributed[range].link = URL(string: "https://example.com")
+
+        let exported = MarkdownExporter().markdown(from: attributed)
+
+        XCTAssertEqual(exported, "[**Link**](https://example.com)")
+    }
+
+    func testInlineCodeUsesSafeFenceLengthWhenTextContainsBackticks() {
+        var attributed = AttributedString("value`tick")
+        let range = attributed.startIndex..<attributed.endIndex
+        attributed[range].inlinePresentationIntent = [.code]
+
+        let exported = MarkdownExporter().markdown(from: attributed)
+
+        XCTAssertEqual(exported, "``value`tick``")
+    }
+
     func testImportHeadingOmitsLiteralHeadingMarkersInAttributedText() {
         let markdown = "# Title"
         let result = MarkdownImporter().attributedString(from: markdown)

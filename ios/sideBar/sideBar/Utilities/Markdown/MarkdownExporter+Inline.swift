@@ -3,8 +3,6 @@ import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
 func serializeInline(_ attributed: AttributedSubstring) -> String {
-    let lineText = filteredText(from: attributed)
-    let hasInlineMarkers = lineHasInlineMarkers(lineText)
     var output = ""
 
     for run in attributed.runs {
@@ -25,32 +23,21 @@ func serializeInline(_ attributed: AttributedSubstring) -> String {
         let isStrike = run.strikethroughStyle != nil
         let link = run.link
 
-        var prefix = ""
-        var suffix = ""
-
-        if isCode {
-            prefix += "`"
-            suffix = "`" + suffix
-        }
+        var content = isCode ? wrappedInlineCode(text) : escapeInlineText(text)
         if isStrike {
-            prefix += "~~"
-            suffix = "~~" + suffix
+            content = "~~\(content)~~"
         }
         if isItalic {
-            prefix += "*"
-            suffix = "*" + suffix
+            content = "*\(content)*"
         }
         if isBold {
-            prefix += "**"
-            suffix = "**" + suffix
+            content = "**\(content)**"
         }
 
         if let link {
-            output += "[\(text)](\(link.absoluteString))"
-        } else if hasInlineMarkers {
-            output += text
+            output += "[\(content)](\(escapedLinkDestination(link.absoluteString)))"
         } else {
-            output += "\(prefix)\(text)\(suffix)"
+            output += content
         }
     }
 
@@ -70,19 +57,40 @@ func filteredText(from attributed: AttributedSubstring) -> String {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func lineHasInlineMarkers(_ lineText: String) -> Bool {
-    let patterns = [
-        #"\*\*[^*]+?\*\*"#,
-        #"__[^_]+?__"#,
-        #"~~[^~]+?~~"#,
-        #"`[^`]+?`"#,
-        #"\*[^*]+?\*"#,
-        #"_[^_]+?_"#
-    ]
+private func wrappedInlineCode(_ text: String) -> String {
+    let fence = inlineCodeFence(for: text)
+    return "\(fence)\(text)\(fence)"
+}
 
-    for pattern in patterns where lineText.range(of: pattern, options: .regularExpression) != nil {
-        return true
+@available(iOS 26.0, macOS 26.0, *)
+private func inlineCodeFence(for text: String) -> String {
+    var length = 1
+    while text.contains(String(repeating: "`", count: length)) {
+        length += 1
     }
+    return String(repeating: "`", count: length)
+}
 
-    return false
+@available(iOS 26.0, macOS 26.0, *)
+private func escapeInlineText(_ text: String) -> String {
+    var result = ""
+    result.reserveCapacity(text.count)
+    for character in text {
+        switch character {
+        case "\\":
+            result += "\\\\"
+        case "*", "_", "`", "~", "[", "]":
+            result += "\\\(character)"
+        default:
+            result.append(character)
+        }
+    }
+    return result
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func escapedLinkDestination(_ destination: String) -> String {
+    destination
+        .replacingOccurrences(of: "\\", with: "\\\\")
+        .replacingOccurrences(of: ")", with: "\\)")
 }
