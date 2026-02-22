@@ -38,7 +38,8 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         guard let noteId = write.entityId else { return }
         try await checkForConflictIfNeeded(noteId: noteId, write: write)
         let payload = try decoder.decode(NoteUpdateRequest.self, from: write.payload)
-        let updated = try await api.updateNote(id: noteId, content: payload.content)
+        let canonicalContent = canonicalizedNoteContent(payload.content)
+        let updated = try await api.updateNote(id: noteId, content: canonicalContent)
         store.applyEditorUpdate(updated)
     }
 
@@ -154,5 +155,14 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         } catch {
             logger.error("Failed to refresh note tree after queued write: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    private func canonicalizedNoteContent(_ content: String) -> String {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            return content
+        }
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown(content)
+        return viewModel.currentMarkdown()
     }
 }
