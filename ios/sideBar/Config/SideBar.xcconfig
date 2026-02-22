@@ -22,6 +22,7 @@ R2_FAVICON_PUBLIC_BASE_URL =
 APP_GROUP_ID = group.ai.sidebar.sidebar
 KEYCHAIN_ACCESS_GROUP =
 KEYCHAIN_SERVICE =
+ASSOCIATED_DOMAINS = webcredentials:sidebar.seanbetts.com
 
 // Expose config via generated Info.plist keys for runtime access (Bundle.main)
 INFOPLIST_KEY_API_BASE_URL = $(API_BASE_URL)

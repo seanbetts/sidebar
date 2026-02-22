@@ -15,6 +15,7 @@ The Apple app and extensions require runtime configuration from build settings
 - `APP_GROUP_ID`: app group identifier shared by app/extensions.
 - `KEYCHAIN_ACCESS_GROUP`: keychain access group used for shared auth state.
 - `KEYCHAIN_SERVICE`: keychain service name.
+- `ASSOCIATED_DOMAINS`: Apple Associated Domains entitlement entries (for example `webcredentials:sidebar.seanbetts.com`).
 - `R2_ENDPOINT`: Cloudflare R2 S3 endpoint.
 - `R2_BUCKET`: R2 bucket for ingestion uploads.
 - `R2_FAVICON_BUCKET`: R2 bucket for favicon assets.

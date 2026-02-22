@@ -11,6 +11,8 @@
 #   - KEYCHAIN_SERVICE
 # Optional (defaults to group.ai.sidebar.sidebar):
 #   - APP_GROUP_ID
+# Optional (defaults to sideBar production webcredentials domain):
+#   - ASSOCIATED_DOMAINS
 
 set -euo pipefail
 
@@ -48,6 +50,7 @@ if ! [[ "$APP_GROUP_ID" =~ ^(group\.[A-Za-z0-9.-]+|[A-Z0-9]{10}\.[A-Za-z0-9.-]+)
     echo "Error: APP_GROUP_ID must be a valid app group identifier (got: '$APP_GROUP_ID')"
     exit 1
 fi
+ASSOCIATED_DOMAINS="${ASSOCIATED_DOMAINS:-webcredentials:sidebar.seanbetts.com}"
 
 # Escape forward slashes for xcconfig format (// is treated as comment)
 escape_url() {
@@ -77,6 +80,7 @@ R2_FAVICON_PUBLIC_BASE_URL = ${R2_FAVICON_PUBLIC_BASE_URL_ESCAPED}
 APP_GROUP_ID = ${APP_GROUP_ID}
 KEYCHAIN_ACCESS_GROUP = ${KEYCHAIN_ACCESS_GROUP}
 KEYCHAIN_SERVICE = ${KEYCHAIN_SERVICE}
+ASSOCIATED_DOMAINS = ${ASSOCIATED_DOMAINS}
 
 INFOPLIST_KEY_API_BASE_URL = \$(API_BASE_URL)
 INFOPLIST_KEY_SUPABASE_URL = \$(SUPABASE_URL)

@@ -273,6 +273,17 @@ final class SafariExtensionCoverageTests: XCTestCase {
         }
     }
 
+    func testMainAppEntitlementsIncludeWebCredentialsDomain() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let entitlementsPath = repositoryRoot
+            .appendingPathComponent("ios/sideBar/sideBar/sideBar.entitlements")
+            .path
+        let content = try String(contentsOfFile: entitlementsPath, encoding: .utf8)
+
+        XCTAssertTrue(content.contains("<key>com.apple.developer.associated-domains</key>"))
+        XCTAssertTrue(content.contains("<string>$(ASSOCIATED_DOMAINS)</string>"))
+    }
+
     private func makeStore() -> PendingShareStore {
         let temporarySuiteName = "\(suiteName).\(UUID().uuidString)"
         temporarySuiteNames.append(temporarySuiteName)
