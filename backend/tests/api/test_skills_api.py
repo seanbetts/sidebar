@@ -22,7 +22,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert response.status_code == 200
 
     payload = response.json()
-    assert payload["catalog_version"] == 8
+    assert payload["catalog_version"] == 9
     assert isinstance(payload["skills"], list)
     assert payload["skills"]
 

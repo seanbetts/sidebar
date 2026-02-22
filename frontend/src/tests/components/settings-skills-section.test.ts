@@ -36,6 +36,6 @@ describe('SettingsSkillsSection', () => {
 		expect(checkboxes[0]).toBeDisabled();
 		expect(checkboxes[1]).toBeDisabled();
 		expect(checkboxes[1]).toBeChecked();
-		expect(screen.getByText('Required')).toBeInTheDocument();
+		expect(screen.queryByText('Required')).not.toBeInTheDocument();
 	});
 });

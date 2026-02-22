@@ -144,11 +144,6 @@ class SkillCatalogService:
             "default_enabled": is_skill_default_enabled(skill_id),
             "installable": is_skill_installable(skill_id),
             "status": "active",
-            "show_required_badge": SkillCatalogService._display_bool(
-                display,
-                "show_required_badge",
-                not user_toggleable,
-            ),
             "long_description": long_description,
             "how_it_works": how_it_works,
             "requirements": requirements,
@@ -209,13 +204,6 @@ class SkillCatalogService:
         if isinstance(value, str):
             return value
         return None
-
-    @staticmethod
-    def _display_bool(display: dict[str, Any], key: str, default: bool) -> bool:
-        value = display.get(key)
-        if isinstance(value, bool):
-            return value
-        return default
 
     @staticmethod
     def _coalesce_str(*values: Any) -> str | None:
@@ -310,7 +298,7 @@ class SkillCatalogService:
             "assistant-soul": "System",
             "settings-profile-user": "System",
             "settings-other-preferences": "System",
-            "product-feedback": "Development",
+            "product-feedback": "System",
             "audio-transcribe": "Media",
             "youtube-download": "Media",
             "youtube-transcribe": "Media",

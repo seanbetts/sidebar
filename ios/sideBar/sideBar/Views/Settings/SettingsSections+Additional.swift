@@ -102,7 +102,7 @@ struct SkillsSettingsView: View {
     }
 
     @ViewBuilder
-    private func skillLabel(_ skill: SkillItem, includeRequiredBadge: Bool = true) -> some View {
+    private func skillLabel(_ skill: SkillItem) -> some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             Image(systemName: SkillsStoreLogic.iconName(for: skill))
                 .font(.subheadline)
@@ -111,17 +111,8 @@ struct SkillsSettingsView: View {
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(viewModel.displayName(for: skill))
-                        .font(DesignTokens.Typography.subheadlineSemibold)
-
-                    if includeRequiredBadge && !skill.userToggleable && skill.showRequiredBadge {
-                        Text("Required")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .textCase(.uppercase)
-                    }
-                }
+                Text(viewModel.displayName(for: skill))
+                    .font(DesignTokens.Typography.subheadlineSemibold)
 
                 Text(viewModel.displayDescription(for: skill))
                     .font(.caption)
@@ -151,7 +142,7 @@ struct SkillsSettingsView: View {
             Button {
                 selectedStoreSkill = skill
             } label: {
-                skillLabel(skill, includeRequiredBadge: false)
+                skillLabel(skill)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
             }

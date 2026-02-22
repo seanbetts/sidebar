@@ -108,10 +108,8 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
     assert bool(by_id["assistant-identity"]["user_toggleable"]) is False
     assert bool(by_id["assistant-soul"]["user_toggleable"]) is False
-    assert bool(by_id["assistant-identity"]["show_required_badge"]) is False
-    assert bool(by_id["assistant-soul"]["show_required_badge"]) is False
     assert all(not str(skill["description"]).endswith(".") for skill in by_id.values())
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 8
+    assert SkillCatalogService.catalog_version() == 9

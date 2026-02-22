@@ -87,8 +87,6 @@ public struct SkillItem: Codable, Identifiable {
     public let installable: Bool
     /// Catalog status (active, beta, hidden, deprecated).
     public let status: String
-    /// Whether non-toggleable skills should show a "Required" badge.
-    public let showRequiredBadge: Bool
     /// Optional longer user-facing description for detail modal.
     public let longDescription: String?
     /// Optional non-technical explanation of how the skill works.
@@ -122,7 +120,6 @@ public struct SkillItem: Codable, Identifiable {
         defaultEnabled: Bool = false,
         installable: Bool = false,
         status: String = "active",
-        showRequiredBadge: Bool? = nil,
         longDescription: String? = nil,
         howItWorks: String? = nil,
         requirements: [String] = [],
@@ -146,7 +143,6 @@ public struct SkillItem: Codable, Identifiable {
         self.defaultEnabled = defaultEnabled
         self.installable = installable
         self.status = status
-        self.showRequiredBadge = showRequiredBadge ?? !userToggleable
         self.longDescription = longDescription
         self.howItWorks = howItWorks
         self.requirements = requirements
@@ -172,7 +168,6 @@ public struct SkillItem: Codable, Identifiable {
         case defaultEnabled
         case installable
         case status
-        case showRequiredBadge
         case longDescription
         case howItWorks
         case requirements
@@ -188,7 +183,6 @@ public struct SkillItem: Codable, Identifiable {
         case legacyCredentialRequirements = "credential_requirements"
         case legacyUserToggleable = "user_toggleable"
         case legacyDefaultEnabled = "default_enabled"
-        case legacyShowRequiredBadge = "show_required_badge"
         case legacyLongDescription = "long_description"
         case legacyHowItWorks = "how_it_works"
         case legacyUpdatedAt = "updated_at"
@@ -247,13 +241,6 @@ public struct SkillItem: Codable, Identifiable {
         )
         installable = try container.decodeIfPresent(Bool.self, forKey: .installable) ?? false
         status = try container.decodeIfPresent(String.self, forKey: .status) ?? "active"
-        showRequiredBadge = try Self.decodePreferred(
-            Bool.self,
-            from: container,
-            primary: .showRequiredBadge,
-            legacy: .legacyShowRequiredBadge,
-            default: !userToggleable
-        )
         longDescription = try container.decodeIfPresent(String.self, forKey: .longDescription)
             ?? container.decodeIfPresent(String.self, forKey: .legacyLongDescription)
         howItWorks = try container.decodeIfPresent(String.self, forKey: .howItWorks)
@@ -285,7 +272,6 @@ public struct SkillItem: Codable, Identifiable {
         try container.encode(defaultEnabled, forKey: .defaultEnabled)
         try container.encode(installable, forKey: .installable)
         try container.encode(status, forKey: .status)
-        try container.encode(showRequiredBadge, forKey: .showRequiredBadge)
         try container.encodeIfPresent(longDescription, forKey: .longDescription)
         try container.encodeIfPresent(howItWorks, forKey: .howItWorks)
         try container.encode(requirements, forKey: .requirements)

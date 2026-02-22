@@ -127,15 +127,12 @@
 											{enabledSkills.includes(skill.id) ? 'Disable' : 'Enable'}
 											{skill.name}
 										{:else}
-											Required skill
+											{skill.name} cannot be disabled
 										{/if}
 									</TooltipContent>
 								</Tooltip>
 							</div>
 							<div class="skill-description">{skill.description}</div>
-							{#if !isSkillToggleable(skill)}
-								<div class="skill-required">Required</div>
-							{/if}
 						</div>
 					{/each}
 				</div>
@@ -283,13 +280,5 @@
 	.skill-toggle-label {
 		font-size: 0.8rem;
 		color: var(--color-foreground);
-	}
-
-	.skill-required {
-		margin-top: 0.35rem;
-		font-size: 0.72rem;
-		color: var(--color-muted-foreground);
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
 	}
 </style>

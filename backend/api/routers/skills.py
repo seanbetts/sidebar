@@ -31,7 +31,6 @@ class SkillItem(BaseModel):
     default_enabled: bool = False
     installable: bool = False
     status: str = "active"
-    show_required_badge: bool = True
     long_description: str | None = None
     how_it_works: str | None = None
     requirements: list[str] = []
@@ -117,7 +116,6 @@ async def list_skills(_: str = Depends(verify_bearer_token)):
             default_enabled=bool(skill.get("default_enabled", False)),
             installable=bool(skill.get("installable", False)),
             status=str(skill.get("status", "active")),
-            show_required_badge=bool(skill.get("show_required_badge", True)),
             long_description=(
                 str(skill["long_description"])
                 if isinstance(skill.get("long_description"), str)

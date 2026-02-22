@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 8
+CATALOG_VERSION = 9
 
 SkillTier = Literal["required", "standard", "store"]
 
@@ -67,12 +67,10 @@ SKILL_DISPLAY = {
     "assistant-identity": {
         "name": "Assistant Identity",
         "description": "Read and update assistant-managed identity settings",
-        "show_required_badge": False,
     },
     "assistant-soul": {
         "name": "Assistant Soul",
         "description": "Read and update assistant-managed soul guidance settings",
-        "show_required_badge": False,
     },
     "settings-profile-user": {
         "name": "Settings Profile/User",
