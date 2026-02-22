@@ -33,6 +33,16 @@ final class ErrorMappingTests: XCTestCase {
         XCTAssertEqual(message, "Request was interrupted. Please try again.")
     }
 
+    func testMapsCancelledRequestWithPeerTrustAsSecureConnectionError() {
+        let error = NSError(
+            domain: NSURLErrorDomain,
+            code: URLError.cancelled.rawValue,
+            userInfo: [NSURLErrorFailingURLPeerTrustErrorKey: "peer-trust"]
+        )
+        let message = ErrorMapping.message(for: error)
+        XCTAssertEqual(message, "Secure connection to server failed. The server certificate may have changed.")
+    }
+
     func testMapsOperationMessage() {
         let message = ErrorMapping.message(for: APIClientError.invalidUrl, during: "load settings")
         XCTAssertEqual(message, "Failed to load settings: Invalid request URL.")

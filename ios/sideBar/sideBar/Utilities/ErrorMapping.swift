@@ -17,6 +17,10 @@ enum URLRequestErrorClassifier {
             return nil
         }
 
+        if code == .cancelled, appearsToBeSecureTransportCancellation(error) {
+            return .secureConnection
+        }
+
         switch code {
         case .notConnectedToInternet, .networkConnectionLost:
             return .offline
@@ -52,6 +56,29 @@ enum URLRequestErrorClassifier {
             return nil
         }
         return URLError.Code(rawValue: nsError.code)
+    }
+
+    private static func appearsToBeSecureTransportCancellation(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        guard nsError.domain == NSURLErrorDomain,
+              nsError.code == URLError.cancelled.rawValue else {
+            return false
+        }
+
+        if nsError.userInfo[NSURLErrorFailingURLPeerTrustErrorKey] != nil {
+            return true
+        }
+
+        let description = nsError.localizedDescription.lowercased()
+        let signals = [
+            "certificate",
+            "secure connection",
+            "tls",
+            "ssl",
+            "server trust",
+            "pinning"
+        ]
+        return signals.contains(where: description.contains)
     }
 }
 
