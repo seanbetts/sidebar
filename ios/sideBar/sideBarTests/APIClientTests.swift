@@ -189,6 +189,51 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(requestCount.value, 1)
     }
 
+    func test401RetriesGetEvenWhenInitialAuthorizationHeaderIsMissing() async throws {
+        final class TokenBox: @unchecked Sendable {
+            var token: String?
+            init(_ token: String?) { self.token = token }
+        }
+        final class Counter: @unchecked Sendable {
+            var value: Int = 0
+        }
+
+        let tokenBox = TokenBox(nil)
+        let refreshCalls = Counter()
+        let requestCount = Counter()
+
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { tokenBox.token },
+            refreshAuthIfNeeded: {
+                refreshCalls.value += 1
+                tokenBox.token = "token-2"
+                return true
+            }
+        )
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolMock.self]
+        let session = URLSession(configuration: configuration)
+        let client = APIClient(config: config, session: session)
+
+        URLProtocolMock.requestHandler = { request in
+            requestCount.value += 1
+            if requestCount.value == 1 {
+                XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+                return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
+            }
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-2")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{}".utf8))
+        }
+
+        let _: EmptyResponse = try await client.request("ping", method: "GET")
+        XCTAssertEqual(refreshCalls.value, 1)
+        XCTAssertEqual(requestCount.value, 2)
+    }
+
     func testConcurrent401RequestsCoalesceAuthRefresh() async throws {
         let tokenBox = SynchronizedTokenBox("token-1")
         let refreshCalls = SynchronizedCounter()

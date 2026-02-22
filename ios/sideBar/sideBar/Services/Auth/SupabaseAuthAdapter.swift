@@ -446,7 +446,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         refreshInFlightTask?.cancel()
         if clearPersistedState {
             do {
-                try stateStore.clear()
+                try clearPersistedAuthState()
             } catch {
                 logger.error("Failed to clear auth state: \(error.localizedDescription, privacy: .public)")
             }
@@ -479,22 +479,11 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     }
 
     private func isAuthInvalid(_ error: Error) -> Bool {
-        if error is URLError {
-            return false
-        }
-        let description = error.localizedDescription.lowercased()
-        if description.contains("invalid") && description.contains("refresh") {
-            return true
-        }
-        if description.contains("refresh token") && description.contains("expired") {
-            return true
-        }
-        if description.contains("jwt") && description.contains("expired") && description.contains("refresh") {
-            return true
-        }
-        if description.contains("unauthorized") || description.contains("forbidden") {
-            return true
-        }
-        return false
+        SupabaseAuthRecovery.isAuthInvalid(error)
     }
+
+    private func clearPersistedAuthState() throws {
+        try SupabaseAuthRecovery.clearPersistedAuthState(stateStore: stateStore)
+    }
+
 }

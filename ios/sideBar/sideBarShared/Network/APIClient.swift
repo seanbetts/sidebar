@@ -242,8 +242,7 @@ public final class APIClient {
         guard config.refreshAuthIfNeeded != nil else { return false }
         let method = request.httpMethod?.uppercased() ?? "GET"
         let retryableMethods = Set(["GET", "PUT", "DELETE"])
-        guard retryableMethods.contains(method) else { return false }
-        return request.value(forHTTPHeaderField: "Authorization") != nil
+        return retryableMethods.contains(method)
     }
 
     private func shouldRetryWithUpdatedToken(for request: URLRequest) -> Bool {

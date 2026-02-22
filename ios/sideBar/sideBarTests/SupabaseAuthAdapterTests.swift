@@ -10,6 +10,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
     private final class FakeSupabaseAuthClient: SupabaseAuthClientProtocol, @unchecked Sendable {
         var currentSession: SupabaseSessionInfo?
         var refreshResult: Result<SupabaseSessionInfo, Error>?
+        var signOutError: Error?
 
         private var continuation: AsyncStream<(SupabaseAuthEvent, SupabaseSessionInfo?)>.Continuation?
         private var pendingEvents: [(SupabaseAuthEvent, SupabaseSessionInfo?)] = []
@@ -56,6 +57,9 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         }
 
         func signOut() async throws {
+            if let signOutError {
+                throw signOutError
+            }
             currentSession = nil
         }
     }
@@ -244,6 +248,64 @@ final class SupabaseAuthAdapterTests: XCTestCase {
 
         try await waitUntil(timeoutSeconds: 5.0) { adapter.authState != .active }
         XCTAssertEqual(adapter.authState, .signedOut)
+    }
+
+    func testNilSessionWithTypedAuthSessionExpiredErrorSignsOut() async throws {
+        let exp: TimeInterval = Date().addingTimeInterval(60 * 60).timeIntervalSince1970
+        let token = makeJwt(exp: exp)
+        let client = FakeSupabaseAuthClient()
+        client.currentSession = SupabaseSessionInfo(accessToken: token, userId: "user-1", expiresAt: exp)
+        client.refreshResult = .failure(
+            AuthError.api(
+                message: "Session expired",
+                errorCode: .sessionExpired,
+                underlyingData: Data(),
+                underlyingResponse: HTTPURLResponse(
+                    url: URL(string: "https://example.com")!,
+                    statusCode: 401,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!
+            )
+        )
+
+        let store = InMemoryAuthStateStore()
+        let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: true)
+
+        XCTAssertEqual(adapter.authState, .active)
+        try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
+        client.yield(event: .other("TOKEN_REFRESHED"), session: nil)
+
+        try await waitUntil(timeoutSeconds: 5.0) { adapter.authState != .active }
+        XCTAssertEqual(adapter.authState, .signedOut)
+    }
+
+    func testSignOutClearsSupabaseSessionStorageKeysWhenAuthClientSignOutFails() async throws {
+        let store = KeychainAuthStateStore(
+            service: "sideBar.AuthTests.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        try store.saveAccessToken("token")
+        try store.saveUserId("user")
+        try store.saveSessionData(Data("session".utf8), forKey: "supabase.auth.token")
+        try store.saveSessionData(Data("legacy".utf8), forKey: "supabase.session")
+
+        let client = FakeSupabaseAuthClient()
+        client.signOutError = NSError(
+            domain: "Auth",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Sign-out transport failure"]
+        )
+        let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: false)
+        adapter.restoreSession(accessToken: "token", userId: "user")
+
+        await adapter.signOut()
+
+        XCTAssertEqual(adapter.authState, .signedOut)
+        XCTAssertNil(try store.loadAccessToken())
+        XCTAssertNil(try store.loadUserId())
+        XCTAssertNil(try store.loadSessionData(forKey: "supabase.auth.token"))
+        XCTAssertNil(try store.loadSessionData(forKey: "supabase.session"))
     }
 
     private func base64UrlEncode(_ payload: [String: Any]) -> String {
