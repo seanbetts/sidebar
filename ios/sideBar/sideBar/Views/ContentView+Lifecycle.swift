@@ -14,6 +14,12 @@ struct MacInitialSelectionPlan {
     let shouldConsumeCommandSelection: Bool
 }
 
+struct DesktopSidebarSelectionPlan: Equatable {
+    let primarySection: AppSection?
+    let secondarySection: AppSection?
+    let lastNonChatSection: AppSection?
+}
+
 enum InitialPhoneChatAction: Equatable {
     case createConversation
 }
@@ -227,6 +233,35 @@ extension ContentView {
         makeMacInitialSelectionPlan(pendingSelection: phoneSelection)
     }
 
+    static func makeDesktopSidebarSelectionPlan(
+        currentPrimarySection: AppSection?,
+        currentSecondarySection: AppSection?,
+        currentLastNonChatSection: AppSection?,
+        selectedSection: AppSection
+    ) -> DesktopSidebarSelectionPlan {
+        if selectedSection == .chat {
+            return DesktopSidebarSelectionPlan(
+                primarySection: nil,
+                secondarySection: .chat,
+                lastNonChatSection: currentLastNonChatSection
+            )
+        }
+
+        if currentPrimarySection == .chat {
+            return DesktopSidebarSelectionPlan(
+                primarySection: .chat,
+                secondarySection: selectedSection,
+                lastNonChatSection: selectedSection
+            )
+        }
+
+        return DesktopSidebarSelectionPlan(
+            primarySection: selectedSection,
+            secondarySection: currentSecondarySection,
+            lastNonChatSection: selectedSection
+        )
+    }
+
     static func shouldDisplayPhoneFloatingActionDock(
         isPhoneIdiom: Bool,
         isPhonePanelListVisible: Bool,
@@ -247,6 +282,29 @@ extension ContentView {
     ) -> Bool {
         guard isDesktopLikeLayout else { return false }
         return section == .chat
+    }
+
+    func handleSidebarSelectionChange(_ newValue: AppSection?) {
+        if let newValue {
+            environment.focusedSection = newValue
+            ensureChatSidebarVisibleIfNeeded(for: newValue)
+        }
+        updateActiveSection()
+
+        guard let newValue else { return }
+        #if !os(macOS)
+        guard horizontalSizeClass != .compact else { return }
+        #endif
+
+        let plan = Self.makeDesktopSidebarSelectionPlan(
+            currentPrimarySection: primarySection,
+            currentSecondarySection: secondarySection,
+            currentLastNonChatSection: lastNonChatSection,
+            selectedSection: newValue
+        )
+        primarySection = plan.primarySection
+        secondarySection = plan.secondarySection
+        lastNonChatSection = plan.lastNonChatSection
     }
 
     func ensureChatSidebarVisibleIfNeeded(for section: AppSection?) {

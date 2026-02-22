@@ -80,6 +80,45 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(plan.sidebarSelection, .tasks)
     }
 
+    func testMakeDesktopSidebarSelectionPlanRoutesSkillsStoreToPrimaryWorkspace() {
+        let plan = ContentView.makeDesktopSidebarSelectionPlan(
+            currentPrimarySection: nil,
+            currentSecondarySection: .chat,
+            currentLastNonChatSection: nil,
+            selectedSection: .skillsStore
+        )
+
+        XCTAssertEqual(plan.primarySection, .skillsStore)
+        XCTAssertEqual(plan.secondarySection, .chat)
+        XCTAssertEqual(plan.lastNonChatSection, .skillsStore)
+    }
+
+    func testMakeDesktopSidebarSelectionPlanResetsToChatWithoutDroppingLastNonChatSection() {
+        let plan = ContentView.makeDesktopSidebarSelectionPlan(
+            currentPrimarySection: .skillsStore,
+            currentSecondarySection: .chat,
+            currentLastNonChatSection: .skillsStore,
+            selectedSection: .chat
+        )
+
+        XCTAssertNil(plan.primarySection)
+        XCTAssertEqual(plan.secondarySection, .chat)
+        XCTAssertEqual(plan.lastNonChatSection, .skillsStore)
+    }
+
+    func testMakeDesktopSidebarSelectionPlanUsesSecondaryWhenPrimaryIsChat() {
+        let plan = ContentView.makeDesktopSidebarSelectionPlan(
+            currentPrimarySection: .chat,
+            currentSecondarySection: .tasks,
+            currentLastNonChatSection: .tasks,
+            selectedSection: .websites
+        )
+
+        XCTAssertEqual(plan.primarySection, .chat)
+        XCTAssertEqual(plan.secondarySection, .websites)
+        XCTAssertEqual(plan.lastNonChatSection, .websites)
+    }
+
     func testShouldDisplayPhoneFloatingActionDockForPrimaryPhoneSectionPanelList() {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
