@@ -414,16 +414,20 @@ private struct NativeMoreTabStyleConfigurator: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        guard let tabBarController = tabBarController(from: uiViewController) else {
-            return
-        }
+        // Deferred to the next run loop tick so the UITabBarController hierarchy
+        // is fully set up before we walk up to find it.
+        DispatchQueue.main.async {
+            guard let tabBarController = tabBarController(from: uiViewController) else {
+                return
+            }
 
-        let moreNavigationController = tabBarController.moreNavigationController
-        moreNavigationController.loadViewIfNeeded()
-        moreNavigationController.view.backgroundColor = .systemGroupedBackground
+            let moreNavigationController = tabBarController.moreNavigationController
+            moreNavigationController.loadViewIfNeeded()
+            moreNavigationController.view.backgroundColor = .systemGroupedBackground
 
-        if let tableView = findTableView(in: moreNavigationController.view) {
-            tableView.backgroundColor = .systemGroupedBackground
+            if let tableView = findTableView(in: moreNavigationController.view) {
+                tableView.backgroundColor = .systemGroupedBackground
+            }
         }
     }
 

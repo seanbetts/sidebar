@@ -17,10 +17,10 @@ struct MemoriesSettingsDetailView: View {
                 header
                 listContent
             }
-            .background(DesignTokens.Colors.settingsFormBackground)
+            .background(DesignTokens.Colors.settingsBackground)
         } detail: {
             detailContent
-                .background(DesignTokens.Colors.settingsFormBackground)
+                .background(DesignTokens.Colors.settingsBackground)
         }
         .navigationSplitViewStyle(.balanced)
         .onAppear {
@@ -64,7 +64,7 @@ struct MemoriesSettingsDetailView: View {
             .font(.subheadline)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(DesignTokens.Colors.settingsBackground)
+                    .fill(DesignTokens.Colors.settingsFormBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -104,7 +104,7 @@ struct MemoriesSettingsDetailView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
-            .background(DesignTokens.Colors.settingsFormBackground)
+            .background(DesignTokens.Colors.settingsBackground)
             .refreshable {
                 await viewModel.load()
             }
