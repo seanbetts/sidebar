@@ -434,6 +434,10 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), canonical)
     }
 
+}
+
+@MainActor
+extension NotesEditorViewModelTests {
     func testDetachNativeEditorStopsUsingDetachedSnapshot() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
@@ -536,10 +540,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         viewModel.detachNativeEditor(differentEditor)
         XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), "Local unsaved body")
     }
-}
 
-@MainActor
-extension NotesEditorViewModelTests {
     func testResolveConflictKeepLocalCanonicalizesDraftContent() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
@@ -673,9 +674,12 @@ extension NotesEditorViewModelTests {
         try await waitUntil(timeoutSeconds: 2.0) { api.updateCallCount == 1 }
 
         XCTAssertNil(viewModel.conflict)
+        XCTAssertEqual(viewModel.currentNoteId, "n1")
         XCTAssertEqual(viewModel.content, "Server content")
         XCTAssertFalse(viewModel.isDirty)
         XCTAssertFalse(viewModel.isQueuedForSync)
+        XCTAssertEqual(notesViewModel.activeNote?.id, "n1")
+        XCTAssertEqual(notesViewModel.selectedNoteId, "/folder/Note.md")
         XCTAssertEqual(api.updatedContents, [canonical])
         let draft = try draftStorage.getDraft(entityType: "note", entityId: "n1")
         XCTAssertNil(draft)
