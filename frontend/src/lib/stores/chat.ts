@@ -57,17 +57,20 @@ function createChatStore() {
 	});
 	const getState = () => get({ subscribe });
 	const toolState = createToolStateHandlers(update, getState);
-	const cleanupEmptyConversation = async () => {
+	const cleanupEmptyConversation = async (conversationIdOverride?: string | null) => {
 		const state = get({ subscribe });
-		if (!state.conversationId || state.messages.length > 0 || state.isStreaming) {
+		const targetId = conversationIdOverride ?? state.conversationId;
+		if (!targetId || state.messages.length > 0 || state.isStreaming) {
 			return;
 		}
-		await conversationListStore.deleteConversation(state.conversationId);
+		await conversationListStore.deleteConversation(targetId);
 		currentConversationId.set(null);
 		clearLastConversation();
-		set({
-			...state,
-			conversationId: null
+		update((current) => {
+			if (current.conversationId === targetId) {
+				return { ...current, conversationId: null };
+			}
+			return current;
 		});
 	};
 
@@ -407,7 +410,7 @@ function createChatStore() {
 		 */
 		reset() {
 			toolState.clearToolTimers();
-			void cleanupEmptyConversation();
+			const currentId = getState().conversationId;
 			set({
 				conversationId: null,
 				messages: [],
@@ -417,6 +420,7 @@ function createChatStore() {
 				activeTool: null
 			});
 			clearLastConversation();
+			void cleanupEmptyConversation(currentId);
 		},
 
 		/**

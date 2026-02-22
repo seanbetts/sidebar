@@ -1,4 +1,5 @@
 import { tasksAPI } from '$lib/services/api';
+import { logError } from '$lib/utils/errorHandling';
 import {
 	applySyncUpdates,
 	enqueueOperation,
@@ -107,7 +108,10 @@ export async function flushTaskOutbox(): Promise<TaskSyncResponse | null> {
 		]);
 		return response;
 	})()
-		.catch(() => null)
+		.catch((error) => {
+			logError('Task outbox flush failed', error, { scope: 'taskSync.flush' });
+			return null;
+		})
 		.finally(() => {
 			flushPromise = null;
 		});

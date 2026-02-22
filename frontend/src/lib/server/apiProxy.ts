@@ -83,7 +83,7 @@ export function createProxyHandler(options: ProxyOptions): RequestHandler {
 				return json(errorData, { status: response.status });
 			}
 
-			const data = await response.json();
+			const data = await response.json().catch(() => ({}));
 			return json(data, { status: response.status });
 		} catch (err) {
 			logError('API proxy error', err, {

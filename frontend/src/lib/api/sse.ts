@@ -130,15 +130,16 @@ export class SSEClient {
 					// Parse SSE format: "event: type\ndata: json"
 					const lines = eventText.split('\n');
 					let eventType = 'message';
-					let eventData = '';
+					const dataLines: string[] = [];
 
 					for (const line of lines) {
 						if (line.startsWith('event:')) {
 							eventType = line.substring(6).trim();
 						} else if (line.startsWith('data:')) {
-							eventData = line.substring(5).trim();
+							dataLines.push(line.substring(5).trim());
 						}
 					}
+					const eventData = dataLines.join('\n');
 
 					if (!eventData) continue;
 

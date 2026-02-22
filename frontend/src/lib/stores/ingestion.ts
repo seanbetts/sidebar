@@ -79,11 +79,14 @@ function createIngestionStore() {
 				},
 				recommended_viewer: null
 			};
-			update((state) => ({
-				...state,
-				localUploads: [...state.localUploads, upload],
-				items: [...state.localUploads, upload, ...state.items]
-			}));
+			update((state) => {
+				const nextLocalUploads = [...state.localUploads, upload];
+				return {
+					...state,
+					localUploads: nextLocalUploads,
+					items: mergeWithLocalUploads(state.items, nextLocalUploads)
+				};
+			});
 			return upload;
 		},
 		addLocalSource(source: { id: string; name: string; mime: string; url: string }) {
@@ -106,11 +109,14 @@ function createIngestionStore() {
 				},
 				recommended_viewer: 'viewer_video'
 			};
-			update((state) => ({
-				...state,
-				localUploads: [...state.localUploads, upload],
-				items: [...state.localUploads, upload, ...state.items]
-			}));
+			update((state) => {
+				const nextLocalUploads = [...state.localUploads, upload];
+				return {
+					...state,
+					localUploads: nextLocalUploads,
+					items: mergeWithLocalUploads(state.items, nextLocalUploads)
+				};
+			});
 			return upload;
 		},
 		updateLocalUploadProgress(fileId: string, progress: number) {

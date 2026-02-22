@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { X } from 'lucide-svelte';
 	import { browser } from '$app/environment';
+	import { onDestroy } from 'svelte';
 
 	export let onSearch: ((query: string) => void | Promise<void>) | undefined = undefined;
 	export let onClear: (() => void | Promise<void>) | undefined = undefined;
@@ -9,6 +10,10 @@
 	let searchQuery = '';
 	let debounceTimeout: ReturnType<typeof setTimeout>;
 	let previousQuery = '';
+
+	onDestroy(() => {
+		clearTimeout(debounceTimeout);
+	});
 
 	function handleSearch() {
 		if (!browser) {

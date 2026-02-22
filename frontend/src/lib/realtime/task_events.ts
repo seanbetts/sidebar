@@ -79,6 +79,7 @@ export function startTaskEvents(userId: string | null) {
 	if (activeUserId === userId && eventSource) return;
 	activeUserId = userId;
 	clearReconnectTimer();
+	cleanup();
 	connect();
 }
 
