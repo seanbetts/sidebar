@@ -69,7 +69,7 @@
 		selectedSite = site;
 	}
 
-	function scheduleMenuClose() {
+	function resetMenuTimeout() {
 		if (menuTimeout) clearTimeout(menuTimeout);
 		menuTimeout = setTimeout(() => {
 			closeMenu();
@@ -90,7 +90,7 @@
 	}
 
 	$: if (activeMenuId) {
-		scheduleMenuClose();
+		resetMenuTimeout();
 		ensureOutsideListener();
 	} else {
 		if (menuTimeout) {
@@ -367,6 +367,7 @@
 								onDownload={handleDownload}
 								onArchive={handleArchive}
 								onDelete={openDeleteDialog}
+								onMenuInteract={resetMenuTimeout}
 							/>
 						{/each}
 					</div>
@@ -406,6 +407,7 @@
 							onDownload={handleDownload}
 							onArchive={handleArchive}
 							onDelete={openDeleteDialog}
+							onMenuInteract={resetMenuTimeout}
 							showGrabHandle
 							isDragOver={dragOverPinnedId === site.id}
 							onGrabStart={(event) => handlePinnedDragStart(event, site.id)}
@@ -445,6 +447,7 @@
 							onDownload={handleDownload}
 							onArchive={handleArchive}
 							onDelete={openDeleteDialog}
+							onMenuInteract={resetMenuTimeout}
 						/>
 					{/each}
 				</div>
@@ -507,6 +510,7 @@
 											onDownload={handleDownload}
 											onArchive={handleArchive}
 											onDelete={openDeleteDialog}
+											onMenuInteract={resetMenuTimeout}
 										/>
 									{/each}
 								</div>
@@ -607,6 +611,7 @@
 		padding: 0.45rem 0.5rem;
 		border: 1px solid var(--color-border);
 		border-radius: 0.5rem;
+		background: var(--color-card);
 		background: color-mix(in oklab, var(--color-card) 85%, transparent);
 	}
 

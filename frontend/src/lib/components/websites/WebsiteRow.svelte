@@ -36,6 +36,7 @@
 	export let onGrabOver: ((event: DragEvent) => void) | undefined = undefined;
 	export let onGrabDrop: ((event: DragEvent) => void) | undefined = undefined;
 	export let onGrabEnd: (() => void) | undefined = undefined;
+	export let onMenuInteract: (() => void) | undefined = undefined;
 
 	function handleDragOver(event: DragEvent) {
 		if (!onGrabOver) return;
@@ -85,7 +86,8 @@
 		<MoreHorizontal size={16} />
 	</button>
 	{#if isMenuOpen}
-		<div class="website-menu">
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="website-menu" onpointerenter={onMenuInteract} onpointermove={onMenuInteract}>
 			<button class="menu-item" onclick={() => onPin(site)}>
 				{#if site.pinned}
 					<PinOff size={16} />
@@ -196,6 +198,19 @@
 
 	.website-item:hover .website-menu-btn {
 		opacity: 1;
+	}
+
+	/* Always show menu button on touch devices */
+	@media (pointer: coarse) {
+		.website-menu-btn {
+			opacity: 0.5;
+			pointer-events: auto;
+		}
+
+		.website-item:hover .website-menu-btn,
+		.website-menu-btn:active {
+			opacity: 1;
+		}
 	}
 
 	.grab-handle {

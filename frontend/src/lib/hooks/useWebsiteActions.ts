@@ -1,3 +1,4 @@
+import { get } from 'svelte/store';
 import { websitesStore } from '$lib/stores/websites';
 import { websitesAPI } from '$lib/services/api';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
@@ -130,11 +131,17 @@ export function useWebsiteActions() {
 		order: string[],
 		options: WebsiteActionOptions = {}
 	): Promise<boolean> => {
+		const previousOrder = get(websitesStore)
+			.items.filter((item) => item.pinned)
+			.sort((a, b) => (a.pinned_order ?? Infinity) - (b.pinned_order ?? Infinity))
+			.map((item) => item.id);
 		websitesStore.setPinnedOrderLocal?.(order);
 		try {
 			await websitesAPI.updatePinnedOrder(order);
 			return true;
 		} catch (error) {
+			websitesStore.setPinnedOrderLocal?.(previousOrder);
+			toast.error('Failed to reorder pinned websites');
 			logError('Failed to update pinned order', error, {
 				scope: options.scope ?? defaultScope('pinnedOrder')
 			});
