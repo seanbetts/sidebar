@@ -157,7 +157,7 @@ struct StoreSkillConfigView: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DesignTokens.Colors.actionPrimary)
             content()
         }
         .padding(DesignTokens.Spacing.md)

@@ -8,8 +8,6 @@ metadata:
   how_it_works: >-
     The skill downloads video audio and transcribes it, then saves a text
     transcript back into your workspace.
-  requirements:
-    - A public YouTube video URL
   version: 1.0.0
   updated_at: 2026-02-22
 ---

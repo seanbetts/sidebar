@@ -8,8 +8,6 @@ metadata:
   how_it_works: >-
     The skill uses a downloader utility to fetch media, then stores the result
     in your workspace for later use.
-  requirements:
-    - A public YouTube video or playlist URL
   version: 1.0.0
   updated_at: 2026-02-22
 ---

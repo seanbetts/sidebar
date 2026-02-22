@@ -40,7 +40,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["audio-transcribe"]["credential_requirements"]
     assert isinstance(by_id["audio-transcribe"]["long_description"], str)
     assert isinstance(by_id["audio-transcribe"]["how_it_works"], str)
-    assert by_id["audio-transcribe"]["requirements"] == ["An audio file to transcribe"]
+    assert by_id["audio-transcribe"]["requirements"] == []
     assert by_id["audio-transcribe"]["version"] == "1.0.0"
     assert by_id["audio-transcribe"]["updated_at"] == "2026-02-22"
     assert by_id["audio-transcribe"]["install_count"] is None
