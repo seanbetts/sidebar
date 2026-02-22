@@ -230,6 +230,9 @@ public final class NotesEditorViewModel: ObservableObject {
                 let markdown = nativeEditorViewModel.currentMarkdown()
                 return markdown.isEmpty ? fallback : markdown
             }
+            let source = content.isEmpty ? fallback : content
+            guard !source.isEmpty else { return "" }
+            return canonicalMarkdownSnapshot(from: source)
         }
         return content.isEmpty ? fallback : content
     }
@@ -288,6 +291,13 @@ public final class NotesEditorViewModel: ObservableObject {
             guard nativeEditorViewModel.currentMarkdown() != markdown else { return }
             nativeEditorViewModel.loadMarkdown(markdown)
         }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func canonicalMarkdownSnapshot(from markdown: String) -> String {
+        let nativeViewModel = NativeMarkdownEditorViewModel()
+        nativeViewModel.loadMarkdown(markdown)
+        return nativeViewModel.currentMarkdown()
     }
 
     @available(iOS 26.0, macOS 26.0, *)

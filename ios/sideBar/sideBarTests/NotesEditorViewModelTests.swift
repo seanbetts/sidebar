@@ -383,6 +383,56 @@ final class NotesEditorViewModelTests: XCTestCase {
             "Local unsaved body"
         )
     }
+
+    func testCurrentMarkdownSnapshotCanonicalizesWhenNativeEditorDetached() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let nonCanonical = "- [x] Done"
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: nonCanonical,
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let probe = NativeMarkdownEditorViewModel()
+        probe.loadMarkdown(nonCanonical)
+        let canonical = probe.currentMarkdown()
+
+        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), canonical)
+    }
 }
 
 @MainActor
