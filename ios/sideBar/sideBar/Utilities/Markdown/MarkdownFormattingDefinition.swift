@@ -1,5 +1,10 @@
 import Foundation
 import SwiftUI
+#if os(iOS)
+@preconcurrency import UIKit
+#elseif os(macOS)
+@preconcurrency import AppKit
+#endif
 
 @available(iOS 26.0, macOS 26.0, *)
 public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
@@ -48,6 +53,8 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
             text[range].codeLanguage = nil
         }
 
+        constrainVisualAttributes(in: &text, range: range)
+
         // V2 path does not rely on hidden marker runs.
         text[range].inlineMarker = nil
         text[range].listMarker = nil
@@ -78,6 +85,24 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
         }
 
         return ranges
+    }
+
+    private func constrainVisualAttributes(
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+        text[range].font = nil
+        text[range].foregroundColor = nil
+        text[range].backgroundColor = nil
+        text[range].paragraphStyle = nil
+#if os(iOS)
+        text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
+        text[range][AttributeScopes.UIKitAttributes.ForegroundColorAttribute.self] = nil
+        text[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] = nil
+#elseif os(macOS)
+        text[range][AttributeScopes.AppKitAttributes.ForegroundColorAttribute.self] = nil
+        text[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] = nil
+#endif
     }
 
     private func normalizedBlockKind(_ blockKind: BlockKind?) -> BlockKind {

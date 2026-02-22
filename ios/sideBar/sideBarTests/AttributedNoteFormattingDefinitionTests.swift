@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import sideBar
 
 @MainActor
@@ -52,6 +53,31 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
 
         XCTAssertNil(constrained[range].runs.first?.inlineMarker)
         XCTAssertNil(constrained[range].runs.first?.listMarker)
+    }
+
+    func testConstrainDocumentRemovesDisallowedVisualStyleAttributes() {
+        var text = AttributedString("Styled paragraph")
+        let range = text.startIndex..<text.endIndex
+        text[range].blockKind = .paragraph
+        text[range].font = .system(size: 42, weight: .black)
+        text[range].foregroundColor = .red
+        text[range].backgroundColor = .yellow
+        text[range].paragraphStyle = {
+            let style = NSMutableParagraphStyle()
+            style.paragraphSpacingBefore = 99
+            style.firstLineHeadIndent = 27
+            return style
+        }()
+        text[range].strikethroughStyle = .single
+
+        var constrained = text
+        MarkdownFormattingDefinition().constrainDocument(&constrained)
+
+        XCTAssertNil(constrained[range].font)
+        XCTAssertNil(constrained[range].foregroundColor)
+        XCTAssertNil(constrained[range].backgroundColor)
+        XCTAssertNil(constrained[range].paragraphStyle)
+        XCTAssertEqual(constrained[range].strikethroughStyle, .single)
     }
 
     private func containsUnorderedList(in intent: PresentationIntent?) -> Bool {
