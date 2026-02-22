@@ -573,6 +573,7 @@
 		padding: 0.35rem 0.55rem;
 		border: 1px solid var(--color-border);
 		border-radius: 0.6rem;
+		background: var(--color-card);
 		background: color-mix(in oklab, var(--color-card) 82%, transparent);
 		width: fit-content;
 		max-width: 100%;

@@ -128,7 +128,7 @@
 		z-index: 1;
 		display: flex;
 		flex-direction: column;
-		-webkit-overflow-scrolling: touch;
+		overscroll-behavior: contain;
 	}
 
 	:global(.panel > *) {
@@ -150,9 +150,16 @@
 		transition: none;
 	}
 
+	@media (max-width: 1100px) {
+		.sidebar-panel {
+			min-width: 320px !important;
+		}
+	}
+
 	@media (max-width: 900px) {
 		.sidebar-panel {
 			width: 340px;
+			min-width: 280px !important;
 		}
 
 		:global(.resize-handle) {

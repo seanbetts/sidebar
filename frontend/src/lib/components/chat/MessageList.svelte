@@ -122,7 +122,7 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		padding: 1rem;
-		-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+		overscroll-behavior: contain;
 	}
 
 	.messages-container {

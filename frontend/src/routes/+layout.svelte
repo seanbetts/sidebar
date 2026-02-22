@@ -257,13 +257,6 @@
 		overflow: hidden;
 	}
 
-	/* Safari-specific fix for older versions that don't support dvh */
-	@supports (-webkit-touch-callout: none) {
-		.app {
-			height: -webkit-fill-available;
-		}
-	}
-
 	.main-content {
 		display: flex;
 		flex-direction: column;
@@ -278,7 +271,7 @@
 		display: flex;
 		min-height: 0;
 		overflow: auto;
-		-webkit-overflow-scrolling: touch;
+		overscroll-behavior: contain;
 	}
 
 	:global(.page-content > *) {

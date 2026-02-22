@@ -168,20 +168,6 @@
     background-color: var(--scrollbar-thumb-hover);
   }
 
-  /* Safari-specific fix for mobile viewport */
-  @supports (-webkit-touch-callout: none) {
-    html {
-      height: -webkit-fill-available;
-    }
-
-    body {
-      height: -webkit-fill-available;
-    }
-
-    #svelte {
-      height: -webkit-fill-available;
-    }
-  }
 
   /* Safe area insets for notched devices */
   @supports (padding: env(safe-area-inset-left)) {

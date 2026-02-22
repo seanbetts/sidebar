@@ -417,6 +417,8 @@
 		gap: 1rem;
 		height: var(--site-header-height);
 		padding: 0.75rem 1.5rem;
+		padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+		padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
 		border-bottom: 1px solid var(--color-border);
 		background: #fff;
 	}

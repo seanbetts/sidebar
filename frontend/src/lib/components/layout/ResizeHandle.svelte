@@ -86,6 +86,17 @@
 		background: transparent;
 		transition: background-color 0.15s ease;
 		border-right: 1px solid var(--color-border);
+		touch-action: none;
+	}
+
+	/* Expand touch target to 44px on touch devices while keeping visual width at 8px */
+	@media (pointer: coarse) {
+		.resize-handle::before {
+			content: '';
+			position: absolute;
+			inset: 0 -18px;
+			z-index: 1;
+		}
 	}
 
 	.resize-handle::after {

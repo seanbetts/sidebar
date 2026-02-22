@@ -19,6 +19,7 @@
 	let attachmentInput: HTMLInputElement;
 	let previousConversationId: string | null = null;
 	let tooltipsEnabled = false;
+	let isTouchDevice = false;
 	const MAX_TEXTAREA_HEIGHT = 220;
 
 	const resizeTextarea = () => {
@@ -30,8 +31,11 @@
 	};
 
 	onMount(() => {
-		// Auto-focus the input when component mounts
-		textarea?.focus();
+		isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+		// Skip auto-focus on touch devices to avoid triggering the virtual keyboard
+		if (!isTouchDevice) {
+			textarea?.focus();
+		}
 		resizeTextarea();
 		tooltipsEnabled = canShowTooltips();
 	});
@@ -40,11 +44,13 @@
 		chatStore.cleanup?.();
 	});
 
-	// Auto-focus when conversation changes (new chat)
+	// Auto-focus when conversation changes (new chat) - skip on touch devices
 	$: if ($chatStore.conversationId !== previousConversationId) {
 		previousConversationId = $chatStore.conversationId;
 		tick().then(() => {
-			textarea?.focus();
+			if (!isTouchDevice) {
+				textarea?.focus();
+			}
 			resizeTextarea();
 		});
 	}
@@ -243,6 +249,7 @@
 		gap: 0.35rem;
 		padding: 0.2rem 0.5rem;
 		border-radius: 999px;
+		background: var(--color-muted);
 		background: color-mix(in oklab, var(--color-muted) 70%, transparent);
 		color: var(--color-foreground);
 		font-size: 0.75rem;
