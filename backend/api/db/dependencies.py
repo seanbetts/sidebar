@@ -11,17 +11,30 @@ from api.config import settings
 from api.models.user_settings import UserSettings
 from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
-_test_user_id = os.getenv("TEST_USER_ID") if os.getenv("TESTING") else None
-DEFAULT_USER_ID = _test_user_id or settings.default_user_id
+
+def _resolve_test_user_id() -> str:
+    user_id = settings.get_test_user_id()
+    if user_id:
+        return user_id
+    if settings.auth_dev_mode or os.getenv("TESTING"):
+        raise RuntimeError(
+            "TEST_USER_ID must be set when AUTH_DEV_MODE or TESTING is enabled."
+        )
+    return ""
+
+
+def get_tool_user_id() -> str:
+    """Return user ID used for scoped tool execution paths."""
+    return _resolve_test_user_id()
 
 
 async def get_current_user_id(
     request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),  # noqa: B008
 ) -> str:
     """Extract user ID from Supabase JWT token."""
     if settings.auth_dev_mode:
-        return settings.default_user_id
+        return _resolve_test_user_id()
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

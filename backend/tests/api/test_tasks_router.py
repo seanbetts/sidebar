@@ -1,10 +1,12 @@
+import os
 from datetime import UTC, date, datetime, timedelta
 
 from api.config import settings
-from api.db.dependencies import DEFAULT_USER_ID
 from api.models.task import Task
 from api.models.task_group import TaskGroup
 from api.models.task_project import TaskProject
+
+TEST_USER_ID = os.environ["TEST_USER_ID"]
 
 
 def _auth_headers() -> dict[str, str]:
@@ -13,13 +15,13 @@ def _auth_headers() -> dict[str, str]:
 
 def test_tasks_list_today(test_client, test_db):
     group = TaskGroup(
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Work",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
     project = TaskProject(
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Alpha",
         group_id=group.id,
         status="active",
@@ -33,7 +35,7 @@ def test_tasks_list_today(test_client, test_db):
 
     today = date.today()
     task_today = Task(
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Today task",
         status="inbox",
         deadline=today,
@@ -42,7 +44,7 @@ def test_tasks_list_today(test_client, test_db):
         updated_at=datetime.now(UTC),
     )
     task_inbox = Task(
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Inbox task",
         status="inbox",
         created_at=datetime.now(UTC),
@@ -63,7 +65,7 @@ def test_tasks_list_today(test_client, test_db):
 
 def test_tasks_search(test_client, test_db):
     task = Task(
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Find me",
         notes="Searchable",
         status="inbox",
@@ -86,14 +88,14 @@ def test_tasks_counts(test_client, test_db):
     test_db.add_all(
         [
             Task(
-                user_id=DEFAULT_USER_ID,
+                user_id=TEST_USER_ID,
                 title="Inbox",
                 status="inbox",
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
             ),
             Task(
-                user_id=DEFAULT_USER_ID,
+                user_id=TEST_USER_ID,
                 title="Today",
                 status="inbox",
                 deadline=today,
@@ -101,7 +103,7 @@ def test_tasks_counts(test_client, test_db):
                 updated_at=datetime.now(UTC),
             ),
             Task(
-                user_id=DEFAULT_USER_ID,
+                user_id=TEST_USER_ID,
                 title="Upcoming",
                 status="inbox",
                 deadline=today + timedelta(days=2),
@@ -109,7 +111,7 @@ def test_tasks_counts(test_client, test_db):
                 updated_at=datetime.now(UTC),
             ),
             Task(
-                user_id=DEFAULT_USER_ID,
+                user_id=TEST_USER_ID,
                 title="Done",
                 status="completed",
                 completed_at=datetime.now(UTC),
@@ -131,7 +133,7 @@ def test_tasks_counts(test_client, test_db):
 
 def test_tasks_group_and_project_payloads(test_client, test_db):
     group = TaskGroup(
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Home",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
@@ -139,7 +141,7 @@ def test_tasks_group_and_project_payloads(test_client, test_db):
     test_db.add(group)
     test_db.flush()
     project = TaskProject(
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Household",
         group_id=group.id,
         status="active",
@@ -149,7 +151,7 @@ def test_tasks_group_and_project_payloads(test_client, test_db):
     test_db.add(project)
     test_db.flush()
     task = Task(
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Vacuum",
         status="inbox",
         project_id=project.id,
@@ -201,7 +203,7 @@ def test_tasks_apply_idempotent(test_client, test_db):
 
 def test_tasks_sync_returns_updates(test_client, test_db):
     task = Task(
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Sync me",
         status="inbox",
         created_at=datetime.now(UTC),

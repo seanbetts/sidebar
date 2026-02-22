@@ -352,8 +352,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--user-id",
-        default=settings.default_user_id,
-        help="Target user ID (defaults to settings.default_user_id).",
+        default=settings.get_test_user_id() or None,
+        help="Target user ID (defaults to TEST_USER_ID).",
     )
     parser.add_argument(
         "--providers",
@@ -376,6 +376,8 @@ def main() -> int:
         help="Skip live OpenAI transcription call (still resolves transcription model).",
     )
     args = parser.parse_args()
+    if not args.user_id:
+        parser.error("Missing user ID. Set TEST_USER_ID or pass --user-id.")
 
     try:
         providers = _parse_providers(args.providers)

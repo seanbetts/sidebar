@@ -1,8 +1,8 @@
+import os
 import uuid
 from datetime import UTC, datetime
 
 from api.config import settings
-from api.db.dependencies import DEFAULT_USER_ID
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.website import Website
 from api.routers.websites_helpers import website_summary
@@ -11,6 +11,8 @@ from sqlalchemy.orm import load_only
 from sqlalchemy.orm.attributes import NO_VALUE
 
 from tests.helpers import error_message
+
+TEST_USER_ID = os.environ["TEST_USER_ID"]
 
 
 def _auth_headers() -> dict[str, str]:
@@ -35,7 +37,7 @@ def test_websites_get_success(test_client, test_db):
     website_id = uuid.uuid4()
     website = Website(
         id=website_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         url="https://example.com",
         url_full="https://example.com",
         domain="example.com",
@@ -59,7 +61,7 @@ def test_websites_download_handles_unicode_filename(test_client, test_db):
     website_id = uuid.uuid4()
     website = Website(
         id=website_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         url="https://example.com/openclaw",
         url_full="https://example.com/openclaw",
         domain="example.com",
@@ -88,7 +90,7 @@ def test_websites_pin_rename_archive(test_client, test_db):
     website_id = uuid.uuid4()
     website = Website(
         id=website_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         url="https://example.org",
         url_full="https://example.org",
         domain="example.org",
@@ -127,7 +129,7 @@ def test_websites_youtube_transcript_enqueues_job(test_client, test_db):
     website_id = uuid.uuid4()
     website = Website(
         id=website_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         url="https://example.com/video",
         url_full="https://example.com/video",
         domain="example.com",
@@ -172,7 +174,7 @@ def test_archived_list_returns_field_reading_time(test_client, test_db):
     website_id = uuid.uuid4()
     website = Website(
         id=website_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         url="https://example.com/metadata-reading-time",
         url_full="https://example.com/metadata-reading-time",
         domain="example.com",
@@ -198,7 +200,7 @@ def test_website_summary_does_not_lazy_load_deferred_content(test_db):
     website_id = uuid.uuid4()
     website = Website(
         id=website_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         url="https://example.com/deferred-content",
         url_full="https://example.com/deferred-content",
         domain="example.com",

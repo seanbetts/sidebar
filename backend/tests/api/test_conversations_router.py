@@ -1,9 +1,11 @@
+import os
 import uuid
 from datetime import UTC, datetime
 
 from api.config import settings
-from api.db.dependencies import DEFAULT_USER_ID
 from api.models.conversation import Conversation
+
+TEST_USER_ID = os.environ["TEST_USER_ID"]
 
 
 def _auth_headers() -> dict[str, str]:
@@ -30,7 +32,7 @@ def test_conversation_update_and_search(test_client, test_db):
     conversation_id = uuid.uuid4()
     conversation = Conversation(
         id=conversation_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Project Plan",
         messages=[{"role": "user", "content": "hello"}],
         message_count=1,
@@ -61,7 +63,7 @@ def test_conversation_messages_and_delete(test_client, test_db):
     conversation_id = uuid.uuid4()
     conversation = Conversation(
         id=conversation_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Chat",
         messages=[],
         message_count=0,

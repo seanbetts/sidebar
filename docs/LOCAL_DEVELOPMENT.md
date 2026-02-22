@@ -15,7 +15,7 @@ cp .env.example .env.local
 
 # 2. Edit .env.local
 # - Set AUTH_DEV_MODE=true
-# - Set DEFAULT_USER_ID to a dedicated test user
+# - Set TEST_USER_ID to a dedicated test user
 # - Set API_URL=http://localhost:8001
 # - Set APP_ENV=local
 # - Configure Doppler (DOPPLER_TOKEN or doppler login)

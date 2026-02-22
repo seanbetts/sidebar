@@ -1,11 +1,13 @@
+import os
 import uuid
 from datetime import UTC, datetime
 
 from api.config import settings
-from api.db.dependencies import DEFAULT_USER_ID
 from api.models.note import Note
 
 from tests.helpers import error_message
+
+TEST_USER_ID = os.environ["TEST_USER_ID"]
 
 
 def _auth_headers() -> dict[str, str]:
@@ -38,7 +40,7 @@ def test_notes_get_success(test_client, test_db):
     note_id = uuid.uuid4()
     note = Note(
         id=note_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Sample Note",
         content="# Sample Note\n\nBody",
         metadata_={"folder": "", "pinned": False},
@@ -59,7 +61,7 @@ def test_notes_download_handles_unicode_filename(test_client, test_db):
     note_id = uuid.uuid4()
     note = Note(
         id=note_id,
-        user_id=DEFAULT_USER_ID,
+        user_id=TEST_USER_ID,
         title="Codex Log🦞",
         content="# Codex Log\n\nBody",
         metadata_={"folder": "", "pinned": False},

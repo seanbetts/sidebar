@@ -149,7 +149,6 @@ class SkillExecutor:
                     "ANTHROPIC_API_KEY",
                     "DATABASE_URL",
                     "TESTING",
-                    "DEFAULT_USER_ID",
                     "TEST_USER_ID",
                     "SUPABASE_POSTGRES_PSWD",
                     "SUPABASE_PROJECT_ID",

@@ -91,7 +91,7 @@ class Settings(BaseSettings):
     # Authentication
     bearer_token: str | None = None
     auth_dev_mode: bool = False
-    default_user_id: str = "81326b53-b7eb-42e2-b645-0c03cb5d5dd4"
+    test_user_id: str = ""
 
     # Supabase Auth
     supabase_url: str = ""
@@ -210,6 +210,10 @@ class Settings(BaseSettings):
                 "SSL verification cannot be disabled in production. "
                 "Set APP_ENV=local/dev or provide CUSTOM_CA_BUNDLE."
             )
+        if (self.auth_dev_mode or os.getenv("TESTING")) and not self.get_test_user_id():
+            raise ValueError(
+                "TEST_USER_ID must be set when AUTH_DEV_MODE or TESTING is enabled."
+            )
 
     @property
     def allow_auth_dev_mode(self) -> bool:
@@ -219,6 +223,25 @@ class Settings(BaseSettings):
         if os.getenv("TESTING"):
             return True
         return self.app_env in {"local", "test"}
+
+    def get_test_user_id(self) -> str:
+        """Return configured test user ID from runtime env or settings."""
+        env_user_id = (os.getenv("TEST_USER_ID") or "").strip()
+        if env_user_id:
+            return env_user_id
+        return (self.test_user_id or "").strip()
+
+    def require_test_user_id(self) -> str:
+        """Return test user ID or raise when it is missing."""
+        user_id = self.get_test_user_id()
+        if user_id:
+            return user_id
+        raise ValueError("TEST_USER_ID must be set.")
+
+    @property
+    def default_user_id(self) -> str:
+        """Deprecated alias; use TEST_USER_ID instead."""
+        return self.get_test_user_id()
 
 
 # Singleton settings instance

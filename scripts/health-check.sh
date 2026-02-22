@@ -127,7 +127,7 @@ else
 fi
 
 check_env_var AUTH_DEV_MODE
-check_env_var DEFAULT_USER_ID
+check_env_var TEST_USER_ID
 check_env_var API_URL
 check_env_var SUPABASE_PROJECT_ID
 check_env_var SUPABASE_POSTGRES_PSWD

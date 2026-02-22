@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 async def verify_bearer_token(
     request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),  # noqa: B008
 ) -> dict:
     """Verify Supabase JWT or Shortcuts PAT token and return payload."""
     if settings.auth_dev_mode:
@@ -27,8 +27,9 @@ async def verify_bearer_token(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="AUTH_DEV_MODE requires APP_ENV=local",
             )
-        request.state.user_id = settings.default_user_id
-        return {"sub": settings.default_user_id}
+        test_user_id = settings.require_test_user_id()
+        request.state.user_id = test_user_id
+        return {"sub": test_user_id}
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -72,7 +73,7 @@ async def verify_bearer_token(
 
 
 async def verify_supabase_jwt(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),  # noqa: B008
 ) -> dict:
     """Verify Supabase JWT token and return payload."""
     if settings.auth_dev_mode:
@@ -82,7 +83,7 @@ async def verify_supabase_jwt(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="AUTH_DEV_MODE requires APP_ENV=local",
             )
-        return {"sub": settings.default_user_id}
+        return {"sub": settings.require_test_user_id()}
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
