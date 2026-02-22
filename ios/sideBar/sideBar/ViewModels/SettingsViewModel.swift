@@ -29,11 +29,18 @@ public final class SettingsViewModel: LoadableViewModel {
     let settingsAPI: any SettingsProviding
     let skillsAPI: any SkillsProviding
     let cache: CacheClient
+    let currentAuthUserIdProvider: () -> String?
 
-    public init(settingsAPI: any SettingsProviding, skillsAPI: any SkillsProviding, cache: CacheClient) {
+    public init(
+        settingsAPI: any SettingsProviding,
+        skillsAPI: any SkillsProviding,
+        cache: CacheClient,
+        currentAuthUserIdProvider: @escaping () -> String? = { nil }
+    ) {
         self.settingsAPI = settingsAPI
         self.skillsAPI = skillsAPI
         self.cache = cache
+        self.currentAuthUserIdProvider = currentAuthUserIdProvider
         super.init()
     }
 
@@ -53,7 +60,7 @@ public final class SettingsViewModel: LoadableViewModel {
         setLoading(true)
         let loader = CachedLoader(
             cache: cache,
-            key: CacheKeys.userSettings,
+            key: userSettingsCacheKey,
             ttl: CachePolicy.userSettings
         ) { [settingsAPI] in
             try await settingsAPI.getSettings()
@@ -117,13 +124,17 @@ public final class SettingsViewModel: LoadableViewModel {
     public func loadProfileImage() async {
         guard let settings, settings.profileImageUrl != nil else {
             profileImageData = nil
-            cache.remove(key: CacheKeys.profileImage)
+            cache.remove(key: profileImageCacheKey)
+            removeLegacyCacheKeyIfNeeded(
+                currentKey: profileImageCacheKey,
+                legacyKey: CacheKeys.profileImage
+            )
             return
         }
         isLoadingProfileImage = true
         let loader = CachedLoader(
             cache: cache,
-            key: CacheKeys.profileImage,
+            key: profileImageCacheKey,
             ttl: CachePolicy.profileImage
         ) { [settingsAPI] in
             try await settingsAPI.getProfileImage()
@@ -142,7 +153,7 @@ public final class SettingsViewModel: LoadableViewModel {
     public func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {
         try await settingsAPI.uploadProfileImage(data: data, contentType: contentType, filename: filename)
         profileImageData = data
-        cache.set(key: CacheKeys.profileImage, value: data, ttlSeconds: CachePolicy.profileImage)
+        cache.set(key: profileImageCacheKey, value: data, ttlSeconds: CachePolicy.profileImage)
         if settings?.profileImageUrl == nil {
             await load()
         }
@@ -196,7 +207,7 @@ public final class SettingsViewModel: LoadableViewModel {
             )
             settings = response
             cache.set(
-                key: CacheKeys.userSettings,
+                key: userSettingsCacheKey,
                 value: response,
                 ttlSeconds: CachePolicy.userSettings
             )
@@ -234,7 +245,7 @@ public final class SettingsViewModel: LoadableViewModel {
             )
             settings = response
             cache.set(
-                key: CacheKeys.userSettings,
+                key: userSettingsCacheKey,
                 value: response,
                 ttlSeconds: CachePolicy.userSettings
             )
@@ -318,14 +329,10 @@ public final class SettingsViewModel: LoadableViewModel {
         )
         settings = next
         cache.set(
-            key: CacheKeys.userSettings,
+            key: userSettingsCacheKey,
             value: next,
             ttlSeconds: CachePolicy.userSettings
         )
-    }
-
-    public func isSkillUserToggleable(id: String) -> Bool {
-        skills.first { $0.id == id }?.userToggleable ?? true
     }
 
     private func updateEnabledSkills(_ enabledSkills: [String]) async {
@@ -405,7 +412,7 @@ public final class SettingsViewModel: LoadableViewModel {
     func applySettingsResponse(_ response: UserSettings) {
         settings = response
         cache.set(
-            key: CacheKeys.userSettings,
+            key: userSettingsCacheKey,
             value: response,
             ttlSeconds: CachePolicy.userSettings
         )
@@ -420,7 +427,11 @@ public final class SettingsViewModel: LoadableViewModel {
     }
 
     private func invalidateAndRefreshSkillsState() async {
-        cache.remove(key: CacheKeys.userSettings)
+        cache.remove(key: userSettingsCacheKey)
+        removeLegacyCacheKeyIfNeeded(
+            currentKey: userSettingsCacheKey,
+            legacyKey: CacheKeys.userSettings
+        )
         cache.remove(key: CacheKeys.skillsList)
         await load(force: true)
         await loadSkills()

@@ -33,6 +33,51 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
+    func testLoadUsesUserScopedCacheKeyWhenAuthUserIdAvailable() async {
+        let legacyCached = UserSettings(
+            userId: "legacy-user",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Legacy User",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let scopedCached = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Scoped User",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.userSettings, value: legacyCached, ttlSeconds: 60)
+        cache.set(key: "\(CacheKeys.userSettings).user-1", value: scopedCached, ttlSeconds: 60)
+
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            cache: cache,
+            currentAuthUserIdProvider: { "user-1" }
+        )
+
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.settings?.name, "Scoped User")
+    }
+
     func testLoadSkillsCachesFreshData() async {
         let response = SkillsResponse(skills: [
             SkillItem(id: "s1", name: "Skill", description: "Desc", category: "General")
@@ -256,6 +301,42 @@ final class SettingsViewModelTests: XCTestCase {
         await viewModel.loadProfileImage()
 
         XCTAssertEqual(viewModel.profileImageData, cachedData)
+    }
+
+    func testLoadProfileImageUsesUserScopedCacheKeyWhenAuthUserIdAvailable() async {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: "https://example.com/profile.png",
+            enabledSkills: []
+        )
+        let legacyData = Data([0xAA])
+        let scopedData = Data([0x01, 0x02, 0x03])
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.profileImage, value: legacyData, ttlSeconds: 60)
+        cache.set(key: "\(CacheKeys.profileImage).user-1", value: scopedData, ttlSeconds: 60)
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(settings),
+                profileImageResult: .failure(SettingsViewModelMockError.forced)
+            ),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: cache,
+            currentAuthUserIdProvider: { "user-1" }
+        )
+
+        await viewModel.load()
+        await viewModel.loadProfileImage()
+
+        XCTAssertEqual(viewModel.profileImageData, scopedData)
     }
 
     func testSaveUserSettingsSkipsUnchangedPayload() async throws {
