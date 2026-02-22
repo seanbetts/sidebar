@@ -14,8 +14,23 @@
 
 set -euo pipefail
 
-echo "=== ci_post_clone.sh: Installing SwiftLint ==="
-brew install swiftlint
+echo "=== ci_post_clone.sh: Ensuring SwiftLint is available (best effort) ==="
+if command -v swiftlint >/dev/null 2>&1; then
+    echo "SwiftLint already available at: $(command -v swiftlint)"
+elif command -v brew >/dev/null 2>&1; then
+    # Avoid flaky Homebrew auto-update/network dependency from blocking Xcode Cloud builds.
+    export HOMEBREW_NO_AUTO_UPDATE=1
+    if brew list swiftlint >/dev/null 2>&1; then
+        echo "SwiftLint already installed via Homebrew"
+    elif brew install swiftlint; then
+        echo "Installed SwiftLint via Homebrew"
+    else
+        echo "warning: Unable to install SwiftLint via Homebrew; continuing without it"
+        echo "warning: SwiftLint remains optional in the Xcode build phase"
+    fi
+else
+    echo "warning: Homebrew not found and SwiftLint not installed; continuing without SwiftLint"
+fi
 
 echo "=== ci_post_clone.sh: Generating SideBar.local.xcconfig ==="
 
