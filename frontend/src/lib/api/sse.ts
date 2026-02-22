@@ -3,7 +3,6 @@
  */
 import { logError } from '$lib/utils/errorHandling';
 import type { PromptPreviewPayload } from '$lib/types/promptPreview';
-import { PUBLIC_APP_VERSION } from '$env/static/public';
 
 export interface SSECallbacks {
 	onToken?: (content: string) => void;
@@ -84,8 +83,7 @@ export class SSEClient {
 			const response = await fetch('/api/v1/chat/stream', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
-					...(PUBLIC_APP_VERSION ? { 'X-App-Version': PUBLIC_APP_VERSION } : {})
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					message: payload.message,
