@@ -24,6 +24,21 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertFalse(secondIntents.contains(.stronglyEmphasized))
     }
 
+    func testApplyFormattingBoldTogglesTypingAttributesAtInsertionPoint() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("hello")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        viewModel.applyFormatting(.bold)
+        let enabledIntents = viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? []
+        XCTAssertTrue(enabledIntents.contains(.stronglyEmphasized))
+
+        viewModel.applyFormatting(.bold)
+        let disabledIntents = viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? []
+        XCTAssertFalse(disabledIntents.contains(.stronglyEmphasized))
+    }
+
     func testApplyFormattingHeadingSetsBlockKindForCurrentParagraph() async {
         let viewModel = NativeMarkdownEditorViewModel()
         viewModel.loadMarkdown("hello\nworld")
@@ -35,6 +50,51 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         let firstLineRange = firstLine(in: viewModel.attributedContent)
 
         XCTAssertEqual(viewModel.attributedContent.blockKind(in: firstLineRange), .heading2)
+    }
+
+    func testApplyFormattingTaskListSetsTaskBlockKindForCurrentParagraph() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("hello")
+        let insertion = viewModel.attributedContent.startIndex
+        let next = viewModel.attributedContent.index(afterCharacter: insertion)
+        viewModel.selection = AttributedTextSelection(range: insertion..<next)
+
+        viewModel.applyFormatting(.taskList)
+        let firstLineRange = firstLine(in: viewModel.attributedContent)
+
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: firstLineRange), .taskUnchecked)
+    }
+
+    func testApplyFormattingStrikethroughTogglesTypingAttributesAtInsertionPoint() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("hello")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        viewModel.applyFormatting(.strikethrough)
+        XCTAssertEqual(viewModel.selection.typingAttributes(in: viewModel.attributedContent).strikethroughStyle, .single)
+
+        viewModel.applyFormatting(.strikethrough)
+        XCTAssertNil(viewModel.selection.typingAttributes(in: viewModel.attributedContent).strikethroughStyle)
+    }
+
+    func testApplyFormattingHorizontalRuleInsertsHorizontalRuleBlock() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("hello")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        viewModel.applyFormatting(.horizontalRule)
+
+        let text = String(viewModel.attributedContent.characters)
+        XCTAssertTrue(text.contains("---"))
+
+        let ruleStartIndex = viewModel.attributedContent.index(
+            viewModel.attributedContent.endIndex,
+            offsetByCharacters: -3
+        )
+        let ruleRange = ruleStartIndex..<viewModel.attributedContent.endIndex
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: ruleRange), .horizontalRule)
     }
 
     func testHandleContentChangeSetsUnsavedStateAndMarkSavedClearsIt() async {

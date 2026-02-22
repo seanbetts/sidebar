@@ -14,10 +14,14 @@ struct AttributedNoteEditorContainer: View {
     var body: some View {
         Group {
             if isEditing {
-                AttributedNoteEditorView(
-                    viewModel: nativeViewModel,
-                    maxContentWidth: maxContentWidth
-                )
+                VStack(spacing: 0) {
+                    AttributedNoteFormattingToolbar(viewModel: nativeViewModel)
+                    Divider()
+                    AttributedNoteEditorView(
+                        viewModel: nativeViewModel,
+                        maxContentWidth: maxContentWidth
+                    )
+                }
                 .focused($isTextEditorFocused)
                 .onKeyPress(.escape) {
                     guard isEditing else { return .ignored }

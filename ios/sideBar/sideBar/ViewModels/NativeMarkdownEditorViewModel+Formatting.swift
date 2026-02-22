@@ -5,18 +5,43 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeMarkdownEditorViewModel {
     func toggleInlineIntent(_ intent: InlinePresentationIntent) {
-        let ranges = selectionRanges()
-        for range in ranges.ranges where !range.isEmpty {
-            let current = attributedContent[range].inlinePresentationIntent ?? []
+        let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
+        guard !nonEmptyRanges.isEmpty else {
+            let current = selection.typingAttributes(in: attributedContent).inlinePresentationIntent ?? []
             let enabled = !current.contains(intent)
-            applyInlineIntent(intent, enabled: enabled, range: range)
+            applyInlineIntent(intent, enabled: enabled)
+            return
+        }
+
+        let shouldEnable = nonEmptyRanges.contains { range in
+            let current = attributedContent[range].inlinePresentationIntent ?? []
+            return !current.contains(intent)
+        }
+
+        for range in nonEmptyRanges {
+            applyInlineIntent(intent, enabled: shouldEnable, range: range)
         }
     }
 
     func toggleStrikethrough() {
-        let ranges = selectionRanges()
-        for range in ranges.ranges where !range.isEmpty {
-            if attributedContent[range].strikethroughStyle == nil {
+        let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
+        guard !nonEmptyRanges.isEmpty else {
+            attributedContent.transformAttributes(in: &selection) { attrs in
+                let enable = attrs.strikethroughStyle == nil
+                attrs.strikethroughStyle = enable ? .single : nil
+                if !enable {
+                    setForegroundColor(baseForegroundColor(for: attrs.blockKind), in: &attrs)
+                }
+            }
+            return
+        }
+
+        let shouldEnable = nonEmptyRanges.contains { range in
+            attributedContent[range].strikethroughStyle == nil
+        }
+
+        for range in nonEmptyRanges {
+            if shouldEnable {
                 setStrikethrough(true, in: &attributedContent, range: range)
             } else {
                 setStrikethrough(false, in: &attributedContent, range: range)
@@ -27,9 +52,13 @@ extension NativeMarkdownEditorViewModel {
     }
 
     func setBlockKind(_ blockKind: BlockKind, listDepth: Int? = nil) {
-        let ranges = selectionRanges()
-        for range in ranges.ranges {
+        let ranges = selectionRanges().ranges
+        var appliedToParagraph = false
+
+        for range in ranges {
             let paragraphRange = findParagraphRange(containing: range)
+            guard !paragraphRange.isEmpty else { continue }
+            appliedToParagraph = true
             attributedContent[paragraphRange].blockKind = blockKind
             if let listDepth {
                 attributedContent[paragraphRange].listDepth = listDepth
@@ -38,6 +67,25 @@ extension NativeMarkdownEditorViewModel {
             }
             applyBlockStyle(blockKind: blockKind, range: paragraphRange)
             applyPresentationIntent(blockKind: blockKind, listDepth: listDepth, range: paragraphRange)
+        }
+
+        guard !appliedToParagraph else { return }
+        attributedContent.transformAttributes(in: &selection) { attrs in
+            attrs.blockKind = blockKind
+            attrs.listDepth = listDepth
+            if blockKind != .codeBlock {
+                attrs.codeLanguage = nil
+            }
+            setFont(baseFont(for: blockKind), platformFont: platformBaseFont(for: blockKind), in: &attrs)
+            setForegroundColor(baseForegroundColor(for: blockKind), in: &attrs)
+            setBackgroundColor(baseBackgroundColor(for: blockKind), in: &attrs)
+            attrs.paragraphStyle = paragraphStyle(for: blockKind, listDepth: listDepth)
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = typingPresentationIntent(
+                blockKind: blockKind,
+                listDepth: listDepth
+            )
+            attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
+            attrs.strikethroughStyle = blockKind == .taskChecked ? .single : nil
         }
     }
 
@@ -83,12 +131,70 @@ extension NativeMarkdownEditorViewModel {
 
     func insertHorizontalRule() {
         var hr = AttributedString("---")
+        let insertIndex = selectionRanges().ranges.first?.lowerBound ?? attributedContent.endIndex
         let range = hr.startIndex..<hr.endIndex
         hr[range].blockKind = .horizontalRule
         setForegroundColor(DesignTokens.Colors.border, in: &hr, range: range)
-
-        let insertIndex = selectionRanges().ranges.first?.lowerBound ?? attributedContent.endIndex
         attributedContent.insert(hr, at: insertIndex)
+
+        let ruleEnd = attributedContent.index(insertIndex, offsetByCharacters: 3)
+        let insertedRange = insertIndex..<ruleEnd
+        attributedContent[insertedRange].blockKind = .horizontalRule
+        setForegroundColor(DesignTokens.Colors.border, range: insertedRange)
+    }
+
+    func typingPresentationIntent(
+        blockKind: BlockKind,
+        listDepth: Int?
+    ) -> PresentationIntent {
+        if let headingLevel = headingLevel(for: blockKind) {
+            return PresentationIntent(.header(level: headingLevel), identity: headingLevel)
+        }
+
+        switch blockKind {
+        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
+            let listId = listDepth ?? 1
+            let listIntent = PresentationIntent(listKind, identity: listId)
+            let listItemIntent = PresentationIntent(
+                .listItem(ordinal: 1),
+                identity: listId * 1000 + 1,
+                parent: listIntent
+            )
+            return PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: listItemIntent
+            )
+        case .blockquote:
+            let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
+            return PresentationIntent(
+                .paragraph,
+                identity: 1,
+                parent: quoteIntent
+            )
+        case .codeBlock:
+            return PresentationIntent(
+                .codeBlock(languageHint: nil),
+                identity: 1
+            )
+        case .horizontalRule:
+            return PresentationIntent(
+                .thematicBreak,
+                identity: 1
+            )
+        case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6,
+             .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
+            return PresentationIntent(
+                .paragraph,
+                identity: 1
+            )
+        @unknown default:
+            return PresentationIntent(
+                .paragraph,
+                identity: 1
+            )
+        }
     }
 
 }
