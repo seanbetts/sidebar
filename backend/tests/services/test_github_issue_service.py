@@ -51,7 +51,6 @@ def test_submit_feedback_issue_creates_github_issue(monkeypatch: pytest.MonkeyPa
         details="Rename fails when the task title includes emoji.",
         user_id="user-1",
         user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
-        app_version="1.4.2",
         conversation_id="conv-1",
         user_message_id="msg-1",
     )
@@ -60,7 +59,6 @@ def test_submit_feedback_issue_creates_github_issue(monkeypatch: pytest.MonkeyPa
     assert result["issue_url"] == "https://github.com/seanbetts/sidebar/issues/42"
     assert result["labels_applied"] == ["bug"]
     assert result["platform"] == "iOS"
-    assert result["app_version"] == "1.4.2"
     assert captured["url"] == "https://api.github.com/repos/seanbetts/sidebar/issues"
     assert captured["payload"] == {
         "title": "[Bug] Unable to rename task",

@@ -28,7 +28,6 @@ def submit_feedback(args: argparse.Namespace) -> dict:
         details=args.details,
         user_id=args.user_id,
         user_agent=args.user_agent,
-        app_version=args.app_version,
         conversation_id=args.conversation_id,
         user_message_id=args.user_message_id,
         assistant_message_id=args.assistant_message_id,
@@ -43,7 +42,6 @@ def main() -> None:
     parser.add_argument("--details", help="Optional details")
     parser.add_argument("--user-id", required=True, help="User ID")
     parser.add_argument("--user-agent", help="User agent from request context")
-    parser.add_argument("--app-version", help="Client app version")
     parser.add_argument("--conversation-id", help="Conversation ID")
     parser.add_argument("--user-message-id", help="User message ID")
     parser.add_argument("--assistant-message-id", help="Assistant message ID")

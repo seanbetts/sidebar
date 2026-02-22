@@ -298,7 +298,6 @@ async def test_execute_tool_injects_product_feedback_context_fields():
         context={
             "user_id": "user-1",
             "user_agent": "Mozilla/5.0 (Macintosh)",
-            "app_version": "1.4.2",
             "conversation_id": "conv-1",
             "user_message_id": "msg-1",
             "assistant_message_id": "asst-1",
@@ -306,7 +305,6 @@ async def test_execute_tool_injects_product_feedback_context_fields():
     )
     assert result["success"] is True
     assert captured_params["user_id"] == "user-1"
-    assert captured_params["app_version"] == "1.4.2"
     assert captured_params["conversation_id"] == "conv-1"
     assert captured_params["user_message_id"] == "msg-1"
     assert captured_params["assistant_message_id"] == "asst-1"

@@ -142,7 +142,6 @@ class SkillsParameterBuilder(BaseParameterBuilder):
             ("summary", "--summary"),
             ("details", "--details"),
             ("user_agent", "--user-agent"),
-            ("app_version", "--app-version"),
             ("conversation_id", "--conversation-id"),
             ("user_message_id", "--user-message-id"),
             ("assistant_message_id", "--assistant-message-id"),

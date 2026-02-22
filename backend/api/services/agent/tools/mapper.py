@@ -40,7 +40,6 @@ TRANSCRIPTION_TOOL_NAMES = {"Transcribe Audio", "Transcribe YouTube"}
 SKILL_CONTEXT_FIELDS: dict[str, tuple[str, ...]] = {
     "product-feedback": (
         "user_agent",
-        "app_version",
         "conversation_id",
         "user_message_id",
         "assistant_message_id",
