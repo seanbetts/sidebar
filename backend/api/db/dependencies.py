@@ -33,7 +33,13 @@ async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),  # noqa: B008
 ) -> str:
     """Extract user ID from Supabase JWT token."""
-    if settings.auth_dev_mode:
+    if settings.auth_dev_mode and not settings.allow_auth_dev_mode:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AUTH_DEV_MODE requires APP_ENV=local",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if settings.auth_dev_mode and (not credentials or not credentials.credentials):
         return _resolve_test_user_id()
     if not credentials or not credentials.credentials:
         raise HTTPException(

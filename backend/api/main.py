@@ -106,6 +106,12 @@ async def lifespan(app: FastAPI):
     """Combined lifespan for MCP and app state initialization."""
     # Use MCP's lifespan context
     async with mcp_app.lifespan(app):
+        if settings.auth_dev_mode:
+            logger.warning(
+                "AUTH_DEV_MODE enabled: requests without Authorization "
+                "use TEST_USER_ID=%s",
+                settings.require_test_user_id(),
+            )
         # Initialize our app state
         app.state.executor = SkillExecutor(
             skills_dir=settings.skills_dir, workspace_base=settings.workspace_base
@@ -200,17 +206,20 @@ async def auth_middleware(request: Request, call_next):
         response = await call_next(request)
         return response
 
+    auth_header = request.headers.get("Authorization")
+
     if settings.auth_dev_mode:
         if not settings.allow_auth_dev_mode:
             logger.warning("AUTH_DEV_MODE is enabled outside local/test environment.")
             return _auth_error(
                 403, "AUTH_DEV_MODE_FORBIDDEN", "AUTH_DEV_MODE requires APP_ENV=local"
             )
-        response = await call_next(request)
-        return response
+        if not auth_header:
+            request.state.user_id = settings.require_test_user_id()
+            response = await call_next(request)
+            return response
 
     # Check for Authorization header
-    auth_header = request.headers.get("Authorization")
     if not auth_header:
         return _auth_error(
             401,

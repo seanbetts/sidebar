@@ -27,9 +27,10 @@ async def verify_bearer_token(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="AUTH_DEV_MODE requires APP_ENV=local",
             )
-        test_user_id = settings.require_test_user_id()
-        request.state.user_id = test_user_id
-        return {"sub": test_user_id}
+        if not credentials or not credentials.credentials:
+            test_user_id = settings.require_test_user_id()
+            request.state.user_id = test_user_id
+            return {"sub": test_user_id}
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -83,7 +84,8 @@ async def verify_supabase_jwt(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="AUTH_DEV_MODE requires APP_ENV=local",
             )
-        return {"sub": settings.require_test_user_id()}
+        if not credentials or not credentials.credentials:
+            return {"sub": settings.require_test_user_id()}
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

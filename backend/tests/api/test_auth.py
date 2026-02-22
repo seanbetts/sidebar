@@ -60,6 +60,34 @@ class TestAuthenticationMiddleware:
         assert response.status_code == 401
         assert "Missing" in _error_message(response)
 
+    def test_auth_dev_mode_allows_missing_authorization_header(
+        self, test_client, monkeypatch
+    ):
+        """AUTH_DEV_MODE should allow requests without Authorization headers."""
+        monkeypatch.setattr(settings, "auth_dev_mode", True)
+
+        response = test_client.get("/docs")
+        assert response.status_code == 200
+
+    def test_auth_dev_mode_validates_supplied_authorization_header(
+        self, test_client, monkeypatch, valid_token
+    ):
+        """AUTH_DEV_MODE should validate supplied Authorization headers."""
+        monkeypatch.setattr(settings, "auth_dev_mode", True)
+
+        valid_response = test_client.get(
+            "/docs",
+            headers={"Authorization": f"Bearer {valid_token}"},
+        )
+        assert valid_response.status_code == 200
+
+        invalid_response = test_client.get(
+            "/docs",
+            headers={"Authorization": "Bearer invalid-token"},
+        )
+        assert invalid_response.status_code == 401
+        assert "Invalid" in _error_message(invalid_response)
+
     def test_malformed_authorization_header_denied(self, test_client):
         """Malformed authorization header should be denied."""
         malformed_headers = [
