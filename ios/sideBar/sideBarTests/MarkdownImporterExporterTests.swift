@@ -174,4 +174,24 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertTrue(exported.contains("> 2. Two"), exported)
         XCTAssertFalse(exported.contains("1. >"), exported)
     }
+
+    func testFixtureRoundTripStabilizesCanonicalMarkdown() throws {
+        let markdown = try loadFixture(named: "TestNoteForReading")
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        let firstAttributed = importer.attributedString(from: markdown).attributedString
+        let canonical = exporter.markdown(from: firstAttributed)
+        let secondAttributed = importer.attributedString(from: canonical).attributedString
+        let canonicalAgain = exporter.markdown(from: secondAttributed)
+
+        XCTAssertEqual(canonicalAgain, canonical)
+    }
+
+    private func loadFixture(named name: String) throws -> String {
+        let fileURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/Markdown/\(name).md")
+        return try String(contentsOf: fileURL, encoding: .utf8)
+    }
 }
