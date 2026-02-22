@@ -9,7 +9,7 @@ metadata:
     The skill fetches crawler policy files, interprets their directives, and
     can generate a clearer summary for decision-making.
   requirements:
-    - Optional OpenAI API key for report-generation mode
+    - A domain name (or list of domains) to analyze
   version: 1.0.0
   updated_at: 2026-02-22
 ---

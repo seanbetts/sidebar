@@ -9,8 +9,7 @@ metadata:
     The skill downloads video audio and transcribes it, then saves a text
     transcript back into your workspace.
   requirements:
-    - OpenAI API key
-    - ffmpeg installed for audio extraction
+    - A public YouTube video URL
   version: 1.0.0
   updated_at: 2026-02-22
 ---

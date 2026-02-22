@@ -9,8 +9,7 @@ metadata:
     The skill uses a downloader utility to fetch media, then stores the result
     in your workspace for later use.
   requirements:
-    - ffmpeg installed for media conversion
-    - JavaScript runtime available for yt-dlp extraction
+    - A public YouTube video or playlist URL
   version: 1.0.0
   updated_at: 2026-02-22
 ---

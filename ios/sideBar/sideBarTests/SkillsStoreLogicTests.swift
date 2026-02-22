@@ -73,21 +73,91 @@ final class SkillsStoreLogicTests: XCTestCase {
         XCTAssertEqual(providers, ["openai"])
     }
 
-    func testRequirementLinesFormatsRequiredAndOptionalModes() {
+    func testUserRequirementLinesTrimsDeduplicatesAndDropsEmptyValues() {
         let skill = makeSkill(
             id: "crawler",
             name: "Web Crawler",
             tier: .store,
-            credentialRequirements: [
-                SkillCredentialRequirement(provider: "openai", required: true),
-                SkillCredentialRequirement(provider: "google", required: false, mode: "report_mode")
+            requirements: [
+                "  A domain to analyze  ",
+                "",
+                "a DOMAIN to analyze",
+                "A publicly accessible URL"
             ]
         )
 
-        let lines = SkillsStoreLogic.requirementLines(for: skill)
+        let lines = SkillsStoreLogic.userRequirementLines(for: skill)
 
-        XCTAssertEqual(lines[0], "Requires OpenAI API key")
-        XCTAssertEqual(lines[1], "Optional Google API key (report mode)")
+        XCTAssertEqual(lines, ["A domain to analyze", "A publicly accessible URL"])
+    }
+
+    func testShowsRequirementsSectionWhenUserRequirementsExistWithoutCredentials() {
+        let skill = makeSkill(
+            id: "crawler",
+            name: "Web Crawler",
+            tier: .store,
+            requirements: ["A domain to analyze"]
+        )
+
+        XCTAssertTrue(SkillsStoreLogic.showsRequirementsSection(for: skill))
+    }
+
+    func testShowsRequirementsSectionWhenCredentialRequirementsExistWithoutUserRequirements() {
+        let skill = makeSkill(
+            id: "audio",
+            name: "Audio",
+            tier: .store,
+            credentialRequirements: [SkillCredentialRequirement(provider: "openai", required: true)]
+        )
+
+        XCTAssertTrue(SkillsStoreLogic.showsRequirementsSection(for: skill))
+    }
+
+    func testShowsRequirementsSectionFalseWhenNoRequirementsExist() {
+        let skill = makeSkill(id: "notes", name: "Notes", tier: .store)
+
+        XCTAssertFalse(SkillsStoreLogic.showsRequirementsSection(for: skill))
+    }
+
+    func testIsStoreActionBusyTrueWhenAnyActionSetContainsSkill() {
+        XCTAssertTrue(
+            SkillsStoreLogic.isStoreActionBusy(
+                skillId: "skill-1",
+                installInFlight: ["skill-1"],
+                installChecksInFlight: [],
+                uninstallInFlight: []
+            )
+        )
+        XCTAssertTrue(
+            SkillsStoreLogic.isStoreActionBusy(
+                skillId: "skill-1",
+                installInFlight: [],
+                installChecksInFlight: ["skill-1"],
+                uninstallInFlight: []
+            )
+        )
+        XCTAssertTrue(
+            SkillsStoreLogic.isStoreActionBusy(
+                skillId: "skill-1",
+                installInFlight: [],
+                installChecksInFlight: [],
+                uninstallInFlight: ["skill-1"]
+            )
+        )
+        XCTAssertFalse(
+            SkillsStoreLogic.isStoreActionBusy(
+                skillId: "skill-1",
+                installInFlight: [],
+                installChecksInFlight: [],
+                uninstallInFlight: []
+            )
+        )
+    }
+
+    func testIsInstalledUsesInstalledStoreSkillSetMembership() {
+        let installedSkillIds: Set<String> = ["audio", "youtube"]
+        XCTAssertTrue(SkillsStoreLogic.isInstalled(skillId: "audio", installedStoreSkillIds: installedSkillIds))
+        XCTAssertFalse(SkillsStoreLogic.isInstalled(skillId: "notes", installedStoreSkillIds: installedSkillIds))
     }
 
     func testProviderDisplayNameFormatsKnownAndUnknownProviders() {
@@ -150,7 +220,8 @@ final class SkillsStoreLogicTests: XCTestCase {
         category: String = "General",
         tier: SkillTier = .standard,
         status: String = "active",
-        credentialRequirements: [SkillCredentialRequirement] = []
+        credentialRequirements: [SkillCredentialRequirement] = [],
+        requirements: [String] = []
     ) -> SkillItem {
         SkillItem(
             id: id,
@@ -160,7 +231,8 @@ final class SkillsStoreLogicTests: XCTestCase {
             tier: tier,
             credentialRequirements: credentialRequirements,
             installable: tier == .store,
-            status: status
+            status: status,
+            requirements: requirements
         )
     }
 }

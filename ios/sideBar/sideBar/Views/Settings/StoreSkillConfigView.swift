@@ -194,20 +194,7 @@ struct StoreSkillConfigView: View {
     }
 
     private var userRequirementLines: [String] {
-        var seen: Set<String> = []
-        var lines: [String] = []
-
-        for requirement in skill.requirements {
-            let trimmed = requirement.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-
-            let key = trimmed.lowercased()
-            guard !seen.contains(key) else { continue }
-            seen.insert(key)
-            lines.append(trimmed)
-        }
-
-        return lines
+        SkillsStoreLogic.userRequirementLines(for: skill)
     }
 
     private var hasStoreInstallAction: Bool {
@@ -223,7 +210,7 @@ struct StoreSkillConfigView: View {
     }
 
     private var showsRequirementsSection: Bool {
-        !userRequirementLines.isEmpty || hasCredentialRequirements
+        SkillsStoreLogic.showsRequirementsSection(for: skill)
     }
 
     private var defaultHowItWorksText: String {

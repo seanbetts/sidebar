@@ -390,8 +390,8 @@ metadata:
   long_description: Longer user-facing detail
   how_it_works: Friendly summary of behavior
   requirements:
-    - OpenAI API key
-    - ffmpeg installed
+    - A domain name to analyze
+    - A public URL to inspect
   version: 1.2.3
   updated_at: 2026-02-22
 ---
@@ -400,6 +400,46 @@ metadata:
         valid, message = validate_skill(skill_dir)
 
         assert valid is True
+
+    def test_requirements_rejects_credential_lines(self, temp_dir):
+        """Test metadata.requirements rejects credential/API key entries."""
+        skill_dir = temp_dir / "test-skill"
+        skill_dir.mkdir()
+
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+name: test-skill
+description: Valid description
+metadata:
+  requirements:
+    - OpenAI API key
+---
+""")
+
+        valid, message = validate_skill(skill_dir)
+
+        assert valid is False
+        assert "credentials" in message.lower() or "api keys" in message.lower()
+
+    def test_requirements_rejects_developer_dependency_lines(self, temp_dir):
+        """Test metadata.requirements rejects developer dependency entries."""
+        skill_dir = temp_dir / "test-skill"
+        skill_dir.mkdir()
+
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+name: test-skill
+description: Valid description
+metadata:
+  requirements:
+    - ffmpeg installed for local processing
+---
+""")
+
+        valid, message = validate_skill(skill_dir)
+
+        assert valid is False
+        assert "developer/runtime" in message.lower() or "user-facing" in message.lower()
 
     def test_requirements_must_be_list(self, temp_dir):
         """Test metadata.requirements rejects non-list values."""

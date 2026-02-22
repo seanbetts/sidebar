@@ -76,20 +76,39 @@ enum SkillsStoreLogic {
         return orderedProviders
     }
 
-    static func requirementLines(for skill: SkillItem) -> [String] {
-        if skill.credentialRequirements.isEmpty {
-            return ["No API key required"]
+    static func userRequirementLines(for skill: SkillItem) -> [String] {
+        var seen: Set<String> = []
+        var lines: [String] = []
+
+        for requirement in skill.requirements {
+            let trimmed = requirement.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            let normalized = trimmed.lowercased()
+            guard !seen.contains(normalized) else { continue }
+            seen.insert(normalized)
+            lines.append(trimmed)
         }
-        return skill.credentialRequirements.map { requirement in
-            let provider = providerDisplayName(requirement.provider)
-            if requirement.required {
-                return "Requires \(provider) API key"
-            }
-            if let mode = requirement.mode, !mode.isEmpty {
-                return "Optional \(provider) API key (\(mode.replacingOccurrences(of: "_", with: " ")))"
-            }
-            return "Optional \(provider) API key"
-        }
+        return lines
+    }
+
+    static func showsRequirementsSection(for skill: SkillItem) -> Bool {
+        !userRequirementLines(for: skill).isEmpty || !requiredProviders(for: skill).isEmpty
+    }
+
+    static func isStoreActionBusy(
+        skillId: String,
+        installInFlight: Set<String>,
+        installChecksInFlight: Set<String>,
+        uninstallInFlight: Set<String>
+    ) -> Bool {
+        installInFlight.contains(skillId)
+            || installChecksInFlight.contains(skillId)
+            || uninstallInFlight.contains(skillId)
+    }
+
+    static func isInstalled(skillId: String, installedStoreSkillIds: Set<String>) -> Bool {
+        installedStoreSkillIds.contains(skillId)
     }
 
     static func installedStoreSkillsRequiringProvider(

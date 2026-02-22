@@ -9,6 +9,46 @@ from pathlib import Path
 import yaml
 
 SEMVER_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$")
+REQUIREMENT_API_KEY_MARKERS = (
+    "api key",
+    "api-key",
+    "_api_key",
+    "openai_api_key",
+    "anthropic_api_key",
+    "google_api_key",
+    "credential",
+)
+REQUIREMENT_DEVELOPER_MARKERS = (
+    "ffmpeg",
+    "pyproject",
+    "pip install",
+    "brew install",
+    "apt-get install",
+    "system package",
+    "installed via",
+    "dependency",
+)
+
+
+def _invalid_requirement_reason(requirement_text: str) -> str | None:
+    """Return a reason string when metadata.requirements entry is invalid."""
+    normalized_requirement = requirement_text.strip().lower()
+
+    if any(marker in normalized_requirement for marker in REQUIREMENT_API_KEY_MARKERS):
+        return (
+            "metadata.requirements should list user-facing needs only; "
+            "API keys and credentials belong in credential requirement metadata"
+        )
+
+    if any(
+        marker in normalized_requirement for marker in REQUIREMENT_DEVELOPER_MARKERS
+    ):
+        return (
+            "metadata.requirements should list user-facing needs only; "
+            "developer/runtime dependency details should stay in docs"
+        )
+
+    return None
 
 
 def validate_skill(skill_path):
@@ -137,6 +177,8 @@ def validate_skill(skill_path):
                         False,
                         "metadata.requirements entries must be non-empty strings",
                     )
+                if invalid_reason := _invalid_requirement_reason(requirement):
+                    return False, invalid_reason
 
         version = metadata.get("version")
         if version is not None:

@@ -9,7 +9,7 @@ metadata:
     The skill checks common DNS and certificate sources, combines matches, and
     returns a deduplicated set of discovered subdomains.
   requirements:
-    - DNS and HTTP network access
+    - A domain name to analyze
   version: 1.0.0
   updated_at: 2026-02-22
 ---

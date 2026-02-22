@@ -348,13 +348,19 @@ public struct SkillsStoreView: View {
     }
 
     private func isStoreActionBusy(_ skillId: String) -> Bool {
-        installInFlight.contains(skillId)
-            || installChecksInFlight.contains(skillId)
-            || uninstallInFlight.contains(skillId)
+        SkillsStoreLogic.isStoreActionBusy(
+            skillId: skillId,
+            installInFlight: installInFlight,
+            installChecksInFlight: installChecksInFlight,
+            uninstallInFlight: uninstallInFlight
+        )
     }
 
     private func isInstalled(_ skill: SkillItem) -> Bool {
-        viewModel.settings?.installedStoreSkills.contains(skill.id) ?? false
+        SkillsStoreLogic.isInstalled(
+            skillId: skill.id,
+            installedStoreSkillIds: Set(viewModel.settings?.installedStoreSkills ?? [])
+        )
     }
 
     private var skillGridColumns: [GridItem] {

@@ -9,8 +9,7 @@ metadata:
     The skill uploads audio to OpenAI transcription models and saves the
     transcript in your workspace so it can be searched and reused.
   requirements:
-    - OpenAI API key
-    - ffmpeg installed for local audio processing
+    - An audio file to transcribe
   version: 1.0.0
   updated_at: 2026-02-22
 ---
