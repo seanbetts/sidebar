@@ -1,6 +1,18 @@
 ---
 name: audio-transcribe
 description: Transcribe audio files to text using OpenAI's Whisper API with automatic chunking for large files. Use when you need to convert meeting recordings, podcasts, interviews, or any audio content to text.
+metadata:
+  long_description: >-
+    Turn recordings into readable notes and transcripts with support for long
+    audio files.
+  how_it_works: >-
+    The skill uploads audio to OpenAI transcription models and saves the
+    transcript in your workspace so it can be searched and reused.
+  requirements:
+    - OpenAI API key
+    - ffmpeg installed for local audio processing
+  version: 1.0.0
+  updated_at: 2026-02-22
 ---
 
 # audio-transcribe

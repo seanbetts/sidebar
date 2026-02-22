@@ -1,6 +1,18 @@
 ---
 name: youtube-download
 description: Download YouTube videos (MP4) or audio (MP3) using yt-dlp with automatic quality selection and format conversion. Use when you need to download videos for offline viewing, extract audio, or archive YouTube content in the files workspace.
+metadata:
+  long_description: >-
+    Save YouTube videos or audio so you can watch, reference, or process them
+    inside sideBar.
+  how_it_works: >-
+    The skill uses a downloader utility to fetch media, then stores the result
+    in your workspace for later use.
+  requirements:
+    - ffmpeg installed for media conversion
+    - JavaScript runtime available for yt-dlp extraction
+  version: 1.0.0
+  updated_at: 2026-02-22
 ---
 
 # youtube-download

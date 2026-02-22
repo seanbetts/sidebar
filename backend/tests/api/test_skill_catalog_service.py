@@ -1,11 +1,18 @@
 from api.services.agent.skills.catalog import SkillCatalogService
 
 
-def _write_skill(skill_root, skill_id: str) -> None:
+def _write_skill(skill_root, skill_id: str, metadata_block: str = "") -> None:
     skill_dir = skill_root / skill_id
     skill_dir.mkdir(parents=True, exist_ok=True)
+    frontmatter = (
+        "---\n"
+        "name: Placeholder\n"
+        "description: Placeholder description\n"
+        f"{metadata_block}"
+        "---\n"
+    )
     (skill_dir / "SKILL.md").write_text(
-        "---\nname: Placeholder\ndescription: Placeholder description\n---\n",
+        frontmatter,
         encoding="utf-8",
     )
 
@@ -28,7 +35,22 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         "assistant-identity",
         "assistant-soul",
     ]:
-        _write_skill(skills_dir, skill_id)
+        if skill_id == "audio-transcribe":
+            _write_skill(
+                skills_dir,
+                skill_id,
+                metadata_block=(
+                    "metadata:\n"
+                    "  long_description: Long detail\n"
+                    "  how_it_works: Friendly explanation\n"
+                    "  requirements:\n"
+                    "    - OpenAI API key\n"
+                    "  version: 1.0.0\n"
+                    "  updated_at: 2026-02-22\n"
+                ),
+            )
+        else:
+            _write_skill(skills_dir, skill_id)
 
     skills = SkillCatalogService.list_skills(skills_dir)
     by_id = {str(skill["id"]): skill for skill in skills}
@@ -40,9 +62,9 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert by_id["files"]["default_enabled"] is True
     assert by_id["audio-transcribe"]["tier"] == "store"
     assert by_id["audio-transcribe"]["installable"] is True
-    assert isinstance(by_id["audio-transcribe"]["long_description"], str)
-    assert isinstance(by_id["audio-transcribe"]["how_it_works"], str)
-    assert by_id["audio-transcribe"]["requirements"]
+    assert by_id["audio-transcribe"]["long_description"] == "Long detail"
+    assert by_id["audio-transcribe"]["how_it_works"] == "Friendly explanation"
+    assert by_id["audio-transcribe"]["requirements"] == ["OpenAI API key"]
     assert by_id["audio-transcribe"]["version"] == "1.0.0"
     assert by_id["audio-transcribe"]["updated_at"] == "2026-02-22"
     assert by_id["audio-transcribe"]["install_count"] is None

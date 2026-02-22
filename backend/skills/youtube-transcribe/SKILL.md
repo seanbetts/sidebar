@@ -1,6 +1,18 @@
 ---
 name: youtube-transcribe
 description: Transcribe YouTube videos to text by downloading audio and using OpenAI's Whisper API. Use when you need transcripts stored in the files workspace.
+metadata:
+  long_description: >-
+    Create transcripts from YouTube videos so content can be searched,
+    summarized, and reused quickly.
+  how_it_works: >-
+    The skill downloads video audio and transcribes it, then saves a text
+    transcript back into your workspace.
+  requirements:
+    - OpenAI API key
+    - ffmpeg installed for audio extraction
+  version: 1.0.0
+  updated_at: 2026-02-22
 ---
 
 # youtube-transcribe

@@ -1,6 +1,17 @@
 ---
 name: web-crawler-policy
 description: Analyze robots.txt and llms.txt policies to understand which crawlers can access content. Use when auditing crawler policies, analyzing AI content accessibility, or generating marketing intelligence on brand representation in LLMs.
+metadata:
+  long_description: >-
+    Understand whether websites allow crawlers and AI agents by analyzing
+    robots.txt and llms.txt policies.
+  how_it_works: >-
+    The skill fetches crawler policy files, interprets their directives, and
+    can generate a clearer summary for decision-making.
+  requirements:
+    - Optional OpenAI API key for report-generation mode
+  version: 1.0.0
+  updated_at: 2026-02-22
 ---
 
 # web-crawler-policy

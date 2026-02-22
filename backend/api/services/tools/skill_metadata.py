@@ -164,77 +164,6 @@ SKILL_CREDENTIAL_REQUIREMENTS: dict[str, list[dict[str, Any]]] = {
     ],
 }
 
-SKILL_DETAIL_METADATA: dict[str, dict[str, Any]] = {
-    "audio-transcribe": {
-        "long_description": (
-            "Turn recordings into readable notes and transcripts with support for "
-            "long audio files."
-        ),
-        "how_it_works": (
-            "The skill uploads audio to OpenAI transcription models and then saves "
-            "the transcript in your workspace so it can be searched and reused."
-        ),
-        "requirements": [
-            "OpenAI API key",
-            "ffmpeg installed for local audio processing",
-        ],
-        "version": "1.0.0",
-        "updated_at": "2026-02-22",
-    },
-    "youtube-download": {
-        "long_description": (
-            "Save YouTube videos or audio so you can watch, reference, or process "
-            "them inside sideBar."
-        ),
-        "how_it_works": (
-            "The skill uses a downloader utility to fetch the media, then stores the "
-            "resulting file in your workspace for later use."
-        ),
-        "requirements": [],
-        "version": "1.0.0",
-        "updated_at": "2026-02-22",
-    },
-    "youtube-transcribe": {
-        "long_description": (
-            "Create transcripts from YouTube videos so content can be searched, "
-            "summarized, and reused quickly."
-        ),
-        "how_it_works": (
-            "The skill downloads video audio and runs transcription on it, then saves "
-            "a text transcript back into your workspace."
-        ),
-        "requirements": ["OpenAI API key"],
-        "version": "1.0.0",
-        "updated_at": "2026-02-22",
-    },
-    "subdomain-discover": {
-        "long_description": (
-            "Discover related subdomains for a website to improve research, audits, "
-            "and technical discovery."
-        ),
-        "how_it_works": (
-            "The skill checks common DNS and certificate sources, combines matches, "
-            "and returns a deduplicated set of discovered subdomains."
-        ),
-        "requirements": [],
-        "version": "1.0.0",
-        "updated_at": "2026-02-22",
-    },
-    "web-crawler-policy": {
-        "long_description": (
-            "Understand whether websites allow crawlers and AI agents by analyzing "
-            "robots.txt and llms.txt policies."
-        ),
-        "how_it_works": (
-            "The skill fetches crawler policy files, interprets their directives, "
-            "and can generate a clearer summary for decision-making."
-        ),
-        "requirements": [],
-        "version": "1.0.0",
-        "updated_at": "2026-02-22",
-    },
-}
-
 
 def canonicalize_skill_id(skill_id: str) -> str:
     """Return canonical skill ID, resolving known legacy aliases."""
@@ -283,10 +212,3 @@ def get_credential_requirements(skill_id: str) -> list[dict[str, Any]]:
     canonical = canonicalize_skill_id(skill_id)
     requirements = SKILL_CREDENTIAL_REQUIREMENTS.get(canonical, [])
     return [dict(requirement) for requirement in requirements]
-
-
-def get_skill_detail_metadata(skill_id: str) -> dict[str, Any]:
-    """Return optional, user-facing detail metadata for a skill."""
-    canonical = canonicalize_skill_id(skill_id)
-    detail = SKILL_DETAIL_METADATA.get(canonical, {})
-    return dict(detail)

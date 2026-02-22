@@ -377,6 +377,68 @@ metadata:
         # Should pass - metadata can have arbitrary nested properties
         assert valid is True
 
+    def test_store_detail_metadata_fields_validate(self, temp_dir):
+        """Test optional store detail metadata fields pass validation."""
+        skill_dir = temp_dir / "test-skill"
+        skill_dir.mkdir()
+
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+name: test-skill
+description: Valid description
+metadata:
+  long_description: Longer user-facing detail
+  how_it_works: Friendly summary of behavior
+  requirements:
+    - OpenAI API key
+    - ffmpeg installed
+  version: 1.2.3
+  updated_at: 2026-02-22
+---
+""")
+
+        valid, message = validate_skill(skill_dir)
+
+        assert valid is True
+
+    def test_requirements_must_be_list(self, temp_dir):
+        """Test metadata.requirements rejects non-list values."""
+        skill_dir = temp_dir / "test-skill"
+        skill_dir.mkdir()
+
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+name: test-skill
+description: Valid description
+metadata:
+  requirements: OpenAI API key
+---
+""")
+
+        valid, message = validate_skill(skill_dir)
+
+        assert valid is False
+        assert "requirements" in message.lower()
+
+    def test_updated_at_must_be_iso_string_or_date(self, temp_dir):
+        """Test metadata.updated_at rejects invalid values."""
+        skill_dir = temp_dir / "test-skill"
+        skill_dir.mkdir()
+
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+name: test-skill
+description: Valid description
+metadata:
+  updated_at: not-a-date
+---
+""")
+
+        valid, message = validate_skill(skill_dir)
+
+        assert valid is False
+        assert "updated_at" in message.lower()
+
 
 class TestMissingSkillFile:
     """Test handling of missing SKILL.md file."""

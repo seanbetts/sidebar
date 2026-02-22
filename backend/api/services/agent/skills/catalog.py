@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,6 @@ from api.services.tools.skill_metadata import (
     get_credential_requirements,
     get_legacy_skill_ids,
     get_provider_dependency,
-    get_skill_detail_metadata,
     get_skill_tier,
     is_skill_default_enabled,
     is_skill_installable,
@@ -88,28 +88,22 @@ class SkillCatalogService:
         """Build one normalized catalog entry."""
         display = SkillCatalogService._display_metadata(skill_id)
         frontmatter_metadata = SkillCatalogService._nested_metadata(metadata)
-        detail_metadata = get_skill_detail_metadata(skill_id)
         user_toggleable = is_skill_user_toggleable(skill_id)
 
         long_description = SkillCatalogService._coalesce_str(
             frontmatter_metadata.get("long_description"),
-            detail_metadata.get("long_description"),
         )
         how_it_works = SkillCatalogService._coalesce_str(
             frontmatter_metadata.get("how_it_works"),
-            detail_metadata.get("how_it_works"),
         )
         requirements = SkillCatalogService._coalesce_str_list(
             frontmatter_metadata.get("requirements"),
-            detail_metadata.get("requirements"),
         )
         version = SkillCatalogService._coalesce_str(
             frontmatter_metadata.get("version"),
-            detail_metadata.get("version"),
         )
         updated_at = SkillCatalogService._coalesce_str(
             frontmatter_metadata.get("updated_at"),
-            detail_metadata.get("updated_at"),
         )
 
         return {
@@ -214,6 +208,8 @@ class SkillCatalogService:
                 normalized = value.strip()
                 if normalized:
                     return normalized
+            if isinstance(value, date | datetime):
+                return value.isoformat()
         return None
 
     @staticmethod

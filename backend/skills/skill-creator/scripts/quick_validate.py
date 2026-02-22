@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Quick validation script for skills - minimal version"""
+"""Quick validation script for skills - minimal version."""
 
 import re
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 import yaml
 
+SEMVER_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$")
+
 
 def validate_skill(skill_path):
-    """Basic validation of a skill"""
+    """Basic validation of a skill."""
     skill_path = Path(skill_path)
 
     # Check SKILL.md exists
@@ -38,14 +41,22 @@ def validate_skill(skill_path):
         return False, f"Invalid YAML in frontmatter: {e}"
 
     # Define allowed properties
-    ALLOWED_PROPERTIES = {"name", "description", "license", "allowed-tools", "metadata"}
+    allowed_properties = {
+        "name",
+        "description",
+        "license",
+        "allowed-tools",
+        "metadata",
+    }
 
     # Check for unexpected properties (excluding nested keys under metadata)
-    unexpected_keys = set(frontmatter.keys()) - ALLOWED_PROPERTIES
+    unexpected_keys = set(frontmatter.keys()) - allowed_properties
     if unexpected_keys:
+        unexpected_list = ", ".join(sorted(unexpected_keys))
+        allowed_list = ", ".join(sorted(allowed_properties))
         return False, (
-            f"Unexpected key(s) in SKILL.md frontmatter: {', '.join(sorted(unexpected_keys))}. "
-            f"Allowed properties are: {', '.join(sorted(ALLOWED_PROPERTIES))}"
+            "Unexpected key(s) in SKILL.md frontmatter: "
+            f"{unexpected_list}. Allowed properties are: {allowed_list}"
         )
 
     # Check required fields
@@ -64,12 +75,14 @@ def validate_skill(skill_path):
         if not re.match(r"^[a-z0-9-]+$", name):
             return (
                 False,
-                f"Name '{name}' should be hyphen-case (lowercase letters, digits, and hyphens only)",
+                f"Name '{name}' should be hyphen-case "
+                "(lowercase letters, digits, and hyphens only)",
             )
         if name.startswith("-") or name.endswith("-") or "--" in name:
             return (
                 False,
-                f"Name '{name}' cannot start/end with hyphen or contain consecutive hyphens",
+                f"Name '{name}' cannot start/end with hyphen "
+                "or contain consecutive hyphens",
             )
         # Check name length (max 64 characters per spec)
         if len(name) > 64:
@@ -91,17 +104,82 @@ def validate_skill(skill_path):
         if len(description) > 1024:
             return (
                 False,
-                f"Description is too long ({len(description)} characters). Maximum is 1024 characters.",
+                "Description is too long "
+                f"({len(description)} characters). Maximum is 1024 characters.",
             )
+
+    metadata = frontmatter.get("metadata")
+    if metadata is not None:
+        if not isinstance(metadata, dict):
+            return False, "metadata must be a mapping/object when provided"
+
+        long_description = metadata.get("long_description")
+        if long_description is not None:
+            if not isinstance(long_description, str):
+                return False, "metadata.long_description must be a string"
+            if not long_description.strip():
+                return False, "metadata.long_description cannot be empty"
+
+        how_it_works = metadata.get("how_it_works")
+        if how_it_works is not None:
+            if not isinstance(how_it_works, str):
+                return False, "metadata.how_it_works must be a string"
+            if not how_it_works.strip():
+                return False, "metadata.how_it_works cannot be empty"
+
+        requirements = metadata.get("requirements")
+        if requirements is not None:
+            if not isinstance(requirements, list):
+                return False, "metadata.requirements must be a list of strings"
+            for requirement in requirements:
+                if not isinstance(requirement, str) or not requirement.strip():
+                    return (
+                        False,
+                        "metadata.requirements entries must be non-empty strings",
+                    )
+
+        version = metadata.get("version")
+        if version is not None:
+            if not isinstance(version, str):
+                return False, "metadata.version must be a string"
+            normalized_version = version.strip()
+            if not normalized_version:
+                return False, "metadata.version cannot be empty"
+            if not SEMVER_PATTERN.match(normalized_version):
+                return (
+                    False,
+                    "metadata.version should use semantic version format (e.g. 1.2.3)",
+                )
+
+        updated_at = metadata.get("updated_at")
+        if updated_at is not None:
+            if isinstance(updated_at, (date, datetime)):
+                pass
+            elif isinstance(updated_at, str):
+                raw_updated_at = updated_at.strip()
+                if not raw_updated_at:
+                    return False, "metadata.updated_at cannot be empty"
+                try:
+                    datetime.fromisoformat(raw_updated_at.replace("Z", "+00:00"))
+                except ValueError:
+                    try:
+                        date.fromisoformat(raw_updated_at)
+                    except ValueError:
+                        return (
+                            False,
+                            "metadata.updated_at must be an ISO date or datetime",
+                        )
+            else:
+                return False, "metadata.updated_at must be a date or ISO string"
 
     return True, "Skill is valid!"
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python quick_validate.py <skill_directory>")
+        sys.stderr.write("Usage: python quick_validate.py <skill_directory>\n")
         sys.exit(1)
 
     valid, message = validate_skill(sys.argv[1])
-    print(message)
+    sys.stdout.write(f"{message}\n")
     sys.exit(0 if valid else 1)

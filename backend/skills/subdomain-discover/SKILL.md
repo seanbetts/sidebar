@@ -1,6 +1,17 @@
 ---
 name: subdomain-discover
 description: Discover subdomains using DNS bruteforce, Certificate Transparency logs, and sitemap parsing. Use when you need to map a brand's digital footprint, perform security reconnaissance, or prepare for crawler policy analysis.
+metadata:
+  long_description: >-
+    Discover related subdomains for a website to improve research, audits, and
+    technical discovery.
+  how_it_works: >-
+    The skill checks common DNS and certificate sources, combines matches, and
+    returns a deduplicated set of discovered subdomains.
+  requirements:
+    - DNS and HTTP network access
+  version: 1.0.0
+  updated_at: 2026-02-22
 ---
 
 # subdomain-discover
