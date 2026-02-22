@@ -239,13 +239,14 @@ public final class NotesEditorViewModel: ObservableObject {
 
     public func resolveConflictKeepLocal() async {
         guard let conflict else { return }
-        content = conflict.localContent
+        let canonicalLocalContent = canonicalMarkdownForPersistence(conflict.localContent)
+        content = canonicalLocalContent
         isDirty = true
         isQueuedForSync = true
         try? draftStorage.saveDraft(
             entityType: "note",
             entityId: conflict.noteId,
-            content: conflict.localContent
+            content: canonicalLocalContent
         )
         self.conflict = nil
     }
@@ -263,7 +264,7 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let conflict else { return }
         let folder = folderPath(from: conflict.notePath)
         let copyTitle = copyTitle(from: conflict.noteName)
-        let localContent = conflict.localContent
+        let localContent = canonicalMarkdownForPersistence(conflict.localContent)
         content = conflict.serverContent
         isDirty = false
         try? draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
@@ -291,6 +292,13 @@ public final class NotesEditorViewModel: ObservableObject {
             guard nativeEditorViewModel.currentMarkdown() != markdown else { return }
             nativeEditorViewModel.loadMarkdown(markdown)
         }
+    }
+
+    private func canonicalMarkdownForPersistence(_ markdown: String) -> String {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            return canonicalMarkdownSnapshot(from: markdown)
+        }
+        return markdown
     }
 
     @available(iOS 26.0, macOS 26.0, *)
