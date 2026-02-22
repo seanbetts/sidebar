@@ -280,6 +280,8 @@ extension MarkdownToAttributedStringWalker {
                 identity: 1,
                 blockquoteDepth: blockquoteDepth
             )
+        case .bulletList, .orderedList, .taskUnchecked, .taskChecked:
+            return nil
         case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
             return nil
         @unknown default:

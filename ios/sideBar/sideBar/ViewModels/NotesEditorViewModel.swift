@@ -276,6 +276,7 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
         _ = await notesViewModel.updateNoteContent(id: created.id, content: localContent)
+        await notesViewModel.selectNote(id: conflict.notePath)
     }
 
     public func setDirty(_ dirty: Bool) {

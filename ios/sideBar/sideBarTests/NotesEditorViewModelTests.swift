@@ -433,6 +433,109 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), canonical)
     }
+
+    func testDetachNativeEditorStopsUsingDetachedSnapshot() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Server body",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        nativeViewModel.attributedContent = AttributedString("Local unsaved body")
+        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), "Local unsaved body")
+
+        viewModel.detachNativeEditor(nativeViewModel)
+        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), "Server body")
+    }
+
+    func testDetachNativeEditorIgnoresDifferentEditorInstance() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Server body",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let attachedEditor = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(attachedEditor)
+        attachedEditor.attributedContent = AttributedString("Local unsaved body")
+        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), "Local unsaved body")
+
+        let differentEditor = NativeMarkdownEditorViewModel()
+        viewModel.detachNativeEditor(differentEditor)
+        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), "Local unsaved body")
+    }
 }
 
 @MainActor
