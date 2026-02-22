@@ -57,14 +57,21 @@ metadata:
   long_description: Clear user-facing description for the detail modal.
   how_it_works: Non-technical explanation of the workflow.
   requirements:
-    - OpenAI API key
-    - Any local/system dependencies users should know about
+    - A public URL to analyze
+    - A file to process
   version: 1.0.0
   updated_at: 2026-02-22
 ---
 ```
 
 These fields are optional but strongly recommended for any skill that appears in the Skills Store.
+
+`metadata.requirements` should only include user-facing prerequisites. Do not include:
+- API key/credential requirements
+- local runtime/setup dependencies (for example `ffmpeg`, `pip install`, `brew install`)
+
+Credential requirements belong in `backend/api/services/tools/skill_metadata.py` (`SKILL_CREDENTIAL_REQUIREMENTS`).
+Developer dependencies should stay in the body docs for maintainers.
 
 ### Source Of Truth
 
@@ -82,6 +89,7 @@ Do not rely on hardcoded fallback maps for long-term content.
 - `metadata.updated_at`: ISO date or datetime (for example `2026-02-22` or `2026-02-22T14:30:00Z`)
 
 If any of these fields are invalid, skill validation will fail.
+The validator also rejects `metadata.requirements` entries that look like credential or developer dependency instructions.
 
 ### UI Fallback Behavior
 
@@ -89,7 +97,7 @@ When optional detail metadata is not provided:
 
 - `long_description` falls back to the short `description`
 - `how_it_works` falls back to a generic user-friendly explanation
-- `requirements` falls back to credential-derived requirements (or a no-special-requirements message)
+- `requirements` section is shown only when user-facing requirements or required credential metadata exist
 - `version` and `updated_at` are omitted in the detail section
 
 ### Reserved Future Fields
@@ -144,6 +152,15 @@ python backend/skills/skill-creator/scripts/init_skill.py <skill-id> --path back
 python backend/skills/skill-creator/scripts/quick_validate.py backend/skills/<skill-id>
 ```
 
+To validate all skills at once:
+
+```bash
+for d in backend/skills/*; do
+  [ -f "$d/SKILL.md" ] || continue
+  python backend/skills/skill-creator/scripts/quick_validate.py "$d"
+done
+```
+
 3. Add or update tests for behavior you introduce (for scripts and API integration).
 
 ## Add Skill To Skills Store Catalog
@@ -176,6 +193,7 @@ If the skill is visible in iOS Skills Store, update symbol mappings:
 
 - Skill folder exists in `backend/skills/<skill-id>/`.
 - `SKILL.md` validates.
+- All skills pass quick validation (local loop or CI `Skills Validation` workflow).
 - Store skill includes `metadata.long_description`, `metadata.how_it_works`, `metadata.requirements`, `metadata.version`, and `metadata.updated_at`.
 - Catalog metadata, tier, and category are updated.
 - `CATALOG_VERSION` is bumped.
