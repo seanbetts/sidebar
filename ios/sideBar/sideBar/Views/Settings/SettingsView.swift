@@ -67,7 +67,7 @@ public struct SettingsView: View {
     }
 
     private var settingsBackground: Color {
-        colorScheme == .dark ? DesignTokens.Colors.background : DesignTokens.Colors.surface
+        DesignTokens.Colors.background
     }
 
     private var listBackground: Color {
