@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 import sideBarShared
 import XCTest
@@ -211,6 +212,64 @@ final class NotesStoreTests: XCTestCase {
 
         XCTAssertLessThan(elapsed, 0.35)
         await firstRefresh.value
+    }
+
+    func testResolveConflictKeepLocalEnqueuesCanonicalizedOfflineUpdate() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let nonCanonical = "- [x] Done"
+        let probe = NativeMarkdownEditorViewModel()
+        probe.loadMarkdown(nonCanonical)
+        let canonical = probe.currentMarkdown()
+        XCTAssertNotEqual(canonical, nonCanonical)
+
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let store = NotesStore(api: api, cache: TestCacheClient())
+        store.attachWriteQueue(writeQueue)
+
+        let local = NotePayload(
+            id: "n1",
+            name: "Local",
+            content: nonCanonical,
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        let server = NotePayload(
+            id: "n1",
+            name: "Server",
+            content: "Server body",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        let conflict = SyncConflict(entityId: "n1", local: local, server: server, reason: "test")
+
+        await store.resolveConflict(conflict, keepLocal: true)
+
+        let request = PendingWrite.fetchRequest()
+        request.predicate = NSPredicate(
+            format: "entityType == %@ AND operationType == %@ AND entityId == %@",
+            WriteEntityType.note.rawValue,
+            WriteOperation.update.rawValue,
+            "n1"
+        )
+        let writes = try persistence.container.viewContext.fetch(request)
+        XCTAssertEqual(writes.count, 1)
+        let write = try XCTUnwrap(writes.first)
+        let payload = try JSONDecoder().decode(NoteUpdateRequest.self, from: write.payload)
+        XCTAssertEqual(payload.content, canonical)
     }
 }
 
