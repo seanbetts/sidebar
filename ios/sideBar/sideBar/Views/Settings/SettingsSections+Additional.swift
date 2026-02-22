@@ -227,7 +227,7 @@ struct SkillsSettingsView: View {
     }
 }
 
-private struct StoreSkillConfigView: View {
+struct StoreSkillConfigView: View {
     @ObservedObject var viewModel: SettingsViewModel
     let skill: SkillItem
 

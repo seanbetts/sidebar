@@ -17,6 +17,7 @@ public struct SkillsStoreView: View {
     @State private var uninstallInFlight: Set<String> = []
     @State private var installErrors: [String: String] = [:]
 
+    @State private var selectedStoreSkill: SkillItem?
     @State private var storeInstallPrompt: StoreInstallPrompt?
     @State private var storeUninstallPrompt: StoreUninstallPrompt?
     @State private var providerKeyDrafts: [String: String] = [:]
@@ -60,6 +61,13 @@ public struct SkillsStoreView: View {
         }
         .sheet(item: $storeInstallPrompt, onDismiss: clearStoreInstallPromptState) { prompt in
             storeInstallSheet(prompt)
+        }
+        .sheet(item: $selectedStoreSkill) { skill in
+            StoreSkillDetailSheet(
+                viewModel: viewModel,
+                skill: skill,
+                onDismiss: { selectedStoreSkill = nil }
+            )
         }
         .alert(
             "Uninstall skill?",
@@ -190,6 +198,9 @@ public struct SkillsStoreView: View {
                 Task {
                     await beginStoreInstall(for: skill)
                 }
+            },
+            onCardTap: {
+                selectedStoreSkill = skill
             },
             onInstalledTap: {
                 storeUninstallPrompt = StoreUninstallPrompt(skill: skill)
@@ -444,4 +455,25 @@ private struct StoreUninstallPrompt: Identifiable {
     let skill: SkillItem
 
     var id: String { skill.id }
+}
+
+private struct StoreSkillDetailSheet: View {
+    @ObservedObject var viewModel: SettingsViewModel
+    let skill: SkillItem
+    let onDismiss: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            StoreSkillConfigView(viewModel: viewModel, skill: skill)
+                .navigationTitle(viewModel.displayName(for: skill))
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") {
+                            onDismiss()
+                        }
+                    }
+                }
+        }
+        .phoneSheetGrabBarVisible()
+    }
 }

@@ -76,6 +76,7 @@ struct SkillsStoreCard: View {
     let isBusy: Bool
     let isInstalled: Bool
     let onInstall: () -> Void
+    let onCardTap: () -> Void
     let onInstalledTap: () -> Void
 
     private let cardHeight: CGFloat = 96
@@ -83,21 +84,29 @@ struct SkillsStoreCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-                SkillsStoreAppIcon(iconName: skillIconName)
+                Button(action: onCardTap) {
+                    HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
+                        SkillsStoreAppIcon(iconName: skillIconName)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(typeTitle.uppercased())
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(displayName)
-                        .font(DesignTokens.Typography.subheadlineSemibold)
-                        .lineLimit(1)
-                    Text(displayDescription)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(typeTitle.uppercased())
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text(displayName)
+                                .font(DesignTokens.Typography.subheadlineSemibold)
+                                .lineLimit(1)
+                            Text(displayDescription)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .accessibilityHint("Open skill details")
 
                 installButton
                     .padding(.top, 2)
