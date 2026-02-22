@@ -114,37 +114,18 @@ jobs:
           IOS_PARALLEL_TESTING_ENABLED: ${{ matrix.parallel_testing_enabled }}
           IOS_MAXIMUM_PARALLEL_TESTING_WORKERS: ${{ matrix.max_parallel_test_workers }}
         run: scripts/test-ios.sh
-      - name: Upload xcresult bundle (${{ matrix.id }})
-        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-xcresult-${{ matrix.id }}
-          path: ios-test-results/${{ matrix.id }}.xcresult
-          if-no-files-found: ignore
-
-  ios_hard_gates:
-    needs: [ios_test_matrix]
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == 'iphone' }}
-    runs-on: [self-hosted, mac]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Download iPhone xcresult
-        uses: actions/download-artifact@v4
-        with:
-          name: ios-xcresult-iphone
-          path: ios-test-results/iphone.xcresult
-      - name: Enforce hard quality gates
+      - name: Enforce hard quality gates (iPhone lane)
+        if: ${{ (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) && matrix.id == 'iphone' }}
         run: |
-          xcresult_path="ios-test-results/iphone.xcresult"
+          xcresult_path="ios-test-results/${{ matrix.id }}.xcresult"
           if [[ ! -f "${xcresult_path}/Info.plist" ]]; then
-            echo "Missing ${xcresult_path}/Info.plist after artifact download."
+            echo "Missing ${xcresult_path}/Info.plist after test run."
             find ios-test-results -maxdepth 4 -print || true
             exit 1
           fi
 
           if ! xcrun xccov view --report --json "${xcresult_path}" >/dev/null 2>&1; then
-            echo "Primary xcresult path is unreadable by xccov: ${xcresult_path}"
+            echo "xcresult path is unreadable by xccov: ${xcresult_path}"
             find ios-test-results -maxdepth 4 -print || true
             exit 1
           fi
@@ -153,3 +134,11 @@ jobs:
           python3 scripts/check_ios_quality_gates.py \
             --xcresult "${xcresult_path}" \
             --config scripts/ios_quality_gates.json
+      - name: Upload xcresult bundle (${{ matrix.id }})
+        if: ${{ failure() && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-xcresult-${{ matrix.id }}
+          path: ios-test-results/${{ matrix.id }}.xcresult
+          if-no-files-found: ignore

@@ -749,15 +749,27 @@ final class IngestionViewModelTests: XCTestCase {
             .appendingPathExtension("txt")
         try Data("retry".utf8).write(to: url)
         #if os(macOS)
-        let options: URL.BookmarkCreationOptions = [.withSecurityScope]
+        do {
+            return try url.bookmarkData(
+                options: [.withSecurityScope],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+        } catch {
+            return try url.bookmarkData(
+                options: [.minimalBookmark],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+        }
         #else
         let options: URL.BookmarkCreationOptions = [.minimalBookmark]
-        #endif
         return try url.bookmarkData(
             options: options,
             includingResourceValuesForKeys: nil,
             relativeTo: nil
         )
+        #endif
     }
 }
 

@@ -11,9 +11,7 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
         }
 
         let nonCanonical = "- [x] Done"
-        let probe = NativeMarkdownEditorViewModel()
-        probe.loadMarkdown(nonCanonical)
-        let canonical = probe.currentMarkdown()
+        let canonical = MarkdownCanonicalizer.canonicalized(nonCanonical)
         XCTAssertNotEqual(canonical, nonCanonical)
 
         let api = NotesWriteQueueExecutorAPISpy()

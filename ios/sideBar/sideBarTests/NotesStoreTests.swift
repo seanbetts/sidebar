@@ -219,9 +219,7 @@ final class NotesStoreTests: XCTestCase {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
         let nonCanonical = "- [x] Done"
-        let probe = NativeMarkdownEditorViewModel()
-        probe.loadMarkdown(nonCanonical)
-        let canonical = probe.currentMarkdown()
+        let canonical = MarkdownCanonicalizer.canonicalized(nonCanonical)
         XCTAssertNotEqual(canonical, nonCanonical)
 
         let persistence = PersistenceController(inMemory: true)
