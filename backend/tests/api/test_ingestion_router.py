@@ -141,6 +141,7 @@ def test_ingestion_meta_backfills_missing_job_as_ready_when_derivatives_exist(
         size_bytes=123,
     )
     test_db.add(record)
+    test_db.flush()
     test_db.add(derivative)
     test_db.commit()
 

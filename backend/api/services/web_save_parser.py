@@ -123,10 +123,11 @@ def ensure_url(value: str) -> str:
 
 
 def strip_control_chars(value: str) -> str:
-    """Strip non-XML control characters that break lxml/readability."""
+    """Replace non-XML control characters that break lxml/readability."""
     if not value:
         return value
-    return CONTROL_CHARS_RE.sub("", value)
+    # Preserve token boundaries by normalizing control chars to whitespace.
+    return CONTROL_CHARS_RE.sub(" ", value)
 
 
 def _clean_metadata_value(value: str | None) -> str | None:

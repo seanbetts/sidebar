@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 from api.services import web_save_includes, web_save_parser
+from api.services.web_save_tagger import calculate_reading_time
 from bs4 import BeautifulSoup
 from lxml import html as lxml_html
 import pytest
@@ -1621,7 +1622,7 @@ def test_parse_url_local_frontmatter_metrics_follow_final_markdown(monkeypatch):
 
     assert final_image_count == 1
     assert data["word_count"] == final_word_count
-    assert data["reading_time"] == web_save_parser.calculate_reading_time(
+    assert data["reading_time"] == calculate_reading_time(
         final_word_count,
         image_count=final_image_count,
     )
@@ -2089,7 +2090,7 @@ def test_parse_url_local_handles_comment_root(monkeypatch):
         return html, "https://example.com/article", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
-    monkeypatch.setattr(web_save_parser, "Document", FakeDocument)
+    monkeypatch.setattr(web_save_parser, "ReadabilityDocument", FakeDocument)
 
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert "Content body" in parsed.content
@@ -2120,7 +2121,7 @@ def test_parse_url_local_strips_control_chars_before_readability(monkeypatch):
         return html, "https://example.com/article", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
-    monkeypatch.setattr(web_save_parser, "Document", FakeDocument)
+    monkeypatch.setattr(web_save_parser, "ReadabilityDocument", FakeDocument)
 
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert "Content body" in parsed.content
@@ -2311,7 +2312,7 @@ def test_parse_url_local_tracks_youtube_embed_from_raw_html(monkeypatch):
         return html, "https://example.com/article", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
-    monkeypatch.setattr(web_save_parser, "Document", DummyDocument)
+    monkeypatch.setattr(web_save_parser, "ReadabilityDocument", DummyDocument)
 
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert "[YouTube](https://www.youtube.com/watch?v=raw123)" in parsed.content
@@ -2349,7 +2350,7 @@ def test_parse_url_local_tracks_youtube_embed_from_escaped_raw_html(monkeypatch)
         return html, "https://example.com/article", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
-    monkeypatch.setattr(web_save_parser, "Document", DummyDocument)
+    monkeypatch.setattr(web_save_parser, "ReadabilityDocument", DummyDocument)
 
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert "[YouTube](https://www.youtube.com/watch?v=esc123)" in parsed.content
@@ -2878,7 +2879,7 @@ def test_parse_url_local_scopes_readability_with_selector_override(monkeypatch):
     engine = web_save_parser.RuleEngine([rule])
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
     monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
-    monkeypatch.setattr(web_save_parser, "Document", FakeDocument)
+    monkeypatch.setattr(web_save_parser, "ReadabilityDocument", FakeDocument)
 
     parsed = web_save_parser.parse_url_local("example.com/raw")
     assert calls["summary"] is True
