@@ -89,6 +89,13 @@ repos:
         files: ^(ios/.*\.swift|scripts/check_ios_quality_gates\.py|scripts/ios_quality_gates\.json|scripts/check-ios-warning-gate\.sh)$
         pass_filenames: false
         stages: [pre-push, manual]
+      - id: check-cert-pins
+        name: check-cert-pins
+        entry: bash ios/check-cert-pins.sh
+        language: system
+        files: ^ios/sideBar/sideBar/Resources/.*\.cer$
+        pass_filenames: false
+        stages: [pre-push, manual]
 
   # Frontend - ESLint (all files)
   - repo: https://github.com/pre-commit/mirrors-eslint

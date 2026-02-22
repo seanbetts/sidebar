@@ -69,6 +69,13 @@ enum URLRequestErrorClassifier {
             return true
         }
 
+        // Check if our pinning delegate recorded a cancellation for this host.
+        if let failingURL = nsError.userInfo[NSURLErrorFailingURLKey] as? URL,
+           let host = failingURL.host?.lowercased(),
+           CertPinCancellationRegistry.shared.wasCancelled(host: host) {
+            return true
+        }
+
         let description = nsError.localizedDescription.lowercased()
         let signals = [
             "certificate",
@@ -154,7 +161,7 @@ public enum ErrorMapping {
         case .serverUnreachable:
             return "Could not reach the server. Please try again."
         case .secureConnection:
-            return "Secure connection to server failed. The server certificate may have changed."
+            return "Unable to verify a secure connection to the server. Please try again shortly. [SEC-CONN]"
         case .authRequired:
             return "Session expired. Please sign in again."
         case .cancelled:

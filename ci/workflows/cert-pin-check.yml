@@ -1,0 +1,18 @@
+name: cert-pin-check
+
+on:
+  schedule:
+    # Run daily at 08:00 UTC to catch cert rotations early.
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  check-cert-pins:
+    name: Verify bundled cert pins match live server
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check cert pins against live server
+        run: bash ios/check-cert-pins.sh sidebar-api.fly.dev 443

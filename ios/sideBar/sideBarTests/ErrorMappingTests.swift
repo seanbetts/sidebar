@@ -25,7 +25,10 @@ final class ErrorMappingTests: XCTestCase {
 
     func testMapsSecureConnectionError() {
         let message = ErrorMapping.message(for: URLError(.secureConnectionFailed))
-        XCTAssertEqual(message, "Secure connection to server failed. The server certificate may have changed.")
+        XCTAssertEqual(
+            message,
+            "Unable to verify a secure connection to the server. Please try again shortly. [SEC-CONN]"
+        )
     }
 
     func testMapsCancelledRequestError() {
@@ -40,7 +43,35 @@ final class ErrorMappingTests: XCTestCase {
             userInfo: [NSURLErrorFailingURLPeerTrustErrorKey: "peer-trust"]
         )
         let message = ErrorMapping.message(for: error)
-        XCTAssertEqual(message, "Secure connection to server failed. The server certificate may have changed.")
+        XCTAssertEqual(
+            message,
+            "Unable to verify a secure connection to the server. Please try again shortly. [SEC-CONN]"
+        )
+    }
+
+    func testMapsCancelledRequestWithRegistryAsCertPinError() {
+        // Simulate a cert-pinning cancellation recorded in the registry.
+        let host = "api.sidebar.ai"
+        CertPinCancellationRegistry.shared.record(host: host)
+        let error = URLError(
+            .cancelled,
+            userInfo: [NSURLErrorFailingURLKey: URL(string: "https://\(host)/v1/test")!]
+        )
+        let message = ErrorMapping.message(for: error)
+        XCTAssertEqual(
+            message,
+            "Unable to verify a secure connection to the server. Please try again shortly. [SEC-CONN]"
+        )
+    }
+
+    func testMapsCancelledRequestWithoutRegistryEntryStaysCancelled() {
+        // A plain cancellation with no registry entry stays as .cancelled.
+        let error = URLError(
+            .cancelled,
+            userInfo: [NSURLErrorFailingURLKey: URL(string: "https://unknown-host.example.com/v1/test")!]
+        )
+        let message = ErrorMapping.message(for: error)
+        XCTAssertEqual(message, "Request was interrupted. Please try again.")
     }
 
     func testMapsOperationMessage() {

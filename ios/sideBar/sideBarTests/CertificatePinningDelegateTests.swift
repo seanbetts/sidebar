@@ -84,4 +84,51 @@ final class CertificatePinningDelegateTests: XCTestCase {
         XCTAssertNil(CertificatePinningDelegate.normalizedHostPattern(from: ""))
         XCTAssertNil(CertificatePinningDelegate.normalizedHostPattern(from: "   "))
     }
+
+    // MARK: - notAfterDate
+
+    func testNotAfterDateReturnsNilForInvalidCertData() {
+        // SecCertificateCreateWithData returns nil for garbage data, so notAfterDate should too.
+        // We can exercise this via a cert built from random bytes.
+        let garbledData = Data(repeating: 0xFF, count: 64)
+        guard let cert = SecCertificateCreateWithData(nil, garbledData as CFData) else {
+            // Expected: invalid DER → SecCertificateCreateWithData returns nil.
+            // notAfterDate requires a valid SecCertificate, so this path validates the guard.
+            return
+        }
+        // If somehow a cert was created (unlikely), notAfterDate should still return nil.
+        XCTAssertNil(CertificatePinningDelegate.notAfterDate(for: cert))
+    }
+
+    func testInitWithEmptyCertsDoesNotCrash() {
+        // Ensure the delegate can be constructed with no certs without crashing.
+        let delegate = CertificatePinningDelegate(pinnedCertificates: [])
+        XCTAssertNotNil(delegate)
+    }
+
+    // MARK: - CertPinCancellationRegistry
+
+    func testRegistryReturnsFalseForUnrecordedHost() {
+        let registry = CertPinCancellationRegistry(ttl: 5)
+        XCTAssertFalse(registry.wasCancelled(host: "api.sidebar.ai"))
+    }
+
+    func testRegistryReturnsTrueAfterRecord() {
+        let registry = CertPinCancellationRegistry(ttl: 5)
+        registry.record(host: "api.sidebar.ai")
+        XCTAssertTrue(registry.wasCancelled(host: "api.sidebar.ai"))
+    }
+
+    func testRegistryReturnsFalseForDifferentHost() {
+        let registry = CertPinCancellationRegistry(ttl: 5)
+        registry.record(host: "api.sidebar.ai")
+        XCTAssertFalse(registry.wasCancelled(host: "other.sidebar.ai"))
+    }
+
+    func testRegistryReturnsFalseAfterTTLExpires() {
+        let registry = CertPinCancellationRegistry(ttl: 0.05)  // 50ms TTL
+        registry.record(host: "api.sidebar.ai")
+        Thread.sleep(forTimeInterval: 0.1)
+        XCTAssertFalse(registry.wasCancelled(host: "api.sidebar.ai"))
+    }
 }

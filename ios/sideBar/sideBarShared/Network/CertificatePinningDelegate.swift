@@ -9,6 +9,7 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
     private let pinnedPublicKeyHashes: Set<Data>
     private let pinnedHostPatterns: [String]
     private let logger = Logger(subsystem: "sideBar", category: "Network")
+    private static let expiryWarningThreshold: TimeInterval = 21 * 24 * 60 * 60  // 21 days
 
     public init(pinnedCertificates: Set<Data>) {
         self.pinnedCertificates = pinnedCertificates
@@ -35,6 +36,7 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
         if patterns.isEmpty && certCount > 0 {
             logger.warning("CertPin: no host patterns parsed — pinning will apply to ALL HTTPS hosts")
         }
+        logBundledCertExpiryWarnings(pinnedCertificates)
     }
 
     public func urlSession(
@@ -56,6 +58,7 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
 
         guard let serverTrust = challenge.protectionSpace.serverTrust else {
             logger.error("CertPin: no serverTrust for \(host, privacy: .public) — cancelling")
+            CertPinCancellationRegistry.shared.record(host: host)
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
@@ -66,36 +69,52 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
             logger.error(
                 "CertPin: TLS trust eval failed for \(host, privacy: .public): \(reason, privacy: .public)"
             )
+            CertPinCancellationRegistry.shared.record(host: host)
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
 
-        guard let certificate = leafCertificate(from: serverTrust) else {
-            logger.error("CertPin: could not extract leaf cert for \(host, privacy: .public) — cancelling")
+        let chain = certificateChain(from: serverTrust)
+        guard !chain.isEmpty else {
+            logger.error("CertPin: could not extract cert chain for \(host, privacy: .public) — cancelling")
+            CertPinCancellationRegistry.shared.record(host: host)
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
 
-        let certMatch = isPinnedCertificateMatch(certificate)
-        let keyMatch = !certMatch && isPinnedPublicKeyMatch(certificate)
+        let certMatch = chainMatchesPinnedCert(chain)
+        let keyMatch = !certMatch && chainMatchesPinnedKey(chain)
         guard certMatch || keyMatch else {
             let bundledCerts = pinnedCertificates.count
             let keyHashes = pinnedPublicKeyHashes.count
+            CertPinCancellationRegistry.shared.record(host: host)
+            logger.error("CertPin: pin mismatch for \(host, privacy: .public) — chainDepth=\(chain.count)")
             logger.error(
-                // swiftlint:disable:next line_length
-                "CertPin: pin mismatch for \(host, privacy: .public) — certMatch=\(certMatch) keyMatch=\(keyMatch) bundledCerts=\(bundledCerts) keyHashes=\(keyHashes)"
+                "CertPin: bundledCerts=\(bundledCerts) keyHashes=\(keyHashes) certMatch=false keyMatch=false"
             )
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
 
-        logger.debug("CertPin: validated \(host, privacy: .public) via \(certMatch ? "cert" : "key-hash", privacy: .public)")
+        logger.debug(
+            "CertPin: validated \(host, privacy: .public) via \(certMatch ? "cert" : "key-hash", privacy: .public)"
+        )
         completionHandler(.useCredential, URLCredential(trust: serverTrust))
     }
 
     private func shouldBypassPinning(forHost host: String) -> Bool {
         guard !pinnedHostPatterns.isEmpty else { return false }
         return !pinnedHostPatterns.contains { Self.hostMatchesPinnedPattern(host: host, pattern: $0) }
+    }
+
+    // MARK: - Chain matching
+
+    private func chainMatchesPinnedCert(_ chain: [SecCertificate]) -> Bool {
+        chain.contains { isPinnedCertificateMatch($0) }
+    }
+
+    private func chainMatchesPinnedKey(_ chain: [SecCertificate]) -> Bool {
+        chain.contains { isPinnedPublicKeyMatch($0) }
     }
 
     private func isPinnedCertificateMatch(_ certificate: SecCertificate) -> Bool {
@@ -110,9 +129,8 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
         return pinnedPublicKeyHashes.contains(serverKeyHash)
     }
 
-    private func leafCertificate(from trust: SecTrust) -> SecCertificate? {
-        let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate]
-        return chain?.first
+    private func certificateChain(from trust: SecTrust) -> [SecCertificate] {
+        (SecTrustCopyCertificateChain(trust) as? [SecCertificate]) ?? []
     }
 
     public static func hostMatchesPinnedPattern(host: String, pattern: String) -> Bool {
@@ -139,13 +157,15 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
         guard !pattern.isEmpty else { return nil }
         let base = pattern.hasPrefix("*.") ? String(pattern.dropFirst(2)) : pattern
         guard base.contains(".") else { return nil }
-        // Validate only the base domain; the "*.'" wildcard prefix is intentionally permitted.
+        // Validate only the base domain; the "*." wildcard prefix is intentionally permitted.
         let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789.-")
         guard base.rangeOfCharacter(from: allowed.inverted) == nil else {
             return nil
         }
         return pattern
     }
+
+    // MARK: - Public key hashing
 
     private static func publicKeyHash(fromCertificateData data: Data) -> Data? {
         guard let certificate = SecCertificateCreateWithData(nil, data as CFData) else {
@@ -169,10 +189,64 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
         }
         return Data(SHA256.hash(data: rawKey))
     }
+
+    // MARK: - Expiry warnings
+
+    private func logBundledCertExpiryWarnings(_ certs: Set<Data>) {
+        let now = Date()
+        for certData in certs {
+            guard
+                let certificate = SecCertificateCreateWithData(nil, certData as CFData),
+                let expiry = Self.notAfterDate(for: certificate)
+            else { continue }
+            let subject = SecCertificateCopySubjectSummary(certificate) as String? ?? "(unknown)"
+            let daysRemaining = Int(expiry.timeIntervalSince(now) / 86_400)
+            if expiry <= now {
+                logger.error("CertPin: bundled cert '\(subject, privacy: .public)' has EXPIRED")
+            } else if expiry.timeIntervalSince(now) <= Self.expiryWarningThreshold {
+                logger.error(
+                    "CertPin: bundled cert '\(subject, privacy: .public)' expires in \(daysRemaining)d — rotate soon"
+                )
+            }
+        }
+    }
+
+    // Internal for unit testing.
+    static func notAfterDate(for certificate: SecCertificate) -> Date? {
+        var cfError: Unmanaged<CFError>?
+        guard let values = SecCertificateCopyValues(
+            certificate,
+            [kSecOIDX509V1ValidityNotAfter] as CFArray,
+            &cfError
+        ) as? [String: Any] else {
+            return nil
+        }
+        guard
+            let notAfterEntry = values[kSecOIDX509V1ValidityNotAfter as String] as? [String: Any],
+            let notAfterValue = notAfterEntry[kSecPropertyKeyValue as String]
+        else {
+            return nil
+        }
+        // The value is a CFDate or CFAbsoluteTime (seconds since Jan 1 2001).
+        if let date = notAfterValue as? Date {
+            return date
+        }
+        if let interval = notAfterValue as? TimeInterval {
+            return Date(timeIntervalSinceReferenceDate: interval)
+        }
+        if let number = notAfterValue as? NSNumber {
+            return Date(timeIntervalSinceReferenceDate: number.doubleValue)
+        }
+        return nil
+    }
 }
 
 /// Defines PinnedCertificates.
 public enum PinnedCertificates {
+    /// Loads all `.cer` files from the main bundle.
+    ///
+    /// Drop new `.cer` files into `sideBar/Resources/` before the current leaf cert expires.
+    /// Xcode auto-includes any file added to that directory via the synchronized root group.
     public static func loadFromMainBundle() -> Set<Data> {
         guard let urls = Bundle.main.urls(forResourcesWithExtension: "cer", subdirectory: nil) else {
             return []
