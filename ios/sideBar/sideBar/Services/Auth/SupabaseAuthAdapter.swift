@@ -214,7 +214,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
 
     public func refreshSession() async {
         guard authClient.currentSession != nil else {
-            logger.debug("refreshSession: skipped — no current session (authState=\(authState.rawValue, privacy: .public))")
+            logger.debug("refreshSession: skipped — no current session (authState=\(self.authState.rawValue, privacy: .public))")
             return
         }
         if let task = refreshInFlightTask {
