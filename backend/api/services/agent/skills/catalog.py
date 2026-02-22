@@ -15,6 +15,7 @@ from api.services.tools.skill_metadata import (
     get_credential_requirements,
     get_legacy_skill_ids,
     get_provider_dependency,
+    get_skill_detail_metadata,
     get_skill_tier,
     is_skill_default_enabled,
     is_skill_installable,
@@ -81,12 +82,36 @@ class SkillCatalogService:
     def _build_skill_entry(
         *,
         skill_id: str,
-        metadata: dict[str, str],
+        metadata: dict[str, Any],
         category: str,
     ) -> dict[str, Any]:
         """Build one normalized catalog entry."""
         display = SkillCatalogService._display_metadata(skill_id)
+        frontmatter_metadata = SkillCatalogService._nested_metadata(metadata)
+        detail_metadata = get_skill_detail_metadata(skill_id)
         user_toggleable = is_skill_user_toggleable(skill_id)
+
+        long_description = SkillCatalogService._coalesce_str(
+            frontmatter_metadata.get("long_description"),
+            detail_metadata.get("long_description"),
+        )
+        how_it_works = SkillCatalogService._coalesce_str(
+            frontmatter_metadata.get("how_it_works"),
+            detail_metadata.get("how_it_works"),
+        )
+        requirements = SkillCatalogService._coalesce_str_list(
+            frontmatter_metadata.get("requirements"),
+            detail_metadata.get("requirements"),
+        )
+        version = SkillCatalogService._coalesce_str(
+            frontmatter_metadata.get("version"),
+            detail_metadata.get("version"),
+        )
+        updated_at = SkillCatalogService._coalesce_str(
+            frontmatter_metadata.get("updated_at"),
+            detail_metadata.get("updated_at"),
+        )
+
         return {
             "id": skill_id,
             "legacy_ids": get_legacy_skill_ids(skill_id),
@@ -114,10 +139,20 @@ class SkillCatalogService:
                 "show_required_badge",
                 not user_toggleable,
             ),
+            "long_description": long_description,
+            "how_it_works": how_it_works,
+            "requirements": requirements,
+            "version": version,
+            "updated_at": updated_at,
+            # Reserved for future engagement features.
+            "install_count": None,
+            "upvotes": None,
+            "downvotes": None,
+            "current_user_vote": None,
         }
 
     @staticmethod
-    def _read_frontmatter(skill_md: Path) -> dict[str, str]:
+    def _read_frontmatter(skill_md: Path) -> dict[str, Any]:
         """Read YAML frontmatter from a SKILL.md file.
 
         Args:
@@ -145,6 +180,13 @@ class SkillCatalogService:
         return data
 
     @staticmethod
+    def _nested_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+        raw = metadata.get("metadata")
+        if isinstance(raw, dict):
+            return raw
+        return {}
+
+    @staticmethod
     def _display_metadata(skill_id: str) -> dict[str, Any]:
         raw = SKILL_DISPLAY.get(skill_id)
         if isinstance(raw, dict):
@@ -164,6 +206,27 @@ class SkillCatalogService:
         if isinstance(value, bool):
             return value
         return default
+
+    @staticmethod
+    def _coalesce_str(*values: Any) -> str | None:
+        for value in values:
+            if isinstance(value, str):
+                normalized = value.strip()
+                if normalized:
+                    return normalized
+        return None
+
+    @staticmethod
+    def _coalesce_str_list(*values: Any) -> list[str]:
+        for value in values:
+            if not isinstance(value, list):
+                continue
+            normalized = [
+                item.strip() for item in value if isinstance(item, str) and item.strip()
+            ]
+            if normalized:
+                return normalized
+        return []
 
     @staticmethod
     def _category_map() -> dict[str, str]:

@@ -45,6 +45,27 @@ Notes:
 - Keep frontmatter keys minimal (`name`, `description`; optional metadata keys may be used if required by your tooling).
 - Put trigger conditions in `description`, not only in body text.
 
+### Optional Detail Metadata (Recommended for Store Skills)
+
+To power the Skills Store detail modal, add optional fields under `metadata`:
+
+```markdown
+---
+name: my-skill
+description: Short trigger guidance.
+metadata:
+  long_description: Clear user-facing description for the detail modal.
+  how_it_works: Non-technical explanation of the workflow.
+  requirements:
+    - OpenAI API key
+    - Any local/system dependencies users should know about
+  version: 1.0.0
+  updated_at: 2026-02-22
+---
+```
+
+These fields are optional but strongly recommended for any skill that appears in the Skills Store.
+
 ## Optional Script Template
 
 ```python

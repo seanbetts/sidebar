@@ -22,7 +22,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert response.status_code == 200
 
     payload = response.json()
-    assert payload["catalog_version"] == 4
+    assert payload["catalog_version"] == 5
     assert isinstance(payload["skills"], list)
     assert payload["skills"]
 
@@ -38,6 +38,15 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["audio-transcribe"]["tier"] == "store"
     assert by_id["audio-transcribe"]["provider_dependency"] == "openai"
     assert by_id["audio-transcribe"]["credential_requirements"]
+    assert isinstance(by_id["audio-transcribe"]["long_description"], str)
+    assert isinstance(by_id["audio-transcribe"]["how_it_works"], str)
+    assert by_id["audio-transcribe"]["requirements"]
+    assert by_id["audio-transcribe"]["version"] == "1.0.0"
+    assert by_id["audio-transcribe"]["updated_at"] == "2026-02-22"
+    assert by_id["audio-transcribe"]["install_count"] is None
+    assert by_id["audio-transcribe"]["upvotes"] is None
+    assert by_id["audio-transcribe"]["downvotes"] is None
+    assert by_id["audio-transcribe"]["current_user_vote"] is None
     assert by_id["prompt-preview"]["tier"] == "standard"
     assert by_id["prompt-preview"]["installable"] is False
     assert by_id["settings-other-preferences"]["tier"] == "standard"

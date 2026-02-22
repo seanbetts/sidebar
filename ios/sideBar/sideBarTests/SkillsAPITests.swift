@@ -112,7 +112,7 @@ final class SkillsAPITests: XCTestCase {
     func testListSkillsDecodesStoreRequirementMetadata() throws {
         let payload = """
         {
-          "catalog_version": 3,
+          "catalog_version": 5,
           "skills": [
             {
               "id": "audio-transcribe",
@@ -121,6 +121,15 @@ final class SkillsAPITests: XCTestCase {
               "category": "Media",
               "tier": "store",
               "provider_dependency": "openai",
+              "long_description": "Longer description.",
+              "how_it_works": "Friendly explanation.",
+              "requirements": ["OpenAI API key", "ffmpeg"],
+              "version": "1.0.0",
+              "updated_at": "2026-02-22",
+              "install_count": null,
+              "upvotes": null,
+              "downvotes": null,
+              "current_user_vote": null,
               "credential_requirements": [
                 {
                   "provider": "openai",
@@ -139,10 +148,19 @@ final class SkillsAPITests: XCTestCase {
 
         let response = try JSONDecoder().decode(SkillsResponse.self, from: Data(payload.utf8))
 
-        XCTAssertEqual(response.catalogVersion, 3)
+        XCTAssertEqual(response.catalogVersion, 5)
         XCTAssertEqual(response.skills.first?.tier, .store)
         XCTAssertEqual(response.skills.first?.providerDependency, "openai")
         XCTAssertEqual(response.skills.first?.installable, true)
+        XCTAssertEqual(response.skills.first?.longDescription, "Longer description.")
+        XCTAssertEqual(response.skills.first?.howItWorks, "Friendly explanation.")
+        XCTAssertEqual(response.skills.first?.requirements, ["OpenAI API key", "ffmpeg"])
+        XCTAssertEqual(response.skills.first?.version, "1.0.0")
+        XCTAssertEqual(response.skills.first?.updatedAt, "2026-02-22")
+        XCTAssertNil(response.skills.first?.installCount)
+        XCTAssertNil(response.skills.first?.upvotes)
+        XCTAssertNil(response.skills.first?.downvotes)
+        XCTAssertNil(response.skills.first?.currentUserVote)
         XCTAssertEqual(response.skills.first?.credentialRequirements.count, 1)
         XCTAssertEqual(response.skills.first?.credentialRequirements.first?.provider, "openai")
         XCTAssertEqual(response.skills.first?.credentialRequirements.first?.keyKind, "api_key")

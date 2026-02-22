@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import sideBarShared
 
@@ -233,22 +234,42 @@ struct StoreSkillConfigView: View {
 
     var body: some View {
         Form {
-            Section {
+            Section("About") {
                 HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
                     Image(systemName: SkillsStoreLogic.iconName(for: skill))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .frame(width: 18, height: 18)
                         .padding(.top, 2)
-                    Text(viewModel.displayDescription(for: skill))
+                    Text(skill.longDescription ?? viewModel.displayDescription(for: skill))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
 
             Section("Requirements") {
-                ForEach(Array(SkillsStoreLogic.requirementLines(for: skill).enumerated()), id: \.offset) { _, line in
+                ForEach(Array(requirementLines.enumerated()), id: \.offset) { _, line in
                     Label(line, systemImage: "key")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("How It Works") {
+                Text(skill.howItWorks ?? defaultHowItWorksText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Details") {
+                if let version = skill.version, !version.isEmpty {
+                    detailRow(title: "Version", value: version)
+                }
+                if let updated = formattedUpdatedAt {
+                    detailRow(title: "Updated", value: updated)
+                }
+                if detailRowsAreEmpty {
+                    Text("No version details available.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -259,4 +280,84 @@ struct StoreSkillConfigView: View {
             }
         }
     }
+
+    private var requirementLines: [String] {
+        let staticRequirements = skill.requirements
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let credentialLines = SkillsStoreLogic.requirementLines(for: skill)
+        var seen: Set<String> = []
+        var merged: [String] = []
+
+        for line in staticRequirements + credentialLines where !seen.contains(line) {
+            seen.insert(line)
+            merged.append(line)
+        }
+
+        return merged.isEmpty ? ["No special requirements"] : merged
+    }
+
+    private var defaultHowItWorksText: String {
+        "This skill uses built-in tools to run the workflow and returns the results in a format you can act on quickly."
+    }
+
+    private var formattedUpdatedAt: String? {
+        guard let raw = skill.updatedAt?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !raw.isEmpty else {
+            return nil
+        }
+        if let isoDate = Self.isoDateOnlyFormatter.date(from: raw) {
+            return Self.readableDateFormatter.string(from: isoDate)
+        }
+        if let isoDateTime = Self.isoDateTimeNoFractionFormatter.date(from: raw) {
+            return Self.readableDateFormatter.string(from: isoDateTime)
+        }
+        if let isoDateTime = Self.isoDateTimeFormatter.date(from: raw) {
+            return Self.readableDateFormatter.string(from: isoDateTime)
+        }
+        return raw
+    }
+
+    private var detailRowsAreEmpty: Bool {
+        (skill.version?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            && formattedUpdatedAt == nil
+    }
+
+    @ViewBuilder
+    private func detailRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.caption)
+        }
+    }
+
+    private static let isoDateOnlyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private static let isoDateTimeFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let isoDateTimeNoFractionFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private static let readableDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
 }

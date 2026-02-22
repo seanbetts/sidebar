@@ -40,6 +40,15 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert by_id["files"]["default_enabled"] is True
     assert by_id["audio-transcribe"]["tier"] == "store"
     assert by_id["audio-transcribe"]["installable"] is True
+    assert isinstance(by_id["audio-transcribe"]["long_description"], str)
+    assert isinstance(by_id["audio-transcribe"]["how_it_works"], str)
+    assert by_id["audio-transcribe"]["requirements"]
+    assert by_id["audio-transcribe"]["version"] == "1.0.0"
+    assert by_id["audio-transcribe"]["updated_at"] == "2026-02-22"
+    assert by_id["audio-transcribe"]["install_count"] is None
+    assert by_id["audio-transcribe"]["upvotes"] is None
+    assert by_id["audio-transcribe"]["downvotes"] is None
+    assert by_id["audio-transcribe"]["current_user_vote"] is None
     assert "skill-creator" not in by_id
     assert by_id["prompt-preview"]["tier"] == "standard"
     assert by_id["prompt-preview"]["installable"] is False
@@ -81,4 +90,4 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 4
+    assert SkillCatalogService.catalog_version() == 5

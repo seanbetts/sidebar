@@ -32,6 +32,15 @@ class SkillItem(BaseModel):
     installable: bool = False
     status: str = "active"
     show_required_badge: bool = True
+    long_description: str | None = None
+    how_it_works: str | None = None
+    requirements: list[str] = []
+    version: str | None = None
+    updated_at: str | None = None
+    install_count: int | None = None
+    upvotes: int | None = None
+    downvotes: int | None = None
+    current_user_vote: str | None = None
 
 
 class SkillsResponse(BaseModel):
@@ -109,6 +118,47 @@ async def list_skills(_: str = Depends(verify_bearer_token)):
             installable=bool(skill.get("installable", False)),
             status=str(skill.get("status", "active")),
             show_required_badge=bool(skill.get("show_required_badge", True)),
+            long_description=(
+                str(skill["long_description"])
+                if isinstance(skill.get("long_description"), str)
+                else None
+            ),
+            how_it_works=(
+                str(skill["how_it_works"])
+                if isinstance(skill.get("how_it_works"), str)
+                else None
+            ),
+            requirements=[
+                str(item)
+                for item in skill.get("requirements", [])
+                if isinstance(item, str)
+            ],
+            version=(
+                str(skill["version"]) if isinstance(skill.get("version"), str) else None
+            ),
+            updated_at=(
+                str(skill["updated_at"])
+                if isinstance(skill.get("updated_at"), str)
+                else None
+            ),
+            install_count=(
+                int(skill["install_count"])
+                if isinstance(skill.get("install_count"), int)
+                else None
+            ),
+            upvotes=(
+                int(skill["upvotes"]) if isinstance(skill.get("upvotes"), int) else None
+            ),
+            downvotes=(
+                int(skill["downvotes"])
+                if isinstance(skill.get("downvotes"), int)
+                else None
+            ),
+            current_user_vote=(
+                str(skill["current_user_vote"])
+                if isinstance(skill.get("current_user_vote"), str)
+                else None
+            ),
         )
         for skill in skills
     ]

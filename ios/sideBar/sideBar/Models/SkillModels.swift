@@ -89,6 +89,24 @@ public struct SkillItem: Codable, Identifiable {
     public let status: String
     /// Whether non-toggleable skills should show a "Required" badge.
     public let showRequiredBadge: Bool
+    /// Optional longer user-facing description for detail modal.
+    public let longDescription: String?
+    /// Optional non-technical explanation of how the skill works.
+    public let howItWorks: String?
+    /// Optional user-facing requirements beyond provider-key metadata.
+    public let requirements: [String]
+    /// Optional semantic version string for the skill.
+    public let version: String?
+    /// Optional ISO-8601 date for last metadata update.
+    public let updatedAt: String?
+    /// Future-facing aggregate install count.
+    public let installCount: Int?
+    /// Future-facing aggregate upvotes.
+    public let upvotes: Int?
+    /// Future-facing aggregate downvotes.
+    public let downvotes: Int?
+    /// Future-facing current user vote (`up`, `down`, `none`).
+    public let currentUserVote: String?
 
     public init(
         id: String,
@@ -104,7 +122,16 @@ public struct SkillItem: Codable, Identifiable {
         defaultEnabled: Bool = false,
         installable: Bool = false,
         status: String = "active",
-        showRequiredBadge: Bool? = nil
+        showRequiredBadge: Bool? = nil,
+        longDescription: String? = nil,
+        howItWorks: String? = nil,
+        requirements: [String] = [],
+        version: String? = nil,
+        updatedAt: String? = nil,
+        installCount: Int? = nil,
+        upvotes: Int? = nil,
+        downvotes: Int? = nil,
+        currentUserVote: String? = nil
     ) {
         self.id = id
         self.legacyIds = legacyIds
@@ -120,6 +147,15 @@ public struct SkillItem: Codable, Identifiable {
         self.installable = installable
         self.status = status
         self.showRequiredBadge = showRequiredBadge ?? !userToggleable
+        self.longDescription = longDescription
+        self.howItWorks = howItWorks
+        self.requirements = requirements
+        self.version = version
+        self.updatedAt = updatedAt
+        self.installCount = installCount
+        self.upvotes = upvotes
+        self.downvotes = downvotes
+        self.currentUserVote = currentUserVote
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -137,6 +173,15 @@ public struct SkillItem: Codable, Identifiable {
         case installable
         case status
         case showRequiredBadge
+        case longDescription
+        case howItWorks
+        case requirements
+        case version
+        case updatedAt
+        case installCount
+        case upvotes
+        case downvotes
+        case currentUserVote
         case legacyLegacyIds = "legacy_ids"
         case legacyIconKey = "icon_key"
         case legacyProviderDependency = "provider_dependency"
@@ -144,6 +189,11 @@ public struct SkillItem: Codable, Identifiable {
         case legacyUserToggleable = "user_toggleable"
         case legacyDefaultEnabled = "default_enabled"
         case legacyShowRequiredBadge = "show_required_badge"
+        case legacyLongDescription = "long_description"
+        case legacyHowItWorks = "how_it_works"
+        case legacyUpdatedAt = "updated_at"
+        case legacyInstallCount = "install_count"
+        case legacyCurrentUserVote = "current_user_vote"
     }
 
     public init(from decoder: Decoder) throws {
@@ -204,6 +254,20 @@ public struct SkillItem: Codable, Identifiable {
             legacy: .legacyShowRequiredBadge,
             default: !userToggleable
         )
+        longDescription = try container.decodeIfPresent(String.self, forKey: .longDescription)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyLongDescription)
+        howItWorks = try container.decodeIfPresent(String.self, forKey: .howItWorks)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyHowItWorks)
+        requirements = try container.decodeIfPresent([String].self, forKey: .requirements) ?? []
+        version = try container.decodeIfPresent(String.self, forKey: .version)
+        updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyUpdatedAt)
+        installCount = try container.decodeIfPresent(Int.self, forKey: .installCount)
+            ?? container.decodeIfPresent(Int.self, forKey: .legacyInstallCount)
+        upvotes = try container.decodeIfPresent(Int.self, forKey: .upvotes)
+        downvotes = try container.decodeIfPresent(Int.self, forKey: .downvotes)
+        currentUserVote = try container.decodeIfPresent(String.self, forKey: .currentUserVote)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyCurrentUserVote)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -222,6 +286,15 @@ public struct SkillItem: Codable, Identifiable {
         try container.encode(installable, forKey: .installable)
         try container.encode(status, forKey: .status)
         try container.encode(showRequiredBadge, forKey: .showRequiredBadge)
+        try container.encodeIfPresent(longDescription, forKey: .longDescription)
+        try container.encodeIfPresent(howItWorks, forKey: .howItWorks)
+        try container.encode(requirements, forKey: .requirements)
+        try container.encodeIfPresent(version, forKey: .version)
+        try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(installCount, forKey: .installCount)
+        try container.encodeIfPresent(upvotes, forKey: .upvotes)
+        try container.encodeIfPresent(downvotes, forKey: .downvotes)
+        try container.encodeIfPresent(currentUserVote, forKey: .currentUserVote)
     }
 
     private static func decodePreferred<T: Decodable>(
