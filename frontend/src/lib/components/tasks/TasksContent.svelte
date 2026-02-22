@@ -102,8 +102,10 @@
 				</div>
 				{#if selectionLabel === 'Today'}
 					All done for the day
-				{:else if selectionType === 'search'}
+				{:else if selectionType === 'search' && selectionQuery.trim()}
 					No results for "{selectionQuery}"
+				{:else if selectionType === 'search'}
+					Search for tasks above
 				{:else}
 					No tasks to show.
 				{/if}

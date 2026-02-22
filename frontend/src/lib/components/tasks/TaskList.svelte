@@ -107,16 +107,16 @@
 												onCancelRename();
 											}
 										}}
-										onblur={() => onCommitRename(task)}
+										onblur={() => onCancelRename()}
 									/>
 								{:else}
 									<span>{task.title}</span>
 								{/if}
 								{#if task.notes}
-									<span class="notes-icon" aria-label="Task notes">
+									<button type="button" class="notes-icon" aria-label="Show task notes">
 										<FileText size={14} />
 										<span class="notes-tooltip">{task.notes}</span>
-									</span>
+									</button>
 								{/if}
 							</div>
 							{#if taskSubtitle(task)}
@@ -333,6 +333,10 @@
 		align-items: center;
 		opacity: 0.75;
 		position: relative;
+		border: none;
+		background: transparent;
+		padding: 0;
+		cursor: pointer;
 	}
 
 	.notes-tooltip {
@@ -346,9 +350,11 @@
 		border-radius: 0.5rem;
 		padding: 0.75rem 1rem;
 		font-size: 0.875rem;
+		font-weight: 400;
 		line-height: 1.5;
+		text-align: left;
 		width: max-content;
-		max-width: 360px;
+		max-width: min(360px, 80vw);
 		white-space: pre-wrap;
 		word-break: break-word;
 		box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
@@ -359,8 +365,9 @@
 	}
 
 	.notes-icon:hover .notes-tooltip,
-	.notes-icon:focus-within .notes-tooltip {
+	.notes-icon:focus .notes-tooltip {
 		opacity: 1;
+		pointer-events: auto;
 	}
 
 	.task-title {
@@ -418,14 +425,16 @@
 		gap: 0.35rem;
 	}
 
-	.repeat-actions:hover .repeat-pill,
-	.repeat-actions:focus-within .repeat-pill {
-		transform: translateX(-40px);
-	}
+	@media (pointer: fine) {
+		.repeat-actions:hover .repeat-pill,
+		.repeat-actions:focus-within .repeat-pill {
+			transform: translateX(-40px);
+		}
 
-	.repeat-actions:hover .due-pill,
-	.repeat-actions:focus-within .due-pill {
-		transform: translateX(-40px);
+		.repeat-actions:hover .due-pill,
+		.repeat-actions:focus-within .due-pill {
+			transform: translateX(-40px);
+		}
 	}
 
 	.due-pill {
@@ -474,6 +483,19 @@
 		pointer-events: auto;
 	}
 
+	/* Always show menu button on touch devices */
+	@media (pointer: coarse) {
+		:global(.task-menu-btn) {
+			opacity: 0.5;
+			pointer-events: auto;
+		}
+
+		:global(.tasks-task:hover .task-menu-btn),
+		:global(.task-menu-btn:active) {
+			opacity: 1;
+		}
+	}
+
 	.repeat-actions :global(.task-menu-btn) {
 		position: absolute;
 		right: 0;
@@ -487,6 +509,18 @@
 	.repeat-actions:focus-within :global(.task-menu-btn) {
 		opacity: 1;
 		pointer-events: auto;
+	}
+
+	/* Always show menu button in repeat-actions on touch devices */
+	@media (pointer: coarse) {
+		.repeat-actions :global(.task-menu-btn) {
+			opacity: 0.5;
+			pointer-events: auto;
+		}
+
+		.repeat-actions :global(.task-menu-btn:active) {
+			opacity: 1;
+		}
 	}
 
 	:global(.task-menu-btn:hover) {

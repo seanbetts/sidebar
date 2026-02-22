@@ -38,6 +38,10 @@
 				event.preventDefault();
 				onCreateTask();
 			}
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				onCancelDraft();
+			}
 		}}
 		oninput={onDraftInput}
 	/>
