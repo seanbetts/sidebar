@@ -6,6 +6,12 @@ import UIKit
 import AppKit
 #endif
 
+enum NotesEditorRenderingMode: Equatable {
+    case markdownLegacy
+    case nativeMarkdownV1
+    case attributedV2
+}
+
 struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     @ObservedObject var editorViewModel: NotesEditorViewModel
@@ -29,6 +35,7 @@ struct NotesDetailView: View {
     @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
     #endif
     @AppStorage(AppStorageKeys.useNativeMarkdownEditor) private var useNativeMarkdownEditor = true
+    @AppStorage(AppStorageKeys.useAttributedNoteEditorV2) private var useAttributedNoteEditorV2 = false
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -150,11 +157,24 @@ extension NotesDetailView {
     @ViewBuilder
     private var content: some View {
             if viewModel.activeNote != nil {
-                if #available(iOS 26.0, macOS 26.0, *), useNativeMarkdownEditor {
-                    NativeMarkdownEditorContainer(
-                        editorViewModel: editorViewModel,
-                        maxContentWidth: contentMaxWidth
-                    )
+                if #available(iOS 26.0, macOS 26.0, *) {
+                    switch editorRenderingMode {
+                    case .attributedV2:
+                        AttributedNoteEditorContainer(
+                            editorViewModel: editorViewModel,
+                            maxContentWidth: contentMaxWidth
+                        )
+                    case .nativeMarkdownV1:
+                        NativeMarkdownEditorContainer(
+                            editorViewModel: editorViewModel,
+                            maxContentWidth: contentMaxWidth
+                        )
+                    case .markdownLegacy:
+                        SideBarMarkdownContainer(text: editorViewModel.content)
+                            .onAppear {
+                                editorViewModel.setReadOnly(true)
+                            }
+                    }
                 } else {
                     SideBarMarkdownContainer(text: editorViewModel.content)
                         .onAppear {
@@ -245,6 +265,31 @@ extension NotesDetailView {
             return NoteStatus(text: "Saved \(label)", color: DesignTokens.Colors.textSecondary)
         }
         return nil
+    }
+
+    private var editorRenderingMode: NotesEditorRenderingMode {
+        Self.resolveEditorRenderingMode(
+            osSupportsNative: true,
+            useNativeMarkdownEditor: useNativeMarkdownEditor,
+            useAttributedNoteEditorV2: useAttributedNoteEditorV2
+        )
+    }
+
+    static func resolveEditorRenderingMode(
+        osSupportsNative: Bool,
+        useNativeMarkdownEditor: Bool,
+        useAttributedNoteEditorV2: Bool
+    ) -> NotesEditorRenderingMode {
+        guard osSupportsNative else {
+            return .markdownLegacy
+        }
+        if useAttributedNoteEditorV2 {
+            return .attributedV2
+        }
+        if useNativeMarkdownEditor {
+            return .nativeMarkdownV1
+        }
+        return .markdownLegacy
     }
 
     private var lastSavedLabel: String? {
