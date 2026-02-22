@@ -133,7 +133,7 @@ struct StoreSkillConfigView: View {
                     if !userRequirementLines.isEmpty {
                         Divider()
                     }
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("API Credentials")
                             .font(.caption)
                             .foregroundStyle(.secondary)

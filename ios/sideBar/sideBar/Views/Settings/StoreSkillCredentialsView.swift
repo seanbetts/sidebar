@@ -36,7 +36,7 @@ struct StoreSkillCredentialsView: View {
                     .foregroundStyle(.secondary)
             }
         } else {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
                 if showHeader {
                     Text("Credentials")
                         .font(.caption)
@@ -52,9 +52,9 @@ struct StoreSkillCredentialsView: View {
             }
             .alert(item: $removeCredentialPrompt) { prompt in
                 Alert(
-                    title: Text("Remove \(providerDisplayName(prompt.provider)) API key?"),
+                    title: Text("Turn off \(viewModel.displayName(for: skill))?"),
                     message: Text(removeCredentialPromptMessage(prompt)),
-                    primaryButton: .destructive(Text("Remove Key")) {
+                    primaryButton: .destructive(Text("Turn Off")) {
                         Task {
                             await confirmCredentialRemoval(prompt)
                         }
@@ -102,7 +102,7 @@ struct StoreSkillCredentialsView: View {
 
     private struct RemoveCredentialPrompt: Identifiable {
         let provider: String
-        let impactedSkills: [String]
+        let otherImpactedSkills: [String]
 
         var id: String { provider }
     }
@@ -111,14 +111,14 @@ struct StoreSkillCredentialsView: View {
     private func storeProviderCredentialRow(provider: String) -> some View {
         let normalizedProvider = normalizedProviderName(provider)
         let isConnected = providerStatus(for: normalizedProvider)?.hasKey ?? false
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 6) {
                 Text(providerDisplayName(normalizedProvider))
                     .font(.caption)
                     .foregroundStyle(.primary)
                 Spacer()
 
-                HStack(spacing: 6) {
+                HStack(spacing: 0) {
                     Text(providerStatusLabel(for: normalizedProvider))
                         .font(.caption2)
                         .foregroundStyle(providerStatusColor(for: normalizedProvider))
@@ -129,10 +129,10 @@ struct StoreSkillCredentialsView: View {
                         beginCredentialEditor(provider: normalizedProvider)
                     } label: {
                         Image(systemName: isConnected ? "pencil.circle.fill" : "plus.circle.fill")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.system(size: 18, weight: .semibold))
                     }
                     .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
-                    .frame(width: 48, height: 48)
+                    .frame(width: 30, height: 30)
                     .disabled(isProviderActionBusy(normalizedProvider))
 
                     if isConnected {
@@ -140,10 +140,10 @@ struct StoreSkillCredentialsView: View {
                             beginCredentialRemoval(provider: normalizedProvider)
                         } label: {
                             Image(systemName: "trash.circle.fill")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.system(size: 18, weight: .semibold))
                         }
-                        .accessibilityLabel("Remove Key")
-                        .frame(width: 48, height: 48)
+                        .accessibilityLabel("Turn Off Skill")
+                        .frame(width: 30, height: 30)
                         .disabled(isProviderActionBusy(normalizedProvider))
                     }
                 }
@@ -180,9 +180,9 @@ struct StoreSkillCredentialsView: View {
         if let status = providerStatus(for: normalizedProvider) {
             if status.hasKey {
                 if let keyLast4 = status.keyLast4, !keyLast4.isEmpty {
-                    return "Connected (Key: API key ****\(keyLast4))"
+                    return "Connected (****\(keyLast4))"
                 }
-                return "Connected (Key: API key)"
+                return "Connected"
             }
             return "Missing"
         }
@@ -282,7 +282,7 @@ struct StoreSkillCredentialsView: View {
         let normalizedProvider = normalizedProviderName(provider)
         removeCredentialPrompt = RemoveCredentialPrompt(
             provider: normalizedProvider,
-            impactedSkills: impactedInstalledSkillNames(for: normalizedProvider)
+            otherImpactedSkills: otherInstalledSkillNamesRequiringProvider(for: normalizedProvider)
         )
     }
 
@@ -293,38 +293,50 @@ struct StoreSkillCredentialsView: View {
         providerKeyMutationInFlight.insert(normalizedProvider)
         defer { providerKeyMutationInFlight.remove(normalizedProvider) }
 
-        do {
-            let status = try await viewModel.deleteProviderKey(provider: normalizedProvider)
-            providerKeyStatuses[normalizedProvider] = status
-            providerKeyErrors[normalizedProvider] = nil
-            if credentialEditorPrompt?.provider == normalizedProvider {
-                clearCredentialEditor()
-            }
-        } catch {
-            providerKeyErrors[normalizedProvider] = ErrorMapping.message(for: error)
+        guard skill.userToggleable else {
+            providerKeyErrors[normalizedProvider] = "This skill cannot be turned off."
+            return
+        }
+
+        let wasEnabled = viewModel.settings?.enabledSkills.contains(skill.id) ?? false
+        await viewModel.setSkillEnabled(id: skill.id, enabled: false)
+
+        let isStillEnabled = viewModel.settings?.enabledSkills.contains(skill.id) ?? false
+        if wasEnabled && isStillEnabled {
+            providerKeyErrors[normalizedProvider] = viewModel.skillsError ?? "Couldn't turn off this skill."
+            return
+        }
+
+        providerKeyErrors[normalizedProvider] = nil
+        if credentialEditorPrompt?.provider == normalizedProvider {
+            clearCredentialEditor()
         }
     }
 
     private func removeCredentialPromptMessage(_ prompt: RemoveCredentialPrompt) -> String {
-        guard !prompt.impactedSkills.isEmpty else {
-            return "Removing this key may block any installed store skill that requires this provider."
+        let skillName = viewModel.displayName(for: skill)
+        let providerName = providerDisplayName(prompt.provider)
+        guard !prompt.otherImpactedSkills.isEmpty else {
+            return "This turns off \(skillName) in Settings. Your \(providerName) key stays available for other skills."
         }
-        let previewCount = min(prompt.impactedSkills.count, 3)
-        let previewList = prompt.impactedSkills.prefix(previewCount).joined(separator: ", ")
-        if prompt.impactedSkills.count > previewCount {
-            let remainder = prompt.impactedSkills.count - previewCount
-            return "This will affect \(previewList), and \(remainder) more installed skill(s)."
+        let previewCount = min(prompt.otherImpactedSkills.count, 3)
+        let previewList = prompt.otherImpactedSkills.prefix(previewCount).joined(separator: ", ")
+        if prompt.otherImpactedSkills.count > previewCount {
+            let remainder = prompt.otherImpactedSkills.count - previewCount
+            return "This turns off \(skillName). Your \(providerName) key stays connected for \(previewList), "
+                + "and \(remainder) more skill(s)."
         }
-        return "This will affect \(previewList)."
+        return "This turns off \(skillName). Your \(providerName) key stays connected for \(previewList)."
     }
 
-    private func impactedInstalledSkillNames(for provider: String) -> [String] {
+    private func otherInstalledSkillNamesRequiringProvider(for provider: String) -> [String] {
         let installedStoreSkillIds = Set(viewModel.settings?.installedStoreSkills ?? [])
         return SkillsStoreLogic.installedStoreSkillsRequiringProvider(
             provider,
             skills: viewModel.skills,
             installedStoreSkillIds: installedStoreSkillIds
         )
+            .filter { $0.id != skill.id }
             .map { viewModel.displayName(for: $0) }
             .sorted()
     }
