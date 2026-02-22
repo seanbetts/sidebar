@@ -66,6 +66,43 @@ metadata:
 
 These fields are optional but strongly recommended for any skill that appears in the Skills Store.
 
+### Source Of Truth
+
+For Skills Store detail content, `SKILL.md` frontmatter `metadata` is the source of truth.
+Do not rely on hardcoded fallback maps for long-term content.
+
+### Validation Rules For Detail Metadata
+
+`backend/skills/skill-creator/scripts/quick_validate.py` validates these optional metadata fields when present:
+
+- `metadata.long_description`: non-empty string
+- `metadata.how_it_works`: non-empty string
+- `metadata.requirements`: list of non-empty strings
+- `metadata.version`: semantic version string (for example `1.2.3`)
+- `metadata.updated_at`: ISO date or datetime (for example `2026-02-22` or `2026-02-22T14:30:00Z`)
+
+If any of these fields are invalid, skill validation will fail.
+
+### UI Fallback Behavior
+
+When optional detail metadata is not provided:
+
+- `long_description` falls back to the short `description`
+- `how_it_works` falls back to a generic user-friendly explanation
+- `requirements` falls back to credential-derived requirements (or a no-special-requirements message)
+- `version` and `updated_at` are omitted in the detail section
+
+### Reserved Future Fields
+
+The skills API also carries reserved future engagement fields:
+
+- `install_count`
+- `upvotes`
+- `downvotes`
+- `current_user_vote`
+
+These are API-managed fields for future product phases. Do not author them in `SKILL.md` metadata today.
+
 ## Optional Script Template
 
 ```python
@@ -121,9 +158,10 @@ To make a skill appear in the Skills Store UI, update backend catalog metadata:
 3. If it is a store skill with provider requirements, update:
    - `SKILL_PROVIDER_DEPENDENCY`
    - `SKILL_CREDENTIAL_REQUIREMENTS`
-4. Bump `CATALOG_VERSION` in `backend/api/services/tools/skill_metadata.py`.
-5. Add category mapping in `backend/api/services/agent/skills/catalog.py` (`_category_map`).
-6. Add or update API/service tests:
+4. Ensure skill detail metadata is present in `SKILL.md` frontmatter `metadata` (recommended for all Store skills).
+5. Bump `CATALOG_VERSION` in `backend/api/services/tools/skill_metadata.py`.
+6. Add category mapping in `backend/api/services/agent/skills/catalog.py` (`_category_map`).
+7. Add or update API/service tests:
    - `backend/tests/api/test_skill_catalog_service.py`
    - `backend/tests/api/test_skills_api.py`
 
@@ -138,6 +176,7 @@ If the skill is visible in iOS Skills Store, update symbol mappings:
 
 - Skill folder exists in `backend/skills/<skill-id>/`.
 - `SKILL.md` validates.
+- Store skill includes `metadata.long_description`, `metadata.how_it_works`, `metadata.requirements`, `metadata.version`, and `metadata.updated_at`.
 - Catalog metadata, tier, and category are updated.
 - `CATALOG_VERSION` is bumped.
 - Backend tests for catalog/API pass.
