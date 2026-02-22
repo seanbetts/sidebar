@@ -101,6 +101,7 @@ SKILL_DISPLAY = {
 REQUIRED_SKILLS = {
     "assistant-identity",
     "assistant-soul",
+    "product-feedback",
 }
 
 STANDARD_SKILLS = {
@@ -114,7 +115,6 @@ STANDARD_SKILLS = {
     "ui-theme",
     "prompt-preview",
     "settings-other-preferences",
-    "product-feedback",
 }
 
 STORE_SKILLS = {

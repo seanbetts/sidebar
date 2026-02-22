@@ -52,7 +52,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["settings-other-preferences"]["tier"] == "standard"
     assert by_id["settings-other-preferences"]["installable"] is False
     assert by_id["settings-other-preferences"]["name"] == "Settings"
-    assert by_id["product-feedback"]["tier"] == "standard"
+    assert by_id["product-feedback"]["tier"] == "required"
     assert by_id["product-feedback"]["installable"] is False
 
 
