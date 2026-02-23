@@ -79,13 +79,20 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.viewerState?.fileURL)
     }
 
-    func testPreferredDownloadDerivativeUsesSelectedDerivativeWhenPresent() async {
+    func testPreferredDownloadDerivativePrefersSourceOriginal() async {
         let viewModel = makeViewModelForYouTubeParsing()
         viewModel.selectedDerivativeKind = "text_original"
         let meta = IngestionMetaResponse(
             file: makeFile(id: "file-1"),
             job: makeJob(),
             derivatives: [
+                IngestionDerivative(
+                    id: "d0",
+                    kind: "source_original",
+                    storageKey: "storage/source",
+                    mime: "application/pdf",
+                    sizeBytes: 200
+                ),
                 IngestionDerivative(
                     id: "d1",
                     kind: "text_original",
@@ -106,7 +113,7 @@ final class IngestionViewModelTests: XCTestCase {
 
         let preferred = viewModel.preferredDownloadDerivative(for: meta)
 
-        XCTAssertEqual(preferred?.kind, "text_original")
+        XCTAssertEqual(preferred?.kind, "source_original")
     }
 
     func testPreferredDownloadDerivativeMapsViewerVideoToVideoOriginal() async {

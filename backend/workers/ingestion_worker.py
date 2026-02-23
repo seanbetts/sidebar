@@ -7,6 +7,7 @@ import importlib.util
 import io
 import json
 import logging
+import mimetypes
 import os
 import re
 import shutil
@@ -16,6 +17,7 @@ import sys
 import time
 import uuid
 from collections.abc import Callable, Sequence
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from hashlib import sha256
@@ -181,11 +183,11 @@ def _ensure_stdio() -> None:
             os.dup2(devnull_fd, fd)
             os.close(devnull_fd)
     if sys.stdin is None or sys.stdin.closed:
-        sys.stdin = open(0, closefd=False)
+        sys.stdin = open(0, closefd=False)  # noqa: SIM115
     if sys.stdout is None or sys.stdout.closed:
-        sys.stdout = open(1, "w", closefd=False)
+        sys.stdout = open(1, "w", closefd=False)  # noqa: SIM115
     if sys.stderr is None or sys.stderr.closed:
-        sys.stderr = open(2, "w", closefd=False)
+        sys.stderr = open(2, "w", closefd=False)  # noqa: SIM115
 
 
 def _now() -> datetime:
@@ -194,6 +196,8 @@ def _now() -> datetime:
 
 @dataclass(frozen=True)
 class DerivativePayload:
+    """Represents a staged derivative artifact before persistence."""
+
     kind: str
     storage_key: str
     mime: str
@@ -211,6 +215,53 @@ def _make_payload(
         mime=mime,
         size_bytes=len(content),
         sha256=sha256(content).hexdigest(),
+        content=content,
+    )
+
+
+def _original_extension(filename: str, mime: str) -> str:
+    suffix = Path(filename).suffix
+    if suffix:
+        return suffix
+    guessed = _detect_extension(filename, mime)
+    if guessed:
+        return guessed
+    normalized = (mime or "").split(";")[0].strip().lower()
+    if normalized == "application/pdf":
+        return ".pdf"
+    if normalized == "application/json":
+        return ".json"
+    if normalized == "text/plain":
+        return ".txt"
+    if normalized == "text/markdown":
+        return ".md"
+    if normalized == "text/csv":
+        return ".csv"
+    if normalized in {"text/tab-separated-values", "text/tsv"}:
+        return ".tsv"
+    guessed_mime_extension = mimetypes.guess_extension(normalized)
+    if guessed_mime_extension:
+        return guessed_mime_extension
+    return ""
+
+
+def _build_source_original_payload(
+    record: IngestedFile,
+    *,
+    content: bytes,
+    mime: str,
+    filename: str | None = None,
+) -> DerivativePayload:
+    normalized_mime = (mime or "application/octet-stream").split(";")[0].strip().lower()
+    if not normalized_mime:
+        normalized_mime = "application/octet-stream"
+    extension = _original_extension(
+        filename or record.filename_original, normalized_mime
+    )
+    return _make_payload(
+        kind="source_original",
+        storage_key=f"{record.user_id}/files/{record.id}/derivatives/source{extension}",
+        mime=normalized_mime,
         content=content,
     )
 
@@ -241,6 +292,8 @@ def _build_ai_md_payload(
 
 
 class IngestionError(Exception):
+    """Typed ingestion failure with retry semantics."""
+
     def __init__(self, code: str, message: str, retryable: bool = False):
         super().__init__(message)
         self.code = code
@@ -298,12 +351,10 @@ def _classify_storage_error(error: Exception) -> IngestionError | None:
             return IngestionError("STORAGE_TLS_FAILED", str(error), retryable=False)
         if isinstance(
             item,
-            (
-                botocore_exceptions.EndpointConnectionError,
-                botocore_exceptions.ConnectTimeoutError,
-                botocore_exceptions.ReadTimeoutError,
-                botocore_exceptions.ConnectionClosedError,
-            ),
+            botocore_exceptions.EndpointConnectionError
+            | botocore_exceptions.ConnectTimeoutError
+            | botocore_exceptions.ReadTimeoutError
+            | botocore_exceptions.ConnectionClosedError,
         ):
             return IngestionError("STORAGE_UNAVAILABLE", str(error), retryable=True)
         if isinstance(item, botocore_exceptions.ClientError):
@@ -367,9 +418,7 @@ def _is_remote_database(database_url: str | None) -> bool:
         return False
     if host in _LOCAL_DB_HOSTS:
         return False
-    if host.endswith(".local"):
-        return False
-    return True
+    return not host.endswith(".local")
 
 
 def _enforce_safe_dev_worker_configuration() -> None:
@@ -380,7 +429,8 @@ def _enforce_safe_dev_worker_configuration() -> None:
         return
     if _is_truthy_env(os.getenv("INGESTION_ALLOW_REMOTE_DB")):
         logger.warning(
-            "Allowing remote DB for local ingestion worker due INGESTION_ALLOW_REMOTE_DB override"
+            "Allowing remote DB for local ingestion worker due "
+            "INGESTION_ALLOW_REMOTE_DB override"
         )
         return
     host = _database_host(settings.database_url) or "unknown"
@@ -529,9 +579,7 @@ def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
 def _should_cleanup_after_failure(error: IngestionError) -> bool:
     if error.retryable:
         return False
-    if error.code in {"CONVERSION_UNAVAILABLE"}:
-        return False
-    return True
+    return error.code not in {"CONVERSION_UNAVAILABLE"}
 
 
 def _requeue_stalled_jobs(db) -> None:
@@ -640,10 +688,8 @@ def _write_derivatives_atomically(
             storage.move_object(staged_key, final_key)
     except Exception:
         for staged_key, _ in staged_pairs:
-            try:
+            with suppress(Exception):
                 storage.delete_object(staged_key)
-            except Exception:
-                pass
         raise
 
 
@@ -756,7 +802,7 @@ def _transcribe_youtube(
             output_dir=f"files/{record.id}/ai",
             output_name=output_name,
             audio_dir="files/videos",
-            keep_audio=False,
+            keep_audio=True,
             upload_transcript=upload_transcript,
         )
     except ValueError as exc:
@@ -800,7 +846,8 @@ def _transcribe_youtube(
             ) from exc
         retryable = "rate" in lowered or "timeout" in lowered
         logger.error(
-            "YouTube transcription runtime error file_id=%s url=%s retryable=%s error=%s",
+            "YouTube transcription runtime error file_id=%s url=%s "
+            "retryable=%s error=%s",
             record.id,
             record.source_url,
             retryable,
@@ -840,6 +887,11 @@ def _transcribe_youtube(
         "download_duration_seconds": result.get("download_duration_seconds"),
         "transcription_duration_seconds": result.get("transcription_duration_seconds"),
     }
+    downloaded_media_path = Path(str(result.get("audio_file") or ""))
+    if downloaded_media_path.exists():
+        metadata["download_local_path"] = str(downloaded_media_path)
+        guessed_mime = mimetypes.guess_type(downloaded_media_path.name)[0]
+        metadata["download_mime"] = guessed_mime or "application/octet-stream"
     for key in (
         "transcription_usage_total_tokens",
         "transcription_usage_input_tokens",
@@ -1032,8 +1084,7 @@ def _run_libreoffice_convert(source_path: Path, output_dir: Path) -> Path:
         subprocess.run(
             command,
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=120,
         )
     except FileNotFoundError as exc:
@@ -1088,8 +1139,7 @@ def _generate_pdf_thumbnail(pdf_path: Path, output_dir: Path) -> bytes | None:
         subprocess.run(
             command,
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=60,
         )
     except (
@@ -1381,10 +1431,7 @@ def _extract_pdf_text(pdf_path: Path) -> str:
                 page_text = (
                     _clean_extracted_text(non_table_text) if non_table_text else ""
                 )
-                if page_text:
-                    page_text = f"{page_text}\n\n{table_text}"
-                else:
-                    page_text = table_text
+                page_text = f"{page_text}\n\n{table_text}" if page_text else table_text
             sections.append(f"## Page {index + 1}\n\n{page_text.strip()}")
         text = "\n\n".join(sections).strip()
     except Exception as exc:
@@ -1483,7 +1530,7 @@ def _parse_range(
             max(start_row, end_row),
             max(start_col, end_col),
         )
-    if isinstance(range_ref, (list, tuple)):
+    if isinstance(range_ref, list | tuple):
         parts = list(range_ref)
         numeric_candidates: list[tuple[int, int, int, int]] = []
         if len(parts) == 2:
@@ -1498,8 +1545,8 @@ def _parse_range(
                     max(start_col, end_col),
                 )
             if (
-                isinstance(start_ref, (list, tuple))
-                and isinstance(end_ref, (list, tuple))
+                isinstance(start_ref, list | tuple)
+                and isinstance(end_ref, list | tuple)
                 and len(start_ref) >= 2
                 and len(end_ref) >= 2
             ):
@@ -1513,7 +1560,7 @@ def _parse_range(
                         max(start_col, end_col),
                     )
                 )
-        if len(parts) == 4 and all(isinstance(part, (int, float)) for part in parts):
+        if len(parts) == 4 and all(isinstance(part, int | float) for part in parts):
             start_row, start_col, end_row, end_col = [int(part) for part in parts]
             numeric_candidates.append(
                 (
@@ -1921,37 +1968,29 @@ def _build_youtube_derivatives(
         f"created_at: {_yaml_escape(record.created_at.isoformat())}",
     ]
     if metadata.get("transcription_generated_at"):
-        lines.append(
-            f"transcription_generated_at: {_yaml_escape(str(metadata['transcription_generated_at']))}"
-        )
+        generated_at = _yaml_escape(str(metadata["transcription_generated_at"]))
+        lines.append(f"transcription_generated_at: {generated_at}")
     if metadata.get("transcription_model"):
-        lines.append(
-            f"transcription_model: {_yaml_escape(str(metadata['transcription_model']))}"
-        )
+        model = _yaml_escape(str(metadata["transcription_model"]))
+        lines.append(f"transcription_model: {model}")
     if metadata.get("transcription_source_file"):
-        lines.append(
-            f"transcription_source_file: {_yaml_escape(str(metadata['transcription_source_file']))}"
-        )
+        source_file = _yaml_escape(str(metadata["transcription_source_file"]))
+        lines.append(f"transcription_source_file: {source_file}")
     if metadata.get("transcription_file_size_mb") is not None:
-        lines.append(
-            f"transcription_file_size_mb: {metadata['transcription_file_size_mb']}"
-        )
+        file_size_mb = metadata["transcription_file_size_mb"]
+        lines.append(f"transcription_file_size_mb: {file_size_mb}")
     if metadata.get("transcription_usage_total_tokens") is not None:
-        lines.append(
-            f"transcription_usage_total_tokens: {metadata['transcription_usage_total_tokens']}"
-        )
+        total_tokens = metadata["transcription_usage_total_tokens"]
+        lines.append(f"transcription_usage_total_tokens: {total_tokens}")
     if metadata.get("transcription_usage_input_tokens") is not None:
-        lines.append(
-            f"transcription_usage_input_tokens: {metadata['transcription_usage_input_tokens']}"
-        )
+        input_tokens = metadata["transcription_usage_input_tokens"]
+        lines.append(f"transcription_usage_input_tokens: {input_tokens}")
     if metadata.get("transcription_usage_output_tokens") is not None:
-        lines.append(
-            f"transcription_usage_output_tokens: {metadata['transcription_usage_output_tokens']}"
-        )
+        output_tokens = metadata["transcription_usage_output_tokens"]
+        lines.append(f"transcription_usage_output_tokens: {output_tokens}")
     if metadata.get("transcription_usage_audio_tokens") is not None:
-        lines.append(
-            f"transcription_usage_audio_tokens: {metadata['transcription_usage_audio_tokens']}"
-        )
+        audio_tokens = metadata["transcription_usage_audio_tokens"]
+        lines.append(f"transcription_usage_audio_tokens: {audio_tokens}")
     lines.extend(
         [
             "derivatives:",
@@ -2025,6 +2064,8 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
             elif stage == "finalizing":
                 existing_meta = record.source_metadata or {}
                 metadata = {**existing_meta, **metadata}
+                download_local_path = metadata.pop("download_local_path", None)
+                download_mime = metadata.pop("download_mime", None)
                 metadata.setdefault("provider", "youtube")
                 metadata.setdefault("youtube_url", record.source_url)
                 title = metadata.get("title")
@@ -2041,6 +2082,18 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                             "AI derivative missing",
                             retryable=False,
                         )
+                    source_original_payload: DerivativePayload | None = None
+                    if download_local_path:
+                        local_media_path = Path(str(download_local_path))
+                        if local_media_path.exists():
+                            source_original_payload = _build_source_original_payload(
+                                record,
+                                content=local_media_path.read_bytes(),
+                                mime=str(download_mime or "application/octet-stream"),
+                                filename=local_media_path.name,
+                            )
+                    if source_original_payload is not None:
+                        derivatives = [source_original_payload, *derivatives]
                     storage = get_storage_backend()
                     _write_derivatives_atomically(storage, record, derivatives)
 
@@ -2123,6 +2176,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
 
 
 def worker_loop() -> None:
+    """Run the ingestion worker loop that leases and processes pending jobs."""
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = _resolve_worker_user_id()
     _enforce_safe_dev_worker_configuration()
@@ -2135,7 +2189,8 @@ def worker_loop() -> None:
         logger.info("Ingestion worker claim scope user_id=%s", worker_user_id)
     else:
         logger.info(
-            "Ingestion worker claim scope is unscoped; no INGESTION_WORKER_USER_ID configured"
+            "Ingestion worker claim scope is unscoped; "
+            "no INGESTION_WORKER_USER_ID configured"
         )
     db_url = settings.database_url
     if db_url:
@@ -2199,6 +2254,7 @@ def worker_loop() -> None:
                                 _cleanup_staging(str(record.id), str(record.user_id))
                             continue
                         source_bytes: bytes | None = None
+                        source_original_payload: DerivativePayload | None = None
                         viewer_payload: DerivativePayload | None = None
                         viewer_source_path: Path | None = None
                         extraction_text = ""
@@ -2229,9 +2285,17 @@ def worker_loop() -> None:
                                         retryable=False,
                                     )
                             elif stage == "converting":
+                                if source_bytes is None:
+                                    source_bytes = source_path.read_bytes()
+                                if source_original_payload is None:
+                                    source_original_payload = (
+                                        _build_source_original_payload(
+                                            record,
+                                            content=source_bytes,
+                                            mime=mime,
+                                        )
+                                    )
                                 if mime == "application/pdf":
-                                    if source_bytes is None:
-                                        source_bytes = source_path.read_bytes()
                                     viewer_payload = _make_payload(
                                         kind="viewer_pdf",
                                         storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
@@ -2240,27 +2304,31 @@ def worker_loop() -> None:
                                     )
                                     viewer_source_path = source_path
                                 elif mime.startswith("image/"):
-                                    if source_bytes is None:
-                                        source_bytes = source_path.read_bytes()
                                     extension = _detect_extension(
                                         record.filename_original, mime
                                     )
+                                    image_storage_key = (
+                                        f"{record.user_id}/files/{record.id}/derivatives/"
+                                        f"image{extension or ''}"
+                                    )
                                     viewer_payload = _make_payload(
                                         kind="image_original",
-                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/image{extension or ''}",
+                                        storage_key=image_storage_key,
                                         mime=mime,
                                         content=source_bytes,
                                     )
                                     viewer_source_path = source_path
                                 elif mime.startswith("audio/"):
-                                    if source_bytes is None:
-                                        source_bytes = source_path.read_bytes()
                                     extension = _detect_extension(
                                         record.filename_original, mime
                                     )
+                                    audio_storage_key = (
+                                        f"{record.user_id}/files/{record.id}/derivatives/"
+                                        f"audio{extension or ''}"
+                                    )
                                     viewer_payload = _make_payload(
                                         kind="audio_original",
-                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/audio{extension or ''}",
+                                        storage_key=audio_storage_key,
                                         mime=mime,
                                         content=source_bytes,
                                     )
@@ -2283,8 +2351,6 @@ def worker_loop() -> None:
                                     mime.startswith("text/")
                                     or mime == "application/json"
                                 ):
-                                    if source_bytes is None:
-                                        source_bytes = source_path.read_bytes()
                                     viewer_payload = _make_payload(
                                         kind="text_original",
                                         storage_key=f"{record.user_id}/files/{record.id}/derivatives/source.txt",
@@ -2381,6 +2447,8 @@ def worker_loop() -> None:
                                         retryable=False,
                                     )
                                 derivatives = [viewer_payload, ai_payload]
+                                if source_original_payload:
+                                    derivatives.insert(0, source_original_payload)
                                 if thumb_payload:
                                     derivatives.append(thumb_payload)
                                 storage = get_storage_backend()

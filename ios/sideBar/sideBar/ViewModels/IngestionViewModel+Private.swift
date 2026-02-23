@@ -26,6 +26,9 @@ extension IngestionViewModel {
     }
 
     func preferredDownloadDerivative(for meta: IngestionMetaResponse) -> IngestionDerivative? {
+        if let sourceOriginal = meta.derivatives.first(where: { $0.kind == "source_original" }) {
+            return sourceOriginal
+        }
         if let selectedKind = selectedDerivativeKind,
            let selected = meta.derivatives.first(where: { $0.kind == selectedKind }) {
             return selected

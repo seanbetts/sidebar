@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from api.models.file_ingestion import FileProcessingJob, IngestedFile
+from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from workers import ingestion_worker
 
 
@@ -165,7 +165,9 @@ def test_is_allowed_file_rejects_unsupported_types():
     )
 
 
-def test_process_youtube_job_disables_transcript_upload(test_db, monkeypatch):
+def test_process_youtube_job_disables_transcript_upload(
+    test_db, monkeypatch, tmp_path
+):
     file_id = uuid4()
     record = _make_youtube_ingested_file(test_db, file_id)
     job = FileProcessingJob(
@@ -180,11 +182,17 @@ def test_process_youtube_job_disables_transcript_upload(test_db, monkeypatch):
 
     upload_flags: list[bool] = []
     output_names: list[str] = []
+    downloaded_media = tmp_path / "source.m4a"
+    downloaded_media.write_bytes(b"youtube-audio")
 
     def fake_transcribe(_record, *, upload_transcript=True, output_name="ai.md"):
         upload_flags.append(upload_transcript)
         output_names.append(output_name)
-        return "Transcript", {"title": "Test Video"}
+        return "Transcript", {
+            "title": "Test Video",
+            "download_local_path": str(downloaded_media),
+            "download_mime": "audio/mp4",
+        }
 
     monkeypatch.setattr(ingestion_worker, "_transcribe_youtube", fake_transcribe)
     monkeypatch.setattr(
@@ -195,6 +203,36 @@ def test_process_youtube_job_disables_transcript_upload(test_db, monkeypatch):
 
     assert upload_flags == [False]
     assert output_names == ["ai.md"]
+    persisted_kinds = {
+        item.kind
+        for item in test_db.query(FileDerivative).filter(FileDerivative.file_id == file_id)
+    }
+    assert "source_original" in persisted_kinds
+    assert "ai_md" in persisted_kinds
+    test_db.refresh(record)
+    assert "download_local_path" not in (record.source_metadata or {})
+    assert "download_mime" not in (record.source_metadata or {})
+
+
+def test_build_source_original_payload_uses_original_extension():
+    record = IngestedFile(
+        id=uuid4(),
+        user_id="test-user",
+        filename_original="slides.pptx",
+        mime_original="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        size_bytes=123,
+        sha256="abc123",
+        created_at=datetime.now(UTC),
+    )
+
+    payload = ingestion_worker._build_source_original_payload(
+        record,
+        content=b"source",
+        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    )
+
+    assert payload.kind == "source_original"
+    assert payload.storage_key.endswith("/derivatives/source.pptx")
 
 
 def test_process_youtube_website_transcript_uses_minimal_stages(test_db, monkeypatch):
@@ -301,7 +339,7 @@ def test_classify_unexpected_error_defaults_to_unknown():
 def test_resolve_worker_user_id_prefers_explicit_env(monkeypatch):
     monkeypatch.setenv("INGESTION_WORKER_USER_ID", "worker-user")
     monkeypatch.setattr(ingestion_worker.settings, "app_env", "production")
-    monkeypatch.setattr(ingestion_worker.settings, "default_user_id", "fallback-user")
+    monkeypatch.setenv("TEST_USER_ID", "fallback-user")
 
     assert ingestion_worker._resolve_worker_user_id() == "worker-user"
 
@@ -309,7 +347,7 @@ def test_resolve_worker_user_id_prefers_explicit_env(monkeypatch):
 def test_resolve_worker_user_id_uses_default_in_local(monkeypatch):
     monkeypatch.delenv("INGESTION_WORKER_USER_ID", raising=False)
     monkeypatch.setattr(ingestion_worker.settings, "app_env", "local")
-    monkeypatch.setattr(ingestion_worker.settings, "default_user_id", "fallback-user")
+    monkeypatch.setenv("TEST_USER_ID", "fallback-user")
 
     assert ingestion_worker._resolve_worker_user_id() == "fallback-user"
 
@@ -317,7 +355,7 @@ def test_resolve_worker_user_id_uses_default_in_local(monkeypatch):
 def test_resolve_worker_user_id_is_unscoped_in_production(monkeypatch):
     monkeypatch.delenv("INGESTION_WORKER_USER_ID", raising=False)
     monkeypatch.setattr(ingestion_worker.settings, "app_env", "production")
-    monkeypatch.setattr(ingestion_worker.settings, "default_user_id", "fallback-user")
+    monkeypatch.setenv("TEST_USER_ID", "fallback-user")
 
     assert ingestion_worker._resolve_worker_user_id() is None
 
@@ -325,7 +363,7 @@ def test_resolve_worker_user_id_is_unscoped_in_production(monkeypatch):
 def test_resolve_worker_user_id_is_unscoped_when_app_env_missing(monkeypatch):
     monkeypatch.delenv("INGESTION_WORKER_USER_ID", raising=False)
     monkeypatch.setattr(ingestion_worker.settings, "app_env", "")
-    monkeypatch.setattr(ingestion_worker.settings, "default_user_id", "fallback-user")
+    monkeypatch.setenv("TEST_USER_ID", "fallback-user")
 
     assert ingestion_worker._resolve_worker_user_id() is None
 
