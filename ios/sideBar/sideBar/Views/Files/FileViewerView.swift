@@ -25,7 +25,7 @@ public struct FileViewerView: View {
 
     public var body: some View {
         Group {
-            if let embedURL = state.youtubeEmbedURL {
+            if let embedURL = state.youtubeEmbedURL, Self.shouldShowYouTubeEmbed(for: state) {
                 VStack(spacing: DesignTokens.Spacing.sm) {
                     YouTubePlayerView(url: embedURL)
                         .aspectRatio(16.0 / 9.0, contentMode: .fit)
@@ -51,6 +51,13 @@ public struct FileViewerView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    static func shouldShowYouTubeEmbed(for state: FileViewerState) -> Bool {
+        guard state.youtubeEmbedURL != nil else {
+            return false
+        }
+        return state.kind != .video
     }
 
     @ViewBuilder

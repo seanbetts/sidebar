@@ -298,21 +298,22 @@ struct FilesHeaderActions: View {
             environment.toastCenter.show(message: "Download unavailable")
             return
         }
-        let kind = viewModel.selectedDerivativeKind
-            ?? meta.recommendedViewer
-            ?? meta.derivatives.first?.kind
-        guard let kind else {
+        guard let derivative = viewModel.preferredDownloadDerivative(for: meta) else {
             environment.toastCenter.show(message: "Download unavailable")
             return
         }
         do {
             let data = try await environment.container.ingestionAPI.getContent(
                 fileId: meta.file.id,
-                kind: kind,
+                kind: derivative.kind,
                 range: nil
             )
             exportDocument = BinaryFileDocument(data: data)
-            exportFilename = meta.file.filenameOriginal
+            exportFilename = viewModel.makeFilename(
+                base: meta.file.filenameOriginal,
+                mimeType: derivative.mime,
+                fallback: derivative.kind
+            )
             isExporting = true
         } catch {
             environment.toastCenter.show(message: "Failed to download file")

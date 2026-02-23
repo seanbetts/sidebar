@@ -79,6 +79,82 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.viewerState?.fileURL)
     }
 
+    func testPreferredDownloadDerivativeUsesSelectedDerivativeWhenPresent() async {
+        let viewModel = makeViewModelForYouTubeParsing()
+        viewModel.selectedDerivativeKind = "text_original"
+        let meta = IngestionMetaResponse(
+            file: makeFile(id: "file-1"),
+            job: makeJob(),
+            derivatives: [
+                IngestionDerivative(
+                    id: "d1",
+                    kind: "text_original",
+                    storageKey: "storage/text",
+                    mime: "text/plain",
+                    sizeBytes: 10
+                ),
+                IngestionDerivative(
+                    id: "d2",
+                    kind: "video_original",
+                    storageKey: "storage/video",
+                    mime: "video/mp4",
+                    sizeBytes: 100
+                ),
+            ],
+            recommendedViewer: "viewer_video"
+        )
+
+        let preferred = viewModel.preferredDownloadDerivative(for: meta)
+
+        XCTAssertEqual(preferred?.kind, "text_original")
+    }
+
+    func testPreferredDownloadDerivativeMapsViewerVideoToVideoOriginal() async {
+        let viewModel = makeViewModelForYouTubeParsing()
+        viewModel.selectedDerivativeKind = "viewer_video"
+        let meta = IngestionMetaResponse(
+            file: makeFile(id: "file-1"),
+            job: makeJob(),
+            derivatives: [
+                IngestionDerivative(
+                    id: "d1",
+                    kind: "video_original",
+                    storageKey: "storage/video",
+                    mime: "video/mp4",
+                    sizeBytes: 100
+                ),
+            ],
+            recommendedViewer: "viewer_video"
+        )
+
+        let preferred = viewModel.preferredDownloadDerivative(for: meta)
+
+        XCTAssertEqual(preferred?.kind, "video_original")
+    }
+
+    func testPreferredDownloadDerivativeFallsBackWhenViewerVideoDerivativeMissing() async {
+        let viewModel = makeViewModelForYouTubeParsing()
+        viewModel.selectedDerivativeKind = "viewer_video"
+        let meta = IngestionMetaResponse(
+            file: makeFile(id: "file-1"),
+            job: makeJob(),
+            derivatives: [
+                IngestionDerivative(
+                    id: "d1",
+                    kind: "text_original",
+                    storageKey: "storage/text",
+                    mime: "text/plain",
+                    sizeBytes: 10
+                ),
+            ],
+            recommendedViewer: "viewer_video"
+        )
+
+        let preferred = viewModel.preferredDownloadDerivative(for: meta)
+
+        XCTAssertEqual(preferred?.kind, "text_original")
+    }
+
     func testLoadMetaUsesCacheAndMarksOfflineOnRefreshFailure() async {
         let file = makeFile(id: "file-1")
         let meta = IngestionMetaResponse(

@@ -25,6 +25,18 @@ extension IngestionViewModel {
         return nonAI.first?.kind ?? candidates.first?.kind
     }
 
+    func preferredDownloadDerivative(for meta: IngestionMetaResponse) -> IngestionDerivative? {
+        if let selectedKind = selectedDerivativeKind,
+           let selected = meta.derivatives.first(where: { $0.kind == selectedKind }) {
+            return selected
+        }
+        if let preferredKind = preferredDerivativeKind(for: meta),
+           let preferred = meta.derivatives.first(where: { $0.kind == preferredKind }) {
+            return preferred
+        }
+        return meta.derivatives.first
+    }
+
     func ensureViewerReady(for fileId: String) async {
         guard selectedFileId == fileId else { return }
         guard let meta = activeMeta else { return }
