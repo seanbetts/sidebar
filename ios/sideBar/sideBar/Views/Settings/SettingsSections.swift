@@ -421,11 +421,22 @@ struct ProfileSettingsView: View {
 struct GeneralSettingsView: View {
     @AppStorage(AppStorageKeys.biometricUnlockEnabled) private var biometricUnlockEnabled = false
     @AppStorage(AppStorageKeys.weatherUsesFahrenheit) private var weatherUsesFahrenheit = false
+    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     @State private var canUseDeviceAuth = false
     @State private var biometryType: LABiometryType = .none
 
     var body: some View {
         Form {
+            Section("Text") {
+                Picker("Text Size", selection: $appTextSizeRaw) {
+                    ForEach(AppTextSizeOption.allCases) { option in
+                        Text(option.displayName).tag(option.rawValue)
+                    }
+                }
+                #if os(macOS)
+                .pickerStyle(.menu)
+                #endif
+            }
             Section("Security") {
                 Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
                     .disabled(!canUseDeviceAuth)
@@ -451,6 +462,7 @@ struct GeneralSettingsView: View {
         .formStyle(.grouped)
         #endif
         .onAppear {
+            appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
             evaluateBiometricSupport()
         }
     }
