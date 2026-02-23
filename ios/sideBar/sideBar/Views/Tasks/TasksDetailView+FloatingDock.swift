@@ -31,6 +31,7 @@ extension TasksDetailView {
                 viewModel.startNewTask()
             }
         }
+        .accessibilityIdentifier("tasks-workspace-floating-dock")
     }
 
     private var isPadIdiom: Bool {

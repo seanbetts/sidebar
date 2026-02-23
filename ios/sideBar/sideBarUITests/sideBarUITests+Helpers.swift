@@ -89,6 +89,58 @@ extension SideBarUITests {
     }
 
     @MainActor
+    func testIPadTasksWorkspaceDoesNotShowFloatingDock() throws {
+        let config = try loadLaunchConfig()
+        let app = launchApp(with: config)
+        attemptLogin(
+            in: app,
+            email: config.credentials.email,
+            password: config.credentials.password
+        )
+
+        XCTAssertTrue(
+            waitForSignedInHome(in: app, timeout: 45),
+            "Signed-in shell did not appear after login."
+        )
+
+        if app.tabBars.buttons["Tasks"].exists {
+            throw XCTSkip("This regression test targets iPad split layout only.")
+        }
+
+        let tasksSectionCandidates = [
+            app.buttons["Tasks"],
+            app.cells.staticTexts["Tasks"].firstMatch,
+            app.staticTexts["Tasks"]
+        ]
+        var openedTasksSection = false
+        for candidate in tasksSectionCandidates where waitForHittable(candidate, timeout: 8) {
+            candidate.tap()
+            openedTasksSection = true
+            break
+        }
+        XCTAssertTrue(openedTasksSection, "Could not open Tasks section in iPad split layout.")
+
+        let todaySelectionCandidates = [
+            app.buttons["Today"],
+            app.cells.staticTexts["Today"].firstMatch,
+            app.staticTexts["Today"]
+        ]
+        var selectedToday = false
+        for candidate in todaySelectionCandidates where waitForHittable(candidate, timeout: 8) {
+            candidate.tap()
+            selectedToday = true
+            break
+        }
+        XCTAssertTrue(selectedToday, "Could not select Today tasks list in iPad split layout.")
+
+        let floatingDock = app.otherElements["tasks-workspace-floating-dock"]
+        XCTAssertTrue(
+            waitForNonExistence(of: floatingDock, timeout: 5),
+            "Tasks workspace floating dock should be hidden on iPad."
+        )
+    }
+
+    @MainActor
     func openNotesTab(in app: XCUIApplication) {
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
         let notesTab = app.tabBars.buttons["Notes"]
