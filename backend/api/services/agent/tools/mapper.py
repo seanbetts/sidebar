@@ -93,6 +93,19 @@ class ToolMapper:
         """Resolve a tool name to its display name."""
         return self.tool_name_map.get(tool_name, tool_name)
 
+    def get_tool_skill_id(self, tool_name: str) -> str | None:
+        """Resolve canonical skill ID for a tool name."""
+        display_name = self.get_tool_display_name(tool_name)
+        tool_config = self.tools.get(display_name)
+        skill_id = tool_config.get("skill") if tool_config else None
+        if not isinstance(skill_id, str) or not skill_id.strip():
+            return None
+        return canonicalize_skill_id(skill_id.strip())
+
+    def get_tool_icon_key(self, tool_name: str) -> str | None:
+        """Resolve icon key for a tool name."""
+        return self.get_tool_skill_id(tool_name)
+
     @staticmethod
     def _normalize_result(result: Any) -> dict[str, Any]:
         """Normalize execution results into a standard payload."""

@@ -314,13 +314,28 @@ async def stream_with_tools(
                                 display_name = tool_mapper.get_tool_display_name(
                                     tool_use["name"]
                                 )
-                                yield {
+                                skill_id = None
+                                icon_key = None
+                                if hasattr(tool_mapper, "get_tool_skill_id"):
+                                    skill_id = tool_mapper.get_tool_skill_id(
+                                        tool_use["name"]
+                                    )
+                                if hasattr(tool_mapper, "get_tool_icon_key"):
+                                    icon_key = tool_mapper.get_tool_icon_key(
+                                        tool_use["name"]
+                                    )
+                                tool_call_event: dict[str, Any] = {
                                     "type": "tool_call",
                                     "id": tool_use["id"],
                                     "name": display_name,
                                     "parameters": tool_use["input"],
                                     "status": "pending",
                                 }
+                                if isinstance(skill_id, str) and skill_id:
+                                    tool_call_event["skill_id"] = skill_id
+                                if isinstance(icon_key, str) and icon_key:
+                                    tool_call_event["icon_key"] = icon_key
+                                yield tool_call_event
 
                                 result = await tool_mapper.execute_tool(
                                     tool_use["name"],
@@ -330,13 +345,18 @@ async def stream_with_tools(
                                 )
 
                                 status = "success" if result.get("success") else "error"
-                                yield {
+                                tool_result_event: dict[str, Any] = {
                                     "type": "tool_result",
                                     "id": tool_use["id"],
                                     "name": display_name,
                                     "result": result,
                                     "status": status,
                                 }
+                                if isinstance(skill_id, str) and skill_id:
+                                    tool_result_event["skill_id"] = skill_id
+                                if isinstance(icon_key, str) and icon_key:
+                                    tool_result_event["icon_key"] = icon_key
+                                yield tool_result_event
                                 yield {
                                     "type": "tool_end",
                                     "data": {

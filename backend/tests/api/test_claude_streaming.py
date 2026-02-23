@@ -64,6 +64,14 @@ class DummyToolMapper:
     def get_tool_display_name(self, name):
         return "Test Tool"
 
+    def get_tool_skill_id(self, name):
+        _ = name
+        return None
+
+    def get_tool_icon_key(self, name):
+        _ = name
+        return None
+
     async def execute_tool(self, name, input, allowed_skills=None, context=None):
         self.calls.append((name, input))
         return {"success": True, "data": {"id": "note-1"}}
@@ -135,6 +143,52 @@ async def test_stream_with_tools_handles_tool_use():
     assert "tool_result" in event_types
     assert tool_mapper.calls
     assert tool_mapper.calls[-1] == ("test_tool", {"foo": "bar"})
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_emits_skill_metadata_for_tool_events():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="test_tool"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"foo": "bar"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class SkillMetadataToolMapper(DummyToolMapper):
+        def get_tool_skill_id(self, name):
+            _ = name
+            return "notes"
+
+        def get_tool_icon_key(self, name):
+            _ = name
+            return "notes"
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=SkillMetadataToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    tool_call = next(item for item in output if item.get("type") == "tool_call")
+    tool_result = next(item for item in output if item.get("type") == "tool_result")
+    assert tool_call["skill_id"] == "notes"
+    assert tool_call["icon_key"] == "notes"
+    assert tool_result["skill_id"] == "notes"
+    assert tool_result["icon_key"] == "notes"
 
 
 @pytest.mark.asyncio

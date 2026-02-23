@@ -260,7 +260,7 @@ struct ChatMessageScrollSignature: Equatable {
         content = message.content
         status = message.status
         toolCallsSignature = (message.toolCalls ?? []).map {
-            "\($0.id):\($0.name):\($0.status.rawValue)"
+            "\($0.id):\($0.name):\($0.status.rawValue):\($0.skillId ?? ""):\($0.iconKey ?? "")"
         }.joined(separator: "|")
         needsNewline = message.needsNewline ?? false
         error = message.error ?? ""

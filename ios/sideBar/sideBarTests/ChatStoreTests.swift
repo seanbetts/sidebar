@@ -47,8 +47,8 @@ final class ChatStoreTests: XCTestCase {
         XCTAssertEqual(store.conversations.first?.title, "Fresh")
     }
 
-    func testLoadConversationUsesCache() async throws {
-        let detail = ConversationWithMessages(
+    func testLoadConversationUsesCacheThenRefreshes() async throws {
+        let cached = ConversationWithMessages(
             id: "c1",
             title: "Cached",
             titleGenerated: false,
@@ -59,15 +59,32 @@ final class ChatStoreTests: XCTestCase {
             isArchived: false,
             messages: []
         )
+        let fresh = ConversationWithMessages(
+            id: "c1",
+            title: "Fresh",
+            titleGenerated: false,
+            createdAt: "2024-01-01",
+            updatedAt: "2024-01-02",
+            messageCount: 2,
+            firstMessage: "Hello",
+            isArchived: false,
+            messages: []
+        )
         let cache = TestCacheClient()
-        cache.set(key: CacheKeys.conversation(id: "c1"), value: detail, ttlSeconds: 60)
-        let api = MockConversationsAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
+        cache.set(key: CacheKeys.conversation(id: "c1"), value: cached, ttlSeconds: 60)
+        let api = MockConversationsAPI(listResult: .failure(MockError.forced), getResult: .success(fresh))
+        api.getDelay = 0.05
+        let getExpectation = expectation(description: "detail refresh")
+        api.onGet = {
+            getExpectation.fulfill()
+        }
         let store = ChatStore(conversationsAPI: api, cache: cache)
 
         try await store.loadConversation(id: "c1")
 
         XCTAssertEqual(store.conversationDetails["c1"]?.title, "Cached")
-        XCTAssertEqual(api.getCallCount, 0)
+        await fulfillment(of: [getExpectation], timeout: 1.0)
+        XCTAssertEqual(store.conversationDetails["c1"]?.title, "Fresh")
     }
 
     func testUpdateConversationMessagesPersistsMessagesCache() async {
@@ -118,7 +135,9 @@ private final class MockConversationsAPI: ConversationsProviding {
     var listCallCount = 0
     var getCallCount = 0
     var onList: (() -> Void)?
+    var onGet: (() -> Void)?
     var listDelay: TimeInterval?
+    var getDelay: TimeInterval?
 
     init(
         listResult: Result<[Conversation], Error>,
@@ -140,6 +159,10 @@ private final class MockConversationsAPI: ConversationsProviding {
     func get(id: String) async throws -> ConversationWithMessages {
         _ = id
         getCallCount += 1
+        if let getDelay {
+            try? await Task.sleep(nanoseconds: UInt64(getDelay * 1_000_000_000))
+        }
+        onGet?()
         return try getResult.get()
     }
 

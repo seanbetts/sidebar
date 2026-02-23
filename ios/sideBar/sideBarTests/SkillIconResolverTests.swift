@@ -1,0 +1,47 @@
+import XCTest
+@testable import sideBar
+
+final class SkillIconResolverTests: XCTestCase {
+    func testIconNameUsesKnownSkillMappings() {
+        let skill = SkillItem(
+            id: "audio-transcribe",
+            name: "Audio",
+            description: "Transcribe audio",
+            category: "Media",
+            tier: .store
+        )
+
+        XCTAssertEqual(SkillIconResolver.iconName(for: skill), "waveform")
+    }
+
+    func testIconNameFallsBackForUnknownSkill() {
+        XCTAssertEqual(
+            SkillIconResolver.iconName(skillId: "unknown-skill", iconKey: nil),
+            "puzzlepiece.extension"
+        )
+    }
+
+    func testToolCallIconUsesSkillMetadataWhenPresent() {
+        let toolCall = ToolCall(
+            id: "tool-1",
+            name: "Create Note",
+            parameters: [:],
+            status: .success,
+            skillId: "notes",
+            iconKey: "notes"
+        )
+
+        XCTAssertEqual(SkillIconResolver.iconName(for: toolCall), "note.text")
+    }
+
+    func testToolCallIconFallsBackToToolNameMapping() {
+        let legacyToolCall = ToolCall(
+            id: "tool-1",
+            name: "Create Note",
+            parameters: [:],
+            status: .success
+        )
+
+        XCTAssertEqual(SkillIconResolver.iconName(for: legacyToolCall), "note.text")
+    }
+}

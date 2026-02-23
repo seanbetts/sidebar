@@ -525,17 +525,28 @@ class ProviderToolOrchestrator:
     ) -> AsyncIterator[dict[str, Any]]:
         for tool_call in tool_calls:
             display_name = self._tool_mapper.get_tool_display_name(tool_call.name)
+            skill_id = None
+            icon_key = None
+            if hasattr(self._tool_mapper, "get_tool_skill_id"):
+                skill_id = self._tool_mapper.get_tool_skill_id(tool_call.name)
+            if hasattr(self._tool_mapper, "get_tool_icon_key"):
+                icon_key = self._tool_mapper.get_tool_icon_key(tool_call.name)
             yield {
                 "type": "tool_start",
                 "data": {"name": display_name, "status": "running"},
             }
-            yield {
+            tool_call_event: dict[str, Any] = {
                 "type": "tool_call",
                 "id": tool_call.call_id,
                 "name": display_name,
                 "parameters": tool_call.arguments,
                 "status": "pending",
             }
+            if isinstance(skill_id, str) and skill_id:
+                tool_call_event["skill_id"] = skill_id
+            if isinstance(icon_key, str) and icon_key:
+                tool_call_event["icon_key"] = icon_key
+            yield tool_call_event
             result = await self._tool_mapper.execute_tool(
                 tool_call.name,
                 tool_call.arguments,
@@ -543,13 +554,18 @@ class ProviderToolOrchestrator:
                 context=self._tool_context,
             )
             status = "success" if result.get("success") else "error"
-            yield {
+            tool_result_event: dict[str, Any] = {
                 "type": "tool_result",
                 "id": tool_call.call_id,
                 "name": display_name,
                 "result": result,
                 "status": status,
             }
+            if isinstance(skill_id, str) and skill_id:
+                tool_result_event["skill_id"] = skill_id
+            if isinstance(icon_key, str) and icon_key:
+                tool_result_event["icon_key"] = icon_key
+            yield tool_result_event
             yield {
                 "type": "tool_end",
                 "data": {"name": display_name, "status": status},

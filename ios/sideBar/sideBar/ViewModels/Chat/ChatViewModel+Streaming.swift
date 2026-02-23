@@ -441,7 +441,9 @@ extension ChatViewModel {
                 name: toolCall.name,
                 parameters: toolCall.parameters.isEmpty ? (existing?.parameters ?? [:]) : toolCall.parameters,
                 status: toolCall.status,
-                result: toolCall.result ?? existing?.result
+                result: toolCall.result ?? existing?.result,
+                skillId: toolCall.skillId ?? existing?.skillId,
+                iconKey: toolCall.iconKey ?? existing?.iconKey
             )
             let updatedCalls = upsertToolCall(existing: message.toolCalls, newValue: merged)
             return Message(

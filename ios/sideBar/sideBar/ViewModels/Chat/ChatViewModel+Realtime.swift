@@ -314,7 +314,23 @@ extension ChatViewModel {
         let status = ToolStatus(rawValue: statusRaw ?? ToolStatus.pending.rawValue) ?? .pending
         let parameters = dictionaryToAnyCodable(payload["parameters"])
         let result = includeResult ? anyCodableValue(payload["result"]) : nil
-        return ToolCall(id: id, name: name, parameters: parameters, status: status, result: result)
+        let skillId = firstStringValue(
+            in: payload,
+            keys: ["skill_id", "skillId"]
+        )
+        let iconKey = firstStringValue(
+            in: payload,
+            keys: ["icon_key", "iconKey"]
+        )
+        return ToolCall(
+            id: id,
+            name: name,
+            parameters: parameters,
+            status: status,
+            result: result,
+            skillId: skillId,
+            iconKey: iconKey
+        )
     }
 
     func dictionaryValue(from data: AnyCodable?) -> [String: Any]? {
@@ -347,6 +363,17 @@ extension ChatViewModel {
             return [:]
         }
         return dict.mapValues { AnyCodable($0) }
+    }
+
+    func firstStringValue(in payload: [String: Any], keys: [String]) -> String? {
+        for key in keys {
+            guard let raw = payload[key] as? String else { continue }
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return nil
     }
 
     private func decodeRealtimeField<T: Decodable>(

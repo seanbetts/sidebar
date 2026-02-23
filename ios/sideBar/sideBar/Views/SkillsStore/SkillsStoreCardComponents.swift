@@ -86,7 +86,7 @@ struct SkillsStoreCard: View {
             HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
                 Button(action: onCardTap) {
                     HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-                        SkillsStoreAppIcon(iconName: skillIconName)
+                        SkillAppIcon(systemName: skillIconName)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(typeTitle.uppercased())
@@ -149,25 +149,6 @@ struct SkillsStoreCard: View {
         .frame(width: 44, height: 44)
         .contentShape(Rectangle())
         .buttonStyle(.plain)
-    }
-}
-
-private struct SkillsStoreAppIcon: View {
-    let iconName: String
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
-            Image(systemName: iconName)
-                .font(.system(size: 28, weight: .medium))
-                .foregroundStyle(Color.black.opacity(0.75))
-        }
-        .frame(width: 62, height: 62)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
     }
 }
 

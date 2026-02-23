@@ -21,6 +21,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     private let offlineStore: OfflineStore?
     private let networkStatus: (any NetworkStatusProviding)?
     private var isRefreshingList = false
+    private var refreshingConversationDetailIDs: Set<String> = []
 
     public init(
         conversationsAPI: ConversationsProviding,
@@ -87,10 +88,12 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             } else {
                 conversationDetails[id] = cached
             }
+            triggerConversationDetailRefresh(id: id)
             return
         }
         if !force, let offline = offlineStore?.get(key: cacheKey, as: ConversationWithMessages.self) {
             conversationDetails[id] = offline
+            triggerConversationDetailRefresh(id: id)
             return
         }
         if networkStatus?.isOffline ?? false {
@@ -330,6 +333,34 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         } catch {
             markBackgroundRefreshFailure()
             // Ignore background refresh failures; cache remains source of truth.
+        }
+    }
+
+    private func triggerConversationDetailRefresh(id: String) {
+        guard !(networkStatus?.isOffline ?? false) else {
+            return
+        }
+        guard !refreshingConversationDetailIDs.contains(id) else {
+            return
+        }
+        refreshingConversationDetailIDs.insert(id)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.refreshingConversationDetailIDs.remove(id) }
+            do {
+                let response = try await self.conversationsAPI.get(id: id)
+                if self.shouldApplyConversationUpdate(response, cached: self.conversationDetails[id]) {
+                    self.conversationDetails[id] = response
+                    self.cache.set(
+                        key: CacheKeys.conversation(id: id),
+                        value: response,
+                        ttlSeconds: CachePolicy.conversationDetail
+                    )
+                    self.persistConversationDetailSnapshot(response)
+                }
+            } catch {
+                // Keep cached detail as source of truth on refresh failure.
+            }
         }
     }
 

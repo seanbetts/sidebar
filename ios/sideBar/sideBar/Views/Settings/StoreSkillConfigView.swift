@@ -73,7 +73,7 @@ struct StoreSkillConfigView: View {
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-                StoreSkillHeaderIcon(symbol: SkillsStoreLogic.iconName(for: skill))
+                SkillAppIcon(systemName: SkillIconResolver.iconName(for: skill))
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.displayName(for: skill))
@@ -276,25 +276,6 @@ struct StoreSkillConfigView: View {
         formatter.timeStyle = .none
         return formatter
     }()
-}
-
-private struct StoreSkillHeaderIcon: View {
-    let symbol: String
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
-            Image(systemName: symbol)
-                .font(.system(size: 28, weight: .medium))
-                .foregroundStyle(Color.black.opacity(0.75))
-        }
-        .frame(width: 62, height: 62)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
-    }
 }
 
 private struct StoreSkillInstallIcon: View {

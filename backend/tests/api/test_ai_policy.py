@@ -256,6 +256,12 @@ async def test_gateway_stream_chat_openai_executes_tools(monkeypatch) -> None:
         def get_tool_display_name(self, name):
             return "Create Note" if name == "create_note" else name
 
+        def get_tool_skill_id(self, name):
+            return "notes" if name == "create_note" else None
+
+        def get_tool_icon_key(self, name):
+            return "notes" if name == "create_note" else None
+
         async def execute_tool(
             self, name, parameters, allowed_skills=None, context=None
         ):
@@ -289,6 +295,12 @@ async def test_gateway_stream_chat_openai_executes_tools(monkeypatch) -> None:
     assert any(event["type"] == "tool_result" for event in events)
     assert any(event["type"] == "note_created" for event in events)
     assert any(event["type"] == "token" and event["content"] == "Done" for event in events)
+    tool_call = next(event for event in events if event["type"] == "tool_call")
+    tool_result = next(event for event in events if event["type"] == "tool_result")
+    assert tool_call["skill_id"] == "notes"
+    assert tool_call["icon_key"] == "notes"
+    assert tool_result["skill_id"] == "notes"
+    assert tool_result["icon_key"] == "notes"
 
 
 @pytest.mark.asyncio

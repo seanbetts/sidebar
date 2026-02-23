@@ -34,14 +34,30 @@ struct ToolCallListView: View {
         return "\(toolCalls.count) skills used"
     }
 
+    private var summaryIconName: String {
+        guard !toolCalls.isEmpty else {
+            return "puzzlepiece.extension"
+        }
+        if toolCalls.count == 1, let toolCall = toolCalls.first {
+            return SkillIconResolver.iconName(for: toolCall)
+        }
+        let uniqueIcons = Set(toolCalls.map { SkillIconResolver.iconName(for: $0) })
+        if uniqueIcons.count == 1, let icon = uniqueIcons.first {
+            return icon
+        }
+        return "square.stack.3d.up"
+    }
+
     @ViewBuilder
     private func toolPill(
         text: String
     ) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: "command")
-                .font(.caption2)
-                .foregroundStyle(toolPillForeground)
+            SkillSymbolIcon(
+                systemName: summaryIconName,
+                font: .caption2,
+                foreground: toolPillForeground
+            )
             Text(text)
                 .font(DesignTokens.Typography.captionSemibold)
                 .lineLimit(1)
@@ -60,17 +76,19 @@ struct ToolCallListView: View {
     }
 
     private var toolIconOnlyPill: some View {
-        Image(systemName: "command")
-            .font(.caption2)
-            .foregroundStyle(toolPillForeground)
-            .padding(.horizontal, DesignTokens.Spacing.xs)
-            .padding(.vertical, DesignTokens.Spacing.xxs)
-            .frame(minHeight: headerPillMinHeight)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(toolPillBackground)
-            )
-            .overlay(toolPillBorder)
+        SkillSymbolIcon(
+            systemName: summaryIconName,
+            font: .caption2,
+            foreground: toolPillForeground
+        )
+        .padding(.horizontal, DesignTokens.Spacing.xs)
+        .padding(.vertical, DesignTokens.Spacing.xxs)
+        .frame(minHeight: headerPillMinHeight)
+        .background(
+            Capsule(style: .continuous)
+                .fill(toolPillBackground)
+        )
+        .overlay(toolPillBorder)
     }
 
     private var toolPillBackground: Color {
@@ -102,9 +120,14 @@ struct ToolCallRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
+            SkillSymbolIcon(
+                systemName: SkillIconResolver.iconName(for: toolCall),
+                font: .caption,
+                foreground: .secondary
+            )
             Circle()
                 .fill(statusColor)
-                .frame(width: 8, height: 8)
+                .frame(width: 6, height: 6)
             Text(toolCall.name)
                 .font(DesignTokens.Typography.subheadlineSemibold)
             Spacer(minLength: 8)

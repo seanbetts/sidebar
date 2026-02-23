@@ -50,19 +50,63 @@ public struct ToolCall: Codable, Identifiable {
     public let status: ToolStatus
     /// The result value.
     public let result: AnyCodable?
+    /// Optional canonical skill ID for icon and metadata lookup.
+    public let skillId: String?
+    /// Optional icon key (currently aligned to skill ID).
+    public let iconKey: String?
 
     public init(
         id: String,
         name: String,
         parameters: [String: AnyCodable],
         status: ToolStatus,
-        result: AnyCodable? = nil
+        result: AnyCodable? = nil,
+        skillId: String? = nil,
+        iconKey: String? = nil
     ) {
         self.id = id
         self.name = name
         self.parameters = parameters
         self.status = status
         self.result = result
+        self.skillId = skillId
+        self.iconKey = iconKey
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case parameters
+        case status
+        case result
+        case skillId
+        case iconKey
+        case legacySkillId = "skill_id"
+        case legacyIconKey = "icon_key"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        parameters = (try? container.decode([String: AnyCodable].self, forKey: .parameters)) ?? [:]
+        status = (try? container.decode(ToolStatus.self, forKey: .status)) ?? .pending
+        result = try? container.decodeIfPresent(AnyCodable.self, forKey: .result)
+        skillId = try container.decodeIfPresent(String.self, forKey: .skillId)
+            ?? container.decodeIfPresent(String.self, forKey: .legacySkillId)
+        iconKey = try container.decodeIfPresent(String.self, forKey: .iconKey)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyIconKey)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(parameters, forKey: .parameters)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(result, forKey: .result)
+        try container.encodeIfPresent(skillId, forKey: .skillId)
+        try container.encodeIfPresent(iconKey, forKey: .iconKey)
     }
 }
 
