@@ -4,7 +4,8 @@ struct ContentHeaderRow<Trailing: View>: View {
     let icon: AnyView
     let title: String
     let subtitle: String?
-    let titleFont: Font
+    let titleStyle: AppFontStyle
+    let titleWeight: Font.Weight
     let titleLineLimit: Int
     let subtitleLineLimit: Int
     let titleLayoutPriority: Double
@@ -23,7 +24,8 @@ struct ContentHeaderRow<Trailing: View>: View {
         iconName: String,
         title: String,
         subtitle: String? = nil,
-        titleFont: Font = .headline,
+        titleStyle: AppFontStyle = .headline,
+        titleWeight: Font.Weight = .regular,
         titleLineLimit: Int = 2,
         subtitleLineLimit: Int = 2,
         titleLayoutPriority: Double = 1,
@@ -40,12 +42,13 @@ struct ContentHeaderRow<Trailing: View>: View {
     ) {
         self.icon = AnyView(
             Image(systemName: iconName)
-                .font(DesignTokens.Typography.titleLg)
+                .appFont(.titleLg)
                 .foregroundStyle(.primary)
         )
         self.title = title
         self.subtitle = subtitle
-        self.titleFont = titleFont
+        self.titleStyle = titleStyle
+        self.titleWeight = titleWeight
         self.titleLineLimit = titleLineLimit
         self.subtitleLineLimit = subtitleLineLimit
         self.titleLayoutPriority = titleLayoutPriority
@@ -65,7 +68,8 @@ struct ContentHeaderRow<Trailing: View>: View {
         iconView: AnyView,
         title: String,
         subtitle: String? = nil,
-        titleFont: Font = .headline,
+        titleStyle: AppFontStyle = .headline,
+        titleWeight: Font.Weight = .regular,
         titleLineLimit: Int = 2,
         subtitleLineLimit: Int = 2,
         titleLayoutPriority: Double = 1,
@@ -83,7 +87,8 @@ struct ContentHeaderRow<Trailing: View>: View {
         self.icon = iconView
         self.title = title
         self.subtitle = subtitle
-        self.titleFont = titleFont
+        self.titleStyle = titleStyle
+        self.titleWeight = titleWeight
         self.titleLineLimit = titleLineLimit
         self.subtitleLineLimit = subtitleLineLimit
         self.titleLayoutPriority = titleLayoutPriority
@@ -134,7 +139,8 @@ struct ContentHeaderRow<Trailing: View>: View {
         if let onTitleTap {
             Button(action: onTitleTap) {
                 Text(title)
-                    .font(titleFont)
+                    .appFont(titleStyle)
+                    .fontWeight(titleWeight)
                     .lineLimit(titleLineLimit)
                     .multilineTextAlignment(.leading)
                     .layoutPriority(titleLayoutPriority)
@@ -143,7 +149,8 @@ struct ContentHeaderRow<Trailing: View>: View {
             .buttonStyle(.plain)
         } else {
             Text(title)
-                .font(titleFont)
+                .appFont(titleStyle)
+                .fontWeight(titleWeight)
                 .lineLimit(titleLineLimit)
                 .multilineTextAlignment(.leading)
                 .layoutPriority(titleLayoutPriority)
@@ -155,7 +162,7 @@ struct ContentHeaderRow<Trailing: View>: View {
     private var subtitleView: some View {
         if let subtitle, !subtitle.isEmpty {
             Text(subtitle)
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(subtitleLineLimit)
                 .multilineTextAlignment(.leading)

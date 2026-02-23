@@ -111,7 +111,8 @@ extension NotesDetailView {
                 iconName: "text.document",
                 title: displayTitle,
                 subtitle: createdDateSubtitle,
-                titleFont: .subheadline.weight(.semibold),
+                titleStyle: .subheadline,
+                titleWeight: .semibold,
                 titleSubtitleAxis: .vertical
             , trailing: {
                 if viewModel.activeNote != nil {
@@ -287,7 +288,7 @@ extension NotesDetailView {
 
     private func noteStatusText(_ status: NoteStatus) -> some View {
         Text(status.text)
-            .font(.caption)
+            .appFont(.caption)
             .foregroundStyle(status.color)
             .lineLimit(1)
     }
@@ -385,7 +386,7 @@ extension NotesDetailView {
     private var expandButton: some View {
         Button(action: expandNoteView) {
             Image(systemName: expandButtonIconName)
-                .font(DesignTokens.Typography.labelMd)
+                .appFont(.labelMd)
                 .frame(width: 28, height: 20)
                 .imageScale(.medium)
         }

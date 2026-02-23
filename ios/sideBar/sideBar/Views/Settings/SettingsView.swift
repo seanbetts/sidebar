@@ -263,6 +263,7 @@ private struct SettingsSplitView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             List(SettingsSection.allCases, selection: selectionBinding) { section in
                 Label(section.displayTitle(assistantDisplayName: viewModel.assistantDisplayName), systemImage: section.systemImage)
+                    .appFont(.subheadline)
                     .tag(section)
             }
             .listStyle(.sidebar)
@@ -271,6 +272,7 @@ private struct SettingsSplitView: View {
             .modifier(SidebarToggleHider())
         } detail: {
             settingsDetailView(for: selectedSection)
+                .appFont(.subheadline)
                 .navigationTitle(selectedSection.displayTitle(assistantDisplayName: viewModel.assistantDisplayName))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .modifier(SidebarToggleHider())
@@ -404,6 +406,7 @@ private struct SettingsTabsView: View {
     @ViewBuilder
     private func settingsTabContent<Content: View>(_ content: Content) -> some View {
         content
+            .appFont(.subheadline)
             .overlay(alignment: .bottom) {
                 if let savePillState {
                     SettingsSaveStatusPill(state: savePillState)

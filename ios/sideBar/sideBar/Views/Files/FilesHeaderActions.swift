@@ -145,7 +145,7 @@ struct FilesHeaderActions: View {
     private var expandButton: some View {
         Button(action: expandFilesView) {
             Image(systemName: expandButtonIconName)
-                .font(DesignTokens.Typography.labelMd)
+                .appFont(.labelMd)
                 .frame(width: 28, height: 20)
                 .imageScale(.medium)
         }

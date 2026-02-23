@@ -128,7 +128,8 @@ public struct SkillsStoreView: View {
         ContentHeaderRow(
             iconName: "text.and.command.macwindow",
             title: "Skills Store",
-            titleFont: .subheadline.weight(.semibold),
+            titleStyle: .subheadline,
+            titleWeight: .semibold,
             titleLineLimit: 1,
             trailing: {
                 SearchField(

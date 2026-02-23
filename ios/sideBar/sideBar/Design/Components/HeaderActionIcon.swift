@@ -5,7 +5,7 @@ struct HeaderActionIcon: View {
 
     var body: some View {
         Image(systemName: systemName)
-            .font(DesignTokens.Typography.labelMd)
+            .appFont(.labelMd)
             .frame(width: 28, height: 20)
             .imageScale(.medium)
     }

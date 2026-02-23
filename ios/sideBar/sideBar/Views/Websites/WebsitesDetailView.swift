@@ -98,7 +98,7 @@ struct WebsitesDetailView: View {
                 if isCompact, sourceURL != nil {
                     Button(action: openInDefaultBrowser) {
                         Text(displayTitle)
-                            .font(.headline)
+                            .appFont(.headline)
                             .lineLimit(1)
                     }
                     .buttonStyle(.plain)
@@ -130,7 +130,8 @@ extension WebsitesDetailView {
             iconView: headerIcon,
             title: displayTitle,
             subtitle: domainSubtitle,
-            titleFont: .subheadline.weight(.semibold),
+            titleStyle: .subheadline,
+            titleWeight: .semibold,
             titleLineLimit: 1,
             subtitleLineLimit: 1,
             titleSubtitleAxis: .vertical,
@@ -263,7 +264,7 @@ extension WebsitesDetailView {
         guard let website = viewModel.active else {
             return AnyView(
                 Image(systemName: "globe")
-                    .font(DesignTokens.Typography.titleLg)
+                    .appFont(.titleLg)
                     .foregroundStyle(.primary)
             )
         }
@@ -284,7 +285,7 @@ extension WebsitesDetailView {
         }
         return AnyView(
             Image(systemName: "globe")
-                .font(DesignTokens.Typography.titleLg)
+                .appFont(.titleLg)
                 .foregroundStyle(.primary)
         )
     }
@@ -308,7 +309,7 @@ extension WebsitesDetailView {
     private var expandButton: some View {
         Button(action: expandWebsiteView) {
             Image(systemName: expandButtonIconName)
-                .font(DesignTokens.Typography.labelMd)
+                .appFont(.labelMd)
                 .frame(width: 28, height: 20)
                 .imageScale(.medium)
         }
