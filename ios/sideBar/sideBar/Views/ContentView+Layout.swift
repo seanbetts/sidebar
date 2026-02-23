@@ -163,7 +163,7 @@ extension ContentView {
                         }
                     } label: {
                         Image(systemName: "plus")
-                            .font(DesignTokens.Typography.labelMd)
+                            .appFont(.labelMd)
                             .frame(
                                 width: PhoneFloatingActionMetrics.buttonSize,
                                 height: PhoneFloatingActionMetrics.buttonSize

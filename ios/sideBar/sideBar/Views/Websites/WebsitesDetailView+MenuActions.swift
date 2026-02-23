@@ -171,7 +171,7 @@ struct WebsiteContentQuickActionsPill: View {
     ) -> some View {
         Button(role: role, action: action) {
             Image(systemName: systemName)
-                .font(DesignTokens.Typography.labelMd)
+                .appFont(.labelMd)
                 .frame(width: 22, height: 22)
                 .foregroundStyle(
                     role == .destructive ? DesignTokens.Colors.error : DesignTokens.Colors.textPrimary

@@ -41,11 +41,11 @@ public struct BiometricLockView: View {
                     LoadingIndicatorView(size: LoadingIndicatorSize.hero, variant: .hero)
 
                     Text("Unlock sideBar")
-                        .font(DesignTokens.Typography.title3Semibold)
+                        .appFont(.title3Semibold)
 
                     if let errorMessage {
                         Text(errorMessage)
-                            .font(.callout)
+                            .appFont(.callout)
                             .foregroundStyle(DesignTokens.Colors.error)
                             .multilineTextAlignment(.center)
                     }

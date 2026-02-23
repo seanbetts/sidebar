@@ -94,9 +94,9 @@ public struct LoginView: View {
         VStack(spacing: 12) {
             LoadingIndicatorView(size: 64, variant: .hero)
             Text("sideBar")
-                .font(DesignTokens.Typography.title2Semibold)
+                .appFont(.title2Semibold)
             Text("AI assistance with context from your notes, tasks, files, and saved websites.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, DesignTokens.Spacing.sm)
@@ -126,7 +126,7 @@ public struct LoginView: View {
                 } else {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(DesignTokens.Colors.error)
-                        .font(.callout)
+                        .appFont(.callout)
                 }
             }
             if !email.isEmpty {
@@ -191,10 +191,10 @@ public struct LoginView: View {
                         .foregroundStyle(DesignTokens.Colors.error)
                     Text("Too many failed attempts")
                         .foregroundStyle(DesignTokens.Colors.error)
-                        .font(.callout)
+                        .appFont(.callout)
                     Text("Try again in \(formatLockoutTime(seconds)).")
                         .foregroundStyle(.secondary)
-                        .font(.caption)
+                        .appFont(.caption)
                 }
                 .multilineTextAlignment(.center)
             }
@@ -211,10 +211,10 @@ public struct LoginView: View {
                         .foregroundStyle(DesignTokens.Colors.error)
                     Text(errorMessage)
                         .foregroundStyle(DesignTokens.Colors.error)
-                        .font(.callout)
+                        .appFont(.callout)
                     Text("Double-check your credentials and connection, then try again.")
                         .foregroundStyle(.secondary)
-                        .font(.caption)
+                        .appFont(.caption)
                 }
                 .multilineTextAlignment(.center)
             }
@@ -238,10 +238,10 @@ public struct LoginView: View {
                     .foregroundStyle(DesignTokens.Colors.error)
                 Text("You're offline.")
                     .foregroundStyle(DesignTokens.Colors.error)
-                    .font(.callout)
+                    .appFont(.callout)
                 Text("Sign in requires a connection.")
                     .foregroundStyle(.secondary)
-                    .font(.caption)
+                    .appFont(.caption)
             }
             .multilineTextAlignment(.center)
         }
@@ -302,10 +302,10 @@ public struct LoginView: View {
     private var offlineUnlockView: some View {
         VStack(spacing: 10) {
             Text("You're offline.")
-                .font(.callout)
+                .appFont(.callout)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
             Text("Continue using your cached session.")
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
             Button {
                 Task { _ = await attemptOfflineUnlock() }

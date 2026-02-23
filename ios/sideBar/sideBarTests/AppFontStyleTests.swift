@@ -98,5 +98,17 @@ final class AppFontStyleTests: XCTestCase {
             AppFontStyle.footnoteSemibold.pointSize(for: .medium),
             accuracy: 0.0001
         )
+        XCTAssertEqual(
+            AppFontStyle.title2.pointSize(for: .large),
+            AppFontStyle.title2Semibold.pointSize(for: .large),
+            accuracy: 0.0001
+        )
+
+        let monoLabelSystem = AppFontStyle.monoLabel.pointSize(for: .system)
+        XCTAssertEqual(
+            AppFontStyle.monoLabel.pointSize(for: .small),
+            monoLabelSystem * AppTextSizeOption.small.scaleMultiplier,
+            accuracy: 0.0001
+        )
     }
 }

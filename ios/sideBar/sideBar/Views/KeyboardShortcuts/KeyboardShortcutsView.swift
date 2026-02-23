@@ -29,14 +29,14 @@ private struct KeyboardShortcutRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(shortcut.symbol)
-                .font(DesignTokens.Typography.monoLabel)
+                .appFont(.monoLabel)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
                 .frame(minWidth: 72, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text(shortcut.title)
-                    .font(DesignTokens.Typography.subheadlineSemibold)
+                    .appFont(.subheadlineSemibold)
                 Text(shortcut.description)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
             }
         }
