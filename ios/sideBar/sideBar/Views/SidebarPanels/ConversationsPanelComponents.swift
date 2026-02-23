@@ -32,7 +32,7 @@ struct ConversationRow: View, Equatable {
                 Text(conversation.title)
                     .appFont(.subheadline)
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
-                    .lineLimit(2)
+                    .lineLimit(1)
                 Text(subtitleText)
                     .appFont(.caption2)
                     .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)

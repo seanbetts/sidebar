@@ -132,7 +132,7 @@ struct NotesTreeRow: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.displayName)
                             .appFont(.subheadline)
-                            .lineLimit(2)
+                            .lineLimit(1)
                             .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                         if let dateText = item.formattedCreatedDate {
                             Text(dateText)
@@ -144,7 +144,7 @@ struct NotesTreeRow: View {
                 } else {
                     Text(item.displayName)
                         .appFont(.subheadline)
-                        .lineLimit(2)
+                        .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                 }
             }

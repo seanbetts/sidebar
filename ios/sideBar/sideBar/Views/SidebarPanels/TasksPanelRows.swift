@@ -51,7 +51,7 @@ struct TaskPanelRow: View, Equatable {
                 Text(title)
                     .appFont(.subheadline)
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
-                    .lineLimit(2)
+                    .lineLimit(1)
                 Spacer()
                 if let count {
                     if count == 0 {
