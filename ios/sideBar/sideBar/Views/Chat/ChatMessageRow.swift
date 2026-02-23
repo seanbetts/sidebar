@@ -44,7 +44,7 @@ struct ChatMessageRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Text(message.role == .assistant ? assistantDisplayName : "You")
-                    .font(DesignTokens.Typography.captionSemibold)
+                    .appFont(.captionSemibold)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .layoutPriority(1)
@@ -69,7 +69,7 @@ struct ChatMessageRow: View {
                         showCopyFeedback()
                     } label: {
                         Image(systemName: copyFeedback.iconName)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(copyFeedback.isCopied ? copiedIconForeground : .secondary)
                             .padding(DesignTokens.Spacing.xxs)
                             .background(copyFeedback.isCopied ? copiedIconBackground : .clear)
@@ -85,7 +85,7 @@ struct ChatMessageRow: View {
 
             if showsThinkingBody {
                 Text(thinkingText)
-                    .font(DesignTokens.Typography.body)
+                    .appFont(.body)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -96,14 +96,14 @@ struct ChatMessageRow: View {
 
             if message.status == .error, let error = message.error {
                 Text(error)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
             }
 
             HStack {
                 Spacer()
                 Text(formattedTimestamp)
-                    .font(.caption2)
+                    .appFont(.caption2)
                     .foregroundStyle(.secondary)
             }
         }

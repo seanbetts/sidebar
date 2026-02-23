@@ -37,7 +37,7 @@ public struct FileViewerView: View {
                         openURL(YouTubeURLPolicy.preferredExternalURL(from: embedURL))
                     } label: {
                         Label("Open in YouTube", systemImage: "arrow.up.right.square")
-                            .font(.footnote.weight(.semibold))
+                            .appFont(.footnoteSemibold)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                     }
@@ -82,7 +82,7 @@ public struct FileViewerView: View {
     private var textView: some View {
         ScrollView {
             Text(state.text ?? "No preview available.")
-                .font(DesignTokens.Typography.monoBody)
+                .appFont(.monoBody)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(DesignTokens.Spacing.lg)

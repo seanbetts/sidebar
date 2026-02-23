@@ -37,7 +37,7 @@ public struct ScratchpadPopoverView: View {
                 Group {
                     if isEditing {
                         TextEditor(text: $draft)
-                            .font(.body)
+                            .appFont(.body)
                             .focused($isEditorFocused)
                             .scrollContentBackground(.hidden)
                             .frame(maxWidth: .infinity)
@@ -63,7 +63,7 @@ public struct ScratchpadPopoverView: View {
                         VStack(spacing: 8) {
                             LoadingIndicatorView(size: LoadingIndicatorSize.panel)
                             Text("Loading...")
-                                .font(.caption)
+                                .appFont(.caption)
                         }
                     }
                 }
@@ -162,7 +162,7 @@ private struct ScratchpadHeaderRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(ScratchpadConstants.title)
-                    .font(.headline)
+                    .appFont(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .lineLimit(1)
                 if isSaving {
@@ -172,11 +172,11 @@ private struct ScratchpadHeaderRow: View {
             if !isSaving, let errorMessage {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption.weight(.semibold))
+                        .appFont(.captionSemibold)
                         .foregroundStyle(DesignTokens.Colors.error)
                         .padding(.top, 1)
                     Text(errorMessage)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -196,7 +196,7 @@ private struct ScratchpadHeaderRow: View {
 
     private func statusText(_ text: String, color: Color) -> some View {
         Text(text)
-            .font(.caption)
+            .appFont(.caption)
             .foregroundStyle(color)
             .lineLimit(1)
     }

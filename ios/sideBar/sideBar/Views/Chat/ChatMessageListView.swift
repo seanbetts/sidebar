@@ -42,7 +42,7 @@ struct ChatMessageListView: View {
                                 loadMoreMessages(proxy: proxy)
                             } label: {
                                 Text(isAutoLoadingMore ? "Loading earlier messages…" : "Load earlier messages")
-                                    .font(.subheadline)
+                                    .appFont(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity)
                             }

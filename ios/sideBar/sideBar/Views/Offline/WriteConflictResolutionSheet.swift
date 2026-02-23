@@ -11,7 +11,7 @@ struct WriteConflictResolutionSheet: View {
 
                 if let subtitleText {
                     Text(subtitleText)
-                        .font(DesignTokens.Typography.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
 
@@ -31,24 +31,24 @@ struct WriteConflictResolutionSheet: View {
     private var header: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: "arrow.triangle.2.circlepath")
-                .font(DesignTokens.Typography.subheadlineSemibold)
+                .appFont(.subheadlineSemibold)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             Text("Resolve Sync Conflict")
-                .font(DesignTokens.Typography.title3Semibold)
+                .appFont(.title3Semibold)
         }
     }
 
     private var detailContent: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text("\(operationLabel) \(entityLabel)")
-                .font(DesignTokens.Typography.subheadlineSemibold)
+                .appFont(.subheadlineSemibold)
                 .foregroundStyle(.primary)
             Text("Queued \(conflict.createdAt.formatted(date: .abbreviated, time: .shortened))")
-                .font(DesignTokens.Typography.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
             if let conflictReason = conflict.conflictReason {
                 Text(conflictReason)
-                    .font(DesignTokens.Typography.caption)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
                     .lineLimit(2)
             }
@@ -87,7 +87,7 @@ struct WriteConflictResolutionSheet: View {
 private struct ConflictActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(DesignTokens.Typography.captionSemibold)
+            .appFont(.captionSemibold)
             .foregroundStyle(DesignTokens.Colors.textPrimary)
             .padding(.horizontal, DesignTokens.Spacing.xs)
             .padding(.vertical, DesignTokens.Spacing.xxs)

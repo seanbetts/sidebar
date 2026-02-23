@@ -10,14 +10,14 @@ struct PendingAttachmentsView: View {
             ForEach(attachments) { attachment in
                 HStack(spacing: 10) {
                     Image(systemName: "paperclip")
-                        .font(DesignTokens.Typography.labelMd)
+                        .appFont(.labelMd)
                         .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(attachment.name)
-                            .font(.subheadline)
+                            .appFont(.subheadline)
                             .lineLimit(1)
                         Text(statusText(for: attachment))
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -27,7 +27,7 @@ struct PendingAttachmentsView: View {
                                 onRetry(attachment.id)
                             } label: {
                                 Image(systemName: "arrow.clockwise")
-                                    .font(DesignTokens.Typography.labelMd)
+                                    .appFont(.labelMd)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Retry attachment")
@@ -35,7 +35,7 @@ struct PendingAttachmentsView: View {
                                 onDelete(attachment.id)
                             } label: {
                                 Image(systemName: "trash")
-                                    .font(DesignTokens.Typography.labelMd)
+                                    .appFont(.labelMd)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Delete attachment")
@@ -85,15 +85,15 @@ struct ReadyAttachmentsView: View {
                 ForEach(attachments) { attachment in
                     HStack(spacing: 6) {
                         Image(systemName: "paperclip")
-                            .font(DesignTokens.Typography.labelXs)
+                            .appFont(.captionSemibold)
                         Text(attachment.name)
-                            .font(DesignTokens.Typography.captionSemibold)
+                            .appFont(.captionSemibold)
                             .lineLimit(1)
                         Button {
                             onRemove(attachment.id)
                         } label: {
                             Image(systemName: "xmark")
-                                .font(DesignTokens.Typography.labelXxs)
+                                .appFont(.size10Bold)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Remove \(attachment.name)")

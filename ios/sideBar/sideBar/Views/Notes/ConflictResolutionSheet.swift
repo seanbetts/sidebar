@@ -8,7 +8,7 @@ struct ConflictResolutionSheet: View {
         NavigationStack {
             VStack(spacing: DesignTokens.Spacing.lg) {
                 Text("This note was edited in multiple places")
-                    .font(DesignTokens.Typography.title3Semibold)
+                    .appFont(.title3Semibold)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: DesignTokens.Spacing.md) {
@@ -55,13 +55,13 @@ struct ConflictResolutionSheet: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text(title)
-                .font(DesignTokens.Typography.labelLg)
+                .appFont(.subheadlineSemibold)
             Text(date.formatted(date: .abbreviated, time: .shortened))
-                .font(DesignTokens.Typography.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
             ScrollView {
                 Text(content)
-                    .font(DesignTokens.Typography.body)
+                    .appFont(.body)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxHeight: 200)

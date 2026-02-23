@@ -230,7 +230,7 @@ struct SideBarMarkdown: View, Equatable {
                         .dropFirst(MarkdownRendering.imageCaptionMarker.count)
                         .trimmingCharacters(in: .whitespaces)
                     Text(caption)
-                        .font(.footnote)
+                        .appFont(.footnote)
                         .foregroundStyle(DesignTokens.Colors.textTertiary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .markdownMargin(top: .rem(0.25), bottom: .rem(0.75))
@@ -361,7 +361,7 @@ private struct SideBarYouTubeEmbedBlock: View {
                     VStack(spacing: 8) {
                         LoadingIndicatorView(size: LoadingIndicatorSize.panel)
                         Text("Loading video…")
-                            .font(.footnote)
+                            .appFont(.footnote)
                     }
                 }
             }
@@ -372,7 +372,7 @@ private struct SideBarYouTubeEmbedBlock: View {
                 openSourceInYouTube()
             } label: {
                 Label("Open in YouTube", systemImage: "arrow.up.right.square")
-                    .font(.footnote.weight(.semibold))
+                    .appFont(.footnoteSemibold)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
@@ -390,7 +390,7 @@ private struct SideBarYouTubeEmbedBlock: View {
                             LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         }
                         Text(isQueuedOrProcessing(context: context) ? "Transcribing" : "Get Transcript")
-                            .font(.footnote.weight(.semibold))
+                            .appFont(.footnoteSemibold)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -425,15 +425,15 @@ private struct SideBarSuppressedSVGBlock: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             Image(systemName: "photo")
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
-                .font(.body.weight(.semibold))
+                .appFont(.bodySemibold)
                 .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("SVG diagram omitted")
-                    .font(.footnote.weight(.semibold))
+                    .appFont(.footnoteSemibold)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                 Text("Open this page in the web app to view the full diagram.")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

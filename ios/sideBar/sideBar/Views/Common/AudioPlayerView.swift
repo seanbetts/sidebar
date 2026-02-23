@@ -16,7 +16,7 @@ public struct AudioPlayerView: View {
                     action: { viewModel.togglePlay() },
                     label: {
                         Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                            .font(DesignTokens.Typography.titleMd)
+                            .appFont(.size16Semibold)
                             .frame(width: 36, height: 36)
                     }
                 )
@@ -34,7 +34,7 @@ public struct AudioPlayerView: View {
                         Spacer()
                         Text(viewModel.durationText)
                     }
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
                 }
             }

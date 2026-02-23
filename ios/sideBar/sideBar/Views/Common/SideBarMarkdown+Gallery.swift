@@ -127,7 +127,7 @@ struct MarkdownGalleryView: View {
             }
             if let caption = gallery.caption, !caption.isEmpty {
                 Text(caption)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
@@ -151,7 +151,7 @@ private struct MarkdownGalleryImageView: View {
                         .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
                 case .failure:
                     Image(systemName: "photo")
-                        .font(DesignTokens.Typography.display)
+                        .appFont(.size32Regular)
                         .foregroundStyle(.secondary)
                 case .empty:
                     LoadingIndicatorView(size: LoadingIndicatorSize.control)
