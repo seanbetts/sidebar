@@ -19,7 +19,7 @@
 				darkSrc="/images/loading-dark-128.gif"
 			/>
 		</div>
-		<h1><span>sideBar</span><span>is launching soon</span></h1>
+		<h1><span>sideBar</span><span>Launching Soon</span></h1>
 		<p class="copy">
 			We are putting the finishing touches on the product experience. If you already have access,
 			you can sign in now.
@@ -96,6 +96,10 @@
 
 	h1 span {
 		display: block;
+	}
+
+	h1 span + span {
+		margin-top: 0.5em;
 	}
 
 	.copy {
