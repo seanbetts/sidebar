@@ -1,5 +1,15 @@
 {
 	"framework": "sveltekit",
 	"installCommand": "npm install --include=dev",
-	"buildCommand": "npm run build"
+	"buildCommand": "npm run build",
+	"headers": [
+		{
+			"source": "/.well-known/apple-app-site-association",
+			"headers": [{ "key": "Content-Type", "value": "application/json" }]
+		},
+		{
+			"source": "/apple-app-site-association",
+			"headers": [{ "key": "Content-Type", "value": "application/json" }]
+		}
+	]
 }
