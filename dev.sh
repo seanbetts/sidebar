@@ -8,6 +8,9 @@
 #   ./dev.sh start
 #     Start backend (http://localhost:8001), frontend (http://localhost:3000),
 #     ingestion worker, and ensure local test Postgres availability.
+#     Local host aliases:
+#       - Holding page: http://trysidebar.localhost:3000
+#       - App shell:    http://app.trysidebar.localhost:3000
 #   ./dev.sh stop
 #     Stop all services managed by this script.
 #   ./dev.sh restart
@@ -846,8 +849,9 @@ case "${command}" in
     ;;
   status)
     status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}" "backend"
-    status_service "${FRONTEND_PID}" "Frontend" "http://localhost:3000" "${FRONTEND_LOG}" "frontend"
+    status_service "${FRONTEND_PID}" "Frontend" "http://app.trysidebar.localhost:3000" "${FRONTEND_LOG}" "frontend"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}" "ingestion"
+    echo "  Holding page: http://trysidebar.localhost:3000"
     status_test_db
     ;;
   logs)
