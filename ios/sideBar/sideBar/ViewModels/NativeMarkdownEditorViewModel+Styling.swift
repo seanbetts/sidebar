@@ -30,7 +30,7 @@ extension NativeMarkdownEditorViewModel {
         case .codeBlock:
             return blockCodeFont
         case .imageCaption:
-            return DesignTokens.Typography.footnote
+            return .system(size: MarkdownTypography.footnoteFontSize(baseFontSize: baseFontSize))
         default:
             return bodyFont
         }
@@ -57,11 +57,10 @@ extension NativeMarkdownEditorViewModel {
     }
 
     func platformFootnoteFont() -> PlatformFont {
-#if os(iOS)
-        return UIFont.preferredFont(forTextStyle: .footnote)
-#else
-        return NSFont.preferredFont(forTextStyle: .footnote)
-#endif
+        platformSystemFont(
+            size: MarkdownTypography.footnoteFontSize(baseFontSize: baseFontSize),
+            weight: .regular
+        )
     }
 
     func platformSystemFont(

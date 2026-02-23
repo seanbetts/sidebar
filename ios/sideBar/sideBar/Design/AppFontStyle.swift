@@ -40,7 +40,7 @@ enum AppFontStyle {
         } else {
             baseSize = definition.fallbackSize
         }
-        return baseSize * option.scaleMultiplier
+        return Self.scaledPointSize(baseSize, for: option)
     }
 
     func font(for option: AppTextSizeOption) -> Font {
@@ -51,11 +51,29 @@ enum AppFontStyle {
             design: definition.design
         )
     }
+
+    static func scaledPointSize(_ baseSize: CGFloat, for option: AppTextSizeOption) -> CGFloat {
+        baseSize * option.scaleMultiplier
+    }
 }
 
 extension View {
     func appFont(_ style: AppFontStyle) -> some View {
         modifier(AppFontModifier(style: style))
+    }
+
+    func appScaledFont(
+        size: CGFloat,
+        weight: Font.Weight = .regular,
+        design: Font.Design = .default
+    ) -> some View {
+        modifier(
+            AppScaledFontModifier(
+                size: size,
+                weight: weight,
+                design: design
+            )
+        )
     }
 }
 
@@ -245,5 +263,23 @@ private struct AppFontModifier: ViewModifier {
     func body(content: Content) -> some View {
         let option = AppTextSizeOption.resolved(from: appTextSizeRaw)
         content.font(style.font(for: option))
+    }
+}
+
+private struct AppScaledFontModifier: ViewModifier {
+    let size: CGFloat
+    let weight: Font.Weight
+    let design: Font.Design
+    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
+
+    func body(content: Content) -> some View {
+        let option = AppTextSizeOption.resolved(from: appTextSizeRaw)
+        content.font(
+            .system(
+                size: AppFontStyle.scaledPointSize(size, for: option),
+                weight: weight,
+                design: design
+            )
+        )
     }
 }

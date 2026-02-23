@@ -14,7 +14,7 @@ struct ProfileAvatarView: View {
                     .scaledToFill()
             } else {
                 Image(systemName: "person.crop.circle")
-                    .font(.system(size: size * 0.7, weight: .regular))
+                    .appScaledFont(size: size * 0.7, weight: .regular)
             }
         }
         .frame(width: size, height: size)

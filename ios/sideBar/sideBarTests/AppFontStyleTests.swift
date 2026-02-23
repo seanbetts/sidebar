@@ -111,4 +111,22 @@ final class AppFontStyleTests: XCTestCase {
             accuracy: 0.0001
         )
     }
+
+    func testScaledPointSizeHelperUsesOptionMultiplier() {
+        XCTAssertEqual(
+            AppFontStyle.scaledPointSize(14, for: .small),
+            12.6,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            AppFontStyle.scaledPointSize(14, for: .medium),
+            14.7,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            AppFontStyle.scaledPointSize(14, for: .large),
+            16.8,
+            accuracy: 0.0001
+        )
+    }
 }

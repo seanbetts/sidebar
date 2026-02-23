@@ -103,7 +103,7 @@ struct AttributedNoteFormattingToolbar: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 14, weight: isActive ? .semibold : .regular))
+                .appScaledFont(size: 14, weight: isActive ? .semibold : .regular)
                 .frame(width: 28, height: 28)
         }
         .buttonStyle(.plain)

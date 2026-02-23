@@ -55,7 +55,7 @@ struct ToolCallListView: View {
         HStack(spacing: 6) {
             SkillSymbolIcon(
                 systemName: summaryIconName,
-                font: .caption2,
+                appFontStyle: .caption2,
                 foreground: toolPillForeground
             )
             Text(text)
@@ -78,7 +78,7 @@ struct ToolCallListView: View {
     private var toolIconOnlyPill: some View {
         SkillSymbolIcon(
             systemName: summaryIconName,
-            font: .caption2,
+            appFontStyle: .caption2,
             foreground: toolPillForeground
         )
         .padding(.horizontal, DesignTokens.Spacing.xs)
@@ -122,7 +122,7 @@ struct ToolCallRow: View {
         HStack(spacing: 6) {
             SkillSymbolIcon(
                 systemName: SkillIconResolver.iconName(for: toolCall),
-                font: .caption,
+                appFontStyle: .caption,
                 foreground: .secondary
             )
             Circle()

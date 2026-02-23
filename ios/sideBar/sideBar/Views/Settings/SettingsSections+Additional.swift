@@ -119,7 +119,7 @@ struct SkillsSettingsView: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             SkillSymbolIcon(
                 systemName: SkillIconResolver.iconName(for: skill),
-                font: .subheadline,
+                appFontStyle: .subheadline,
                 foreground: DesignTokens.Colors.textSecondary
             )
                 .frame(width: 18, height: 18)

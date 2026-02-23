@@ -124,7 +124,7 @@ struct SuccessCheckBadge: View {
             Circle()
                 .fill(backgroundColor)
             Image(systemName: "checkmark")
-                .font(.system(size: symbolSize, weight: .bold))
+                .appScaledFont(size: symbolSize, weight: .bold)
                 .foregroundStyle(foregroundColor)
         }
         .frame(width: size, height: size)

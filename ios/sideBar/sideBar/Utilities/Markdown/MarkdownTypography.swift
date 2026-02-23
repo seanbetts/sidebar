@@ -27,8 +27,30 @@ enum MarkdownTypography {
 #endif
     }
     static let inlineCodeScale: CGFloat = 0.875
+    private static let fallbackFootnoteScale: CGFloat = 13.0 / 16.0
 
     static func inlineCodeFontSize(baseFontSize: CGFloat) -> CGFloat {
         baseFontSize * inlineCodeScale
+    }
+
+    static func footnoteFontSize(baseFontSize: CGFloat) -> CGFloat {
+        baseFontSize * footnoteScale
+    }
+
+    private static var footnoteScale: CGFloat {
+#if canImport(UIKit)
+        let bodySize = UIFont.preferredFont(forTextStyle: .body).pointSize
+        let footnoteSize = UIFont.preferredFont(forTextStyle: .footnote).pointSize
+#elseif canImport(AppKit)
+        let bodySize = NSFont.preferredFont(forTextStyle: .body).pointSize
+        let footnoteSize = NSFont.preferredFont(forTextStyle: .footnote).pointSize
+#else
+        let bodySize = CGFloat.zero
+        let footnoteSize = CGFloat.zero
+#endif
+        guard bodySize > 0, footnoteSize > 0 else {
+            return fallbackFootnoteScale
+        }
+        return footnoteSize / bodySize
     }
 }

@@ -2,23 +2,55 @@ import SwiftUI
 
 struct SkillSymbolIcon: View {
     let systemName: String
-    let font: Font
+    let appFontStyle: AppFontStyle?
+    let pointSize: CGFloat?
+    let weight: Font.Weight
+    let design: Font.Design
     let foreground: Color
 
     init(
         systemName: String,
-        font: Font = .subheadline,
+        appFontStyle: AppFontStyle = .subheadline,
         foreground: Color = DesignTokens.Colors.textSecondary
     ) {
         self.systemName = systemName
-        self.font = font
+        self.appFontStyle = appFontStyle
+        self.pointSize = nil
+        self.weight = .regular
+        self.design = .default
         self.foreground = foreground
     }
 
+    init(
+        systemName: String,
+        pointSize: CGFloat,
+        weight: Font.Weight = .regular,
+        design: Font.Design = .default,
+        foreground: Color = DesignTokens.Colors.textSecondary
+    ) {
+        self.systemName = systemName
+        self.appFontStyle = nil
+        self.pointSize = pointSize
+        self.weight = weight
+        self.design = design
+        self.foreground = foreground
+    }
+
+    @ViewBuilder
     var body: some View {
-        Image(systemName: systemName)
-            .font(font)
-            .foregroundStyle(foreground)
+        if let appFontStyle {
+            Image(systemName: systemName)
+                .appFont(appFontStyle)
+                .foregroundStyle(foreground)
+        } else {
+            Image(systemName: systemName)
+                .appScaledFont(
+                    size: pointSize ?? AppFontStyle.subheadline.pointSize(for: .system),
+                    weight: weight,
+                    design: design
+                )
+                .foregroundStyle(foreground)
+        }
     }
 }
 
@@ -34,7 +66,8 @@ struct SkillAppIcon: View {
                 .fill(Color.white)
             SkillSymbolIcon(
                 systemName: systemName,
-                font: .system(size: iconSize, weight: .medium),
+                pointSize: iconSize,
+                weight: .medium,
                 foreground: Color.black.opacity(0.75)
             )
         }

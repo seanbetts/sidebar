@@ -53,7 +53,9 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
                 .trimmingCharacters(in: .whitespaces)
             var captionText = AttributedString(String(caption))
             applyBlockKind(.imageCaption, to: &captionText)
-            captionText[fullRange(in: captionText)].font = DesignTokens.Typography.footnote
+            captionText[fullRange(in: captionText)].font = .system(
+                size: MarkdownTypography.footnoteFontSize(baseFontSize: baseFontSize)
+            )
             captionText[fullRange(in: captionText)].foregroundColor = DesignTokens.Colors.textTertiary
             captionText[fullRange(in: captionText)].paragraphStyle = paragraphStyle(
                 lineSpacing: 0,

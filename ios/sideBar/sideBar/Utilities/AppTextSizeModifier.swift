@@ -13,7 +13,7 @@ struct AppTextSizeModifier: ViewModifier {
             content
         }
         #else
-        content
+        content.font(AppFontStyle.body.font(for: option))
         #endif
     }
 }
