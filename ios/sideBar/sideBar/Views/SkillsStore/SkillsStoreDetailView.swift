@@ -370,8 +370,10 @@ public struct SkillsStoreView: View {
             ]
         }
         return [
-            GridItem(.flexible(minimum: 0, maximum: .infinity), spacing: DesignTokens.Spacing.md),
-            GridItem(.flexible(minimum: 0, maximum: .infinity), spacing: DesignTokens.Spacing.md)
+            GridItem(
+                .adaptive(minimum: 320, maximum: 420),
+                spacing: DesignTokens.Spacing.md
+            )
         ]
     }
 
