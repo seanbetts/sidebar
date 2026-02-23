@@ -26,7 +26,16 @@ extension AppEnvironment {
     }
 
     public func emitShortcutAction(_ action: ShortcutAction) {
-        shortcutActionEvent = ShortcutActionEvent(action: action, section: shortcutResolutionSection)
+        let event = ShortcutActionEvent(action: action, section: shortcutResolutionSection)
+        shortcutActionEvent = event
+
+        // Treat shortcut events as one-shot broadcasts so stale events are not replayed
+        // to views that subscribe later (for example when switching sections).
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard self?.shortcutActionEvent?.id == event.id else { return }
+            self?.shortcutActionEvent = nil
+        }
     }
 }
 #endif

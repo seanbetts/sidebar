@@ -226,6 +226,20 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(environment.shortcutActionEvent?.section, .notes)
     }
 
+    func testEmitShortcutActionClearsEventAfterBroadcast() async {
+        let environment = requireEnvironment()
+        environment.activeSection = .tasks
+        environment.focusedSection = .tasks
+
+        environment.emitShortcutAction(.newItem)
+        XCTAssertEqual(environment.shortcutActionEvent?.action, .newItem)
+
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertNil(environment.shortcutActionEvent)
+    }
+
     func testActiveShortcutContextsPreferPlatformResolutionSection() async {
         let environment = requireEnvironment()
         environment.activeSection = .notes
