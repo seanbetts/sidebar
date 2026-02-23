@@ -14,7 +14,7 @@ struct LoadingView: View {
             LoadingIndicatorView(size: indicatorSize)
             if let message {
                 Text(message)
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
             }
         }

@@ -16,7 +16,7 @@ struct PdfHeaderControls: View {
                 controller.goToPreviousPage()
             }
             Text(pageLabel)
-                .font(isCompact ? .caption2 : .caption)
+                .appFont(isCompact ? .caption2 : .caption)
                 .foregroundStyle(.secondary)
                 .frame(minWidth: isCompact ? 44 : 60)
             PdfControlButton(
@@ -39,7 +39,7 @@ struct PdfHeaderControls: View {
                 controller.zoomIn()
             }
             Text(zoomLabel)
-                .font(isCompact ? .caption2 : .caption)
+                .appFont(isCompact ? .caption2 : .caption)
                 .foregroundStyle(.secondary)
                 .frame(minWidth: isCompact ? 44 : 56)
             PdfControlButton(
@@ -79,7 +79,7 @@ struct PdfControlButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(DesignTokens.Typography.labelSm)
+                .appFont(.captionSemibold)
                 .frame(width: 24, height: 20)
                 .foregroundStyle(isActive ? .primary : .secondary)
         }
@@ -183,10 +183,10 @@ struct FilesProcessingView: View {
                 ProgressView(value: progress)
             }
             Text(statusTitle)
-                .font(.headline)
+                .appFont(.headline)
             if let detail = statusDetail {
                 Text(detail)
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }

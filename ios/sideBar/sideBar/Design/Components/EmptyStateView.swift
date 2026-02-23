@@ -12,11 +12,11 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.xs) {
             Text(title)
-                .font(.headline)
+                .appFont(.headline)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
             if let subtitle {
                 Text(subtitle)
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }

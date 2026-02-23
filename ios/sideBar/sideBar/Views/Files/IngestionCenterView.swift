@@ -26,7 +26,7 @@ struct IngestionCenterView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text("Ingestion Centre")
-                .font(.headline)
+                .appFont(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Divider()
@@ -62,9 +62,9 @@ struct IngestionCenterView: View {
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Label("No active ingestions", systemImage: "tray")
-                .font(DesignTokens.Typography.subheadlineSemibold)
+                .appFont(.subheadlineSemibold)
             Text("Upload files or paste a YouTube URL to start ingestion.")
-                .font(DesignTokens.Typography.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, DesignTokens.Spacing.sm)
@@ -93,11 +93,11 @@ private struct IngestionCenterRow: View {
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     Text(displayName)
-                        .font(DesignTokens.Typography.subheadlineSemibold)
+                        .appFont(.subheadlineSemibold)
                         .lineLimit(1)
 
                     Text(metadataText)
-                        .font(DesignTokens.Typography.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -147,7 +147,7 @@ private struct IngestionCenterRow: View {
             LoadingIndicatorView(size: LoadingIndicatorSize.inline)
         } else {
             Image(systemName: iconName)
-                .font(DesignTokens.Typography.subheadlineSemibold)
+                .appFont(.subheadlineSemibold)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
     }
@@ -156,11 +156,11 @@ private struct IngestionCenterRow: View {
     private var trailingStatus: some View {
         if let progress = clampedProgress {
             Text(progress.formatted(.percent.precision(.fractionLength(0))))
-                .font(DesignTokens.Typography.captionSemibold)
+                .appFont(.captionSemibold)
                 .foregroundStyle(.secondary)
         } else if isFailed {
             Image(systemName: "exclamationmark")
-                .font(DesignTokens.Typography.captionSemibold)
+                .appFont(.captionSemibold)
                 .foregroundStyle(.secondary)
         } else {
             LoadingIndicatorView(size: LoadingIndicatorSize.inline)
@@ -241,7 +241,7 @@ private struct IngestionCenterRow: View {
 private struct IngestionCenterActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(DesignTokens.Typography.captionSemibold)
+            .appFont(.captionSemibold)
             .foregroundStyle(DesignTokens.Colors.textPrimary)
             .padding(.horizontal, DesignTokens.Spacing.xs)
             .padding(.vertical, DesignTokens.Spacing.xxs)

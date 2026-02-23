@@ -10,7 +10,7 @@ struct OfflineBanner: View {
                 isStatusAlertPresented = true
             } label: {
                 statusIcon
-                .font(.system(size: 13, weight: .semibold))
+                .appFont(.captionSemibold)
                 .foregroundStyle(.white)
                 .padding(.horizontal, DesignTokens.Spacing.sm)
                 .padding(.vertical, DesignTokens.Spacing.xs)

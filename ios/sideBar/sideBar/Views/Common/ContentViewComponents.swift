@@ -22,7 +22,7 @@ public struct ConfigErrorView: View {
     public var body: some View {
         VStack(spacing: 16) {
             Text("Configuration Error")
-                .font(.title2)
+                .appFont(.title2)
             Text(error.localizedDescription)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
@@ -95,9 +95,9 @@ public struct WelcomeEmptyView: View {
         VStack(spacing: 12) {
             LoadingIndicatorView(size: 96, variant: .hero)
             Text("Welcome to sideBar")
-                .font(DesignTokens.Typography.title3Semibold)
+                .appFont(.title3Semibold)
             Text("Select a note, website, or file to get started.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .multilineTextAlignment(.center)
@@ -130,14 +130,14 @@ public struct PlaceholderView: View {
         VStack(spacing: 12) {
             if let iconName {
                 Image(systemName: iconName)
-                    .font(DesignTokens.Typography.titleXL)
+                    .appFont(.size32Semibold)
                     .foregroundStyle(.secondary)
             }
             Text(title)
-                .font(.title2)
+                .appFont(.title2)
             if let subtitle {
                 Text(subtitle)
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }

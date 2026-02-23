@@ -85,7 +85,7 @@ public struct ToastBanner: View {
         HStack(spacing: DesignTokens.Spacing.xsPlus) {
             iconView
             Text(toast.message)
-                .font(DesignTokens.Typography.subheadlineSemibold)
+                .appFont(.subheadlineSemibold)
                 .lineLimit(2)
         }
         .foregroundStyle(toast.style.foreground)
@@ -108,7 +108,7 @@ public struct ToastBanner: View {
             SuccessCheckBadge(size: 16, symbolSize: 9)
         case .error:
             Image(systemName: toast.style.iconName)
-                .font(DesignTokens.Typography.labelMd)
+                .appFont(.labelMd)
         }
     }
 }

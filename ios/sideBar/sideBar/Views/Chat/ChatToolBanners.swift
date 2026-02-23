@@ -8,9 +8,9 @@ struct ChatActiveToolBanner: View {
             statusIndicator
             VStack(alignment: .leading, spacing: 2) {
                 Text(activeTool.name)
-                    .font(DesignTokens.Typography.subheadlineSemibold)
+                    .appFont(.subheadlineSemibold)
                 Text(activeTool.status.rawValue.capitalized)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -44,18 +44,18 @@ struct PromptPreviewView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Prompt Preview")
-                .font(DesignTokens.Typography.captionSemibold)
+                .appFont(.captionSemibold)
                 .foregroundStyle(.secondary)
 
             if let report = promptPreview.promptReport {
                 if let system = report.systemPrompt {
                     Text("System: \(reportSummary(system))")
-                        .font(.caption2)
+                        .appFont(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 if let first = report.firstMessagePrompt {
                     Text("First: \(reportSummary(first))")
-                        .font(.caption2)
+                        .appFont(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -76,13 +76,13 @@ struct PromptPreviewView: View {
 
             if let system = promptPreview.systemPrompt, !system.isEmpty {
                 Text(system)
-                    .font(.caption)
+                    .appFont(.caption)
                     .textSelection(.enabled)
             }
 
             if let first = promptPreview.firstMessagePrompt, !first.isEmpty {
                 Text(first)
-                    .font(.caption)
+                    .appFont(.caption)
                     .textSelection(.enabled)
             }
         }
@@ -104,11 +104,11 @@ struct PromptPreviewView: View {
     private func sectionList(title: String, sections: [ChatPromptSection]) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(DesignTokens.Typography.captionSemibold)
+                .appFont(.captionSemibold)
                 .foregroundStyle(.secondary)
             ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
                 Text("• \(section.id) (\(section.chars))")
-                    .font(.caption2)
+                    .appFont(.caption2)
                     .foregroundStyle(.secondary)
             }
         }

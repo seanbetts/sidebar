@@ -6,6 +6,7 @@ import AppKit
 #endif
 
 enum AppFontStyle {
+    case title2
     case title3Semibold
     case titleLg
     case labelMd
@@ -20,6 +21,7 @@ enum AppFontStyle {
     case caption2Semibold
     case size18Semibold
     case size24Semibold
+    case size32Semibold
 
     func pointSize(for option: AppTextSizeOption) -> CGFloat {
         let definition = definition
@@ -51,6 +53,12 @@ extension View {
 private extension AppFontStyle {
     var definition: AppFontDefinition {
         switch self {
+        case .title2:
+            return AppFontDefinition(
+                fallbackSize: 22,
+                textStyle: .title2,
+                weight: .regular
+            )
         case .title3Semibold:
             return AppFontDefinition(
                 fallbackSize: 20,
@@ -119,6 +127,8 @@ private extension AppFontStyle {
             return AppFontDefinition(fallbackSize: 18, weight: .semibold)
         case .size24Semibold:
             return AppFontDefinition(fallbackSize: 24, weight: .semibold)
+        case .size32Semibold:
+            return AppFontDefinition(fallbackSize: 32, weight: .semibold)
         }
     }
 }

@@ -81,9 +81,10 @@ public struct SiteHeaderBar: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("sideBar")
-                    .font(DesignTokens.Typography.headlineBold)
+                    .appFont(.headline)
+                    .fontWeight(.bold)
                 Text("WORKSPACE")
-                    .font(DesignTokens.Typography.caption2Semibold)
+                    .appFont(.caption2Semibold)
                     .foregroundStyle(.secondary)
             }
             if environment.writeQueue.pendingCount > 0 {
@@ -100,11 +101,11 @@ public struct SiteHeaderBar: View {
                             SuccessCheckBadge(size: 14, symbolSize: 8)
                         } else {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(DesignTokens.Colors.error)
                         }
                         Text(ingestionStatusText)
-                            .font(DesignTokens.Typography.captionSemibold)
+                            .appFont(.captionSemibold)
                             .foregroundStyle(.secondary)
                     }
                     .pillStyle()
@@ -148,23 +149,22 @@ public struct SiteHeaderBar: View {
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
                     Text(locationText)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .font(.subheadline)
                 .padding(.trailing, DesignTokens.Spacing.smPlus)
 
                 Button(
                     action: { onSwapContent?() },
                     label: {
                         Image(systemName: "arrow.left.arrow.right")
+                            .appFont(.subheadlineSemibold)
                             .frame(width: 28, height: 28)
                     }
                 )
                 .buttonStyle(.plain)
                 .disabled(onSwapContent == nil)
                 .accessibilityLabel("Swap panels")
-                .font(DesignTokens.Typography.titleMd)
                 .imageScale(.medium)
                 .padding(DesignTokens.Spacing.xxsPlus)
                 .background(
@@ -200,11 +200,11 @@ public struct SiteHeaderBar: View {
                     isScratchpadPresented.toggle()
                 } label: {
                     Image(systemName: "square.and.pencil")
+                        .appFont(.subheadlineSemibold)
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Scratchpad")
-                .font(DesignTokens.Typography.titleMd)
                 .imageScale(.medium)
                 .padding(DesignTokens.Spacing.xxsPlus)
                 .background(
@@ -299,7 +299,7 @@ public struct SiteHeaderBar: View {
                 .fill(environment.writeQueue.isProcessing ? DesignTokens.Colors.success : DesignTokens.Colors.warning)
                 .frame(width: 8, height: 8)
             Text(environment.writeQueue.isProcessing ? "Syncing" : "Pending")
-                .font(DesignTokens.Typography.captionSemibold)
+                .appFont(.captionSemibold)
                 .foregroundStyle(.secondary)
         }
         .pillStyle()
@@ -339,6 +339,7 @@ private struct HeaderInfoItem: View {
         HStack(spacing: 6) {
             Image(systemName: icon)
             Text(text)
+                .appFont(.subheadline)
         }
     }
 }

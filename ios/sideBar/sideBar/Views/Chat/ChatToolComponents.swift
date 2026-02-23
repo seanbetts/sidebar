@@ -59,7 +59,7 @@ struct ToolCallListView: View {
                 foreground: toolPillForeground
             )
             Text(text)
-                .font(DesignTokens.Typography.captionSemibold)
+                .appFont(.captionSemibold)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: maxToolPillTextWidth, alignment: .leading)
@@ -129,14 +129,14 @@ struct ToolCallRow: View {
                 .fill(statusColor)
                 .frame(width: 6, height: 6)
             Text(toolCall.name)
-                .font(DesignTokens.Typography.subheadlineSemibold)
+                .appFont(.subheadlineSemibold)
             Spacer(minLength: 8)
             Text(toolCall.status.rawValue.capitalized)
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
             }
         }
@@ -184,7 +184,7 @@ struct ToolCallPopoverContent: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Skills Used")
-                    .font(DesignTokens.Typography.captionSemibold)
+                    .appFont(.captionSemibold)
                     .foregroundStyle(.secondary)
 
                 if toolCalls.count > 1 {
@@ -208,7 +208,7 @@ struct ToolCallPopoverContent: View {
                     ToolCallDetailView(toolCall: selectedToolCall)
                 } else {
                     Text("No skill details available.")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -242,11 +242,11 @@ struct ToolCallDetailView: View {
             if !toolCall.parameters.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Parameters")
-                        .font(DesignTokens.Typography.captionSemibold)
+                        .appFont(.captionSemibold)
                         .foregroundStyle(.secondary)
                     ForEach(parameterRows, id: \.key) { item in
                         Text("\(item.key): \(item.value)")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
                     }
@@ -255,7 +255,7 @@ struct ToolCallDetailView: View {
 
             if let summary = resultSummaryText {
                 Text(summary)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
             }
