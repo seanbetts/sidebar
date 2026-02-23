@@ -76,4 +76,28 @@ final class FileViewerViewTests: XCTestCase {
         XCTAssertNil(FileViewerView.videoTranscript(for: markdownState))
     }
 
+    func testVideoPlayHintVisibleBeforePlaybackStarts() {
+        XCTAssertTrue(
+            VideoPlayerState.shouldShowPlayHint(
+                isPlaying: false,
+                hasStartedPlayback: false
+            )
+        )
+    }
+
+    func testVideoPlayHintHiddenAfterPlaybackStartsOrWhilePlaying() {
+        XCTAssertFalse(
+            VideoPlayerState.shouldShowPlayHint(
+                isPlaying: true,
+                hasStartedPlayback: false
+            )
+        )
+        XCTAssertFalse(
+            VideoPlayerState.shouldShowPlayHint(
+                isPlaying: false,
+                hasStartedPlayback: true
+            )
+        )
+    }
+
 }
