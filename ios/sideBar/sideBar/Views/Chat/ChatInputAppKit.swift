@@ -8,6 +8,7 @@ import SwiftUI
 struct ChatInputAppKitView: NSViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
+    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     let resetToken: UUID
     let isEnabled: Bool
     let isSendEnabled: Bool
@@ -22,9 +23,10 @@ struct ChatInputAppKitView: NSViewRepresentable {
     // swiftlint:disable:next function_body_length
     func makeNSView(context: Context) -> NSView {
         let containerView = NSView()
+        let resolvedFont = textFont()
 
         let textView = NSTextView()
-        textView.font = NSFont.preferredFont(forTextStyle: .body)
+        textView.font = resolvedFont
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: textHorizontalInset, height: textVerticalInset)
         textView.textContainer?.lineFragmentPadding = 0
@@ -58,7 +60,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         controlBar.layer?.backgroundColor = NSColor.clear.cgColor
 
         let placeholderLabel = NSTextField(labelWithString: "Ask Anything...")
-        placeholderLabel.font = textView.font
+        placeholderLabel.font = resolvedFont
         placeholderLabel.textColor = .secondaryLabelColor
         placeholderLabel.backgroundColor = .clear
         placeholderLabel.isBordered = false
@@ -142,6 +144,9 @@ struct ChatInputAppKitView: NSViewRepresentable {
               let placeholderLabel = context.coordinator.placeholderLabel else {
             return
         }
+        let resolvedFont = textFont()
+        textView.font = resolvedFont
+        placeholderLabel.font = resolvedFont
         if textView.string != text {
             textView.string = text
         }
@@ -283,6 +288,20 @@ struct ChatInputAppKitView: NSViewRepresentable {
             if sizing.isOverflowing {
                 textView.scrollRangeToVisible(textView.selectedRange())
             }
+        }
+    }
+
+    private var resolvedTextSizeOption: AppTextSizeOption {
+        AppTextSizeOption.resolved(from: appTextSizeRaw)
+    }
+
+    private func textFont() -> NSFont {
+        let option = resolvedTextSizeOption
+        switch option {
+        case .system:
+            return NSFont.preferredFont(forTextStyle: .body)
+        case .small, .medium, .large:
+            return NSFont.systemFont(ofSize: AppFontStyle.body.pointSize(for: option))
         }
     }
 }

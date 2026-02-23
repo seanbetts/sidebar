@@ -8,6 +8,7 @@ import UIKit
 struct ChatInputUIKitView: UIViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
+    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     let resetToken: UUID
     let isEnabled: Bool
     let isSendEnabled: Bool
@@ -19,9 +20,12 @@ struct ChatInputUIKitView: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let containerView = UIView()
         containerView.backgroundColor = .clear
+        let resolvedFont = textFont()
+        let usesSystemTextSize = usesSystemTextSizeOption
 
         let textView = ChatInputTextView()
-        textView.font = UIFont.preferredFont(forTextStyle: .body)
+        textView.font = resolvedFont
+        textView.adjustsFontForContentSizeCategory = usesSystemTextSize
         textView.backgroundColor = .clear
         textView.textColor = UIColor.label
         textView.textContainerInset = UIEdgeInsets(top: 12, left: 44, bottom: 10, right: 48)
@@ -36,7 +40,8 @@ struct ChatInputUIKitView: UIViewRepresentable {
 
         let placeholderLabel = UILabel()
         placeholderLabel.text = "Ask Anything..."
-        placeholderLabel.font = textView.font
+        placeholderLabel.font = resolvedFont
+        placeholderLabel.adjustsFontForContentSizeCategory = usesSystemTextSize
         placeholderLabel.textColor = UIColor.secondaryLabel
         placeholderLabel.numberOfLines = 1
 
@@ -100,6 +105,11 @@ struct ChatInputUIKitView: UIViewRepresentable {
               let placeholderLabel = context.coordinator.placeholderLabel else {
             return
         }
+        let resolvedFont = textFont()
+        textView.font = resolvedFont
+        textView.adjustsFontForContentSizeCategory = usesSystemTextSizeOption
+        placeholderLabel.font = resolvedFont
+        placeholderLabel.adjustsFontForContentSizeCategory = usesSystemTextSizeOption
         if textView.text != text {
             textView.text = text
         }
@@ -230,6 +240,24 @@ struct ChatInputUIKitView: UIViewRepresentable {
             if sizing.isOverflowing {
                 textView.scrollRangeToVisible(textView.selectedRange)
             }
+        }
+    }
+
+    private var resolvedTextSizeOption: AppTextSizeOption {
+        AppTextSizeOption.resolved(from: appTextSizeRaw)
+    }
+
+    private var usesSystemTextSizeOption: Bool {
+        resolvedTextSizeOption == .system
+    }
+
+    private func textFont() -> UIFont {
+        let option = resolvedTextSizeOption
+        switch option {
+        case .system:
+            return UIFont.preferredFont(forTextStyle: .body)
+        case .small, .medium, .large:
+            return UIFont.systemFont(ofSize: AppFontStyle.body.pointSize(for: option))
         }
     }
 }
