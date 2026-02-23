@@ -143,11 +143,31 @@ public struct FileViewerView: View {
                 AudioPlayerView(url: url)
                     .padding(DesignTokens.Spacing.lg)
             } else {
-                VideoPlayerContainer(url: url)
+                if let transcript = Self.videoTranscript(for: state) {
+                    ScrollView {
+                        VStack(spacing: DesignTokens.Spacing.lg) {
+                            VideoPlayerContainer(url: url)
+                            SideBarMarkdownContainer(text: transcript)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .top)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                } else {
+                    VideoPlayerContainer(url: url)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                }
             }
         } else {
             PlaceholderView(title: "Media preview unavailable")
         }
+    }
+
+    static func videoTranscript(for state: FileViewerState) -> String? {
+        guard state.kind == .video else { return nil }
+        let transcript = (state.text ?? "").trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        return transcript.isEmpty ? nil : transcript
     }
 
     @ViewBuilder

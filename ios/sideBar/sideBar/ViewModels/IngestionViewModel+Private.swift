@@ -247,10 +247,14 @@ extension IngestionViewModel {
                 )
             default:
                 let fileURL = try temporaryStore.store(data: data, filename: filename)
+                let transcript = await transcriptForVideoIfAvailable(
+                    meta: meta,
+                    kind: kind
+                )
                 viewerState = FileViewerState(
                     title: meta.file.filenameOriginal,
                     kind: kind,
-                    text: nil,
+                    text: transcript,
                     fileURL: fileURL,
                     spreadsheet: nil,
                     youtubeEmbedURL: youtubeEmbedURL

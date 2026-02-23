@@ -79,6 +79,81 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.viewerState?.fileURL)
     }
 
+    func testSelectVideoFileLoadsTranscriptFromAiMarkdown() async {
+        let file = IngestedFileMeta(
+            id: "file-video-1",
+            filenameOriginal: "clip.mp4",
+            path: nil,
+            mimeOriginal: "video/mp4",
+            sizeBytes: 1024,
+            sha256: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            category: nil,
+            sourceUrl: nil,
+            sourceMetadata: nil,
+            createdAt: "2026-01-10T00:00:00Z",
+            updatedAt: nil,
+            deletedAt: nil
+        )
+        let meta = IngestionMetaResponse(
+            file: file,
+            job: makeJob(),
+            derivatives: [
+                IngestionDerivative(
+                    id: "d-video",
+                    kind: "video_original",
+                    storageKey: "storage/video",
+                    mime: "video/mp4",
+                    sizeBytes: 100
+                ),
+                IngestionDerivative(
+                    id: "d-ai",
+                    kind: "ai_md",
+                    storageKey: "storage/ai",
+                    mime: "text/markdown",
+                    sizeBytes: 40
+                )
+            ],
+            recommendedViewer: "viewer_video"
+        )
+        let api = MockIngestionAPI(
+            listResult: .success(
+                IngestionListResponse(items: [makeListItem(id: file.id)])
+            ),
+            metaResult: .success(meta),
+            contentResult: .failure(MockError.forced),
+            contentResultsByKind: [
+                "video_original": .success(Data([0x00, 0x00, 0x00, 0x00])),
+                "ai_md": .success(Data("---\nkey: value\n---\n\nTranscript line".utf8))
+            ],
+            pinResult: .success(()),
+            youtubeResult: .success("youtube")
+        )
+        let tempDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let store = TemporaryFileStore(directory: tempDirectory)
+        let defaults = makeDefaults()
+        let ingestionStore = IngestionStore(
+            api: api,
+            cache: TestCacheClient(),
+            userDefaults: defaults
+        )
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: ingestionStore,
+            temporaryStore: store,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+
+        await viewModel.selectFile(fileId: file.id)
+
+        XCTAssertEqual(viewModel.viewerState?.kind, .video)
+        XCTAssertEqual(viewModel.viewerState?.text, "Transcript line")
+        XCTAssertNotNil(viewModel.viewerState?.fileURL)
+    }
+
     func testPreferredDownloadDerivativePrefersSourceOriginal() async {
         let viewModel = makeViewModelForYouTubeParsing()
         viewModel.selectedDerivativeKind = "text_original"
@@ -106,7 +181,7 @@ final class IngestionViewModelTests: XCTestCase {
                     storageKey: "storage/video",
                     mime: "video/mp4",
                     sizeBytes: 100
-                ),
+                )
             ],
             recommendedViewer: "viewer_video"
         )
@@ -129,7 +204,7 @@ final class IngestionViewModelTests: XCTestCase {
                     storageKey: "storage/video",
                     mime: "video/mp4",
                     sizeBytes: 100
-                ),
+                )
             ],
             recommendedViewer: "viewer_video"
         )
@@ -152,7 +227,7 @@ final class IngestionViewModelTests: XCTestCase {
                     storageKey: "storage/text",
                     mime: "text/plain",
                     sizeBytes: 10
-                ),
+                )
             ],
             recommendedViewer: "viewer_video"
         )
@@ -875,6 +950,7 @@ private struct MockIngestionAPI: IngestionProviding {
     let listResult: Result<IngestionListResponse, Error>
     let metaResult: Result<IngestionMetaResponse, Error>
     let contentResult: Result<Data, Error>
+    let contentResultsByKind: [String: Result<Data, Error>]
     let cancelResult: Result<Void, Error>
     let pinResult: Result<Void, Error>
     let youtubeResult: Result<String, Error>
@@ -884,6 +960,7 @@ private struct MockIngestionAPI: IngestionProviding {
         listResult: Result<IngestionListResponse, Error>,
         metaResult: Result<IngestionMetaResponse, Error>,
         contentResult: Result<Data, Error>,
+        contentResultsByKind: [String: Result<Data, Error>] = [:],
         cancelResult: Result<Void, Error> = .success(()),
         pinResult: Result<Void, Error>,
         youtubeResult: Result<String, Error>,
@@ -892,6 +969,7 @@ private struct MockIngestionAPI: IngestionProviding {
         self.listResult = listResult
         self.metaResult = metaResult
         self.contentResult = contentResult
+        self.contentResultsByKind = contentResultsByKind
         self.cancelResult = cancelResult
         self.pinResult = pinResult
         self.youtubeResult = youtubeResult
@@ -909,8 +987,10 @@ private struct MockIngestionAPI: IngestionProviding {
 
     func getContent(fileId: String, kind: String, range: String?) async throws -> Data {
         _ = fileId
-        _ = kind
         _ = range
+        if let contentResult = contentResultsByKind[kind] {
+            return try contentResult.get()
+        }
         return try contentResult.get()
     }
 

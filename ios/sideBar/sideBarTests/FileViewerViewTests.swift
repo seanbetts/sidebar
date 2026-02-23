@@ -40,4 +40,39 @@ final class FileViewerViewTests: XCTestCase {
 
         XCTAssertFalse(FileViewerView.shouldShowYouTubeEmbed(for: state))
     }
+
+    func testVideoTranscriptReturnsTrimmedTextForVideoKind() {
+        let state = FileViewerState(
+            title: "video.mp4",
+            kind: .video,
+            text: "\n\nTranscript line\n",
+            fileURL: nil,
+            spreadsheet: nil,
+            youtubeEmbedURL: nil
+        )
+
+        XCTAssertEqual(FileViewerView.videoTranscript(for: state), "Transcript line")
+    }
+
+    func testVideoTranscriptReturnsNilWhenEmptyOrNotVideo() {
+        let videoState = FileViewerState(
+            title: "video.mp4",
+            kind: .video,
+            text: "   ",
+            fileURL: nil,
+            spreadsheet: nil,
+            youtubeEmbedURL: nil
+        )
+        let markdownState = FileViewerState(
+            title: "notes.md",
+            kind: .markdown,
+            text: "Transcript line",
+            fileURL: nil,
+            spreadsheet: nil,
+            youtubeEmbedURL: nil
+        )
+
+        XCTAssertNil(FileViewerView.videoTranscript(for: videoState))
+        XCTAssertNil(FileViewerView.videoTranscript(for: markdownState))
+    }
 }
