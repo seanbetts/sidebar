@@ -36,6 +36,8 @@ describe('SettingsSkillsSection', () => {
 		expect(checkboxes[0]).toBeDisabled();
 		expect(checkboxes[1]).toBeDisabled();
 		expect(checkboxes[1]).toBeChecked();
-		expect(screen.queryByText('Required')).not.toBeInTheDocument();
+		expect(
+			screen.getByText('Required', { selector: '.skill-tier-badge.skill-tier-required' })
+		).toBeInTheDocument();
 	});
 });
