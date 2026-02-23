@@ -58,8 +58,7 @@ struct SideBarMarkdown: View, Equatable {
     let style: SideBarMarkdownStyle
     let youtubeTranscriptContext: SideBarYouTubeTranscriptContext?
     let renderingContext: SideBarMarkdownRenderingContext
-    @ScaledMetric(relativeTo: .body)
-    private var markdownBaseFontSize: CGFloat = MarkdownTypography.defaultBodyFontSize
+    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
 
     init(
         text: String,
@@ -82,6 +81,7 @@ struct SideBarMarkdown: View, Equatable {
         return lhs.text == rhs.text
             && lhs.style == rhs.style
             && lhs.renderingContext == rhs.renderingContext
+            && lhs.appTextSizeRaw == rhs.appTextSizeRaw
     }
 
     var body: some View {
@@ -119,6 +119,11 @@ struct SideBarMarkdown: View, Equatable {
         Text(text)
             .textSelection(.enabled)
         #endif
+    }
+
+    private var markdownBaseFontSize: CGFloat {
+        let option = AppTextSizeOption.resolved(from: appTextSizeRaw)
+        return MarkdownTypography.defaultBodyFontSize(for: option)
     }
 
     #if canImport(MarkdownUI)

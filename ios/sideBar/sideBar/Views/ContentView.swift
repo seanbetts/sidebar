@@ -64,6 +64,7 @@ public struct ContentView: View {
                     .onAppear { logStartup("SignedInContent appeared") }
             }
         }
+        .appTextSize()
     }
 
 }

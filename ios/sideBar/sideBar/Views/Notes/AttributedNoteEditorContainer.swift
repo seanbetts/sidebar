@@ -10,8 +10,7 @@ struct AttributedNoteEditorContainer: View {
     @State private var loadedNoteId: String?
     @State private var isEditing: Bool = false
     @FocusState private var isTextEditorFocused: Bool
-    @ScaledMetric(relativeTo: .body)
-    private var editorBaseFontSize: CGFloat = MarkdownTypography.defaultBodyFontSize
+    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
 
     var body: some View {
         Group {
@@ -63,12 +62,22 @@ struct AttributedNoteEditorContainer: View {
         .onChange(of: environment.isOffline) { _, isOffline in
             applyAutosaveDelay(isOffline: isOffline)
         }
+        .onChange(of: appTextSizeRaw) { _, newValue in
+            let option = AppTextSizeOption.resolved(from: newValue)
+            nativeViewModel.setBaseFontSize(MarkdownTypography.defaultBodyFontSize(for: option))
+            nativeViewModel.updatePrefixVisibility()
+        }
         .onChange(of: isTextEditorFocused) { _, focused in
             // When user taps into the editor, enter edit mode.
             if focused && !isEditing {
                 isEditing = true
             }
         }
+    }
+
+    private var editorBaseFontSize: CGFloat {
+        let option = AppTextSizeOption.resolved(from: appTextSizeRaw)
+        return MarkdownTypography.defaultBodyFontSize(for: option)
     }
 
     private var editingView: some View {

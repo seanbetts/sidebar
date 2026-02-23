@@ -38,6 +38,7 @@ public struct SettingsView: View {
             )
             #endif
         }
+        .appTextSize()
         #if os(macOS)
         .overlay(alignment: .bottom) {
             if let savePillState {
@@ -254,13 +255,13 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 private struct SettingsSplitView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var memoriesViewModel: MemoriesViewModel
-    @State private var selection: SettingsSection? = .profile
+    @AppStorage(AppStorageKeys.settingsSelectedSection) private var selectionRaw = SettingsSection.profile.rawValue
     @State private var hasLoaded = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            List(SettingsSection.allCases, selection: $selection) { section in
+            List(SettingsSection.allCases, selection: selectionBinding) { section in
                 Label(section.displayTitle(assistantDisplayName: viewModel.assistantDisplayName), systemImage: section.systemImage)
                     .tag(section)
             }
@@ -269,8 +270,8 @@ private struct SettingsSplitView: View {
             .background(DesignTokens.Colors.settingsFormBackground)
             .modifier(SidebarToggleHider())
         } detail: {
-            settingsDetailView(for: selection ?? .profile)
-                .navigationTitle((selection ?? .profile).displayTitle(assistantDisplayName: viewModel.assistantDisplayName))
+            settingsDetailView(for: selectedSection)
+                .navigationTitle(selectedSection.displayTitle(assistantDisplayName: viewModel.assistantDisplayName))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .modifier(SidebarToggleHider())
                 .background(DesignTokens.Colors.settingsBackground)
@@ -317,6 +318,17 @@ private struct SettingsSplitView: View {
         await viewModel.loadSkills()
         await viewModel.loadShortcutsToken()
         await viewModel.loadProfileImage()
+    }
+
+    private var selectedSection: SettingsSection {
+        SettingsSection(rawValue: selectionRaw) ?? .profile
+    }
+
+    private var selectionBinding: Binding<SettingsSection?> {
+        Binding(
+            get: { SettingsSection(rawValue: selectionRaw) },
+            set: { selectionRaw = ($0 ?? .profile).rawValue }
+        )
     }
 }
 #endif

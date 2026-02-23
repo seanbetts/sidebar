@@ -19,7 +19,6 @@ struct SideBarApp: App {
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var appDelegate
     #endif
     @StateObject private var environment: AppEnvironment
-    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
 
     init() {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
@@ -88,7 +87,6 @@ struct SideBarApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(environment)
-                .appTextSize(appTextSizeOption)
                 .onOpenURL { url in
                     environment.handleDeepLink(url)
                 }
@@ -105,24 +103,8 @@ struct SideBarApp: App {
         Settings {
             SettingsView()
                 .environmentObject(environment)
-                .appTextSize(appTextSizeOption)
         }
         #endif
-    }
-
-    private var appTextSizeOption: AppTextSizeOption {
-        AppTextSizeOption.resolved(from: appTextSizeRaw)
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func appTextSize(_ option: AppTextSizeOption) -> some View {
-        if let dynamicTypeSize = option.dynamicTypeSize {
-            self.dynamicTypeSize(dynamicTypeSize)
-        } else {
-            self
-        }
     }
 }
 
