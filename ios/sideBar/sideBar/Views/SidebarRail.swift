@@ -104,7 +104,7 @@ public struct SidebarRail: View {
             }
         } label: {
             Image(systemName: iconName(for: section))
-                .font(DesignTokens.Typography.titleLg)
+                .appFont(.titleLg)
                 .frame(width: 32, height: 32)
                 .foregroundStyle(isActive ? Color.accentColor : Color.primary)
                 .background(

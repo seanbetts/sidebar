@@ -22,7 +22,7 @@ extension NotesPanelView {
 
     var notesTreeListView: some View {
         List {
-            Section("Pinned") {
+            Section {
                 if pinnedItems.isEmpty {
                     Text("No pinned notes")
                         .appFont(.caption)
@@ -45,11 +45,15 @@ extension NotesPanelView {
                         .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
                     }
                 }
+            } header: {
+                sidebarSectionHeader("Pinned")
             }
             .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
 
-            Section("Notes") {
+            Section {
                 mainOutlineGroup
+            } header: {
+                sidebarSectionHeader("Notes")
             }
 #if !os(macOS)
             Section {

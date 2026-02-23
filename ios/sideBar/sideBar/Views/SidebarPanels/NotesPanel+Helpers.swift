@@ -237,7 +237,7 @@ extension NotesPanelView {
 
     var searchResultsView: some View {
         List {
-            Section("Results") {
+            Section {
                 if let error = viewModel.errorMessage,
                    !viewModel.searchQuery.trimmed.isEmpty {
                     SidebarPanelPlaceholder(
@@ -252,16 +252,20 @@ extension NotesPanelView {
                     HStack(spacing: 12) {
                         LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                         Text("Searching…")
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     }
                 } else if viewModel.searchResults.isEmpty {
                     Text("No matching notes.")
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(viewModel.searchResults, id: \.path) { node in
                         searchResultRow(for: node)
                     }
                 }
+            } header: {
+                sidebarSectionHeader("Results")
             }
         }
         .listStyle(.sidebar)

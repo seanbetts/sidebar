@@ -34,15 +34,16 @@ public struct SidebarPanelPlaceholder: View {
             VStack(alignment: .leading, spacing: 8) {
                 if let icon = resolvedIconName {
                     Image(systemName: icon)
-                        .font(.callout.weight(.semibold))
+                        .appFont(.callout)
+                        .fontWeight(.semibold)
                         .foregroundStyle(iconColor)
                 }
                 Text(title)
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(titleColor)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.subheadline)
+                        .appFont(.subheadline)
                         .foregroundStyle(subtitleColor)
                         .fixedSize(horizontal: false, vertical: true)
                 }

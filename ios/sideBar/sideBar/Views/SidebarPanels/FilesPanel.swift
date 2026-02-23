@@ -260,7 +260,7 @@ extension FilesPanelView {
                 }
             } else {
                 if !pinnedItems.isEmpty {
-                    Section("Pinned") {
+                    Section {
                         ForEach(pinnedItems, id: \.file.id) { item in
                             let index = staggerIndex(for: item.file.id)
                             let isSelected = viewModel.selectedFileId == item.file.id
@@ -281,11 +281,13 @@ extension FilesPanelView {
                                     .onTapGesture { open(item: item) }
                             }
                         }
+                    } header: {
+                        sidebarSectionHeader("Pinned")
                     }
                 }
 
                 if !categorizedItems.isEmpty {
-                    Section("Files") {
+                    Section {
                         ForEach(categoryOrder, id: \.self) { category in
                             if let items = categorizedItems[category], !items.isEmpty {
                                 DisclosureGroup(
@@ -330,6 +332,8 @@ extension FilesPanelView {
                                 .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                             }
                         }
+                    } header: {
+                        sidebarSectionHeader("Files")
                     }
                 }
             }

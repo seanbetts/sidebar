@@ -204,11 +204,13 @@ extension WebsitesPanelView {
         } else if !viewModel.panelSearchQuery.trimmed.isEmpty {
             List {
                 if let pending = viewModel.pendingWebsite {
-                    Section("Adding") {
+                    Section {
                         PendingWebsiteRow(pending: pending, useListStyling: true)
+                    } header: {
+                        sidebarSectionHeader("Adding")
                     }
                 }
-                Section("Results") {
+                Section {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
@@ -217,6 +219,8 @@ extension WebsitesPanelView {
                             websiteListRow(item: item, index: index, allowArchive: !item.archived)
                         }
                     }
+                } header: {
+                    sidebarSectionHeader("Results")
                 }
             }
             .listStyle(.sidebar)
@@ -229,16 +233,18 @@ extension WebsitesPanelView {
             List {
                 if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
                     if !pinnedItemsSorted.isEmpty {
-                        Section("Pinned") {
+                        Section {
                             ForEach(pinnedItemsSorted, id: \.id) { item in
                                 let index = staggerIndex(for: item.id, section: "pinned")
                                 websiteListRow(item: item, index: index, allowArchive: true)
                             }
+                        } header: {
+                            sidebarSectionHeader("Pinned")
                         }
                     }
 
                     if !mainItems.isEmpty || viewModel.pendingWebsite != nil {
-                        Section("Websites") {
+                        Section {
                             if let pending = viewModel.pendingWebsite {
                                 PendingWebsiteRow(pending: pending, useListStyling: true)
                             }
@@ -246,6 +252,8 @@ extension WebsitesPanelView {
                                 let index = staggerIndex(for: item.id, section: "main")
                                 websiteListRow(item: item, index: index, allowArchive: true)
                             }
+                        } header: {
+                            sidebarSectionHeader("Websites")
                         }
                     }
                 }
@@ -311,11 +319,13 @@ extension WebsitesPanelView {
         } else if !viewModel.panelSearchQuery.trimmed.isEmpty {
             List {
                 if let pending = viewModel.pendingWebsite {
-                    Section("Adding") {
+                    Section {
                         PendingWebsiteRow(pending: pending, useListStyling: true)
+                    } header: {
+                        sidebarSectionHeader("Adding")
                     }
                 }
-                Section("Results") {
+                Section {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
@@ -324,6 +334,8 @@ extension WebsitesPanelView {
                             websiteListRow(item: item, index: index, allowArchive: !item.archived)
                         }
                     }
+                } header: {
+                    sidebarSectionHeader("Results")
                 }
             }
             .listStyle(.sidebar)
@@ -344,16 +356,18 @@ extension WebsitesPanelView {
         List {
             if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
                 if !pinnedItemsSorted.isEmpty {
-                    Section("Pinned") {
+                    Section {
                         ForEach(pinnedItemsSorted, id: \.id) { item in
                             let index = staggerIndex(for: item.id, section: "pinned")
                             websiteListRow(item: item, index: index, allowArchive: true)
                         }
+                    } header: {
+                        sidebarSectionHeader("Pinned")
                     }
                 }
 
                 if !mainItems.isEmpty || viewModel.pendingWebsite != nil {
-                    Section("Websites") {
+                    Section {
                         if let pending = viewModel.pendingWebsite {
                             PendingWebsiteRow(pending: pending, useListStyling: true)
                         }
@@ -361,6 +375,8 @@ extension WebsitesPanelView {
                             let index = staggerIndex(for: item.id, section: "main")
                             websiteListRow(item: item, index: index, allowArchive: true)
                         }
+                    } header: {
+                        sidebarSectionHeader("Websites")
                     }
                 }
             }

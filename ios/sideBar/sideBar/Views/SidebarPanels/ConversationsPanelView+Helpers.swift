@@ -128,7 +128,7 @@ extension ConversationsPanelView {
     var conversationsList: some View {
         List {
             ForEach(filteredGroups) { group in
-                Section(group.title) {
+                Section {
                     ForEach(group.conversations) { conversation in
                         SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
                             ConversationRow(
@@ -146,6 +146,8 @@ extension ConversationsPanelView {
                         )
                         .platformContextMenu(items: conversationContextMenuItemsList(for: conversation))
                     }
+                } header: {
+                    sidebarSectionHeader(group.title)
                 }
             }
         }

@@ -12,11 +12,13 @@ struct SearchField: View {
             if let isFocused {
                 TextField(placeholder, text: $text)
                     .textFieldStyle(.plain)
+                    .appFont(.subheadline)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                     .focused(isFocused)
             } else {
                 TextField(placeholder, text: $text)
                     .textFieldStyle(.plain)
+                    .appFont(.subheadline)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
             }
             if !text.isEmpty {

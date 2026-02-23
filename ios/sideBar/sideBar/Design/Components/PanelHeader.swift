@@ -30,11 +30,11 @@ struct PanelHeader<Trailing: View>: View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                 }
             }

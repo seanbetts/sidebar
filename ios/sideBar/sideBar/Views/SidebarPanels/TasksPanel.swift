@@ -217,7 +217,7 @@ extension TasksPanelView {
                 }
 
                 if !orphanProjects.isEmpty {
-                    Section("Projects") {
+                    Section {
                         ForEach(orphanProjects, id: \.id) { project in
                             tasksListRow(
                                 title: project.title,
@@ -228,6 +228,8 @@ extension TasksPanelView {
                                 onDelete: { promptDelete(project: project) }
                             )
                         }
+                    } header: {
+                        sidebarSectionHeader("Projects")
                     }
                 }
             }
