@@ -274,11 +274,26 @@ def check_ffmpeg() -> bool:
         return False
 
 
-def verify_output(filepath: str) -> bool:
+def _parse_ffprobe_json(raw_output: str) -> dict[str, Any]:
+    """Parse ffprobe JSON output, tolerating prefixed noise lines."""
+    parsed = raw_output.strip()
+    if not parsed:
+        return {}
+    try:
+        return json.loads(parsed)
+    except json.JSONDecodeError:
+        json_start = parsed.find("{")
+        if json_start >= 0:
+            return json.loads(parsed[json_start:])
+        raise
+
+
+def verify_output(filepath: str, *, quiet: bool = False) -> bool:
     """Verify the output file has both video and audio streams.
 
     Args:
         filepath: Path to the output file
+        quiet: If True, suppress stdout output
 
     Returns:
         True if file has both video and audio, False otherwise
@@ -314,34 +329,37 @@ def verify_output(filepath: str) -> bool:
         ]
         audio_result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
-        video_info = json.loads(video_result.stdout)
-        audio_info = json.loads(audio_result.stdout)
+        video_info = _parse_ffprobe_json(video_result.stdout)
+        audio_info = _parse_ffprobe_json(audio_result.stdout)
 
         has_video = len(video_info.get("streams", [])) > 0
         has_audio = len(audio_info.get("streams", [])) > 0
 
-        if has_video:
+        if has_video and not quiet:
             v_stream = video_info["streams"][0]
             print(
                 f"  Video stream: {v_stream.get('codec_name', 'unknown')} "
                 f"({v_stream.get('width', '?')}x{v_stream.get('height', '?')})"
             )
-        else:
+        elif not has_video and not quiet:
             print("  Warning: Output file appears to be missing video stream!")
 
-        if has_audio:
+        if has_audio and not quiet:
             a_stream = audio_info["streams"][0]
             print(
                 f"  Audio stream: {a_stream.get('codec_name', 'unknown')} "
                 f"({a_stream.get('channels', '?')} channels)"
             )
-        else:
+        elif not has_audio and not quiet:
             print("  Warning: Output file appears to be missing audio stream!")
 
         return has_video and has_audio
 
     except Exception as e:
-        print(f"  Error verifying output file: {e}")
+        if quiet:
+            logger.warning("Output stream verification failed: %s", e)
+        else:
+            print(f"  Error verifying output file: {e}")
         return False
 
 
@@ -555,7 +573,7 @@ def download_youtube(
                 if output_path.exists():
                     if not quiet:
                         print("\nVerifying output streams...")
-                    verify_output(str(output_path))
+                    verify_output(str(output_path), quiet=quiet)
 
         end_time = time.time()
         duration = end_time - start_time

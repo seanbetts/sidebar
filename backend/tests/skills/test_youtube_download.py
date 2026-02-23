@@ -208,3 +208,28 @@ def test_store_downloaded_output_falls_back_to_upload_file(monkeypatch, tmp_path
     assert upload_calls["content_type"] == "video/mp4"
     assert payload["file_id"] == "upload-id"
     assert payload["derivatives"][0]["kind"] == "video_original"
+
+
+def test_parse_ffprobe_json_tolerates_prefixed_noise():
+    module = _load_download_module()
+    payload = module._parse_ffprobe_json("ffprobe warning\n{\n  \"streams\": []\n}")
+    assert payload == {"streams": []}
+
+
+def test_verify_output_quiet_suppresses_stdout_on_parse_error(monkeypatch, capsys):
+    module = _load_download_module()
+
+    class _Result:
+        def __init__(self, stdout: str):
+            self.stdout = stdout
+
+    results = iter([_Result("  not-json"), _Result("  not-json")])
+
+    def fake_run(*_args, **_kwargs):
+        return next(results)
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    assert module.verify_output("/tmp/out.mp4", quiet=True) is False
+    captured = capsys.readouterr()
+    assert captured.out == ""

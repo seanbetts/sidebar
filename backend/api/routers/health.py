@@ -12,10 +12,18 @@ router = APIRouter()
 
 def _missing_config() -> list[str]:
     missing: list[str] = []
+    explicit_database_url = bool(
+        (os.getenv("DATABASE_URL") or os.getenv("DATABASE_URL_DIRECT") or "").strip()
+    )
+
     if not settings.supabase_url:
         missing.append("SUPABASE_URL")
-    if not settings.supabase_anon_key:
-        missing.append("SUPABASE_ANON_KEY")
+
+    # If DATABASE_URL is explicitly configured, do not require raw Supabase
+    # pooler credentials/env because the runtime already has a complete DSN.
+    if explicit_database_url:
+        return missing
+
     if not os.getenv("SUPABASE_PROJECT_ID"):
         missing.append("SUPABASE_PROJECT_ID")
     if not (os.getenv("SUPABASE_POSTGRES_PSWD") or os.getenv("SUPABASE_APP_PSWD")):
