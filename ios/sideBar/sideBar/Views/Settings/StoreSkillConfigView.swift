@@ -182,6 +182,7 @@ struct StoreSkillConfigView: View {
             }
             .accessibilityLabel("Installed")
             .disabled(isStoreActionBusy)
+            .buttonStyle(.plain)
         } else {
             Button {
                 onInstallTap?()
@@ -190,6 +191,7 @@ struct StoreSkillConfigView: View {
             }
             .accessibilityLabel("Install")
             .disabled(isStoreActionBusy)
+            .buttonStyle(.plain)
         }
     }
 

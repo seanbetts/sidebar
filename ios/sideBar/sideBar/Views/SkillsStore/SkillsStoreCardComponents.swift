@@ -82,9 +82,9 @@ struct SkillsStoreCard: View {
     private let cardHeight: CGFloat = 96
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-                Button(action: onCardTap) {
+        ZStack(alignment: .topTrailing) {
+            Button(action: onCardTap) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                     HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
                         SkillAppIcon(systemName: skillIconName)
 
@@ -103,21 +103,23 @@ struct SkillsStoreCard: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if let installError, !installError.isEmpty {
+                        Text(installError)
+                            .font(.caption)
+                            .foregroundStyle(DesignTokens.Colors.error)
+                            .lineLimit(1)
+                    }
                 }
-                .buttonStyle(.plain)
-                .contentShape(Rectangle())
-                .accessibilityHint("Open skill details")
-
-                installButton
-                    .padding(.top, 2)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.trailing, 44 + DesignTokens.Spacing.sm)
             }
+            .buttonStyle(.plain)
+            .contentShape(Rectangle())
+            .accessibilityHint("Open skill details")
 
-            if let installError, !installError.isEmpty {
-                Text(installError)
-                    .font(.caption)
-                    .foregroundStyle(DesignTokens.Colors.error)
-                    .lineLimit(1)
-            }
+            installButton
+                .padding(.top, 2)
         }
         .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -130,6 +132,7 @@ struct SkillsStoreCard: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
         )
+        .accessibilityAddTraits(.isButton)
     }
 
     private var installButton: some View {

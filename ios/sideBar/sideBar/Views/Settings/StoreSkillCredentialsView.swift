@@ -134,6 +134,7 @@ struct StoreSkillCredentialsView: View {
                     .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
                     .frame(width: 30, height: 30)
                     .disabled(isProviderActionBusy(normalizedProvider))
+                    .buttonStyle(.plain)
 
                     if isConnected {
                         Button(role: .destructive) {
@@ -145,6 +146,7 @@ struct StoreSkillCredentialsView: View {
                         .accessibilityLabel("Turn Off Skill")
                         .frame(width: 30, height: 30)
                         .disabled(isProviderActionBusy(normalizedProvider))
+                        .buttonStyle(.plain)
                     }
                 }
             }

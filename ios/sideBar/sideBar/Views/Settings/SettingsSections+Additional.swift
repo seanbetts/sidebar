@@ -72,6 +72,19 @@ struct SkillsSettingsView: View {
             NavigationStack {
                 StoreSkillConfigView(viewModel: viewModel, skill: skill)
                     .navigationTitle(viewModel.displayName(for: skill))
+                    #if os(macOS)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button {
+                                selectedStoreSkill = nil
+                            } label: {
+                                Image(systemName: "xmark")
+                            }
+                            .accessibilityLabel("Close skill details")
+                            .keyboardShortcut(.cancelAction)
+                        }
+                    }
+                    #endif
             }
             .settingsSheetGrabBarVisible()
         }
