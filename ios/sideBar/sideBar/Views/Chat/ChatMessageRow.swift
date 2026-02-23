@@ -43,13 +43,11 @@ struct ChatMessageRow: View {
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                LoadingIndicatorView(size: 14)
-                    .frame(width: showsHeaderThinkingIndicator ? 14 : 0, height: 14, alignment: .leading)
-                    .opacity(showsHeaderThinkingIndicator ? 1 : 0)
-                    .padding(.trailing, showsHeaderThinkingIndicator ? DesignTokens.Spacing.xxs : 0)
-                    .clipped()
-                    .accessibilityHidden(!showsHeaderThinkingIndicator)
-                    .animation(Motion.quick(reduceMotion: reduceMotion), value: showsHeaderThinkingIndicator)
+                if showsHeaderThinkingIndicator {
+                    LoadingIndicatorView(size: 14)
+                        .padding(.trailing, DesignTokens.Spacing.xxs)
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
+                }
                 Text(message.role == .assistant ? assistantDisplayName : "You")
                     .appFont(.captionSemibold)
                     .lineLimit(1)
@@ -85,6 +83,7 @@ struct ChatMessageRow: View {
                 }
                 .animation(Motion.quick(reduceMotion: reduceMotion), value: copyFeedback.isCopied)
             }
+            .animation(Motion.quick(reduceMotion: reduceMotion), value: showsHeaderThinkingIndicator)
 
             if showsThinkingBody {
                 Text(thinkingText)
