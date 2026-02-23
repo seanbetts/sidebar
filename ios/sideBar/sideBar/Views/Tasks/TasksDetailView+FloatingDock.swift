@@ -1,16 +1,25 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 extension TasksDetailView {
     static func shouldDisplayWorkspaceFloatingActionDock(
         isCompact: Bool,
+        isPadIdiom: Bool,
         selection: TaskSelection
     ) -> Bool {
         guard !isCompact else { return false }
+        guard !isPadIdiom else { return false }
         return selection != .none
     }
 
     func shouldShowWorkspaceFloatingActionDock(for selection: TaskSelection) -> Bool {
-        Self.shouldDisplayWorkspaceFloatingActionDock(isCompact: isCompact, selection: selection)
+        Self.shouldDisplayWorkspaceFloatingActionDock(
+            isCompact: isCompact,
+            isPadIdiom: isPadIdiom,
+            selection: selection
+        )
     }
 
     var workspaceFloatingActionDock: some View {
@@ -22,6 +31,14 @@ extension TasksDetailView {
                 viewModel.startNewTask()
             }
         }
+    }
+
+    private var isPadIdiom: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+        #else
+        false
+        #endif
     }
 
     func todaySectionSelection(for section: TaskSection, state: TasksViewState) -> TaskSelection? {
