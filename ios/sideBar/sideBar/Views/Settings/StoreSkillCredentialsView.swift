@@ -32,14 +32,14 @@ struct StoreSkillCredentialsView: View {
         if providers.isEmpty {
             if showEmptyState {
                 Text("No provider API keys required.")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
             }
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 if showHeader {
                     Text("Credentials")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
 
@@ -114,13 +114,13 @@ struct StoreSkillCredentialsView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 6) {
                 Text(providerDisplayName(normalizedProvider))
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.primary)
                 Spacer()
 
                 HStack(spacing: 0) {
                     Text(providerStatusLabel(for: normalizedProvider))
-                        .font(.caption2)
+                        .appFont(.caption2)
                         .foregroundStyle(providerStatusColor(for: normalizedProvider))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -129,7 +129,7 @@ struct StoreSkillCredentialsView: View {
                         beginCredentialEditor(provider: normalizedProvider)
                     } label: {
                         Image(systemName: isConnected ? "pencil.circle.fill" : "plus.circle.fill")
-                            .font(.system(size: 18, weight: .semibold))
+                            .appFont(.size18Semibold)
                     }
                     .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
                     .frame(width: 30, height: 30)
@@ -141,7 +141,7 @@ struct StoreSkillCredentialsView: View {
                             beginCredentialRemoval(provider: normalizedProvider)
                         } label: {
                             Image(systemName: "trash.circle.fill")
-                                .font(.system(size: 18, weight: .semibold))
+                                .appFont(.size18Semibold)
                         }
                         .accessibilityLabel("Turn Off Skill")
                         .frame(width: 30, height: 30)
@@ -153,7 +153,7 @@ struct StoreSkillCredentialsView: View {
 
             if let providerError = providerKeyErrors[normalizedProvider], !providerError.isEmpty {
                 Text(providerError)
-                    .font(.caption2)
+                    .appFont(.caption2)
                     .foregroundStyle(DesignTokens.Colors.error)
             }
         }

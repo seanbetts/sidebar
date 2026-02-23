@@ -410,7 +410,7 @@ private extension SkillsStoreView {
             Form {
                 Section {
                     Text(viewModel.displayDescription(for: prompt.skill))
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 } header: {
                     Text(viewModel.displayName(for: prompt.skill))
@@ -429,7 +429,7 @@ private extension SkillsStoreView {
                     }
                     if let storeInstallPromptError, !storeInstallPromptError.isEmpty {
                         Text(storeInstallPromptError)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(DesignTokens.Colors.error)
                     }
                 }

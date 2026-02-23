@@ -135,7 +135,7 @@ struct NewTaskSheet: View {
                     ZStack(alignment: .topLeading) {
                         if notes.isEmpty {
                             Text("Notes (optional)")
-                                .font(.callout)
+                                .appFont(.callout)
                                 .foregroundStyle(.secondary)
                                 .padding(.top, 8)
                         }
@@ -147,7 +147,7 @@ struct NewTaskSheet: View {
                 if !errorMessage.isEmpty {
                     Section {
                         Text(errorMessage)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.red)
                     }
                 }
@@ -218,7 +218,7 @@ struct NewGroupSheet: View {
                 if !errorMessage.isEmpty {
                     Section {
                         Text(errorMessage)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.red)
                     }
                 }
@@ -294,7 +294,7 @@ struct NewProjectSheet: View {
                 if !errorMessage.isEmpty {
                     Section {
                         Text(errorMessage)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.red)
                     }
                 }

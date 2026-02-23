@@ -35,7 +35,7 @@ struct StoreSkillConfigView: View {
                 headerCard
                 infoCard(title: "About") {
                     Text(skill.longDescription ?? viewModel.displayDescription(for: skill))
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
 
@@ -45,7 +45,7 @@ struct StoreSkillConfigView: View {
 
                 infoCard(title: "How It Works") {
                     Text(skill.howItWorks ?? defaultHowItWorksText)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
 
@@ -59,7 +59,7 @@ struct StoreSkillConfigView: View {
                         }
                         if detailRowsAreEmpty {
                             Text("No version details available.")
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -77,10 +77,10 @@ struct StoreSkillConfigView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.displayName(for: skill))
-                        .font(DesignTokens.Typography.subheadlineSemibold)
+                        .appFont(.subheadlineSemibold)
                         .lineLimit(2)
                     Text(viewModel.displayDescription(for: skill))
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
                 }
@@ -93,7 +93,7 @@ struct StoreSkillConfigView: View {
 
             if let installError, !installError.isEmpty {
                 Text(installError)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -118,10 +118,10 @@ struct StoreSkillConfigView: View {
                         ForEach(Array(userRequirementLines.enumerated()), id: \.offset) { _, line in
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
                                 Image(systemName: "checkmark.circle")
-                                    .font(.caption)
+                                    .appFont(.caption)
                                     .foregroundStyle(.secondary)
                                 Text(line)
-                                    .font(.caption)
+                                    .appFont(.caption)
                                     .foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -135,7 +135,7 @@ struct StoreSkillConfigView: View {
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         Text("API Credentials")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                         StoreSkillCredentialsView(
                             viewModel: viewModel,
@@ -156,7 +156,7 @@ struct StoreSkillConfigView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text(title)
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
             content()
         }
@@ -245,11 +245,11 @@ struct StoreSkillConfigView: View {
     private func detailRow(title: String, value: String) -> some View {
         HStack {
             Text(title)
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
             Text(value)
-                .font(.caption)
+                .appFont(.caption)
         }
     }
 
@@ -292,7 +292,7 @@ private struct StoreSkillInstallIcon: View {
                     .tint(Color.primary)
             } else {
                 Image(systemName: systemName)
-                    .font(.system(size: 24, weight: .semibold))
+                    .appFont(.size24Semibold)
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(iconForeground, Color.primary)
             }

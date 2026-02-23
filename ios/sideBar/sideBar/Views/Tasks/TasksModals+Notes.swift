@@ -29,7 +29,7 @@ struct NotesSheet: View {
             ZStack(alignment: .topLeading) {
                 if value.isEmpty {
                     Text("Notes")
-                        .font(.callout)
+                        .appFont(.callout)
                         .foregroundStyle(.secondary)
                         .padding(.top, 8)
                         .padding(.leading, 6)

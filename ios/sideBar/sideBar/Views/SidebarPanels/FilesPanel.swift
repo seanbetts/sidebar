@@ -180,7 +180,7 @@ extension FilesPanelView {
                             isYouTubeAlertPresented = true
                         } label: {
                             Image(systemName: "play.rectangle")
-                                .font(DesignTokens.Typography.labelMd)
+                                .appFont(.labelMd)
                                 .frame(width: 28, height: 28)
                         }
                         .buttonStyle(.plain)
@@ -189,7 +189,7 @@ extension FilesPanelView {
                             isFileImporterPresented = true
                         } label: {
                             Image(systemName: "plus")
-                                .font(DesignTokens.Typography.labelMd)
+                                .appFont(.labelMd)
                                 .frame(width: 28, height: 28)
                         }
                         .buttonStyle(.plain)
@@ -325,7 +325,7 @@ extension FilesPanelView {
                                             .frame(width: 20, alignment: .center)
                                         Text(categoryLabels[category] ?? "Files")
                                     }
-                                    .font(.subheadline)
+                                    .appFont(.subheadline)
                                 }
                                 .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                             }

@@ -131,19 +131,19 @@ struct NotesTreeRow: View {
                 if item.isFile {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.displayName)
-                            .font(.subheadline)
+                            .appFont(.subheadline)
                             .lineLimit(1)
                             .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                         if let dateText = item.formattedCreatedDate {
                             Text(dateText)
-                                .font(.caption)
+                                .appFont(.caption)
                                 .lineLimit(1)
                                 .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
                         }
                     }
                 } else {
                     Text(item.displayName)
-                        .font(.subheadline)
+                        .appFont(.subheadline)
                         .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                 }

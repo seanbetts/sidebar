@@ -176,7 +176,7 @@ private struct SettingsSaveStatusPill: View {
                     .foregroundStyle(DesignTokens.Colors.error)
             }
             Text(title)
-                .font(DesignTokens.Typography.labelMd)
+                .appFont(.labelMd)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
         }

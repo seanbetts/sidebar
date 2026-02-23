@@ -41,7 +41,7 @@ struct SkillsSettingsView: View {
             if let error = viewModel.skillsError {
                 Section {
                     Text(error)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
@@ -127,10 +127,10 @@ struct SkillsSettingsView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(viewModel.displayName(for: skill))
-                    .font(DesignTokens.Typography.subheadlineSemibold)
+                    .appFont(.subheadlineSemibold)
 
                 Text(viewModel.displayDescription(for: skill))
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
             }
         }

@@ -25,7 +25,7 @@ extension NotesPanelView {
             Section("Pinned") {
                 if pinnedItems.isEmpty {
                     Text("No pinned notes")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                         .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                 } else {
@@ -62,7 +62,7 @@ extension NotesPanelView {
                                 .listRowSeparator(.hidden, edges: .top)
                         } else if showArchiveEmptyState {
                             Text(archivedEmptyStateText)
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                                 .listRowSeparator(.hidden, edges: .top)
                         } else {
@@ -147,7 +147,7 @@ extension NotesPanelView {
                         archiveLoadingRow(message: "Loading archived notes...")
                     } else if showArchiveEmptyState {
                         Text(archivedEmptyStateText)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     } else {
                         ScrollView {
@@ -186,7 +186,7 @@ extension NotesPanelView {
         HStack(spacing: DesignTokens.Spacing.xs) {
             LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             Text(message)
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
         }
     }
@@ -195,7 +195,7 @@ extension NotesPanelView {
     private var archiveLabel: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Label("Archive", systemImage: "archivebox")
-                .font(.subheadline)
+                .appFont(.subheadline)
             if isArchiveLoading && !archivedNodes.isEmpty {
                 LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             }

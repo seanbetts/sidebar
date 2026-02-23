@@ -43,9 +43,9 @@ struct ProfileSettingsView: View {
                     profileAvatar
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Profile photo")
-                            .font(.headline)
+                            .appFont(.headline)
                         Text(photoSubtitle)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -85,7 +85,7 @@ struct ProfileSettingsView: View {
             if let profileImageError {
                 Section {
                     Text(profileImageError)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
@@ -93,7 +93,7 @@ struct ProfileSettingsView: View {
             if let saveError = viewModel.profileSaveError {
                 Section {
                     Text(saveError)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
@@ -442,7 +442,7 @@ struct GeneralSettingsView: View {
                     .disabled(!canUseDeviceAuth)
                 if !canUseDeviceAuth {
                     Text("Set up Face ID or Touch ID to enable biometric unlock.")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
                 }
             }

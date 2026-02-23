@@ -83,16 +83,16 @@ private struct PendingWriteRow: View {
             HStack(spacing: 8) {
                 Image(systemName: iconName)
                 Text(titleText)
-                    .font(DesignTokens.Typography.labelMd)
+                    .appFont(.labelMd)
                 Spacer()
                 Text(statusText)
-                    .font(DesignTokens.Typography.captionSemibold)
+                    .appFont(.captionSemibold)
                     .foregroundStyle(statusColor)
             }
             if let conflictReason = write.conflictReason {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Text(conflictReason)
-                        .font(DesignTokens.Typography.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                         .lineLimit(2)
                     Spacer(minLength: 0)
@@ -108,11 +108,11 @@ private struct PendingWriteRow: View {
             }
             if write.conflictReason == nil, let error = write.lastError {
                 Text(error)
-                    .font(DesignTokens.Typography.caption)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
             }
             Text("Attempts: \(write.attempts)")
-                .font(DesignTokens.Typography.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, DesignTokens.Spacing.xs)
@@ -166,7 +166,7 @@ private struct PendingWriteRow: View {
 private struct PendingWriteActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(DesignTokens.Typography.captionSemibold)
+            .appFont(.captionSemibold)
             .foregroundStyle(DesignTokens.Colors.textPrimary)
             .padding(.horizontal, DesignTokens.Spacing.xs)
             .padding(.vertical, DesignTokens.Spacing.xxs)

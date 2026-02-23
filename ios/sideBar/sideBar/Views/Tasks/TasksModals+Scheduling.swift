@@ -127,12 +127,12 @@ struct RepeatTaskSheet: View {
                             .datePickerStyle(.compact)
                         if selectedType == .weekly {
                             Text("On \(weekdayLabel(for: startDateValue))")
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         if selectedType == .monthly {
                             Text("On day \(Calendar.current.component(.day, from: startDateValue))")
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }

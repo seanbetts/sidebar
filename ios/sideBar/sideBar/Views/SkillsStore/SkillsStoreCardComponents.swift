@@ -48,9 +48,9 @@ struct SkillsStoreFilterChip: View {
         Button(action: onTap) {
             HStack(spacing: 4) {
                 Image(systemName: iconName)
-                    .font(.caption2)
+                    .appFont(.caption2)
                 Text(title)
-                    .font(.caption)
+                    .appFont(.caption)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -90,13 +90,13 @@ struct SkillsStoreCard: View {
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(typeTitle.uppercased())
-                                .font(.caption2)
+                                .appFont(.caption2)
                                 .foregroundStyle(.secondary)
                             Text(displayName)
-                                .font(DesignTokens.Typography.subheadlineSemibold)
+                                .appFont(.subheadlineSemibold)
                                 .lineLimit(1)
                             Text(displayDescription)
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
@@ -106,7 +106,7 @@ struct SkillsStoreCard: View {
 
                     if let installError, !installError.isEmpty {
                         Text(installError)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(DesignTokens.Colors.error)
                             .lineLimit(1)
                     }
@@ -167,7 +167,7 @@ private struct SkillsStoreInstallPill: View {
                     .tint(Color.primary)
             } else {
                 Image(systemName: systemName)
-                    .font(.system(size: 24, weight: .semibold))
+                    .appFont(.size24Semibold)
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(iconForeground, Color.primary)
             }

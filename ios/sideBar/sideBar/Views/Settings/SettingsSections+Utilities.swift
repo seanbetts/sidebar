@@ -43,7 +43,7 @@ struct ShortcutsSettingsView: View {
                 }
                 if let error = viewModel.shortcutsError {
                     Text(error)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
@@ -127,7 +127,7 @@ struct APISettingsView: View {
                             .scaledToFit()
                             .frame(width: 32, height: 32)
                         Text("AppLogo (system)")
-                            .font(.caption)
+                            .appFont(.caption)
                     }
                     VStack(spacing: 8) {
                         Image("AppLogo")
@@ -136,11 +136,11 @@ struct APISettingsView: View {
                             .frame(width: 32, height: 32)
                             .environment(\.colorScheme, .dark)
                         Text("AppLogo (forced dark)")
-                            .font(.caption)
+                            .appFont(.caption)
                     }
                 }
                 Text("Color scheme: \(colorScheme == .dark ? "dark" : "light")")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
             }
 #endif

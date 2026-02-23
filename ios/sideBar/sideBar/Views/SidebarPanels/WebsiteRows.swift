@@ -15,11 +15,11 @@ struct PendingWebsiteRow: View, Equatable {
                 LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(pending.title)
-                        .font(.subheadline)
+                        .appFont(.subheadline)
                         .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
                     Text(formatDomain(pending.domain))
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
                 }
@@ -119,11 +119,11 @@ struct WebsiteRow: View, Equatable {
                 )
                 VStack(alignment: .leading, spacing: 4) {
                     Text(titleText)
-                        .font(.subheadline)
+                        .appFont(.subheadline)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                         .lineLimit(1)
                     Text(subtitleText)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
                         .lineLimit(1)
                 }

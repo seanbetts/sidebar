@@ -20,7 +20,7 @@ struct UserSettingsView: View {
                     HStack(spacing: 8) {
                         SyncStatusIndicator()
                         Text(pendingStatusText)
-                            .font(DesignTokens.Typography.labelMd)
+                            .appFont(.labelMd)
                     }
                     Button("View pending changes") {
                         isPendingWritesPresented = true
@@ -34,7 +34,7 @@ struct UserSettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Communication Style")
                     Text("How the assistant should communicate with you.")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -45,14 +45,14 @@ struct UserSettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Working Relationship")
                     Text("How you want the assistant to collaborate with you.")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
             if let saveError = viewModel.systemSaveError {
                 Section {
                     Text(saveError)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
@@ -158,7 +158,7 @@ struct AgentSettingsView: View {
                 if selectedProviderHasKey {
                     HStack(spacing: DesignTokens.Spacing.sm) {
                         Text(maskedProviderKeyText)
-                            .font(DesignTokens.Typography.body)
+                            .appFont(.body)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
 
@@ -198,7 +198,7 @@ struct AgentSettingsView: View {
                 }
                 if let providerError = viewModel.primaryProviderError, !providerError.isEmpty {
                     Text(providerError)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                 }
             } header: {
@@ -393,7 +393,7 @@ struct AgentSettingsView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
             Text(subtitle)
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
         }
     }

@@ -122,7 +122,7 @@ extension WebsitesPanelView {
                         archiveLoadingRow(message: "Loading archived websites...")
                     } else if showArchiveEmptyState {
                         Text(archivedEmptyStateText)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     } else {
                         ScrollView {
@@ -168,7 +168,7 @@ extension WebsitesPanelView {
         HStack(spacing: DesignTokens.Spacing.xs) {
             LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             Text(message)
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.secondary)
         }
     }
@@ -177,7 +177,7 @@ extension WebsitesPanelView {
     var archiveLabel: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Label("Archive", systemImage: "archivebox")
-                .font(.subheadline)
+                .appFont(.subheadline)
             if isArchiveLoading && !archivedItems.isEmpty {
                 LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             }

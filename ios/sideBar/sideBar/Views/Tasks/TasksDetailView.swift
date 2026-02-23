@@ -191,12 +191,12 @@ extension TasksDetailView {
                 }
                 if state.totalCount == 0 {
                     Image(systemName: "checkmark")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                         .accessibilityLabel("No tasks")
                 } else if let label = tasksCountLabel(for: state) {
                     Text(label)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                 }
             }
@@ -211,7 +211,7 @@ extension TasksDetailView {
             Image(systemName: state.titleIcon)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             Text(state.selectionLabel)
-                .font(DesignTokens.Typography.title3Semibold)
+                .appFont(.title3Semibold)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
                 .lineLimit(1)
             Spacer()
@@ -223,7 +223,7 @@ extension TasksDetailView {
                     viewModel.startNewTask()
                 } label: {
                     Image(systemName: "plus")
-                        .font(.subheadline)
+                        .appFont(.subheadline)
                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                         .frame(width: 28, height: 28)
                 }
@@ -255,7 +255,7 @@ extension TasksDetailView {
     private var expandButton: some View {
         Button(action: expandTasksView) {
             Image(systemName: expandButtonIconName)
-                .font(DesignTokens.Typography.labelMd)
+                .appFont(.labelMd)
                 .frame(width: 28, height: 20)
                 .imageScale(.medium)
         }
@@ -325,7 +325,7 @@ extension TasksDetailView {
                         sectionHeaderView(section: section, state: state)
                         if section.tasks.isEmpty, case .upcoming = state.selection {
                             Label("No tasks due", systemImage: "checkmark.circle")
-                                .font(.subheadline)
+                                .appFont(.subheadline)
                                 .foregroundStyle(DesignTokens.Colors.textTertiary)
                                 .padding(.leading, DesignTokens.Spacing.md + 14)
                                 .padding(.trailing, DesignTokens.Spacing.md)
@@ -401,7 +401,7 @@ extension TasksDetailView {
                     .padding(.horizontal, DesignTokens.Spacing.md)
             default:
                 Text(section.title)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                     .padding(.horizontal, DesignTokens.Spacing.md)
             }
@@ -451,11 +451,11 @@ extension TasksDetailView {
         HStack(spacing: 6) {
             if let iconName {
                 Image(systemName: iconName)
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
             }
             Text(title)
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }

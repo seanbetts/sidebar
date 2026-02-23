@@ -22,7 +22,7 @@ struct ProfileDateOfBirthField: View {
                         dateOfBirthEnabled = false
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.body)
+                            .appFont(.body)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
@@ -33,7 +33,7 @@ struct ProfileDateOfBirthField: View {
                     dateOfBirth = Date()
                     dateOfBirthEnabled = true
                 }
-                .font(.subheadline)
+                .appFont(.subheadline)
             }
         }
     }

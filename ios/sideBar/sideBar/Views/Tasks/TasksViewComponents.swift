@@ -14,10 +14,10 @@ struct TaskPill: View {
         HStack(spacing: DesignTokens.Spacing.xxs) {
             if let iconName {
                 Image(systemName: iconName)
-                    .font(.caption2)
+                    .appFont(.caption2)
             }
             Text(text)
-                .font(.caption2)
+                .appFont(.caption2)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
         }
         .padding(.horizontal, DesignTokens.Spacing.xs)
@@ -68,7 +68,7 @@ struct TaskRow<MenuContent: View>: View {
                         }
                     } label: {
                         Image(systemName: "repeat")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                             .frame(width: 20, height: 20)
                     }
@@ -98,7 +98,7 @@ struct TaskRow<MenuContent: View>: View {
                                     .opacity(1)
                                     .frame(width: 20, height: 20)
                                 Image(systemName: "checkmark")
-                                    .font(.caption.weight(.bold))
+                                    .appFont(.captionSemibold)
                                     .foregroundStyle(checkboxMarkColor)
                                     .opacity(1)
                             }
@@ -108,7 +108,7 @@ struct TaskRow<MenuContent: View>: View {
                                     SuccessCheckBadge(size: 20, symbolSize: 11)
                                 } else {
                                     Image(systemName: "circle")
-                                        .font(.body)
+                                        .appFont(.body)
                                         .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 }
                             }
@@ -123,7 +123,7 @@ struct TaskRow<MenuContent: View>: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(.subheadline)
+                            .appFont(.subheadline)
                             .foregroundStyle(DesignTokens.Colors.textPrimary)
                             .lineLimit(isExpanded ? nil : 1)
                             .fixedSize(horizontal: false, vertical: isExpanded)
@@ -132,7 +132,7 @@ struct TaskRow<MenuContent: View>: View {
                                 onOpenNotes()
                             } label: {
                                 Image(systemName: "text.document")
-                                    .font(.caption)
+                                    .appFont(.caption)
                                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                             }
                             .buttonStyle(.plain)
@@ -145,7 +145,7 @@ struct TaskRow<MenuContent: View>: View {
                     if selection != .completed && TasksUtils.isOverdue(task) {
                         if isCompact {
                             Image(systemName: "exclamationmark.circle")
-                                .font(.subheadline)
+                                .appFont(.subheadline)
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                         } else {
                             TaskPill(text: "Overdue", iconName: "exclamationmark.circle")
@@ -167,7 +167,7 @@ struct TaskRow<MenuContent: View>: View {
                             onDelete()
                         } label: {
                             Image(systemName: "trash")
-                                .font(.subheadline)
+                                .appFont(.subheadline)
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 .frame(width: 24, height: 24)
                         }
@@ -177,7 +177,7 @@ struct TaskRow<MenuContent: View>: View {
                             menuContent()
                         } label: {
                             Image(systemName: "ellipsis")
-                                .font(.subheadline)
+                                .appFont(.subheadline)
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 .frame(width: 24, height: 24)
                         }
@@ -211,7 +211,7 @@ struct TaskRow<MenuContent: View>: View {
             Text(task.notes?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
                 ? task.notes ?? ""
                 : "No notes")
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                 .lineLimit(nil)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -236,7 +236,7 @@ struct TaskRow<MenuContent: View>: View {
                         onMove()
                     } label: {
                         Image(systemName: "folder")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                             .padding(DesignTokens.Spacing.xxxs)
                     }
@@ -245,7 +245,7 @@ struct TaskRow<MenuContent: View>: View {
                         onRepeat()
                     } label: {
                         Image(systemName: "repeat")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                             .padding(DesignTokens.Spacing.xxxs)
                     }

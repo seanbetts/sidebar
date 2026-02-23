@@ -78,7 +78,7 @@ extension ConversationsPanelView {
                             }
                         } label: {
                             Image(systemName: "plus")
-                                .font(DesignTokens.Typography.labelMd)
+                                .appFont(.labelMd)
                                 .frame(width: 28, height: 28)
                         }
                         .buttonStyle(.plain)

@@ -40,7 +40,7 @@ struct FilesIngestionRow: View, Equatable {
                     LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                 } else if isFailed {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                 } else {
                     Image(systemName: iconName)
@@ -48,12 +48,12 @@ struct FilesIngestionRow: View, Equatable {
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(displayName)
-                        .font(.subheadline)
+                        .appFont(.subheadline)
                         .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                     if let statusText {
                         Text(statusText)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(statusTextColor)
                             .lineLimit(1)
                     }
