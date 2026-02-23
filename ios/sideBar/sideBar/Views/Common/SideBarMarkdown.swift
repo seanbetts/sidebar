@@ -58,6 +58,8 @@ struct SideBarMarkdown: View, Equatable {
     let style: SideBarMarkdownStyle
     let youtubeTranscriptContext: SideBarYouTubeTranscriptContext?
     let renderingContext: SideBarMarkdownRenderingContext
+    @ScaledMetric(relativeTo: .body)
+    private var markdownBaseFontSize: CGFloat = MarkdownTypography.defaultBodyFontSize
 
     init(
         text: String,
@@ -136,7 +138,7 @@ struct SideBarMarkdown: View, Equatable {
             .text {
                 ForegroundColor(DesignTokens.Colors.textPrimary)
                 BackgroundColor(nil)
-                FontSize(16)
+                FontSize(markdownBaseFontSize)
             }
             .strong {
                 FontWeight(.bold)

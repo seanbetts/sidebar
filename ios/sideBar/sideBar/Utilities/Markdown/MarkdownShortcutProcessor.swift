@@ -25,8 +25,6 @@ public struct MarkdownShortcutProcessor {
     ]
 
     private static let strikethroughPattern = InlinePattern(prefix: "~~", suffix: "~~", intent: .stronglyEmphasized)
-    private static let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
-
     private static let blockPatterns: [BlockPattern] = [
         BlockPattern(prefix: "# ", blockKind: .heading1, listDepth: nil),
         BlockPattern(prefix: "## ", blockKind: .heading2, listDepth: nil),
@@ -46,18 +44,27 @@ public struct MarkdownShortcutProcessor {
     public static func processShortcuts(
         in text: inout AttributedString,
         selection: AttributedTextSelection,
-        lastInsertedCharacter: Character?
+        lastInsertedCharacter: Character?,
+        baseFontSize: CGFloat = 16
     ) -> AttributedTextSelection? {
         guard let cursorIndex = cursorIndex(in: text, selection: selection) else {
             return nil
         }
 
         if lastInsertedCharacter?.isNewline == true,
-           let newSelection = processBlockShortcut(in: &text, at: cursorIndex) {
+           let newSelection = processBlockShortcut(
+               in: &text,
+               at: cursorIndex,
+               baseFontSize: baseFontSize
+           ) {
             return newSelection
         }
 
-        if let newSelection = processInlineShortcuts(in: &text, at: cursorIndex) {
+        if let newSelection = processInlineShortcuts(
+            in: &text,
+            at: cursorIndex,
+            baseFontSize: baseFontSize
+        ) {
             return newSelection
         }
 
@@ -66,7 +73,8 @@ public struct MarkdownShortcutProcessor {
 
     private static func processBlockShortcut(
         in text: inout AttributedString,
-        at cursorIndex: AttributedString.Index
+        at cursorIndex: AttributedString.Index,
+        baseFontSize: CGFloat
     ) -> AttributedTextSelection? {
         guard cursorIndex > text.startIndex else { return nil }
         let previousIndex = text.index(beforeCharacter: cursorIndex)
@@ -103,7 +111,8 @@ public struct MarkdownShortcutProcessor {
                 applyBlockStyle(
                     to: &text,
                     range: lineStart..<updatedLineEnd,
-                    blockKind: pattern.blockKind
+                    blockKind: pattern.blockKind,
+                    baseFontSize: baseFontSize
                 )
             }
 
@@ -125,7 +134,8 @@ public struct MarkdownShortcutProcessor {
                 applyBlockStyle(
                     to: &text,
                     range: lineStart..<updatedLineEnd,
-                    blockKind: .orderedList
+                    blockKind: .orderedList,
+                    baseFontSize: baseFontSize
                 )
             }
 
@@ -137,7 +147,8 @@ public struct MarkdownShortcutProcessor {
 
     private static func processInlineShortcuts(
         in text: inout AttributedString,
-        at cursorIndex: AttributedString.Index
+        at cursorIndex: AttributedString.Index,
+        baseFontSize: CGFloat
     ) -> AttributedTextSelection? {
         for pattern in inlinePatterns {
             let apply: (inout AttributedString, Range<AttributedString.Index>) -> Void = { text, range in
@@ -145,7 +156,7 @@ public struct MarkdownShortcutProcessor {
                 let current = slice.inlinePresentationIntent ?? []
                 slice.inlinePresentationIntent = current.union(pattern.intent)
                 if pattern.intent == .code {
-                    slice.font = inlineCodeFont
+                    slice.font = inlineCodeFont(baseFontSize: baseFontSize)
                     slice.foregroundColor = DesignTokens.Colors.textPrimary
                     slice.backgroundColor = DesignTokens.Colors.muted
                 }
@@ -390,9 +401,10 @@ public struct MarkdownShortcutProcessor {
     private static func applyBlockStyle(
         to text: inout AttributedString,
         range: Range<AttributedString.Index>,
-        blockKind: BlockKind
+        blockKind: BlockKind,
+        baseFontSize: CGFloat
     ) {
-        text[range].font = blockFont(for: blockKind)
+        text[range].font = blockFont(for: blockKind, baseFontSize: baseFontSize)
         if let backgroundColor = blockBackgroundColor(for: blockKind) {
             text[range].backgroundColor = backgroundColor
         }
@@ -405,9 +417,10 @@ public struct MarkdownShortcutProcessor {
     private static func applyTypingAttributes(
         to attrs: inout AttributeContainer,
         blockKind: BlockKind,
-        listDepth: Int?
+        listDepth: Int?,
+        baseFontSize: CGFloat
     ) {
-        attrs.font = blockFont(for: blockKind)
+        attrs.font = blockFont(for: blockKind, baseFontSize: baseFontSize)
         attrs.foregroundColor = blockForegroundColor(for: blockKind)
         if let backgroundColor = blockBackgroundColor(for: blockKind) {
             attrs.backgroundColor = backgroundColor
@@ -415,9 +428,7 @@ public struct MarkdownShortcutProcessor {
         if blockKind == .taskChecked {
             attrs.strikethroughStyle = .single
         }
-
         attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
-
         if let listKind = listKind(for: blockKind) {
             let listId = listDepth ?? 1
             let listIntent = PresentationIntent(listKind, identity: listId)
@@ -443,34 +454,22 @@ public struct MarkdownShortcutProcessor {
             attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
         }
     }
-
-    private static func blockFont(for blockKind: BlockKind) -> Font {
+    private static func blockFont(for blockKind: BlockKind, baseFontSize: CGFloat) -> Font {
         if let level = headingLevel(for: blockKind) {
-            return headingFont(for: level)
+            return headingFont(for: level, baseFontSize: baseFontSize)
         }
         if blockKind == .codeBlock {
-            return Font.system(size: 14, weight: .regular, design: .monospaced)
+            return inlineCodeFont(baseFontSize: baseFontSize)
         }
-        return Font.system(size: 16)
+        return Font.system(size: baseFontSize)
     }
-
-    private static func headingFont(for level: Int) -> Font {
-        switch level {
-        case 1:
-            return .system(size: 32, weight: .bold)
-        case 2:
-            return .system(size: 24, weight: .semibold)
-        case 3:
-            return .system(size: 20, weight: .semibold)
-        case 4:
-            return .system(size: 18, weight: .semibold)
-        case 5:
-            return .system(size: 17, weight: .semibold)
-        default:
-            return .system(size: 16, weight: .semibold)
-        }
+    private static func headingFont(for level: Int, baseFontSize: CGFloat) -> Font {
+        let weight: Font.Weight = level == 1 ? .bold : .semibold
+        return .system(size: MarkdownHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize), weight: weight)
     }
-
+    private static func inlineCodeFont(baseFontSize: CGFloat) -> Font {
+        Font.system(size: MarkdownTypography.inlineCodeFontSize(baseFontSize: baseFontSize), weight: .regular, design: .monospaced)
+    }
     private static func blockForegroundColor(for blockKind: BlockKind) -> Color {
         switch blockKind {
         case .blockquote, .taskChecked:
@@ -479,11 +478,9 @@ public struct MarkdownShortcutProcessor {
             return DesignTokens.Colors.textPrimary
         }
     }
-
     private static func blockBackgroundColor(for blockKind: BlockKind) -> Color? {
         blockKind == .codeBlock ? DesignTokens.Colors.muted : nil
     }
-
     private static func listKind(for blockKind: BlockKind) -> PresentationIntent.Kind? {
         switch blockKind {
         case .orderedList:

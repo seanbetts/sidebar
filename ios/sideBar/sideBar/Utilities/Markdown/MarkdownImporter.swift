@@ -22,10 +22,16 @@ public struct MarkdownImporter {
         self.style = .default
     }
 
-    public func attributedString(from markdown: String) -> MarkdownImportResult {
+    public func attributedString(
+        from markdown: String,
+        baseFontSize: CGFloat = 16
+    ) -> MarkdownImportResult {
         let split = splitFrontmatter(from: markdown)
         let document = Document(parsing: split.body)
-        var walker = MarkdownToAttributedStringWalker(style: style)
+        var walker = MarkdownToAttributedStringWalker(
+            style: style,
+            baseFontSize: baseFontSize
+        )
         walker.visit(document)
         return MarkdownImportResult(attributedString: walker.result, frontmatter: split.frontmatter)
     }

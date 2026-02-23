@@ -10,6 +10,8 @@ struct AttributedNoteEditorContainer: View {
     @State private var loadedNoteId: String?
     @State private var isEditing: Bool = false
     @FocusState private var isTextEditorFocused: Bool
+    @ScaledMetric(relativeTo: .body)
+    private var editorBaseFontSize: CGFloat = MarkdownTypography.defaultBodyFontSize
 
     var body: some View {
         Group {
@@ -20,6 +22,7 @@ struct AttributedNoteEditorContainer: View {
             }
         }
         .onAppear {
+            nativeViewModel.setBaseFontSize(editorBaseFontSize)
             nativeViewModel.usesInjectedListMarkers = false
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
@@ -31,6 +34,7 @@ struct AttributedNoteEditorContainer: View {
             editorViewModel.detachNativeEditor(nativeViewModel)
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
+            nativeViewModel.setBaseFontSize(editorBaseFontSize)
             isEditing = false
             editorViewModel.setReadOnly(true)
             loadIfNeeded()

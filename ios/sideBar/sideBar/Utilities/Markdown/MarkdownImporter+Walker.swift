@@ -17,15 +17,24 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
     var blockquoteDepth: Int = 0
     var nextListId: Int = 1
     var lastBlockKind: BlockKind?
-    let baseFontSize: CGFloat = 16
-    let inlineCodeFontSize: CGFloat = 14
-    let bodyFont = Font.system(size: 16)
-    let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
-    let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
+    let baseFontSize: CGFloat
+    var inlineCodeFontSize: CGFloat {
+        MarkdownTypography.inlineCodeFontSize(baseFontSize: baseFontSize)
+    }
+    var bodyFont: Font {
+        Font.system(size: baseFontSize)
+    }
+    var inlineCodeFont: Font {
+        Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
+    }
+    var blockCodeFont: Font {
+        Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
+    }
     let style: SideBarMarkdownStyle
 
-    init(style: SideBarMarkdownStyle) {
+    init(style: SideBarMarkdownStyle, baseFontSize: CGFloat = MarkdownTypography.defaultBodyFontSize) {
         self.style = style
+        self.baseFontSize = baseFontSize
     }
 
     // MARK: - Block Visitors
@@ -94,7 +103,10 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
             headingText.append(inlineAttributedString(for: child))
         }
 
-        let fontSize = MarkdownHeadingMetrics.fontSize(for: heading.level)
+        let fontSize = MarkdownHeadingMetrics.fontSize(
+            for: heading.level,
+            baseFontSize: baseFontSize
+        )
         let weight: Font.Weight = MarkdownHeadingMetrics.isBold(level: heading.level) ? .bold : .semibold
         let paragraphStyle = MarkdownHeadingMetrics.paragraphStyle(
             level: heading.level,

@@ -88,8 +88,6 @@ struct SideBarApp: App {
             #if os(macOS)
             ContentView()
                 .environmentObject(environment)
-                .environment(\.controlSize, .large)
-                .dynamicTypeSize(.large)
                 .onOpenURL { url in
                     environment.handleDeepLink(url)
                 }

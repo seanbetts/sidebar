@@ -35,11 +35,19 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     let importer = MarkdownImporter()
     let exporter = MarkdownExporter()
-    let baseFontSize: CGFloat = 16
-    let inlineCodeFontSize: CGFloat = 14
-    let bodyFont = Font.system(size: 16)
-    let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
-    let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
+    var baseFontSize: CGFloat = MarkdownTypography.defaultBodyFontSize
+    var inlineCodeFontSize: CGFloat {
+        MarkdownTypography.inlineCodeFontSize(baseFontSize: baseFontSize)
+    }
+    var bodyFont: Font {
+        Font.system(size: baseFontSize)
+    }
+    var inlineCodeFont: Font {
+        Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
+    }
+    var blockCodeFont: Font {
+        Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
+    }
     let style = SideBarMarkdownStyle.default
     var frontmatter: String?
     var lastSavedContent: String = ""
@@ -56,8 +64,12 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     public init() {}
 
+    public func setBaseFontSize(_ size: CGFloat) {
+        baseFontSize = max(12, size)
+    }
+
     public func loadMarkdown(_ markdown: String) {
-        let result = importer.attributedString(from: markdown)
+        let result = importer.attributedString(from: markdown, baseFontSize: baseFontSize)
         frontmatter = result.frontmatter
         attributedContent = result.attributedString
         selection = AttributedTextSelection()
@@ -147,7 +159,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         if let newSelection = MarkdownShortcutProcessor.processShortcuts(
             in: &updated,
             selection: selection,
-            lastInsertedCharacter: insertedCharacter
+            lastInsertedCharacter: insertedCharacter,
+            baseFontSize: baseFontSize
         ) {
             isApplyingShortcut = true
             attributedContent = updated

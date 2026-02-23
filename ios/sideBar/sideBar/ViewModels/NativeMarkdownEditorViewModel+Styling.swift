@@ -22,7 +22,7 @@ extension NativeMarkdownEditorViewModel {
 
     func baseFont(for blockKind: BlockKind?) -> Font {
         if let blockKind, let level = headingLevel(for: blockKind) {
-            let size = MarkdownHeadingMetrics.fontSize(for: level)
+            let size = MarkdownHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
             let weight: Font.Weight = MarkdownHeadingMetrics.isBold(level: level) ? .bold : .semibold
             return .system(size: size, weight: weight)
         }
@@ -38,7 +38,7 @@ extension NativeMarkdownEditorViewModel {
 
     func platformBaseFont(for blockKind: BlockKind?) -> PlatformFont {
         if let blockKind, let level = headingLevel(for: blockKind) {
-            let size = MarkdownHeadingMetrics.fontSize(for: level)
+            let size = MarkdownHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
             let weight: PlatformFontWeight = MarkdownHeadingMetrics.isBold(level: level) ? .bold : .semibold
             return platformSystemFont(size: size, weight: weight)
         }
