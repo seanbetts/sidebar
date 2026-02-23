@@ -1,4 +1,10 @@
-import type { Task, TaskGroup, TaskProject, TaskSelection } from '$lib/types/tasks';
+import type {
+	Task,
+	TaskGroup,
+	TaskProject,
+	TaskSelection,
+	TaskSyncConflict
+} from '$lib/types/tasks';
 
 export type TaskNewTaskDraft = {
 	title: string;
@@ -20,6 +26,7 @@ export type TasksState = {
 	counts: Record<string, number>;
 	syncNotice: string;
 	conflictNotice: string;
+	pendingConflicts: TaskSyncConflict[];
 	isLoading: boolean;
 	searchPending: boolean;
 	newTaskDraft: TaskNewTaskDraft | null;

@@ -9,7 +9,9 @@
 	import SettingsAgentSection from '$lib/components/left-sidebar/panels/settings/SettingsAgentSection.svelte';
 	import SettingsSystemSection from '$lib/components/left-sidebar/panels/settings/SettingsSystemSection.svelte';
 	import SettingsSkillsSection from '$lib/components/left-sidebar/panels/settings/SettingsSkillsSection.svelte';
+	import SkillsStoreSection from '$lib/components/left-sidebar/panels/settings/SkillsStoreSection.svelte';
 	import SettingsShortcutsSection from '$lib/components/left-sidebar/panels/settings/SettingsShortcutsSection.svelte';
+	import type { SkillItem } from '$lib/types/skills';
 	import SettingsStorageSection from '$lib/components/left-sidebar/panels/settings/SettingsStorageSection.svelte';
 	import { clearCaches, clearInFlight, clearMemoryCache } from '$lib/utils/cache';
 	import type { WeatherUnit } from '$lib/stores/weatherPreferences';
@@ -63,37 +65,17 @@
 	export let setWeatherUnit: (unit: WeatherUnit) => void;
 	export let isLoadingSkills = false;
 	export let skillsError = '';
-	export let skills: Array<{
-		id: string;
-		name: string;
-		description: string;
-		category?: string;
-		user_toggleable?: boolean;
-	}> = [];
-	export let groupSkills: (
-		list: Array<{
-			id: string;
-			name: string;
-			description: string;
-			category?: string;
-			user_toggleable?: boolean;
-		}>
-	) => Array<
-		[
-			string,
-			Array<{
-				id: string;
-				name: string;
-				description: string;
-				category?: string;
-				user_toggleable?: boolean;
-			}>
-		]
-	>;
+	export let skills: SkillItem[] = [];
+	export let groupSkills: (list: SkillItem[]) => Array<[string, SkillItem[]]>;
 	export let enabledSkills: string[] = [];
 	export let allSkillsEnabled = false;
 	export let toggleAllSkills: (enabled: boolean) => void;
 	export let toggleSkill: (id: string, enabled: boolean) => void;
+	export let onInstallSkill: (
+		skill: SkillItem,
+		providerKeys?: Record<string, string>
+	) => Promise<void>;
+	export let onUninstallSkill: (skill: SkillItem) => Promise<void>;
 
 	function handleLogout() {
 		clearInFlight();
@@ -187,6 +169,15 @@
 					<SettingsShortcutsSection />
 				{:else if activeSettingsSection === 'memory'}
 					<MemorySettings />
+				{:else if activeSettingsSection === 'store'}
+					<SkillsStoreSection
+						{skills}
+						{enabledSkills}
+						{isLoadingSkills}
+						{skillsError}
+						onInstall={onInstallSkill}
+						onUninstall={onUninstallSkill}
+					/>
 				{:else}
 					<SettingsSkillsSection
 						{skills}
@@ -197,6 +188,9 @@
 						{allSkillsEnabled}
 						{toggleAllSkills}
 						{toggleSkill}
+						onOpenDetail={(skill) => {
+							/* Configure button handler - open detail modal for store skills */
+						}}
 					/>
 				{/if}
 			</div>

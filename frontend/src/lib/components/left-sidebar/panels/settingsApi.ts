@@ -125,3 +125,102 @@ export async function rotateShortcutsPat() {
 	const data = await response.json();
 	return data?.token || '';
 }
+
+/**
+ * Install a store skill by ID with optional provider keys.
+ *
+ * @param id - Skill ID to install.
+ * @param providerKeys - Optional map of provider keys needed by the skill.
+ * @returns Install response payload.
+ * @throws Error when the request fails.
+ */
+export async function installSkill(id: string, providerKeys?: Record<string, string>) {
+	const response = await fetch(`/api/v1/skills/${id}/install`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(providerKeys ? { provider_keys: providerKeys } : {})
+	});
+	if (!response.ok) {
+		throw new Error('Failed to install skill');
+	}
+	return response.json();
+}
+
+/**
+ * Uninstall a store skill by ID.
+ *
+ * @param id - Skill ID to uninstall.
+ * @throws Error when the request fails.
+ */
+export async function uninstallSkill(id: string) {
+	const response = await fetch(`/api/v1/skills/${id}`, { method: 'DELETE' });
+	if (!response.ok) {
+		throw new Error('Failed to uninstall skill');
+	}
+}
+
+/**
+ * Fetch provider credential status.
+ *
+ * @param provider - Provider identifier.
+ * @returns Provider status payload.
+ * @throws Error when the request fails.
+ */
+export async function fetchProviderStatus(provider: string) {
+	const response = await fetch(`/api/v1/settings/provider/${provider}`);
+	if (!response.ok) {
+		throw new Error('Failed to fetch provider status');
+	}
+	return response.json();
+}
+
+/**
+ * Save a provider API key.
+ *
+ * @param provider - Provider identifier.
+ * @param key - API key value.
+ * @returns Save response payload.
+ * @throws Error when the request fails.
+ */
+export async function saveProviderKey(provider: string, key: string) {
+	const response = await fetch(`/api/v1/settings/provider/${provider}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ key })
+	});
+	if (!response.ok) {
+		throw new Error('Failed to save provider key');
+	}
+	return response.json();
+}
+
+/**
+ * Delete a provider API key.
+ *
+ * @param provider - Provider identifier.
+ * @throws Error when the request fails.
+ */
+export async function deleteProviderKey(provider: string) {
+	const response = await fetch(`/api/v1/settings/provider/${provider}`, { method: 'DELETE' });
+	if (!response.ok) {
+		throw new Error('Failed to delete provider key');
+	}
+}
+
+/**
+ * Disconnect a provider consumer (skill) from a provider.
+ *
+ * @param provider - Provider identifier.
+ * @param skillId - Skill ID to disconnect.
+ * @throws Error when the request fails.
+ */
+export async function disconnectProviderConsumer(provider: string, skillId: string) {
+	const response = await fetch(`/api/v1/settings/provider/${provider}/disconnect`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ skill_id: skillId })
+	});
+	if (!response.ok) {
+		throw new Error('Failed to disconnect provider consumer');
+	}
+}

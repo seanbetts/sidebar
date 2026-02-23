@@ -13,6 +13,7 @@ const baseState = (overrides: Partial<TasksState> = {}): TasksState => ({
 	counts: {},
 	syncNotice: '',
 	conflictNotice: '',
+	pendingConflicts: [],
 	isLoading: false,
 	searchPending: false,
 	newTaskDraft: null,

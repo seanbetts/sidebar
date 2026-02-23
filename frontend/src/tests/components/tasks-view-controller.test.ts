@@ -48,6 +48,7 @@ const { tasksStore, loadMock, clearConflictNoticeMock } = vi.hoisted(() => {
 		counts: {},
 		syncNotice: '',
 		conflictNotice: 'Tasks changed elsewhere. Refresh to continue.',
+		pendingConflicts: [],
 		isLoading: false,
 		searchPending: false,
 		newTaskDraft: null,

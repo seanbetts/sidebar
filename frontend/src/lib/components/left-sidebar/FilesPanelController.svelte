@@ -21,7 +21,10 @@
 	} from '$lib/components/left-sidebar/files/filesPanelUtils';
 	import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
 	import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
+	import IngestionDetailModal from '$lib/components/files/IngestionDetailModal.svelte';
 	import type { IngestionListItem } from '$lib/types/ingestion';
+	import { ingestionAPI } from '$lib/services/api';
+	import { logError } from '$lib/utils/errorHandling';
 	const { deleteIngestion, updatePinned, updatePinnedOrder, downloadFile, renameFile } =
 		useIngestionActions();
 	const PROCESSING_UPLOADS_LIMIT = 20;
@@ -63,6 +66,8 @@
 	let isRenaming = false;
 	let deleteDialog: { openDialog: (name: string) => void } | null = null;
 	let deleteItem: IngestionListItem | null = null;
+	let detailItem: IngestionListItem | null = null;
+	let isDetailOpen = false;
 	const PINNED_DROP_END = '__end__';
 	let draggingPinnedId: string | null = null;
 	let dragOverPinnedId: string | null = null;
@@ -187,6 +192,53 @@
 		requestDelete(item, event);
 	}
 
+	function handleOpenDetail(item: IngestionListItem) {
+		detailItem = item;
+		isDetailOpen = true;
+	}
+
+	async function handleDetailCancel(fileId: string) {
+		try {
+			await ingestionAPI.cancel(fileId);
+			const meta = await ingestionAPI.get(fileId);
+			ingestionStore.upsertItem({
+				file: meta.file,
+				job: meta.job,
+				recommended_viewer: meta.recommended_viewer
+			});
+			if (detailItem?.file.id === fileId) {
+				detailItem = $ingestionStore.items.find((i) => i.file.id === fileId) ?? null;
+			}
+		} catch (error) {
+			logError('Failed to cancel ingestion from detail', error, {
+				scope: 'FilesPanelController.detailCancel',
+				fileId
+			});
+			throw error;
+		}
+	}
+
+	async function handleDetailRetry(fileId: string) {
+		try {
+			await ingestionAPI.resume(fileId);
+			const meta = await ingestionAPI.get(fileId);
+			ingestionStore.upsertItem({
+				file: meta.file,
+				job: meta.job,
+				recommended_viewer: meta.recommended_viewer
+			});
+			if (detailItem?.file.id === fileId) {
+				detailItem = $ingestionStore.items.find((i) => i.file.id === fileId) ?? null;
+			}
+		} catch (error) {
+			logError('Failed to retry ingestion from detail', error, {
+				scope: 'FilesPanelController.detailRetry',
+				fileId
+			});
+			throw error;
+		}
+	}
+
 	async function handleRename(item: IngestionListItem) {
 		renameItem = item;
 		renameValue = stripExtension(item.file.filename_original);
@@ -287,9 +339,21 @@
 			onPinToggle={handlePinToggle}
 			onDownload={handleDownload}
 			onDelete={handleDelete}
+			onOpenDetail={handleOpenDetail}
 		/>
 	</div>
 {/if}
+
+<IngestionDetailModal
+	bind:open={isDetailOpen}
+	item={detailItem}
+	onClose={() => {
+		isDetailOpen = false;
+		detailItem = null;
+	}}
+	onCancel={handleDetailCancel}
+	onRetry={handleDetailRetry}
+/>
 
 <TextInputDialog
 	bind:open={isRenameOpen}

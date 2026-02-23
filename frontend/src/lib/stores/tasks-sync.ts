@@ -31,6 +31,7 @@ type SyncCoordinatorOptions<TState extends TaskStateLike> = {
 	setMeta: (meta: TasksMetaCache) => void;
 	setSyncNotice: (message: string) => void;
 	setConflictNotice: (message: string) => void;
+	setConflicts?: (conflicts: TaskSyncConflict[]) => void;
 	onNextTasks?: (tasks: Task[]) => void;
 };
 
@@ -103,6 +104,13 @@ export function createTasksSyncCoordinator<TState extends TaskStateLike>(
 		}
 		if (response.conflicts?.length) {
 			options.setConflictNotice('Tasks changed elsewhere. Refresh to continue.');
+			const fullConflicts = response.conflicts.filter(
+				(c): c is TaskSyncConflict =>
+					typeof c.operationId === 'string' && typeof c.id === 'string' && !!c.serverTask
+			);
+			if (fullConflicts.length) {
+				options.setConflicts?.(fullConflicts);
+			}
 		}
 		if (response.updates) {
 			mergeUpdatesIntoState(

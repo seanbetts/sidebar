@@ -15,6 +15,7 @@
 	export let stripExtension: (name: string) => string;
 
 	export let onOpen: (item: IngestionListItem) => void;
+	export let onOpenDetail: ((item: IngestionListItem) => void) | undefined = undefined;
 	export let onToggleMenu: (event: MouseEvent, menuKey: string) => void;
 	export let onRename: (item: IngestionListItem) => void;
 	export let onPinToggle: (item: IngestionListItem) => void;
@@ -24,7 +25,7 @@
 
 {#if processingItems.length > 0}
 	<div class="files-uploads uploads-block">
-		<IngestionQueue items={processingItems} totalCount={processingTotalCount} />
+		<IngestionQueue items={processingItems} totalCount={processingTotalCount} {onOpenDetail} />
 	</div>
 {/if}
 

@@ -6,9 +6,12 @@
 		fetchLocationSuggestions,
 		fetchSettings,
 		fetchSkills,
+		installSkill as installSkillRequest,
+		uninstallSkill as uninstallSkillRequest,
 		saveSettings as persistSettings,
 		uploadProfileImage as uploadProfileImageRequest
 	} from '$lib/components/left-sidebar/panels/settingsApi';
+	import type { SkillItem } from '$lib/types/skills';
 	import {
 		PRONOUN_OPTIONS,
 		SETTINGS_SECTIONS
@@ -55,13 +58,7 @@
 	let isSavingSettings = false;
 	let settingsLoaded = false;
 	let settingsError = '';
-	let skills: Array<{
-		id: string;
-		name: string;
-		description: string;
-		category?: string;
-		user_toggleable?: boolean;
-	}> = [];
+	let skills: SkillItem[] = [];
 	let enabledSkills: string[] = [];
 	let initialEnabledSkills: string[] = [];
 	let isLoadingSkills = false;
@@ -298,6 +295,18 @@
 		if (target) target.value = '';
 	}
 
+	async function handleInstallSkill(skill: SkillItem, providerKeys?: Record<string, string>) {
+		await installSkillRequest(skill.id, providerKeys);
+		enabledSkills = [...new Set([...enabledSkills, skill.id])];
+		initialEnabledSkills = [...enabledSkills];
+	}
+
+	async function handleUninstallSkill(skill: SkillItem) {
+		await uninstallSkillRequest(skill.id);
+		enabledSkills = enabledSkills.filter((id) => id !== skill.id);
+		initialEnabledSkills = [...enabledSkills];
+	}
+
 	function toggleSkill(name: string, enabled: boolean) {
 		const selected = skills.find((skill) => skill.id === name);
 		if (selected?.user_toggleable === false) return;
@@ -511,4 +520,6 @@
 	{allSkillsEnabled}
 	{toggleAllSkills}
 	{toggleSkill}
+	onInstallSkill={handleInstallSkill}
+	onUninstallSkill={handleUninstallSkill}
 />

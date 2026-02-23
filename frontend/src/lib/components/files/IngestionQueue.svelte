@@ -8,6 +8,7 @@
 
 	export let items: IngestionListItem[] = [];
 	export let totalCount: number = items.length;
+	export let onOpenDetail: ((item: IngestionListItem) => void) | undefined = undefined;
 
 	const stageOrder = [
 		'uploading',
@@ -82,7 +83,15 @@
 		{/if}
 	</div>
 	{#each items as item (item.file.id)}
-		<div class="ingestion-item">
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<div
+			class="ingestion-item"
+			class:ingestion-item-clickable={!!onOpenDetail}
+			role={onOpenDetail ? 'button' : undefined}
+			tabindex={onOpenDetail ? 0 : undefined}
+			onclick={() => onOpenDetail?.(item)}
+			onkeydown={(e) => e.key === 'Enter' && onOpenDetail?.(item)}
+		>
 			<div class="ingestion-header">
 				<span class="filename">{item.file.filename_original}</span>
 				<div class="status-row">
@@ -141,6 +150,17 @@
 		flex-direction: column;
 		gap: 0.35rem;
 		padding: 0.35rem 0;
+	}
+
+	.ingestion-item-clickable {
+		cursor: pointer;
+		border-radius: 0.5rem;
+		padding: 0.35rem 0.25rem;
+		transition: background 0.15s;
+	}
+
+	.ingestion-item-clickable:hover {
+		background: var(--color-sidebar-accent);
 	}
 
 	.ingestion-header {

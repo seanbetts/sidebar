@@ -44,6 +44,7 @@ const defaultState: TasksState = {
 	counts: {},
 	syncNotice: '',
 	conflictNotice: '',
+	pendingConflicts: [],
 	isLoading: false,
 	searchPending: false,
 	newTaskDraft: null,
@@ -86,6 +87,9 @@ function createTasksStore() {
 		},
 		setSyncNotice,
 		setConflictNotice,
+		setConflicts: (conflicts) => {
+			update((state) => ({ ...state, pendingConflicts: conflicts }));
+		},
 		onNextTasks: (nextTasks) => {
 			if (!nextTasks.length) return;
 			if (nextTasks.length === 1) {
@@ -164,6 +168,25 @@ function createTasksStore() {
 			set(defaultState);
 		},
 		clearConflictNotice: () => update((state) => ({ ...state, conflictNotice: '' })),
+		dismissConflict: (operationId: string) =>
+			update((state) => ({
+				...state,
+				pendingConflicts: state.pendingConflicts.filter((c) => c.operationId !== operationId)
+			})),
+		applyServerTask: (operationId: string) =>
+			update((state) => {
+				const conflict = state.pendingConflicts.find((c) => c.operationId === operationId);
+				if (!conflict) return state;
+				const serverTask = conflict.serverTask;
+				const nextTasks = state.tasks.map((t) =>
+					t.id === serverTask.id ? { ...t, ...serverTask } : t
+				);
+				return {
+					...state,
+					tasks: nextTasks,
+					pendingConflicts: state.pendingConflicts.filter((c) => c.operationId !== operationId)
+				};
+			}),
 		load: (
 			selection: TaskSelection,
 			options?: { force?: boolean; silent?: boolean; notify?: boolean }
