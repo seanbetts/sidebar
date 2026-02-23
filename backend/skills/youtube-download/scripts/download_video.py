@@ -14,6 +14,7 @@ import sys
 import tempfile
 import time
 import urllib.parse
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,8 +25,18 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.services.skill_file_ops import upload_file
+    from api.services.skill_file_ops_ingestion import (
+        create_ingested_file,
+        finalize_ingested_file,
+        write_ai_markdown,
+        write_derivative,
+    )
 except Exception:
     upload_file = None
+    create_ingested_file = None
+    finalize_ingested_file = None
+    write_ai_markdown = None
+    write_derivative = None
 
 
 # Default output directory (files workspace)
@@ -109,6 +120,112 @@ def _build_storage_payload(
             }
         ],
     }
+
+
+def _build_ingestion_summary(
+    *,
+    title: str,
+    url: str,
+    filename: str,
+    audio_only: bool,
+    duration_seconds: int,
+) -> str:
+    media_type = "Audio (MP3)" if audio_only else "Video (MP4)"
+    generated_at = datetime.now(UTC).isoformat()
+    lines = [
+        f"# {title}",
+        "",
+        f"- Source: {url}",
+        f"- Type: {media_type}",
+        f"- Filename: {filename}",
+        f"- Download Duration (seconds): {duration_seconds}",
+        f"- Generated: {generated_at}",
+        "",
+        "Download completed successfully.",
+    ]
+    return "\n".join(lines)
+
+
+def _store_downloaded_output(
+    *,
+    user_id: str,
+    local_output: Path,
+    r2_path: str,
+    processed_url: str,
+    title: str,
+    filename: str,
+    audio_only: bool,
+    duration_seconds: int,
+) -> tuple[Any, dict[str, Any]]:
+    content_type = "audio/mpeg" if audio_only else "video/mp4"
+    if (
+        create_ingested_file
+        and write_derivative
+        and write_ai_markdown
+        and finalize_ingested_file
+    ):
+        record = create_ingested_file(
+            user_id,
+            filename,
+            content_type,
+            size=local_output.stat().st_size,
+            source_url=processed_url,
+            source_metadata={
+                "provider": "youtube-download",
+                "youtube_url": processed_url,
+                "audio_only": audio_only,
+            },
+            path=r2_path,
+        )
+        derivative = write_derivative(
+            user_id,
+            record,
+            local_output,
+            kind="audio_original" if audio_only else "video_original",
+            content_type=content_type,
+        )
+        ai_content = _build_ingestion_summary(
+            title=title,
+            url=processed_url,
+            filename=filename,
+            audio_only=audio_only,
+            duration_seconds=duration_seconds,
+        )
+        ai_derivative = write_ai_markdown(
+            user_id,
+            record,
+            ai_content,
+            frontmatter={
+                "source_url": processed_url,
+                "source_type": "youtube-download",
+                "ingestion": {
+                    "skill": "youtube-download",
+                    "duration_seconds": duration_seconds,
+                    "size_bytes": local_output.stat().st_size,
+                },
+            },
+            derivative_items=[
+                {
+                    "kind": derivative["kind"],
+                    "path": derivative["storage_key"],
+                    "content_type": derivative.get("content_type")
+                    or derivative.get("mime"),
+                }
+            ],
+        )
+        payload = finalize_ingested_file(user_id, record, [derivative, ai_derivative])
+        return record, payload
+
+    if upload_file is None:
+        raise RuntimeError("Storage dependencies are unavailable")
+    record = upload_file(user_id, r2_path, local_output, content_type=content_type)
+    payload = _build_storage_payload(
+        user_id,
+        record,
+        audio_only=audio_only,
+        filename=filename,
+    )
+    return record, payload
 
 
 def check_ffmpeg() -> bool:
@@ -323,7 +440,15 @@ def download_youtube(
     if upload:
         if not user_id:
             raise ValueError("user_id is required for storage")
-        if upload_file is None:
+        if (
+            upload_file is None
+            and (
+                create_ingested_file is None
+                or write_derivative is None
+                or write_ai_markdown is None
+                or finalize_ingested_file is None
+            )
+        ):
             raise RuntimeError("Storage dependencies are unavailable")
 
     r2_dir = (output_dir or DEFAULT_R2_DIR).strip("/")
@@ -446,18 +571,19 @@ def download_youtube(
             raise FileNotFoundError(f"Download output not found: {local_output}")
 
         record = None
+        storage_payload = {"file_id": None, "ai_path": None, "derivatives": []}
         if upload:
-            content_type = "audio/mpeg" if audio_only else "video/mp4"
             r2_path = f"{r2_dir}/{final_filename}" if r2_dir else final_filename
-            record = upload_file(
-                user_id, r2_path, local_output, content_type=content_type
+            record, storage_payload = _store_downloaded_output(
+                user_id=user_id,
+                local_output=local_output,
+                r2_path=r2_path,
+                processed_url=processed_url,
+                title=title,
+                filename=final_filename,
+                audio_only=audio_only,
+                duration_seconds=int(duration),
             )
-        storage_payload = _build_storage_payload(
-            user_id,
-            record,
-            audio_only=audio_only,
-            filename=final_filename,
-        )
 
         if not keep_local and temp_dir is None:
             local_output.unlink(missing_ok=True)
