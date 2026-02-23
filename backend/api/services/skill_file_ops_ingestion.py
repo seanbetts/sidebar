@@ -16,6 +16,7 @@ from api.models.file_ingestion import FileDerivative, FileProcessingJob, Ingeste
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.skill_file_ops_helpers import (
     build_frontmatter,
+    copy_storage_key,
     find_record_by_path,
     get_derivative,
     get_job,
@@ -453,6 +454,8 @@ def write_text(
         source_path = staging_path(str(file_id))
         source_path.parent.mkdir(parents=True, exist_ok=True)
         source_path.write_bytes(content_bytes)
+        staged_key = f"{user_id}/files/{file_id}/staging/source"
+        get_storage_backend().put_object(staged_key, content_bytes, mime)
 
         now = now_utc()
         if existing:
@@ -599,6 +602,8 @@ def upload_file(
     source_path = staging_path(str(file_id))
     source_path.parent.mkdir(parents=True, exist_ok=True)
     source_path.write_bytes(content)
+    staged_key = f"{user_id}/files/{file_id}/staging/source"
+    get_storage_backend().put_object(staged_key, content, mime)
 
     now = now_utc()
     with session_for_user(user_id) as db:
@@ -778,16 +783,6 @@ def move_path(user_id: str, source: str, destination: str) -> dict:
     return {"source": src, "destination": dest, "type": "directory"}
 
 
-def _copy_storage_key(
-    user_id: str, source_id: str, target_id: str, storage_key: str
-) -> str:
-    """Build a new storage key for a copied derivative."""
-    prefix = f"{user_id}/files/{source_id}/"
-    if storage_key.startswith(prefix):
-        return f"{user_id}/files/{target_id}/{storage_key[len(prefix) :]}"
-    return f"{user_id}/files/{target_id}/derivatives/{Path(storage_key).name}"
-
-
 def _copy_record(
     db,
     storage,
@@ -829,7 +824,7 @@ def _copy_record(
         raise ValueError(f"No copyable content for: {record.path}")
 
     for item in derivatives:
-        new_key = _copy_storage_key(
+        new_key = copy_storage_key(
             record.user_id, str(record.id), str(new_id), item.storage_key
         )
         storage.copy_object(item.storage_key, new_key)

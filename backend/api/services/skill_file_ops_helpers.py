@@ -134,3 +134,13 @@ def yaml_value(value: Any) -> str:
 def sanitize_kind(kind: str) -> str:
     """Normalize derivative kind strings for storage keys."""
     return kind.replace("/", "_").replace("\\", "_")
+
+
+def copy_storage_key(
+    user_id: str, source_id: str, target_id: str, storage_key: str
+) -> str:
+    """Build a storage key for a copied derivative."""
+    prefix = f"{user_id}/files/{source_id}/"
+    if storage_key.startswith(prefix):
+        return f"{user_id}/files/{target_id}/{storage_key[len(prefix) :]}"
+    return f"{user_id}/files/{target_id}/derivatives/{Path(storage_key).name}"
