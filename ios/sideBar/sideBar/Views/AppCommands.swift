@@ -21,19 +21,6 @@ struct SidebarCommands: Commands {
             }
         }
 
-        CommandGroup(after: .appSettings) {
-            if #available(macOS 13.0, *) {
-                SettingsLink {
-                    Text("Settings")
-                }
-                .keyboardShortcut(",", modifiers: [.command])
-            } else {
-                Button("Settings") {
-                }
-                .keyboardShortcut(",", modifiers: [.command])
-            }
-        }
-
         CommandGroup(after: .newItem) {
             Button("Close Item") {
                 guard shouldHandleCloseItem else { return }
