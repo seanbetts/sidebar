@@ -43,6 +43,13 @@ struct ChatMessageRow: View {
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
+                LoadingIndicatorView(size: 14)
+                    .frame(width: showsHeaderThinkingIndicator ? 14 : 0, height: 14, alignment: .leading)
+                    .opacity(showsHeaderThinkingIndicator ? 1 : 0)
+                    .padding(.trailing, showsHeaderThinkingIndicator ? DesignTokens.Spacing.xxs : 0)
+                    .clipped()
+                    .accessibilityHidden(!showsHeaderThinkingIndicator)
+                    .animation(Motion.quick(reduceMotion: reduceMotion), value: showsHeaderThinkingIndicator)
                 Text(message.role == .assistant ? assistantDisplayName : "You")
                     .appFont(.captionSemibold)
                     .lineLimit(1)
@@ -55,10 +62,6 @@ struct ChatMessageRow: View {
                     .foregroundStyle(rolePillText)
                     .overlay(rolePillBorder)
                     .clipShape(Capsule())
-                if showsHeaderThinkingIndicator {
-                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                        .padding(.leading, DesignTokens.Spacing.xxs)
-                }
                 Spacer()
                 HStack(spacing: DesignTokens.Spacing.xxs) {
                     if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
