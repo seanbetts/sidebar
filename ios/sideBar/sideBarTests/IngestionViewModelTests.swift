@@ -80,71 +80,10 @@ final class IngestionViewModelTests: XCTestCase {
     }
 
     func testSelectVideoFileLoadsTranscriptFromAiMarkdown() async {
-        let file = IngestedFileMeta(
-            id: "file-video-1",
-            filenameOriginal: "clip.mp4",
-            path: nil,
-            mimeOriginal: "video/mp4",
-            sizeBytes: 1024,
-            sha256: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            category: nil,
-            sourceUrl: nil,
-            sourceMetadata: nil,
-            createdAt: "2026-01-10T00:00:00Z",
-            updatedAt: nil,
-            deletedAt: nil
-        )
-        let meta = IngestionMetaResponse(
+        let file = makeVideoFile(id: "file-video-1")
+        let viewModel = makeVideoViewModel(
             file: file,
-            job: makeJob(),
-            derivatives: [
-                IngestionDerivative(
-                    id: "d-video",
-                    kind: "video_original",
-                    storageKey: "storage/video",
-                    mime: "video/mp4",
-                    sizeBytes: 100
-                ),
-                IngestionDerivative(
-                    id: "d-ai",
-                    kind: "ai_md",
-                    storageKey: "storage/ai",
-                    mime: "text/markdown",
-                    sizeBytes: 40
-                )
-            ],
-            recommendedViewer: "viewer_video"
-        )
-        let api = MockIngestionAPI(
-            listResult: .success(
-                IngestionListResponse(items: [makeListItem(id: file.id)])
-            ),
-            metaResult: .success(meta),
-            contentResult: .failure(MockError.forced),
-            contentResultsByKind: [
-                "video_original": .success(Data([0x00, 0x00, 0x00, 0x00])),
-                "ai_md": .success(Data("---\nkey: value\n---\n\nTranscript line".utf8))
-            ],
-            pinResult: .success(()),
-            youtubeResult: .success("youtube")
-        )
-        let tempDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        let store = TemporaryFileStore(directory: tempDirectory)
-        let defaults = makeDefaults()
-        let ingestionStore = IngestionStore(
-            api: api,
-            cache: TestCacheClient(),
-            userDefaults: defaults
-        )
-        let viewModel = IngestionViewModel(
-            api: api,
-            store: ingestionStore,
-            temporaryStore: store,
-            uploadManager: MockIngestionUploadManager(),
-            toastCenter: ToastCenter()
+            aiMarkdown: "---\nkey: value\n---\n\nTranscript line"
         )
 
         await viewModel.selectFile(fileId: file.id)
@@ -152,6 +91,40 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.viewerState?.kind, .video)
         XCTAssertEqual(viewModel.viewerState?.text, "Transcript line")
         XCTAssertNotNil(viewModel.viewerState?.fileURL)
+    }
+
+    func testSelectVideoFileSanitizesTranscriptTitleAndMetadata() async {
+        let file = makeVideoFile(id: "file-video-2")
+        let aiMarkdown = """
+        ---
+        file_id: file-video-2
+        ---
+
+        # YouTube URL: https://www.youtube.com/watch?v=abc123
+        # Video title: Demo video
+        # Generated: 2026-02-23 20:00:00
+        ---
+        # Demo video
+
+        ## Metadata
+        - Duration: 3:12
+        - Model: gpt-4o-transcribe
+
+        ## Transcript
+        First line
+        """
+        let viewModel = makeVideoViewModel(file: file, aiMarkdown: aiMarkdown)
+
+        await viewModel.selectFile(fileId: file.id)
+
+        let transcript = viewModel.viewerState?.text ?? ""
+        XCTAssertEqual(viewModel.viewerState?.kind, .video)
+        XCTAssertTrue(transcript.hasPrefix("## Demo video"))
+        XCTAssertTrue(transcript.contains("## Transcript"))
+        XCTAssertTrue(transcript.contains("First line"))
+        XCTAssertFalse(transcript.contains("## Metadata"))
+        XCTAssertFalse(transcript.contains("YouTube URL:"))
+        XCTAssertFalse(transcript.contains("Generated:"))
     }
 
     func testPreferredDownloadDerivativePrefersSourceOriginal() async {
@@ -841,6 +814,81 @@ final class IngestionViewModelTests: XCTestCase {
     }
 
     // MARK: - Helpers
+
+    private func makeVideoFile(id: String) -> IngestedFileMeta {
+        IngestedFileMeta(
+            id: id,
+            filenameOriginal: "clip.mp4",
+            path: nil,
+            mimeOriginal: "video/mp4",
+            sizeBytes: 1024,
+            sha256: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            category: nil,
+            sourceUrl: nil,
+            sourceMetadata: nil,
+            createdAt: "2026-01-10T00:00:00Z",
+            updatedAt: nil,
+            deletedAt: nil
+        )
+    }
+
+    private func makeVideoViewModel(
+        file: IngestedFileMeta,
+        aiMarkdown: String
+    ) -> IngestionViewModel {
+        let meta = IngestionMetaResponse(
+            file: file,
+            job: makeJob(),
+            derivatives: [
+                IngestionDerivative(
+                    id: "d-video",
+                    kind: "video_original",
+                    storageKey: "storage/video",
+                    mime: "video/mp4",
+                    sizeBytes: 100
+                ),
+                IngestionDerivative(
+                    id: "d-ai",
+                    kind: "ai_md",
+                    storageKey: "storage/ai",
+                    mime: "text/markdown",
+                    sizeBytes: aiMarkdown.utf8.count
+                )
+            ],
+            recommendedViewer: "viewer_video"
+        )
+        let api = MockIngestionAPI(
+            listResult: .success(
+                IngestionListResponse(items: [makeListItem(id: file.id)])
+            ),
+            metaResult: .success(meta),
+            contentResult: .failure(MockError.forced),
+            contentResultsByKind: [
+                "video_original": .success(Data([0x00, 0x00, 0x00, 0x00])),
+                "ai_md": .success(Data(aiMarkdown.utf8))
+            ],
+            pinResult: .success(()),
+            youtubeResult: .success("youtube")
+        )
+        let tempDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let store = TemporaryFileStore(directory: tempDirectory)
+        let defaults = makeDefaults()
+        let ingestionStore = IngestionStore(
+            api: api,
+            cache: TestCacheClient(),
+            userDefaults: defaults
+        )
+        return IngestionViewModel(
+            api: api,
+            store: ingestionStore,
+            temporaryStore: store,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+    }
 
     private func makeListItem(id: String, status: String = "ready", stage: String = "done") -> IngestionListItem {
         IngestionListItem(
