@@ -5,19 +5,87 @@ import SwiftUI
 
 // MARK: - FileViewerComponents
 
+final class VideoPlayerState: ObservableObject {
+    @Published private(set) var isPlaying = false
+    @Published private(set) var hasStartedPlayback = false
+
+    let player: AVPlayer
+    private var cancellables: Set<AnyCancellable> = []
+
+    init(url: URL) {
+        player = AVPlayer(url: url)
+        observePlayer()
+    }
+
+    func play() {
+        player.play()
+    }
+
+    func pause() {
+        player.pause()
+    }
+
+    static func shouldShowPlayHint(
+        isPlaying: Bool,
+        hasStartedPlayback: Bool
+    ) -> Bool {
+        !isPlaying && !hasStartedPlayback
+    }
+
+    private func observePlayer() {
+        player.publisher(for: \.timeControlStatus, options: [.initial, .new])
+            .receive(on: RunLoop.main)
+            .sink { [weak self] status in
+                guard let self else { return }
+                let playing = status == .playing
+                isPlaying = playing
+                if playing {
+                    hasStartedPlayback = true
+                }
+            }
+            .store(in: &cancellables)
+    }
+}
+
 struct VideoPlayerContainer: View {
     let url: URL
     @State private var aspectRatio: CGFloat = 16.0 / 9.0
+    @StateObject private var playerState: VideoPlayerState
+
+    init(url: URL) {
+        self.url = url
+        _playerState = StateObject(wrappedValue: VideoPlayerState(url: url))
+    }
 
     var body: some View {
-        VideoPlayer(player: AVPlayer(url: url))
+        VideoPlayer(player: playerState.player)
             .aspectRatio(aspectRatio, contentMode: .fit)
             .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(DesignTokens.Spacing.lg)
             .padding(.top, SideBarMarkdownLayout.verticalPadding)
+            .overlay {
+                if VideoPlayerState.shouldShowPlayHint(
+                    isPlaying: playerState.isPlaying,
+                    hasStartedPlayback: playerState.hasStartedPlayback
+                ) {
+                    Button {
+                        playerState.play()
+                    } label: {
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 72, weight: .regular))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .shadow(color: .black.opacity(0.35), radius: 10, y: 3)
+                            .accessibilityLabel("Play video")
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
             .task {
                 await updateAspectRatio()
+            }
+            .onDisappear {
+                playerState.pause()
             }
     }
 
