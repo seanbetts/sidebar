@@ -1,4 +1,5 @@
 import PDFKit
+import AVKit
 #if os(macOS)
 import QuickLook
 import QuickLookUI
@@ -8,6 +9,14 @@ import QuickLook
 import SwiftUI
 
 #if os(macOS)
+struct NativeVideoPlayer: View {
+    let player: AVPlayer
+
+    var body: some View {
+        VideoPlayer(player: player)
+    }
+}
+
 struct PDFViewerContainer: View {
     let url: URL
     let controller: PDFViewerController
@@ -130,6 +139,28 @@ struct QuickLookPreview: NSViewRepresentable {
     }
 }
 #else
+struct NativeVideoPlayer: UIViewControllerRepresentable {
+    let player: AVPlayer
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let controller = AVPlayerViewController()
+        controller.player = player
+        controller.showsPlaybackControls = true
+        controller.entersFullScreenWhenPlaybackBegins = false
+        controller.exitsFullScreenWhenPlaybackEnds = false
+        return controller
+    }
+
+    func updateUIViewController(
+        _ controller: AVPlayerViewController,
+        context: Context
+    ) {
+        if controller.player !== player {
+            controller.player = player
+        }
+    }
+}
+
 struct PDFViewerContainer: View {
     let url: URL
     let controller: PDFViewerController
