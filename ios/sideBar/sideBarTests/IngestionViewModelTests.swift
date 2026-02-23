@@ -127,6 +127,60 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertFalse(transcript.contains("Generated:"))
     }
 
+    func testSelectVideoFileStripsDownloadSummaryAndKeepsTranscriptBody() async {
+        let file = makeVideoFile(id: "file-video-3")
+        let aiMarkdown = """
+        # Demo video
+
+        - Source: https://www.youtube.com/watch?v=abc123
+        - Type: Video (MP4)
+        - Filename: demo.mp4
+        - Download Duration (seconds): 42
+        - Generated: 2026-02-23T20:00:00Z
+
+        Download completed successfully.
+
+        ## Transcript
+        Transcript line
+        """
+        let viewModel = makeVideoViewModel(file: file, aiMarkdown: aiMarkdown)
+
+        await viewModel.selectFile(fileId: file.id)
+
+        let transcript = viewModel.viewerState?.text ?? ""
+        XCTAssertEqual(viewModel.viewerState?.kind, .video)
+        XCTAssertTrue(transcript.hasPrefix("## Demo video"))
+        XCTAssertTrue(transcript.contains("## Transcript"))
+        XCTAssertTrue(transcript.contains("Transcript line"))
+        XCTAssertFalse(transcript.contains("Source:"))
+        XCTAssertFalse(transcript.contains("Type:"))
+        XCTAssertFalse(transcript.contains("Filename:"))
+        XCTAssertFalse(transcript.contains("Download Duration"))
+        XCTAssertFalse(transcript.contains("Generated:"))
+        XCTAssertFalse(transcript.contains("Download completed successfully"))
+    }
+
+    func testSelectVideoFileTreatsSummaryOnlyAiMarkdownAsNoTranscript() async {
+        let file = makeVideoFile(id: "file-video-4")
+        let aiMarkdown = """
+        # Demo video
+
+        - Source: https://www.youtube.com/watch?v=abc123
+        - Type: Video (MP4)
+        - Filename: demo.mp4
+        - Download Duration (seconds): 42
+        - Generated: 2026-02-23T20:00:00Z
+
+        Download completed successfully.
+        """
+        let viewModel = makeVideoViewModel(file: file, aiMarkdown: aiMarkdown)
+
+        await viewModel.selectFile(fileId: file.id)
+
+        XCTAssertEqual(viewModel.viewerState?.kind, .video)
+        XCTAssertNil(viewModel.viewerState?.text)
+    }
+
     func testPreferredDownloadDerivativePrefersSourceOriginal() async {
         let viewModel = makeViewModelForYouTubeParsing()
         viewModel.selectedDerivativeKind = "text_original"

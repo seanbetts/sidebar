@@ -19,7 +19,8 @@ extension IngestionViewModel {
             )
             let rawText = String(bytes: data, encoding: .utf8) ?? ""
             let transcript = sanitizeVideoTranscript(rawText)
-            return transcript.isEmpty ? nil : transcript
+            guard !transcript.isEmpty else { return nil }
+            return isHeadingOnly(transcript) ? nil : transcript
         } catch {
             return nil
         }
@@ -154,7 +155,11 @@ extension IngestionViewModel {
         let candidate = normalizeMetadataCandidate(normalized)
         let prefixes = [
             "youtube url:",
+            "source:",
             "video title:",
+            "title:",
+            "type:",
+            "filename:",
             "generated:",
             "model:",
             "file size:",
@@ -162,10 +167,15 @@ extension IngestionViewModel {
             "audio tokens:",
             "original file:",
             "duration:",
+            "download duration:",
+            "download duration (seconds):",
             "download time:",
             "transcription time:"
         ]
-        return prefixes.contains(where: { candidate.hasPrefix($0) })
+        if prefixes.contains(where: { candidate.hasPrefix($0) }) {
+            return true
+        }
+        return isStatusLine(candidate)
     }
 
     private func normalizeMetadataCandidate(_ line: String) -> String {
@@ -183,5 +193,29 @@ extension IngestionViewModel {
             value = value.replacingOccurrences(of: "**", with: "")
         }
         return value.trimmingCharacters(in: .whitespaces)
+    }
+
+    private func isStatusLine(_ line: String) -> Bool {
+        let normalized = line
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let statuses = Set([
+            "download completed successfully.",
+            "download completed successfully",
+            "transcription completed successfully.",
+            "transcription completed successfully",
+            "================================================================================"
+        ])
+        return statuses.contains(normalized)
+    }
+
+    private func isHeadingOnly(_ text: String) -> Bool {
+        let lines = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard lines.count == 1, let first = lines.first else { return false }
+        return first.hasPrefix("#")
     }
 }

@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Download YouTube Video
+"""Download YouTube Video.
 
 Download YouTube videos or audio using yt-dlp with automatic format conversion.
 """
 
 import argparse
-import logging
+import contextlib
+import importlib.util
+import io
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -14,7 +17,6 @@ import sys
 import tempfile
 import time
 import urllib.parse
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,10 +44,16 @@ except Exception:
 # Default output directory (files workspace)
 DEFAULT_R2_DIR = "files/videos"
 logger = logging.getLogger(__name__)
+SCRIPT_ROOT = Path(__file__).resolve().parents[2]
+AUDIO_TRANSCRIBE_SCRIPT = (
+    SCRIPT_ROOT / "audio-transcribe" / "scripts" / "transcribe_audio.py"
+)
 
 
 def _resolve_js_runtimes() -> dict[str, dict[str, str]] | None:
-    value = (os.getenv("YT_DLP_JS_RUNTIMES") or os.getenv("YT_DLP_JS_RUNTIME") or "").strip()
+    value = (
+        os.getenv("YT_DLP_JS_RUNTIMES") or os.getenv("YT_DLP_JS_RUNTIME") or ""
+    ).strip()
     if value:
         runtimes: dict[str, dict[str, str]] = {}
         for entry in [item.strip() for item in value.split(",") if item.strip()]:
@@ -122,28 +130,81 @@ def _build_storage_payload(
     }
 
 
-def _build_ingestion_summary(
+def _build_ai_markdown_content(
     *,
     title: str,
-    url: str,
-    filename: str,
+    transcript: str | None,
     audio_only: bool,
-    duration_seconds: int,
 ) -> str:
-    media_type = "Audio (MP3)" if audio_only else "Video (MP4)"
-    generated_at = datetime.now(UTC).isoformat()
-    lines = [
-        f"# {title}",
-        "",
-        f"- Source: {url}",
-        f"- Type: {media_type}",
-        f"- Filename: {filename}",
-        f"- Download Duration (seconds): {duration_seconds}",
-        f"- Generated: {generated_at}",
-        "",
-        "Download completed successfully.",
-    ]
-    return "\n".join(lines)
+    heading = (title or "YouTube Media").strip()
+    transcript_body = (transcript or "").strip()
+    if transcript_body:
+        return f"## {heading}\n\n{transcript_body}"
+    fallback = (
+        "Transcript unavailable for this audio download."
+        if audio_only
+        else "Transcript unavailable for this video."
+    )
+    return f"## {heading}\n\n{fallback}"
+
+
+def _load_audio_transcriber():
+    if not AUDIO_TRANSCRIBE_SCRIPT.exists():
+        raise RuntimeError(
+            f"Audio transcription script not found at {AUDIO_TRANSCRIBE_SCRIPT}"
+        )
+    spec = importlib.util.spec_from_file_location(
+        "audio_transcribe_skill", AUDIO_TRANSCRIBE_SCRIPT
+    )
+    if not spec or not spec.loader:
+        raise RuntimeError("Failed to load audio transcription module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    transcriber = getattr(module, "transcribe_audio", None)
+    if not callable(transcriber):
+        raise RuntimeError("transcribe_audio function not found")
+    return transcriber
+
+
+def _transcribe_downloaded_media(
+    *,
+    local_output: Path,
+    user_id: str,
+) -> tuple[str, dict[str, Any]]:
+    transcribe_audio = _load_audio_transcriber()
+    temp_root = Path(tempfile.mkdtemp(prefix="yt-download-transcript-"))
+    try:
+        # Suppress verbose transcriber progress output so tool JSON remains clean.
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = transcribe_audio(
+                str(local_output),
+                language=None,
+                output_dir=None,
+                user_id=user_id,
+                temp_dir=str(temp_root),
+                keep_local=False,
+                upload_result=False,
+                response_format="json",
+            )
+    finally:
+        shutil.rmtree(temp_root, ignore_errors=True)
+
+    transcript = str(result.get("transcript") or "").strip()
+    metadata: dict[str, Any] = {}
+    model = result.get("model")
+    if model:
+        metadata["model"] = str(model)
+    usage = result.get("usage")
+    if isinstance(usage, dict):
+        for key in (
+            "total_tokens",
+            "input_tokens",
+            "output_tokens",
+        ):
+            value = usage.get(key)
+            if value is not None:
+                metadata[f"transcription_{key}"] = value
+    return transcript, metadata
 
 
 def _store_downloaded_output(
@@ -158,6 +219,34 @@ def _store_downloaded_output(
     duration_seconds: int,
 ) -> tuple[Any, dict[str, Any]]:
     content_type = "audio/mpeg" if audio_only else "video/mp4"
+    transcript = ""
+    transcript_meta: dict[str, Any] = {}
+    transcript_error: str | None = None
+    if not audio_only:
+        try:
+            transcript, transcript_meta = _transcribe_downloaded_media(
+                local_output=local_output,
+                user_id=user_id,
+            )
+        except Exception as exc:
+            transcript_error = str(exc)
+            logger.warning("Transcription unavailable for %s: %s", local_output, exc)
+    source_metadata: dict[str, Any] = {
+        "provider": "youtube-download",
+        "youtube_url": processed_url,
+        "audio_only": audio_only,
+    }
+    if transcript.strip():
+        source_metadata["transcript_status"] = "ready"
+    elif audio_only:
+        source_metadata["transcript_status"] = "skipped"
+    else:
+        source_metadata["transcript_status"] = "failed"
+        if transcript_error:
+            source_metadata["transcript_error"] = transcript_error
+    if transcript_meta.get("model"):
+        source_metadata["transcription_model"] = transcript_meta["model"]
+
     if (
         create_ingested_file
         and write_derivative
@@ -170,11 +259,7 @@ def _store_downloaded_output(
             content_type,
             size=local_output.stat().st_size,
             source_url=processed_url,
-            source_metadata={
-                "provider": "youtube-download",
-                "youtube_url": processed_url,
-                "audio_only": audio_only,
-            },
+            source_metadata=source_metadata,
             path=r2_path,
         )
         derivative = write_derivative(
@@ -184,13 +269,18 @@ def _store_downloaded_output(
             kind="audio_original" if audio_only else "video_original",
             content_type=content_type,
         )
-        ai_content = _build_ingestion_summary(
+        ai_content = _build_ai_markdown_content(
             title=title,
-            url=processed_url,
-            filename=filename,
+            transcript=transcript,
             audio_only=audio_only,
-            duration_seconds=duration_seconds,
         )
+        ingestion_meta: dict[str, Any] = {
+            "skill": "youtube-download",
+            "duration_seconds": duration_seconds,
+            "size_bytes": local_output.stat().st_size,
+        }
+        if transcript_meta.get("model"):
+            ingestion_meta["model"] = transcript_meta["model"]
         ai_derivative = write_ai_markdown(
             user_id,
             record,
@@ -198,11 +288,7 @@ def _store_downloaded_output(
             frontmatter={
                 "source_url": processed_url,
                 "source_type": "youtube-download",
-                "ingestion": {
-                    "skill": "youtube-download",
-                    "duration_seconds": duration_seconds,
-                    "size_bytes": local_output.stat().st_size,
-                },
+                "ingestion": ingestion_meta,
             },
             derivative_items=[
                 {
