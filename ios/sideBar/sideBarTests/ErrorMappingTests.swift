@@ -51,7 +51,7 @@ final class ErrorMappingTests: XCTestCase {
 
     func testMapsCancelledRequestWithRegistryAsCertPinError() {
         // Simulate a cert-pinning cancellation recorded in the registry.
-        let host = "api.sidebar.ai"
+        let host = "api.trysidebar.ai"
         CertPinCancellationRegistry.shared.record(host: host)
         let error = URLError(
             .cancelled,

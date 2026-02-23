@@ -15,7 +15,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESOURCES_DIR="$SCRIPT_DIR/sideBar/sideBar/Resources"
-HOST="${1:-sidebar-api.fly.dev}"
+HOST="${1:-api.trysidebar.ai}"
 PORT="${2:-443}"
 WARN_DAYS=21
 

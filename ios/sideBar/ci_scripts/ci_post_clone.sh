@@ -50,7 +50,7 @@ if ! [[ "$APP_GROUP_ID" =~ ^(group\.[A-Za-z0-9.-]+|[A-Z0-9]{10}\.[A-Za-z0-9.-]+)
     echo "Error: APP_GROUP_ID must be a valid app group identifier (got: '$APP_GROUP_ID')"
     exit 1
 fi
-ASSOCIATED_DOMAINS="${ASSOCIATED_DOMAINS:-webcredentials:sidebar.seanbetts.com}"
+ASSOCIATED_DOMAINS="${ASSOCIATED_DOMAINS:-webcredentials:app.trysidebar.ai}"
 
 # Escape forward slashes for xcconfig format (// is treated as comment)
 escape_url() {

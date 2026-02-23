@@ -48,7 +48,7 @@ Runtime values come from `.xcconfig` and are exposed via Info.plist build settin
 - `APP_GROUP_ID`
 - `KEYCHAIN_ACCESS_GROUP`
 - `KEYCHAIN_SERVICE`
-- `ASSOCIATED_DOMAINS` (for example `webcredentials:sidebar.seanbetts.com`)
+- `ASSOCIATED_DOMAINS` (for example `webcredentials:app.trysidebar.ai`)
 - `R2_ENDPOINT`
 - `R2_BUCKET`
 - `R2_FAVICON_BUCKET`

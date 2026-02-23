@@ -25,8 +25,8 @@ final class CertificatePinningDelegateTests: XCTestCase {
     func testExactPatternMatchesHostCaseInsensitively() {
         XCTAssertTrue(
             CertificatePinningDelegate.hostMatchesPinnedPattern(
-                host: "API.Sidebar.AI",
-                pattern: "api.sidebar.ai"
+                host: "API.TRYSIDEBAR.AI",
+                pattern: "api.trysidebar.ai"
             )
         )
     }
@@ -34,7 +34,7 @@ final class CertificatePinningDelegateTests: XCTestCase {
     func testExactPatternRejectsDifferentHost() {
         XCTAssertFalse(
             CertificatePinningDelegate.hostMatchesPinnedPattern(
-                host: "api.sidebar.ai",
+                host: "api.trysidebar.ai",
                 pattern: "api.other.ai"
             )
         )
@@ -44,23 +44,23 @@ final class CertificatePinningDelegateTests: XCTestCase {
 
     func testNormalizedHostPatternAcceptsExactDomain() {
         XCTAssertEqual(
-            CertificatePinningDelegate.normalizedHostPattern(from: "api.sidebar.ai"),
-            "api.sidebar.ai"
+            CertificatePinningDelegate.normalizedHostPattern(from: "api.trysidebar.ai"),
+            "api.trysidebar.ai"
         )
     }
 
     func testNormalizedHostPatternAcceptsWildcardDomain() {
         // Wildcard cert subjects must not be rejected by the character check.
         XCTAssertEqual(
-            CertificatePinningDelegate.normalizedHostPattern(from: "*.sidebar.ai"),
-            "*.sidebar.ai"
+            CertificatePinningDelegate.normalizedHostPattern(from: "*.trysidebar.ai"),
+            "*.trysidebar.ai"
         )
     }
 
     func testNormalizedHostPatternAcceptsWildcardCaseInsensitively() {
         XCTAssertEqual(
-            CertificatePinningDelegate.normalizedHostPattern(from: "*.Sidebar.AI"),
-            "*.sidebar.ai"
+            CertificatePinningDelegate.normalizedHostPattern(from: "*.TrySidebar.AI"),
+            "*.trysidebar.ai"
         )
     }
 
@@ -110,25 +110,25 @@ final class CertificatePinningDelegateTests: XCTestCase {
 
     func testRegistryReturnsFalseForUnrecordedHost() {
         let registry = CertPinCancellationRegistry(ttl: 5)
-        XCTAssertFalse(registry.wasCancelled(host: "api.sidebar.ai"))
+        XCTAssertFalse(registry.wasCancelled(host: "api.trysidebar.ai"))
     }
 
     func testRegistryReturnsTrueAfterRecord() {
         let registry = CertPinCancellationRegistry(ttl: 5)
-        registry.record(host: "api.sidebar.ai")
-        XCTAssertTrue(registry.wasCancelled(host: "api.sidebar.ai"))
+        registry.record(host: "api.trysidebar.ai")
+        XCTAssertTrue(registry.wasCancelled(host: "api.trysidebar.ai"))
     }
 
     func testRegistryReturnsFalseForDifferentHost() {
         let registry = CertPinCancellationRegistry(ttl: 5)
-        registry.record(host: "api.sidebar.ai")
-        XCTAssertFalse(registry.wasCancelled(host: "other.sidebar.ai"))
+        registry.record(host: "api.trysidebar.ai")
+        XCTAssertFalse(registry.wasCancelled(host: "other.trysidebar.ai"))
     }
 
     func testRegistryReturnsFalseAfterTTLExpires() {
         let registry = CertPinCancellationRegistry(ttl: 0.05)  // 50ms TTL
-        registry.record(host: "api.sidebar.ai")
+        registry.record(host: "api.trysidebar.ai")
         Thread.sleep(forTimeInterval: 0.1)
-        XCTAssertFalse(registry.wasCancelled(host: "api.sidebar.ai"))
+        XCTAssertFalse(registry.wasCancelled(host: "api.trysidebar.ai"))
     }
 }

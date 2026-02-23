@@ -18,7 +18,7 @@ R2_FAVICON_PUBLIC_BASE_URL = https:\/\/favicons.yourdomain.com
 APP_GROUP_ID = group.ai.sidebar.sidebar
 KEYCHAIN_ACCESS_GROUP = $(AppIdentifierPrefix)ai.sidebar.sidebar
 KEYCHAIN_SERVICE = ai.sidebar.sidebar
-ASSOCIATED_DOMAINS = webcredentials:sidebar.seanbetts.com
+ASSOCIATED_DOMAINS = webcredentials:app.trysidebar.ai
 
 INFOPLIST_KEY_API_BASE_URL = $(API_BASE_URL)
 INFOPLIST_KEY_SUPABASE_URL = $(SUPABASE_URL)
