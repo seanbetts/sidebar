@@ -234,10 +234,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.emitShortcutAction(.newItem)
         XCTAssertEqual(environment.shortcutActionEvent?.action, .newItem)
 
-        await Task.yield()
-        await Task.yield()
-
-        XCTAssertNil(environment.shortcutActionEvent)
+        await waitForShortcutActionEventToClear(environment)
     }
 
     func testActiveShortcutContextsPreferPlatformResolutionSection() async {
@@ -416,6 +413,31 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.tasksViewModel.reset()
         environment.chatViewModel.reset()
         environment.websitesViewModel.pendingWebsite = nil
+    }
+
+    private func waitForShortcutActionEventToClear(
+        _ environment: AppEnvironment,
+        timeoutNanoseconds: UInt64 = 500_000_000,
+        pollNanoseconds: UInt64 = 10_000_000,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        let deadline = DispatchTime.now().uptimeNanoseconds + timeoutNanoseconds
+
+        while DispatchTime.now().uptimeNanoseconds < deadline {
+            if environment.shortcutActionEvent == nil {
+                return
+            }
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
+
+        XCTAssertNil(
+            environment.shortcutActionEvent,
+            "Expected shortcut action event to clear after broadcast.",
+            file: file,
+            line: line
+        )
     }
 }
 
