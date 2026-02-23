@@ -216,7 +216,8 @@ def _store_downloaded_output(
     title: str,
     filename: str,
     audio_only: bool,
-    duration_seconds: int,
+    duration_seconds: int | None,
+    download_duration_seconds: int,
 ) -> tuple[Any, dict[str, Any]]:
     content_type = "audio/mpeg" if audio_only else "video/mp4"
     transcript = ""
@@ -235,7 +236,10 @@ def _store_downloaded_output(
         "provider": "youtube-download",
         "youtube_url": processed_url,
         "audio_only": audio_only,
+        "download_duration_seconds": download_duration_seconds,
     }
+    if duration_seconds is not None:
+        source_metadata["duration_seconds"] = duration_seconds
     if transcript.strip():
         source_metadata["transcript_status"] = "ready"
     elif audio_only:
@@ -276,9 +280,11 @@ def _store_downloaded_output(
         )
         ingestion_meta: dict[str, Any] = {
             "skill": "youtube-download",
-            "duration_seconds": duration_seconds,
             "size_bytes": local_output.stat().st_size,
+            "download_duration_seconds": download_duration_seconds,
         }
+        if duration_seconds is not None:
+            ingestion_meta["duration_seconds"] = duration_seconds
         if transcript_meta.get("model"):
             ingestion_meta["model"] = transcript_meta["model"]
         ai_derivative = write_ai_markdown(
@@ -662,13 +668,18 @@ def download_youtube(
                     verify_output(str(output_path), quiet=quiet)
 
         end_time = time.time()
-        duration = end_time - start_time
+        download_duration_seconds = int(end_time - start_time)
 
         # Get final filename (postprocessors may change extension)
         final_filename = Path(filename).name
         if audio_only:
             # FFmpegExtractAudio changes extension to .mp3
             final_filename = Path(filename).stem + ".mp3"
+
+        video_duration_seconds: int | None = None
+        raw_duration = info.get("duration")
+        if isinstance(raw_duration, (int, float)) and raw_duration > 0:
+            video_duration_seconds = int(raw_duration)
 
         local_output = save_path / final_filename
         if not local_output.exists():
@@ -686,7 +697,8 @@ def download_youtube(
                 title=title,
                 filename=final_filename,
                 audio_only=audio_only,
-                duration_seconds=int(duration),
+                duration_seconds=video_duration_seconds,
+                download_duration_seconds=download_duration_seconds,
             )
 
         if not keep_local and temp_dir is None:
@@ -701,7 +713,9 @@ def download_youtube(
             "local_path": str(local_output) if keep_local or not upload else None,
             "audio_only": audio_only,
             "is_playlist": is_playlist,
-            "duration_seconds": int(duration),
+            "duration_seconds": video_duration_seconds,
+            "video_duration_seconds": video_duration_seconds,
+            "download_duration_seconds": download_duration_seconds,
             "success": True,
             **storage_payload,
         }
@@ -752,9 +766,17 @@ def format_human_readable(result: dict[str, Any]) -> str:
     lines.append(f"Saved to: {result.get('r2_path') or result['output_dir']}")
     lines.append(f"Filename: {result['filename']}")
 
-    minutes = result["duration_seconds"] // 60
-    seconds = result["duration_seconds"] % 60
-    lines.append(f"Duration: {minutes}m {seconds}s")
+    media_duration = result.get("duration_seconds")
+    if isinstance(media_duration, (int, float)) and media_duration >= 0:
+        minutes = int(media_duration) // 60
+        seconds = int(media_duration) % 60
+        lines.append(f"Media duration: {minutes}m {seconds}s")
+    else:
+        lines.append("Media duration: Unknown")
+    download_seconds = int(result.get("download_duration_seconds") or 0)
+    minutes = download_seconds // 60
+    seconds = download_seconds % 60
+    lines.append(f"Download time: {minutes}m {seconds}s")
 
     lines.append("=" * 80)
 

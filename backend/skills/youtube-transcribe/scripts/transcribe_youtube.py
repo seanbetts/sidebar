@@ -296,10 +296,16 @@ def transcribe_youtube(
             user_id, uploaded_record, transcribe_data
         )
 
-        # Calculate transcription duration
-        transcription_duration = (
-            int(time.time() - start_time) - download_data["duration_seconds"]
+        # `youtube-download` now reports media duration separately from download time.
+        download_duration_seconds = int(
+            download_data.get("download_duration_seconds")
+            or download_data.get("duration_seconds")
+            or 0
         )
+        transcription_duration = max(
+            0, int(time.time() - start_time) - download_duration_seconds
+        )
+        video_duration_seconds = download_data.get("video_duration_seconds")
 
         # Stage 3: Cleanup (if not keeping audio)
         audio_kept = keep_audio
@@ -357,7 +363,8 @@ def transcribe_youtube(
             "transcription_usage_audio_tokens": usage_details.get("audio_tokens"),
             "language": language,
             "model": model,
-            "download_duration_seconds": download_data["duration_seconds"],
+            "download_duration_seconds": download_duration_seconds,
+            "video_duration_seconds": video_duration_seconds,
             "transcription_duration_seconds": transcription_duration,
             "file_size": transcribe_data.get("file_size", "Unknown"),
             "audio_duration": transcribe_data.get("duration", "Unknown"),

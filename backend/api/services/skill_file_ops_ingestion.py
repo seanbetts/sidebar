@@ -42,6 +42,7 @@ _FRONTMATTER_INGESTION_KEYS = (
     "model",
     "language",
     "duration_seconds",
+    "download_duration_seconds",
     "size_bytes",
 )
 

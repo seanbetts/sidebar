@@ -164,7 +164,8 @@ def test_store_downloaded_output_uses_ingestion_helpers(monkeypatch, tmp_path):
         title="Video Title",
         filename="download.mp4",
         audio_only=False,
-        duration_seconds=5,
+        duration_seconds=135,
+        download_duration_seconds=5,
     )
 
     assert returned_record is record
@@ -174,12 +175,15 @@ def test_store_downloaded_output_uses_ingestion_helpers(monkeypatch, tmp_path):
     assert create_calls["path"] == "files/videos/download.mp4"
     assert create_calls["source_url"] == "https://www.youtube.com/watch?v=abc123"
     assert create_calls["source_metadata"]["provider"] == "youtube-download"
+    assert create_calls["source_metadata"]["duration_seconds"] == 135
+    assert create_calls["source_metadata"]["download_duration_seconds"] == 5
     assert create_calls["source_metadata"]["transcript_status"] == "ready"
     assert create_calls["source_metadata"]["transcription_model"] == "gpt-4o-transcribe"
     assert derivative_calls["kind"] == "video_original"
     assert ai_calls["frontmatter"]["ingestion"]["skill"] == "youtube-download"
     assert ai_calls["frontmatter"]["ingestion"]["model"] == "gpt-4o-transcribe"
-    assert ai_calls["frontmatter"]["ingestion"]["duration_seconds"] == 5
+    assert ai_calls["frontmatter"]["ingestion"]["duration_seconds"] == 135
+    assert ai_calls["frontmatter"]["ingestion"]["download_duration_seconds"] == 5
     assert ai_calls["content"].startswith("## Video Title\n\n")
     assert "First transcript line." in ai_calls["content"]
     assert "Download completed successfully." not in ai_calls["content"]
@@ -223,7 +227,8 @@ def test_store_downloaded_output_falls_back_to_upload_file(monkeypatch, tmp_path
         title="Video Title",
         filename="download.mp4",
         audio_only=False,
-        duration_seconds=2,
+        duration_seconds=42,
+        download_duration_seconds=2,
     )
 
     assert returned_record is record
@@ -299,7 +304,8 @@ def test_store_downloaded_output_marks_transcript_failure(monkeypatch, tmp_path)
         title="Video Title",
         filename="download.mp4",
         audio_only=False,
-        duration_seconds=5,
+        duration_seconds=135,
+        download_duration_seconds=5,
     )
 
     assert create_calls["source_metadata"]["transcript_status"] == "failed"
@@ -307,6 +313,25 @@ def test_store_downloaded_output_marks_transcript_failure(monkeypatch, tmp_path)
     assert ai_calls["content"].startswith("## Video Title")
     assert "Transcript unavailable for this video." in ai_calls["content"]
     assert ai_calls["frontmatter"]["ingestion"]["skill"] == "youtube-download"
+
+
+def test_format_human_readable_prefers_media_duration():
+    module = _load_download_module()
+    rendered = module.format_human_readable(
+        {
+            "title": "Video Title",
+            "url": "https://www.youtube.com/watch?v=abc123",
+            "audio_only": False,
+            "is_playlist": False,
+            "output_dir": "files/videos",
+            "filename": "video.mp4",
+            "duration_seconds": 135,
+            "download_duration_seconds": 7,
+        }
+    )
+
+    assert "Media duration: 2m 15s" in rendered
+    assert "Download time: 0m 7s" in rendered
 
 
 def test_parse_ffprobe_json_tolerates_prefixed_noise():
