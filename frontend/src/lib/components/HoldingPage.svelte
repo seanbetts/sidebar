@@ -42,13 +42,40 @@
 	}
 
 	.card {
+		position: relative;
+		overflow: hidden;
 		width: min(100%, 34rem);
 		padding: 2rem;
-		border: 1px solid var(--color-border);
-		border-radius: 1rem;
-		background: var(--color-card);
-		box-shadow: 0 10px 30px rgb(15 23 42 / 0.14);
+		border: 1px solid rgb(255 255 255 / 0.5);
+		border-radius: 1.25rem;
+		background:
+			linear-gradient(160deg, rgb(255 255 255 / 0.65) 0%, rgb(255 255 255 / 0.35) 100%),
+			var(--color-card);
+		backdrop-filter: blur(18px) saturate(140%);
+		-webkit-backdrop-filter: blur(18px) saturate(140%);
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.65),
+			0 18px 45px rgb(15 23 42 / 0.16);
 		text-align: center;
+	}
+
+	.card::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background:
+			radial-gradient(circle at 15% 0%, rgb(255 255 255 / 0.5) 0, transparent 42%),
+			radial-gradient(circle at 100% 100%, rgb(255 255 255 / 0.2) 0, transparent 48%);
+	}
+
+	.card::after {
+		content: '';
+		position: absolute;
+		inset: 1px;
+		border-radius: calc(1.25rem - 1px);
+		pointer-events: none;
+		border: 1px solid rgb(255 255 255 / 0.22);
 	}
 
 	.logo {
@@ -85,11 +112,15 @@
 		min-height: 2.75rem;
 		padding: 0 1.15rem;
 		border-radius: 999px;
-		background: var(--color-primary);
+		border: 1px solid rgb(255 255 255 / 0.45);
+		background:
+			linear-gradient(180deg, rgb(255 255 255 / 0.2) 0, transparent 100%), var(--color-primary);
 		color: var(--color-primary-foreground);
 		font-size: 0.95rem;
 		font-weight: 500;
 		text-decoration: none;
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
 	}
 
 	.primary-cta:hover {
@@ -101,5 +132,28 @@
 			radial-gradient(circle at 10% 10%, rgb(59 130 246 / 0.18) 0, transparent 45%),
 			radial-gradient(circle at 85% 20%, rgb(99 102 241 / 0.18) 0, transparent 40%),
 			var(--color-background);
+	}
+
+	:global(.dark) .card {
+		border-color: rgb(148 163 184 / 0.24);
+		background:
+			linear-gradient(165deg, rgb(15 23 42 / 0.54) 0%, rgb(15 23 42 / 0.38) 100%), var(--color-card);
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.1),
+			0 18px 45px rgb(2 6 23 / 0.38);
+	}
+
+	:global(.dark) .card::before {
+		background:
+			radial-gradient(circle at 15% 0%, rgb(148 163 184 / 0.22) 0, transparent 42%),
+			radial-gradient(circle at 100% 100%, rgb(59 130 246 / 0.2) 0, transparent 48%);
+	}
+
+	:global(.dark) .card::after {
+		border-color: rgb(148 163 184 / 0.16);
+	}
+
+	:global(.dark) .primary-cta {
+		border-color: rgb(148 163 184 / 0.35);
 	}
 </style>
