@@ -71,6 +71,30 @@ jobs:
           conn.close()
           PY
 
+      - name: Add Supabase auth.uid shim for vanilla Postgres
+        working-directory: backend
+        run: |
+          uv run python - <<'PY'
+          import psycopg2
+
+          conn = psycopg2.connect("postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test")
+          conn.autocommit = True
+          with conn.cursor() as cur:
+              cur.execute("CREATE SCHEMA IF NOT EXISTS auth")
+              cur.execute(
+                  """
+                  CREATE OR REPLACE FUNCTION auth.uid()
+                  RETURNS uuid
+                  LANGUAGE sql
+                  STABLE
+                  AS $$
+                    SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
+                  $$;
+                  """
+              )
+          conn.close()
+          PY
+
       - name: Apply migrations
         working-directory: backend
         run: DATABASE_URL_DIRECT="${DATABASE_URL}" uv run alembic -c api/alembic.ini upgrade head
