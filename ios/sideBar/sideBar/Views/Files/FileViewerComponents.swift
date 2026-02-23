@@ -7,14 +7,76 @@ import SwiftUI
 
 final class VideoPlayerState: ObservableObject {
     let player: AVPlayer
+    private var cancellables: Set<AnyCancellable> = []
+    #if os(iOS)
+    private var muteStateObserver: NSObjectProtocol?
+    private var isSyncingMuteState = false
+    #endif
 
     init(url: URL) {
         player = AVPlayer(url: url)
+        configureNativeMuteSynchronization()
+    }
+
+    deinit {
+        #if os(iOS)
+        if let muteStateObserver {
+            NotificationCenter.default.removeObserver(muteStateObserver)
+        }
+        #endif
     }
 
     func pause() {
         player.pause()
     }
+
+    private func configureNativeMuteSynchronization() {
+        #if os(iOS)
+        guard #available(iOS 26.0, *) else { return }
+        let session = AVAudioSession.sharedInstance()
+        syncPlayerMuteFromSession(session)
+        muteStateObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.outputMuteStateChangeNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] _ in
+            self?.syncPlayerMuteFromSession(session)
+        }
+        player.publisher(for: \.isMuted, options: [.new])
+            .receive(on: RunLoop.main)
+            .sink { [weak self] muted in
+                self?.syncSessionMuteFromPlayer(muted: muted)
+            }
+            .store(in: &cancellables)
+        #endif
+    }
+
+    #if os(iOS)
+    @available(iOS 26.0, *)
+    private func syncPlayerMuteFromSession(_ session: AVAudioSession) {
+        guard !isSyncingMuteState else { return }
+        isSyncingMuteState = true
+        defer { isSyncingMuteState = false }
+        let outputMuted = session.isOutputMuted
+        if player.isMuted != outputMuted {
+            player.isMuted = outputMuted
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private func syncSessionMuteFromPlayer(muted: Bool) {
+        guard !isSyncingMuteState else { return }
+        let session = AVAudioSession.sharedInstance()
+        guard session.isOutputMuted != muted else { return }
+        isSyncingMuteState = true
+        defer { isSyncingMuteState = false }
+        do {
+            try session.setOutputMuted(muted)
+        } catch {
+            player.isMuted = muted
+        }
+    }
+    #endif
 }
 
 struct VideoPlayerContainer: View {

@@ -89,10 +89,6 @@ final class AudioPlayerViewModel: ObservableObject {
 
     private func preparePlayer() {
         do {
-            #if os(iOS)
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-            try AVAudioSession.sharedInstance().setActive(true)
-            #endif
             let audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer.prepareToPlay()
             player = audioPlayer
