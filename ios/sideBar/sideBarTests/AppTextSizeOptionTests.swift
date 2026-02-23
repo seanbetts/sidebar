@@ -1,5 +1,4 @@
 import XCTest
-import SwiftUI
 @testable import sideBar
 
 final class AppTextSizeOptionTests: XCTestCase {
@@ -7,11 +6,11 @@ final class AppTextSizeOptionTests: XCTestCase {
         XCTAssertEqual(AppTextSizeOption.resolved(from: "unknown"), .system)
     }
 
-    func testDynamicTypeSizeMapping() {
-        XCTAssertNil(AppTextSizeOption.system.dynamicTypeSize)
-        XCTAssertEqual(AppTextSizeOption.small.dynamicTypeSize, .medium)
-        XCTAssertEqual(AppTextSizeOption.medium.dynamicTypeSize, .large)
-        XCTAssertEqual(AppTextSizeOption.large.dynamicTypeSize, .xLarge)
+    func testAllOptionsAreAvailableForSelection() {
+        XCTAssertEqual(
+            Set(AppTextSizeOption.allCases),
+            Set([.system, .small, .medium, .large])
+        )
     }
 
     func testScaleMultiplierMapping() {

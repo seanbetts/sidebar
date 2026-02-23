@@ -9,6 +9,14 @@ struct ChatInputUIKitView: UIViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
+    @ScaledMetric(relativeTo: .body) private var textInsetTop: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var textInsetBottom: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var textInsetLeading: CGFloat = 44
+    @ScaledMetric(relativeTo: .body) private var textInsetTrailing: CGFloat = 48
+    @ScaledMetric(relativeTo: .body) private var sideButtonSize: CGFloat = 28
+    @ScaledMetric(relativeTo: .body) private var sideButtonHorizontalInset: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var sideButtonBottomInset: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var placeholderTopInset: CGFloat = 8
     let resetToken: UUID
     let isEnabled: Bool
     let isSendEnabled: Bool
@@ -28,7 +36,12 @@ struct ChatInputUIKitView: UIViewRepresentable {
         textView.adjustsFontForContentSizeCategory = usesSystemTextSize
         textView.backgroundColor = .clear
         textView.textColor = UIColor.label
-        textView.textContainerInset = UIEdgeInsets(top: 12, left: 44, bottom: 10, right: 48)
+        textView.textContainerInset = UIEdgeInsets(
+            top: textInsetTop,
+            left: textInsetLeading,
+            bottom: textInsetBottom,
+            right: textInsetTrailing
+        )
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false
         textView.returnKeyType = .send
@@ -53,7 +66,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
 
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "arrow.up.circle.fill"), for: .normal)
-        button.layer.cornerRadius = 14
+        button.layer.cornerRadius = sideButtonSize / 2
         button.clipsToBounds = true
         button.addTarget(context.coordinator, action: #selector(Coordinator.didTapSend), for: .touchUpInside)
         button.accessibilityLabel = "Send message"
@@ -76,17 +89,20 @@ struct ChatInputUIKitView: UIViewRepresentable {
             textView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             textView.topAnchor.constraint(equalTo: containerView.topAnchor),
             textView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 44),
-            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -48),
-            placeholderLabel.topAnchor.constraint(greaterThanOrEqualTo: textView.topAnchor, constant: 8),
-            attachButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
-            attachButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
-            attachButton.widthAnchor.constraint(equalToConstant: 28),
-            attachButton.heightAnchor.constraint(equalToConstant: 28),
-            button.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
-            button.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
-            button.widthAnchor.constraint(equalToConstant: 28),
-            button.heightAnchor.constraint(equalToConstant: 28)
+            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: textInsetLeading),
+            placeholderLabel.trailingAnchor.constraint(
+                lessThanOrEqualTo: textView.trailingAnchor,
+                constant: -textInsetTrailing
+            ),
+            placeholderLabel.topAnchor.constraint(greaterThanOrEqualTo: textView.topAnchor, constant: placeholderTopInset),
+            attachButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: sideButtonHorizontalInset),
+            attachButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -sideButtonBottomInset),
+            attachButton.widthAnchor.constraint(equalToConstant: sideButtonSize),
+            attachButton.heightAnchor.constraint(equalToConstant: sideButtonSize),
+            button.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -sideButtonHorizontalInset),
+            button.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -sideButtonBottomInset),
+            button.widthAnchor.constraint(equalToConstant: sideButtonSize),
+            button.heightAnchor.constraint(equalToConstant: sideButtonSize)
         ])
         placeholderCenter.isActive = true
 

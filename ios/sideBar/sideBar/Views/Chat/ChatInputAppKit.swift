@@ -9,14 +9,18 @@ struct ChatInputAppKitView: NSViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
+    @ScaledMetric(relativeTo: .body) private var controlBarHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .body) private var textHorizontalInset: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var textVerticalInset: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var sideButtonInset: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var sideButtonSize: CGFloat = 48
+    @ScaledMetric(relativeTo: .body) private var sideButtonSymbolSize: CGFloat = 28
+    @ScaledMetric(relativeTo: .body) private var cornerRadiusAdjustment: CGFloat = 2
     let resetToken: UUID
     let isEnabled: Bool
     let isSendEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
-    private let controlBarHeight: CGFloat = 44
-    private let textHorizontalInset: CGFloat = 16
-    private let textVerticalInset: CGFloat = 16
     let onSend: () -> Void
     let onAttach: () -> Void
 
@@ -74,7 +78,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
             systemSymbolName: "paperclip.circle.fill",
             accessibilityDescription: nil
         )?.withSymbolConfiguration(
-            NSImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
+            NSImage.SymbolConfiguration(pointSize: sideButtonSymbolSize, weight: .semibold)
         )
         attachButton.setAccessibilityLabel("Attach file")
         attachButton.target = context.coordinator
@@ -87,10 +91,10 @@ struct ChatInputAppKitView: NSViewRepresentable {
             systemSymbolName: "arrow.up.circle.fill",
             accessibilityDescription: nil
         )?.withSymbolConfiguration(
-            NSImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
+            NSImage.SymbolConfiguration(pointSize: sideButtonSymbolSize, weight: .semibold)
         )
         button.wantsLayer = true
-        button.layer?.cornerRadius = 22
+        button.layer?.cornerRadius = max(0, (sideButtonSize / 2) - cornerRadiusAdjustment)
         button.target = context.coordinator
         button.action = #selector(Coordinator.didTapSend)
         button.setAccessibilityLabel("Send message")
@@ -118,14 +122,14 @@ struct ChatInputAppKitView: NSViewRepresentable {
             controlBar.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             controlBar.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             controlBar.heightAnchor.constraint(equalToConstant: controlBarHeight),
-            attachButton.leadingAnchor.constraint(equalTo: controlBar.leadingAnchor, constant: 6),
+            attachButton.leadingAnchor.constraint(equalTo: controlBar.leadingAnchor, constant: sideButtonInset),
             attachButton.centerYAnchor.constraint(equalTo: controlBar.centerYAnchor),
-            attachButton.widthAnchor.constraint(equalToConstant: 48),
-            attachButton.heightAnchor.constraint(equalToConstant: 48),
-            button.trailingAnchor.constraint(equalTo: controlBar.trailingAnchor, constant: -6),
+            attachButton.widthAnchor.constraint(equalToConstant: sideButtonSize),
+            attachButton.heightAnchor.constraint(equalToConstant: sideButtonSize),
+            button.trailingAnchor.constraint(equalTo: controlBar.trailingAnchor, constant: -sideButtonInset),
             button.centerYAnchor.constraint(equalTo: controlBar.centerYAnchor),
-            button.widthAnchor.constraint(equalToConstant: 48),
-            button.heightAnchor.constraint(equalToConstant: 48)
+            button.widthAnchor.constraint(equalToConstant: sideButtonSize),
+            button.heightAnchor.constraint(equalToConstant: sideButtonSize)
         ])
 
         context.coordinator.textView = textView

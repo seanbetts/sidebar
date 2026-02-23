@@ -49,7 +49,7 @@ struct FilesIngestionRow: View, Equatable {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(displayName)
                         .appFont(.subheadline)
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                     if let statusText {
                         Text(statusText)

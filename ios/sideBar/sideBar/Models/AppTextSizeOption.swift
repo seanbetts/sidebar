@@ -22,19 +22,6 @@ public enum AppTextSizeOption: String, CaseIterable, Identifiable {
         }
     }
 
-    var dynamicTypeSize: DynamicTypeSize? {
-        switch self {
-        case .system:
-            return nil
-        case .small:
-            return .medium
-        case .medium:
-            return .large
-        case .large:
-            return .xLarge
-        }
-    }
-
     var scaleMultiplier: CGFloat {
         switch self {
         case .system:

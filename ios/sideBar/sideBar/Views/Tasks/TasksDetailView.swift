@@ -180,7 +180,7 @@ extension TasksDetailView {
             iconName: state.titleIcon,
             title: state.selectionLabel,
             subtitle: nil,
-            titleLineLimit: 1,
+            titleLineLimit: 2,
             subtitleLineLimit: 1,
             titleLayoutPriority: 1,
             subtitleLayoutPriority: 0
@@ -202,7 +202,7 @@ extension TasksDetailView {
             }
         })
         .padding(DesignTokens.Spacing.md)
-        .frame(height: LayoutMetrics.contentHeaderMinHeight)
+        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight, alignment: .leading)
     }
 
     @ViewBuilder
@@ -213,7 +213,7 @@ extension TasksDetailView {
             Text(state.selectionLabel)
                 .appFont(.title3Semibold)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
-                .lineLimit(1)
+                .lineLimit(2)
             Spacer()
             if shouldShowExpandButton {
                 expandButton
@@ -232,7 +232,7 @@ extension TasksDetailView {
             }
         }
         .padding(DesignTokens.Spacing.md)
-        .frame(height: LayoutMetrics.contentHeaderMinHeight)
+        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight, alignment: .leading)
     }
 
     private var shouldShowExpandButton: Bool {

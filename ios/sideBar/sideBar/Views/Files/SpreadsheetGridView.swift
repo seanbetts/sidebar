@@ -225,7 +225,7 @@ final class SpreadsheetGridCell: UICollectionViewCell {
         contentView.addSubview(label)
         label.translatesAutoresizingMaskIntoConstraints = false
         label.numberOfLines = 1
-        label.font = UIFont.preferredFont(forTextStyle: .subheadline)
+        applyFont(isHeader: false)
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
             label.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
@@ -244,14 +244,32 @@ final class SpreadsheetGridCell: UICollectionViewCell {
     func configure(text: String, isHeader: Bool, alignment: NSTextAlignment) {
         label.text = text
         label.textAlignment = alignment
+        applyFont(isHeader: isHeader)
         if isHeader {
-            label.font = UIFont.preferredFont(forTextStyle: .subheadline).bold()
             label.textColor = UIColor.label
             contentView.backgroundColor = UIColor.secondarySystemBackground
         } else {
-            label.font = UIFont.preferredFont(forTextStyle: .subheadline)
             label.textColor = UIColor.secondaryLabel
             contentView.backgroundColor = UIColor.systemBackground
+        }
+    }
+
+    private func applyFont(isHeader: Bool) {
+        let option = AppTextSizeOption.resolved(
+            from: UserDefaults.standard.string(forKey: AppStorageKeys.appTextSize)
+                ?? AppTextSizeOption.system.rawValue
+        )
+        switch option {
+        case .system:
+            label.adjustsFontForContentSizeCategory = true
+            let baseFont = UIFont.preferredFont(forTextStyle: .subheadline)
+            label.font = isHeader ? baseFont.bold() : baseFont
+        case .small, .medium, .large:
+            label.adjustsFontForContentSizeCategory = false
+            label.font = UIFont.systemFont(
+                ofSize: AppFontStyle.subheadline.pointSize(for: option),
+                weight: isHeader ? .semibold : .regular
+            )
         }
     }
 }

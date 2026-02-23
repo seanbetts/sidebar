@@ -160,7 +160,7 @@ struct AgentSettingsView: View {
                         Text(maskedProviderKeyText)
                             .appFont(.body)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                            .lineLimit(2)
 
                         Spacer()
 
