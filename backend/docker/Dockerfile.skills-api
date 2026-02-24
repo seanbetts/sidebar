@@ -36,9 +36,10 @@ RUN pip install --no-cache-dir \
     --trusted-host files.pythonhosted.org \
     -r requirements.txt
 
-# Install Playwright browser binaries in a shared path for non-root runtime user
+# Install Playwright browser binaries and Linux runtime dependencies in a
+# shared path for non-root runtime user.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN python -m playwright install chromium && \
+RUN python -m playwright install --with-deps chromium && \
     chown -R appuser:appuser /ms-playwright
 
 # Copy API code
