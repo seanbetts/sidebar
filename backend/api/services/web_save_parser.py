@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -23,6 +22,7 @@ except (ImportError, AttributeError):
 
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_includes import apply_include_reinsertion
+from api.services.web_save_parser_apple_news import maybe_unwrap_apple_news
 from api.services.web_save_parser_blog_google import extract_blog_google_body_html
 from api.services.web_save_parser_cleanup import (
     cleanup_gizmodo_markdown,
@@ -53,6 +53,7 @@ from api.services.web_save_parser_html import (
 )
 from api.services.web_save_parser_openai import cleanup_openai_markdown
 from api.services.web_save_parser_substack import cleanup_substack_markdown
+from api.services.web_save_parser_utils import ensure_url, strip_control_chars
 from api.services.web_save_parser_youtube import (
     _iter_youtube_elements as _iter_youtube_elements_impl,
 )
@@ -87,7 +88,6 @@ logger = logging.getLogger(__name__)
 
 RULES_DIR = Path(__file__).resolve().parents[2] / "skills" / "web-save" / "rules"
 PLAYWRIGHT_ALLOWLIST_PATH = RULES_DIR / "playwright_allowlist.yaml"
-CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 
 _iter_youtube_elements = _iter_youtube_elements_impl
 
@@ -113,21 +113,6 @@ class LocalParseFallbackError(RuntimeError):
         super().__init__(
             f"Local parser requested fallback='{fallback}' via rule '{rule_id}'"
         )
-
-
-def ensure_url(value: str) -> str:
-    """Ensure URL has a scheme."""
-    if value.startswith(("http://", "https://")):
-        return value
-    return f"https://{value}"
-
-
-def strip_control_chars(value: str) -> str:
-    """Replace non-XML control characters that break lxml/readability."""
-    if not value:
-        return value
-    # Preserve token boundaries by normalizing control chars to whitespace.
-    return CONTROL_CHARS_RE.sub(" ", value)
 
 
 def _clean_metadata_value(value: str | None) -> str | None:
@@ -493,6 +478,15 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     normalized = ensure_url(url)
     logger.info("web-save parse start url=%s", normalized)
     html, final_url, used_js_rendering = fetch_html(normalized, timeout=timeout)
+    html = strip_control_chars(html)
+    html, final_url, used_js_rendering = maybe_unwrap_apple_news(
+        html=html,
+        final_url=final_url,
+        used_js_rendering=used_js_rendering,
+        timeout=timeout,
+        fetch_html=lambda u, t: fetch_html(u, timeout=t),
+        logger=logger,
+    )
     html = strip_control_chars(html)
     logger.info(
         "web-save fetched url=%s final_url=%s used_js=%s html_len=%s",

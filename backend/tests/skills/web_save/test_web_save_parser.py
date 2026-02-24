@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 from api.services import web_save_includes, web_save_parser
+from api.services.web_save_parser_apple_news import extract_apple_news_publisher_url
 from api.services.web_save_tagger import calculate_reading_time
 from bs4 import BeautifulSoup
 from lxml import html as lxml_html
@@ -53,6 +54,60 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
     assert "svelte" in data["tags"]
 
 
+def test_parse_url_local_apple_news_fetches_publisher_article(monkeypatch):
+    apple_html = """
+    <html>
+      <head>
+        <title>Opening story</title>
+        <script>
+          redirectToUrlAfterTimeout("https://www.wsj.com/tech/ai/anthropic", 0);
+        </script>
+      </head>
+      <body>
+        <div class="inner-content">
+          <h1>Opening story...</h1>
+          <p><a href="https://www.wsj.com/tech/ai/anthropic">Tap here</a></p>
+        </div>
+      </body>
+    </html>
+    """
+    publisher_html = """
+    <html>
+      <head><title>Publisher Story</title></head>
+      <body>
+        <article>
+          <h1>Publisher Story</h1>
+          <p>This text comes from the publisher article body.</p>
+        </article>
+      </body>
+    </html>
+    """
+    fetch_calls: list[str] = []
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        fetch_calls.append(url)
+        if "apple.news" in url:
+            return apple_html, "https://apple.news/ASNJScnjXQj-AP4JENCN9NQ", False
+        if "wsj.com" in url:
+            return publisher_html, "https://www.wsj.com/tech/ai/anthropic", False
+        raise AssertionError(f"Unexpected URL: {url}")
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://apple.news/ASNJScnjXQj-AP4JENCN9NQ"
+    )
+    assert fetch_calls == [
+        "https://apple.news/ASNJScnjXQj-AP4JENCN9NQ",
+        "https://www.wsj.com/tech/ai/anthropic",
+    ]
+    assert parsed.source == "https://www.wsj.com/tech/ai/anthropic"
+    assert "publisher article body" in parsed.content.lower()
+
+
 def test_extract_metadata_finds_favicon():
     html = """
     <html>
@@ -77,6 +132,27 @@ def test_extract_metadata_ignores_undefined_canonical():
     """
     metadata = web_save_parser.extract_metadata(html, "https://example.com/article")
     assert metadata["canonical"] == "https://example.com/article"
+
+
+def test_extract_apple_news_publisher_url_prefers_redirect_script():
+    html = """
+    <html>
+      <head>
+        <script>
+          function foo() {
+            redirectToUrlAfterTimeout("https://www.wsj.com/tech/ai/story-id", 0);
+          }
+        </script>
+      </head>
+      <body>
+        <div class="inner-content">
+          <p><a href="https://www.example.com/fallback">Tap here</a></p>
+        </div>
+      </body>
+    </html>
+    """
+    extracted = extract_apple_news_publisher_url(html)
+    assert extracted == "https://www.wsj.com/tech/ai/story-id"
 
 
 def test_resolve_favicon_url_falls_back(monkeypatch):
