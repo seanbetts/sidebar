@@ -30,7 +30,7 @@ enum MarkdownHeadingMetrics {
     }
 
     static func isBold(level: Int) -> Bool {
-        true
+        level == 1
     }
 
     static func paragraphStyle(level: Int, baseFontSize: CGFloat) -> NSParagraphStyle {

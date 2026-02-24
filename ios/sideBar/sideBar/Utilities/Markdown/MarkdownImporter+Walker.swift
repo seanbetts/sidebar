@@ -75,11 +75,9 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
         if blockquoteDepth > 0 {
             applyBlockKind(.blockquote, to: &paragraphText)
             paragraphText[fullRange(in: paragraphText)].foregroundColor = DesignTokens.Colors.textSecondary
-            paragraphText[fullRange(in: paragraphText)].paragraphStyle = paragraphStyle(
-                lineSpacing: em(0.7, fontSize: baseFontSize),
-                spacingBefore: em(1, fontSize: baseFontSize),
-                spacingAfter: em(1, fontSize: baseFontSize),
-                headIndent: em(1, fontSize: baseFontSize)
+            paragraphText[fullRange(in: paragraphText)].paragraphStyle = MarkdownParagraphMetrics.blockquoteParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: em(MarkdownParagraphMetrics.blockquoteIndentEm, fontSize: baseFontSize)
             )
         } else {
             applyBlockKind(.paragraph, to: &paragraphText)
@@ -269,6 +267,7 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
             let quoteIndent = blockquoteDepth > 0 ? em(1, fontSize: baseFontSize) : 0
             let listStyle = MarkdownParagraphMetrics.listParagraphStyle(
                 baseFontSize: baseFontSize,
+                listDepth: context.depth,
                 headIndent: listIndent + quoteIndent
             )
             itemText[fullRange(in: itemText)].paragraphStyle = adjustedSpacingBeforeIfNeeded(

@@ -10,7 +10,10 @@ enum MarkdownParagraphMetrics {
     static let bodyLineHeightMultiple: CGFloat = 1.7
     static let bodySpacingRem: CGFloat = 0.5
     static let listLineHeightMultiple: CGFloat = 1.4
-    static let listSpacingRem: CGFloat = 0
+    static let rootListSpacingRem: CGFloat = 0.5
+    static let nestedListSpacingRem: CGFloat = 0
+    static let blockquoteSpacingRem: CGFloat = 1
+    static let blockquoteIndentEm: CGFloat = 1
 
     static func bodyParagraphStyle(
         baseFontSize: CGFloat,
@@ -29,16 +32,32 @@ enum MarkdownParagraphMetrics {
 
     static func listParagraphStyle(
         baseFontSize: CGFloat,
+        listDepth: Int = 1,
         headIndent: CGFloat = 0,
         tailIndent: CGFloat = 0
     ) -> NSParagraphStyle {
-        paragraphStyle(
+        let spacingRem = listDepth > 1 ? nestedListSpacingRem : rootListSpacingRem
+        return paragraphStyle(
             fontSize: baseFontSize,
             lineHeightMultiple: listLineHeightMultiple,
-            spacingBefore: listSpacingRem * baseFontSize,
-            spacingAfter: listSpacingRem * baseFontSize,
+            spacingBefore: spacingRem * baseFontSize,
+            spacingAfter: spacingRem * baseFontSize,
             headIndent: headIndent,
             tailIndent: tailIndent
+        )
+    }
+
+    static func blockquoteParagraphStyle(
+        baseFontSize: CGFloat,
+        headIndent: CGFloat
+    ) -> NSParagraphStyle {
+        return paragraphStyle(
+            fontSize: baseFontSize,
+            lineHeightMultiple: bodyLineHeightMultiple,
+            spacingBefore: blockquoteSpacingRem * baseFontSize,
+            spacingAfter: blockquoteSpacingRem * baseFontSize,
+            headIndent: headIndent,
+            tailIndent: 0
         )
     }
 

@@ -176,18 +176,17 @@ extension NativeMarkdownEditorViewModel {
         case .paragraph:
             return MarkdownParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
         case .blockquote:
-            return paragraphStyle(
-                lineSpacing: em(0.7, fontSize: baseFontSize),
-                spacingBefore: em(1, fontSize: baseFontSize),
-                spacingAfter: em(1, fontSize: baseFontSize),
-                headIndent: em(1, fontSize: baseFontSize)
+            return MarkdownParagraphMetrics.blockquoteParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: em(MarkdownParagraphMetrics.blockquoteIndentEm, fontSize: baseFontSize)
             )
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
             let depth = max(1, listDepth ?? 1)
-            let listIndentUnit = em(0.75, fontSize: baseFontSize)
-            let listIndent = listIndentUnit * CGFloat(max(0, depth - 1))
+            let listIndentUnit = em(1.5, fontSize: baseFontSize)
+            let listIndent = listIndentUnit * CGFloat(depth)
             let style = MarkdownParagraphMetrics.listParagraphStyle(
                 baseFontSize: baseFontSize,
+                listDepth: depth,
                 headIndent: listIndent
             )
             return style
