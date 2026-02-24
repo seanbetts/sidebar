@@ -7,7 +7,11 @@ import re
 from collections.abc import Callable
 from urllib.parse import urlparse
 
+import requests
 from bs4 import BeautifulSoup
+
+from api.services.web_save_constants import USER_AGENT
+from api.services.web_save_parser_html import decode_html_response
 
 APPLE_NEWS_REDIRECT_PATTERN = re.compile(
     r'redirectToUrl(?:AfterTimeout)?\("(?P<url>https?://[^"]+)"'
@@ -44,6 +48,27 @@ def extract_apple_news_publisher_url(html: str) -> str | None:
             continue
         return href
     return None
+
+
+def resolve_apple_news_source_url(url: str, *, timeout: int = 12) -> str:
+    """Return publisher URL for apple.news links, otherwise return original URL."""
+    parsed = urlparse(url)
+    if not is_apple_news_host(parsed.netloc):
+        return url
+
+    try:
+        response = requests.get(
+            url,
+            headers={"User-Agent": USER_AGENT},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        return url
+
+    html = decode_html_response(response)
+    publisher = extract_apple_news_publisher_url(html)
+    return publisher or url
 
 
 def maybe_unwrap_apple_news(

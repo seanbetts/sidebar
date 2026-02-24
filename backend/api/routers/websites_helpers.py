@@ -21,6 +21,7 @@ from api.services.web_save_parser import (
     extract_favicon_url,
     parse_url_local,
 )
+from api.services.web_save_parser_apple_news import resolve_apple_news_source_url
 from api.services.web_save_parser_youtube import fetch_youtube_duration_seconds
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_reading_time import (
@@ -71,15 +72,25 @@ def run_quick_save(
         set_session_user_id(db, user_id)
         WebsiteProcessingService.update_job(db, job_id, status="running")
         web_save_mode = settings.web_save_mode.lower().strip()
-        logger.info("web-save quick_save start url=%s mode=%s", url, web_save_mode)
+        target_url = resolve_apple_news_source_url(url)
+        logger.info(
+            "web-save quick_save start url=%s target_url=%s mode=%s",
+            url,
+            target_url,
+            web_save_mode,
+        )
         try:
             local_parsed = None
             if web_save_mode in {"local", "compare"}:
                 try:
-                    local_parsed = parse_url_local(url)
+                    local_parsed = parse_url_local(target_url)
                     logger.info(
-                        "web-save local parse ok url=%s title=%s content_len=%s",
+                        (
+                            "web-save local parse ok url=%s target_url=%s "
+                            "title=%s content_len=%s"
+                        ),
                         url,
+                        target_url,
                         local_parsed.title,
                         len(local_parsed.content),
                     )
@@ -89,14 +100,16 @@ def run_quick_save(
                             "web-save local parse requested fallback url=%s "
                             "fallback=%s rule=%s"
                         ),
-                        url,
+                        target_url,
                         exc.fallback,
                         exc.rule_id,
                     )
                     local_parsed = None
                 except Exception as exc:
                     logger.info(
-                        "web-save local parse failed url=%s error=%s", url, str(exc)
+                        "web-save local parse failed url=%s error=%s",
+                        target_url,
+                        str(exc),
                     )
                     if web_save_mode == "local":
                         local_parsed = None
@@ -120,14 +133,19 @@ def run_quick_save(
                     archived=False,
                 )
             else:
-                logger.info("web-save using jina url=%s mode=%s", url, web_save_mode)
-                markdown = JinaService.fetch_markdown(url)
+                logger.info(
+                    "web-save using jina url=%s target_url=%s mode=%s",
+                    url,
+                    target_url,
+                    web_save_mode,
+                )
+                markdown = JinaService.fetch_markdown(target_url)
                 metadata, cleaned = JinaService.parse_metadata(markdown)
-                source = metadata.get("url_source") or url
+                source = metadata.get("url_source") or target_url
                 candidate_title = (
                     title
                     or metadata.get("title")
-                    or JinaService.extract_title(cleaned, url)
+                    or JinaService.extract_title(cleaned, target_url)
                 )
                 resolved_title = (
                     resolve_website_title(candidate_title, url=source)
@@ -139,7 +157,7 @@ def run_quick_save(
                 reading_time = _resolve_jina_reading_time(
                     metadata=metadata,
                     source=source,
-                    fallback_url=url,
+                    fallback_url=target_url,
                 )
                 website = WebsitesService.upsert_website(
                     db,

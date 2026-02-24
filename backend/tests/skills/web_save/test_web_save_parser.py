@@ -3,7 +3,10 @@
 from datetime import UTC, datetime
 
 from api.services import web_save_includes, web_save_parser
-from api.services.web_save_parser_apple_news import extract_apple_news_publisher_url
+from api.services.web_save_parser_apple_news import (
+    extract_apple_news_publisher_url,
+    resolve_apple_news_source_url,
+)
 from api.services.web_save_tagger import calculate_reading_time
 from bs4 import BeautifulSoup
 from lxml import html as lxml_html
@@ -153,6 +156,52 @@ def test_extract_apple_news_publisher_url_prefers_redirect_script():
     """
     extracted = extract_apple_news_publisher_url(html)
     assert extracted == "https://www.wsj.com/tech/ai/story-id"
+
+
+def test_resolve_apple_news_source_url_resolves_publisher(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <script>
+          redirectToUrlAfterTimeout("https://www.wsj.com/tech/ai/story-id", 0);
+        </script>
+      </head>
+    </html>
+    """
+
+    class FakeResponse:
+        status_code = 200
+        encoding = "utf-8"
+        content = html.encode("utf-8")
+
+        def raise_for_status(self):
+            return None
+
+    def fake_get(url: str, headers=None, timeout: int = 12):
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "api.services.web_save_parser_apple_news.requests.get",
+        fake_get,
+    )
+
+    resolved = resolve_apple_news_source_url(
+        "https://apple.news/ASNJScnjXQj-AP4JENCN9NQ"
+    )
+    assert resolved == "https://www.wsj.com/tech/ai/story-id"
+
+
+def test_resolve_apple_news_source_url_passthrough_non_apple(monkeypatch):
+    def fake_get(url: str, headers=None, timeout: int = 12):
+        raise AssertionError("network should not be called for non-apple urls")
+
+    monkeypatch.setattr(
+        "api.services.web_save_parser_apple_news.requests.get",
+        fake_get,
+    )
+
+    resolved = resolve_apple_news_source_url("https://example.com/post")
+    assert resolved == "https://example.com/post"
 
 
 def test_resolve_favicon_url_falls_back(monkeypatch):
