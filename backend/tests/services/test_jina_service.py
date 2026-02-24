@@ -94,6 +94,17 @@ Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved. 87990cbe856818d5
 ![Image 4: The Wall Street Journal](https://sts3.wsj.net/iweb/images/wsj-logo-big-black.svg)
 
 [235](https://www.wsj.com/tech/ai/anthropic-amanda-askell-philosopher-ai-3c031883#comments_sector)
+
+[WSJ | Buy Side](https://www.wsj.com/buyside/?mod=wsj_article_buy_widget)
+Reviews and recommendations, independent of The Wall Street Journal newsroom.
+
+Real article continuation paragraph that should remain in output.
+
+News
+*   [Live Coverage](https://www.wsj.com/livecoverage?mod=wsjfooter)
+
+Customer Service
+*   [Customer Center](https://customercenter.wsj.com/home)
 """
 
     cleaned = JinaService.clean_markdown_for_source(
@@ -108,6 +119,9 @@ Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved. 87990cbe856818d5
     assert "#comments_sector" not in cleaned
     assert "Dow Jones & Company, Inc. All Rights Reserved" not in cleaned
     assert "The Wall Street Journal](https://sts3.wsj.net/iweb/images/wsj-logo-big-black.svg)" not in cleaned
+    assert "Buy Side" not in cleaned
+    assert "mod=wsjfooter" not in cleaned
+    assert "Real article continuation paragraph that should remain in output." in cleaned
 
 
 def test_clean_markdown_for_source_passthrough_non_wsj():

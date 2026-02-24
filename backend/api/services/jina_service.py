@@ -160,12 +160,60 @@ class JinaService:
             "",
             cleaned,
         )
+        cleaned = JinaService._filter_wsj_navigation_blocks(cleaned)
         cleaned = re.sub(r"(?m)^\d+\.\s+WSJ\..*\n?", "", cleaned)
         cleaned = re.sub(
             r"(?m)^(Share|Resize|Listen|\(\d+\s+min\))\s*$\n?",
             "",
             cleaned,
         )
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        return cleaned.strip()
+
+    @staticmethod
+    def _filter_wsj_navigation_blocks(markdown: str) -> str:
+        """Drop WSJ promo/footer/navigation-heavy lines while keeping prose."""
+        section_headers = {
+            "News",
+            "Markets",
+            "Opinion",
+            "WSJ Membership",
+            "Customer Service",
+            "Ads",
+            "Tools & Features",
+            "More",
+            "Dow Jones Products",
+            "Back to Top «",
+            "English Edition",
+            "Edition",
+            "Use Alt + Down Arrow to expand.",
+        }
+        noisy_substrings = (
+            "mod=wsjfooter",
+            "mod=wsj_article_buy_widget",
+            "customercenter.wsj.com",
+            "wsjshop.com",
+            "commercialpartnerships.wsj.com",
+            "wsjmediakit.com",
+            "classifieds.wsj.com",
+            "wsjbg-adsmanager.com",
+            "subscribe.wsj.com/default",
+            "independent of The Wall Street Journal newsroom.",
+        )
+
+        filtered_lines: list[str] = []
+        for raw_line in markdown.splitlines():
+            line = raw_line.strip()
+            if not line:
+                filtered_lines.append("")
+                continue
+            if line in section_headers:
+                continue
+            if any(token in line for token in noisy_substrings):
+                continue
+            filtered_lines.append(raw_line)
+
+        cleaned = "\n".join(filtered_lines)
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         return cleaned.strip()
 
