@@ -100,6 +100,11 @@
 	const settingsSections = SETTINGS_SECTIONS;
 	let activeSettingsSection = 'account';
 
+	export function openSkillsStore() {
+		activeSettingsSection = 'store';
+		open = true;
+	}
+
 	onMount(() => {
 		weatherPreferenceUnsubscribe = weatherPreferencesStore.subscribe((value) => {
 			weatherUnit = value;

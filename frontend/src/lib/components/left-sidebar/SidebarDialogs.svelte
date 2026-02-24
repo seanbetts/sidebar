@@ -50,7 +50,10 @@
 
 	export let isSettingsOpen = false;
 	export let profileImageSrc = '';
-	export let settingsDialog: { handleProfileImageError: () => void } | null = null;
+	export let settingsDialog: {
+		handleProfileImageError: () => void;
+		openSkillsStore: () => void;
+	} | null = null;
 </script>
 
 <NewNoteDialog

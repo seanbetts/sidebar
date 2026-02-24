@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
-	import { MessageSquare, FileText, Globe, Menu, FolderOpen, CheckSquare } from 'lucide-svelte';
+	import {
+		MessageSquare,
+		FileText,
+		Globe,
+		Menu,
+		FolderOpen,
+		CheckSquare,
+		Store
+	} from 'lucide-svelte';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import { canShowTooltips } from '$lib/utils/tooltip';
 	import { onMount } from 'svelte';
@@ -12,6 +20,7 @@
 	export let sidebarLogoSrc = '/images/logo.svg';
 	export let onToggle: (() => void) | undefined;
 	export let onOpenSection: ((section: SidebarSection) => void) | undefined;
+	export let onOpenSkillsStore: (() => void) | undefined;
 	export let onOpenSettings: (() => void) | undefined;
 	export let onProfileImageError: (() => void) | undefined;
 
@@ -150,6 +159,24 @@
 						{...props}
 						onclick={(event) => {
 							invokeSnippetClick(props, event);
+							onOpenSkillsStore?.();
+						}}
+						class="rail-btn"
+						aria-label="Open skills store"
+					>
+						<Store size={18} />
+					</button>
+				{/snippet}
+			</TooltipTrigger>
+			<TooltipContent side="right">Skills Store</TooltipContent>
+		</Tooltip>
+		<Tooltip disabled={!tooltipsEnabled}>
+			<TooltipTrigger>
+				{#snippet child({ props })}
+					<button
+						{...props}
+						onclick={(event) => {
+							invokeSnippetClick(props, event);
 							onOpenSettings?.();
 						}}
 						class="rail-btn rail-btn-avatar"
@@ -243,6 +270,8 @@
 	.rail-footer {
 		display: flex;
 		justify-content: center;
+		flex-direction: column;
+		gap: 0.5rem;
 	}
 
 	.rail-btn-avatar {

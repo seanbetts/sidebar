@@ -11,7 +11,9 @@ public struct SidebarRail: View {
     private let onShowSettings: (() -> Void)?
     private let onSelectSection: ((AppSection) -> Void)?
 
-    private let sections: [AppSection] = AppSection.primaryNavigationSections
+    private let sections: [AppSection] = AppSection.primaryNavigationSections.filter {
+        $0 != .skillsStore
+    }
 
     public init(
         selection: Binding<AppSection?>,
@@ -46,6 +48,8 @@ public struct SidebarRail: View {
             }
 
             Spacer()
+
+            sectionButton(for: .skillsStore)
 
             #if os(macOS)
             SettingsLink {

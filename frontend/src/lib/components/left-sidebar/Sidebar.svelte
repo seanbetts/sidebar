@@ -58,7 +58,10 @@
 	let isCreatingTaskProject = false;
 	let isSaveChangesDialogOpen = false;
 	let pendingNotePath: string | null = null;
-	let settingsDialog: { handleProfileImageError: () => void } | null = null;
+	let settingsDialog: {
+		handleProfileImageError: () => void;
+		openSkillsStore: () => void;
+	} | null = null;
 	let profileImageSrc = '';
 	let isUploadingFile = false;
 	let pendingUploadId: string | null = null;
@@ -464,6 +467,7 @@
 		{sidebarLogoSrc}
 		onToggle={toggleSidebar}
 		onOpenSection={openSection}
+		onOpenSkillsStore={() => settingsDialog?.openSkillsStore()}
 		onOpenSettings={() => (isSettingsOpen = true)}
 		onProfileImageError={() => settingsDialog?.handleProfileImageError()}
 	/>
