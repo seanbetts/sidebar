@@ -87,6 +87,8 @@ Continue reading your article with
 
 a WSJ subscription
 
+Later paragraph that should remain in output.
+
 Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved. 87990cbe856818d5eddac44c7b1cdeb8
 
 ![Image 4: The Wall Street Journal](https://sts3.wsj.net/iweb/images/wsj-logo-big-black.svg)
@@ -102,6 +104,7 @@ Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved. 87990cbe856818d5
     assert "Skip to Main Content" not in cleaned
     assert "Continue reading your article with" not in cleaned
     assert "Amanda Askell knew from the age of 14" in cleaned
+    assert "Later paragraph that should remain in output." in cleaned
     assert "#comments_sector" not in cleaned
     assert "Dow Jones & Company, Inc. All Rights Reserved" not in cleaned
     assert "The Wall Street Journal](https://sts3.wsj.net/iweb/images/wsj-logo-big-black.svg)" not in cleaned

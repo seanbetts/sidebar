@@ -119,16 +119,23 @@ class JinaService:
         if article_start is not None:
             cleaned = cleaned[article_start:]
 
-        end_markers = (
-            "Continue reading your article with",
-            "Advertisement",
-            "This copy is for your personal, non-commercial use only.",
+        cleaned = re.sub(
+            r"(?m)^Continue reading your article with\s*$\n?",
+            "",
+            cleaned,
         )
-        for marker in end_markers:
-            idx = cleaned.find(marker)
-            if idx >= 0:
-                cleaned = cleaned[:idx]
-                break
+        cleaned = re.sub(r"(?m)^a WSJ subscription\s*$\n?", "", cleaned)
+        cleaned = re.sub(r"(?m)^Advertisement\s*$\n?", "", cleaned)
+        cleaned = re.sub(
+            r"(?m)^Already a subscriber\?\s*\[Sign In]\([^)]+\)\s*$\n?",
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(
+            r"(?m)^\[Subscribe(?: Now)?]\([^)]+\)\s*$\n?",
+            "",
+            cleaned,
+        )
 
         cleaned = re.sub(
             r"(?m)^!\[[^\]]*]\(https?://(?:analytics\.twitter\.com|t\.co/1/i/adsct|bat\.bing\.com|sync\.intentiq\.com)[^)]+\)\s*",
