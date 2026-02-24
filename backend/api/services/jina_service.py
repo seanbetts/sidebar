@@ -135,6 +135,24 @@ class JinaService:
             "",
             cleaned,
         )
+        cleaned = re.sub(
+            r"(?m)^\[\d+]\(https?://www\.wsj\.com/[^)]*#comments_sector\)\s*$\n?",
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(
+            (
+                r"(?m)^Copyright ©\d{4} Dow Jones & Company, Inc\. "
+                r"All Rights Reserved\.[^\n]*\n?"
+            ),
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(
+            r"(?m)^!\[[^\]]*The Wall Street Journal[^\]]*]\(https?://[^)]+\)\s*$\n?",
+            "",
+            cleaned,
+        )
         cleaned = re.sub(r"(?m)^\d+\.\s+WSJ\..*\n?", "", cleaned)
         cleaned = re.sub(
             r"(?m)^(Share|Resize|Listen|\(\d+\s+min\))\s*$\n?",

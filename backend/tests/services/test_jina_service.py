@@ -86,6 +86,12 @@ Amanda Askell knew from the age of 14 that she wanted to teach philosophy.
 Continue reading your article with
 
 a WSJ subscription
+
+Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved. 87990cbe856818d5eddac44c7b1cdeb8
+
+![Image 4: The Wall Street Journal](https://sts3.wsj.net/iweb/images/wsj-logo-big-black.svg)
+
+[235](https://www.wsj.com/tech/ai/anthropic-amanda-askell-philosopher-ai-3c031883#comments_sector)
 """
 
     cleaned = JinaService.clean_markdown_for_source(
@@ -96,6 +102,9 @@ a WSJ subscription
     assert "Skip to Main Content" not in cleaned
     assert "Continue reading your article with" not in cleaned
     assert "Amanda Askell knew from the age of 14" in cleaned
+    assert "#comments_sector" not in cleaned
+    assert "Dow Jones & Company, Inc. All Rights Reserved" not in cleaned
+    assert "The Wall Street Journal](https://sts3.wsj.net/iweb/images/wsj-logo-big-black.svg)" not in cleaned
 
 
 def test_clean_markdown_for_source_passthrough_non_wsj():
