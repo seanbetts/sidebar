@@ -60,3 +60,45 @@ def test_parse_metadata_extracts_reading_time():
 
     assert metadata["reading_time"] == "11 min"
     assert "Reading Time:" not in cleaned
+
+
+def test_clean_markdown_for_source_wsj_trims_navigation_and_paywall():
+    markdown = """
+Anthropic’s Philosopher Amanda Askell Is Teaching Claude AI to Have Morals - WSJ
+===============
+
+Skip to Main Content
+
+Meet the One Woman Anthropic Trusts to Teach AI Morals
+======================================================
+
+The tech company has tasked Amanda Askell with giving its chatbot, Claude, a sense of right and wrong.
+------------------------------------------------------------------------------------------------------
+
+By
+
+[Berber Jin](https://www.wsj.com/news/author/berber-jin)
+
+Feb. 9, 2026 7:00 am ET
+
+Amanda Askell knew from the age of 14 that she wanted to teach philosophy.
+
+Continue reading your article with
+
+a WSJ subscription
+"""
+
+    cleaned = JinaService.clean_markdown_for_source(
+        markdown,
+        "https://www.wsj.com/tech/ai/anthropic-amanda-askell-philosopher-ai-3c031883",
+    )
+
+    assert "Skip to Main Content" not in cleaned
+    assert "Continue reading your article with" not in cleaned
+    assert "Amanda Askell knew from the age of 14" in cleaned
+
+
+def test_clean_markdown_for_source_passthrough_non_wsj():
+    markdown = "# Example\n\nBody"
+    cleaned = JinaService.clean_markdown_for_source(markdown, "https://example.com/a")
+    assert cleaned == "# Example\n\nBody"

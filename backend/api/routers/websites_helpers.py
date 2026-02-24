@@ -142,6 +142,7 @@ def run_quick_save(
                 markdown = JinaService.fetch_markdown(target_url)
                 metadata, cleaned = JinaService.parse_metadata(markdown)
                 source = metadata.get("url_source") or target_url
+                cleaned = JinaService.clean_markdown_for_source(cleaned, source)
                 candidate_title = (
                     title
                     or metadata.get("title")

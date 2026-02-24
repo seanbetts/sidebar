@@ -24,6 +24,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.favicon_service import FaviconService
+    from api.services.jina_service import JinaService
     from api.services.web_save_parser import (
         ParsedPage,
         build_frontmatter,
@@ -44,6 +45,7 @@ except Exception:
     FaviconService = None
     resolve_website_title = None
     resolve_apple_news_source_url = None
+    JinaService = None
 
 
 if not logging.getLogger().handlers:
@@ -231,6 +233,10 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             content = get_markdown_content(target_url, api_key)
             parsed_metadata, cleaned_content = parse_jina_metadata(content)
             source = parsed_metadata.get("url_source") or target_url
+            if JinaService is not None:
+                cleaned_content = JinaService.clean_markdown_for_source(
+                    cleaned_content, source
+                )
             candidate_title = parsed_metadata.get("title") or extract_title(
                 cleaned_content
             )
