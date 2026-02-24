@@ -30,6 +30,7 @@ try:
         extract_favicon_url,
         parse_url_local,
     )
+    from api.services.web_save_parser_apple_news import resolve_apple_news_source_url
     from api.services.web_save_tagger import (
         calculate_reading_time,
         compute_word_count,
@@ -42,6 +43,7 @@ except Exception:
     WebsitesService = None
     FaviconService = None
     resolve_website_title = None
+    resolve_apple_news_source_url = None
 
 
 if not logging.getLogger().handlers:
@@ -183,33 +185,52 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
+    target_url = (
+        resolve_apple_news_source_url(url)
+        if resolve_apple_news_source_url is not None
+        else url
+    )
     web_save_mode = os.getenv("WEB_SAVE_MODE", "local").lower().strip()
-    logger.info("web-save script start url=%s mode=%s", url, web_save_mode)
+    logger.info(
+        "web-save script start url=%s target_url=%s mode=%s",
+        url,
+        target_url,
+        web_save_mode,
+    )
     parsed = None
     if web_save_mode in {"local", "compare"}:
         try:
-            parsed = parse_url_local(url)
+            parsed = parse_url_local(target_url)
             logger.info(
-                "web-save script local parse ok url=%s title=%s content_len=%s",
+                (
+                    "web-save script local parse ok url=%s "
+                    "target_url=%s title=%s content_len=%s"
+                ),
                 url,
+                target_url,
                 parsed.title,
                 len(parsed.content),
             )
         except Exception as exc:
             logger.exception(
-                "web-save script local parse failed url=%s error=%s",
-                url,
+                "web-save script local parse failed target_url=%s error=%s",
+                target_url,
                 str(exc),
             )
 
     local_parsed = parsed
     if parsed is None or web_save_mode in {"jina", "compare"}:
-        logger.info("web-save script using jina url=%s mode=%s", url, web_save_mode)
+        logger.info(
+            "web-save script using jina url=%s target_url=%s mode=%s",
+            url,
+            target_url,
+            web_save_mode,
+        )
         api_key = os.environ.get("JINA_API_KEY", "")
         try:
-            content = get_markdown_content(url, api_key)
+            content = get_markdown_content(target_url, api_key)
             parsed_metadata, cleaned_content = parse_jina_metadata(content)
-            source = parsed_metadata.get("url_source") or url
+            source = parsed_metadata.get("url_source") or target_url
             candidate_title = parsed_metadata.get("title") or extract_title(
                 cleaned_content
             )
@@ -248,7 +269,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             if web_save_mode == "compare" and local_parsed is not None:
                 logger.info(
                     "Compare parse for %s: jina_len=%s local_len=%s jina_title=%s local_title=%s",
-                    url,
+                    target_url,
                     len(cleaned_content),
                     len(local_parsed.content),
                     title,
@@ -288,7 +309,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         favicon_url = parsed.favicon_url
         if favicon_url is None:
             try:
-                favicon_url = extract_favicon_url(url)
+                favicon_url = extract_favicon_url(target_url)
             except Exception:
                 favicon_url = None
 
