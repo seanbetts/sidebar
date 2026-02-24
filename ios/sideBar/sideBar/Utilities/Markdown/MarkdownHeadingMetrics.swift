@@ -7,9 +7,9 @@ import AppKit
 #endif
 
 enum MarkdownHeadingMetrics {
-    static let lineSpacingEm: CGFloat = 0.3
-    static let spacingBeforeRem: CGFloat = 0.5
-    static let spacingAfterRem: CGFloat = 0
+    static let lineHeightMultiple: CGFloat = 1.3
+    static let headingSpacingBeforeRem: CGFloat = 1
+    static let headingSpacingAfterRem: CGFloat = 0.3
 
     static func fontSize(
         for level: Int,
@@ -35,10 +35,13 @@ enum MarkdownHeadingMetrics {
 
     static func paragraphStyle(level: Int, baseFontSize: CGFloat) -> NSParagraphStyle {
         let fontSize = fontSize(for: level, baseFontSize: baseFontSize)
-        let spacingBefore = (level == 1 ? 0 : spacingBeforeRem) * baseFontSize
-        let spacingAfter = spacingAfterRem * baseFontSize
+        let spacingBefore = (level == 1 ? 0 : headingSpacingBeforeRem) * baseFontSize
+        let spacingAfter = headingSpacingAfterRem * baseFontSize
         let style = NSMutableParagraphStyle()
-        style.lineSpacing = lineSpacingEm * fontSize
+        style.lineSpacing = 0
+        let lineHeight = lineHeightMultiple * fontSize
+        style.minimumLineHeight = lineHeight
+        style.maximumLineHeight = lineHeight
         style.paragraphSpacingBefore = spacingBefore
         style.paragraphSpacing = spacingAfter
         return style

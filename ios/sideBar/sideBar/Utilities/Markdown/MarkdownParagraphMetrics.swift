@@ -7,9 +7,9 @@ import AppKit
 #endif
 
 enum MarkdownParagraphMetrics {
-    static let bodyLineSpacingEm: CGFloat = 0.25
+    static let bodyLineHeightMultiple: CGFloat = 1.7
     static let bodySpacingRem: CGFloat = 0.5
-    static let listLineSpacingEm: CGFloat = 0.25
+    static let listLineHeightMultiple: CGFloat = 1.4
     static let listSpacingRem: CGFloat = 0
 
     static func bodyParagraphStyle(
@@ -18,7 +18,8 @@ enum MarkdownParagraphMetrics {
         tailIndent: CGFloat = 0
     ) -> NSParagraphStyle {
         paragraphStyle(
-            lineSpacing: bodyLineSpacingEm * baseFontSize,
+            fontSize: baseFontSize,
+            lineHeightMultiple: bodyLineHeightMultiple,
             spacingBefore: bodySpacingRem * baseFontSize,
             spacingAfter: bodySpacingRem * baseFontSize,
             headIndent: headIndent,
@@ -32,7 +33,8 @@ enum MarkdownParagraphMetrics {
         tailIndent: CGFloat = 0
     ) -> NSParagraphStyle {
         paragraphStyle(
-            lineSpacing: listLineSpacingEm * baseFontSize,
+            fontSize: baseFontSize,
+            lineHeightMultiple: listLineHeightMultiple,
             spacingBefore: listSpacingRem * baseFontSize,
             spacingAfter: listSpacingRem * baseFontSize,
             headIndent: headIndent,
@@ -41,14 +43,18 @@ enum MarkdownParagraphMetrics {
     }
 
     private static func paragraphStyle(
-        lineSpacing: CGFloat,
+        fontSize: CGFloat,
+        lineHeightMultiple: CGFloat,
         spacingBefore: CGFloat,
         spacingAfter: CGFloat,
         headIndent: CGFloat,
         tailIndent: CGFloat
     ) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
-        style.lineSpacing = lineSpacing
+        style.lineSpacing = 0
+        let lineHeight = lineHeightMultiple * fontSize
+        style.minimumLineHeight = lineHeight
+        style.maximumLineHeight = lineHeight
         style.paragraphSpacingBefore = spacingBefore
         style.paragraphSpacing = spacingAfter
         style.headIndent = headIndent

@@ -45,6 +45,39 @@ final class MarkdownTypographyTests: XCTestCase {
         )
     }
 
+    func testHeadingParagraphStyleMatchesMarkdownGuideSpacing() {
+        let baseFont: CGFloat = 16
+        let h1Style = MarkdownHeadingMetrics.paragraphStyle(level: 1, baseFontSize: baseFont)
+        let h1LineHeight = MarkdownHeadingMetrics.fontSize(for: 1, baseFontSize: baseFont) * 1.3
+        XCTAssertEqual(h1Style.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(h1Style.paragraphSpacing, 4.8, accuracy: 0.001)
+        XCTAssertEqual(h1Style.minimumLineHeight, h1LineHeight, accuracy: 0.001)
+        XCTAssertEqual(h1Style.maximumLineHeight, h1LineHeight, accuracy: 0.001)
+
+        let h2Style = MarkdownHeadingMetrics.paragraphStyle(level: 2, baseFontSize: baseFont)
+        let h2LineHeight = MarkdownHeadingMetrics.fontSize(for: 2, baseFontSize: baseFont) * 1.3
+        XCTAssertEqual(h2Style.paragraphSpacingBefore, 16, accuracy: 0.001)
+        XCTAssertEqual(h2Style.paragraphSpacing, 4.8, accuracy: 0.001)
+        XCTAssertEqual(h2Style.minimumLineHeight, h2LineHeight, accuracy: 0.001)
+        XCTAssertEqual(h2Style.maximumLineHeight, h2LineHeight, accuracy: 0.001)
+    }
+
+    func testBodyParagraphStyleMatchesMarkdownGuideLineHeightAndSpacing() {
+        let style = MarkdownParagraphMetrics.bodyParagraphStyle(baseFontSize: 16)
+        XCTAssertEqual(style.paragraphSpacingBefore, 8, accuracy: 0.001)
+        XCTAssertEqual(style.paragraphSpacing, 8, accuracy: 0.001)
+        XCTAssertEqual(style.minimumLineHeight, 27.2, accuracy: 0.001)
+        XCTAssertEqual(style.maximumLineHeight, 27.2, accuracy: 0.001)
+    }
+
+    func testListParagraphStyleMatchesMarkdownGuideLineHeightAndSpacing() {
+        let style = MarkdownParagraphMetrics.listParagraphStyle(baseFontSize: 16)
+        XCTAssertEqual(style.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(style.paragraphSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(style.minimumLineHeight, 22.4, accuracy: 0.001)
+        XCTAssertEqual(style.maximumLineHeight, 22.4, accuracy: 0.001)
+    }
+
     func testFootnoteSizeScalesFromBodyFontSize() {
         let baseBody = MarkdownTypography.defaultBodyFontSize(for: .system)
         let baseFootnote = MarkdownTypography.footnoteFontSize(baseFontSize: baseBody)
