@@ -36,6 +36,11 @@ RUN pip install --no-cache-dir \
     --trusted-host files.pythonhosted.org \
     -r requirements.txt
 
+# Install Playwright browser binaries in a shared path for non-root runtime user
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN python -m playwright install chromium && \
+    chown -R appuser:appuser /ms-playwright
+
 # Copy API code
 COPY --chown=appuser:appuser api/ ./api/
 COPY --chown=appuser:appuser workers/ ./workers/
@@ -48,6 +53,7 @@ RUN mkdir -p /workspace /tmp && \
 
 # Copy entrypoint
 COPY docker/entrypoint.sh /app/entrypoint.sh
+COPY docker/playwright_smoke_check.py /app/playwright_smoke_check.py
 RUN chmod +x /app/entrypoint.sh
 
 # Switch to root for entrypoint to manage volumes, then drop privileges
@@ -55,6 +61,7 @@ USER root
 
 # Configure yt-dlp JS runtime for YouTube downloads
 ENV YT_DLP_JS_RUNTIMES=node
+ENV PLAYWRIGHT_STARTUP_CHECK=1
 
 # Expose API port
 EXPOSE 8001

@@ -53,7 +53,13 @@ from api.services.web_save_parser_html import (
 )
 from api.services.web_save_parser_openai import cleanup_openai_markdown
 from api.services.web_save_parser_substack import cleanup_substack_markdown
-from api.services.web_save_parser_utils import ensure_url, strip_control_chars
+from api.services.web_save_parser_utils import (
+    clean_metadata_value,
+    ensure_url,
+    parse_datetime,
+    strip_control_chars,
+)
+from api.services.web_save_parser_wsj import maybe_enrich_wsj_preview
 from api.services.web_save_parser_youtube import (
     _iter_youtube_elements as _iter_youtube_elements_impl,
 )
@@ -113,18 +119,6 @@ class LocalParseFallbackError(RuntimeError):
         super().__init__(
             f"Local parser requested fallback='{fallback}' via rule '{rule_id}'"
         )
-
-
-def _clean_metadata_value(value: str | None) -> str | None:
-    """Normalize parser metadata fields and drop placeholder sentinel values."""
-    if value is None:
-        return None
-    cleaned = value.strip()
-    if not cleaned:
-        return None
-    if cleaned.lower() in {"undefined", "null", "none", "n/a"}:
-        return None
-    return cleaned
 
 
 def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str, bool]:
@@ -251,14 +245,14 @@ def extract_metadata(html: str, url: str) -> dict:
                     return tag["content"].strip()
         return None
 
-    title = _clean_metadata_value(
+    title = clean_metadata_value(
         find_meta(["og:title", "twitter:title"], ("property", "name"))
         or (soup.title.string.strip() if soup.title and soup.title.string else None)
     )
-    author = _clean_metadata_value(
+    author = clean_metadata_value(
         find_meta(["author", "article:author", "parsely-author"], ("name", "property"))
     )
-    published = _clean_metadata_value(
+    published = clean_metadata_value(
         find_meta(
             [
                 "article:published_time",
@@ -270,14 +264,14 @@ def extract_metadata(html: str, url: str) -> dict:
             ("property", "name"),
         )
     )
-    image = _clean_metadata_value(
+    image = clean_metadata_value(
         find_meta(["og:image", "twitter:image"], ("property", "name"))
     )
 
     canonical = None
     canonical_tag = soup.find("link", rel="canonical")
     if canonical_tag and canonical_tag.get("href"):
-        canonical = _clean_metadata_value(canonical_tag["href"])
+        canonical = clean_metadata_value(canonical_tag["href"])
 
     favicon = None
     for rel in (
@@ -288,7 +282,7 @@ def extract_metadata(html: str, url: str) -> dict:
     ):
         link = soup.find("link", rel=lambda value, rel=rel: _rel_matches(value, rel))
         if link and link.get("href"):
-            favicon = _clean_metadata_value(link["href"])
+            favicon = clean_metadata_value(link["href"])
             if favicon:
                 break
 
@@ -435,17 +429,6 @@ def _match_substack_host_rules(
     """Match Substack host rules for a phase using a synthetic Substack URL."""
     matched = engine.match_rules("https://substack.com/p/synthetic", html, phase=phase)
     return [rule for rule in matched if _is_substack_host_rule(rule)]
-
-
-def parse_datetime(value: str | None) -> datetime | None:
-    """Parse ISO-like datetime strings."""
-    if not value:
-        return None
-    cleaned = value.strip()
-    try:
-        return datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
-    except ValueError:
-        return None
 
 
 class _PreservingMarkdownConverter(MarkdownConverter):
@@ -873,12 +856,26 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         int((time.monotonic() - start_time) * 1000),
     )
 
+    source_url = metadata.get("canonical") or final_url
+    markdown, source_url, title, published_override = maybe_enrich_wsj_preview(
+        domain=domain,
+        final_url=final_url,
+        source_url=source_url,
+        raw_html=raw_html_original,
+        markdown=markdown,
+        title=title,
+    )
+    if published_override:
+        metadata["published"] = published_override
+        published_at = parse_datetime(published_override)
+    metadata["canonical"] = source_url
+
     word_count = compute_word_count(markdown)
     image_count = count_images(markdown)
     tags = extract_tags(markdown, domain, title)
 
     frontmatter_meta = {
-        "source": metadata.get("canonical") or final_url,
+        "source": source_url,
         "title": title,
         "author": metadata.get("author"),
         "published_date": published_at.isoformat() if published_at else None,
@@ -897,7 +894,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     return ParsedPage(
         title=title,
         content=content,
-        source=metadata.get("canonical") or final_url,
+        source=source_url,
         published_at=published_at,
         favicon_url=favicon_url,
     )

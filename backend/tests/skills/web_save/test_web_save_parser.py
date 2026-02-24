@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from api.services import web_save_includes, web_save_parser
+from api.services import web_save_includes, web_save_parser, web_save_parser_wsj
 from api.services.web_save_parser_apple_news import (
     extract_apple_news_publisher_url,
     resolve_apple_news_source_url,
@@ -109,6 +109,94 @@ def test_parse_url_local_apple_news_fetches_publisher_article(monkeypatch):
     ]
     assert parsed.source == "https://www.wsj.com/tech/ai/anthropic"
     assert "publisher article body" in parsed.content.lower()
+
+
+def test_parse_url_local_wsj_preview_uses_jina_content_when_longer(monkeypatch):
+    wsj_preview_html = """
+    <html>
+      <head><title>WSJ Story</title></head>
+      <body>
+        <article>
+          <p>A short opening paragraph.</p>
+          <p>Another short paragraph before the paywall marker.</p>
+          <p>Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved. 87990cbe856818d5eddac44c7b1cdeb8</p>
+        </article>
+        <div>Continue reading your article with</div>
+        <div>a WSJ subscription</div>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return wsj_preview_html, "https://www.wsj.com/tech/ai/story-id", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+    monkeypatch.setattr(web_save_parser_wsj.settings, "jina_api_key", "test-jina-key")
+    monkeypatch.setattr(
+        web_save_parser_wsj.JinaService,
+        "fetch_markdown",
+        lambda _url: "ignored",
+    )
+    monkeypatch.setattr(
+        web_save_parser_wsj.JinaService,
+        "parse_metadata",
+        lambda _markdown: (
+            {
+                "title": "WSJ Story (Full)",
+                "url_source": "https://www.wsj.com/tech/ai/story-id",
+                "published_time": None,
+            },
+            ("Full article paragraph. " * 200).strip(),
+        ),
+    )
+    monkeypatch.setattr(
+        web_save_parser_wsj.JinaService,
+        "clean_markdown_for_source",
+        lambda markdown, _source: markdown,
+    )
+
+    parsed = web_save_parser.parse_url_local("https://www.wsj.com/tech/ai/story-id")
+
+    assert parsed.source == "https://www.wsj.com/tech/ai/story-id"
+    assert "full article paragraph" in parsed.content.lower()
+
+
+def test_parse_url_local_wsj_preview_keeps_local_when_jina_fetch_fails(monkeypatch):
+    wsj_preview_html = """
+    <html>
+      <head><title>WSJ Story</title></head>
+      <body>
+        <article>
+          <p>A short opening paragraph.</p>
+          <p>Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved. 87990cbe856818d5eddac44c7b1cdeb8</p>
+        </article>
+        <div>Continue reading your article with</div>
+        <div>a WSJ subscription</div>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return wsj_preview_html, "https://www.wsj.com/tech/ai/story-id", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+    monkeypatch.setattr(web_save_parser_wsj.settings, "jina_api_key", "test-jina-key")
+    monkeypatch.setattr(
+        web_save_parser_wsj.JinaService,
+        "fetch_markdown",
+        lambda _url: (_ for _ in ()).throw(RuntimeError("402 Payment Required")),
+    )
+
+    parsed = web_save_parser.parse_url_local("https://www.wsj.com/tech/ai/story-id")
+
+    assert parsed.source == "https://www.wsj.com/tech/ai/story-id"
+    assert "short opening paragraph" in parsed.content.lower()
 
 
 def test_extract_metadata_finds_favicon():
