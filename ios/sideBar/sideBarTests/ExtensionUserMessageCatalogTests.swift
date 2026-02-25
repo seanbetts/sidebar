@@ -140,6 +140,36 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
         XCTAssertEqual(map, expected)
     }
 
+    func testSafariManifestDeclaresToolbarIconSizesAndAssetsExist() throws {
+        let resources = extensionResourcesDirectory(
+            targetDirectory: "sideBar Safari Extension/Resources"
+        )
+        let manifestText = try resourceText(in: resources, filename: "manifest.json")
+        let manifestData = Data(manifestText.utf8)
+        let manifest = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: manifestData, options: []) as? [String: Any]
+        )
+
+        let icons = try XCTUnwrap(manifest["icons"] as? [String: String])
+        for size in ["16", "32", "48", "96", "128", "256", "512"] {
+            let path = try XCTUnwrap(icons[size], "Expected icons[\(size)] in manifest.json")
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: resources.appendingPathComponent(path).path),
+                "Missing icon asset for size \(size): \(path)"
+            )
+        }
+
+        let action = try XCTUnwrap(manifest["action"] as? [String: Any])
+        let defaultIcon = try XCTUnwrap(action["default_icon"] as? [String: String])
+        for size in ["16", "32", "48", "96"] {
+            let path = try XCTUnwrap(defaultIcon[size], "Expected action.default_icon[\(size)] in manifest.json")
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: resources.appendingPathComponent(path).path),
+                "Missing action icon asset for size \(size): \(path)"
+            )
+        }
+    }
+
     func testQueueResultMapperReturnsQueueFailedWhenItemIsMissing() {
         let message = ExtensionQueueResultMapper.queueMessage(for: nil)
         XCTAssertFalse(ExtensionQueueResultMapper.queueSucceeded(for: nil))

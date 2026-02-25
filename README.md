@@ -162,7 +162,7 @@ Canonical assets live under `assets/`. Current groups:
 - `assets/loading/loading-dark-128.gif` (reserved for future 128px+ loading surfaces)
 - `assets/branding/logo-light.png`
 - `assets/branding/logo-dark.png`
-- `assets/safari-extension/icon-48.png` (and `64/96/128/256/512`)
+- `assets/safari-extension/icon-16.png` (and `32/48/64/96/128/256/512`)
 - `assets/safari-extension/toolbar-icon.svg`
 
 Sync them to all runtime targets (web app, iOS app, share extension, Safari extension) with:

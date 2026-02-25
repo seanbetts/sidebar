@@ -92,7 +92,7 @@ sync_file "${LOGO_LIGHT_SRC}" "ios/sideBar/sideBar Safari Extension/Resources/im
 sync_file "${LOGO_DARK_SRC}" "ios/sideBar/sideBar Safari Extension/Resources/images/logo-dark.png"
 
 # Group: Safari extension icon set and toolbar icon
-for size in 48 64 96 128 256 512; do
+for size in 16 32 48 64 96 128 256 512; do
   icon_src="${ROOT_DIR}/assets/safari-extension/icon-${size}.png"
   sync_file "${icon_src}" "ios/sideBar/sideBar Safari Extension/Resources/images/icon-${size}.png"
   sync_file "${icon_src}" "ios/sideBar/sideBar Safari Extension (macOS) Extension/Resources/images/icon-${size}.png"

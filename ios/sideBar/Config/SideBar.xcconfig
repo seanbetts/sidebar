@@ -5,7 +5,7 @@
 //   "Base Configuration" at it in Xcode.
 
 // Local overrides (not committed)
-#include? "$(SRCROOT)/Config/SideBar.local.xcconfig"
+#include? "SideBar.local.xcconfig"
 
 // Note: set API_BASE_URL in SideBar.local.xcconfig for local development.
 
