@@ -33,6 +33,62 @@ def test_websites_save_requires_url(test_client):
     assert error_message(response) == "url required"
 
 
+def test_websites_save_reports_local_and_jina_payment_error(test_client, monkeypatch):
+    async def fake_execute(_skill, _script, _args):
+        return {
+            "success": False,
+            "error": {
+                "type": "FetchError",
+                "message": (
+                    "Local parse failed (No readable content extracted); "
+                    "Jina fallback failed: Failed to fetch content from Jina.ai: "
+                    "402 Client Error: Payment Required for url: "
+                    "https://r.jina.ai/https://example.com"
+                ),
+            },
+        }
+
+    monkeypatch.setattr(test_client.app.state.executor, "execute", fake_execute)
+    response = test_client.post(
+        "/api/websites/save",
+        json={"url": "https://example.com"},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 400
+    assert (
+        error_message(response)
+        == "Unable to save website: local parser found no readable content and "
+        "Jina fallback returned 402 Payment Required. Check JINA_API_KEY billing/quota."
+    )
+    assert (
+        response.json()["error"]["details"]["reason"]
+        == "local_parse_and_jina_payment_required"
+    )
+
+
+def test_websites_save_reports_no_readable_content(test_client, monkeypatch):
+    async def fake_execute(_skill, _script, _args):
+        return {
+            "success": False,
+            "error": "No readable content extracted",
+        }
+
+    monkeypatch.setattr(test_client.app.state.executor, "execute", fake_execute)
+    response = test_client.post(
+        "/api/websites/save",
+        json={"url": "https://example.com"},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 400
+    assert (
+        error_message(response)
+        == "Unable to save website: local parser found no readable content."
+    )
+    assert response.json()["error"]["details"]["reason"] == "no_readable_content"
+
+
 def test_websites_get_success(test_client, test_db):
     website_id = uuid.uuid4()
     website = Website(

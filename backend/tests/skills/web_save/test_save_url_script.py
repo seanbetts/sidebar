@@ -6,6 +6,8 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 
 def _load_save_url_module():
     script_path = (
@@ -97,3 +99,29 @@ def test_save_url_database_local_uses_resolved_target(monkeypatch):
 
     assert captured_parse["url"] == "https://www.wsj.com/tech/ai/story-id"
     assert captured["upsert_kwargs"]["source"] == "https://www.wsj.com/tech/ai/story-id"
+
+
+def test_save_url_database_reports_local_and_jina_failure(monkeypatch):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    def fail_local(_url):
+        raise ValueError("No readable content extracted")
+
+    module.parse_url_local = fail_local
+    module.get_markdown_content = lambda _url, _api_key: (_ for _ in ()).throw(
+        module.requests.exceptions.RequestException(
+            "Failed to fetch content from Jina.ai: 402 Client Error: Payment Required"
+        )
+    )
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+
+    with pytest.raises(module.requests.exceptions.RequestException) as exc_info:
+        module.save_url_database("https://www.satchelone.com/todos/upcoming", "user-1")
+
+    message = str(exc_info.value)
+    assert "Local parse failed (No readable content extracted)" in message
+    assert "Jina fallback failed" in message

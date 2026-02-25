@@ -104,6 +104,57 @@ class SkillExecutor:
                     if ".." in arg:
                         raise ValueError(f"Path traversal not allowed: {arg}") from err
 
+    @staticmethod
+    def _extract_json_from_text(text: str) -> dict[str, Any] | None:
+        """Extract the trailing JSON object from a mixed stderr blob."""
+        stderr = text.strip()
+        if not stderr:
+            return None
+
+        try:
+            parsed = json.loads(stderr)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+        decoder = json.JSONDecoder()
+        brace_indices = [idx for idx, char in enumerate(stderr) if char == "{"]
+        for start in reversed(brace_indices):
+            candidate = stderr[start:]
+            try:
+                parsed, end = decoder.raw_decode(candidate)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(parsed, dict):
+                continue
+            if candidate[end:].strip():
+                continue
+            return parsed
+
+        return None
+
+    @classmethod
+    def _normalize_failure_payload(cls, stderr_text: str) -> dict[str, Any]:
+        """Normalize a failed script stderr payload into API shape."""
+        parsed = cls._extract_json_from_text(stderr_text)
+        if parsed is not None:
+            return parsed
+        return {"error": stderr_text}
+
+    @staticmethod
+    def _error_summary(error_payload: dict[str, Any]) -> str:
+        """Build a concise summary string for audit logging."""
+        error_value = error_payload.get("error")
+        if isinstance(error_value, dict):
+            nested_message = error_value.get("message")
+            if isinstance(nested_message, str) and nested_message.strip():
+                return nested_message
+            return json.dumps(error_value)
+        if isinstance(error_value, str):
+            return error_value
+        return str(error_payload)
+
     async def execute(
         self,
         skill_name: str,
@@ -242,10 +293,7 @@ class SkillExecutor:
                     )
                     return output
                 else:
-                    try:
-                        error = json.loads(result.stderr)
-                    except Exception:
-                        error = {"error": result.stderr}
+                    error = self._normalize_failure_payload(result.stderr)
 
                     # Audit log failure
                     AuditLogger.log_tool_call(
@@ -253,7 +301,7 @@ class SkillExecutor:
                         parameters={"args": args},
                         duration_ms=duration_ms,
                         success=False,
-                        error=error.get("error", "Unknown error"),
+                        error=self._error_summary(error),
                         user_id=user_id,
                     )
                     return {"success": False, **error}

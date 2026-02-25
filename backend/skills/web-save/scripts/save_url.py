@@ -200,6 +200,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         web_save_mode,
     )
     parsed = None
+    local_parse_error: str | None = None
     if web_save_mode in {"local", "compare"}:
         try:
             parsed = parse_url_local(target_url)
@@ -214,10 +215,11 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 len(parsed.content),
             )
         except Exception as exc:
+            local_parse_error = str(exc)
             logger.exception(
                 "web-save script local parse failed target_url=%s error=%s",
                 target_url,
-                str(exc),
+                local_parse_error,
             )
 
     local_parsed = parsed
@@ -286,6 +288,14 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 logger.info("Compare parse failed for %s: %s", url, str(exc))
                 parsed = local_parsed
             else:
+                if local_parse_error:
+                    raise requests.exceptions.RequestException(
+                        (
+                            "Local parse failed (%s); "
+                            "Jina fallback failed: %s"
+                        )
+                        % (local_parse_error, str(exc))
+                    ) from exc
                 raise
     else:
         title = parsed.title

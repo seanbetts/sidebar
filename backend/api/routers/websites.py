@@ -3,6 +3,7 @@
 
 import logging
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request
 from fastapi.responses import JSONResponse, Response
@@ -26,6 +27,78 @@ from api.utils.validation import parse_uuid
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/websites", tags=["websites"])
 ARCHIVED_LIST_MAX_LIMIT = 500
+
+
+def _extract_web_save_error_context(result: dict[str, Any]) -> tuple[str, str]:
+    """Extract normalized error type/message from a failed skill result."""
+    error = result.get("error")
+    if isinstance(error, dict):
+        error_type = str(error.get("type") or "")
+        message = str(error.get("message") or "")
+        return error_type, message
+    if isinstance(error, str):
+        return "", error
+    return "", str(error or "")
+
+
+def _classify_web_save_failure(result: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """Classify web-save failures into user-facing message and details."""
+    error_type, upstream_message = _extract_web_save_error_context(result)
+    normalized = upstream_message.lower()
+
+    local_parse_failed = (
+        "no readable content extracted" in normalized
+        or "local parse failed" in normalized
+    )
+    jina_fetch_failed = (
+        error_type == "FetchError"
+        or "failed to fetch content from jina.ai" in normalized
+        or "r.jina.ai" in normalized
+    )
+    jina_payment_required = (
+        jina_fetch_failed and "402" in normalized and "payment required" in normalized
+    )
+
+    details: dict[str, Any] = {}
+    if error_type:
+        details["upstream_error_type"] = error_type
+    if upstream_message:
+        details["upstream_error"] = upstream_message
+
+    if local_parse_failed and jina_payment_required:
+        details["reason"] = "local_parse_and_jina_payment_required"
+        return (
+            "Unable to save website: local parser found no readable content and "
+            "Jina fallback returned 402 Payment Required. "
+            "Check JINA_API_KEY billing/quota.",
+            details,
+        )
+    if jina_payment_required:
+        details["reason"] = "jina_payment_required"
+        return (
+            "Unable to save website: Jina fallback returned 402 Payment Required. "
+            "Check JINA_API_KEY billing/quota.",
+            details,
+        )
+    if local_parse_failed and jina_fetch_failed:
+        details["reason"] = "local_parse_and_jina_fetch_failed"
+        return (
+            "Unable to save website: local parser found no readable content and "
+            "Jina fallback failed.",
+            details,
+        )
+    if local_parse_failed:
+        details["reason"] = "no_readable_content"
+        return (
+            "Unable to save website: local parser found no readable content.",
+            details,
+        )
+    if jina_fetch_failed:
+        details["reason"] = "jina_fetch_failed"
+        return "Unable to save website: Jina fallback failed.", details
+
+    details["reason"] = "unknown"
+    return "Unable to save website", details
 
 
 @router.get("")
@@ -212,12 +285,13 @@ async def save_website(
         "web-save", "save_url.py", [url, "--database", "--user-id", user_id]
     )
     if not result.get("success"):
+        message, details = _classify_web_save_failure(result)
         logger.error(
             "websites save failed url=%s error=%s",
             url,
             result.get("error"),
         )
-        raise BadRequestError("Unable to save website")
+        raise BadRequestError(message, details=details)
 
     return result
 

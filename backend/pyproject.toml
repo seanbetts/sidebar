@@ -20,8 +20,9 @@ dependencies = [
     "Pillow>=10.0.0",
     # Safe XML parsing (used by docx/pptx ooxml scripts)
     "defusedxml>=0.7.1",
-    # HTTP library (for custom scripts)
-    "requests>=2.31.0",
+    # HTTP library stack (compatible with urllib3 2.x and chardet 5.x)
+    "requests>=2.32.0",
+    "chardet<6.0.0",
     # YAML processing (folder-config skill)
     "PyYAML>=6.0",
     # Web-save parsing

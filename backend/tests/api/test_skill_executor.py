@@ -232,6 +232,33 @@ sys.exit(1)
         assert "Something went wrong" in result["error"]
 
     @pytest.mark.asyncio
+    async def test_parses_json_error_after_warning_preamble(
+        self, executor, temp_skills_dir
+    ):
+        """Should recover JSON error payloads from mixed stderr output."""
+        test_skill = temp_skills_dir / "test-skill" / "scripts"
+        noisy_error_script = test_skill / "noisy_error.py"
+        noisy_error_script.write_text("""#!/usr/bin/env python3
+import json
+import sys
+sys.stderr.write("RequestsDependencyWarning: dependency mismatch\\n")
+print(json.dumps({
+    "success": False,
+    "error": {
+        "type": "FetchError",
+        "message": "Failed to fetch content from Jina.ai: 402 Client Error: Payment Required",
+    },
+}), file=sys.stderr)
+sys.exit(1)
+""")
+
+        result = await executor.execute("test-skill", "noisy_error.py", [])
+        assert result["success"] is False
+        assert isinstance(result["error"], dict)
+        assert result["error"]["type"] == "FetchError"
+        assert "402 Client Error" in result["error"]["message"]
+
+    @pytest.mark.asyncio
     async def test_no_shell_injection(self, executor, temp_skills_dir):
         """Should prevent shell injection attacks."""
         # Create a script that would be vulnerable if shell=True
