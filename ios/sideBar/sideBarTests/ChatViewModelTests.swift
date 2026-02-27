@@ -308,6 +308,58 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.conversations.first?.id, created.id)
     }
 
+    func testOpenDraftConversationClearsSelectionAndActivatesDraft() async {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+        viewModel.selectedConversationId = "conv-1"
+        viewModel.messages = [
+            Message(
+                id: "msg-1",
+                role: .assistant,
+                content: "Hello",
+                status: .complete,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:00Z",
+                error: nil
+            )
+        ]
+        viewModel.attachments = [
+            ChatAttachmentItem(
+                id: "attachment-1",
+                name: "report.pdf",
+                status: .ready,
+                stage: "complete",
+                fileId: "file-1"
+            )
+        ]
+        viewModel.userDefaults.set("conv-1", forKey: AppStorageKeys.lastConversationId)
+
+        await viewModel.openDraftConversation()
+
+        XCTAssertNil(viewModel.selectedConversationId)
+        XCTAssertTrue(viewModel.isDraftConversationActive)
+        XCTAssertTrue(viewModel.messages.isEmpty)
+        XCTAssertTrue(viewModel.attachments.isEmpty)
+        XCTAssertNil(viewModel.userDefaults.string(forKey: AppStorageKeys.lastConversationId))
+    }
+
+    func testSelectConversationNilClearsDraftState() async {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+        viewModel.isDraftConversationActive = true
+
+        await viewModel.selectConversation(id: nil)
+
+        XCTAssertFalse(viewModel.isDraftConversationActive)
+    }
+
     func testReconcileMessagesPrefersLocalStreamingContentWhenIDsMatch() async {
         let cache = TestCacheClient()
         let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)

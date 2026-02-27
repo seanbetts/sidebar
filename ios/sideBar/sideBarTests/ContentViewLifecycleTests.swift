@@ -46,20 +46,20 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(plan.shouldConsumeCommandSelection)
     }
 
-    func testMakeInitialPhoneChatActionCreatesConversationWhenConversationIsNotSelected() {
+    func testMakeInitialPhoneChatActionOpensDraftWhenConversationIsNotSelected() {
         let action = ContentView.makeInitialPhoneChatAction(
             selectedConversationId: nil
         )
 
-        XCTAssertEqual(action, .createConversation)
+        XCTAssertEqual(action, .openDraftConversation)
     }
 
-    func testMakeInitialPhoneChatActionCreatesConversationWhenConversationIsSelected() {
+    func testMakeInitialPhoneChatActionDoesNothingWhenConversationIsSelected() {
         let action = ContentView.makeInitialPhoneChatAction(
             selectedConversationId: "conversation-1"
         )
 
-        XCTAssertEqual(action, .createConversation)
+        XCTAssertEqual(action, .none)
     }
 
     func testMakeRegularLayoutPlanFromCompactSelectionForChat() {

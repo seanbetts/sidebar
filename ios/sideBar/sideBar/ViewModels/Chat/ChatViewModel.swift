@@ -100,6 +100,7 @@ private final class ChatViewModelTeardownBag {
 @MainActor public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public var conversations: [Conversation] = []
     @Published public var selectedConversationId: String?
+    @Published public var isDraftConversationActive: Bool = false
     @Published public var messages: [Message] = []
     @Published public var isStreaming: Bool = false
     @Published public var isLoadingConversations: Bool = false
@@ -269,6 +270,7 @@ private final class ChatViewModelTeardownBag {
         stopAutoRefresh()
         stopStream()
         selectedConversationId = nil
+        isDraftConversationActive = false
         conversations = []
         messages = []
         isStreaming = false

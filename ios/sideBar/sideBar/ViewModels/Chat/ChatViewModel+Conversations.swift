@@ -73,11 +73,15 @@ extension ChatViewModel {
         }
 
         var conversationId = selectedConversationId
+        if conversationId != nil {
+            setDraftConversationActive(false)
+        }
         if conversationId == nil {
             do {
                 let conversation = try await conversationsAPI.create(title: "New Chat")
                 conversationId = conversation.id
                 selectedConversationId = conversation.id
+                setDraftConversationActive(false)
                 chatStore.upsertConversation(conversation)
                 chatStore.upsertConversationDetail(
                     ConversationWithMessages(
@@ -147,6 +151,23 @@ extension ChatViewModel {
         clearAttachments()
     }
 
+    public func openDraftConversation() async {
+        guard !isStreaming else {
+            return
+        }
+        errorMessage = nil
+        stopStream()
+        promptPreview = nil
+        activeTool = nil
+        clearActiveToolTask?.cancel()
+        await cleanupEmptyConversationIfNeeded()
+        selectedConversationId = nil
+        userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+        messages = []
+        setDraftConversationActive(true)
+        clearAttachments()
+    }
+
     public func startNewConversation() async {
         guard !isStreaming else {
             return
@@ -161,6 +182,7 @@ extension ChatViewModel {
         do {
             let conversation = try await conversationsAPI.create(title: "New Chat")
             selectedConversationId = conversation.id
+            setDraftConversationActive(false)
             userDefaults.set(conversation.id, forKey: AppStorageKeys.lastConversationId)
             messages = []
             chatStore.upsertConversation(conversation)
@@ -309,11 +331,12 @@ extension ChatViewModel {
     }
 
     public func selectConversation(id: String?) async {
-        guard selectedConversationId != id else {
+        guard selectedConversationId != id || isDraftConversationActive else {
             return
         }
         await cleanupEmptyConversationIfNeeded()
         selectedConversationId = id
+        setDraftConversationActive(false)
         promptPreview = nil
         activeTool = nil
         clearActiveToolTask?.cancel()

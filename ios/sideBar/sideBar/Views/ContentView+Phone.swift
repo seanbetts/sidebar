@@ -1,5 +1,9 @@
 import SwiftUI
 
+private enum PhoneChatDetailRouteID {
+    static let draft = "__chat-draft__"
+}
+
 extension ContentView {
     func phoneTabView(for section: AppSection) -> some View {
         NavigationStack {
@@ -82,7 +86,15 @@ extension ContentView {
             detailView: { AnyView(ChatView()) },
             phoneSelection: {
                 Binding(
-                    get: { environment.chatViewModel.selectedConversationId.map(PhoneDetailRoute.init) },
+                    get: {
+                        if let selectedConversationId = environment.chatViewModel.selectedConversationId {
+                            return PhoneDetailRoute(id: selectedConversationId)
+                        }
+                        if environment.chatViewModel.isDraftConversationActive {
+                            return PhoneDetailRoute(id: PhoneChatDetailRouteID.draft)
+                        }
+                        return nil
+                    },
                     set: { route in
                         guard route == nil else { return }
                         Task { await environment.chatViewModel.selectConversation(id: nil) }

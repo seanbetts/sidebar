@@ -21,7 +21,8 @@ struct DesktopSidebarSelectionPlan: Equatable {
 }
 
 enum InitialPhoneChatAction: Equatable {
-    case createConversation
+    case openDraftConversation
+    case none
 }
 
 extension ContentView {
@@ -102,6 +103,7 @@ extension ContentView {
         switch phoneSelection {
         case .chat:
             return environment.chatViewModel.selectedConversationId == nil
+                && !environment.chatViewModel.isDraftConversationActive
         case .notes:
             return environment.notesViewModel.selectedNoteId == nil
         case .files:
@@ -334,9 +336,12 @@ extension ContentView {
     #endif
 
     static func makeInitialPhoneChatAction(
-        selectedConversationId _: String?
+        selectedConversationId: String?
     ) -> InitialPhoneChatAction {
-        return .createConversation
+        if selectedConversationId == nil {
+            return .openDraftConversation
+        }
+        return .none
     }
 
     @MainActor
@@ -378,8 +383,10 @@ extension ContentView {
             selectedConversationId: environment.chatViewModel.selectedConversationId
         )
         switch action {
-        case .createConversation:
-            await environment.chatViewModel.startNewConversation()
+        case .openDraftConversation:
+            await environment.chatViewModel.openDraftConversation()
+        case .none:
+            break
         }
     }
     #endif

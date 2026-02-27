@@ -206,12 +206,20 @@ extension ChatViewModel {
     func clearConversationSelection() {
         stopStream()
         selectedConversationId = nil
+        setDraftConversationActive(false)
         messages = []
         promptPreview = nil
         activeTool = nil
         clearActiveToolTask?.cancel()
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
         clearAttachments()
+    }
+
+    func setDraftConversationActive(_ isActive: Bool) {
+        guard isDraftConversationActive != isActive else {
+            return
+        }
+        isDraftConversationActive = isActive
     }
 
     func clearAttachments() {
