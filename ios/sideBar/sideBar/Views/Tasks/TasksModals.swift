@@ -86,6 +86,9 @@ struct NewTaskSheet: View {
             Form {
                 Section("Task") {
                     TextField("Task title", text: $title)
+                        #if os(macOS)
+                        .textFieldStyle(.roundedBorder)
+                        #endif
                         .textInputAutocapitalizationSentences()
                         .disableAutocorrection(false)
                         .focused($focusedField, equals: .title)
@@ -126,6 +129,9 @@ struct NewTaskSheet: View {
                             Text(option.label).tag(option.id)
                         }
                     }
+                    #if os(macOS)
+                    .pickerStyle(.menu)
+                    #endif
                     .frame(minHeight: 44)
                 } header: {
                     Text("Details")
@@ -141,6 +147,25 @@ struct NewTaskSheet: View {
                         }
                         TextEditor(text: $notes)
                             .frame(minHeight: 120)
+                            #if os(macOS)
+                            .scrollContentBackground(.hidden)
+                            .padding(.horizontal, DesignTokens.Spacing.xxs)
+                            .padding(.vertical, DesignTokens.Spacing.xxsPlus)
+                            .background(DesignTokens.Colors.surface)
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: DesignTokens.Radius.sm,
+                                    style: .continuous
+                                )
+                            )
+                            .overlay(
+                                RoundedRectangle(
+                                    cornerRadius: DesignTokens.Radius.sm,
+                                    style: .continuous
+                                )
+                                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+                            )
+                            #endif
                     }
                 }
 
@@ -148,7 +173,7 @@ struct NewTaskSheet: View {
                     Section {
                         Text(errorMessage)
                             .appFont(.caption)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(DesignTokens.Colors.error)
                     }
                 }
             }
@@ -178,6 +203,14 @@ struct NewTaskSheet: View {
                 focusedField = .title
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(DesignTokens.Colors.background)
+        .presentationBackground(DesignTokens.Colors.background)
+        .presentationSizing(.fitted)
+        .frame(minWidth: 500, idealWidth: 560, maxWidth: 640, minHeight: 500)
+        #endif
     }
 
     private var listOptions: [TaskListOption] {

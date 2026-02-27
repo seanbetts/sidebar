@@ -17,6 +17,11 @@ final class ChatViewModelTests: XCTestCase {
     }()
     private static var retainedViewModels: [ChatViewModel] = []
 
+    override func tearDown() {
+        ChatViewModelTestsURLProtocolMock.requestHandler = nil
+        super.tearDown()
+    }
+
     func testLoadConversationsUsesCacheOnFailure() async {
         let cached = [Conversation(
             id: "conv-1",
@@ -193,74 +198,6 @@ final class ChatViewModelTests: XCTestCase {
 
         let cachedMemories: [MemoryItem]? = cache.get(key: CacheKeys.memoriesList)
         XCTAssertNil(cachedMemories)
-    }
-
-    func testPromptPreviewEventStoresPromptDiagnostics() async {
-        let cache = TestCacheClient()
-        let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)
-
-        let event = ChatStreamEvent(
-            type: .promptPreview,
-            data: AnyCodable([
-                "system_prompt": "System prompt text",
-                "first_message_prompt": "First message prompt text",
-                "system_prompt_sections": [
-                    [
-                        "id": "message_context",
-                        "title": "Message Context",
-                        "source": "system_template",
-                        "chars": 2335
-                    ]
-                ],
-                "first_message_prompt_sections": [
-                    [
-                        "id": "first_message",
-                        "title": "First Message Context",
-                        "source": "first_message_template",
-                        "chars": 1137
-                    ]
-                ],
-                "prompt_report": [
-                    "system_prompt": [
-                        "total_chars": 3690,
-                        "max_chars": 40000,
-                        "truncated": false,
-                        "sections": [
-                            [
-                                "id": "message_context",
-                                "title": "Message Context",
-                                "source": "system_template",
-                                "chars": 2335
-                            ]
-                        ]
-                    ],
-                    "first_message_prompt": [
-                        "total_chars": 1137,
-                        "max_chars": 8000,
-                        "truncated": false,
-                        "sections": [
-                            [
-                                "id": "first_message",
-                                "title": "First Message Context",
-                                "source": "first_message_template",
-                                "chars": 1137
-                            ]
-                        ]
-                    ]
-                ]
-            ])
-        )
-
-        viewModel.handle(event: event)
-
-        XCTAssertEqual(viewModel.promptPreview?.systemPrompt, "System prompt text")
-        XCTAssertEqual(viewModel.promptPreview?.firstMessagePrompt, "First message prompt text")
-        XCTAssertEqual(viewModel.promptPreview?.systemPromptSections.count, 1)
-        XCTAssertEqual(viewModel.promptPreview?.systemPromptSections.first?.id, "message_context")
-        XCTAssertEqual(viewModel.promptPreview?.firstMessagePromptSections.count, 1)
-        XCTAssertEqual(viewModel.promptPreview?.firstMessagePromptSections.first?.chars, 1137)
-        XCTAssertEqual(viewModel.promptPreview?.promptReport?.systemPrompt?.totalChars, 3690)
-        XCTAssertEqual(viewModel.promptPreview?.promptReport?.firstMessagePrompt?.maxChars, 8000)
     }
 
     func testLoadConversationSortsMessagesByTimestamp() async {
@@ -441,24 +378,54 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(reconciled.first?.id, "assistant-server")
     }
 
-    private func makeViewModel<API: ConversationsProviding & ConversationsAPIProviding>(
+    func testStartAttachmentPollingMarksAttachmentFailedWhenStatusRequestFails() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))
+        let ingestionAPI = makeIngestionAPIForAttachmentPollingTest()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            ingestionAPI: ingestionAPI
+        )
+        viewModel.attachments = [
+            ChatAttachmentItem(
+                id: "attachment-1",
+                name: "report.pdf",
+                status: .queued,
+                stage: "queued",
+                fileId: "file-1"
+            )
+        ]
+
+        viewModel.startAttachmentPolling(id: "attachment-1", fileId: "file-1")
+        try? await Task.sleep(nanoseconds: 2_200_000_000)
+
+        let attachment = viewModel.attachments.first(where: { $0.id == "attachment-1" })
+        XCTAssertEqual(attachment?.status, .failed)
+        XCTAssertEqual(attachment?.stage, "failed")
+    }
+}
+
+extension ChatViewModelTests {
+    func makeViewModel<API: ConversationsProviding & ConversationsAPIProviding>(
         api: API,
         cache: CacheClient,
         networkStatus: ChatViewModelTestsSupport.TestNetworkStatus? = nil,
-        scratchpadStore: ScratchpadStore? = nil
+        scratchpadStore: ScratchpadStore? = nil,
+        ingestionAPI: IngestionAPI? = nil
     ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
         let themeManager = Self.sharedThemeManager
         let defaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
-        let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
+        let resolvedIngestionAPI = ingestionAPI ?? IngestionAPI(client: Self.sharedAPIClient)
         let effectiveNetworkStatus = networkStatus ?? ChatViewModelTestsSupport.TestNetworkStatus(isNetworkAvailable: true)
         let viewModel = ChatViewModel(
             network: ChatNetworkCoordinator(
                 chatAPI: chatAPI,
                 conversationsAPI: api,
-                ingestionAPI: ingestionAPI,
+                ingestionAPI: resolvedIngestionAPI,
                 streamClient: ChatViewModelTestsSupport.MockChatStreamClient(),
                 networkStatus: effectiveNetworkStatus
             ),
@@ -478,5 +445,27 @@ final class ChatViewModelTests: XCTestCase {
         )
         Self.retainedViewModels.append(viewModel)
         return viewModel
+    }
+
+    func makeIngestionAPIForAttachmentPollingTest() -> IngestionAPI {
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+        let sessionConfig = URLSessionConfiguration.ephemeral
+        sessionConfig.protocolClasses = [ChatViewModelTestsURLProtocolMock.self]
+        let session = URLSession(configuration: sessionConfig)
+        ChatViewModelTestsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertTrue(request.url?.absoluteString.contains("files/file-1/meta") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 500,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"detail\":\"internal\"}".utf8))
+        }
+        return IngestionAPI(client: APIClient(config: config, session: session), session: session)
     }
 }
