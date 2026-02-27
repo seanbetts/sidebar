@@ -300,6 +300,12 @@ extension ChatViewModel {
                     }
                     try? await Task.sleep(nanoseconds: 5_000_000_000)
                 } catch {
+                    self?.updateAttachment(id: id) { item in
+                        var updated = item
+                        updated.status = .failed
+                        updated.stage = "failed"
+                        return updated
+                    }
                     self?.toastCenter?.show(message: "Attachment status failed")
                     return
                 }
