@@ -52,7 +52,18 @@ from api.services.web_save_parser_html import (
     decode_html_response,
 )
 from api.services.web_save_parser_openai import cleanup_openai_markdown
+from api.services.web_save_parser_paywall import (
+    build_paywall_frontmatter,
+    extract_paywall_preview_markdown,
+    is_anti_bot_challenge_page,
+)
 from api.services.web_save_parser_substack import cleanup_substack_markdown
+from api.services.web_save_parser_substack_helpers import (
+    is_substack_host,
+    match_substack_host_rules,
+    merge_rules,
+    should_apply_substack_cleanup,
+)
 from api.services.web_save_parser_utils import (
     clean_metadata_value,
     ensure_url,
@@ -197,27 +208,6 @@ def _discard_frontmatter(
     )
 
 
-def _paywall_frontmatter(
-    *,
-    source: str,
-    domain: str,
-    used_js_rendering: bool,
-) -> str:
-    frontmatter_meta = {
-        "source": source,
-        "domain": domain,
-        "discarded": True,
-        "paywalled": True,
-        "discard_reason": "Paywall detected",
-        "used_js_rendering": used_js_rendering,
-        "saved_at": datetime.now(UTC).isoformat(),
-    }
-    return build_frontmatter(
-        "Unable to save content. This site appears to be behind a paywall.",
-        meta=frontmatter_meta,
-    )
-
-
 def _raise_fallback_for_discard_rule(*, rule: Rule, phase: str, url: str) -> None:
     """Raise when a discard rule explicitly requests upstream fallback."""
     fallback = (rule.fallback or "").strip().lower()
@@ -352,83 +342,6 @@ def fetch_substack_body_html(
         "canonical": data.get("canonical_url"),
     }
     return body_html, meta
-
-
-def _is_substack_host(host: str) -> bool:
-    """Return True when a host belongs to substack.com."""
-    normalized = host.lower().strip(".")
-    return normalized == "substack.com" or normalized.endswith(".substack.com")
-
-
-def _contains_substack_markers(*fragments: str | None) -> bool:
-    """Return True when HTML/markdown fragments contain Substack-specific markers."""
-    markers = (
-        "substackcdn.com/image/fetch/",
-        "substack-post-media.s3.amazonaws.com/public/images/",
-        "substackassets.com",
-        'name="substack:',
-        'property="substack:',
-        'data-component-name="image2todom"',
-        'data-component-name="imagegallery"',
-        'class="available-content"',
-        'class="post-content"',
-    )
-    for fragment in fragments:
-        if not fragment:
-            continue
-        lowered = fragment.lower()
-        if any(marker in lowered for marker in markers):
-            return True
-    return False
-
-
-def _should_apply_substack_cleanup(
-    *,
-    final_url: str,
-    raw_html: str,
-    article_html: str,
-    markdown: str,
-) -> bool:
-    """Return True when Substack markdown cleanup should be applied."""
-    parsed = urlparse(final_url)
-    if _is_substack_host(parsed.netloc) or _contains_substack_markers(
-        raw_html, article_html
-    ):
-        return True
-    return "/p/" in parsed.path and _contains_substack_markers(markdown)
-
-
-def _is_substack_host_rule(rule: Rule) -> bool:
-    """Return True when a rule is explicitly keyed to substack.com host matching."""
-    host_trigger = (rule.trigger or {}).get("host") or {}
-    for key in ("equals", "equals_www", "ends_with", "etld_plus_one"):
-        value = host_trigger.get(key)
-        if isinstance(value, str) and _is_substack_host(value):
-            return True
-    return False
-
-
-def _merge_rules(base_rules: list[Rule], extra_rules: list[Rule]) -> list[Rule]:
-    """Merge rule lists by id while preserving priority ordering from inputs."""
-    seen: set[str] = set()
-    merged: list[Rule] = []
-    for rule in base_rules + extra_rules:
-        if rule.id in seen:
-            continue
-        merged.append(rule)
-        seen.add(rule.id)
-    return merged
-
-
-def _match_substack_host_rules(
-    engine: RuleEngine,
-    html: str,
-    *,
-    phase: str,
-) -> list[Rule]:
-    """Match Substack host rules for a phase using a synthetic Substack URL."""
-    matched = engine.match_rules("https://substack.com/p/synthetic", html, phase=phase)
-    return [rule for rule in matched if _is_substack_host_rule(rule)]
 
 
 class _PreservingMarkdownConverter(MarkdownConverter):
@@ -576,10 +489,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if substack_payload:
         article_html, substack_meta = substack_payload
         metadata.update({key: value for key, value in substack_meta.items() if value})
-        if not _is_substack_host(urlparse(final_url).netloc):
-            pre_rules = _merge_rules(
+        if not is_substack_host(urlparse(final_url).netloc):
+            pre_rules = merge_rules(
                 pre_rules,
-                _match_substack_host_rules(engine, html, phase="pre"),
+                match_substack_host_rules(engine, html, phase="pre"),
             )
     else:
         if document is None:
@@ -622,10 +535,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         len(article_html),
     )
     post_rules = engine.match_rules(final_url, article_html, phase="post")
-    if substack_payload and not _is_substack_host(urlparse(final_url).netloc):
-        post_rules = _merge_rules(
+    if substack_payload and not is_substack_host(urlparse(final_url).netloc):
+        post_rules = merge_rules(
             post_rules,
-            _match_substack_host_rules(engine, article_html, phase="post"),
+            match_substack_host_rules(engine, article_html, phase="post"),
         )
     if post_rules:
         logger.debug(
@@ -737,7 +650,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         markdown = cleanup_openai_markdown(markdown)
     if domain.endswith("github.com"):
         markdown = cleanup_github_markdown(markdown)
-    if _should_apply_substack_cleanup(
+    if should_apply_substack_cleanup(
         final_url=final_url,
         raw_html=raw_html_original,
         article_html=article_html,
@@ -772,10 +685,19 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if not markdown:
         domain = urlparse(final_url).netloc
         if is_paywalled(html, domain) or is_paywalled(article_html, domain):
-            content = _paywall_frontmatter(
+            preview_markdown = extract_paywall_preview_markdown(
+                article_html=article_html,
+                raw_html=raw_html_original,
+            )
+            anti_bot_blocked = is_anti_bot_challenge_page(
+                html
+            ) or is_anti_bot_challenge_page(raw_html_original)
+            content = build_paywall_frontmatter(
                 source=metadata.get("canonical") or final_url,
                 domain=domain,
                 used_js_rendering=used_js_rendering,
+                preview_markdown=preview_markdown,
+                anti_bot_blocked=anti_bot_blocked,
             )
             title = (
                 metadata.get("title")

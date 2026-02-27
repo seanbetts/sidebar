@@ -2858,7 +2858,102 @@ def test_parse_url_local_returns_paywall_message(monkeypatch):
     data = web_save_parser.yaml.safe_load(frontmatter)
 
     assert data["paywalled"] is True
+    assert data["truncated"] is False
     assert "Unable to save content" in parsed.content
+
+
+def test_parse_url_local_paywall_preserves_preview_when_available(monkeypatch):
+    html = """
+    <html>
+      <head><title>Paywalled Story</title></head>
+      <body>
+        <article>
+          <h1>Paywalled Story</h1>
+          <p>This is the opening preview paragraph that should still be saved.</p>
+          <p>This is a second preview paragraph with useful context.</p>
+          <div class="paywall">Subscribe to continue reading</div>
+        </article>
+      </body>
+    </html>
+    """
+
+    class FakeDocument:
+        def __init__(self, _html: str) -> None:
+            pass
+
+        def summary(self, html_partial: bool = True) -> str:
+            return (
+                "<article>"
+                "<h1>Paywalled Story</h1>"
+                "<p>This is the opening preview paragraph that should still be saved.</p>"
+                "<p>This is a second preview paragraph with useful context.</p>"
+                "<div class='paywall'>Subscribe to continue reading</div>"
+                "</article>"
+            )
+
+        def short_title(self) -> str:
+            return "Paywalled Story"
+
+        def title(self) -> str:
+            return "Paywalled Story"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/paywall", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "ReadabilityDocument", FakeDocument)
+    monkeypatch.setattr(web_save_parser, "html_to_markdown", lambda _html: "")
+
+    parsed = web_save_parser.parse_url_local("example.com/paywall")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+
+    assert data["paywalled"] is True
+    assert data["truncated"] is True
+    assert "Warning: This article appears truncated." in parsed.content
+    assert "opening preview paragraph" in parsed.content
+    assert "second preview paragraph" in parsed.content
+
+
+def test_parse_url_local_paywall_marks_anti_bot_block(monkeypatch):
+    html = """
+    <html>
+      <head><title>wsj.com</title></head>
+      <body>
+        <script>var dd={host:'geo.captcha-delivery.com'}</script>
+        <p>Please enable JS and disable any ad blocker</p>
+      </body>
+    </html>
+    """
+
+    class FakeDocument:
+        def __init__(self, _html: str) -> None:
+            pass
+
+        def summary(self, html_partial: bool = True) -> str:
+            return "<div></div>"
+
+        def short_title(self) -> str:
+            return "wsj.com"
+
+        def title(self) -> str:
+            return "wsj.com"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.wsj.com/tech/ai/story-id", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "ReadabilityDocument", FakeDocument)
+    monkeypatch.setattr(web_save_parser, "html_to_markdown", lambda _html: "")
+
+    parsed = web_save_parser.parse_url_local("https://www.wsj.com/tech/ai/story-id")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+
+    assert data["paywalled"] is True
+    assert data["truncated"] is False
+    assert data["anti_bot_blocked"] is True
+    assert "anti-bot challenge page" in parsed.content
 
 
 def test_parse_url_local_uses_substack_api(monkeypatch):
