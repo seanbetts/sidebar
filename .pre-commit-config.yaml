@@ -75,6 +75,12 @@ repos:
         language: system
         files: ^ios/sideBar/sideBar/(ViewModels|Services|Stores)/.*\.swift$
         pass_filenames: false
+      - id: ios-extension-config-resolution
+        name: ios-extension-config-resolution
+        entry: python scripts/check_ios_extension_config_resolution.py
+        language: system
+        files: ^(ios/sideBar/Config/SideBar\.xcconfig|ios/sideBar/sideBar\.xcodeproj/project\.pbxproj|scripts/check_ios_extension_config_resolution\.py)$
+        pass_filenames: false
       - id: ios-tests
         name: ios-tests
         entry: scripts/test-ios.sh

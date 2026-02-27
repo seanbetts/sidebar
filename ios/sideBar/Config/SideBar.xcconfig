@@ -4,11 +4,6 @@
 // - For local dev, set real values in Xcode Build Settings, or create a local-only xcconfig and point
 //   "Base Configuration" at it in Xcode.
 
-// Local overrides (not committed)
-#include? "SideBar.local.xcconfig"
-
-// Note: set API_BASE_URL in SideBar.local.xcconfig for local development.
-
 // Supabase project configuration
 // (anon key is "public", but keep it out of git anyway)
 SUPABASE_URL =
@@ -39,3 +34,6 @@ INFOPLIST_KEY_NSFaceIDUsageDescription = We use Face ID to securely unlock sideB
 
 // Background tasks for token refresh and widget data sync
 INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = $(inherited) ai.sidebar.sidebar.tokenrefresh ai.sidebar.sidebar.widgetrefresh
+
+// Local overrides (not committed)
+#include? "SideBar.local.xcconfig"
