@@ -170,7 +170,7 @@ public struct SidebarRail: View {
     }
 
     private func iconScale(for section: AppSection) -> CGFloat {
-        section == .skillsStore ? 1.14 : 1.0
+        section == .skillsStore ? 1.2 : 1.0
     }
 
 }
