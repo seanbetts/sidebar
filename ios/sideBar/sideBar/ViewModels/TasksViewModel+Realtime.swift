@@ -32,9 +32,10 @@ extension TasksViewModel {
 
             let currentSelection = self.selection
             if currentSelection != .none {
-                await self.load(selection: currentSelection, force: true)
+                // Reconcile from cache first, then refresh in background to avoid UI flicker.
+                await self.load(selection: currentSelection)
             }
-            await self.loadCounts(force: true)
+            await self.loadCounts()
             await self.refreshWidgetData()
         }
     }

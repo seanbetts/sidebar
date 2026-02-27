@@ -22,11 +22,11 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.errorMessage, "Sync failed")
     }
 
-    func testCompleteTaskSuccessRefreshesSelectionAndCounts() async {
+    func testCompleteTaskSuccessKeepsSelectionStableAndRefreshesCounts() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Follow up", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        api.enqueueListResponse(scope: "today", tasks: [])
+        // refreshWidgetData() still fetches today's list after a successful completion.
         api.enqueueListResponse(scope: "today", tasks: [])
         api.applyResult = .success(
             TaskSyncResponse(
@@ -43,13 +43,20 @@ final class TasksViewModelTests: XCTestCase {
         let viewModel = sut.viewModel
         let store = sut.store
         await viewModel.load(selection: .today)
+        XCTAssertEqual(api.listCallCount, 1)
 
         await viewModel.completeTask(task: task)
         await eventually {
-            api.countsCallCount >= 1 && !store.tasks.contains(where: { $0.id == task.id })
+            api.countsCallCount >= 1
+                && api.listCallCount >= 2
+                && !store.tasks.contains(where: { $0.id == task.id })
         }
 
-        XCTAssertGreaterThanOrEqual(api.listCallCount, 2, "Success path should refresh task data")
+        XCTAssertEqual(
+            api.listCallCount,
+            2,
+            "Success path should avoid forcing a main list reload and only refresh widget data"
+        )
         XCTAssertGreaterThanOrEqual(api.countsCallCount, 1, "Success path should refresh counts")
         XCTAssertNil(viewModel.errorMessage)
     }

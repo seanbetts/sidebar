@@ -216,12 +216,19 @@ import Combine
     ) {
         if updateVisibleState {
             // Filter out tasks that are pending removal (optimistic updates)
-            tasks = list.tasks.filter { !pendingRemovals.contains($0.id) }
+            let incomingTasks = list.tasks.filter { !pendingRemovals.contains($0.id) }
+            if tasks != incomingTasks {
+                tasks = incomingTasks
+            }
             if let responseGroups = list.groups {
-                groups = responseGroups
+                if groups != responseGroups {
+                    groups = responseGroups
+                }
             }
             if let responseProjects = list.projects {
-                projects = responseProjects
+                if projects != responseProjects {
+                    projects = responseProjects
+                }
             }
             currentScope = list.scope
         }

@@ -6,29 +6,21 @@ extension TasksViewModel {
     }
 
     public func completeTask(task: TaskItem) async {
+        let operation = TaskOperationPayload(
+            operationId: TaskOperationId.make(),
+            op: "complete",
+            id: task.id,
+            clientUpdatedAt: task.updatedAt
+        )
         if shouldQueueTaskWrites {
-            await queueOfflineOperation(
-                TaskOperationPayload(
-                    operationId: TaskOperationId.make(),
-                    op: "complete",
-                    id: task.id,
-                    clientUpdatedAt: task.updatedAt
-                )
-            )
+            await queueOfflineOperation(operation)
             return
         }
         // Optimistically remove the task immediately
         let removedTask = store.removeTask(id: task.id)
 
         do {
-            let response = try await api.apply(TaskOperationBatch(operations: [
-                TaskOperationPayload(
-                    operationId: TaskOperationId.make(),
-                    op: "complete",
-                    id: task.id,
-                    clientUpdatedAt: task.updatedAt
-                )
-            ]))
+            let response = try await api.apply(TaskOperationBatch(operations: [operation]))
             if !response.nextTasks.isEmpty {
                 let count = response.nextTasks.count
                 let message = count == 1
@@ -36,11 +28,10 @@ extension TasksViewModel {
                     : "\(count) recurring instances scheduled"
                 toastCenter.show(message: message)
             }
-            // Refresh in background to sync with server
-            // Note: Don't call confirmRemoval here - let pendingRemovals persist
-            // until the server response no longer includes the task
+            // Keep UX snappy by relying on optimistic removal + realtime/list refresh.
+            // Avoid forcing a full list reload immediately on completion.
+            updateCountsAfterLocalOperation(operation)
             Task {
-                await load(selection: selection, force: true)
                 await loadCounts(force: true)
                 await refreshWidgetData()
             }
@@ -204,7 +195,7 @@ extension TasksViewModel {
 
             // Update widget data and counts optimistically for offline operations
             updateWidgetDataAfterOfflineOperation(operation)
-            updateCountsAfterOfflineOperation(operation)
+            updateCountsAfterLocalOperation(operation)
         } catch WriteQueueError.queueFull {
             toastCenter.show(message: "Sync queue full. Review pending changes.")
         } catch {
@@ -225,7 +216,7 @@ extension TasksViewModel {
     }
 
     /// Updates task counts optimistically after an offline operation
-    private func updateCountsAfterOfflineOperation(_ operation: TaskOperationPayload) {
+    private func updateCountsAfterLocalOperation(_ operation: TaskOperationPayload) {
         guard counts != nil else { return }
 
         switch operation.op.lowercased() {
