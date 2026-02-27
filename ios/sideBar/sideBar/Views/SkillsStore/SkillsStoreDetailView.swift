@@ -126,7 +126,7 @@ public struct SkillsStoreView: View {
 
     private var headerBar: some View {
         ContentHeaderRow(
-            iconName: "text.and.command.macwindow",
+            iconName: "command.circle",
             title: "Skills Store",
             titleStyle: .subheadline,
             titleWeight: .semibold,

@@ -167,7 +167,7 @@ extension AppLaunchDelegate {
         .tasks: "checkmark.square",
         .websites: "globe",
         .files: "folder",
-        .skillsStore: "text.and.command.macwindow",
+        .skillsStore: "command.circle",
         .chat: "bubble",
         .settings: "gearshape"
     ]

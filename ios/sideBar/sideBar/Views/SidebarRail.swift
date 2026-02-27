@@ -140,7 +140,7 @@ public struct SidebarRail: View {
         case .tasks:
             return "checkmark.square"
         case .skillsStore:
-            return "text.and.command.macwindow"
+            return "command.circle"
         default:
             return "square.grid.2x2"
         }
