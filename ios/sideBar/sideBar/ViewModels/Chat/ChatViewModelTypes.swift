@@ -1,4 +1,13 @@
 import Foundation
+import sideBarShared
+
+struct ChatRequestContext {
+    let openContext: [String: AnyCodable]?
+    let currentLocation: String?
+    let currentLocationLevels: [String: String]?
+    let currentWeather: [String: AnyCodable]?
+    let currentTimezone: String?
+}
 
 struct ChatNetworkCoordinator {
     let chatAPI: ChatAPI
@@ -139,19 +148,22 @@ struct ChatUICoordinator {
     let userDefaults: UserDefaults
     let clock: () -> Date
     let onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)?
+    let requestContextProvider: (() -> ChatRequestContext?)?
 
     init(
         themeManager: ThemeManager,
         toastCenter: ToastCenter? = nil,
         userDefaults: UserDefaults = .standard,
         clock: @escaping () -> Date = Date.init,
-        onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? = nil
+        onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? = nil,
+        requestContextProvider: (() -> ChatRequestContext?)? = nil
     ) {
         self.themeManager = themeManager
         self.toastCenter = toastCenter
         self.userDefaults = userDefaults
         self.clock = clock
         self.onAssistantSettingsUpdated = onAssistantSettingsUpdated
+        self.requestContextProvider = requestContextProvider
     }
 }
 

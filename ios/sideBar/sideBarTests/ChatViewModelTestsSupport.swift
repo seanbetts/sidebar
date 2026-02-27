@@ -62,9 +62,10 @@ enum ChatViewModelTestsSupport {
 
     final class MockChatStreamClient: ChatStreamClient {
         weak var handler: ChatStreamEventHandler?
+        private(set) var requests: [ChatStreamRequest] = []
 
         func connect(request: ChatStreamRequest) async throws {
-            _ = request
+            requests.append(request)
         }
 
         func disconnect() {

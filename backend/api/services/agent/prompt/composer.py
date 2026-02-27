@@ -6,6 +6,7 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.orm import Session, load_only
 
@@ -82,6 +83,12 @@ class PromptContextService:
     """Build prompt context blocks from DB and open UI state."""
 
     MAX_SYSTEM_PROMPT_CHARS = PromptContextLimits.MAX_SYSTEM_PROMPT_CHARS
+    MAX_SYSTEM_CURRENT_OPEN_SECTION_CHARS = (
+        PromptContextLimits.MAX_SYSTEM_CURRENT_OPEN_SECTION_CHARS
+    )
+    MAX_SYSTEM_RECENT_ACTIVITY_SECTION_CHARS = (
+        PromptContextLimits.MAX_SYSTEM_RECENT_ACTIVITY_SECTION_CHARS
+    )
     MAX_FIRST_MESSAGE_CHARS = PromptContextLimits.MAX_FIRST_MESSAGE_CHARS
     MAX_OPEN_FILE_CHARS = PromptContextLimits.MAX_OPEN_FILE_CHARS
     MAX_ATTACHMENT_CHARS = PromptContextLimits.MAX_ATTACHMENT_CHARS
@@ -100,6 +107,7 @@ class PromptContextService:
         current_location: str | None = None,
         current_location_levels: dict[str, Any] | str | None = None,
         current_weather: dict[str, Any] | str | None = None,
+        current_timezone: str | None = None,
         now: datetime | None = None,
     ) -> PromptBuildResult:
         """Build structured system and first-message prompts.
@@ -113,12 +121,16 @@ class PromptContextService:
             current_location: Current location label.
             current_location_levels: Structured location levels.
             current_weather: Weather payload.
+            current_timezone: User timezone identifier.
             now: Optional timestamp override.
 
         Returns:
             Structured prompt bundle with flattened text and diagnostics.
         """
-        timestamp = now or datetime.now(UTC)
+        timestamp = PromptContextService._resolve_timestamp(
+            now=now,
+            current_timezone=current_timezone,
+        )
         settings_record = UserSettingsService.get_settings(db, user_id)
         resolved_location = current_location or "Current location not available"
         operating_system = detect_operating_system(user_agent)
@@ -209,6 +221,14 @@ class PromptContextService:
         system_prompt_document = PromptContextService._build_prompt_document(
             system_sections,
             PromptContextService.MAX_SYSTEM_PROMPT_CHARS,
+            section_char_limits={
+                "current_open": (
+                    PromptContextService.MAX_SYSTEM_CURRENT_OPEN_SECTION_CHARS
+                ),
+                "recent_activity": (
+                    PromptContextService.MAX_SYSTEM_RECENT_ACTIVITY_SECTION_CHARS
+                ),
+            },
         )
 
         first_message_text = build_first_message_prompt(
@@ -266,19 +286,34 @@ class PromptContextService:
     def _build_prompt_document(
         sections: list[PromptSection],
         max_chars: int,
+        section_char_limits: dict[str, int] | None = None,
     ) -> PromptDocument:
         """Build a flattened prompt document from ordered sections."""
-        joined = "\n\n".join(
-            section["content"] for section in sections if section["content"]
-        )
-        truncated = len(joined) > max_chars
+        original_sections = PromptContextService._normalize_sections(sections)
+        normalized_sections = PromptContextService._normalize_sections(sections)
+        if section_char_limits:
+            normalized_sections = PromptContextService._apply_section_char_limits(
+                normalized_sections,
+                section_char_limits,
+            )
+        joined = PromptContextService._join_sections(normalized_sections)
+        original_joined = PromptContextService._join_sections(original_sections)
+
+        if len(joined) > max_chars:
+            normalized_sections = PromptContextService._fit_sections_to_budget(
+                normalized_sections,
+                max_chars=max_chars,
+            )
+            joined = PromptContextService._join_sections(normalized_sections)
+
+        truncated = joined != original_joined or len(joined) > max_chars
         text = PromptContextService._truncate_text(joined, max_chars)
         return {
             "text": text,
             "max_chars": max_chars,
             "total_chars": len(text),
             "truncated": truncated,
-            "sections": sections,
+            "sections": normalized_sections,
         }
 
     @staticmethod
@@ -408,6 +443,173 @@ class PromptContextService:
         if len(value) <= max_chars:
             return value
         return value[:max_chars]
+
+    @staticmethod
+    def _resolve_timestamp(
+        *,
+        now: datetime | None,
+        current_timezone: str | None,
+    ) -> datetime:
+        """Resolve current timestamp in the user's timezone when available."""
+        timestamp = now or datetime.now(UTC)
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
+
+        timezone_name = (current_timezone or "").strip()
+        if not timezone_name:
+            return timestamp
+        try:
+            user_timezone = ZoneInfo(timezone_name)
+        except ZoneInfoNotFoundError:
+            logger.warning(
+                "Invalid current_timezone received",
+                extra={"timezone": timezone_name},
+            )
+            return timestamp
+        return timestamp.astimezone(user_timezone)
+
+    @staticmethod
+    def _normalize_sections(sections: list[PromptSection]) -> list[PromptSection]:
+        """Copy sections and recalculate char counts from current content."""
+        normalized: list[PromptSection] = []
+        for section in sections:
+            content = section["content"] or ""
+            normalized.append(
+                {
+                    "id": section["id"],
+                    "title": section["title"],
+                    "source": section["source"],
+                    "content": content,
+                    "chars": len(content),
+                }
+            )
+        return normalized
+
+    @staticmethod
+    def _join_sections(sections: list[PromptSection]) -> str:
+        """Join non-empty section content into the flattened document."""
+        return "\n\n".join(
+            section["content"] for section in sections if section["content"]
+        )
+
+    @classmethod
+    def _apply_section_char_limits(
+        cls,
+        sections: list[PromptSection],
+        section_char_limits: dict[str, int],
+    ) -> list[PromptSection]:
+        """Apply per-section caps before fitting the full prompt budget."""
+        updated = cls._normalize_sections(sections)
+        for index, section in enumerate(updated):
+            max_chars = section_char_limits.get(section["id"])
+            if max_chars is None or max_chars <= 0:
+                continue
+            content = cls._truncate_section_content(section["content"], max_chars)
+            updated[index]["content"] = content
+            updated[index]["chars"] = len(content)
+        return updated
+
+    @classmethod
+    def _fit_sections_to_budget(
+        cls,
+        sections: list[PromptSection],
+        *,
+        max_chars: int,
+    ) -> list[PromptSection]:
+        """Reduce large sections while preserving section wrappers where possible."""
+        updated = cls._normalize_sections(sections)
+        shrink_order = [
+            "current_open",
+            "recent_activity",
+            "message_context",
+            "assistant_soul",
+            "assistant_identity",
+            "context_guidance",
+        ]
+
+        while len(cls._join_sections(updated)) > max_chars:
+            overflow = len(cls._join_sections(updated)) - max_chars
+            reduced = False
+
+            for section_id in shrink_order:
+                index = next(
+                    (
+                        i
+                        for i, section in enumerate(updated)
+                        if section["id"] == section_id
+                    ),
+                    None,
+                )
+                if index is None:
+                    continue
+                current_content = updated[index]["content"]
+                minimum_chars = cls._minimum_section_chars(current_content)
+                if len(current_content) <= minimum_chars:
+                    continue
+
+                reduce_by = max(overflow, 256)
+                target_chars = max(minimum_chars, len(current_content) - reduce_by)
+                next_content = cls._truncate_section_content(
+                    current_content,
+                    target_chars,
+                )
+                if len(next_content) >= len(current_content):
+                    continue
+                updated[index]["content"] = next_content
+                updated[index]["chars"] = len(next_content)
+                reduced = True
+                if len(cls._join_sections(updated)) <= max_chars:
+                    break
+
+            if not reduced:
+                break
+        return updated
+
+    @staticmethod
+    def _minimum_section_chars(content: str) -> int:
+        """Return minimum chars to keep wrapper tags intact when possible."""
+        wrapped = PromptContextService._extract_wrapped_section(content)
+        if wrapped is None:
+            return min(len(content), 64)
+        opening_tag, _inner, closing_tag = wrapped
+        return len(opening_tag) + len(closing_tag) + 1
+
+    @staticmethod
+    def _truncate_section_content(content: str, max_chars: int) -> str:
+        """Truncate content while preserving wrapper tags for XML-like blocks."""
+        if len(content) <= max_chars:
+            return content
+        wrapped = PromptContextService._extract_wrapped_section(content)
+        if wrapped is None:
+            return PromptContextService._truncate_text(content, max_chars)
+
+        opening_tag, inner, closing_tag = wrapped
+        overhead = len(opening_tag) + len(closing_tag)
+        available = max_chars - overhead
+        if available <= 0:
+            return PromptContextService._truncate_text(content, max_chars)
+        return f"{opening_tag}{inner[:available]}{closing_tag}"
+
+    @staticmethod
+    def _extract_wrapped_section(content: str) -> tuple[str, str, str] | None:
+        """Extract opening tag, inner content, and closing tag for wrapped sections."""
+        stripped = content.strip()
+        if not stripped.startswith("<"):
+            return None
+        opening_end = stripped.find(">")
+        if opening_end <= 0:
+            return None
+        opening_tag = stripped[: opening_end + 1]
+        if opening_tag.startswith("</"):
+            return None
+        tag_name = opening_tag[1:-1].strip()
+        if not tag_name:
+            return None
+        closing_tag = f"</{tag_name}>"
+        if not stripped.endswith(closing_tag):
+            return None
+        inner = stripped[opening_end + 1 : -len(closing_tag)]
+        return opening_tag, inner, closing_tag
 
     @classmethod
     def _get_recent_activity(

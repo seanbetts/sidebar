@@ -21,6 +21,10 @@ class PromptContextLimits:
 
     # System prompt cap to avoid overlong model inputs.
     MAX_SYSTEM_PROMPT_CHARS = 40000
+    # Cap the heavy open-context block so later sections are preserved.
+    MAX_SYSTEM_CURRENT_OPEN_SECTION_CHARS = 16000
+    # Cap recent activity block growth from large daily histories.
+    MAX_SYSTEM_RECENT_ACTIVITY_SECTION_CHARS = 6000
     # First message prompt cap for concise bootstrapping.
     MAX_FIRST_MESSAGE_CHARS = 8000
     # Open file payload cap for viewer context.

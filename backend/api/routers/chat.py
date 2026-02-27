@@ -191,8 +191,20 @@ async def stream_chat(
         current_location=current_location,
         current_location_levels=current_location_levels,
         current_weather=current_weather,
+        current_timezone=current_timezone,
         now=now,
     )
+    prompt_report = prompt_bundle["report"]
+    if prompt_report["system_prompt"]["truncated"]:
+        logger.warning(
+            "System prompt truncated",
+            extra={
+                "user_id": user_id,
+                "total_chars": prompt_report["system_prompt"]["total_chars"],
+                "max_chars": prompt_report["system_prompt"]["max_chars"],
+                "sections": prompt_report["system_prompt"]["sections"],
+            },
+        )
     system_prompt = prompt_bundle["system_prompt"]["text"]
     first_message_prompt = prompt_bundle["first_message_prompt"]["text"]
     enabled_skills = SettingsService.resolve_enabled_skills(settings_record)

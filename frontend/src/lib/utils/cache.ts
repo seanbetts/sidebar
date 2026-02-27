@@ -24,7 +24,7 @@ const MAX_MEMORY_ENTRIES = 100;
 const REVALIDATE_DEBOUNCE_MS = 5000;
 const CACHE_ENABLED = import.meta.env.VITE_ENABLE_CACHE !== 'false';
 
-const memoryCache = new Map<string, unknown>();
+const memoryCache = new Map<string, CacheMetadata<unknown>>();
 const memoryKeys: string[] = [];
 const inFlightRequests = new Map<string, Promise<unknown>>();
 const revalidateAt = new Map<string, number>();
@@ -62,13 +62,20 @@ function touch(key: string): void {
 	memoryKeys.push(key);
 }
 
-function remember(key: string, value: unknown): void {
+function remember<T>(key: string, metadata: CacheMetadata<T>): void {
+	const normalized: CacheMetadata<unknown> = {
+		data: metadata.data,
+		timestamp: metadata.timestamp,
+		version: metadata.version,
+		globalVersion: metadata.globalVersion,
+		ttl: metadata.ttl
+	};
 	if (memoryCache.has(key)) {
 		touch(key);
-		memoryCache.set(key, value);
+		memoryCache.set(key, normalized);
 		return;
 	}
-	memoryCache.set(key, value);
+	memoryCache.set(key, normalized);
 	memoryKeys.push(key);
 	if (memoryKeys.length > MAX_MEMORY_ENTRIES) {
 		const oldest = memoryKeys.shift();
@@ -76,6 +83,19 @@ function remember(key: string, value: unknown): void {
 			memoryCache.delete(oldest);
 		}
 	}
+}
+
+function isMetadataFresh<T>(metadata: CacheMetadata<T>, config: CacheConfig = {}): boolean {
+	const ttl = config.ttl ?? DEFAULT_TTL;
+	const version = config.version ?? '1.0';
+	if (metadata.version && metadata.version !== version) {
+		return false;
+	}
+	if (metadata.globalVersion && metadata.globalVersion !== GLOBAL_CACHE_VERSION) {
+		return false;
+	}
+	const age = Date.now() - metadata.timestamp;
+	return age <= (metadata.ttl || ttl);
 }
 
 /**
@@ -89,35 +109,26 @@ export function getCachedData<T>(key: string, config: CacheConfig = {}): T | nul
 	if (!isCacheEnabled()) return null;
 
 	if (memoryCache.has(key)) {
-		touch(key);
-		return memoryCache.get(key) as T;
+		const memoryEntry = memoryCache.get(key) as CacheMetadata<T>;
+		if (!isMetadataFresh(memoryEntry, config)) {
+			clearMemoryCache([key]);
+		} else {
+			touch(key);
+			return memoryEntry.data;
+		}
 	}
 
 	try {
-		const ttl = config.ttl ?? DEFAULT_TTL;
-		const version = config.version ?? '1.0';
 		const raw = localStorage.getItem(buildKey(key));
 		if (!raw) return null;
 
 		const metadata: CacheMetadata<T> = JSON.parse(raw);
-		const age = Date.now() - metadata.timestamp;
-
-		if (metadata.version && metadata.version !== version) {
+		if (!isMetadataFresh(metadata, config)) {
 			localStorage.removeItem(buildKey(key));
 			return null;
 		}
 
-		if (metadata.globalVersion && metadata.globalVersion !== GLOBAL_CACHE_VERSION) {
-			localStorage.removeItem(buildKey(key));
-			return null;
-		}
-
-		if (age > (metadata.ttl || ttl)) {
-			localStorage.removeItem(buildKey(key));
-			return null;
-		}
-
-		remember(key, metadata.data);
+		remember(key, metadata);
 		return metadata.data;
 	} catch (error) {
 		logError('Cache read error', error, { key });
@@ -145,14 +156,14 @@ export function setCachedData<T>(key: string, data: T, config: CacheConfig = {})
 
 	try {
 		localStorage.setItem(buildKey(key), JSON.stringify(metadata));
-		remember(key, data);
+		remember(key, metadata);
 	} catch (error) {
 		logError('Cache write error', error, { key });
 		if (error instanceof DOMException && error.name === 'QuotaExceededError') {
 			clearOldestCaches();
 			try {
 				localStorage.setItem(buildKey(key), JSON.stringify(metadata));
-				remember(key, data);
+				remember(key, metadata);
 			} catch (retryError) {
 				logError('Cache retry failed', retryError, { key });
 			}
@@ -333,7 +344,6 @@ export function revalidateInBackground<T>(
 	apiFetcher()
 		.then((fresh) => {
 			setCachedData(cacheKey, fresh, config);
-			remember(cacheKey, fresh);
 		})
 		.catch(() => {
 			// Swallow background errors.
@@ -378,11 +388,6 @@ export async function loadData<T>(
 		return inFlightRequests.get(cacheKey) as Promise<T>;
 	}
 
-	if (memoryCache.has(cacheKey)) {
-		touch(cacheKey);
-		return memoryCache.get(cacheKey) as T;
-	}
-
 	const cached = getCachedData<T>(cacheKey, options);
 	if (cached) {
 		if (options.staleWhileRevalidate && isCacheStale(cacheKey, options.ttl)) {
@@ -394,7 +399,6 @@ export async function loadData<T>(
 	const request = apiFetcher()
 		.then((fresh) => {
 			setCachedData(cacheKey, fresh, options);
-			remember(cacheKey, fresh);
 			return fresh;
 		})
 		.finally(() => {

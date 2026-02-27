@@ -8,6 +8,7 @@ const FORWARD_HEADERS = [
 	'if-modified-since',
 	'if-none-match',
 	'range',
+	'user-agent',
 	'x-app-version'
 ];
 

@@ -58,7 +58,7 @@ def test_build_system_prompt_renders_variables() -> None:
     assert "Current date: 2025-01-02" in prompt
     assert "Current time: 13:45 UTC" in prompt
     assert "Home location: Unknown" in prompt
-    assert "Current location: Unavailable" in prompt
+    assert "Current location: London" in prompt
     assert "Current weather at current location: Unavailable" in prompt
 
 

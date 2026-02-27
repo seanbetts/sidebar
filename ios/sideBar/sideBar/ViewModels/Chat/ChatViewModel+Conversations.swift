@@ -140,12 +140,18 @@ extension ChatViewModel {
             )
         }
 
+        let requestContext = requestContextProvider?()
         await startStream(
             request: ChatStreamRequest(
                 message: trimmed,
                 conversationId: conversationId,
                 userMessageId: userMessageId,
-                attachments: attachmentsForMessage.isEmpty ? nil : attachmentsForMessage
+                openContext: requestContext?.openContext,
+                attachments: attachmentsForMessage.isEmpty ? nil : attachmentsForMessage,
+                currentLocation: requestContext?.currentLocation,
+                currentLocationLevels: requestContext?.currentLocationLevels,
+                currentWeather: requestContext?.currentWeather,
+                currentTimezone: requestContext?.currentTimezone
             )
         )
         clearAttachments()

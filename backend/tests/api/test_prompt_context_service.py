@@ -94,6 +94,9 @@ def test_prompt_context_service_order_and_truncation(test_db):
     assert idx_message < idx_identity < idx_soul < idx_guidance < idx_open < idx_recent
 
     assert len(system_prompt) <= PromptContextService.MAX_SYSTEM_PROMPT_CHARS
+    assert "</current_open>" in system_prompt
+    assert "</recent_activity>" in system_prompt
+    assert prompt_bundle["system_prompt"]["truncated"] is True
     assert "I use macOS." in first_message
     assert prompt_bundle["report"]["system_prompt"]["sections"] == [
         {
@@ -210,3 +213,37 @@ def test_recent_activity_cache_expiry(test_db):
         "Morning Notes",
         "Afternoon Notes",
     }
+
+
+def test_recent_activity_uses_user_timezone_for_day_boundary(test_db):
+    PromptContextService._recent_activity_cache.clear()
+    Base.metadata.create_all(bind=test_db.connection())
+    user_id = "user-timezone"
+    now_utc = datetime(2025, 1, 2, 0, 30, tzinfo=UTC)
+    note_time = datetime(2025, 1, 1, 23, 30, tzinfo=UTC)
+
+    test_db.add(UserSettings(user_id=user_id, name="Sam"))
+    test_db.add(
+        Note(
+            user_id=user_id,
+            title="Late Night Note",
+            content="Body",
+            metadata_={"folder": "work"},
+            last_opened_at=note_time,
+        )
+    )
+    test_db.commit()
+
+    prompt_bundle = PromptContextService.build_prompts(
+        db=test_db,
+        user_id=user_id,
+        open_context=None,
+        attachments=None,
+        user_agent=None,
+        current_timezone="America/Los_Angeles",
+        now=now_utc,
+    )
+
+    system_prompt = prompt_bundle["system_prompt"]["text"]
+    assert "Late Night Note" in system_prompt
+    assert "Current time: 16:30 PST" in system_prompt

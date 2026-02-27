@@ -174,6 +174,9 @@ def build_prompt_variables(
     current_date = now.strftime("%Y-%m-%d")
     current_time = f"{now.strftime('%H:%M')} {timezone_label}"
     formatted_levels = format_location_levels(current_location_levels)
+    formatted_location = (
+        formatted_levels if formatted_levels != "Unavailable" else current_location
+    )
     formatted_weather = format_weather(current_weather)
     tasks_snapshot_raw = (
         getattr(settings_record, "tasks_ai_snapshot", "") if settings_record else ""
@@ -191,7 +194,7 @@ def build_prompt_variables(
         "currentDate": current_date,
         "currentTime": current_time,
         "homeLocation": home_location or "Unknown",
-        "currentLocationLevels": formatted_levels,
+        "currentLocationLevels": formatted_location or "Unavailable",
         "currentWeather": formatted_weather,
         "timezone": timezone_label,
         "gender": gender,
@@ -203,7 +206,7 @@ def build_prompt_variables(
         "operatingSystem": operating_system,
         "current_date": current_date,
         "current_time": current_time,
-        "current_location_levels": formatted_levels,
+        "current_location_levels": formatted_location or "Unavailable",
         "current_weather": formatted_weather,
         "home_location": home_location,
         "operating_system": operating_system,
