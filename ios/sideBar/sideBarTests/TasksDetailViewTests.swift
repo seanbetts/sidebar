@@ -6,7 +6,7 @@ final class TasksDetailViewTests: XCTestCase {
         XCTAssertTrue(
             TasksDetailView.shouldDisplayWorkspaceFloatingActionDock(
                 isCompact: false,
-                isPadIdiom: false,
+                isPhoneIdiom: true,
                 selection: .today
             )
         )
@@ -16,7 +16,7 @@ final class TasksDetailViewTests: XCTestCase {
         XCTAssertTrue(
             TasksDetailView.shouldDisplayWorkspaceFloatingActionDock(
                 isCompact: false,
-                isPadIdiom: false,
+                isPhoneIdiom: true,
                 selection: .group(id: "group-1")
             )
         )
@@ -26,7 +26,7 @@ final class TasksDetailViewTests: XCTestCase {
         XCTAssertFalse(
             TasksDetailView.shouldDisplayWorkspaceFloatingActionDock(
                 isCompact: true,
-                isPadIdiom: false,
+                isPhoneIdiom: true,
                 selection: .today
             )
         )
@@ -36,17 +36,17 @@ final class TasksDetailViewTests: XCTestCase {
         XCTAssertFalse(
             TasksDetailView.shouldDisplayWorkspaceFloatingActionDock(
                 isCompact: false,
-                isPadIdiom: false,
+                isPhoneIdiom: true,
                 selection: .none
             )
         )
     }
 
-    func testShouldDisplayWorkspaceFloatingActionDockOnIPadHidesDock() {
+    func testShouldDisplayWorkspaceFloatingActionDockOnNonPhoneHidesDock() {
         XCTAssertFalse(
             TasksDetailView.shouldDisplayWorkspaceFloatingActionDock(
                 isCompact: false,
-                isPadIdiom: true,
+                isPhoneIdiom: false,
                 selection: .today
             )
         )

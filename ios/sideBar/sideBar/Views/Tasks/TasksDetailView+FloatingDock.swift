@@ -6,18 +6,18 @@ import UIKit
 extension TasksDetailView {
     static func shouldDisplayWorkspaceFloatingActionDock(
         isCompact: Bool,
-        isPadIdiom: Bool,
+        isPhoneIdiom: Bool,
         selection: TaskSelection
     ) -> Bool {
         guard !isCompact else { return false }
-        guard !isPadIdiom else { return false }
+        guard isPhoneIdiom else { return false }
         return selection != .none
     }
 
     func shouldShowWorkspaceFloatingActionDock(for selection: TaskSelection) -> Bool {
         Self.shouldDisplayWorkspaceFloatingActionDock(
             isCompact: isCompact,
-            isPadIdiom: isPadIdiom,
+            isPhoneIdiom: isPhoneIdiom,
             selection: selection
         )
     }
@@ -34,9 +34,9 @@ extension TasksDetailView {
         .accessibilityIdentifier("tasks-workspace-floating-dock")
     }
 
-    private var isPadIdiom: Bool {
+    private var isPhoneIdiom: Bool {
         #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .pad
+        UIDevice.current.userInterfaceIdiom == .phone
         #else
         false
         #endif
