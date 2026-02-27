@@ -109,6 +109,8 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
         XCTAssertEqual(attempts, 2)
         XCTAssertEqual(payload["ok"] as? Bool, true)
         XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
+        XCTAssertEqual(store.loadAll().count, 1)
+        XCTAssertEqual(store.loadAll().first?.url, "https://example.com/article")
     }
 
     private func makeStore() -> PendingShareStore {

@@ -1,3 +1,4 @@
+// swiftlint:disable file_length type_body_length
 import XCTest
 import sideBarShared
 @testable import sideBar
@@ -360,6 +361,68 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isDraftConversationActive)
     }
 
+    func testSendMessageIncludesRequestContextPayloadWhenProvided() async throws {
+        let cache = TestCacheClient()
+        let streamClient = ChatViewModelTestsSupport.MockChatStreamClient()
+        let created = Conversation(
+            id: "conv-new",
+            title: "New Chat",
+            titleGenerated: false,
+            createdAt: "2026-01-02T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:00Z",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: nil
+        )
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(
+            listResult: .success([]),
+            createResult: .success(created),
+            addMessageResult: .success(created)
+        )
+        let requestContextProvider: () -> ChatRequestContext? = {
+            ChatRequestContext(
+                openContext: [
+                    "note": AnyCodable([
+                        "id": "note-1",
+                        "title": "Plan",
+                        "path": "notes/plan.md",
+                        "content": "draft content"
+                    ])
+                ],
+                currentLocation: "Paris, France",
+                currentLocationLevels: nil,
+                currentWeather: [
+                    "temperature_c": AnyCodable(21.0),
+                    "weather_code": AnyCodable(2),
+                    "is_day": AnyCodable(1)
+                ],
+                currentTimezone: "Europe/Paris"
+            )
+        }
+        let viewModel = makeViewModel(
+            api: api,
+            cache: cache,
+            streamClient: streamClient,
+            requestContextProvider: requestContextProvider
+        )
+
+        await viewModel.sendMessage(text: "Hello")
+
+        let sentRequest = try XCTUnwrap(streamClient.requests.first)
+        XCTAssertEqual(sentRequest.currentLocation, "Paris, France")
+        XCTAssertEqual(sentRequest.currentTimezone, "Europe/Paris")
+
+        let openContext = try XCTUnwrap(sentRequest.openContext)
+        let notePayload = openContext["note"]?.value as? [String: Any]
+        XCTAssertEqual(notePayload?["id"] as? String, "note-1")
+        XCTAssertEqual(notePayload?["title"] as? String, "Plan")
+        XCTAssertEqual(notePayload?["path"] as? String, "notes/plan.md")
+
+        let weather = try XCTUnwrap(sentRequest.currentWeather)
+        XCTAssertEqual(weather["weather_code"]?.value as? Int, 2)
+        XCTAssertEqual(weather["is_day"]?.value as? Int, 1)
+    }
+
     func testReconcileMessagesPrefersLocalStreamingContentWhenIDsMatch() async {
         let cache = TestCacheClient()
         let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)
@@ -457,14 +520,15 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(attachment?.stage, "failed")
     }
 }
-
 extension ChatViewModelTests {
     func makeViewModel<API: ConversationsProviding & ConversationsAPIProviding>(
         api: API,
         cache: CacheClient,
         networkStatus: ChatViewModelTestsSupport.TestNetworkStatus? = nil,
         scratchpadStore: ScratchpadStore? = nil,
-        ingestionAPI: IngestionAPI? = nil
+        ingestionAPI: IngestionAPI? = nil,
+        streamClient: ChatViewModelTestsSupport.MockChatStreamClient? = nil,
+        requestContextProvider: (() -> ChatRequestContext?)? = nil
     ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
         let themeManager = Self.sharedThemeManager
@@ -473,12 +537,13 @@ extension ChatViewModelTests {
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let resolvedIngestionAPI = ingestionAPI ?? IngestionAPI(client: Self.sharedAPIClient)
         let effectiveNetworkStatus = networkStatus ?? ChatViewModelTestsSupport.TestNetworkStatus(isNetworkAvailable: true)
+        let resolvedStreamClient = streamClient ?? ChatViewModelTestsSupport.MockChatStreamClient()
         let viewModel = ChatViewModel(
             network: ChatNetworkCoordinator(
                 chatAPI: chatAPI,
                 conversationsAPI: api,
                 ingestionAPI: resolvedIngestionAPI,
-                streamClient: ChatViewModelTestsSupport.MockChatStreamClient(),
+                streamClient: resolvedStreamClient,
                 networkStatus: effectiveNetworkStatus
             ),
             storage: ChatStorageCoordinator(
@@ -492,7 +557,8 @@ extension ChatViewModelTests {
             ui: ChatUICoordinator(
                 themeManager: themeManager,
                 userDefaults: defaults,
-                clock: { Date(timeIntervalSince1970: 0) }
+                clock: { Date(timeIntervalSince1970: 0) },
+                requestContextProvider: requestContextProvider
             )
         )
         Self.retainedViewModels.append(viewModel)
@@ -521,3 +587,4 @@ extension ChatViewModelTests {
         return IngestionAPI(client: APIClient(config: config, session: session), session: session)
     }
 }
+// swiftlint:enable file_length type_body_length

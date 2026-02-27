@@ -128,6 +128,23 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
+    func testLoadAllPreservesWebsiteQueueInsertionOrder() {
+        let store = makeStore()
+        _ = store.enqueueWebsite(url: "https://example.com/first")
+        _ = store.enqueueWebsite(url: "https://example.com/second")
+        _ = store.enqueueWebsite(url: "https://example.com/third")
+
+        let urls = store.loadAll().compactMap(\.url)
+        XCTAssertEqual(
+            urls,
+            [
+                "https://example.com/first",
+                "https://example.com/second",
+                "https://example.com/third"
+            ]
+        )
+    }
+
     func testPendingShareRoutingWebsiteSuccessDropsItem() async {
         let item = PendingShareItem(
             id: UUID(),

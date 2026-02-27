@@ -15,7 +15,7 @@ extension WebsitesViewModel {
 
     func enqueueOfflineWebsiteSave(for normalizedURL: URL) -> Bool {
         if PendingShareStore.shared.enqueueWebsite(url: normalizedURL.absoluteString) != nil {
-            pendingWebsite = makePendingWebsite(from: normalizedURL)
+            _ = upsertPendingWebsite(from: normalizedURL, source: .queuedShare)
             saveErrorMessage = nil
             toastCenter.show(message: "Saved for later", style: .success)
             return true
@@ -26,8 +26,7 @@ extension WebsitesViewModel {
 
     func beginWebsiteSave(for normalizedURL: URL) -> String? {
         let previousSelectedId = selectedWebsiteId
-        let pending = makePendingWebsite(from: normalizedURL)
-        pendingWebsite = pending
+        let pending = upsertPendingWebsite(from: normalizedURL, source: .directSave)
         selectedWebsiteId = pending.id
         saveErrorMessage = nil
         isSavingWebsite = true
@@ -40,15 +39,19 @@ extension WebsitesViewModel {
         isLoadingDetail = false
     }
 
-    func validatedSaveData(from response: WebsiteSaveResponse, previousSelectedId: String?) -> WebsiteSaveData? {
+    func validatedSaveData(
+        from response: WebsiteSaveResponse,
+        previousSelectedId: String?,
+        pendingURL: URL
+    ) -> WebsiteSaveData? {
         guard response.success, let data = response.data else {
-            failWebsiteSave(previousSelectedId: previousSelectedId, message: "Failed to save website")
+            failWebsiteSave(previousSelectedId: previousSelectedId, pendingURL: pendingURL, message: "Failed to save website")
             return nil
         }
         return data
     }
 
-    func applySavedWebsite(_ data: WebsiteSaveData) async throws {
+    func applySavedWebsite(_ data: WebsiteSaveData, pendingURL: URL) async throws {
         selectedWebsiteId = data.id
         try await store.loadDetail(id: data.id, force: true)
         let detail = active
@@ -73,7 +76,7 @@ extension WebsitesViewModel {
             ),
             persist: true
         )
-        pendingWebsite = nil
+        removePendingWebsite(for: pendingURL.absoluteString)
         store.invalidateList()
         Task { [weak self] in
             do {
@@ -84,7 +87,7 @@ extension WebsitesViewModel {
         }
     }
 
-    func applySavedWebsiteWithoutSelection(_ data: WebsiteSaveData) {
+    func applySavedWebsiteWithoutSelection(_ data: WebsiteSaveData, pendingURL: URL) {
         store.insertItemAtTop(
             WebsiteItem(
                 id: data.id,
@@ -106,12 +109,12 @@ extension WebsitesViewModel {
             ),
             persist: true
         )
-        pendingWebsite = nil
+        removePendingWebsite(for: pendingURL.absoluteString)
         store.invalidateList()
     }
 
-    func failWebsiteSave(previousSelectedId: String?, message: String) {
-        pendingWebsite = nil
+    func failWebsiteSave(previousSelectedId: String?, pendingURL: URL, message: String) {
+        removePendingWebsite(for: pendingURL.absoluteString)
         selectedWebsiteId = previousSelectedId
         saveErrorMessage = message
     }
@@ -192,31 +195,6 @@ extension WebsitesViewModel {
             return true
         } catch {
             return false
-        }
-    }
-
-    func makePendingWebsite(from url: URL) -> PendingWebsiteItem {
-        let host = url.host ?? url.absoluteString
-        let domain = host.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
-        let pendingTitle = YouTubeURLPolicy.extractVideoId(from: url.absoluteString) == nil
-            ? "Reading..."
-            : "Watching..."
-        return PendingWebsiteItem(
-            id: "pending-\(UUID().uuidString)",
-            title: pendingTitle,
-            domain: domain,
-            url: url.absoluteString
-        )
-    }
-
-    func clearPendingIfNeeded(items: [WebsiteItem]) {
-        guard let pendingWebsite else { return }
-        let pendingUrl = pendingWebsite.url
-        let pendingKey = canonicalWebsiteURLForPendingMatch(pendingUrl) ?? pendingUrl
-        if items.contains(where: {
-            (canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url) == pendingKey
-        }) {
-            self.pendingWebsite = nil
         }
     }
 

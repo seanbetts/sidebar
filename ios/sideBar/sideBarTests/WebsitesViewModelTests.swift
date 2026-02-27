@@ -291,6 +291,79 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.pendingWebsite)
     }
 
+    func testShowPendingFromExtensionAccumulatesMultipleQueuedWebsites() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        viewModel.showPendingFromExtension(url: "https://example.com/one")
+        viewModel.showPendingFromExtension(url: "https://example.org/two")
+
+        XCTAssertEqual(viewModel.pendingWebsites.count, 2)
+        XCTAssertEqual(
+            Set(viewModel.pendingWebsites.map(\.url)),
+            Set(["https://example.com/one", "https://example.org/two"])
+        )
+        XCTAssertTrue(viewModel.pendingWebsites.allSatisfy { $0.source == .queuedShare })
+    }
+
+    func testShowPendingFromExtensionDeduplicatesCanonicalURL() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        viewModel.showPendingFromExtension(url: "https://youtu.be/abc123xyzAA?t=10")
+        viewModel.showPendingFromExtension(url: "https://www.youtube.com/watch?v=abc123xyzAA")
+
+        XCTAssertEqual(viewModel.pendingWebsites.count, 1)
+    }
+
+    func testSyncPendingWebsitesFromQueuedSharesReconcilesQueuedRows() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        viewModel.pendingWebsite = WebsitesViewModel.PendingWebsiteItem(
+            id: "pending-direct",
+            title: "Reading...",
+            domain: "manual.example",
+            url: "https://manual.example",
+            canonicalURL: "https://manual.example",
+            source: .directSave
+        )
+        viewModel.syncPendingWebsitesFromQueuedShares([
+            PendingShareItem(
+                id: UUID(),
+                kind: .website,
+                createdAt: Date(),
+                url: "https://queued.example/path"
+            )
+        ])
+        XCTAssertEqual(viewModel.pendingWebsites.count, 2)
+
+        viewModel.syncPendingWebsitesFromQueuedShares([])
+        XCTAssertEqual(viewModel.pendingWebsites.count, 1)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.source, .directSave)
+    }
+
     func testSaveWebsiteWithoutSelectionPreservesCurrentDetail() async {
         let existing = makeItem(id: "site-existing")
         let existingDetail = makeDetail(id: "site-existing")
@@ -324,6 +397,43 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedWebsiteId, "site-existing")
         XCTAssertEqual(viewModel.active?.id, "site-existing")
         XCTAssertTrue(viewModel.items.contains(where: { $0.id == "site-new" }))
+    }
+
+    func testSaveWebsiteWithoutSelectionShowsAndClearsQueuedPendingRow() async {
+        let cache = InMemoryCacheClient()
+        let api = ControlledWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saveTask = Task {
+            await viewModel.saveWebsite(url: "https://queued.example/path", selectAfterSave: false)
+        }
+        await Task.yield()
+
+        XCTAssertEqual(viewModel.pendingWebsites.count, 1)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.source, .queuedShare)
+
+        api.resumeSave(
+            result: .success(
+                WebsiteSaveResponse(
+                    success: true,
+                    data: WebsiteSaveData(
+                        id: "site-queued-1",
+                        title: "Queued",
+                        url: "https://queued.example/path",
+                        domain: "queued.example"
+                    )
+                )
+            )
+        )
+
+        _ = await saveTask.value
+        XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
     }
 
     func testLoadArchivedTracksLoadingState() async {

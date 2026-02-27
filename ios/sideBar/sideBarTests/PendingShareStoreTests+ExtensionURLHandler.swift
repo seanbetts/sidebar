@@ -63,7 +63,8 @@ extension PendingShareStoreTests {
         XCTAssertEqual(attempts, 2)
         XCTAssertEqual(response["ok"] as? Bool, true)
         XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
-        XCTAssertTrue(store.loadAll().isEmpty)
+        XCTAssertEqual(store.loadAll().count, 1)
+        XCTAssertEqual(store.loadAll().first?.url, "https://example.com")
     }
 
     func testExtensionURLMessageHandlerQueuesWebsiteWhenRefreshFails() async {

@@ -34,9 +34,14 @@ func shouldKeepPendingShareItem(
 extension AppEnvironment {
     public func consumePendingShares() async {
         guard authState == .active else { return }
-        guard !connectivityMonitor.isOffline else { return }
+        guard !isConsumingPendingShares else { return }
+        isConsumingPendingShares = true
+        defer { isConsumingPendingShares = false }
+
         let pending = PendingShareStore.shared.loadAll()
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(pending)
         guard !pending.isEmpty else { return }
+        guard !connectivityMonitor.isOffline else { return }
 
         var processedIds: [UUID] = []
         for item in pending {
@@ -48,6 +53,9 @@ extension AppEnvironment {
         if !processedIds.isEmpty {
             PendingShareStore.shared.remove(ids: processedIds)
         }
+
+        let remaining = PendingShareStore.shared.loadAll()
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(remaining)
     }
 
     private func shouldKeepPendingShare(_ item: PendingShareItem) async -> Bool {

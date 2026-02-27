@@ -66,18 +66,14 @@ extension ShareViewController {
 
             do {
                 try await saveWebsiteNow()
-                ExtensionEventStore.shared.recordWebsiteSaved(
-                    url: normalizedWebsiteEventURL(url)
-                )
+                _ = pendingShareStore.enqueueWebsite(url: normalizedWebsiteEventURL(url))
                 showSuccess(message: ExtensionUserMessageCatalog.message(for: .websiteSaved))
             } catch {
                 if environment.isUnauthorized(error),
                    await environment.ensureValidAccessToken(forceRefresh: true) {
                     do {
                         try await saveWebsiteNow()
-                        ExtensionEventStore.shared.recordWebsiteSaved(
-                            url: normalizedWebsiteEventURL(url)
-                        )
+                        _ = pendingShareStore.enqueueWebsite(url: normalizedWebsiteEventURL(url))
                         showSuccess(message: ExtensionUserMessageCatalog.message(for: .websiteSaved))
                         return
                     } catch {

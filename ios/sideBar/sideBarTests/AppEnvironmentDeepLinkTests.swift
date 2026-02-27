@@ -302,7 +302,9 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             id: "pending-1",
             title: "Example",
             domain: "example.com",
-            url: "https://example.com"
+            url: "https://example.com",
+            canonicalURL: "https://example.com",
+            source: .directSave
         )
         environment.ingestionViewModel.selectedFileId = "file-1"
         environment.ingestionViewModel.selectedDerivativeKind = "text_original"
@@ -384,6 +386,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     private func clearExtensionEvents() {
         _ = ExtensionEventStore.shared.consumeEvents()
+        PendingShareStore.shared.replaceAll([])
     }
 
     private func requireEnvironment(

@@ -203,9 +203,11 @@ extension WebsitesPanelView {
             }
         } else if !viewModel.panelSearchQuery.trimmed.isEmpty {
             List {
-                if let pending = viewModel.pendingWebsite {
+                if !viewModel.pendingWebsites.isEmpty {
                     Section {
-                        PendingWebsiteRow(pending: pending, useListStyling: true)
+                        ForEach(viewModel.pendingWebsites, id: \.id) { pending in
+                            PendingWebsiteRow(pending: pending, useListStyling: true)
+                        }
                     } header: {
                         sidebarSectionHeader("Adding")
                     }
@@ -231,7 +233,7 @@ extension WebsitesPanelView {
             }
         } else {
             List {
-                if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
+                if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
                     if !pinnedItemsSorted.isEmpty {
                         Section {
                             ForEach(pinnedItemsSorted, id: \.id) { item in
@@ -243,9 +245,9 @@ extension WebsitesPanelView {
                         }
                     }
 
-                    if !mainItems.isEmpty || viewModel.pendingWebsite != nil {
+                    if !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
                         Section {
-                            if let pending = viewModel.pendingWebsite {
+                            ForEach(viewModel.pendingWebsites, id: \.id) { pending in
                                 PendingWebsiteRow(pending: pending, useListStyling: true)
                             }
                             ForEach(mainItems, id: \.id) { item in
@@ -318,9 +320,11 @@ extension WebsitesPanelView {
             }
         } else if !viewModel.panelSearchQuery.trimmed.isEmpty {
             List {
-                if let pending = viewModel.pendingWebsite {
+                if !viewModel.pendingWebsites.isEmpty {
                     Section {
-                        PendingWebsiteRow(pending: pending, useListStyling: true)
+                        ForEach(viewModel.pendingWebsites, id: \.id) { pending in
+                            PendingWebsiteRow(pending: pending, useListStyling: true)
+                        }
                     } header: {
                         sidebarSectionHeader("Adding")
                     }
@@ -354,7 +358,7 @@ extension WebsitesPanelView {
 
     var websitesListView: some View {
         List {
-            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
+            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
                 if !pinnedItemsSorted.isEmpty {
                     Section {
                         ForEach(pinnedItemsSorted, id: \.id) { item in
@@ -366,9 +370,9 @@ extension WebsitesPanelView {
                     }
                 }
 
-                if !mainItems.isEmpty || viewModel.pendingWebsite != nil {
+                if !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
                     Section {
-                        if let pending = viewModel.pendingWebsite {
+                        ForEach(viewModel.pendingWebsites, id: \.id) { pending in
                             PendingWebsiteRow(pending: pending, useListStyling: true)
                         }
                         ForEach(mainItems, id: \.id) { item in

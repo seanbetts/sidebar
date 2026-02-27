@@ -40,12 +40,20 @@ import OSLog
 /// await viewModel.selectWebsite(id: websiteId)
 /// ```
 public final class WebsitesViewModel: ObservableObject {
+    /// Source of pending website rows rendered for optimistic sidebar updates.
+    public enum PendingWebsiteSource: String {
+        case directSave
+        case queuedShare
+    }
+
     /// Holds a pending website captured from an extension flow.
     public struct PendingWebsiteItem: Identifiable, Equatable {
         public let id: String
         public let title: String
         public let domain: String
         public let url: String
+        public let canonicalURL: String
+        public let source: PendingWebsiteSource
     }
 
     @Published public internal(set) var items: [WebsiteItem] = []
@@ -58,15 +66,30 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public internal(set) var errorMessage: String?
     @Published public internal(set) var isSavingWebsite: Bool = false
     @Published public internal(set) var saveErrorMessage: String?
-    @Published public internal(set) var pendingWebsite: PendingWebsiteItem?
+    @Published public internal(set) var pendingWebsites: [PendingWebsiteItem] = []
     @Published public internal(set) var archivedSummary: ArchivedSummary?
     @Published public internal(set) var panelFilteredItems: [WebsiteItem] = []
     @Published public internal(set) var panelPinnedItemsSorted: [WebsiteItem] = []
     @Published public internal(set) var panelMainItems: [WebsiteItem] = []
     @Published public internal(set) var panelArchivedItems: [WebsiteItem] = []
     @Published public internal(set) var panelNavigationWebsiteIds: [String] = []
+    public var pendingWebsite: PendingWebsiteItem? {
+        get { pendingWebsites.first }
+        set {
+            if let newValue {
+                pendingWebsites = [newValue]
+            } else {
+                pendingWebsites.removeAll()
+            }
+        }
+    }
+
     var detailLoadingMessage: String {
-        pendingWebsite?.title ?? "Reading..."
+        if let selectedWebsiteId,
+           let selectedPending = pendingWebsites.first(where: { $0.id == selectedWebsiteId }) {
+            return selectedPending.title
+        }
+        return pendingWebsites.first?.title ?? "Reading..."
     }
 
     let api: any WebsitesProviding
@@ -182,7 +205,15 @@ public final class WebsitesViewModel: ObservableObject {
         guard let normalized = WebsiteURLValidator.normalizedCandidate(url) else {
             return
         }
-        pendingWebsite = makePendingWebsite(from: normalized)
+        _ = upsertPendingWebsite(from: normalized, source: .queuedShare)
+    }
+
+    public func syncPendingWebsitesFromQueuedShares(_ queuedItems: [PendingShareItem]) {
+        let queuedURLs = queuedItems.compactMap { item -> URL? in
+            guard item.kind == .website, let raw = item.url else { return nil }
+            return WebsiteURLValidator.normalizedCandidate(raw)
+        }
+        syncQueuedPendingWebsites(with: queuedURLs)
     }
 
     public func loadById(id: String) async {
@@ -218,6 +249,7 @@ public final class WebsitesViewModel: ObservableObject {
         }
 
         if !selectAfterSave {
+            _ = upsertPendingWebsite(from: normalized, source: .queuedShare)
             saveErrorMessage = nil
             do {
                 let response = try await api.save(url: normalized.absoluteString)
@@ -225,7 +257,7 @@ public final class WebsitesViewModel: ObservableObject {
                     saveErrorMessage = "Failed to save website"
                     return false
                 }
-                applySavedWebsiteWithoutSelection(data)
+                applySavedWebsiteWithoutSelection(data, pendingURL: normalized)
                 return true
             } catch {
                 saveErrorMessage = ErrorMapping.message(for: error)
@@ -236,13 +268,21 @@ public final class WebsitesViewModel: ObservableObject {
         defer { endWebsiteSave() }
         do {
             let response = try await api.save(url: normalized.absoluteString)
-            guard let data = validatedSaveData(from: response, previousSelectedId: previousSelectedId) else {
+            guard let data = validatedSaveData(
+                from: response,
+                previousSelectedId: previousSelectedId,
+                pendingURL: normalized
+            ) else {
                 return false
             }
-            try await applySavedWebsite(data)
+            try await applySavedWebsite(data, pendingURL: normalized)
             return true
         } catch {
-            failWebsiteSave(previousSelectedId: previousSelectedId, message: ErrorMapping.message(for: error))
+            failWebsiteSave(
+                previousSelectedId: previousSelectedId,
+                pendingURL: normalized,
+                message: ErrorMapping.message(for: error)
+            )
             return false
         }
     }

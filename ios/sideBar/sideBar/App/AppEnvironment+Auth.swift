@@ -85,12 +85,20 @@ extension AppEnvironment {
         await consumePendingShares()
         let events = ExtensionEventStore.shared.consumeEvents()
         guard !events.isEmpty else { return }
-        let websiteEvents = events.filter { $0.type == .websiteSaved }
-        guard !websiteEvents.isEmpty else { return }
-        for event in websiteEvents {
-            if let url = event.websiteUrl {
-                websitesViewModel.showPendingFromExtension(url: url)
+
+        var enqueuedWebsiteEvents = false
+        for event in events where event.type == .websiteSaved {
+            guard let url = event.websiteUrl,
+                  let normalized = ExtensionURLMessageHandler.normalizeQueuedURL(url) else {
+                continue
             }
+            if PendingShareStore.shared.enqueueWebsite(url: normalized) != nil {
+                enqueuedWebsiteEvents = true
+            }
+        }
+
+        if enqueuedWebsiteEvents {
+            websitesViewModel.syncPendingWebsitesFromQueuedShares(PendingShareStore.shared.loadAll())
         }
     }
 

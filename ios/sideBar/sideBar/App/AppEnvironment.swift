@@ -79,6 +79,7 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var isServerReachable: Bool = true
     /// Sign-out event token used to trigger downstream reset observers.
     @Published public internal(set) var signOutEvent: UUID?
+    var isConsumingPendingShares: Bool = false
     var cancellables = Set<AnyCancellable>()
     #if os(iOS) || os(macOS)
     var deviceToken: String?

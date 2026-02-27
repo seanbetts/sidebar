@@ -308,6 +308,7 @@ public enum ExtensionURLMessageHandler {
         let saveOperation = saveWebsite ?? saveWebsiteNow(url:)
         do {
             try await saveOperation(normalized)
+            _ = pendingStore.enqueueWebsite(url: normalized)
             return successResponse(.websiteSaved)
         } catch {
             if isUnauthorized(error),
@@ -315,6 +316,7 @@ public enum ExtensionURLMessageHandler {
                await refreshAccessToken() {
                 do {
                     try await saveOperation(normalized)
+                    _ = pendingStore.enqueueWebsite(url: normalized)
                     return successResponse(.websiteSaved)
                 } catch {
                     if ExtensionNetworkErrorClassifier.isOfflineLike(error) || isUnauthorized(error) {

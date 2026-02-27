@@ -183,7 +183,7 @@ extension WebsitesDetailView {
                 }
             )
             #endif
-        } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {
+        } else if viewModel.isLoadingDetail || !viewModel.pendingWebsites.isEmpty {
             LoadingView(message: viewModel.detailLoadingMessage)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
