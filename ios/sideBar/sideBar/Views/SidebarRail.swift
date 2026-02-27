@@ -109,6 +109,7 @@ public struct SidebarRail: View {
         } label: {
             Image(systemName: iconName(for: section))
                 .appFont(.titleLg)
+                .scaleEffect(iconScale(for: section))
                 .frame(width: 32, height: 32)
                 .foregroundStyle(isActive ? Color.accentColor : Color.primary)
                 .background(
@@ -166,6 +167,10 @@ public struct SidebarRail: View {
         #else
         return Color(.separator)
         #endif
+    }
+
+    private func iconScale(for section: AppSection) -> CGFloat {
+        section == .skillsStore ? 1.14 : 1.0
     }
 
 }
