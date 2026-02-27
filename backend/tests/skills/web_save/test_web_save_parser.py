@@ -164,7 +164,7 @@ def test_parse_url_local_wsj_preview_uses_jina_content_when_longer(monkeypatch):
     assert "full article paragraph" in parsed.content.lower()
 
 
-def test_parse_url_local_wsj_preview_keeps_local_when_jina_fetch_fails(monkeypatch):
+def test_parse_url_local_wsj_preview_raises_when_jina_fetch_fails(monkeypatch):
     wsj_preview_html = """
     <html>
       <head><title>WSJ Story</title></head>
@@ -193,10 +193,10 @@ def test_parse_url_local_wsj_preview_keeps_local_when_jina_fetch_fails(monkeypat
         lambda _url: (_ for _ in ()).throw(RuntimeError("402 Payment Required")),
     )
 
-    parsed = web_save_parser.parse_url_local("https://www.wsj.com/tech/ai/story-id")
+    with pytest.raises(web_save_parser_wsj.WSJPreviewEnrichmentError) as exc_info:
+        web_save_parser.parse_url_local("https://www.wsj.com/tech/ai/story-id")
 
-    assert parsed.source == "https://www.wsj.com/tech/ai/story-id"
-    assert "short opening paragraph" in parsed.content.lower()
+    assert "WSJ preview detected but Jina fallback failed" in str(exc_info.value)
 
 
 def test_extract_metadata_finds_favicon():
@@ -312,7 +312,9 @@ def test_extract_favicon_url_fetches_html(monkeypatch):
         return html, "https://example.com/article", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
-    monkeypatch.setattr(web_save_parser, "_favicon_exists", lambda url, timeout=8: False)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
 
     resolved = web_save_parser.extract_favicon_url("https://example.com/article")
     assert resolved == "https://example.com/favicon.png"
@@ -786,7 +788,11 @@ def test_parse_url_local_tryprofound_scopes_to_primary_article(monkeypatch):
     """
 
     def fake_fetch(url: str, *, timeout: int = 30):
-        return html, "https://www.tryprofound.com/blog/chatgpt-reddit-youtube-citations", False
+        return (
+            html,
+            "https://www.tryprofound.com/blog/chatgpt-reddit-youtube-citations",
+            False,
+        )
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
 
@@ -946,9 +952,9 @@ def test_parse_url_local_blog_google_reinserts_missing_modules(monkeypatch):
     assert "Werewolf: navigating social deduction" in parsed.content
     assert "Poker: the challenge of calculated risk" in parsed.content
     assert "Werewolf board" in parsed.content
-    assert parsed.content.find("Chess: reasoning over calculation") < parsed.content.find(
-        "Poker: the challenge of calculated risk"
-    )
+    assert parsed.content.find(
+        "Chess: reasoning over calculation"
+    ) < parsed.content.find("Poker: the challenge of calculated risk")
 
 
 def test_parse_url_local_blog_google_preserves_ordered_modules(monkeypatch):
@@ -1024,19 +1030,18 @@ def test_parse_url_local_blog_google_preserves_ordered_modules(monkeypatch):
     parsed = web_save_parser.parse_url_local("blog.google/example")
 
     assert "Read AI-generated summary" not in parsed.content
-    assert (
-        parsed.content.find("Chess is a game of perfect information. The real world is not.")
-        < parsed.content.find("## Chess: reasoning over calculation")
-    )
-    assert parsed.content.find("## Chess: reasoning over calculation") < parsed.content.find(
+    assert parsed.content.find(
+        "Chess is a game of perfect information. The real world is not."
+    ) < parsed.content.find("## Chess: reasoning over calculation")
+    assert parsed.content.find(
+        "## Chess: reasoning over calculation"
+    ) < parsed.content.find("## Werewolf: navigating social deduction")
+    assert parsed.content.find(
         "## Werewolf: navigating social deduction"
-    )
-    assert parsed.content.find("## Werewolf: navigating social deduction") < parsed.content.find(
+    ) < parsed.content.find("## Poker: the challenge of calculated risk")
+    assert parsed.content.find(
         "## Poker: the challenge of calculated risk"
-    )
-    assert parsed.content.find("## Poker: the challenge of calculated risk") < parsed.content.find(
-        "## Watch the action"
-    )
+    ) < parsed.content.find("## Watch the action")
     assert parsed.content.find("## Watch the action") < parsed.content.find(
         "## Explore the arena"
     )
@@ -2038,7 +2043,9 @@ def test_dedupe_markdown_blocks_removes_repeated_sections():
     assert deduped.count("## Watch the action") == 1
     assert deduped.count("## Explore the arena") == 1
     assert (
-        deduped.count("Check it out at [kaggle.com/game-arena](http://kaggle.com/game-arena).")
+        deduped.count(
+            "Check it out at [kaggle.com/game-arena](http://kaggle.com/game-arena)."
+        )
         == 1
     )
 
@@ -2417,7 +2424,9 @@ def test_parse_url_local_normalizes_youtube_title_suffix(monkeypatch):
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
 
-    parsed = web_save_parser.parse_url_local("https://www.youtube.com/watch?v=abc123xyzAA")
+    parsed = web_save_parser.parse_url_local(
+        "https://www.youtube.com/watch?v=abc123xyzAA"
+    )
     assert parsed.title == "Recovered Video Title"
 
 
@@ -2440,7 +2449,9 @@ def test_parse_url_local_collapses_youtube_shorts_footer_chrome(monkeypatch):
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
 
-    parsed = web_save_parser.parse_url_local("https://www.youtube.com/watch?v=Kg3VeW7yEyY")
+    parsed = web_save_parser.parse_url_local(
+        "https://www.youtube.com/watch?v=Kg3VeW7yEyY"
+    )
     assert "[YouTube](https://www.youtube.com/watch?v=Kg3VeW7yEyY)" in parsed.content
     assert "https://www.youtube.com/about/" not in parsed.content
 
@@ -2460,9 +2471,13 @@ def test_parse_url_local_uses_youtube_duration_for_reading_time(monkeypatch):
         return html, "https://www.youtube.com/watch?v=abc123xyzAA", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
-    monkeypatch.setattr(web_save_parser, "_favicon_exists", lambda url, timeout=8: False)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
 
-    parsed = web_save_parser.parse_url_local("https://www.youtube.com/watch?v=abc123xyzAA")
+    parsed = web_save_parser.parse_url_local(
+        "https://www.youtube.com/watch?v=abc123xyzAA"
+    )
     frontmatter = parsed.content.split("---\n", 2)[1]
     data = web_save_parser.yaml.safe_load(frontmatter)
     assert data["reading_time"] == "4 mins"
@@ -2485,9 +2500,13 @@ def test_parse_url_local_uses_youtube_length_seconds_fallback(monkeypatch):
         return html, "https://www.youtube.com/watch?v=abc123xyzAA", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
-    monkeypatch.setattr(web_save_parser, "_favicon_exists", lambda url, timeout=8: False)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
 
-    parsed = web_save_parser.parse_url_local("https://www.youtube.com/watch?v=abc123xyzAA")
+    parsed = web_save_parser.parse_url_local(
+        "https://www.youtube.com/watch?v=abc123xyzAA"
+    )
     frontmatter = parsed.content.split("---\n", 2)[1]
     data = web_save_parser.yaml.safe_load(frontmatter)
     assert data["reading_time"] == "3 mins"

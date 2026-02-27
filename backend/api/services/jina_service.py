@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime
 from urllib.parse import urlparse
@@ -11,9 +12,29 @@ import httpx
 from api.config import settings
 from api.services.website_title_service import resolve_website_title
 
+logger = logging.getLogger(__name__)
+
+
+class JinaFetchError(RuntimeError):
+    """Raised when Jina Reader fetch attempts fail."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        auth_status_code: int | None = None,
+        anonymous_status_code: int | None = None,
+    ):
+        """Initialize fetch error context for authenticated/anonymous attempts."""
+        super().__init__(message)
+        self.auth_status_code = auth_status_code
+        self.anonymous_status_code = anonymous_status_code
+
 
 class JinaService:
     """Fetch and parse markdown content from Jina Reader API."""
+
+    _ANON_FALLBACK_STATUS_CODES = {401, 402, 403, 451}
 
     @staticmethod
     def _clean_metadata_value(value: str | None) -> str | None:
@@ -36,9 +57,52 @@ class JinaService:
         headers = {"Authorization": f"Bearer {settings.jina_api_key}"}
 
         with httpx.Client(timeout=30.0) as client:
-            response = client.get(jina_url, headers=headers)
-            response.raise_for_status()
-            return response.text
+            try:
+                response = client.get(jina_url, headers=headers)
+                response.raise_for_status()
+                return response.text
+            except httpx.HTTPStatusError as auth_exc:
+                auth_status = auth_exc.response.status_code
+                if auth_status not in JinaService._ANON_FALLBACK_STATUS_CODES:
+                    raise JinaFetchError(
+                        (f"Failed to fetch content from Jina.ai: {auth_exc}"),
+                        auth_status_code=auth_status,
+                    ) from auth_exc
+
+                logger.info(
+                    "jina auth request failed status=%s url=%s mode=retry-anonymous",
+                    auth_status,
+                    url,
+                )
+                try:
+                    anon_response = client.get(jina_url)
+                    anon_response.raise_for_status()
+                    return anon_response.text
+                except httpx.HTTPStatusError as anon_exc:
+                    raise JinaFetchError(
+                        (
+                            "Failed to fetch content from Jina.ai: "
+                            f"authenticated request returned {auth_status} and "
+                            "anonymous fallback failed: "
+                            f"{anon_exc}"
+                        ),
+                        auth_status_code=auth_status,
+                        anonymous_status_code=anon_exc.response.status_code,
+                    ) from anon_exc
+                except httpx.HTTPError as anon_exc:
+                    raise JinaFetchError(
+                        (
+                            "Failed to fetch content from Jina.ai: "
+                            f"authenticated request returned {auth_status} and "
+                            "anonymous fallback failed: "
+                            f"{anon_exc}"
+                        ),
+                        auth_status_code=auth_status,
+                    ) from anon_exc
+            except httpx.HTTPError as exc:
+                raise JinaFetchError(
+                    f"Failed to fetch content from Jina.ai: {exc}"
+                ) from exc
 
     @staticmethod
     def parse_metadata(markdown: str) -> tuple[dict[str, str | None], str]:

@@ -1,6 +1,10 @@
 """Tests for JinaService metadata parsing safeguards."""
 
-from api.services.jina_service import JinaService
+import httpx
+import pytest
+
+from api.services import jina_service
+from api.services.jina_service import JinaFetchError, JinaService
 
 
 def test_parse_metadata_cleans_undefined_url_source():
@@ -22,11 +26,7 @@ def test_parse_metadata_cleans_undefined_url_source():
 
 def test_parse_metadata_cleans_null_like_values():
     markdown = (
-        "Title: null\n"
-        "URL Source: N/A\n"
-        "Published Time: none\n"
-        "Markdown Content:\n"
-        "Hello\n"
+        "Title: null\nURL Source: N/A\nPublished Time: none\nMarkdown Content:\nHello\n"
     )
 
     metadata, _cleaned = JinaService.parse_metadata(markdown)
@@ -37,7 +37,9 @@ def test_parse_metadata_cleans_null_like_values():
 
 
 def test_extract_title_strips_youtube_suffix():
-    markdown = "# OpenAI Super Bowl 2026 | Codex | You Can Just Build Things - YouTube\n\nBody"
+    markdown = (
+        "# OpenAI Super Bowl 2026 | Codex | You Can Just Build Things - YouTube\n\nBody"
+    )
 
     title = JinaService.extract_title(
         markdown,
@@ -118,13 +120,81 @@ Customer Service
     assert "Later paragraph that should remain in output." in cleaned
     assert "#comments_sector" not in cleaned
     assert "Dow Jones & Company, Inc. All Rights Reserved" not in cleaned
-    assert "The Wall Street Journal](https://sts3.wsj.net/iweb/images/wsj-logo-big-black.svg)" not in cleaned
+    assert (
+        "The Wall Street Journal](https://sts3.wsj.net/iweb/images/wsj-logo-big-black.svg)"
+        not in cleaned
+    )
     assert "Buy Side" not in cleaned
     assert "mod=wsjfooter" not in cleaned
-    assert "Real article continuation paragraph that should remain in output." in cleaned
+    assert (
+        "Real article continuation paragraph that should remain in output." in cleaned
+    )
 
 
 def test_clean_markdown_for_source_passthrough_non_wsj():
     markdown = "# Example\n\nBody"
     cleaned = JinaService.clean_markdown_for_source(markdown, "https://example.com/a")
     assert cleaned == "# Example\n\nBody"
+
+
+def _status_response(status_code: int, url: str, text: str = "") -> httpx.Response:
+    request = httpx.Request("GET", url)
+    return httpx.Response(status_code, request=request, text=text)
+
+
+def test_fetch_markdown_retries_anonymous_after_auth_402(monkeypatch):
+    calls: list[dict | None] = []
+
+    class FakeClient:
+        def __init__(self, timeout: float):
+            assert timeout == 30.0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return None
+
+        def get(self, url: str, headers: dict | None = None):
+            calls.append(headers)
+            if len(calls) == 1:
+                return _status_response(
+                    status_code=402, url=url, text="Payment Required"
+                )
+            return _status_response(status_code=200, url=url, text="# Full article")
+
+    monkeypatch.setattr(jina_service.settings, "jina_api_key", "test-key")
+    monkeypatch.setattr(jina_service.httpx, "Client", FakeClient)
+
+    markdown = JinaService.fetch_markdown("https://example.com/story")
+
+    assert markdown == "# Full article"
+    assert calls[0] == {"Authorization": "Bearer test-key"}
+    assert calls[1] is None
+
+
+def test_fetch_markdown_raises_when_auth_and_anonymous_fail(monkeypatch):
+    class FakeClient:
+        def __init__(self, timeout: float):
+            assert timeout == 30.0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return None
+
+        def get(self, url: str, headers: dict | None = None):
+            status_code = 402 if headers else 451
+            return _status_response(status_code=status_code, url=url)
+
+    monkeypatch.setattr(jina_service.settings, "jina_api_key", "test-key")
+    monkeypatch.setattr(jina_service.httpx, "Client", FakeClient)
+
+    with pytest.raises(JinaFetchError) as exc_info:
+        JinaService.fetch_markdown("https://example.com/story")
+
+    err = exc_info.value
+    assert err.auth_status_code == 402
+    assert err.anonymous_status_code == 451
+    assert "authenticated request returned 402" in str(err)

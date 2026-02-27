@@ -21,6 +21,10 @@ _WSJ_COPYRIGHT_RE = re.compile(
 )
 
 
+class WSJPreviewEnrichmentError(RuntimeError):
+    """Raised when WSJ preview enrichment is required but unavailable."""
+
+
 def _is_likely_wsj_preview_content(
     *,
     domain: str,
@@ -69,10 +73,13 @@ def maybe_enrich_wsj_preview(
     local_word_count = compute_word_count(markdown)
     if not settings.jina_api_key.strip():
         logger.info(
-            "web-save wsj preview detected url=%s mode=keep-local no_jina_key=1",
+            "web-save wsj preview detected url=%s mode=raise-error no_jina_key=1",
             final_url,
         )
-        return markdown, source_url, title, None
+        raise WSJPreviewEnrichmentError(
+            "WSJ preview detected but Jina fallback is unavailable: "
+            "JINA_API_KEY is not configured."
+        )
 
     try:
         jina_markdown = JinaService.fetch_markdown(source_url)
@@ -120,8 +127,10 @@ def maybe_enrich_wsj_preview(
         return markdown, source_url, title, None
     except Exception as exc:
         logger.info(
-            ("web-save wsj preview detected url=%s mode=keep-local " "jina_error=%s"),
+            ("web-save wsj preview detected url=%s mode=raise-error jina_error=%s"),
             final_url,
             str(exc),
         )
-        return markdown, source_url, title, None
+        raise WSJPreviewEnrichmentError(
+            f"WSJ preview detected but Jina fallback failed: {exc}"
+        ) from exc
