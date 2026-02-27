@@ -25,6 +25,7 @@ try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.favicon_service import FaviconService
     from api.services.jina_service import JinaService
+    from api.services.web_save_error_service import classify_web_save_failure
     from api.services.web_save_parser import (
         ParsedPage,
         build_frontmatter,
@@ -47,6 +48,33 @@ except Exception:
     resolve_apple_news_source_url = None
     JinaService = None
 
+    def classify_web_save_failure(
+        *,
+        upstream_error_type: str | None,
+        upstream_message: str | None,
+        url: str | None = None,
+        target_url: str | None = None,
+        mode: str | None = None,
+        local_parse_error: str | None = None,
+    ) -> dict[str, Any]:
+        fallback_message = str(upstream_message or "Unable to save website.")
+        return {
+            "code": "WEB_SAVE_UNEXPECTED_ERROR",
+            "message": fallback_message,
+            "details": {
+                "upstream_error_type": upstream_error_type or "",
+                "upstream_error": fallback_message,
+                "url": url,
+                "target_url": target_url,
+                "mode": mode,
+                "local_parse_error": local_parse_error,
+            },
+            "suggestions": [
+                "Retry once to confirm reproducibility.",
+                "Include URL and error message in the bug report.",
+            ],
+        }
+
 
 if not logging.getLogger().handlers:
     logging.basicConfig(
@@ -55,6 +83,24 @@ if not logging.getLogger().handlers:
     )
 
 logger = logging.getLogger(__name__)
+
+
+class WebSaveScriptError(Exception):
+    """Raised when web-save has a classified failure payload."""
+
+    def __init__(self, error_type: str, payload: dict[str, Any]):
+        super().__init__(payload.get("message", "Unable to save website."))
+        self.error_type = error_type
+        self.payload = payload
+
+    def as_error(self) -> dict[str, Any]:
+        return {
+            "type": self.error_type,
+            "code": self.payload.get("code"),
+            "message": self.payload.get("message"),
+            "details": self.payload.get("details", {}),
+            "suggestions": self.payload.get("suggestions", []),
+        }
 
 
 def _clean_metadata_value(value: str | None) -> str | None:
@@ -289,12 +335,16 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 parsed = local_parsed
             else:
                 if local_parse_error:
-                    raise requests.exceptions.RequestException(
-                        (
-                            "Local parse failed (%s); "
-                            "Jina fallback failed: %s"
-                        )
-                        % (local_parse_error, str(exc))
+                    raise WebSaveScriptError(
+                        "FetchError",
+                        classify_web_save_failure(
+                            upstream_error_type=type(exc).__name__,
+                            upstream_message=str(exc),
+                            url=url,
+                            target_url=target_url,
+                            mode=web_save_mode,
+                            local_parse_error=local_parse_error,
+                        ),
                     ) from exc
                 raise
     else:
@@ -303,7 +353,17 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         published_at = parsed.published_at
 
     if parsed is None:
-        raise RuntimeError("Failed to parse URL")
+        raise WebSaveScriptError(
+            "UnexpectedError",
+            classify_web_save_failure(
+                upstream_error_type="UnexpectedError",
+                upstream_message="Failed to parse URL",
+                url=url,
+                target_url=target_url,
+                mode=web_save_mode,
+                local_parse_error=local_parse_error,
+            ),
+        )
 
     db = SessionLocal()
 
@@ -451,36 +511,51 @@ Environment Variables:
 
         sys.exit(0)
 
+    except WebSaveScriptError as e:
+        error_output = {
+            "success": False,
+            "error": e.as_error(),
+        }
+        print(json.dumps(error_output, indent=2), file=sys.stderr)
+        sys.exit(1)
+
     except ValueError as e:
+        classified = classify_web_save_failure(
+            upstream_error_type="ValidationError",
+            upstream_message=str(e),
+            url=args.url,
+            target_url=args.url,
+            mode=os.getenv("WEB_SAVE_MODE", "local").lower().strip(),
+        )
         error_output = {
             "success": False,
             "error": {
                 "type": "ValidationError",
-                "message": str(e),
-                "suggestions": [
-                    "Ensure URL is valid and includes http:// or https://",
-                    "Set JINA_API_KEY environment variable",
-                    "Check Doppler secrets configuration",
-                ],
+                "code": classified.get("code"),
+                "message": classified.get("message"),
+                "details": classified.get("details", {}),
+                "suggestions": classified.get("suggestions", []),
             },
         }
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
     except requests.exceptions.RequestException as e:
+        classified = classify_web_save_failure(
+            upstream_error_type="FetchError",
+            upstream_message=str(e),
+            url=args.url,
+            target_url=args.url,
+            mode=os.getenv("WEB_SAVE_MODE", "local").lower().strip(),
+        )
         error_output = {
             "success": False,
             "error": {
                 "type": "FetchError",
-                "message": str(e),
-                "suggestions": [
-                    "Check your internet connection",
-                    "Verify the URL is accessible",
-                    "Set JINA_SSL_VERIFY=false if corporate SSL interception is blocking requests",
-                    "Provide a CA bundle via JINA_CA_BUNDLE if needed",
-                    "Check if Jina.ai API is operational",
-                    "Verify your API key is valid",
-                ],
+                "code": classified.get("code"),
+                "message": classified.get("message"),
+                "details": classified.get("details", {}),
+                "suggestions": classified.get("suggestions", []),
             },
         }
         print(json.dumps(error_output, indent=2), file=sys.stderr)
@@ -503,16 +578,21 @@ Environment Variables:
         sys.exit(1)
 
     except Exception as e:
+        classified = classify_web_save_failure(
+            upstream_error_type="UnexpectedError",
+            upstream_message=f"Unexpected error: {str(e)}",
+            url=args.url,
+            target_url=args.url,
+            mode=os.getenv("WEB_SAVE_MODE", "local").lower().strip(),
+        )
         error_output = {
             "success": False,
             "error": {
                 "type": "UnexpectedError",
-                "message": f"Unexpected error: {str(e)}",
-                "suggestions": [
-                    "Check the error message for details",
-                    "Verify all requirements are met",
-                    "Try again with --json for more details",
-                ],
+                "code": classified.get("code"),
+                "message": classified.get("message"),
+                "details": classified.get("details", {}),
+                "suggestions": classified.get("suggestions", []),
             },
         }
         print(json.dumps(error_output, indent=2), file=sys.stderr)

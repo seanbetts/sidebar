@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from datetime import UTC, datetime
@@ -5,6 +6,7 @@ from datetime import UTC, datetime
 from api.config import settings
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.website import Website
+from api.models.website_processing_job import WebsiteProcessingJob
 from api.routers.websites_helpers import website_summary
 from sqlalchemy import inspect
 from sqlalchemy.orm import load_only
@@ -59,11 +61,11 @@ def test_websites_save_reports_local_and_jina_payment_error(test_client, monkeyp
     assert (
         error_message(response)
         == "Unable to save website: local parser found no readable content and "
-        "Jina fallback returned 402 Payment Required. Check JINA_API_KEY billing/quota."
+        "Jina fallback returned 402 Payment Required."
     )
     assert (
-        response.json()["error"]["details"]["reason"]
-        == "local_parse_and_jina_payment_required"
+        response.json()["error"]["details"]["code"]
+        == "WEB_SAVE_LOCAL_PARSE_AND_JINA_PAYMENT_REQUIRED"
     )
 
 
@@ -86,7 +88,39 @@ def test_websites_save_reports_no_readable_content(test_client, monkeypatch):
         error_message(response)
         == "Unable to save website: local parser found no readable content."
     )
-    assert response.json()["error"]["details"]["reason"] == "no_readable_content"
+    assert (
+        response.json()["error"]["details"]["code"] == "WEB_SAVE_NO_READABLE_CONTENT"
+    )
+
+
+def test_quick_save_job_exposes_structured_error(test_client, test_db):
+    job_id = uuid.uuid4()
+    payload = {
+        "code": "WEB_SAVE_JINA_PAYMENT_REQUIRED",
+        "message": "Unable to save website: Jina fallback returned 402 Payment Required.",
+        "details": {"http_status_code": 402, "url": "https://example.com"},
+        "suggestions": ["Check JINA_API_KEY billing/quota status."],
+    }
+    job = WebsiteProcessingJob(
+        id=job_id,
+        user_id=TEST_USER_ID,
+        url="https://example.com",
+        status="failed",
+        error_message=json.dumps(payload),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(job)
+    test_db.commit()
+
+    response = test_client.get(
+        f"/api/websites/quick-save/{job_id}",
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["error_message"] == payload["message"]
+    assert data["error"]["code"] == "WEB_SAVE_JINA_PAYMENT_REQUIRED"
 
 
 def test_websites_get_success(test_client, test_db):

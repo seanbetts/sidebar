@@ -119,9 +119,10 @@ def test_save_url_database_reports_local_and_jina_failure(monkeypatch):
     )
     monkeypatch.setenv("JINA_API_KEY", "test-key")
 
-    with pytest.raises(module.requests.exceptions.RequestException) as exc_info:
+    with pytest.raises(module.WebSaveScriptError) as exc_info:
         module.save_url_database("https://www.satchelone.com/todos/upcoming", "user-1")
 
-    message = str(exc_info.value)
-    assert "Local parse failed (No readable content extracted)" in message
-    assert "Jina fallback failed" in message
+    err = exc_info.value
+    assert err.error_type == "FetchError"
+    assert err.payload["code"] == "WEB_SAVE_LOCAL_PARSE_AND_JINA_PAYMENT_REQUIRED"
+    assert "local parser found no readable content" in err.payload["message"].lower()

@@ -16,6 +16,10 @@ from api.models.website import Website
 from api.services.favicon_service import FaviconService
 from api.services.jina_service import JinaService
 from api.services.url_normalization_service import extract_youtube_video_id
+from api.services.web_save_error_service import (
+    classify_web_save_failure,
+    encode_job_error,
+)
 from api.services.web_save_parser import (
     LocalParseFallbackError,
     extract_favicon_url,
@@ -79,6 +83,7 @@ def run_quick_save(
             target_url,
             web_save_mode,
         )
+        local_parse_error: str | None = None
         try:
             local_parsed = None
             if web_save_mode in {"local", "compare"}:
@@ -106,10 +111,11 @@ def run_quick_save(
                     )
                     local_parsed = None
                 except Exception as exc:
+                    local_parse_error = str(exc)
                     logger.info(
                         "web-save local parse failed url=%s error=%s",
                         target_url,
-                        str(exc),
+                        local_parse_error,
                     )
                     if web_save_mode == "local":
                         local_parsed = None
@@ -261,11 +267,19 @@ def run_quick_save(
                 website_id=website.id,
             )
         except Exception as exc:
+            classified = classify_web_save_failure(
+                upstream_error_type=type(exc).__name__,
+                upstream_message=str(exc),
+                url=url,
+                target_url=target_url,
+                mode=web_save_mode,
+                local_parse_error=local_parse_error,
+            )
             WebsiteProcessingService.update_job(
                 db,
                 job_id,
                 status="failed",
-                error_message=str(exc),
+                error_message=encode_job_error(classified),
             )
 
 
