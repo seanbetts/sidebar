@@ -245,7 +245,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .agent:
             return "brain.fill"
         case .skills:
-            return "command.circle.fill"
+            return "command.circle"
         case .memories:
             return "bookmark"
         }
@@ -369,7 +369,7 @@ private struct SettingsTabsView: View {
                 }
             settingsTabContent(SkillsSettingsView(viewModel: viewModel))
                 .tabItem {
-                    Label("Skills", systemImage: "command.circle.fill")
+                    Label("Skills", systemImage: "command.circle")
                 }
             settingsTabContent(MemoriesSettingsView(viewModel: memoriesViewModel))
                 .tabItem {
