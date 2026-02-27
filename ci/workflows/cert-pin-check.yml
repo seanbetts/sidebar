@@ -15,4 +15,4 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check cert pins against live server
-        run: bash ios/check-cert-pins.sh sidebar-api.fly.dev 443
+        run: bash ios/check-cert-pins.sh api.trysidebar.ai 443
