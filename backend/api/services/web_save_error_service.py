@@ -72,7 +72,13 @@ def _extract_http_status_code(message: str) -> int | None:
     return None
 
 
-def _build_suggestions(code: str, *, local_ssl_error: bool = False) -> list[str]:
+def _build_suggestions(
+    code: str,
+    *,
+    local_ssl_error: bool = False,
+    local_legal_block: bool = False,
+    wsj_preview_detected: bool = False,
+) -> list[str]:
     suggestions = list(_SUGGESTIONS_BY_CODE.get(code, _DEFAULT_SUGGESTIONS))
     if local_ssl_error:
         ssl_suggestion = (
@@ -82,6 +88,20 @@ def _build_suggestions(code: str, *, local_ssl_error: bool = False) -> list[str]
         )
         if ssl_suggestion not in suggestions:
             suggestions.append(ssl_suggestion)
+    if local_legal_block:
+        legal_suggestion = (
+            "Fallback fetch hit HTTP 451 (Unavailable For Legal Reasons): "
+            "this URL may be blocked by legal or regional restrictions."
+        )
+        if legal_suggestion not in suggestions:
+            suggestions.append(legal_suggestion)
+    if wsj_preview_detected:
+        wsj_suggestion = (
+            "WSJ preview content was detected; full-text extraction requires a "
+            "working Jina fallback for this URL."
+        )
+        if wsj_suggestion not in suggestions:
+            suggestions.append(wsj_suggestion)
     for suggestion in _DEFAULT_SUGGESTIONS:
         if suggestion not in suggestions:
             suggestions.append(suggestion)
@@ -122,13 +142,21 @@ def classify_web_save_failure(
     local_error_text = (local_parse_error or "").lower()
     combined_error_text = f"{local_error_text} {normalized_message}".strip()
     local_ssl_error = any(hint in combined_error_text for hint in _SSL_ERROR_HINTS)
+    local_legal_block = "451 unavailable for legal reasons" in combined_error_text
+    wsj_preview_detected = "wsj preview detected" in local_error_text
 
     if local_parse_failed and payment_required:
         code = "WEB_SAVE_LOCAL_PARSE_AND_JINA_PAYMENT_REQUIRED"
-        message = (
-            "Unable to save website: local parser found no readable content and "
-            "Jina fallback returned 402 Payment Required."
-        )
+        if wsj_preview_detected:
+            message = (
+                "Unable to save website: WSJ preview content was detected and "
+                "Jina fallback returned 402 Payment Required."
+            )
+        else:
+            message = (
+                "Unable to save website: local parser found no readable content and "
+                "Jina fallback returned 402 Payment Required."
+            )
     elif payment_required:
         code = "WEB_SAVE_JINA_PAYMENT_REQUIRED"
         message = "Unable to save website: Jina fallback returned 402 Payment Required."
@@ -182,7 +210,12 @@ def classify_web_save_failure(
         "code": code,
         "message": message,
         "details": details,
-        "suggestions": _build_suggestions(code, local_ssl_error=local_ssl_error),
+        "suggestions": _build_suggestions(
+            code,
+            local_ssl_error=local_ssl_error,
+            local_legal_block=local_legal_block,
+            wsj_preview_detected=wsj_preview_detected,
+        ),
     }
 
 

@@ -215,7 +215,10 @@ async def save_website(
 
     executor = request.app.state.executor
     result = await executor.execute(
-        "web-save", "save_url.py", [url, "--database", "--user-id", user_id]
+        "web-save",
+        "save_url.py",
+        [url, "--database", "--user-id", user_id],
+        user_id=user_id,
     )
     if not result.get("success"):
         normalized_error = classify_web_save_result(

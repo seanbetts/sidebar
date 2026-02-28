@@ -36,7 +36,7 @@ def test_websites_save_requires_url(test_client):
 
 
 def test_websites_save_reports_local_and_jina_payment_error(test_client, monkeypatch):
-    async def fake_execute(_skill, _script, _args):
+    async def fake_execute(_skill, _script, _args, user_id=None):
         return {
             "success": False,
             "error": {
@@ -70,7 +70,10 @@ def test_websites_save_reports_local_and_jina_payment_error(test_client, monkeyp
 
 
 def test_websites_save_reports_no_readable_content(test_client, monkeypatch):
-    async def fake_execute(_skill, _script, _args):
+    captured: dict[str, str | None] = {}
+
+    async def fake_execute(_skill, _script, _args, user_id=None):
+        captured["user_id"] = user_id
         return {
             "success": False,
             "error": "No readable content extracted",
@@ -91,6 +94,7 @@ def test_websites_save_reports_no_readable_content(test_client, monkeypatch):
     assert (
         response.json()["error"]["details"]["code"] == "WEB_SAVE_NO_READABLE_CONTENT"
     )
+    assert captured["user_id"] == TEST_USER_ID
 
 
 def test_quick_save_job_exposes_structured_error(test_client, test_db):
