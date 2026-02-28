@@ -236,7 +236,8 @@ private struct ChatDetailView: View {
                 PendingAttachmentsView(
                     attachments: viewModel.pendingAttachments,
                     onRetry: { viewModel.retryAttachment(id: $0) },
-                    onDelete: { viewModel.deleteAttachment(id: $0) }
+                    onDelete: { viewModel.deleteAttachment(id: $0) },
+                    onCancel: { viewModel.cancelAttachment(id: $0) }
                 )
             }
             if !viewModel.readyAttachments.isEmpty {

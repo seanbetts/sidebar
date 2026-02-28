@@ -262,6 +262,25 @@ extension ChatViewModel {
         }
     }
 
+    public func cancelAttachment(id: String) {
+        guard let attachment = attachments.first(where: { $0.id == id }) else {
+            return
+        }
+        attachmentPollTasks[id]?.cancel()
+        attachmentPollTasks[id] = nil
+        attachments.removeAll { $0.id == id }
+        guard let fileId = attachment.fileId else {
+            return
+        }
+        Task { [weak self] in
+            do {
+                try await self?.ingestionAPI.cancel(fileId: fileId)
+            } catch {
+                self?.toastCenter?.show(message: "Failed to cancel attachment")
+            }
+        }
+    }
+
     public func removeReadyAttachment(id: String) {
         attachments.removeAll { $0.id == id }
     }

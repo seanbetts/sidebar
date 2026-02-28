@@ -4,6 +4,7 @@ struct PendingAttachmentsView: View {
     let attachments: [ChatAttachmentItem]
     let onRetry: (String) -> Void
     let onDelete: (String) -> Void
+    let onCancel: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -41,7 +42,17 @@ struct PendingAttachmentsView: View {
                             .accessibilityLabel("Delete attachment")
                         }
                     } else {
-                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                        HStack(spacing: 8) {
+                            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                            Button {
+                                onCancel(attachment.id)
+                            } label: {
+                                Image(systemName: "xmark.circle")
+                                    .appFont(.labelMd)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Cancel attachment")
+                        }
                     }
                 }
                 .padding(.horizontal, DesignTokens.Spacing.sm)

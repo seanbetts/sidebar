@@ -223,4 +223,42 @@ extension ChatViewModelTests {
         XCTAssertFalse(viewModel.hasPendingAttachments)
         XCTAssertTrue(viewModel.pendingAttachments.isEmpty)
     }
+
+    func testCancelAttachmentRemovesAttachmentAndCallsCancelEndpoint() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))
+        let cancelCalled = expectation(description: "Attachment cancel endpoint called")
+        let ingestionAPI = makeIngestionAPIForAttachmentCancelTest { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.url?.absoluteString.contains("files/file-1/cancel") == true)
+            cancelCalled.fulfill()
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data())
+        }
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            ingestionAPI: ingestionAPI
+        )
+        viewModel.attachments = [
+            ChatAttachmentItem(
+                id: "attachment-1",
+                name: "report.pdf",
+                status: .queued,
+                stage: "queued",
+                fileId: "file-1"
+            )
+        ]
+
+        viewModel.cancelAttachment(id: "attachment-1")
+
+        XCTAssertTrue(viewModel.attachments.isEmpty)
+        XCTAssertFalse(viewModel.hasPendingAttachments)
+        await fulfillment(of: [cancelCalled], timeout: 1.0)
+    }
 }

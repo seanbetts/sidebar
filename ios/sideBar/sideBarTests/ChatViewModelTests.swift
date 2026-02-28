@@ -430,4 +430,18 @@ extension ChatViewModelTests {
         }
         return IngestionAPI(client: APIClient(config: config, session: session), session: session)
     }
+
+    func makeIngestionAPIForAttachmentCancelTest(
+        requestHandler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
+    ) -> IngestionAPI {
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+        let sessionConfig = URLSessionConfiguration.ephemeral
+        sessionConfig.protocolClasses = [ChatViewModelTestsURLProtocolMock.self]
+        let session = URLSession(configuration: sessionConfig)
+        ChatViewModelTestsURLProtocolMock.requestHandler = requestHandler
+        return IngestionAPI(client: APIClient(config: config, session: session), session: session)
+    }
 }
