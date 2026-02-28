@@ -245,18 +245,8 @@ extension ContentView {
                 AnyView(detailView(for: section))
             },
             agentSurfaceRenderer: { surface in
-                let title = surface.title?.trimmingCharacters(in: .whitespacesAndNewlines)
-                let resolvedTitle: String
-                if let title, !title.isEmpty {
-                    resolvedTitle = title
-                } else {
-                    resolvedTitle = "Agent Workspace"
-                }
                 return AnyView(
-                    PlaceholderView(
-                        title: resolvedTitle,
-                        subtitle: "Agent surface \(surface.type) is not yet enabled in this renderer."
-                    )
+                    AgentWorkspaceSurfaceView(surface: surface)
                     .trackShortcutFocus(section: nil)
                 )
             }

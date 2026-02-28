@@ -21,6 +21,7 @@ extension ContentView {
 
     var workspaceLegacySnapshot: WorkspaceLegacySnapshot {
         WorkspaceLegacySnapshot(
+            mode: environment.workspaceStore.state.mode,
             isCompactLayout: isCompactWorkspaceLayout,
             sidebarSelection: sidebarSelection,
             primarySection: primarySection,

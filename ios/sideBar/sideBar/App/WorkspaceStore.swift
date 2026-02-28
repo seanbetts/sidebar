@@ -5,29 +5,71 @@ import sideBarShared
 enum WorkspaceReducer {
     static func reduce(state: WorkspaceState, action: WorkspaceAction) -> WorkspaceState {
         var next = state
+        apply(action, state: &next)
+        reconcileModeForContent(state: &next)
+        return next
+    }
+
+    // swiftlint:disable:next cyclomatic_complexity
+    private static func apply(
+        _ action: WorkspaceAction,
+        state: inout WorkspaceState
+    ) {
         switch action {
         case .setMode(let mode):
-            next.mode = mode
+            state.mode = mode
 
         case .applyLegacySnapshot(let snapshot):
-            next = WorkspaceState.fromLegacySnapshot(snapshot)
+            if snapshot.mode == .agent || state.mode == .agent {
+                applyLegacySnapshotPreservingAgentContent(snapshot, state: &state)
+            } else {
+                state = WorkspaceState.fromLegacySnapshot(snapshot)
+            }
 
         case .selectSection(let section):
-            applySectionSelection(section, state: &next)
+            applySectionSelection(section, state: &state)
 
         case .setLayout(let layout):
-            applyLayout(layout, state: &next)
+            applyLayout(layout, state: &state)
 
         case .setPrimaryContent(let descriptor):
-            next.primaryPane.descriptor = descriptor
+            state.primaryPane.descriptor = descriptor
 
         case .setSecondaryContent(let descriptor):
-            applySecondaryContent(descriptor, state: &next)
+            applySecondaryContent(descriptor, state: &state)
+
+        case .presentAgentSurface(let surface, let pane):
+            applyPresentedAgentSurface(surface, pane: pane, state: &state)
+
+        case .closePane(let pane):
+            applyClosedPane(pane, state: &state)
+
+        case .setAgentSurfacePinned(let surfaceId, let isPinned):
+            applySurfacePinnedState(
+                surfaceId: surfaceId,
+                isPinned: isPinned,
+                state: &state
+            )
 
         case .swapPanes:
-            applySwap(state: &next)
+            applySwap(state: &state)
         }
-        return next
+    }
+
+    private static func applyLegacySnapshotPreservingAgentContent(
+        _ snapshot: WorkspaceLegacySnapshot,
+        state: inout WorkspaceState
+    ) {
+        state.mode = snapshot.mode
+        applyLayout(snapshot.isCompactLayout ? .compact : .split, state: &state)
+        state.sidebarSelection = snapshot.sidebarSelection
+        state.activeSection = snapshot.activeSection
+        state.focusedSection = snapshot.focusedSection
+        state.lastNonChatSection = snapshot.lastNonChatSection
+        state.isLeftPanelExpanded = snapshot.isLeftPanelExpanded
+        state.isWorkspaceExpanded = snapshot.isWorkspaceExpanded
+        state.isWorkspaceExpandedByRotation = snapshot.isWorkspaceExpandedByRotation
+        state.isSettingsPresented = snapshot.isSettingsPresented
     }
 
     private static func applyLayout(
@@ -72,6 +114,7 @@ enum WorkspaceReducer {
         _ section: AppSection,
         state: inout WorkspaceState
     ) {
+        state.mode = .core
         state.sidebarSelection = section
         state.activeSection = section
         state.focusedSection = section
@@ -115,6 +158,96 @@ enum WorkspaceReducer {
             )
         }
         state.lastNonChatSection = section
+    }
+
+    private static func applyPresentedAgentSurface(
+        _ surface: AgentWorkspaceSurfaceDescriptor,
+        pane: WorkspacePane,
+        state: inout WorkspaceState
+    ) {
+        state.mode = .agent
+        let descriptor = WorkspaceContentDescriptor.agentSurface(surface)
+        switch pane {
+        case .primary:
+            state.primaryPane.descriptor = descriptor
+        case .secondary:
+            if state.layout == .compact {
+                state.primaryPane.descriptor = descriptor
+            } else {
+                state.secondaryPane = WorkspacePaneState(
+                    pane: .secondary,
+                    descriptor: descriptor
+                )
+            }
+        }
+    }
+
+    private static func applyClosedPane(
+        _ pane: WorkspacePane,
+        state: inout WorkspaceState
+    ) {
+        switch pane {
+        case .primary:
+            state.primaryPane.descriptor = .empty
+        case .secondary:
+            if state.layout == .compact {
+                state.primaryPane.descriptor = .empty
+            } else {
+                state.secondaryPane = WorkspacePaneState(
+                    pane: .secondary,
+                    descriptor: .empty
+                )
+            }
+        }
+    }
+
+    private static func applySurfacePinnedState(
+        surfaceId: String,
+        isPinned: Bool,
+        state: inout WorkspaceState
+    ) {
+        updateSurface(in: &state.primaryPane.descriptor, surfaceId: surfaceId) { surface in
+            var updated = surface
+            updated.isPinned = isPinned
+            return updated
+        }
+        if var secondaryPane = state.secondaryPane {
+            updateSurface(
+                in: &secondaryPane.descriptor,
+                surfaceId: surfaceId
+            ) { surface in
+                var updated = surface
+                updated.isPinned = isPinned
+                return updated
+            }
+            state.secondaryPane = secondaryPane
+        }
+    }
+
+    private static func updateSurface(
+        in descriptor: inout WorkspaceContentDescriptor,
+        surfaceId: String,
+        updater: (AgentWorkspaceSurfaceDescriptor) -> AgentWorkspaceSurfaceDescriptor
+    ) {
+        guard case .agentSurface(let surface) = descriptor,
+              surface.surfaceId == surfaceId else { return }
+        descriptor = .agentSurface(updater(surface))
+    }
+
+    private static func hasAgentSurface(_ descriptor: WorkspaceContentDescriptor?) -> Bool {
+        guard let descriptor else { return false }
+        if case .agentSurface = descriptor {
+            return true
+        }
+        return false
+    }
+
+    private static func reconcileModeForContent(
+        state: inout WorkspaceState
+    ) {
+        let containsAgentSurface = hasAgentSurface(state.primaryPane.descriptor)
+            || hasAgentSurface(state.secondaryPane?.descriptor)
+        state.mode = containsAgentSurface ? .agent : .core
     }
 }
 
@@ -169,6 +302,7 @@ public final class WorkspaceStore: ObservableObject {
 
     private func verifyParityIfNeeded(source: String) {
         guard let snapshot = lastLegacySnapshot else { return }
+        guard state.mode == .core, snapshot.mode == .core else { return }
         let expected = WorkspaceState.expectedParityProjection(from: snapshot)
         guard state.parityProjection != expected else { return }
 

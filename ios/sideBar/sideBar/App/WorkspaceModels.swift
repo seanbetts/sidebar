@@ -19,15 +19,79 @@ public enum WorkspacePane: String, Equatable {
 }
 
 /// Metadata for a dynamic agent-rendered surface.
+public enum AgentWorkspaceSurfaceType: String, CaseIterable, Equatable {
+    case markdown
+    case table
+    case chart
+    case map
+    case form
+    case actionPanel
+}
+
+/// Capability flags for agent-rendered surface controls.
+public struct AgentWorkspaceSurfaceCapabilities: Equatable {
+    public var canRefresh: Bool
+    public var canClose: Bool
+    public var canPin: Bool
+    public var canInspectData: Bool
+
+    public init(
+        canRefresh: Bool = true,
+        canClose: Bool = true,
+        canPin: Bool = true,
+        canInspectData: Bool = true
+    ) {
+        self.canRefresh = canRefresh
+        self.canClose = canClose
+        self.canPin = canPin
+        self.canInspectData = canInspectData
+    }
+}
+
 public struct AgentWorkspaceSurfaceDescriptor: Equatable {
     public let type: String
     public let surfaceId: String
     public let title: String?
+    public let payload: [String: String]
+    public var capabilities: AgentWorkspaceSurfaceCapabilities
+    public var isPinned: Bool
 
-    public init(type: String, surfaceId: String, title: String? = nil) {
+    public var surfaceType: AgentWorkspaceSurfaceType {
+        AgentWorkspaceSurfaceType(rawValue: type) ?? .actionPanel
+    }
+
+    public init(
+        type: String,
+        surfaceId: String,
+        title: String? = nil,
+        payload: [String: String] = [:],
+        capabilities: AgentWorkspaceSurfaceCapabilities = AgentWorkspaceSurfaceCapabilities(),
+        isPinned: Bool = false
+    ) {
         self.type = type
         self.surfaceId = surfaceId
         self.title = title
+        self.payload = payload
+        self.capabilities = capabilities
+        self.isPinned = isPinned
+    }
+
+    public init(
+        type: AgentWorkspaceSurfaceType,
+        surfaceId: String,
+        title: String? = nil,
+        payload: [String: String] = [:],
+        capabilities: AgentWorkspaceSurfaceCapabilities = AgentWorkspaceSurfaceCapabilities(),
+        isPinned: Bool = false
+    ) {
+        self.init(
+            type: type.rawValue,
+            surfaceId: surfaceId,
+            title: title,
+            payload: payload,
+            capabilities: capabilities,
+            isPinned: isPinned
+        )
     }
 }
 
@@ -161,6 +225,9 @@ public enum WorkspaceAction: Equatable {
     case setLayout(WorkspaceLayoutMode)
     case setPrimaryContent(WorkspaceContentDescriptor)
     case setSecondaryContent(WorkspaceContentDescriptor?)
+    case presentAgentSurface(AgentWorkspaceSurfaceDescriptor, pane: WorkspacePane)
+    case closePane(WorkspacePane)
+    case setAgentSurfacePinned(surfaceId: String, isPinned: Bool)
     case swapPanes
 }
 

@@ -174,6 +174,121 @@ final class WorkspaceStoreTests: XCTestCase {
         XCTAssertEqual(next.focusedSection, .chat)
     }
 
+    func testReducerPresentAgentSurfaceSetsAgentModeAndPrimaryDescriptor() {
+        let state = WorkspaceState(
+            mode: .core,
+            layout: .split,
+            primaryPane: WorkspacePaneState(pane: .primary, descriptor: .builtIn(.notes)),
+            secondaryPane: WorkspacePaneState(pane: .secondary, descriptor: .builtIn(.chat))
+        )
+        let surface = AgentWorkspaceSurfaceDescriptor(
+            type: .chart,
+            surfaceId: "surface-chart-1",
+            title: "Revenue"
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .presentAgentSurface(surface, pane: .primary)
+        )
+
+        XCTAssertEqual(next.mode, .agent)
+        XCTAssertEqual(next.primaryPane.descriptor, .agentSurface(surface))
+    }
+
+    func testReducerSetAgentSurfacePinnedUpdatesMatchingSurface() {
+        let surface = AgentWorkspaceSurfaceDescriptor(
+            type: .table,
+            surfaceId: "surface-table-1",
+            title: "Rows"
+        )
+        let state = WorkspaceState(
+            mode: .agent,
+            layout: .split,
+            primaryPane: WorkspacePaneState(pane: .primary, descriptor: .agentSurface(surface)),
+            secondaryPane: WorkspacePaneState(pane: .secondary, descriptor: .builtIn(.chat))
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .setAgentSurfacePinned(surfaceId: "surface-table-1", isPinned: true)
+        )
+
+        guard case .agentSurface(let updatedSurface) = next.primaryPane.descriptor else {
+            return XCTFail("Expected primary pane to remain an agent surface")
+        }
+        XCTAssertTrue(updatedSurface.isPinned)
+        XCTAssertEqual(next.mode, .agent)
+    }
+
+    func testReducerClosePaneReturnsModeToCoreWhenNoAgentSurfacesRemain() {
+        let primarySurface = AgentWorkspaceSurfaceDescriptor(
+            type: .map,
+            surfaceId: "surface-map-1",
+            title: "Map"
+        )
+        let state = WorkspaceState(
+            mode: .agent,
+            layout: .split,
+            primaryPane: WorkspacePaneState(pane: .primary, descriptor: .agentSurface(primarySurface)),
+            secondaryPane: WorkspacePaneState(pane: .secondary, descriptor: .empty)
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .closePane(.primary)
+        )
+
+        XCTAssertEqual(next.primaryPane.descriptor, .empty)
+        XCTAssertEqual(next.mode, .core)
+    }
+
+    func testSyncLegacySnapshotDoesNotReplaceAgentDescriptorsWhenModeIsAgent() {
+        let store = makeStore()
+        let surface = AgentWorkspaceSurfaceDescriptor(
+            type: .markdown,
+            surfaceId: "surface-markdown-1",
+            title: "Agent output"
+        )
+        store.dispatch(
+            .presentAgentSurface(surface, pane: .primary),
+            source: "unit_test_agent_surface",
+            expectLegacyFollowup: true
+        )
+
+        let snapshot = makeSnapshot(
+            isCompactLayout: false,
+            sidebarSelection: .notes,
+            primarySection: .notes,
+            secondarySection: .chat,
+            phoneSelection: nil,
+            activeSection: .notes,
+            focusedSection: .notes
+        )
+        store.syncLegacySnapshot(
+            WorkspaceLegacySnapshot(
+                mode: .agent,
+                isCompactLayout: snapshot.isCompactLayout,
+                sidebarSelection: snapshot.sidebarSelection,
+                primarySection: snapshot.primarySection,
+                secondarySection: snapshot.secondarySection,
+                phoneSelection: snapshot.phoneSelection,
+                activeSection: snapshot.activeSection,
+                focusedSection: snapshot.focusedSection,
+                lastNonChatSection: snapshot.lastNonChatSection,
+                isLeftPanelExpanded: snapshot.isLeftPanelExpanded,
+                isWorkspaceExpanded: snapshot.isWorkspaceExpanded,
+                isWorkspaceExpandedByRotation: snapshot.isWorkspaceExpandedByRotation,
+                isSettingsPresented: snapshot.isSettingsPresented
+            ),
+            source: "unit_test_legacy_sync_agent"
+        )
+
+        XCTAssertEqual(store.state.mode, .agent)
+        XCTAssertEqual(store.state.primaryPane.descriptor, .agentSurface(surface))
+        XCTAssertEqual(store.parityDivergenceCount, 0)
+    }
+
     private func makeStore() -> WorkspaceStore {
         let store = WorkspaceStore()
         Self.retainedStores.append(store)
