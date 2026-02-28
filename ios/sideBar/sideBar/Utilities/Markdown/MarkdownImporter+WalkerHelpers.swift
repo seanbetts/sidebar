@@ -42,7 +42,7 @@ extension MarkdownToAttributedStringWalker {
             }
             return result
         case is SoftBreak:
-            return AttributedString("\n")
+            return AttributedString(blockquoteDepth > 0 ? "\n" : " ")
         case is LineBreak:
             return AttributedString("\n")
         default:
@@ -353,7 +353,7 @@ extension MarkdownToAttributedStringWalker {
         let full = fullRange(in: rowText)
         rowText[full].font = bodyFont
         if isHeader {
-            rowText[full].font = .system(size: 16, weight: .semibold)
+            rowText[full].font = .system(size: baseFontSize, weight: .semibold)
             rowText[full].backgroundColor = DesignTokens.Colors.muted
         }
         rowText[full].paragraphStyle = paragraphStyle(

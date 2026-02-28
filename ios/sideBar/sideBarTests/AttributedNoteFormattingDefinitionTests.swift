@@ -80,6 +80,36 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         XCTAssertEqual(constrained[range].strikethroughStyle, .single)
     }
 
+    func testConstrainDocumentPreservesCodeLanguageHintInPresentationIntent() {
+        var text = AttributedString("print(\"hello\")")
+        let range = text.startIndex..<text.endIndex
+        text[range].blockKind = .codeBlock
+        text[range].codeLanguage = "swift"
+
+        var constrained = text
+        MarkdownFormattingDefinition().constrainDocument(&constrained)
+
+        let intent = constrained[range].runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
+        XCTAssertEqual(codeBlockLanguageHint(in: intent), "swift")
+    }
+
+    func testConstrainDocumentKeepsNestedBlockquoteIdentityChainStable() {
+        let markdown = """
+        > > Nested quote
+        """
+        let imported = MarkdownImporter().attributedString(from: markdown).attributedString
+        let range = imported.startIndex..<imported.endIndex
+        let originalIntent = imported[range].runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
+        let originalBlockquoteIdentities = blockquoteIdentities(in: originalIntent)
+        XCTAssertEqual(originalBlockquoteIdentities.count, 2)
+
+        var constrained = imported
+        MarkdownFormattingDefinition().constrainDocument(&constrained)
+
+        let constrainedIntent = constrained[range].runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
+        XCTAssertEqual(blockquoteIdentities(in: constrainedIntent), originalBlockquoteIdentities)
+    }
+
     private func containsUnorderedList(in intent: PresentationIntent?) -> Bool {
         guard let intent else { return false }
         for component in intent.components {
@@ -98,5 +128,25 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
             }
         }
         return false
+    }
+
+    private func codeBlockLanguageHint(in intent: PresentationIntent?) -> String? {
+        guard let intent else { return nil }
+        for component in intent.components {
+            if case .codeBlock(let languageHint) = component.kind {
+                return languageHint
+            }
+        }
+        return nil
+    }
+
+    private func blockquoteIdentities(in intent: PresentationIntent?) -> [Int] {
+        guard let intent else { return [] }
+        return intent.components.compactMap { component in
+            if case .blockQuote = component.kind {
+                return component.identity
+            }
+            return nil
+        }
     }
 }

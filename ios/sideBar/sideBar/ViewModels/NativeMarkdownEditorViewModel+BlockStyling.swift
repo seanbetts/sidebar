@@ -18,6 +18,7 @@ extension NativeMarkdownEditorViewModel {
             let intents = run.inlinePresentationIntent ?? []
             let range = run.range
             let tableInfo = tableRowInfo(from: run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
+            let isTableHeader = tableInfo?.isHeader == true
 
             if intents.contains(.code) {
                 setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &text, range: range)
@@ -27,19 +28,23 @@ extension NativeMarkdownEditorViewModel {
             }
 
             let isItalic = intents.contains(.emphasized)
-            let isBold = intents.contains(.stronglyEmphasized)
-                || tableInfo?.isHeader == true
-                || (blockKind.map(isHeading) ?? false)
+            let isInlineBold = intents.contains(.stronglyEmphasized)
             var font = baseFont
-            if isBold {
+            if isTableHeader {
+                font = font.weight(.semibold)
+            }
+            if isInlineBold {
                 font = font.weight(.bold)
             }
             if isItalic {
                 font = font.italic()
             }
+            let platformBase = isTableHeader
+                ? platformSystemFont(size: baseFontSize, weight: .semibold)
+                : basePlatformFont
             let platformFont = platformFontApplyingTraits(
-                basePlatformFont,
-                bold: isBold,
+                platformBase,
+                bold: isInlineBold,
                 italic: isItalic
             )
             setFont(font, platformFont: platformFont, in: &text, range: range)

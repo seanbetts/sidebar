@@ -61,7 +61,8 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
         text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = normalizedPresentationIntent(
             for: blockKind,
             listDepth: text[range].listDepth,
-            existingIntent: existingPresentationIntent
+            existingIntent: existingPresentationIntent,
+            codeLanguage: text[range].codeLanguage
         )
     }
 
@@ -145,7 +146,8 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
     private func normalizedPresentationIntent(
         for blockKind: BlockKind,
         listDepth: Int?,
-        existingIntent: PresentationIntent?
+        existingIntent: PresentationIntent?,
+        codeLanguage: String?
     ) -> PresentationIntent {
         let quoteDepth = blockquoteDepth(in: existingIntent)
         if let level = headingLevel(for: blockKind) {
@@ -174,7 +176,7 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
             )
         case .codeBlock:
             return scopedPresentationIntent(
-                kind: .codeBlock(languageHint: nil),
+                kind: .codeBlock(languageHint: codeLanguage),
                 identity: 1,
                 quoteDepth: quoteDepth
             )
@@ -324,11 +326,9 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
     private func blockquoteIntent(depth: Int) -> PresentationIntent? {
         guard depth > 0 else { return nil }
         var current = PresentationIntent(.blockQuote, identity: 1)
-        if depth == 1 {
-            return current
-        }
-        for _ in 2...depth {
-            current = PresentationIntent(.blockQuote, identity: 1, parent: current)
+        guard depth > 1 else { return current }
+        for level in 2...depth {
+            current = PresentationIntent(.blockQuote, identity: level, parent: current)
         }
         return current
     }

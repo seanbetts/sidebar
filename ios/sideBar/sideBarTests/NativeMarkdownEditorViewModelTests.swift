@@ -247,7 +247,6 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent[line].listDepth, 1)
     }
 
-
     func testUpdatePrefixVisibilityShowsReadMarkersWhenInjectedMarkersDisabled() async {
         let viewModel = NativeMarkdownEditorViewModel()
         var content = AttributedString("• Item")

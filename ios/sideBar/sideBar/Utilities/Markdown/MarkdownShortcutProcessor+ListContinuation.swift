@@ -198,7 +198,7 @@ extension MarkdownShortcutProcessor {
     private static func nextOrderedOrdinal(from lineText: String) -> Int {
         let trimmed = lineText.trimmingCharacters(in: .whitespaces)
         guard let matchRange = trimmed.range(
-            of: #"^(?:[▎>\s]*)?(\d+)\.\s*"#,
+            of: #"^(?:[│▎>\s]*)?(\d+)\.\s*"#,
             options: .regularExpression
         ) else {
             return 1

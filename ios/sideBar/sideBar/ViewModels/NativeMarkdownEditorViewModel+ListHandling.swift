@@ -4,6 +4,11 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeMarkdownEditorViewModel {
+    private static let blockquotePrefixRegex = try? NSRegularExpression(pattern: #"^(?:\s*>\s*)+"#)
+    private static let taskListPrefixRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s+\[[ xX]\]\s"#)
+    private static let orderedListPrefixRegex = try? NSRegularExpression(pattern: #"^\s*\d+\.\s"#)
+    private static let bulletListPrefixRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s"#)
+
     func shouldRemoveSpacingBefore(
         blockKind: BlockKind?,
         previousBlockKind: BlockKind?
@@ -351,7 +356,7 @@ extension NativeMarkdownEditorViewModel {
 
     func blockquotePrefixRange(in lineText: String) -> Range<String.Index>? {
         let range = NSRange(location: 0, length: lineText.utf16.count)
-        guard let regex = try? NSRegularExpression(pattern: #"^(?:\s*>\s*)+"#) else { return nil }
+        guard let regex = Self.blockquotePrefixRegex else { return nil }
         guard let match = regex.firstMatch(in: lineText, range: range) else { return nil }
         return Range(match.range, in: lineText)
     }
@@ -359,13 +364,12 @@ extension NativeMarkdownEditorViewModel {
     func listPrefixRange(in lineText: String, offset: Int) -> Range<String.Index>? {
         let startIndex = lineText.index(lineText.startIndex, offsetBy: min(offset, lineText.count))
         let substring = String(lineText[startIndex...])
-        let patterns = [
-            #"^\s*[-+*]\s+\[[ xX]\]\s"#,
-            #"^\s*\d+\.\s"#,
-            #"^\s*[-+*]\s"#
-        ]
-        for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+        let regexes: [NSRegularExpression] = [
+            Self.taskListPrefixRegex,
+            Self.orderedListPrefixRegex,
+            Self.bulletListPrefixRegex
+        ].compactMap { $0 }
+        for regex in regexes {
             let range = NSRange(location: 0, length: substring.utf16.count)
             guard let match = regex.firstMatch(in: substring, range: range) else { continue }
             guard let matchRange = Range(match.range, in: substring) else { continue }

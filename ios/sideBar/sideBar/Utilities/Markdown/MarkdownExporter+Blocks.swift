@@ -64,7 +64,8 @@ func listKind(for blockKind: BlockKind) -> ListKind? {
 @available(iOS 26.0, macOS 26.0, *)
 func isContinuingList(previous: ExportListContext, current: ExportListContext) -> Bool {
     if let previousIdentity = previous.identity, let currentIdentity = current.identity {
-        return previousIdentity == currentIdentity
+        return previousIdentity == currentIdentity &&
+            previous.kind == current.kind
     }
 
     return previous.kind == current.kind &&

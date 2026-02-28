@@ -136,11 +136,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         setBlockKind(.blockquote)
     }
 
-    public func applyCodeBlock(language: String?) {
-        _ = language
-        setBlockKind(.codeBlock)
-    }
-
     public func applyFormatting(_ formatting: MarkdownFormatting) {
         guard !isReadOnly else { return }
         AttributedNoteFormattingCommands.apply(formatting, on: self)
@@ -380,8 +375,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 parent: quoteIntent
             )
         case .codeBlock:
+            let languageHint = attributedContent[range].codeLanguage
             attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
-                .codeBlock(languageHint: nil),
+                .codeBlock(languageHint: languageHint),
                 identity: 1
             )
         case .horizontalRule:

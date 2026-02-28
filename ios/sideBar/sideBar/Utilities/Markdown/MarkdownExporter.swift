@@ -14,7 +14,6 @@ public struct MarkdownExporter {
 private struct ExportLineResult {
     let output: [String]
     let nextIndex: Int
-    let isInCodeBlock: Bool
     let context: ExportLineContext?
 }
 
@@ -146,7 +145,6 @@ private func exportTableBlock(
     return ExportLineResult(
         output: output,
         nextIndex: tableBlock.nextIndex,
-        isInCodeBlock: isInCodeBlock,
         context: currentContext
     )
 }
@@ -178,7 +176,6 @@ private func exportStandardLine(
                 lineIndex: lineIndex
             )],
             nextIndex: lineIndex + 1,
-            isInCodeBlock: isInCodeBlock,
             context: ExportLineContext(path: .blankLine)
         )
     }
@@ -224,7 +221,6 @@ private func exportStandardLine(
     return ExportLineResult(
         output: output,
         nextIndex: lineIndex + 1,
-        isInCodeBlock: isInCodeBlock,
         context: currentContext
     )
 }

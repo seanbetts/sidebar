@@ -34,7 +34,7 @@ public struct MarkdownShortcutProcessor {
         InlinePattern(prefix: "`", suffix: "`", intent: .code)
     ]
 
-    private static let strikethroughPattern = InlinePattern(prefix: "~~", suffix: "~~", intent: .stronglyEmphasized)
+    private static let strikethroughPattern = InlinePattern(prefix: "~~", suffix: "~~", intent: [])
     static let blockPatterns: [BlockPattern] = [
         BlockPattern(prefix: "# ", blockKind: .heading1, listDepth: nil),
         BlockPattern(prefix: "## ", blockKind: .heading2, listDepth: nil),
