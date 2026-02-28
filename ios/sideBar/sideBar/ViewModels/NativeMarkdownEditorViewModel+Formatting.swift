@@ -55,6 +55,29 @@ extension NativeMarkdownEditorViewModel {
         hasInlineIntent(.code)
     }
 
+    func isStrikethroughActive() -> Bool {
+        let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
+        if !nonEmptyRanges.isEmpty {
+            return nonEmptyRanges.allSatisfy { range in
+                let runs = attributedContent[range].runs
+                guard !runs.isEmpty else { return false }
+                return runs.allSatisfy { $0.strikethroughStyle != nil }
+            }
+        }
+
+        if selection.typingAttributes(in: attributedContent).strikethroughStyle != nil {
+            return true
+        }
+
+        guard let insertionIndex = insertionIndex(in: attributedContent),
+              insertionIndex > attributedContent.startIndex else {
+            return false
+        }
+        let previousIndex = attributedContent.index(beforeCharacter: insertionIndex)
+        let previousRange = previousIndex..<insertionIndex
+        return attributedContent[previousRange].strikethroughStyle != nil
+    }
+
     func isHeadingActive() -> Bool {
         guard let blockKind = primarySelectedParagraphBlockKind() else { return false }
         return headingLevel(for: blockKind) != nil
@@ -71,8 +94,21 @@ extension NativeMarkdownEditorViewModel {
 
     func canAdjustListDepth() -> Bool {
         selectedParagraphRanges().contains { paragraphRange in
-            guard let blockKind = attributedContent.blockKind(in: paragraphRange) else { return false }
-            return isListBlockKind(blockKind)
+            if let blockKind = attributedContent.blockKind(in: paragraphRange),
+               isListBlockKind(blockKind) {
+                return true
+            }
+
+            let lineText = String(attributedContent[paragraphRange].characters)
+            if let inferred = inferredBlockKind(from: lineText), isListBlockKind(inferred) {
+                return true
+            }
+            if let inferredList = MarkdownShortcutProcessor.inferredListBlockKind(from: lineText),
+               isListBlockKind(inferredList) {
+                return true
+            }
+
+            return false
         }
     }
 
@@ -123,6 +159,7 @@ extension NativeMarkdownEditorViewModel {
     }
 
     private func adjustHeadingLevel(delta: Int, defaultLevel: Int) {
+        let selectionBefore = selectionSnapshot(in: attributedContent)
         let paragraphRanges = selectedParagraphRanges()
         guard !paragraphRanges.isEmpty else {
             let currentKind = selection.typingAttributes(in: attributedContent).blockKind ?? .paragraph
@@ -130,6 +167,7 @@ extension NativeMarkdownEditorViewModel {
                 min(6, max(1, level + delta))
             } ?? defaultLevel
             setBlockKind(headingKind(for: targetLevel))
+            selection = selection(from: selectionBefore, in: attributedContent)
             return
         }
 
@@ -153,6 +191,8 @@ extension NativeMarkdownEditorViewModel {
                 range: paragraphRange
             )
         }
+
+        selection = selection(from: selectionBefore, in: attributedContent)
     }
 
     func setBlockKind(_ blockKind: BlockKind, listDepth: Int? = nil) {
@@ -248,6 +288,18 @@ extension NativeMarkdownEditorViewModel {
         ranges.append(paragraphRange)
     }
 
+    private func insertionIndex(in text: AttributedString) -> AttributedString.Index? {
+        switch selection.indices(in: text) {
+        case .insertionPoint(let index):
+            return index
+        case .ranges(let ranges):
+            for range in ranges.ranges where range.isEmpty {
+                return range.lowerBound
+            }
+            return nil
+        }
+    }
+
     func indentListItems() {
         guard !isReadOnly else { return }
         AttributedNoteListCommands.indent(on: self)
@@ -314,17 +366,48 @@ extension NativeMarkdownEditorViewModel {
     }
 
     func insertHorizontalRule() {
-        var hr = AttributedString("---")
         let insertIndex = selectionRanges().ranges.first?.lowerBound ?? attributedContent.endIndex
-        let range = hr.startIndex..<hr.endIndex
-        hr[range].blockKind = .horizontalRule
-        setForegroundColor(DesignTokens.Colors.border, in: &hr, range: range)
-        attributedContent.insert(hr, at: insertIndex)
+        let needsLeadingNewline = insertIndex > attributedContent.startIndex && !attributedContent.characters[
+            attributedContent.index(beforeCharacter: insertIndex)
+        ].isNewline
+        let needsTrailingNewline = insertIndex < attributedContent.endIndex && !attributedContent.characters[insertIndex].isNewline
 
-        let ruleEnd = attributedContent.index(insertIndex, offsetByCharacters: 3)
-        let insertedRange = insertIndex..<ruleEnd
-        attributedContent[insertedRange].blockKind = .horizontalRule
-        setForegroundColor(DesignTokens.Colors.border, range: insertedRange)
+        var insertionText = ""
+        if needsLeadingNewline {
+            insertionText += "\n"
+        }
+        let ruleStartOffset = insertionText.count
+        insertionText += "---"
+        let ruleEndOffset = insertionText.count
+        if needsTrailingNewline {
+            insertionText += "\n"
+        }
+
+        var insertion = AttributedString(insertionText)
+        let ruleStart = insertion.index(insertion.startIndex, offsetByCharacters: ruleStartOffset)
+        let ruleEnd = insertion.index(insertion.startIndex, offsetByCharacters: ruleEndOffset)
+        let ruleRange = ruleStart..<ruleEnd
+        insertion[ruleRange].blockKind = .horizontalRule
+        insertion[ruleRange].listDepth = nil
+        insertion[ruleRange][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .thematicBreak,
+            identity: 1
+        )
+        setFont(
+            baseFont(for: .horizontalRule),
+            platformFont: platformBaseFont(for: .horizontalRule),
+            in: &insertion,
+            range: ruleRange
+        )
+        setForegroundColor(DesignTokens.Colors.border, in: &insertion, range: ruleRange)
+        if let style = paragraphStyle(for: .horizontalRule) {
+            insertion[ruleRange].paragraphStyle = style
+        }
+
+        attributedContent.insert(insertion, at: insertIndex)
+        let insertedCursorOffset = ruleEndOffset + (needsTrailingNewline ? 1 : 0)
+        let cursor = attributedContent.index(insertIndex, offsetByCharacters: insertedCursorOffset)
+        selection = AttributedTextSelection(range: cursor..<cursor)
     }
 
     func typingPresentationIntent(

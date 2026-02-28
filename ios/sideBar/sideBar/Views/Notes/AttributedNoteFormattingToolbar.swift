@@ -23,7 +23,8 @@ struct AttributedNoteFormattingToolbar: View {
                 }
                 toolbarButton(
                     title: "Strike",
-                    systemImage: "strikethrough"
+                    systemImage: "strikethrough",
+                    isActive: viewModel.isStrikethroughActive()
                 ) {
                     viewModel.applyFormatting(.strikethrough)
                 }

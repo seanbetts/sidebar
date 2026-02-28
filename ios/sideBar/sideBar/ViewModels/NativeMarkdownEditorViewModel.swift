@@ -235,9 +235,37 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     func hasInlineIntent(_ intent: InlinePresentationIntent) -> Bool {
+        let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
+        if !nonEmptyRanges.isEmpty {
+            return nonEmptyRanges.allSatisfy { range in
+                let runs = attributedContent[range].runs
+                guard !runs.isEmpty else { return false }
+                return runs.allSatisfy { run in
+                    (run.inlinePresentationIntent ?? []).contains(intent)
+                }
+            }
+        }
+
         let attrs = selection.typingAttributes(in: attributedContent)
-        let intents = attrs.inlinePresentationIntent ?? []
-        return intents.contains(intent)
+        if (attrs.inlinePresentationIntent ?? []).contains(intent) {
+            return true
+        }
+
+        switch selection.indices(in: attributedContent) {
+        case .insertionPoint(let index):
+            guard index > attributedContent.startIndex else { return false }
+            let previous = attributedContent.index(beforeCharacter: index)
+            let previousRange = previous..<index
+            return (attributedContent[previousRange].inlinePresentationIntent ?? []).contains(intent)
+        case .ranges(let ranges):
+            for range in ranges.ranges where range.isEmpty {
+                guard range.lowerBound > attributedContent.startIndex else { return false }
+                let previous = attributedContent.index(beforeCharacter: range.lowerBound)
+                let previousRange = previous..<range.lowerBound
+                return (attributedContent[previousRange].inlinePresentationIntent ?? []).contains(intent)
+            }
+            return false
+        }
     }
 
     func applyInlineIntent(

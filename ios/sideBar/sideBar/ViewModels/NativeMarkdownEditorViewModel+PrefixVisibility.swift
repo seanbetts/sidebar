@@ -11,12 +11,17 @@ extension NativeMarkdownEditorViewModel {
 
         let originalLines = lineInfos(in: updated)
         let listOrdinals = orderedListOrdinals(in: updated, lines: originalLines)
-        let adjustedSnapshot = normalizeListMarkers(
+        var adjustedSnapshot = normalizeListMarkers(
             in: &updated,
             lines: originalLines,
             listOrdinals: listOrdinals,
             selection: originalSnapshot,
             forceReadMarkers: !useLegacyMarkerHeuristics
+        )
+        adjustedSnapshot = normalizeBlockquoteMarkers(
+            in: &updated,
+            lines: lineInfos(in: updated),
+            selection: adjustedSnapshot
         )
 
         let lines = lineInfos(in: updated)
@@ -26,6 +31,7 @@ extension NativeMarkdownEditorViewModel {
             let lineStart = updated.index(updated.startIndex, offsetByCharacters: line.range.lowerBound)
             let lineEnd = updated.index(updated.startIndex, offsetByCharacters: line.range.upperBound)
             let lineRange = lineStart..<lineEnd
+            let paragraphRange = lineRangeIncludingTrailingNewline(in: updated, lineRange: lineRange)
             let shouldShow = shouldShowPrefix(for: line.range, selection: adjustedSnapshot)
             let resolvedBlockKind = resolvedBlockKind(
                 in: &updated,
@@ -53,9 +59,9 @@ extension NativeMarkdownEditorViewModel {
                 if shouldRemoveSpacingBefore(blockKind: blockKind, previousBlockKind: previousBlockKind) {
                     let mutable = baseStyle.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
                     mutable.paragraphSpacingBefore = 0
-                    updated[lineRange].paragraphStyle = mutable
+                    updated[paragraphRange].paragraphStyle = mutable
                 } else {
-                    updated[lineRange].paragraphStyle = baseStyle
+                    updated[paragraphRange].paragraphStyle = baseStyle
                 }
             }
 
@@ -112,7 +118,7 @@ extension NativeMarkdownEditorViewModel {
                 let info = lines[lineIndex]
                 let start = text.index(text.startIndex, offsetByCharacters: info.range.lowerBound)
                 let end = text.index(text.startIndex, offsetByCharacters: info.range.upperBound)
-                let range = start..<end
+                let range = lineRangeIncludingTrailingNewline(in: text, lineRange: start..<end)
                 let isFirst = lineIndex == index
                 let isLast = lineIndex == endIndex
                 let style = paragraphStyle(
@@ -127,6 +133,17 @@ extension NativeMarkdownEditorViewModel {
 
             index = endIndex + 1
         }
+    }
+
+    func lineRangeIncludingTrailingNewline(
+        in text: AttributedString,
+        lineRange: Range<AttributedString.Index>
+    ) -> Range<AttributedString.Index> {
+        var upper = lineRange.upperBound
+        if upper < text.endIndex, text.characters[upper].isNewline {
+            upper = text.index(afterCharacter: upper)
+        }
+        return lineRange.lowerBound..<upper
     }
 
     func resolvedBlockKind(
