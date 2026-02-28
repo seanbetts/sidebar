@@ -134,6 +134,7 @@ private final class ChatViewModelTeardownBag {
     var clock: () -> Date { ui.clock }
     var onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? { ui.onAssistantSettingsUpdated }
     var requestContextProvider: (() -> ChatRequestContext?)? { ui.requestContextProvider }
+    var workspaceActionDispatcher: ((WorkspaceAction) -> Void)?
     private let teardownBag = ChatViewModelTeardownBag()
 
     var currentStreamMessageId: String?

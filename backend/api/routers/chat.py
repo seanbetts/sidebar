@@ -385,6 +385,7 @@ async def stream_chat(
                     "assistant_soul_updated",
                     "profile_user_settings_updated",
                     "other_preferences_updated",
+                    "workspace_patch",
                 }:
                     data = json.dumps(event.get("data", {}))
                     yield f"event: {event_type}\ndata: {data}\n\n"

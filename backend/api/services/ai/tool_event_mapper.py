@@ -6,6 +6,30 @@ import json
 from typing import Any
 
 
+def workspace_patch_stream_events(result_data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map workspace patch payloads from tool results to realtime stream events."""
+    candidates: list[Any] = []
+    patch = result_data.get("workspace_patch")
+    if patch is not None:
+        candidates.append(patch)
+
+    patches = result_data.get("workspace_patches")
+    if isinstance(patches, list):
+        candidates.extend(patches)
+
+    events: list[dict[str, Any]] = []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        version = candidate.get("version")
+        if not isinstance(version, int) or isinstance(version, bool):
+            continue
+        if not isinstance(candidate.get("operations"), list):
+            continue
+        events.append({"type": "workspace_patch", "data": candidate})
+    return events
+
+
 def assistant_settings_stream_event(
     display_name: str, result_data: dict[str, Any]
 ) -> dict[str, Any] | None:
@@ -214,6 +238,8 @@ def tool_side_effect_events(
                     "data": {"result": result_data},
                 }
             )
+
+    events.extend(workspace_patch_stream_events(result_data))
 
     assistant_event = assistant_settings_stream_event(display_name, result_data)
     if assistant_event:

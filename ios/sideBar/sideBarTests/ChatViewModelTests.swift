@@ -200,6 +200,80 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertNil(cachedMemories)
     }
 
+    func testWorkspacePatchEventDispatchesValidatedWorkspaceActions() {
+        let cache = TestCacheClient()
+        var dispatchedActions: [WorkspaceAction] = []
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            workspaceActionDispatcher: { action in
+                dispatchedActions.append(action)
+            }
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .workspacePatch,
+            data: AnyCodable([
+                "version": 1,
+                "operations": [
+                    ["op": "swap_panes"],
+                    ["op": "unknown_op"],
+                    [
+                        "op": "upsert_agent_surface",
+                        "pane": "secondary",
+                        "surface": [
+                            "type": "map",
+                            "surface_id": "surface-map-1",
+                            "title": "Delivery map",
+                            "payload": [
+                                "location": "London",
+                                "zoom": 8
+                            ],
+                            "capabilities": ["can_refresh": false],
+                            "is_pinned": true
+                        ]
+                    ]
+                ]
+            ])
+        ))
+
+        XCTAssertEqual(dispatchedActions.count, 2)
+        XCTAssertEqual(dispatchedActions.first, .swapPanes)
+        guard case .presentAgentSurface(let surface, let pane) = dispatchedActions[1] else {
+            return XCTFail("Expected upsert operation to map to presentAgentSurface")
+        }
+        XCTAssertEqual(pane, .secondary)
+        XCTAssertEqual(surface.type, "map")
+        XCTAssertEqual(surface.surfaceId, "surface-map-1")
+        XCTAssertEqual(surface.title, "Delivery map")
+        XCTAssertEqual(surface.payload["location"], "London")
+        XCTAssertEqual(surface.payload["zoom"], "8")
+        XCTAssertFalse(surface.capabilities.canRefresh)
+        XCTAssertTrue(surface.isPinned)
+    }
+
+    func testWorkspacePatchEventRejectsUnsupportedVersion() {
+        let cache = TestCacheClient()
+        var dispatchedActions: [WorkspaceAction] = []
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            workspaceActionDispatcher: { action in
+                dispatchedActions.append(action)
+            }
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .workspacePatch,
+            data: AnyCodable([
+                "version": 2,
+                "operations": [["op": "swap_panes"]]
+            ])
+        ))
+
+        XCTAssertTrue(dispatchedActions.isEmpty)
+    }
+
     func testLoadConversationSortsMessagesByTimestamp() async {
         let cache = TestCacheClient()
         let messages = [
@@ -369,7 +443,8 @@ extension ChatViewModelTests {
         scratchpadStore: ScratchpadStore? = nil,
         ingestionAPI: IngestionAPI? = nil,
         streamClient: ChatViewModelTestsSupport.MockChatStreamClient? = nil,
-        requestContextProvider: (() -> ChatRequestContext?)? = nil
+        requestContextProvider: (() -> ChatRequestContext?)? = nil,
+        workspaceActionDispatcher: ((WorkspaceAction) -> Void)? = nil
     ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
         let themeManager = Self.sharedThemeManager
@@ -402,6 +477,7 @@ extension ChatViewModelTests {
                 requestContextProvider: requestContextProvider
             )
         )
+        viewModel.workspaceActionDispatcher = workspaceActionDispatcher
         Self.retainedViewModels.append(viewModel)
         return viewModel
     }

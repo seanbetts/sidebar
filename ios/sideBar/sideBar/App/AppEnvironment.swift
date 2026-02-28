@@ -172,6 +172,13 @@ public final class AppEnvironment: ObservableObject {
                 authSession.authState == .active
             }
         )
+        self.chatViewModel.workspaceActionDispatcher = { [workspaceStore = self.workspaceStore] action in
+            workspaceStore.dispatch(
+                action,
+                source: "chat_workspace_patch",
+                expectLegacyFollowup: true
+            )
+        }
         self.authState = container.authSession.authState
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self

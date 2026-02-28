@@ -156,6 +156,39 @@ def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch)
     assert "event: complete" in body
 
 
+def test_stream_chat_forwards_workspace_patch_events(test_client, monkeypatch):
+    _patch_stream_gateway(
+        monkeypatch,
+        [
+            {
+                "type": "workspace_patch",
+                "data": {
+                    "version": 1,
+                    "operations": [{"op": "swap_panes"}],
+                },
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+
+    body = response.text
+    assert "event: workspace_patch" in body
+    assert '"version": 1' in body
+    assert '"op": "swap_panes"' in body
+    assert "event: complete" in body
+
+
 def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypatch):
     captured: dict[str, object] = {}
 

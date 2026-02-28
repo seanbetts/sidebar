@@ -62,4 +62,19 @@ final class ChatStreamParserTests: XCTestCase {
         XCTAssertEqual(payload?["weather_unit"] as? String, "fahrenheit")
         XCTAssertEqual(payload?["biometric_unlock_enabled"] as? Bool, true)
     }
+
+    func testIngestParsesWorkspacePatchEvent() {
+        var parser = ChatStreamParser()
+        let chunk = "event: workspace_patch\ndata: {\"version\":1,\"operations\":[{\"op\":\"swap_panes\"}],\"future_field\":{\"trace_id\":\"abc\"}}\n\n"
+
+        let events = parser.ingest(Data(chunk.utf8))
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?.type, .workspacePatch)
+        let payload = events.first?.data?.value as? [String: Any]
+        XCTAssertEqual(payload?["version"] as? Int, 1)
+        let operations = payload?["operations"] as? [[String: Any]]
+        XCTAssertEqual(operations?.first?["op"] as? String, "swap_panes")
+        XCTAssertNotNil(payload?["future_field"] as? [String: Any])
+    }
 }
