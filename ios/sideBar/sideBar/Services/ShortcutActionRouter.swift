@@ -24,7 +24,10 @@ public final class ShortcutActionRouter {
     private func handleNavigation(_ action: ShortcutAction, environment: AppEnvironment) -> Bool {
         switch action {
         case .navigate(let target):
-            environment.commandSelection = target
+            environment.routeWorkspaceSelection(
+                to: target,
+                source: "shortcut_navigate"
+            )
             return true
         case .openSettings:
             environment.commandSelection = .settings

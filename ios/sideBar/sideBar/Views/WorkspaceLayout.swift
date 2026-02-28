@@ -45,6 +45,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     @Binding private var isRightSidebarCollapsed: Bool
     private let shouldAnimateSidebar: Bool
     private let onShowSettings: (() -> Void)?
+    private let leftPanelContent: (AppSection?) -> AnyView
     @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
     @State private var draggingRightWidth: Double?
 
@@ -71,6 +72,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         isRightSidebarCollapsed: Binding<Bool>,
         shouldAnimateSidebar: Bool = true,
         onShowSettings: (() -> Void)? = nil,
+        leftPanelContent: ((AppSection?) -> AnyView)? = nil,
         @ViewBuilder header: @escaping () -> Header,
         @ViewBuilder mainContent: @escaping () -> Main,
         @ViewBuilder rightSidebar: @escaping () -> Sidebar
@@ -80,6 +82,9 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         self._isRightSidebarCollapsed = isRightSidebarCollapsed
         self.shouldAnimateSidebar = shouldAnimateSidebar
         self.onShowSettings = onShowSettings
+        self.leftPanelContent = leftPanelContent ?? { selection in
+            Self.defaultPanelView(for: selection)
+        }
         self.header = header
         self.mainContent = mainContent
         self.rightSidebar = rightSidebar
@@ -117,7 +122,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                 )
 
                 if leftPanelVisible {
-                    panelView(for: selection)
+                    leftPanelContent(selection)
                         .trackShortcutFocus(section: selection)
                         .frame(width: widths.leftPanel)
                         .frame(maxHeight: .infinity)
@@ -350,25 +355,24 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         #endif
     }
 
-    @ViewBuilder
-    private func panelView(for selection: AppSection?) -> some View {
+    private static func defaultPanelView(for selection: AppSection?) -> AnyView {
         switch selection {
         case .chat:
-            ConversationsPanel()
+            return AnyView(ConversationsPanel())
         case .notes:
-            NotesPanel()
+            return AnyView(NotesPanel())
         case .tasks:
-            TasksPanel()
+            return AnyView(TasksPanel())
         case .files:
-            FilesPanel()
+            return AnyView(FilesPanel())
         case .websites:
-            WebsitesPanel()
+            return AnyView(WebsitesPanel())
         case .skillsStore:
-            SkillsStorePanel()
+            return AnyView(SkillsStorePanel())
         case .none:
-            SidebarPanelPlaceholder(title: "Select a section")
+            return AnyView(SidebarPanelPlaceholder(title: "Select a section"))
         default:
-            SidebarPanelPlaceholder(title: selection?.title ?? "Select a section")
+            return AnyView(SidebarPanelPlaceholder(title: selection?.title ?? "Select a section"))
         }
     }
 

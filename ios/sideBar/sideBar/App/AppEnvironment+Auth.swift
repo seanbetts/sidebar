@@ -218,7 +218,7 @@ extension AppEnvironment {
         guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
 
         // Navigate to tasks section and start new task
-        commandSelection = .tasks
+        routeWorkspaceSelection(to: .tasks, source: "widget_add_task")
         #if !os(macOS)
         tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
         #endif
@@ -241,7 +241,7 @@ extension AppEnvironment {
         guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
 
         // Navigate to notes section and trigger new note creation
-        commandSelection = .notes
+        routeWorkspaceSelection(to: .notes, source: "widget_add_note")
         pendingNewNoteDeepLink = true
     }
 
@@ -252,7 +252,7 @@ extension AppEnvironment {
               authState == .active else { return }
 
         // Navigate to websites and save the URL
-        commandSelection = .websites
+        routeWorkspaceSelection(to: .websites, source: "widget_quick_save")
         _ = await enqueueWebsiteSave(url: url.absoluteString, selectAfterSave: true)
     }
 }

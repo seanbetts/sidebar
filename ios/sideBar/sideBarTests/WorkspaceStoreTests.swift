@@ -86,6 +86,94 @@ final class WorkspaceStoreTests: XCTestCase {
         XCTAssertNotNil(store.lastParityDivergence)
     }
 
+    func testDispatchWithExpectedLegacyFollowupSkipsImmediateParityCheck() {
+        let store = makeStore()
+        let snapshot = makeSnapshot(
+            isCompactLayout: false,
+            sidebarSelection: .chat,
+            primarySection: nil,
+            secondarySection: .chat,
+            phoneSelection: nil,
+            activeSection: .chat,
+            focusedSection: .chat
+        )
+        store.syncLegacySnapshot(snapshot, source: "unit_test")
+
+        store.dispatch(
+            .selectSection(.notes),
+            source: "unit_test_select",
+            expectLegacyFollowup: true
+        )
+
+        XCTAssertEqual(store.parityDivergenceCount, 0)
+        XCTAssertNil(store.lastParityDivergence)
+    }
+
+    func testReducerSelectSectionUpdatesCompactPrimaryDescriptor() {
+        let state = WorkspaceState(
+            layout: .compact,
+            primaryPane: WorkspacePaneState(pane: .primary, descriptor: .builtIn(.chat)),
+            secondaryPane: nil,
+            sidebarSelection: .chat,
+            activeSection: .chat,
+            focusedSection: .chat
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .selectSection(.files)
+        )
+
+        XCTAssertEqual(next.primaryPane.descriptor, .builtIn(.files))
+        XCTAssertNil(next.secondaryPane)
+        XCTAssertEqual(next.sidebarSelection, .files)
+        XCTAssertEqual(next.activeSection, .files)
+        XCTAssertEqual(next.focusedSection, .files)
+    }
+
+    func testReducerSelectSectionPromotesSecondaryWhenPrimaryChatInSplitLayout() {
+        let state = WorkspaceState(
+            layout: .split,
+            primaryPane: WorkspacePaneState(pane: .primary, descriptor: .builtIn(.chat)),
+            secondaryPane: WorkspacePaneState(pane: .secondary, descriptor: .builtIn(.tasks)),
+            sidebarSelection: .chat,
+            activeSection: .chat,
+            focusedSection: .chat
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .selectSection(.websites)
+        )
+
+        XCTAssertEqual(next.primaryPane.descriptor, .builtIn(.chat))
+        XCTAssertEqual(next.secondaryPane?.descriptor, .builtIn(.websites))
+        XCTAssertEqual(next.lastNonChatSection, .websites)
+        XCTAssertEqual(next.sidebarSelection, .websites)
+    }
+
+    func testReducerSelectSectionRoutesChatToSecondaryInSplitLayout() {
+        let state = WorkspaceState(
+            layout: .split,
+            primaryPane: WorkspacePaneState(pane: .primary, descriptor: .builtIn(.notes)),
+            secondaryPane: WorkspacePaneState(pane: .secondary, descriptor: .builtIn(.chat)),
+            sidebarSelection: .notes,
+            activeSection: .notes,
+            focusedSection: .notes
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .selectSection(.chat)
+        )
+
+        XCTAssertEqual(next.primaryPane.descriptor, .empty)
+        XCTAssertEqual(next.secondaryPane?.descriptor, .builtIn(.chat))
+        XCTAssertEqual(next.sidebarSelection, .chat)
+        XCTAssertEqual(next.activeSection, .chat)
+        XCTAssertEqual(next.focusedSection, .chat)
+    }
+
     private func makeStore() -> WorkspaceStore {
         let store = WorkspaceStore()
         Self.retainedStores.append(store)

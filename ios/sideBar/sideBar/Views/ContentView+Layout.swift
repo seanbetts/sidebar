@@ -48,6 +48,7 @@ extension ContentView {
             isRightSidebarCollapsed: $isWorkspaceExpanded,
             shouldAnimateSidebar: hasCompletedInitialSetup,
             onShowSettings: { isSettingsPresented = true },
+            leftPanelContent: workspacePanelView(for:),
             header: {
                 SiteHeaderBar(
                     onSwapContent: swapPrimaryAndSecondary,
@@ -228,27 +229,48 @@ extension ContentView {
     }
 
     func detailView(for descriptor: WorkspaceContentDescriptor) -> some View {
-        switch descriptor {
-        case .empty:
-            return AnyView(WelcomeEmptyView().trackShortcutFocus(section: nil))
-        case .builtIn(let section):
-            return AnyView(detailView(for: section))
-        case .agentSurface(let surface):
-            let title = surface.title?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let resolvedTitle: String
-            if let title, !title.isEmpty {
-                resolvedTitle = title
-            } else {
-                resolvedTitle = "Agent Workspace"
+        workspaceRendererRegistry.render(descriptor)
+    }
+
+    func workspacePanelView(for section: AppSection?) -> AnyView {
+        switch section {
+        case .chat, .notes, .tasks, .files, .websites, .skillsStore:
+            guard let section else {
+                return AnyView(SidebarPanelPlaceholder(title: "Select a section"))
             }
-            return AnyView(
-                PlaceholderView(
-                    title: resolvedTitle,
-                    subtitle: "Agent surface \(surface.type) is not yet enabled in this renderer."
-                )
-                .trackShortcutFocus(section: nil)
-            )
+            return sectionDefinition(for: section).panelView()
+        case .none:
+            return AnyView(SidebarPanelPlaceholder(title: "Select a section"))
+        default:
+            return AnyView(SidebarPanelPlaceholder(title: section?.title ?? "Select a section"))
         }
+    }
+
+    var workspaceRendererRegistry: WorkspaceRendererRegistry {
+        WorkspaceRendererRegistry(
+            emptyRenderer: {
+                AnyView(WelcomeEmptyView().trackShortcutFocus(section: nil))
+            },
+            builtInRenderer: { section in
+                AnyView(detailView(for: section))
+            },
+            agentSurfaceRenderer: { surface in
+                let title = surface.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let resolvedTitle: String
+                if let title, !title.isEmpty {
+                    resolvedTitle = title
+                } else {
+                    resolvedTitle = "Agent Workspace"
+                }
+                return AnyView(
+                    PlaceholderView(
+                        title: resolvedTitle,
+                        subtitle: "Agent surface \(surface.type) is not yet enabled in this renderer."
+                    )
+                    .trackShortcutFocus(section: nil)
+                )
+            }
+        )
     }
 
     func swapPrimaryAndSecondary() {

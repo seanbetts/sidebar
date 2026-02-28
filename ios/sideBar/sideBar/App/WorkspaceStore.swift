@@ -12,37 +12,109 @@ enum WorkspaceReducer {
         case .applyLegacySnapshot(let snapshot):
             next = WorkspaceState.fromLegacySnapshot(snapshot)
 
+        case .selectSection(let section):
+            applySectionSelection(section, state: &next)
+
         case .setLayout(let layout):
-            next.layout = layout
-            if layout == .compact {
-                next.secondaryPane = nil
-            } else if next.secondaryPane == nil {
-                next.secondaryPane = WorkspacePaneState(
-                    pane: .secondary,
-                    descriptor: .empty
-                )
-            }
+            applyLayout(layout, state: &next)
 
         case .setPrimaryContent(let descriptor):
             next.primaryPane.descriptor = descriptor
 
         case .setSecondaryContent(let descriptor):
-            if let descriptor {
-                next.secondaryPane = WorkspacePaneState(
-                    pane: .secondary,
-                    descriptor: descriptor
-                )
-            } else {
-                next.secondaryPane = nil
-            }
+            applySecondaryContent(descriptor, state: &next)
 
         case .swapPanes:
-            guard let secondaryPane = next.secondaryPane else { break }
-            let previousPrimaryDescriptor = next.primaryPane.descriptor
-            next.primaryPane.descriptor = secondaryPane.descriptor
-            next.secondaryPane?.descriptor = previousPrimaryDescriptor
+            applySwap(state: &next)
         }
         return next
+    }
+
+    private static func applyLayout(
+        _ layout: WorkspaceLayoutMode,
+        state: inout WorkspaceState
+    ) {
+        state.layout = layout
+        if layout == .compact {
+            state.secondaryPane = nil
+        } else if state.secondaryPane == nil {
+            state.secondaryPane = WorkspacePaneState(
+                pane: .secondary,
+                descriptor: .empty
+            )
+        }
+    }
+
+    private static func applySecondaryContent(
+        _ descriptor: WorkspaceContentDescriptor?,
+        state: inout WorkspaceState
+    ) {
+        guard let descriptor else {
+            state.secondaryPane = nil
+            return
+        }
+        state.secondaryPane = WorkspacePaneState(
+            pane: .secondary,
+            descriptor: descriptor
+        )
+    }
+
+    private static func applySwap(
+        state: inout WorkspaceState
+    ) {
+        guard let secondaryPane = state.secondaryPane else { return }
+        let previousPrimaryDescriptor = state.primaryPane.descriptor
+        state.primaryPane.descriptor = secondaryPane.descriptor
+        state.secondaryPane?.descriptor = previousPrimaryDescriptor
+    }
+
+    private static func applySectionSelection(
+        _ section: AppSection,
+        state: inout WorkspaceState
+    ) {
+        state.sidebarSelection = section
+        state.activeSection = section
+        state.focusedSection = section
+
+        if state.layout == .compact {
+            state.primaryPane.descriptor = .builtIn(section)
+            state.secondaryPane = nil
+            if section != .chat {
+                state.lastNonChatSection = section
+            }
+            return
+        }
+
+        let currentPrimarySection = WorkspaceLegacySectionAdapter.section(
+            from: state.primaryPane.descriptor
+        )
+        let currentSecondarySection = WorkspaceLegacySectionAdapter.section(
+            from: state.secondaryPane?.descriptor
+        )
+
+        if section == .chat {
+            state.primaryPane.descriptor = .empty
+            state.secondaryPane = WorkspacePaneState(
+                pane: .secondary,
+                descriptor: .builtIn(.chat)
+            )
+            return
+        }
+
+        if currentPrimarySection == .chat {
+            state.primaryPane.descriptor = .builtIn(.chat)
+            state.secondaryPane = WorkspacePaneState(
+                pane: .secondary,
+                descriptor: .builtIn(section)
+            )
+        } else {
+            state.primaryPane.descriptor = .builtIn(section)
+            state.secondaryPane = WorkspacePaneState(
+                pane: .secondary,
+                descriptor: .fromOptionalBuiltInSection(currentSecondarySection)
+            )
+        }
+        state.lastNonChatSection = section
     }
 }
 
@@ -58,9 +130,29 @@ public final class WorkspaceStore: ObservableObject {
         self.state = initialState
     }
 
-    public func dispatch(_ action: WorkspaceAction, source: String = "workspace_action") {
+    /// Compatibility overload kept during migration so existing call sites and
+    /// test bundles linked against the older symbol continue to load.
+    public func dispatch(
+        _ action: WorkspaceAction,
+        source: String = "workspace_action"
+    ) {
+        dispatch(
+            action,
+            source: source,
+            expectLegacyFollowup: false
+        )
+    }
+
+    public func dispatch(
+        _ action: WorkspaceAction,
+        source: String,
+        expectLegacyFollowup: Bool
+    ) {
         state = WorkspaceReducer.reduce(state: state, action: action)
         guard case .applyLegacySnapshot = action else {
+            if expectLegacyFollowup {
+                return
+            }
             verifyParityIfNeeded(source: source)
             return
         }

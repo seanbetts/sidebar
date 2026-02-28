@@ -157,6 +157,7 @@ public struct WorkspaceState: Equatable {
 public enum WorkspaceAction: Equatable {
     case setMode(WorkspaceMode)
     case applyLegacySnapshot(WorkspaceLegacySnapshot)
+    case selectSection(AppSection)
     case setLayout(WorkspaceLayoutMode)
     case setPrimaryContent(WorkspaceContentDescriptor)
     case setSecondaryContent(WorkspaceContentDescriptor?)

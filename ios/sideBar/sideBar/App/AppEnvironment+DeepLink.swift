@@ -29,7 +29,7 @@ extension AppEnvironment {
     }
 
     private func handleTasksDeepLink(url: URL, logger: Logger) {
-        commandSelection = .tasks
+        routeWorkspaceSelection(to: .tasks, source: "deeplink_tasks")
         if url.path == "/today" {
             Task {
                 await tasksViewModel.load(selection: .today, force: true)
@@ -51,7 +51,7 @@ extension AppEnvironment {
     }
 
     private func handleNotesDeepLink(url: URL, logger: Logger) {
-        commandSelection = .notes
+        routeWorkspaceSelection(to: .notes, source: "deeplink_notes")
         let path = url.path
         if path == "/new" {
             logger.info("Deep link to new note")
@@ -67,7 +67,7 @@ extension AppEnvironment {
     }
 
     private func handleWebsitesDeepLink(url: URL, logger: Logger) {
-        commandSelection = .websites
+        routeWorkspaceSelection(to: .websites, source: "deeplink_websites")
         let path = url.path
         if !path.isEmpty && path != "/" {
             // Path format: /{websiteId}
@@ -80,7 +80,7 @@ extension AppEnvironment {
     }
 
     private func handleFilesDeepLink(url: URL, logger: Logger) {
-        commandSelection = .files
+        routeWorkspaceSelection(to: .files, source: "deeplink_files")
         let path = url.path
         if !path.isEmpty && path != "/" {
             // Path format: /{fileId}
@@ -93,7 +93,7 @@ extension AppEnvironment {
     }
 
     private func handleChatDeepLink(url: URL, logger: Logger) {
-        commandSelection = .chat
+        routeWorkspaceSelection(to: .chat, source: "deeplink_chat")
         let path = url.path
         if path == "/new" {
             logger.info("Deep link to new chat")
@@ -113,7 +113,7 @@ extension AppEnvironment {
     private func handleScratchpadDeepLink(logger: Logger) {
         logger.info("Deep link to scratchpad")
         // Scratchpad is accessed via the chat section
-        commandSelection = .chat
+        routeWorkspaceSelection(to: .chat, source: "deeplink_scratchpad")
         pendingScratchpadDeepLink = true
     }
 }

@@ -65,6 +65,10 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
         XCTAssertEqual(environment.commandSelection, .notes)
         XCTAssertFalse(environment.pendingNewNoteDeepLink)
+        XCTAssertEqual(
+            environment.workspaceStore.state.primaryPane.descriptor,
+            .builtIn(.notes)
+        )
     }
 
     func testHandleWebsitesRootDeepLinkSelectsWebsitesSection() async {
@@ -81,6 +85,10 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.handleDeepLink(URL(string: "sidebar://files")!)
 
         XCTAssertEqual(environment.commandSelection, .files)
+        XCTAssertEqual(
+            environment.workspaceStore.state.primaryPane.descriptor,
+            .builtIn(.files)
+        )
     }
 
     func testConsumeWidgetAddTaskStartsTaskImmediatelyWhenTasksFocused() async {
@@ -96,6 +104,10 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(environment.commandSelection, .tasks)
         XCTAssertFalse(environment.pendingNewTaskDeepLink)
         XCTAssertNotNil(environment.tasksViewModel.newTaskDraft)
+        XCTAssertEqual(
+            environment.workspaceStore.state.primaryPane.descriptor,
+            .builtIn(.tasks)
+        )
     }
 
     func testConsumeWidgetCompletionsPreservesPendingAddTaskOperation() async {
@@ -153,6 +165,10 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
         XCTAssertEqual(environment.commandSelection, .notes)
         XCTAssertTrue(environment.pendingNewNoteDeepLink)
+        XCTAssertEqual(
+            environment.workspaceStore.state.primaryPane.descriptor,
+            .builtIn(.notes)
+        )
     }
 
     func testConsumeExtensionEventsWhenActiveShowsPendingWebsite() async {
@@ -315,6 +331,10 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         router.handle(.navigate(.files), environment: environment)
 
         XCTAssertEqual(environment.commandSelection, .files)
+        XCTAssertEqual(
+            environment.workspaceStore.state.primaryPane.descriptor,
+            .builtIn(.files)
+        )
     }
 
     func testShortcutActionRouterNewItemStartsTaskWhenTasksAreActive() async {
