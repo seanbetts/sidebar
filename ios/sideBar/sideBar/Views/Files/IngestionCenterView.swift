@@ -162,8 +162,6 @@ private struct IngestionCenterRow: View {
             Image(systemName: "exclamationmark")
                 .appFont(.captionSemibold)
                 .foregroundStyle(.secondary)
-        } else {
-            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
         }
     }
 
