@@ -104,6 +104,45 @@ struct AttributedNoteEditorContainer: View {
             guard isEditing else { return .ignored }
             return nativeViewModel.handleListDepthKeyboardShortcut(outdent: true) ? .handled : .ignored
         }
+        .onKeyPress(characters: CharacterSet(charactersIn: "bB"), phases: .down) { keyPress in
+            handleFormattingShortcut(.bold, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "iI"), phases: .down) { keyPress in
+            handleFormattingShortcut(.italic, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "xX"), phases: .down) { keyPress in
+            handleFormattingShortcut(.strikethrough, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "eE"), phases: .down) { keyPress in
+            handleFormattingShortcut(.inlineCode, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "=+"), phases: .down) { keyPress in
+            handleFormattingShortcut(.promoteHeading, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "-_"), phases: .down) { keyPress in
+            handleFormattingShortcut(.demoteHeading, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "7&"), phases: .down) { keyPress in
+            handleFormattingShortcut(.orderedList, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "8*"), phases: .down) { keyPress in
+            handleFormattingShortcut(.bulletList, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "9("), phases: .down) { keyPress in
+            handleFormattingShortcut(.taskList, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: ".>"), phases: .down) { keyPress in
+            handleFormattingShortcut(.blockquote, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "cC"), phases: .down) { keyPress in
+            handleFormattingShortcut(.codeBlock, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "hH"), phases: .down) { keyPress in
+            handleFormattingShortcut(.horizontalRule, modifiers: keyPress.modifiers)
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "uU"), phases: .down) { keyPress in
+            handleFormattingShortcut(.suppressUnderline, modifiers: keyPress.modifiers)
+        }
     }
 
     private var readOnlyView: some View {
@@ -131,5 +170,23 @@ struct AttributedNoteEditorContainer: View {
     private func applyAutosaveDelay(isOffline: Bool) {
         _ = isOffline
         nativeViewModel.autosaveDelay = 1.5
+    }
+
+    private func handleFormattingShortcut(
+        _ key: AttributedNoteKeyboardShortcutKey,
+        modifiers: EventModifiers
+    ) -> KeyPress.Result {
+        guard isEditing else { return .ignored }
+        guard let action = AttributedNoteKeyboardShortcuts.action(for: key, modifiers: modifiers) else {
+            return .ignored
+        }
+
+        switch action {
+        case .formatting(let formatting):
+            nativeViewModel.applyFormatting(formatting)
+        case .suppressSystemUnderline:
+            break
+        }
+        return .handled
     }
 }

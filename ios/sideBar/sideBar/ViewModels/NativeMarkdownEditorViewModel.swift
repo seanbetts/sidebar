@@ -458,7 +458,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
 @available(iOS 26.0, macOS 26.0, *)
 /// Formatting actions available for native markdown editing.
-public enum MarkdownFormatting {
+public enum MarkdownFormatting: Equatable {
     case bold
     case italic
     case strikethrough
