@@ -16,37 +16,14 @@ extension AppEnvironment {
         let becameSignedOut = previousAuthState != .signedOut && authState == .signedOut
         let becameStale = previousAuthState != .stale && authState == .stale
         if becameSignedOut {
-            container.cacheClient.clear()
-            offlineStore.clearAllSnapshots()
-            chatStore.reset()
-            notesStore.reset()
-            websitesStore.reset()
-            ingestionStore.reset()
-            tasksStore.reset()
-            chatViewModel.reset()
-            tasksViewModel.reset()
-            notesViewModel.clearSelection()
-            notesViewModel.searchQuery = ""
-            websitesViewModel.clearSelection()
-            websitesViewModel.panelSearchQuery = ""
-            websitesViewModel.errorMessage = nil
-            websitesViewModel.saveErrorMessage = nil
-            websitesViewModel.pendingWebsite = nil
-            websitesViewModel.isSavingWebsite = false
-            ingestionViewModel.clearSelection()
-            ingestionViewModel.panelSearchQuery = ""
-            ingestionViewModel.errorMessage = nil
-            currentLocationViewModel.stopTracking()
-            isTasksFocused = false
-            navigation.resetForSignOut()
-            Task {
-                await spotlightIndexer.clearAllIndexes()
-            }
+            clearStoredCacheScopeUserId()
+            resetSignedInData(clearNavigationState: true)
         }
         if becameStale && wasAuthenticated {
             toastCenter.show(message: "Sync paused — trying to refresh your session.")
         }
         if isAuthenticated {
+            reconcileCacheScopeForAuthenticatedUser()
             biometricMonitor.startMonitoring()
             if authState == .active {
                 currentLocationViewModel.startTracking()
@@ -69,6 +46,69 @@ extension AppEnvironment {
 
         // Update widget auth state
         WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)
+    }
+
+    private func reconcileCacheScopeForAuthenticatedUser() {
+        guard let currentUserId = currentAuthUserId else { return }
+        let defaults = UserDefaults.standard
+        let storedUserId = defaults.string(forKey: AppStorageKeys.cacheScopeUserId)
+        guard storedUserId != currentUserId else { return }
+
+        // Run a one-time migration clear for existing installs with unscoped cache keys.
+        let shouldResetSignedInData = storedUserId != nil || authState == .active
+        if shouldResetSignedInData {
+            let previousScope = storedUserId ?? "<none>"
+            authLogger.notice(
+                """
+                Resetting cached data for user scope change from \
+                \(previousScope, privacy: .public) to \(currentUserId, privacy: .public)
+                """
+            )
+            resetSignedInData(clearNavigationState: false)
+        }
+        defaults.set(currentUserId, forKey: AppStorageKeys.cacheScopeUserId)
+    }
+
+    private var currentAuthUserId: String? {
+        guard let rawUserId = container.authSession.userId else { return nil }
+        let trimmedUserId = rawUserId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedUserId.isEmpty else { return nil }
+        return trimmedUserId
+    }
+
+    private func clearStoredCacheScopeUserId() {
+        UserDefaults.standard.removeObject(forKey: AppStorageKeys.cacheScopeUserId)
+    }
+
+    private func resetSignedInData(clearNavigationState: Bool) {
+        container.cacheClient.clear()
+        offlineStore.clearAllSnapshots()
+        chatStore.reset()
+        notesStore.reset()
+        websitesStore.reset()
+        ingestionStore.reset()
+        tasksStore.reset()
+        chatViewModel.reset()
+        tasksViewModel.reset()
+        notesViewModel.clearSelection()
+        notesViewModel.searchQuery = ""
+        websitesViewModel.clearSelection()
+        websitesViewModel.panelSearchQuery = ""
+        websitesViewModel.errorMessage = nil
+        websitesViewModel.saveErrorMessage = nil
+        websitesViewModel.pendingWebsite = nil
+        websitesViewModel.isSavingWebsite = false
+        ingestionViewModel.clearSelection()
+        ingestionViewModel.panelSearchQuery = ""
+        ingestionViewModel.errorMessage = nil
+        currentLocationViewModel.stopTracking()
+        if clearNavigationState {
+            isTasksFocused = false
+            navigation.resetForSignOut()
+        }
+        Task {
+            await spotlightIndexer.clearAllIndexes()
+        }
     }
 
     public func beginSignOut() async {
