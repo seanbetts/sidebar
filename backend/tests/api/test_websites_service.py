@@ -115,6 +115,58 @@ def test_update_pinned_assigns_next_order(db_session):
     assert (pinned_b.metadata_ or {}).get("pinned_order") == 1
 
 
+def test_archiving_website_clears_pinned_state(db_session):
+    website = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/archive-pinned",
+        title="Archive Pinned",
+        content="Content",
+        source="https://example.com/archive-pinned",
+    )
+    pinned = WebsitesService.update_pinned(db_session, "test_user", website.id, True)
+    assert (pinned.metadata_ or {}).get("pinned") is True
+    assert (pinned.metadata_ or {}).get("pinned_order") == 0
+
+    archived = WebsitesService.update_archived(
+        db_session, "test_user", website.id, True
+    )
+
+    metadata = archived.metadata_ or {}
+    assert metadata.get("archived") is True
+    assert metadata.get("pinned") is False
+    assert metadata.get("pinned_order") is None
+
+
+def test_delete_website_clears_pinned_state(db_session):
+    website = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/delete-pinned",
+        title="Delete Pinned",
+        content="Content",
+        source="https://example.com/delete-pinned",
+    )
+    pinned = WebsitesService.update_pinned(db_session, "test_user", website.id, True)
+    assert (pinned.metadata_ or {}).get("pinned") is True
+    assert (pinned.metadata_ or {}).get("pinned_order") == 0
+
+    deleted = WebsitesService.delete_website(db_session, "test_user", website.id)
+    assert deleted is True
+
+    fetched = WebsitesService.get_website(
+        db_session,
+        "test_user",
+        website.id,
+        mark_opened=False,
+        include_deleted=True,
+    )
+    assert fetched is not None
+    metadata = fetched.metadata_ or {}
+    assert metadata.get("pinned") is False
+    assert metadata.get("pinned_order") is None
+
+
 def test_list_websites_filters(db_session):
     now = datetime.now(UTC)
     earlier = now - timedelta(days=3)

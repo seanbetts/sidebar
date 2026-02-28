@@ -508,8 +508,12 @@ class WebsitesService:
 
         ensure_website_no_conflict(website, client_updated_at, op="archive")
 
-        website.metadata_ = {**(website.metadata_ or {}), "archived": archived}
-        website.is_archived = archived
+        metadata = {**(website.metadata_ or {}), "archived": archived}
+        if archived:
+            metadata["pinned"] = False
+            metadata.pop("pinned_order", None)
+        website.metadata_ = metadata
+        website.is_archived = bool(metadata.get("archived", False))
         flag_modified(website, "metadata_")
         website.updated_at = datetime.now(UTC)
         db.commit()
@@ -571,6 +575,11 @@ class WebsitesService:
         ensure_website_no_conflict(website, client_updated_at, op="delete")
 
         now = datetime.now(UTC)
+        metadata = website.metadata_ or {}
+        metadata["pinned"] = False
+        metadata.pop("pinned_order", None)
+        website.metadata_ = metadata
+        flag_modified(website, "metadata_")
         website.deleted_at = now
         website.updated_at = now
         db.commit()

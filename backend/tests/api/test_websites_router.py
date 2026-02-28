@@ -203,6 +203,9 @@ def test_websites_pin_rename_archive(test_client, test_db):
         headers=_auth_headers(),
     )
     assert pin.status_code == 200
+    pin_body = pin.json()
+    assert pin_body["pinned"] is True
+    assert pin_body["pinned_order"] == 0
 
     rename = test_client.patch(
         f"/api/websites/{website_id}/rename",
@@ -217,6 +220,38 @@ def test_websites_pin_rename_archive(test_client, test_db):
         headers=_auth_headers(),
     )
     assert archive.status_code == 200
+    archive_body = archive.json()
+    assert archive_body["archived"] is True
+    assert archive_body["pinned"] is False
+    assert archive_body["pinned_order"] is None
+
+
+def test_websites_delete_clears_pinned_state(test_client, test_db):
+    website_id = uuid.uuid4()
+    website = Website(
+        id=website_id,
+        user_id=TEST_USER_ID,
+        url="https://example.org/delete",
+        url_full="https://example.org/delete",
+        domain="example.org",
+        title="Delete Me",
+        content="Example content",
+        metadata_={"pinned": True, "archived": False, "pinned_order": 3},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(website)
+    test_db.commit()
+
+    response = test_client.delete(
+        f"/api/websites/{website_id}",
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["pinned"] is False
+    assert body["pinned_order"] is None
+    assert body["deleted_at"] is not None
 
 
 def test_websites_youtube_transcript_enqueues_job(test_client, test_db):
