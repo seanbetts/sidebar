@@ -12,6 +12,7 @@
 		Cloud,
 		ListTodo
 	} from 'lucide-svelte';
+	import { MARKETING_COPY } from '$lib/constants/marketingCopy';
 	import { logError } from '$lib/utils/errorHandling';
 
 	let email = '';
@@ -75,10 +76,7 @@
 					<span>Welcome to sideBar</span>
 				</h1>
 				<p class="login-tagline">Your AI-Powered Workspace</p>
-				<p class="login-description">
-					sideBar is an AI assistant, powered by Anthropic's Claude, that can access your notes,
-					saved websites, and files, giving every interaction AI superpowers!
-				</p>
+				<p class="login-description">{MARKETING_COPY.contextualAssistance}</p>
 
 				<!-- Screenshot placeholder - you can add this later -->
 				<!-- <div class="screenshot-placeholder">
