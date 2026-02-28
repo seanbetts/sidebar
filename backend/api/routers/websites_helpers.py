@@ -26,6 +26,7 @@ from api.services.web_save_parser import (
     parse_url_local,
 )
 from api.services.web_save_parser_apple_news import resolve_apple_news_source_url
+from api.services.web_save_parser_wsj import apply_wsj_content_guards
 from api.services.web_save_parser_youtube import fetch_youtube_duration_seconds
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_reading_time import (
@@ -149,6 +150,12 @@ def run_quick_save(
                 metadata, cleaned = JinaService.parse_metadata(markdown)
                 source = metadata.get("url_source") or target_url
                 cleaned = JinaService.clean_markdown_for_source(cleaned, source)
+                cleaned, _wsj_flags = apply_wsj_content_guards(
+                    domain=urlparse(source).netloc.lower().strip("."),
+                    raw_html="",
+                    marker_markdown=markdown,
+                    markdown=cleaned,
+                )
                 candidate_title = (
                     title
                     or metadata.get("title")

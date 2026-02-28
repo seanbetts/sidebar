@@ -11,7 +11,11 @@ import pytest
 
 def _load_save_url_module():
     script_path = (
-        Path(__file__).resolve().parents[3] / "skills" / "web-save" / "scripts" / "save_url.py"
+        Path(__file__).resolve().parents[3]
+        / "skills"
+        / "web-save"
+        / "scripts"
+        / "save_url.py"
     )
     spec = importlib.util.spec_from_file_location("save_url_script", script_path)
     assert spec is not None
@@ -56,11 +60,15 @@ def test_save_url_database_jina_resolves_apple_news_target(monkeypatch):
     module.resolve_apple_news_source_url = (
         lambda _url: "https://www.wsj.com/tech/ai/story-id"
     )
-    module.get_markdown_content = lambda url, api_key: captured_fetch.setdefault(
-        "url", url
-    ) or "ignored"
+    module.get_markdown_content = (
+        lambda url, api_key: captured_fetch.setdefault("url", url) or "ignored"
+    )
     module.parse_jina_metadata = lambda _content: (
-        {"title": "WSJ Story", "url_source": "https://www.wsj.com/tech/ai/story-id", "published_time": None},
+        {
+            "title": "WSJ Story",
+            "url_source": "https://www.wsj.com/tech/ai/story-id",
+            "published_time": None,
+        },
         "Story body",
     )
     module.resolve_website_title = lambda title, url: title
@@ -126,3 +134,37 @@ def test_save_url_database_reports_local_and_jina_failure(monkeypatch):
     assert err.error_type == "FetchError"
     assert err.payload["code"] == "WEB_SAVE_LOCAL_PARSE_AND_JINA_PAYMENT_REQUIRED"
     assert "local parser found no readable content" in err.payload["message"].lower()
+
+
+def test_save_url_database_jina_wsj_preview_adds_truncation_warning(monkeypatch):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "jina")
+    module.resolve_apple_news_source_url = lambda url: url
+    module.get_markdown_content = lambda _url, _api_key: (
+        "Title: WSJ Story\n"
+        "URL Source: https://www.wsj.com/tech/ai/story-id\n"
+        "Markdown Content:\n"
+        "Continue reading your article with\n"
+        "a WSJ subscription\n"
+        "Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved. "
+        "87990cbe856818d5eddac44c7b1cdeb8\n"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "WSJ Story",
+            "url_source": "https://www.wsj.com/tech/ai/story-id",
+            "published_time": None,
+        },
+        "Amanda Askell knew from the age of 14 that she wanted to teach philosophy.",
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    module.save_url_database("https://www.wsj.com/tech/ai/story-id", "user-1")
+
+    saved_content = captured["upsert_kwargs"]["content"]
+    assert "Warning: This article appears truncated." in saved_content

@@ -281,16 +281,21 @@ class JinaService:
             "[privacy notice](https://www.dowjones.com/privacy-notice",
             "this copy is for your personal, non-commercial use only.",
             "[sign in](https://www.wsj.com/client/login?target=",
+            "back to top",
         )
         indicator_tokens = (
             "subscribe.wsj.com",
             "customercenter.wsj.com",
             "corporate.wsj.com",
             "wsj.jobs",
+            "wsj.com/partner",
             "djreprints.com",
             "dowjones.com/privacy-notice",
             "wsj.com/policy/legal-policies",
             "dowjones.com/terms-of-use",
+            "dowjones.com/smartmoney",
+            "barrons.com",
+            "marketwatch.com",
             "back to top",
             "copyright ©",
         )
@@ -300,9 +305,15 @@ class JinaService:
                 continue
             if not any(token in line for token in marker_tokens):
                 continue
-            window = "\n".join(lines[idx : idx + 25]).lower()
+            window_lines = lines[idx : idx + 80]
+            window = "\n".join(window_lines).lower()
             signal_count = sum(token in window for token in indicator_tokens)
-            if signal_count >= 2:
+            list_line_count = sum(
+                1
+                for candidate in window_lines[:30]
+                if candidate.lstrip().startswith("*")
+            )
+            if signal_count >= 2 or (signal_count >= 1 and list_line_count >= 6):
                 return "\n".join(lines[:idx]).strip()
         return markdown
 
@@ -365,6 +376,13 @@ class JinaService:
             "snapchat.com/discover/wall-street-journal",
             "play.google.com/store/apps/details?id=wsj.reader_sp",
             "apps.apple.com/us/app/the-wall-street-journal",
+            "wsj.com/partner",
+            "dowjones.com/smartmoney",
+            "barrons.com",
+            "bigcharts.marketwatch.com",
+            "marketwatch.com",
+            "fnlondon.com",
+            "mansionglobal.com",
             "back to top",
             "independent of the wall street journal newsroom.",
         )

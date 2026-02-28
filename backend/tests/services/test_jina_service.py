@@ -160,6 +160,8 @@ As the resident philosopher of the tech company Anthropic, Askell spends her day
 *   [Subscription Options](https://subscribe.wsj.com/membership)
 *   [Corporate Subscriptions](https://corporate.wsj.com/?mod=djm_wsjfooter_44670)
 *   [Jobs at WSJ](https://wsj.jobs/)
+*   [Content Partnerships](https://wsj.com/partner)
+*   [Dow Jones Smart Money](https://www.dowjones.com/smartmoney)
 
 *   [Privacy Notice](https://www.dowjones.com/privacy-notice/?mod=WSJ)
 *   [Legal Policies](https://www.wsj.com/policy/legal-policies)
@@ -183,6 +185,8 @@ This copy is for your personal, non-commercial use only. Distribution and use of
     assert "As the resident philosopher of the tech company Anthropic" in cleaned
     assert "Subscription Options" not in cleaned
     assert "Privacy Notice" not in cleaned
+    assert "Content Partnerships" not in cleaned
+    assert "Dow Jones Smart Money" not in cleaned
     assert "Sign In](https://www.wsj.com/client/login?target=" not in cleaned
     assert "This copy is for your personal, non-commercial use only." not in cleaned
     assert "analytics.twitter.com/1/i/adsct" not in cleaned

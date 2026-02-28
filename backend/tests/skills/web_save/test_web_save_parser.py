@@ -199,6 +199,65 @@ def test_parse_url_local_wsj_preview_raises_when_jina_fetch_fails(monkeypatch):
     assert "WSJ preview detected but Jina fallback failed" in str(exc_info.value)
 
 
+def test_parse_url_local_wsj_noisy_preview_marks_truncated(monkeypatch):
+    wsj_preview_html = """
+    <html>
+      <head><title>WSJ Story</title></head>
+      <body>
+        <article>
+          <h1>Meet the One Woman Anthropic Trusts to Teach AI Morals</h1>
+          <p>Amanda Askell knew from the age of 14 that she wanted to teach philosophy.</p>
+          <p>As the resident philosopher of the tech company Anthropic, Askell spends her days learning Claude's reasoning patterns.</p>
+          <p>She compares her work to the efforts of a parent raising a child.</p>
+          <p>Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved. 87990cbe856818d5eddac44c7b1cdeb8</p>
+        </article>
+        <div>Continue reading your article with</div>
+        <div>a WSJ subscription</div>
+        <ul>
+          <li><a href="https://www.wsj.com/">The Wall Street Journal</a></li>
+          <li><a href="https://subscribe.wsj.com/membership">Subscription Options</a></li>
+          <li><a href="https://corporate.wsj.com/">Corporate Subscriptions</a></li>
+        </ul>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return wsj_preview_html, "https://www.wsj.com/tech/ai/story-id", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+    monkeypatch.setattr(web_save_parser_wsj.settings, "jina_api_key", "test-jina-key")
+    monkeypatch.setattr(
+        web_save_parser_wsj.JinaService,
+        "fetch_markdown",
+        lambda _url: "ignored",
+    )
+    monkeypatch.setattr(
+        web_save_parser_wsj.JinaService,
+        "parse_metadata",
+        lambda _markdown: (
+            {
+                "title": "WSJ Story",
+                "url_source": "https://www.wsj.com/tech/ai/story-id",
+                "published_time": None,
+            },
+            "Short fallback snippet.",
+        ),
+    )
+
+    parsed = web_save_parser.parse_url_local("https://www.wsj.com/tech/ai/story-id")
+
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["paywalled"] is True
+    assert data["truncated"] is True
+    assert "Warning: This article appears truncated." in parsed.content
+    assert "Corporate Subscriptions" not in parsed.content
+
+
 def test_extract_metadata_finds_favicon():
     html = """
     <html>

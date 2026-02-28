@@ -33,6 +33,7 @@ try:
         parse_url_local,
     )
     from api.services.web_save_parser_apple_news import resolve_apple_news_source_url
+    from api.services.web_save_parser_wsj import apply_wsj_content_guards
     from api.services.web_save_tagger import (
         calculate_reading_time,
         compute_word_count,
@@ -47,6 +48,7 @@ except Exception:
     resolve_website_title = None
     resolve_apple_news_source_url = None
     JinaService = None
+    apply_wsj_content_guards = None
 
     def classify_web_save_failure(
         *,
@@ -281,9 +283,17 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             content = get_markdown_content(target_url, api_key)
             parsed_metadata, cleaned_content = parse_jina_metadata(content)
             source = parsed_metadata.get("url_source") or target_url
+            wsj_flags = {"paywalled": False, "truncated": False}
             if JinaService is not None:
                 cleaned_content = JinaService.clean_markdown_for_source(
                     cleaned_content, source
+                )
+            if apply_wsj_content_guards is not None:
+                cleaned_content, wsj_flags = apply_wsj_content_guards(
+                    domain=urlparse(source).netloc.lower().strip("."),
+                    raw_html="",
+                    marker_markdown=content,
+                    markdown=cleaned_content,
                 )
             candidate_title = parsed_metadata.get("title") or extract_title(
                 cleaned_content
@@ -311,6 +321,8 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                     "word_count": word_count,
                     "reading_time": calculate_reading_time(word_count),
                     "tags": tags,
+                    "paywalled": wsj_flags["paywalled"] or None,
+                    "truncated": wsj_flags["truncated"] or None,
                     "saved_at": datetime.now(UTC).isoformat(),
                 },
             )

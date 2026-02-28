@@ -105,7 +105,6 @@ logger = logging.getLogger(__name__)
 
 RULES_DIR = Path(__file__).resolve().parents[2] / "skills" / "web-save" / "rules"
 PLAYWRIGHT_ALLOWLIST_PATH = RULES_DIR / "playwright_allowlist.yaml"
-
 _iter_youtube_elements = _iter_youtube_elements_impl
 
 
@@ -779,7 +778,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     )
 
     source_url = metadata.get("canonical") or final_url
-    markdown, source_url, title, published_override = maybe_enrich_wsj_preview(
+    wsj_result = maybe_enrich_wsj_preview(
         domain=domain,
         final_url=final_url,
         source_url=source_url,
@@ -787,11 +786,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         markdown=markdown,
         title=title,
     )
+    markdown, source_url, title, published_override, wsj_flags = wsj_result
     if published_override:
         metadata["published"] = published_override
         published_at = parse_datetime(published_override)
     metadata["canonical"] = source_url
-
     word_count = compute_word_count(markdown)
     image_count = count_images(markdown)
     tags = extract_tags(markdown, domain, title)
@@ -810,6 +809,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         "used_js_rendering": used_js_rendering,
         "saved_at": datetime.now(UTC).isoformat(),
     }
+    frontmatter_meta.update({key: value for key, value in wsj_flags.items() if value})
 
     content = build_frontmatter(markdown, meta=frontmatter_meta)
 
