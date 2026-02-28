@@ -57,6 +57,16 @@ enum WorkspaceLegacySectionAdapter {
         )
     }
 
+    static func compactDetailDescriptor(
+        for section: AppSection,
+        projection: WorkspaceLegacySectionProjection
+    ) -> WorkspaceContentDescriptor {
+        if section == projection.compactSelection {
+            return projection.primaryDescriptor
+        }
+        return .builtIn(section)
+    }
+
     private static func preferredDescriptor(
         _ descriptor: WorkspaceContentDescriptor,
         fallback: WorkspaceContentDescriptor

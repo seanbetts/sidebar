@@ -6,15 +6,6 @@ import UIKit
 // MARK: - ContentView+Layout
 
 extension ContentView {
-    private var workspaceLegacySectionProjection: WorkspaceLegacySectionProjection {
-        WorkspaceLegacySectionAdapter.makeProjection(
-            workspaceState: environment.workspaceStore.state,
-            fallbackPrimarySection: primarySection,
-            fallbackSecondarySection: secondarySection,
-            fallbackCompactSelection: phoneSelection
-        )
-    }
-
     @ViewBuilder
     var mainView: some View {
         #if os(macOS)

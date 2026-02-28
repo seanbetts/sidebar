@@ -1,6 +1,15 @@
 import SwiftUI
 
 extension ContentView {
+    var workspaceLegacySectionProjection: WorkspaceLegacySectionProjection {
+        WorkspaceLegacySectionAdapter.makeProjection(
+            workspaceState: environment.workspaceStore.state,
+            fallbackPrimarySection: primarySection,
+            fallbackSecondarySection: secondarySection,
+            fallbackCompactSelection: phoneSelection
+        )
+    }
+
     var resolvedActiveSectionForWorkspace: AppSection {
         #if os(macOS)
         return isSettingsPresented
@@ -11,7 +20,7 @@ extension ContentView {
             return .settings
         }
         if horizontalSizeClass == .compact {
-            return phoneSelection
+            return workspaceLegacySectionProjection.compactSelection
         }
         return primarySection ?? sidebarSelection ?? secondarySection ?? .chat
         #endif

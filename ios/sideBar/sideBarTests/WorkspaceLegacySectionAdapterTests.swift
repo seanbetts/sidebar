@@ -91,4 +91,40 @@ final class WorkspaceLegacySectionAdapterTests: XCTestCase {
         XCTAssertEqual(projection.secondaryDescriptor, .empty)
         XCTAssertEqual(projection.compactSelection, .notes)
     }
+
+    func testCompactDetailDescriptorUsesPrimaryDescriptorForCompactSelection() {
+        let projection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .agentSurface(
+                AgentWorkspaceSurfaceDescriptor(type: "map", surfaceId: "surface-1")
+            ),
+            secondaryDescriptor: .empty,
+            compactSelection: .websites
+        )
+
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.compactDetailDescriptor(
+                for: .websites,
+                projection: projection
+            ),
+            projection.primaryDescriptor
+        )
+    }
+
+    func testCompactDetailDescriptorFallsBackToBuiltInForOtherTabs() {
+        let projection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .agentSurface(
+                AgentWorkspaceSurfaceDescriptor(type: "chart", surfaceId: "surface-2")
+            ),
+            secondaryDescriptor: .empty,
+            compactSelection: .websites
+        )
+
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.compactDetailDescriptor(
+                for: .notes,
+                projection: projection
+            ),
+            .builtIn(.notes)
+        )
+    }
 }

@@ -13,7 +13,7 @@ extension ContentView {
                 .toolbar(.hidden, for: .navigationBar)
                 #endif
                 .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
-                    detailViewDefinition(for: section)
+                    detailView(for: workspaceCompactDetailDescriptor(for: section))
                     #if !os(macOS)
                         .navigationBarTitleDisplayMode(.inline)
                     #endif
@@ -51,6 +51,13 @@ extension ContentView {
 
     func phoneDetailItemBinding(for section: AppSection) -> Binding<PhoneDetailRoute?> {
         sectionDefinition(for: section).phoneSelection()
+    }
+
+    func workspaceCompactDetailDescriptor(for section: AppSection) -> WorkspaceContentDescriptor {
+        WorkspaceLegacySectionAdapter.compactDetailDescriptor(
+            for: section,
+            projection: workspaceLegacySectionProjection
+        )
     }
 
     func detailViewDefinition(for section: AppSection?) -> AnyView {
