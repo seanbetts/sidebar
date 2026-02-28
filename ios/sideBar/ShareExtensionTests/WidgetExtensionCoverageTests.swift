@@ -79,10 +79,13 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         clearTaskWidgetStorage()
         defer { clearTaskWidgetStorage() }
 
+        let taskOneId = "11111111-1111-1111-1111-111111111111"
+        let taskTwoId = "22222222-2222-2222-2222-222222222222"
+        let taskThreeId = "33333333-3333-3333-3333-333333333333"
         let seededTasks = [
-            WidgetTask(id: "task-1", title: "Task 1"),
-            WidgetTask(id: "task-2", title: "Task 2"),
-            WidgetTask(id: "task-3", title: "Task 3")
+            WidgetTask(id: taskOneId, title: "Task 1"),
+            WidgetTask(id: taskTwoId, title: "Task 2"),
+            WidgetTask(id: taskThreeId, title: "Task 3")
         ]
         WidgetDataManager.shared.updateTodayTasks(
             seededTasks,
@@ -91,23 +94,26 @@ final class WidgetExtensionCoverageTests: XCTestCase {
             progressTotalCount: 4
         )
 
-        _ = try await CompleteTaskIntent(taskId: "task-2").perform()
+        _ = try await CompleteTaskIntent(taskId: taskTwoId).perform()
         let updated = WidgetDataManager.shared.loadTodayTasks()
 
         XCTAssertEqual(updated.totalCount, 2)
         XCTAssertEqual(updated.progressCompletedCount, 2)
         XCTAssertEqual(updated.progressTotalCount, 4)
-        XCTAssertEqual(updated.tasks.first(where: { $0.id == "task-2" })?.isCompleted, true)
+        XCTAssertEqual(updated.tasks.first(where: { $0.id == taskTwoId })?.isCompleted, true)
     }
 
     func testCompleteTaskIntentIsIdempotentForAlreadyCompletedTask() async throws {
         clearTaskWidgetStorage()
         defer { clearTaskWidgetStorage() }
 
+        let taskOneId = "11111111-1111-1111-1111-111111111111"
+        let taskTwoId = "22222222-2222-2222-2222-222222222222"
+        let taskThreeId = "33333333-3333-3333-3333-333333333333"
         let seededTasks = [
-            WidgetTask(id: "task-1", title: "Task 1"),
-            WidgetTask(id: "task-2", title: "Task 2", isCompleted: true, completedAt: Date()),
-            WidgetTask(id: "task-3", title: "Task 3")
+            WidgetTask(id: taskOneId, title: "Task 1"),
+            WidgetTask(id: taskTwoId, title: "Task 2", isCompleted: true, completedAt: Date()),
+            WidgetTask(id: taskThreeId, title: "Task 3")
         ]
         WidgetDataManager.shared.updateTodayTasks(
             seededTasks,
@@ -116,7 +122,7 @@ final class WidgetExtensionCoverageTests: XCTestCase {
             progressTotalCount: 3
         )
 
-        _ = try await CompleteTaskIntent(taskId: "task-2").perform()
+        _ = try await CompleteTaskIntent(taskId: taskTwoId).perform()
         let updated = WidgetDataManager.shared.loadTodayTasks()
 
         XCTAssertEqual(updated.totalCount, 2)
