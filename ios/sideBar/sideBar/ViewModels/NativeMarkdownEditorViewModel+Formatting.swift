@@ -51,6 +51,99 @@ extension NativeMarkdownEditorViewModel {
         }
     }
 
+    func isInlineCodeActive() -> Bool {
+        hasInlineIntent(.code)
+    }
+
+    func isHeadingActive() -> Bool {
+        guard let blockKind = primarySelectedParagraphBlockKind() else { return false }
+        return headingLevel(for: blockKind) != nil
+    }
+
+    func isBlockKindActive(_ blockKind: BlockKind) -> Bool {
+        primarySelectedParagraphBlockKind() == blockKind
+    }
+
+    func isTaskListActive() -> Bool {
+        guard let blockKind = primarySelectedParagraphBlockKind() else { return false }
+        return blockKind == .taskChecked || blockKind == .taskUnchecked
+    }
+
+    func canAdjustListDepth() -> Bool {
+        selectedParagraphRanges().contains { paragraphRange in
+            guard let blockKind = attributedContent.blockKind(in: paragraphRange) else { return false }
+            return isListBlockKind(blockKind)
+        }
+    }
+
+    func promoteHeading() {
+        adjustHeadingLevel(delta: -1, defaultLevel: 2)
+    }
+
+    func demoteHeading() {
+        adjustHeadingLevel(delta: 1, defaultLevel: 2)
+    }
+
+    func stripUnsupportedInlineStyles(in text: inout AttributedString) {
+        let rangesToClear = text.runs.compactMap { run -> Range<AttributedString.Index>? in
+            guard run.underlineStyle != nil else { return nil }
+            guard run.link == nil else { return nil }
+            return run.range
+        }
+        for range in rangesToClear {
+            text[range].underlineStyle = nil
+        }
+    }
+
+    private func primarySelectedParagraphBlockKind() -> BlockKind? {
+        if attributedContent.characters.isEmpty {
+            return selection.typingAttributes(in: attributedContent).blockKind
+        }
+        guard let selectionRange = selectionRanges().ranges.first else {
+            return selection.typingAttributes(in: attributedContent).blockKind
+        }
+        let paragraphRange = findParagraphRange(containing: selectionRange)
+        guard !paragraphRange.isEmpty else {
+            return selection.typingAttributes(in: attributedContent).blockKind
+        }
+        return attributedContent[paragraphRange].blockKind
+            ?? attributedContent.blockKind(in: paragraphRange)
+            ?? selection.typingAttributes(in: attributedContent).blockKind
+    }
+
+    private func adjustHeadingLevel(delta: Int, defaultLevel: Int) {
+        let paragraphRanges = selectedParagraphRanges()
+        guard !paragraphRanges.isEmpty else {
+            let currentKind = selection.typingAttributes(in: attributedContent).blockKind ?? .paragraph
+            let targetLevel = headingLevel(for: currentKind).map { level in
+                min(6, max(1, level + delta))
+            } ?? defaultLevel
+            setBlockKind(headingKind(for: targetLevel))
+            return
+        }
+
+        for paragraphRange in paragraphRanges {
+            let currentKind = attributedContent[paragraphRange].blockKind
+                ?? attributedContent.blockKind(in: paragraphRange)
+                ?? .paragraph
+            let targetLevel = headingLevel(for: currentKind).map { level in
+                min(6, max(1, level + delta))
+            } ?? defaultLevel
+            let targetKind = headingKind(for: targetLevel)
+
+            attributedContent[paragraphRange].blockKind = targetKind
+            attributedContent[paragraphRange].listDepth = nil
+            attributedContent[paragraphRange].codeLanguage = nil
+
+            applyBlockStyle(blockKind: targetKind, range: paragraphRange)
+            applyPresentationIntent(
+                blockKind: targetKind,
+                listDepth: nil,
+                range: paragraphRange
+            )
+        }
+    }
+
     func setBlockKind(_ blockKind: BlockKind, listDepth: Int? = nil) {
         let ranges = selectionRanges().ranges
         var appliedToParagraph = false

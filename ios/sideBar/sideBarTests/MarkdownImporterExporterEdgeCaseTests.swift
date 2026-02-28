@@ -4,6 +4,14 @@ import XCTest
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class MarkdownImporterExporterEdgeCaseTests: XCTestCase {
+    func testExporterPreservesConsecutiveAndTrailingBlankLines() {
+        let attributed = AttributedString("Line 1\n\n\nLine 2\n")
+        let exporter = MarkdownExporter()
+        let exported = exporter.markdown(from: attributed)
+
+        XCTAssertEqual(exported, "Line 1\n\n\nLine 2\n")
+    }
+
     func testMixedListAndTaskRoundTripIsStable() {
         let markdown = """
         > - [ ] Open task

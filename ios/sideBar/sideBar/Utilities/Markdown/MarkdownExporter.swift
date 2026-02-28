@@ -170,10 +170,10 @@ private func exportStandardLine(
 
     if blockKind == .blankLine {
         return ExportLineResult(
-            output: output,
+            output: output + [""],
             nextIndex: lineIndex + 1,
             isInCodeBlock: isInCodeBlock,
-            context: previousContext
+            context: ExportLineContext(path: .blankLine)
         )
     }
 
@@ -392,6 +392,8 @@ private func shouldInsertBlankLine(
         return false
     }
     switch (previous.path, current.path) {
+    case (.blankLine, _), (_, .blankLine):
+        return false
     case (.codeBlock, .codeBlock):
         return false
     case (.blockquote, .blockquote):

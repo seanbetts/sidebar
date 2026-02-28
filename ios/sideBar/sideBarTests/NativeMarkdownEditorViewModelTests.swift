@@ -247,7 +247,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent[line].listDepth, 1)
     }
 
-    func testUpdatePrefixVisibilityRemovesInjectedListMarkersWhenDisabled() async {
+    func testUpdatePrefixVisibilityShowsReadMarkersWhenInjectedMarkersDisabled() async {
         let viewModel = NativeMarkdownEditorViewModel()
         var content = AttributedString("• Item")
         let markerEnd = content.index(content.startIndex, offsetByCharacters: 2)
@@ -266,8 +266,8 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
 
         viewModel.updatePrefixVisibility()
 
-        XCTAssertEqual(String(viewModel.attributedContent.characters), "Item")
-        XCTAssertFalse(viewModel.attributedContent.runs.contains { $0.listMarker == true })
+        XCTAssertEqual(String(viewModel.attributedContent.characters), "• Item")
+        XCTAssertTrue(viewModel.attributedContent.runs.contains { $0.listMarker == true })
     }
 
     func testUpdatePrefixVisibilityDoesNotInferHorizontalRuleWhenInjectedMarkersDisabled() async {

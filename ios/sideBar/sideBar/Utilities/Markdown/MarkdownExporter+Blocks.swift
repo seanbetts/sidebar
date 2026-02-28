@@ -26,6 +26,7 @@ enum ExportBlockPath: Equatable {
     case list(ExportListContext)
     case blockquote(depth: Int)
     case table
+    case blankLine
     case other
 }
 

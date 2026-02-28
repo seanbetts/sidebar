@@ -39,10 +39,42 @@ enum AttributedNoteFormattingCommands {
         _ formatting: MarkdownFormatting,
         on viewModel: NativeMarkdownEditorViewModel
     ) -> Bool {
+        if applyHeadingCommands(formatting, on: viewModel) {
+            return true
+        }
+        if applyListCommands(formatting, on: viewModel) {
+            return true
+        }
+        if applyContainerCommands(formatting, on: viewModel) {
+            return true
+        }
+        return false
+    }
+
+    private static func applyHeadingCommands(
+        _ formatting: MarkdownFormatting,
+        on viewModel: NativeMarkdownEditorViewModel
+    ) -> Bool {
         switch formatting {
         case .heading(let level):
             viewModel.setBlockKind(viewModel.headingKind(for: level))
             return true
+        case .promoteHeading:
+            viewModel.promoteHeading()
+            return true
+        case .demoteHeading:
+            viewModel.demoteHeading()
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func applyListCommands(
+        _ formatting: MarkdownFormatting,
+        on viewModel: NativeMarkdownEditorViewModel
+    ) -> Bool {
+        switch formatting {
         case .bulletList:
             viewModel.setBlockKind(.bulletList, listDepth: 1)
             return true
@@ -58,6 +90,16 @@ enum AttributedNoteFormattingCommands {
         case .outdentList:
             viewModel.outdentListItems()
             return true
+        default:
+            return false
+        }
+    }
+
+    private static func applyContainerCommands(
+        _ formatting: MarkdownFormatting,
+        on viewModel: NativeMarkdownEditorViewModel
+    ) -> Bool {
+        switch formatting {
         case .blockquote:
             viewModel.setBlockKind(.blockquote)
             return true

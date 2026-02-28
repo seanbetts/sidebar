@@ -9,19 +9,15 @@ extension NativeMarkdownEditorViewModel {
         var updated = attributedContent
         let useLegacyMarkerHeuristics = usesInjectedListMarkers
 
-        let adjustedSnapshot: SelectionSnapshot
-        if useLegacyMarkerHeuristics {
-            let originalLines = lineInfos(in: updated)
-            let listOrdinals = orderedListOrdinals(in: updated, lines: originalLines)
-            adjustedSnapshot = normalizeListMarkers(
-                in: &updated,
-                lines: originalLines,
-                listOrdinals: listOrdinals,
-                selection: originalSnapshot
-            )
-        } else {
-            adjustedSnapshot = removeInjectedListMarkers(in: &updated, selection: originalSnapshot)
-        }
+        let originalLines = lineInfos(in: updated)
+        let listOrdinals = orderedListOrdinals(in: updated, lines: originalLines)
+        let adjustedSnapshot = normalizeListMarkers(
+            in: &updated,
+            lines: originalLines,
+            listOrdinals: listOrdinals,
+            selection: originalSnapshot,
+            forceReadMarkers: !useLegacyMarkerHeuristics
+        )
 
         let lines = lineInfos(in: updated)
         applyCodeBlockSpacing(in: &updated, lines: lines)

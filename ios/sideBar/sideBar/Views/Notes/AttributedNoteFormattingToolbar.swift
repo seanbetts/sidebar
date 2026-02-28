@@ -29,55 +29,71 @@ struct AttributedNoteFormattingToolbar: View {
                 }
                 toolbarButton(
                     title: "Code",
-                    systemImage: "chevron.left.slash.chevron.right"
+                    systemImage: "chevron.left.forwardslash.chevron.right",
+                    isActive: viewModel.isInlineCodeActive()
                 ) {
                     viewModel.applyFormatting(.inlineCode)
                 }
                 toolbarButton(
-                    title: "Heading",
-                    systemImage: "textformat.size"
+                    title: "Promote heading",
+                    systemImage: "textformat.size.larger",
+                    isActive: viewModel.isHeadingActive()
                 ) {
-                    viewModel.applyFormatting(.heading(level: 2))
+                    viewModel.applyFormatting(.promoteHeading)
+                }
+                toolbarButton(
+                    title: "Demote heading",
+                    systemImage: "textformat.size.smaller",
+                    isActive: viewModel.isHeadingActive()
+                ) {
+                    viewModel.applyFormatting(.demoteHeading)
                 }
                 toolbarButton(
                     title: "Bullets",
-                    systemImage: "list.bullet"
+                    systemImage: "list.bullet",
+                    isActive: viewModel.isBlockKindActive(.bulletList)
                 ) {
                     viewModel.applyFormatting(.bulletList)
                 }
                 toolbarButton(
                     title: "Numbers",
-                    systemImage: "list.number"
+                    systemImage: "list.number",
+                    isActive: viewModel.isBlockKindActive(.orderedList)
                 ) {
                     viewModel.applyFormatting(.orderedList)
                 }
                 toolbarButton(
                     title: "Tasks",
-                    systemImage: "checklist"
+                    systemImage: "checklist",
+                    isActive: viewModel.isTaskListActive()
                 ) {
                     viewModel.applyFormatting(.taskList)
                 }
                 toolbarButton(
                     title: "Indent",
-                    systemImage: "increase.indent"
+                    systemImage: "increase.indent",
+                    isDisabled: !viewModel.canAdjustListDepth()
                 ) {
                     viewModel.applyFormatting(.indentList)
                 }
                 toolbarButton(
                     title: "Outdent",
-                    systemImage: "decrease.indent"
+                    systemImage: "decrease.indent",
+                    isDisabled: !viewModel.canAdjustListDepth()
                 ) {
                     viewModel.applyFormatting(.outdentList)
                 }
                 toolbarButton(
                     title: "Quote",
-                    systemImage: "text.quote"
+                    systemImage: "text.quote",
+                    isActive: viewModel.isBlockKindActive(.blockquote)
                 ) {
                     viewModel.applyFormatting(.blockquote)
                 }
                 toolbarButton(
                     title: "Code Block",
-                    systemImage: "curlybraces.square"
+                    systemImage: "curlybraces",
+                    isActive: viewModel.isBlockKindActive(.codeBlock)
                 ) {
                     viewModel.applyFormatting(.codeBlock)
                 }
@@ -99,6 +115,7 @@ struct AttributedNoteFormattingToolbar: View {
         title: String,
         systemImage: String,
         isActive: Bool = false,
+        isDisabled: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -113,6 +130,7 @@ struct AttributedNoteFormattingToolbar: View {
                 .fill(isActive ? Color.accentColor.opacity(0.14) : DesignTokens.Colors.muted)
         )
         .accessibilityLabel(title)
-        .disabled(viewModel.isReadOnly)
+        .disabled(viewModel.isReadOnly || isDisabled)
+        .opacity(isDisabled ? 0.45 : 1)
     }
 }

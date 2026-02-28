@@ -155,16 +155,23 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
         let insertedCharacter = lastInsertedCharacter(previous: previous, current: attributedContent)
         var updated = attributedContent
+        stripUnsupportedInlineStyles(in: &updated)
 
-        if let newSelection = MarkdownShortcutProcessor.processShortcuts(
+        let shortcutSelection = MarkdownShortcutProcessor.processShortcuts(
             in: &updated,
             selection: selection,
             lastInsertedCharacter: insertedCharacter,
             baseFontSize: baseFontSize
-        ) {
+        )
+
+        if let newSelection = shortcutSelection {
             isApplyingShortcut = true
             attributedContent = updated
             selection = newSelection
+            isApplyingShortcut = false
+        } else if updated != attributedContent {
+            isApplyingShortcut = true
+            attributedContent = updated
             isApplyingShortcut = false
         }
 
@@ -430,6 +437,8 @@ public enum MarkdownFormatting {
     case strikethrough
     case inlineCode
     case heading(level: Int)
+    case promoteHeading
+    case demoteHeading
     case bulletList
     case orderedList
     case taskList

@@ -86,7 +86,8 @@ extension NativeMarkdownEditorViewModel {
         in text: inout AttributedString,
         lines: [LineInfo],
         listOrdinals: [Int: Int],
-        selection: SelectionSnapshot
+        selection: SelectionSnapshot,
+        forceReadMarkers: Bool = false
     ) -> SelectionSnapshot {
         var snapshot = selection
 
@@ -125,7 +126,7 @@ extension NativeMarkdownEditorViewModel {
                 lineStyle: lineStyle
             )
 
-            if showPrefix {
+            if showPrefix && !forceReadMarkers {
                 snapshot = applyCaretListPrefix(context, text: &text, snapshot: snapshot)
             } else {
                 snapshot = applyReadListMarker(

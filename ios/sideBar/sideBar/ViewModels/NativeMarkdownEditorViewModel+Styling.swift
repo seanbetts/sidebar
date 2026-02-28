@@ -131,6 +131,8 @@ extension NativeMarkdownEditorViewModel {
 
     func baseBackgroundColor(for blockKind: BlockKind?) -> Color? {
         switch blockKind {
+        case .blockquote:
+            return DesignTokens.Colors.muted.opacity(0.45)
         case .codeBlock:
             return style.codeBlockBackground
         default:
