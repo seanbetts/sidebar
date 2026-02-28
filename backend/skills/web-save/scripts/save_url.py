@@ -87,6 +87,19 @@ if not logging.getLogger().handlers:
 logger = logging.getLogger(__name__)
 
 
+_JINA_NOISE_MARKERS = (
+    "privacy center",
+    "cookie policy",
+    "manage consent preferences",
+    "most popular",
+    "newsletter",
+    "sign up for",
+    "subscribe",
+    "navigation drawer",
+    "advertiser content",
+)
+
+
 class WebSaveScriptError(Exception):
     """Raised when web-save has a classified failure payload."""
 
@@ -184,6 +197,21 @@ def parse_jina_metadata(content: str) -> tuple[dict[str, str | None], str]:
     return metadata, cleaned
 
 
+def _count_noise_markers(content: str) -> int:
+    lowered = content.lower()
+    return sum(lowered.count(marker) for marker in _JINA_NOISE_MARKERS)
+
+
+def _summarize_markdown(content: str) -> dict[str, int]:
+    return {
+        "chars": len(content),
+        "lines": content.count("\n") + (1 if content else 0),
+        "links": len(re.findall(r"(?<!!)\[[^\]]+]\([^)]+\)", content)),
+        "images": len(re.findall(r"!\[[^\]]*]\([^)]+\)", content)),
+        "noise_hits": _count_noise_markers(content),
+    }
+
+
 def get_markdown_content(url: str, api_key: str) -> str:
     """Fetch markdown content from Jina.ai API.
 
@@ -249,6 +277,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
     )
     parsed = None
     local_parse_error: str | None = None
+    local_parse_error_type: str | None = None
     if web_save_mode in {"local", "compare"}:
         try:
             parsed = parse_url_local(target_url)
@@ -264,6 +293,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             )
         except Exception as exc:
             local_parse_error = str(exc)
+            local_parse_error_type = type(exc).__name__
             logger.exception(
                 "web-save script local parse failed target_url=%s error=%s",
                 target_url,
@@ -272,6 +302,23 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
 
     local_parsed = parsed
     if parsed is None or web_save_mode in {"jina", "compare"}:
+        fallback_reason = (
+            "forced_mode"
+            if web_save_mode == "jina"
+            else "local_parse_error"
+            if local_parse_error
+            else "compare_mode"
+        )
+        logger.info(
+            (
+                "web-save fallback start url=%s target_url=%s provider=jina "
+                "reason=%s local_error_type=%s"
+            ),
+            url,
+            target_url,
+            fallback_reason,
+            local_parse_error_type,
+        )
         logger.info(
             "web-save script using jina url=%s target_url=%s mode=%s",
             url,
@@ -284,6 +331,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             parsed_metadata, cleaned_content = parse_jina_metadata(content)
             source = parsed_metadata.get("url_source") or target_url
             wsj_flags = {"paywalled": False, "truncated": False}
+            raw_summary = _summarize_markdown(content)
             if JinaService is not None:
                 cleaned_content = JinaService.clean_markdown_for_source(
                     cleaned_content, source
@@ -295,6 +343,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                     marker_markdown=content,
                     markdown=cleaned_content,
                 )
+            cleaned_summary = _summarize_markdown(cleaned_content)
             candidate_title = parsed_metadata.get("title") or extract_title(
                 cleaned_content
             )
@@ -309,6 +358,25 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             word_count = compute_word_count(cleaned_content)
             domain = urlparse(source).netloc
             tags = extract_tags(cleaned_content, domain, title)
+            logger.info(
+                (
+                    "web-save fallback result url=%s source=%s provider=jina "
+                    "raw_chars=%s clean_chars=%s raw_noise=%s clean_noise=%s "
+                    "clean_links=%s clean_images=%s word_count=%s "
+                    "truncated=%s paywalled=%s"
+                ),
+                url,
+                source,
+                raw_summary["chars"],
+                cleaned_summary["chars"],
+                raw_summary["noise_hits"],
+                cleaned_summary["noise_hits"],
+                cleaned_summary["links"],
+                cleaned_summary["images"],
+                word_count,
+                wsj_flags["truncated"],
+                wsj_flags["paywalled"],
+            )
             frontmatter = build_frontmatter(
                 cleaned_content,
                 meta={

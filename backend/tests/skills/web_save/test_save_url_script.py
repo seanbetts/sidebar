@@ -168,3 +168,43 @@ def test_save_url_database_jina_wsj_preview_adds_truncation_warning(monkeypatch)
 
     saved_content = captured["upsert_kwargs"]["content"]
     assert "Warning: This article appears truncated." in saved_content
+
+
+def test_save_url_database_logs_jina_fallback_events(monkeypatch):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+    logged: list[tuple[str, tuple]] = []
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        RuntimeError("Browser executable missing")
+    )
+    module.get_markdown_content = lambda _url, _api_key: (
+        "Title: Story\n"
+        "URL Source: https://www.theverge.com/ai/story-id\n"
+        "Markdown Content:\n"
+        "Subscribe now\n"
+        "[Link](https://example.com)\n"
+        "Body paragraph.\n"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Story",
+            "url_source": "https://www.theverge.com/ai/story-id",
+            "published_time": None,
+        },
+        "Body paragraph.\n[Link](https://example.com)\n",
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+    module.logger.info = lambda message, *args: logged.append((message, args))
+    module.logger.exception = lambda *_args, **_kwargs: None
+
+    module.save_url_database("https://www.theverge.com/ai/story-id", "user-1")
+
+    assert any("web-save fallback start" in message for message, _ in logged)
+    assert any("web-save fallback result" in message for message, _ in logged)
