@@ -530,7 +530,7 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.items.contains(where: { $0.file.id == "local-1" }))
     }
 
-    func testCancelIngestionCallsAPIAndMarksCanceledForRemoteProcessingItem() async {
+    func testCancelIngestionCallsAPIAndRemovesRemoteProcessingItem() async {
         let fileId = UUID().uuidString
         let processingItem = makeListItem(id: fileId, status: "processing", stage: "extracting")
         final class CancelCallTracker {
@@ -559,14 +559,14 @@ final class IngestionViewModelTests: XCTestCase {
         viewModel.cancelIngestion(fileId: fileId)
 
         for _ in 0..<10 {
-            if viewModel.items.first(where: { $0.file.id == fileId })?.job.status == "canceled" {
+            if viewModel.items.contains(where: { $0.file.id == fileId }) == false {
                 break
             }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
 
         XCTAssertEqual(tracker.fileIds, [fileId])
-        XCTAssertEqual(viewModel.items.first(where: { $0.file.id == fileId })?.job.status, "canceled")
+        XCTAssertFalse(viewModel.items.contains(where: { $0.file.id == fileId }))
     }
 
     func testCancelIngestionShowsToastWhenRemoteCancelFails() async {

@@ -63,12 +63,7 @@
 	async function handleCancel(fileId: string) {
 		try {
 			await ingestionAPI.cancel(fileId);
-			const meta = await ingestionAPI.get(fileId);
-			ingestionStore.upsertItem({
-				file: meta.file,
-				job: meta.job,
-				recommended_viewer: meta.recommended_viewer
-			});
+			ingestionStore.removeItem(fileId);
 		} catch (error) {
 			logError('Failed to cancel ingestion', error, { scope: 'IngestionQueue', fileId });
 		}

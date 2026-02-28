@@ -54,6 +54,12 @@ def test_ingestion_pause_resume_cancel(test_client):
         f"/api/v1/files/{file_id}/cancel", headers=_auth_headers()
     )
     assert cancel.status_code == 200
+    assert cancel.json().get("status") == "deleted"
+
+    meta_after_cancel = test_client.get(
+        f"/api/v1/files/{file_id}/meta", headers=_auth_headers()
+    )
+    assert meta_after_cancel.status_code == 404
 
 
 def test_ingestion_meta_syncs_failed_transcript_status(test_client, test_db):

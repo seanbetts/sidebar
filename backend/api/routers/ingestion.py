@@ -378,19 +378,25 @@ def cancel_processing(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """Cancel processing and cleanup staged artifacts."""
+    """Cancel processing, delete ingestion record, and cleanup staged artifacts."""
     record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
         raise NotFoundError("File", str(file_id))
 
-    job = FileIngestionService.update_job_status(
+    FileIngestionService.update_job_status(
         db,
         file_id,
         status="canceled",
         stage="canceled",
     )
+    FileIngestionService.delete_file(
+        db,
+        user_id,
+        file_id,
+        ensure_ready=False,
+    )
     _safe_cleanup(_staging_path(file_id))
-    return {"status": job.status if job else "canceled"}
+    return {"status": "deleted"}
 
 
 @router.patch("/{file_id}/pin")

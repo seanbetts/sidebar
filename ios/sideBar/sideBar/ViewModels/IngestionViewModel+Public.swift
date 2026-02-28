@@ -356,7 +356,7 @@ extension IngestionViewModel {
     }
 
     public func cancelIngestion(fileId: String) {
-        guard let item = items.first(where: { $0.file.id == fileId }) else { return }
+        guard items.contains(where: { $0.file.id == fileId }) else { return }
         guard canCancelIngestion(fileId: fileId) else { return }
 
         if fileId.hasPrefix("local-") {
@@ -378,21 +378,10 @@ extension IngestionViewModel {
             guard let self else { return }
             do {
                 try await self.api.cancel(fileId: fileId)
-                let canceledJob = IngestionJob(
-                    status: "canceled",
-                    stage: "canceled",
-                    errorCode: nil,
-                    errorMessage: nil,
-                    userMessage: nil,
-                    progress: nil,
-                    attempts: item.job.attempts,
-                    updatedAt: item.job.updatedAt
-                )
-                self.store.updateJob(
-                    fileId: fileId,
-                    job: canceledJob,
-                    recommendedViewer: item.recommendedViewer
-                )
+                if self.selectedFileId == fileId {
+                    self.clearSelection()
+                }
+                self.store.removeItem(fileId: fileId)
                 self.cancelJobPolling(fileId: fileId)
             } catch {
                 self.toastCenter.show(message: "Failed to cancel ingestion")

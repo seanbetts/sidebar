@@ -200,12 +200,7 @@
 	async function handleDetailCancel(fileId: string) {
 		try {
 			await ingestionAPI.cancel(fileId);
-			const meta = await ingestionAPI.get(fileId);
-			ingestionStore.upsertItem({
-				file: meta.file,
-				job: meta.job,
-				recommended_viewer: meta.recommended_viewer
-			});
+			ingestionStore.removeItem(fileId);
 			if (detailItem?.file.id === fileId) {
 				detailItem = $ingestionStore.items.find((i) => i.file.id === fileId) ?? null;
 			}
