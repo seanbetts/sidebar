@@ -58,6 +58,9 @@ ERROR_MESSAGES = {
     ),
     "INVALID_YOUTUBE_URL": "That doesn't look like a valid YouTube URL.",
     "WORKER_STALLED": "Processing took too long. We're retrying.",
+    "INGESTION_WORKER_UNAVAILABLE": (
+        "Processing is temporarily unavailable. Please retry in a few minutes."
+    ),
     "UNKNOWN_ERROR": "Something went wrong while processing this file.",
 }
 

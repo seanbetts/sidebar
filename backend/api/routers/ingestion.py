@@ -28,6 +28,7 @@ from api.routers.ingestion_helpers import (
 )
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.files_sync_service import FilesSyncService
+from api.services.ingestion_job_health_service import IngestionJobHealthService
 from api.services.storage.service import get_storage_backend
 from api.services.website_transcript_service import WebsiteTranscriptService
 from api.utils.timestamps import parse_client_timestamp
@@ -122,6 +123,9 @@ def list_ingestions(
     db: Session = Depends(get_db),
 ):
     """List ingestion records for the current user."""
+    IngestionJobHealthService.fail_stale_queued_jobs_when_worker_unavailable(
+        db, user_id
+    )
     records = FileIngestionService.list_ingestions_for_sidebar(
         db, user_id, limit=50, active_limit=20
     )
@@ -204,6 +208,9 @@ def get_file_meta(
     db: Session = Depends(get_db),
 ):
     """Return ingestion metadata for a file."""
+    IngestionJobHealthService.fail_stale_queued_jobs_when_worker_unavailable(
+        db, user_id
+    )
     record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
         raise NotFoundError("File", str(file_id))

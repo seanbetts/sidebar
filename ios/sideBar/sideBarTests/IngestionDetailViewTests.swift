@@ -38,4 +38,22 @@ final class IngestionDetailViewTests: XCTestCase {
             )
         )
     }
+
+    func testIsFailedStateTrueForFailedStatusWithoutViewer() {
+        XCTAssertTrue(
+            IngestionDetailView.isFailedState(
+                status: "failed",
+                hasViewerState: false
+            )
+        )
+    }
+
+    func testIsFailedStateFalseWhenViewerStateIsAvailable() {
+        XCTAssertFalse(
+            IngestionDetailView.isFailedState(
+                status: "failed",
+                hasViewerState: true
+            )
+        )
+    }
 }

@@ -1,9 +1,11 @@
 import os
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from api.config import settings
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.models.website import Website
+from api.services.file_ingestion_service import FileIngestionService
 
 
 def _auth_headers() -> dict[str, str]:
@@ -164,3 +166,32 @@ def test_ingestion_meta_backfills_missing_job_as_ready_when_derivatives_exist(
     )
     assert backfilled_job is not None
     assert backfilled_job.status == "ready"
+
+
+def test_list_ingestions_fails_stale_queued_jobs_when_worker_unavailable(
+    test_client, test_db
+):
+    user_id = os.getenv("TEST_USER_ID", "user-1")
+    record, job = FileIngestionService.create_ingestion(
+        test_db,
+        user_id,
+        filename_original="stale.txt",
+        path="stale.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )
+    _ = record
+    job.updated_at = datetime.now(UTC) - timedelta(minutes=5)
+    test_db.commit()
+
+    response = test_client.get("/api/v1/files", headers=_auth_headers())
+    assert response.status_code == 200
+    payload = response.json()
+    item = next((entry for entry in payload["items"] if entry["file"]["id"] == str(job.file_id)), None)
+    assert item is not None
+    assert item["job"]["status"] == "failed"
+    assert item["job"]["error_code"] == "INGESTION_WORKER_UNAVAILABLE"
+    assert (
+        item["job"]["user_message"]
+        == "Processing is temporarily unavailable. Please retry in a few minutes."
+    )

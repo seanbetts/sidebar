@@ -1,9 +1,10 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from api.exceptions import ConflictError
 from api.models.file_ingestion import FileDerivative, FileProcessingJob
 from api.services.file_ingestion_service import FileIngestionService
+from api.services.ingestion_job_health_service import IngestionJobHealthService
 
 
 @pytest.fixture
@@ -268,3 +269,72 @@ def test_ensure_job_record_backfills_failed_without_derivatives_or_source(db_ses
     assert job.status == "failed"
     assert job.stage == "failed"
     assert job.error_code == "SOURCE_MISSING"
+
+
+def test_fail_stale_queued_jobs_when_worker_unavailable_marks_failed(db_session):
+    record, job = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="queued.txt",
+        path="queued.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )
+    _ = record
+    job.updated_at = datetime.now(UTC) - timedelta(minutes=5)
+    db_session.commit()
+
+    updated = IngestionJobHealthService.fail_stale_queued_jobs_when_worker_unavailable(
+        db_session,
+        "user-1",
+        queued_ttl_seconds=120,
+        worker_heartbeat_ttl_seconds=45,
+    )
+
+    refreshed = FileIngestionService.get_job(db_session, job.file_id)
+    assert updated == 1
+    assert refreshed is not None
+    assert refreshed.status == "failed"
+    assert refreshed.stage == "failed"
+    assert refreshed.error_code == "INGESTION_WORKER_UNAVAILABLE"
+    assert (
+        refreshed.error_message
+        == "Processing is temporarily unavailable. Please retry in a few minutes."
+    )
+
+
+def test_fail_stale_queued_jobs_when_worker_available_keeps_queued(db_session):
+    _, stale_queued_job = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="queued.txt",
+        path="queued.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )
+    stale_queued_job.updated_at = datetime.now(UTC) - timedelta(minutes=5)
+
+    _, active_job = FileIngestionService.create_ingestion(
+        db_session,
+        "user-2",
+        filename_original="processing.txt",
+        path="processing.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )
+    active_job.status = "processing"
+    active_job.stage = "extracting"
+    active_job.updated_at = datetime.now(UTC)
+    db_session.commit()
+
+    updated = IngestionJobHealthService.fail_stale_queued_jobs_when_worker_unavailable(
+        db_session,
+        "user-1",
+        queued_ttl_seconds=120,
+        worker_heartbeat_ttl_seconds=45,
+    )
+
+    refreshed = FileIngestionService.get_job(db_session, stale_queued_job.file_id)
+    assert updated == 0
+    assert refreshed is not None
+    assert refreshed.status == "queued"

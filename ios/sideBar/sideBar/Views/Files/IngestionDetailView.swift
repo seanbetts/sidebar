@@ -33,6 +33,11 @@ public struct IngestionDetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            } else if shouldShowFailedState {
+                PlaceholderView(
+                    title: "Processing failed",
+                    subtitle: failedDetail
+                )
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state, pdfController: pdfController)
             } else if let error = viewModel.errorMessage {
@@ -64,6 +69,13 @@ public struct IngestionDetailView: View {
         )
     }
 
+    private var shouldShowFailedState: Bool {
+        Self.isFailedState(
+            status: meta.job.status,
+            hasViewerState: viewModel.viewerState != nil
+        )
+    }
+
     static func shouldShowProcessingState(
         status: String?,
         errorMessage: String?,
@@ -79,11 +91,30 @@ public struct IngestionDetailView: View {
         return normalizedStatus != "ready" && normalizedStatus != "failed" && normalizedStatus != "canceled"
     }
 
+    static func isFailedState(
+        status: String?,
+        hasViewerState: Bool = false
+    ) -> Bool {
+        if hasViewerState {
+            return false
+        }
+        let normalizedStatus = (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalizedStatus == "failed"
+    }
+
     private var processingDetail: String? {
         if let message = meta.job.userMessage, !message.isEmpty {
             return message
         }
         return ingestionStatusLabel(for: meta.job) ?? "We will open this file once processing completes."
+    }
+
+    private var failedDetail: String {
+        let statusLabel = ingestionStatusLabel(for: meta.job) ?? "Failed"
+        if let detail = ingestionStatusDetail(for: meta.job, statusLabel: statusLabel) {
+            return detail
+        }
+        return "Processing failed. Please retry in a few minutes."
     }
 
 }
