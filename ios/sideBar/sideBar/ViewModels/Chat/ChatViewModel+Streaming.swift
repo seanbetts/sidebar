@@ -14,7 +14,9 @@ extension ChatViewModel {
         } catch is CancellationError {
             // Stream cancellation is user-initiated; avoid surfacing as an error.
         } catch {
-            errorMessage = ErrorMapping.message(for: error)
+            let mappedError = ErrorMapping.message(for: error)
+            errorMessage = mappedError
+            toastCenter?.show(message: mappedError)
             finalizeStreaming(status: .error)
         }
         isStreaming = false
@@ -61,6 +63,7 @@ extension ChatViewModel {
                 let streamError = self?.stringValue(from: event.data, key: "error")?.trimmedOrNil
                     ?? "Chat stream error"
                 self?.errorMessage = streamError
+                self?.toastCenter?.show(message: streamError)
                 self?.finalizeStreaming(status: .error, streamError: streamError)
             },
             .noteCreated: { [weak self] (event: ChatStreamEvent) in

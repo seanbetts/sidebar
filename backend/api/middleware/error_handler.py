@@ -29,7 +29,12 @@ def _error_payload(
 async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
     """Handle APIError exceptions."""
     logger.error(
-        "API Error",
+        "API error %s %s status=%s code=%s message=%s",
+        request.method,
+        request.url.path,
+        exc.status_code,
+        exc.code,
+        exc.message,
         extra={
             "status_code": exc.status_code,
             "code": exc.code,

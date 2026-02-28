@@ -122,6 +122,9 @@ public enum ErrorMapping {
             if isAuthenticationErrorMessage(message) {
                 return "Session expired. Please sign in again."
             }
+            if isPromptTooLargeMessage(message) {
+                return "Attachment and context are too large for one message. Remove some attachments or close open items and try again."
+            }
             return message
         case .missingToken:
             return "Authentication required. Please sign in."
@@ -142,6 +145,8 @@ public enum ErrorMapping {
         switch status {
         case 408, 504:
             return "Network connection failed. Please check your internet."
+        case 400:
+            return "Request was rejected by the server. If this includes attachments, remove one and try again."
         case 401:
             return "Session expired. Please sign in again."
         case 403:
@@ -183,6 +188,16 @@ public enum ErrorMapping {
             "invalid token",
             "token expired",
             "session expired"
+        ]
+        return signals.contains(where: lowered.contains)
+    }
+
+    private static func isPromptTooLargeMessage(_ message: String) -> Bool {
+        let lowered = message.lowercased()
+        let signals = [
+            "system prompt exceeds maximum size",
+            "system prompt exceeded the configured maximum size",
+            "message context is too large"
         ]
         return signals.contains(where: lowered.contains)
     }

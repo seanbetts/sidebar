@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import sideBarShared
 
 /// Streams chat events over URLSession SSE.
@@ -13,6 +14,7 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
     private let session: URLSession
     private var parser: ChatStreamParser
     public weak var handler: ChatStreamEventHandler?
+    private let logger = Logger(subsystem: "sideBar", category: "ChatStreamClient")
 
     private let streamTaskLock = NSLock()
     private var streamTaskState: StreamTaskState?
@@ -49,8 +51,26 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         let streamTaskId = UUID()
         let streamTask = Task {
             let (bytes, response) = try await session.bytes(for: urlRequest)
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                throw APIClientError.requestFailed((response as? HTTPURLResponse)?.statusCode ?? 0)
+            guard let http = response as? HTTPURLResponse else {
+                throw APIClientError.unknown
+            }
+            guard (200...299).contains(http.statusCode) else {
+                let errorData = try await collectBytes(from: bytes)
+                if let message = decodeAPIErrorMessage(from: errorData) {
+                    logger.error(
+                        "Chat stream request failed status=\(http.statusCode) message=\(message, privacy: .public)"
+                    )
+                    throw APIClientError.apiError(message)
+                }
+                if let bodyPreview = String(data: errorData.prefix(2000), encoding: .utf8),
+                   !bodyPreview.isEmpty {
+                    logger.error(
+                        "Chat stream request failed status=\(http.statusCode) body=\(bodyPreview, privacy: .private)"
+                    )
+                } else {
+                    logger.error("Chat stream request failed status=\(http.statusCode)")
+                }
+                throw APIClientError.requestFailed(http.statusCode)
             }
 
             var buffer = Data()
@@ -104,5 +124,22 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         defer { streamTaskLock.unlock() }
         guard streamTaskState?.id == id else { return }
         streamTaskState = nil
+    }
+
+    private func collectBytes(from bytes: URLSession.AsyncBytes) async throws -> Data {
+        var data = Data()
+        for try await byte in bytes {
+            data.append(byte)
+        }
+        return data
+    }
+
+    private func decodeAPIErrorMessage(from data: Data) -> String? {
+        guard !data.isEmpty else {
+            return nil
+        }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return APIClient.decodeErrorMessage(data: data, decoder: decoder)
     }
 }

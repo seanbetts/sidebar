@@ -89,8 +89,26 @@ final class ErrorMappingTests: XCTestCase {
         XCTAssertEqual(message, "Network connection failed. Please check your internet.")
     }
 
+    func testMapsBadRequestStatusToAttachmentGuidance() {
+        let message = ErrorMapping.message(for: APIClientError.requestFailed(400))
+        XCTAssertEqual(
+            message,
+            "Request was rejected by the server. If this includes attachments, remove one and try again."
+        )
+    }
+
     func testMapsAuthSignalFromAPIErrorMessage() {
         let message = ErrorMapping.message(for: APIClientError.apiError("Not authenticated"))
         XCTAssertEqual(message, "Session expired. Please sign in again.")
+    }
+
+    func testMapsPromptTooLargeApiErrorToHelpfulMessage() {
+        let message = ErrorMapping.message(
+            for: APIClientError.apiError("System prompt exceeds maximum size (50001 > 40000)")
+        )
+        XCTAssertEqual(
+            message,
+            "Attachment and context are too large for one message. Remove some attachments or close open items and try again."
+        )
     }
 }

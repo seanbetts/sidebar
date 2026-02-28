@@ -85,6 +85,45 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         }
     }
 
+    func testConnectHandlesNon200WithErrorEnvelope() async {
+        let session = makeSession()
+        let client = URLSessionChatStreamClient(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil },
+            session: session
+        )
+        URLProtocolStreamingMock.statusCode = 400
+        URLProtocolStreamingMock.dataChunks = [
+            Data("{\"error\":{\"message\":\"Message context is too large.\"}}".utf8)
+        ]
+        URLProtocolStreamingMock.requestHandler = { request in
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: URLProtocolStreamingMock.statusCode,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+        }
+
+        do {
+            try await client.connect(request: ChatStreamRequest(message: "Hello"))
+            XCTFail("Expected error")
+        } catch let error as APIClientError {
+            switch error {
+            case .apiError(let message):
+                XCTAssertEqual(message, "Message context is too large.")
+            case .requestFailed(let status):
+                // URLProtocol + URLSession.AsyncBytes can surface empty body data on non-2xx responses.
+                // In that case, the client should still expose the HTTP status fallback.
+                XCTAssertEqual(status, 400)
+            default:
+                XCTFail("Unexpected error: \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     // MARK: - Concurrency regression (Phase 2.5)
 
     func testDisconnectDuringConnectDoesNotCrash() async throws {

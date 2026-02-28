@@ -111,6 +111,7 @@ class PromptContextService:
         current_timezone: str | None = None,
         now: datetime | None = None,
         strict_system_prompt: bool = False,
+        include_attachment_content: bool = True,
     ) -> PromptBuildResult:
         """Build structured system and first-message prompts.
 
@@ -127,6 +128,8 @@ class PromptContextService:
             now: Optional timestamp override.
             strict_system_prompt: When True, reject requests that would require
                 truncating the system prompt.
+            include_attachment_content: When False, include attachment metadata
+                but skip loading derivative content in the prompt context.
 
         Returns:
             Structured prompt bundle with flattened text and diagnostics.
@@ -166,7 +169,11 @@ class PromptContextService:
             db, user_id, open_file, PromptContextService.MAX_OPEN_FILE_CHARS
         )
         resolved_attachments = PromptContextService._resolve_attachment_contexts(
-            db, user_id, attachments or [], PromptContextService.MAX_ATTACHMENT_CHARS
+            db,
+            user_id,
+            attachments or [],
+            PromptContextService.MAX_ATTACHMENT_CHARS,
+            include_content=include_attachment_content,
         )
         open_block = build_open_context_block(
             open_note,
@@ -405,6 +412,7 @@ class PromptContextService:
         user_id: str,
         attachments: list[dict[str, Any]],
         max_chars: int,
+        include_content: bool = True,
     ) -> list[dict[str, Any]]:
         resolved: list[dict[str, Any]] = []
         for attachment in attachments:
@@ -418,24 +426,25 @@ class PromptContextService:
             record = FileIngestionService.get_file(db, user_id, file_uuid)
             if not record:
                 continue
-            derivative = FileIngestionService.get_derivative(db, file_uuid, "ai_md")
             content = None
-            if derivative:
-                storage = get_storage_backend()
-                try:
-                    content_bytes = storage.get_object(derivative.storage_key)
-                    content = content_bytes.decode("utf-8", errors="ignore")
-                except Exception as exc:
-                    logger.warning(
-                        "Failed to load attachment context content",
-                        exc_info=exc,
-                        extra={
-                            "user_id": user_id,
-                            "file_id": str(file_uuid),
-                            "storage_key": derivative.storage_key,
-                        },
-                    )
-                    content = None
+            if include_content:
+                derivative = FileIngestionService.get_derivative(db, file_uuid, "ai_md")
+                if derivative:
+                    storage = get_storage_backend()
+                    try:
+                        content_bytes = storage.get_object(derivative.storage_key)
+                        content = content_bytes.decode("utf-8", errors="ignore")
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to load attachment context content",
+                            exc_info=exc,
+                            extra={
+                                "user_id": user_id,
+                                "file_id": str(file_uuid),
+                                "storage_key": derivative.storage_key,
+                            },
+                        )
+                        content = None
             if content:
                 content = PromptContextService._truncate_text(content, max_chars)
             resolved.append(

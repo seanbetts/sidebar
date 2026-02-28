@@ -115,7 +115,7 @@ private struct ChatDetailView: View {
                     } else {
                         EmptyView()
                     }
-                } else if let errorMessage = viewModel.errorMessage {
+                } else if let errorMessage = viewModel.errorMessage, viewModel.messages.isEmpty {
                     PlaceholderView(
                         title: "Unable to load chat",
                         subtitle: environment.isNetworkAvailable ? errorMessage : "This chat isn't available offline yet.",

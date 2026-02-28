@@ -488,6 +488,109 @@ def test_stream_chat_rejects_oversized_system_prompt(test_client, monkeypatch):
     assert response.status_code == 400
 
 
+def test_stream_chat_retries_without_attachment_content_on_prompt_overflow(
+    test_client, monkeypatch
+):
+    captured_flags: list[bool] = []
+
+    def _build_prompts(**kwargs):
+        include_attachment_content = kwargs.get("include_attachment_content", True)
+        captured_flags.append(bool(include_attachment_content))
+        if include_attachment_content:
+            raise ValueError("System prompt exceeds maximum size (50001 > 40000)")
+        return {
+            "system_prompt": {
+                "text": "system",
+                "max_chars": 40000,
+                "total_chars": 6,
+                "truncated": False,
+                "sections": [],
+            },
+            "first_message_prompt": {
+                "text": "first",
+                "max_chars": 8000,
+                "total_chars": 5,
+                "truncated": False,
+                "sections": [],
+            },
+            "report": {
+                "system_prompt": {
+                    "total_chars": 6,
+                    "max_chars": 40000,
+                    "truncated": False,
+                    "sections": [],
+                },
+                "first_message_prompt": {
+                    "total_chars": 5,
+                    "max_chars": 8000,
+                    "truncated": False,
+                    "sections": [],
+                },
+            },
+        }
+
+    _patch_stream_gateway(monkeypatch, [{"type": "token", "content": "Hello"}])
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.PromptContextService,
+        "build_prompts",
+        staticmethod(_build_prompts),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={
+            "message": "Hi",
+            "attachments": [
+                {"file_id": "00000000-0000-0000-0000-000000000001", "filename": "doc.md"}
+            ],
+        },
+    )
+    assert response.status_code == 200
+    assert "event: token" in response.text
+    assert captured_flags == [True, False]
+
+
+def test_stream_chat_returns_clear_oversize_message_after_attachment_fallback_fails(
+    test_client, monkeypatch
+):
+    def _build_prompts(**_kwargs):
+        raise ValueError("System prompt exceeds maximum size (50001 > 40000)")
+
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.PromptContextService,
+        "build_prompts",
+        staticmethod(_build_prompts),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={
+            "message": "Hi",
+            "attachments": [
+                {"file_id": "00000000-0000-0000-0000-000000000001", "filename": "doc.md"}
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["message"] == (
+        "Message context is too large. Remove some attachments or close open items and try again."
+    )
+
+
 def test_generate_title_uses_conversation_provider_lock(
     test_client, test_db, monkeypatch
 ):

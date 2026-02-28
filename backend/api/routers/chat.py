@@ -26,7 +26,7 @@ from api.metrics import (
     chat_streaming_duration_seconds,
 )
 from api.schemas.tool_context import ToolExecutionContext
-from api.services.agent.prompt.composer import PromptContextService
+from api.services.agent.prompt.composer import PromptBuildResult, PromptContextService
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
 from api.services.conversation_service import ConversationService
@@ -178,8 +178,14 @@ async def stream_chat(
     user_agent = request.headers.get("user-agent")
     app_version = request.headers.get("x-app-version")
     now = datetime.now(UTC)
-    try:
-        prompt_bundle = PromptContextService.build_prompts(
+
+    oversize_context_message = (
+        "Message context is too large. Remove some attachments or close open items "
+        "and try again."
+    )
+
+    def _build_prompt_bundle(*, include_attachment_content: bool) -> PromptBuildResult:
+        return PromptContextService.build_prompts(
             db=db,
             user_id=user_id,
             open_context=open_context,
@@ -191,14 +197,59 @@ async def stream_chat(
             current_timezone=current_timezone,
             now=now,
             strict_system_prompt=True,
+            include_attachment_content=include_attachment_content,
         )
+
+    try:
+        prompt_bundle = _build_prompt_bundle(include_attachment_content=True)
     except ValueError as error:
-        raise BadRequestError(str(error)) from error
+        if attachments:
+            logger.warning(
+                (
+                    "Prompt build rejected with attachment content; "
+                    "retrying metadata-only attachments: %s "
+                    "(attachments=%s conversation_id=%s)"
+                ),
+                str(error),
+                len(attachments),
+                conversation_id or "none",
+            )
+            try:
+                prompt_bundle = _build_prompt_bundle(include_attachment_content=False)
+            except ValueError as retry_error:
+                logger.warning(
+                    (
+                        "Prompt build still rejected after attachment-content "
+                        "fallback: %s (attachments=%s conversation_id=%s)"
+                    ),
+                    str(retry_error),
+                    len(attachments),
+                    conversation_id or "none",
+                )
+                raise BadRequestError(oversize_context_message) from retry_error
+        else:
+            logger.warning(
+                (
+                    "Prompt build rejected chat request: %s "
+                    "(attachments=%s conversation_id=%s)"
+                ),
+                str(error),
+                len(attachments),
+                conversation_id or "none",
+            )
+            raise BadRequestError(str(error)) from error
+
     prompt_report = prompt_bundle["report"]
     if prompt_report["system_prompt"]["truncated"]:
-        raise BadRequestError(
-            "System prompt exceeded the configured maximum size for this request"
+        logger.warning(
+            (
+                "System prompt exceeded configured maximum size "
+                "(attachments=%s conversation_id=%s)"
+            ),
+            len(attachments),
+            conversation_id or "none",
         )
+        raise BadRequestError(oversize_context_message)
     system_prompt = prompt_bundle["system_prompt"]["text"]
     enabled_skills = SettingsService.resolve_enabled_skills(settings_record)
 
