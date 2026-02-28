@@ -270,7 +270,7 @@ private final class ChatViewModelTeardownBag {
     }
 
     public var pendingAttachments: [ChatAttachmentItem] {
-        attachments.filter { $0.status != .ready }
+        attachments.filter { $0.status != .ready && $0.status != .canceled }
     }
 
     public func reset() {

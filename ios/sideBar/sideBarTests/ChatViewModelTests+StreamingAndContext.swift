@@ -161,4 +161,66 @@ extension ChatViewModelTests {
         XCTAssertEqual(attachment?.status, .failed)
         XCTAssertEqual(attachment?.stage, "failed")
     }
+
+    func testStartAttachmentPollingRemovesAttachmentWhenStatusIsCanceled() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))
+        let canceledMetaResponse = """
+        {
+          "file": {
+            "id": "file-1",
+            "filename_original": "report.pdf",
+            "path": null,
+            "mime_original": "application/pdf",
+            "size_bytes": 1,
+            "sha256": null,
+            "pinned": null,
+            "pinned_order": null,
+            "category": null,
+            "source_url": null,
+            "source_metadata": null,
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": null,
+            "deleted_at": null
+          },
+          "job": {
+            "status": "canceled",
+            "stage": "canceled",
+            "error_code": null,
+            "error_message": null,
+            "user_message": null,
+            "progress": null,
+            "attempts": 0,
+            "updated_at": null
+          },
+          "derivatives": [],
+          "recommended_viewer": null
+        }
+        """
+        let ingestionAPI = makeIngestionAPIForAttachmentPollingTest(
+            statusCode: 200,
+            responseBody: canceledMetaResponse
+        )
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            ingestionAPI: ingestionAPI
+        )
+        viewModel.attachments = [
+            ChatAttachmentItem(
+                id: "attachment-1",
+                name: "report.pdf",
+                status: .queued,
+                stage: "queued",
+                fileId: "file-1"
+            )
+        ]
+
+        viewModel.startAttachmentPolling(id: "attachment-1", fileId: "file-1")
+        try? await Task.sleep(nanoseconds: 2_200_000_000)
+
+        XCTAssertTrue(viewModel.attachments.isEmpty)
+        XCTAssertFalse(viewModel.hasPendingAttachments)
+        XCTAssertTrue(viewModel.pendingAttachments.isEmpty)
+    }
 }

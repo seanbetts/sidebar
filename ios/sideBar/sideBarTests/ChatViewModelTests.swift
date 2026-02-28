@@ -406,7 +406,10 @@ extension ChatViewModelTests {
         return viewModel
     }
 
-    func makeIngestionAPIForAttachmentPollingTest() -> IngestionAPI {
+    func makeIngestionAPIForAttachmentPollingTest(
+        statusCode: Int = 500,
+        responseBody: String = "{\"detail\":\"internal\"}"
+    ) -> IngestionAPI {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
             accessTokenProvider: { nil }
@@ -419,11 +422,11 @@ extension ChatViewModelTests {
             XCTAssertTrue(request.url?.absoluteString.contains("files/file-1/meta") == true)
             let response = HTTPURLResponse(
                 url: request.url!,
-                statusCode: 500,
+                statusCode: statusCode,
                 httpVersion: nil,
                 headerFields: nil
             )!
-            return (response, Data("{\"detail\":\"internal\"}".utf8))
+            return (response, Data(responseBody.utf8))
         }
         return IngestionAPI(client: APIClient(config: config, session: session), session: session)
     }

@@ -297,6 +297,11 @@ extension ChatViewModel {
                     default:
                         resolvedStatus = .queued
                     }
+                    if resolvedStatus == .canceled {
+                        self.attachmentPollTasks[id] = nil
+                        self.attachments.removeAll { $0.id == id }
+                        return
+                    }
                     self.updateAttachment(id: id) { item in
                         var updated = item
                         updated.status = resolvedStatus
