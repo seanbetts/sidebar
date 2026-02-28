@@ -13,9 +13,11 @@ extension AppEnvironment {
         let wasAuthenticated = previousAuthState != .signedOut
         let isAuthenticated = authState != .signedOut
 
-        let becameSignedOut = previousAuthState != .signedOut && authState == .signedOut
+        let storedCacheScopeUserId = UserDefaults.standard.string(forKey: AppStorageKeys.cacheScopeUserId)
+        let requiresSignedOutReset = authState == .signedOut
+            && (previousAuthState != .signedOut || storedCacheScopeUserId != nil)
         let becameStale = previousAuthState != .stale && authState == .stale
-        if becameSignedOut {
+        if requiresSignedOutReset {
             clearStoredCacheScopeUserId()
             resetSignedInData(clearNavigationState: true)
         }
@@ -81,8 +83,7 @@ extension AppEnvironment {
     }
 
     private func resetSignedInData(clearNavigationState: Bool) {
-        container.cacheClient.clear()
-        offlineStore.clearAllSnapshots()
+        flushSignedInPersistence()
         chatStore.reset()
         notesStore.reset()
         websitesStore.reset()
@@ -109,6 +110,22 @@ extension AppEnvironment {
         }
         Task {
             await spotlightIndexer.clearAllIndexes()
+        }
+    }
+
+    private func flushSignedInPersistence() {
+        container.cacheClient.clear()
+        offlineStore.clearAllSnapshots()
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: AppStorageKeys.lastSignInEmail)
+        defaults.removeObject(forKey: AppStorageKeys.lastAuthTimestamp)
+        WidgetDataManager.shared.clearAllDataForSignOut()
+        PendingShareStore.shared.clearAll()
+        ExtensionEventStore.shared.clear()
+        do {
+            try draftStorage.clearAllDrafts()
+        } catch {
+            authLogger.error("Failed to clear local drafts on sign-out: \(error.localizedDescription, privacy: .public)")
         }
     }
 

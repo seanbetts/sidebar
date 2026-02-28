@@ -24,7 +24,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleNotesNewDeepLinkSetsPendingFlagAndSelection() async {
         let environment = requireEnvironment()
-
         environment.handleDeepLink(URL(string: "sidebar://notes/new")!)
 
         XCTAssertEqual(environment.commandSelection, .notes)
@@ -33,7 +32,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleTasksNewDeepLinkWhenNotFocusedSetsPendingFlag() async {
         let environment = requireEnvironment()
-
         environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
 
         XCTAssertEqual(environment.commandSelection, .tasks)
