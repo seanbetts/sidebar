@@ -56,3 +56,23 @@ def test_resolve_website_title_falls_back_to_oembed(monkeypatch):
     )
 
     assert title == "Recovered from oEmbed"
+
+
+def test_resolve_website_title_strips_techcrunch_suffix():
+    title = website_title_service.resolve_website_title(
+        "Google launches Nano Banana 2 model with faster image generation | TechCrunch",
+        url="https://techcrunch.com/2026/02/20/google-launches-nano-banana-2/",
+        allow_network=False,
+    )
+
+    assert title == "Google launches Nano Banana 2 model with faster image generation"
+
+
+def test_resolve_website_title_does_not_strip_techcrunch_suffix_for_other_domains():
+    title = website_title_service.resolve_website_title(
+        "Example headline | TechCrunch",
+        url="https://example.com/posts/example-headline",
+        allow_network=False,
+    )
+
+    assert title == "Example headline | TechCrunch"

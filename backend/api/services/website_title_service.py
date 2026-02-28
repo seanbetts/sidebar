@@ -6,7 +6,7 @@ import json
 import logging
 import re
 from collections.abc import Mapping
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -24,6 +24,7 @@ YOUTUBE_PLACEHOLDER_VALUES = {
     "youtube -",
 }
 YOUTUBE_SUFFIX_RE = re.compile(r"\s*-\s*YouTube\s*$", re.IGNORECASE)
+TECHCRUNCH_SUFFIX_RE = re.compile(r"\s*\|\s*TechCrunch\s*$", re.IGNORECASE)
 
 
 def _clean_title_value(value: str | None) -> str | None:
@@ -34,6 +35,21 @@ def _clean_title_value(value: str | None) -> str | None:
         return None
     if cleaned.lower() in NULL_LIKE_VALUES:
         return None
+    return cleaned
+
+
+def _normalize_title_for_url(value: str | None, *, url: str) -> str | None:
+    """Apply domain-specific title cleanup rules."""
+    cleaned = _clean_title_value(value)
+    if cleaned is None:
+        return None
+
+    domain = urlparse(url).netloc.lower()
+    if domain.endswith("techcrunch.com"):
+        without_suffix = TECHCRUNCH_SUFFIX_RE.sub("", cleaned).strip()
+        if without_suffix:
+            cleaned = without_suffix
+
     return cleaned
 
 
@@ -148,7 +164,7 @@ def resolve_website_title(
     allow_network: bool = True,
 ) -> str | None:
     """Resolve a cleaned website title, repairing weak YouTube placeholders."""
-    cleaned = _clean_title_value(title)
+    cleaned = _normalize_title_for_url(title, url=url)
     if extract_youtube_video_id(url) is None:
         return cleaned
 
