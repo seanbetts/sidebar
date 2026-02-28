@@ -375,12 +375,16 @@ extension NotesDetailView {
     }
 
     private var shouldShowExpandButton: Bool {
-        guard workspaceColumn == .primary else { return false }
-        #if os(iOS)
-        return !isPhone
-        #else
-        return true
-        #endif
+        WorkspaceBehaviorPolicy.shouldShowExpandButton(
+            workspaceColumn: workspaceColumn,
+            isPhoneIdiom: {
+                #if os(iOS)
+                isPhone
+                #else
+                false
+                #endif
+            }()
+        )
     }
 
     private var expandButton: some View {
