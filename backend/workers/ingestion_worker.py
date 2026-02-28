@@ -400,10 +400,6 @@ def _resolve_worker_user_id() -> str | None:
     return None
 
 
-def _is_truthy_env(value: str | None) -> bool:
-    return (value or "").strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _database_host(database_url: str | None) -> str | None:
     if not database_url:
         return None
@@ -421,22 +417,24 @@ def _is_remote_database(database_url: str | None) -> bool:
     return not host.endswith(".local")
 
 
-def _enforce_safe_dev_worker_configuration() -> None:
+def _enforce_safe_dev_worker_configuration(worker_user_id: str | None) -> None:
     app_env = (settings.app_env or "").strip().lower()
     if app_env not in _LOCAL_APP_ENVS:
         return
     if not _is_remote_database(settings.database_url):
         return
-    if _is_truthy_env(os.getenv("INGESTION_ALLOW_REMOTE_DB")):
+    if worker_user_id:
         logger.warning(
-            "Allowing remote DB for local ingestion worker due "
-            "INGESTION_ALLOW_REMOTE_DB override"
+            "Allowing remote DB for local ingestion worker because claims are "
+            "scoped to user_id=%s",
+            worker_user_id,
         )
         return
     host = _database_host(settings.database_url) or "unknown"
     raise RuntimeError(
         "Refusing to start ingestion worker in local/dev mode against remote DB "
-        f"host '{host}'. Set INGESTION_ALLOW_REMOTE_DB=1 to override."
+        f"host '{host}' without a scoped worker user. Set TEST_USER_ID or "
+        "INGESTION_WORKER_USER_ID."
     )
 
 
@@ -2179,7 +2177,7 @@ def worker_loop() -> None:
     """Run the ingestion worker loop that leases and processes pending jobs."""
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = _resolve_worker_user_id()
-    _enforce_safe_dev_worker_configuration()
+    _enforce_safe_dev_worker_configuration(worker_user_id)
     _ensure_stdio()
     if shutil.which("soffice") is None:
         logger.warning(

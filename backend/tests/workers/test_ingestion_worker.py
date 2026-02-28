@@ -403,9 +403,8 @@ def test_enforce_safe_dev_worker_configuration_allows_local_db(monkeypatch):
         "database_url",
         "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test",
     )
-    monkeypatch.delenv("INGESTION_ALLOW_REMOTE_DB", raising=False)
 
-    ingestion_worker._enforce_safe_dev_worker_configuration()
+    ingestion_worker._enforce_safe_dev_worker_configuration(None)
 
 
 def test_enforce_safe_dev_worker_configuration_blocks_remote_db(monkeypatch):
@@ -415,22 +414,22 @@ def test_enforce_safe_dev_worker_configuration_blocks_remote_db(monkeypatch):
         "database_url",
         "postgresql://user:pass@aws-1-eu-central-1.pooler.supabase.com:6543/postgres",
     )
-    monkeypatch.delenv("INGESTION_ALLOW_REMOTE_DB", raising=False)
 
     with pytest.raises(RuntimeError, match="Refusing to start ingestion worker"):
-        ingestion_worker._enforce_safe_dev_worker_configuration()
+        ingestion_worker._enforce_safe_dev_worker_configuration(None)
 
 
-def test_enforce_safe_dev_worker_configuration_allows_remote_db_override(monkeypatch):
+def test_enforce_safe_dev_worker_configuration_allows_remote_db_scoped_worker(
+    monkeypatch,
+):
     monkeypatch.setattr(ingestion_worker.settings, "app_env", "development")
     monkeypatch.setattr(
         ingestion_worker.settings,
         "database_url",
         "postgresql://user:pass@aws-1-eu-central-1.pooler.supabase.com:6543/postgres",
     )
-    monkeypatch.setenv("INGESTION_ALLOW_REMOTE_DB", "1")
 
-    ingestion_worker._enforce_safe_dev_worker_configuration()
+    ingestion_worker._enforce_safe_dev_worker_configuration("fallback-user")
 
 
 def test_enforce_safe_dev_worker_configuration_skips_production(monkeypatch):
@@ -440,6 +439,5 @@ def test_enforce_safe_dev_worker_configuration_skips_production(monkeypatch):
         "database_url",
         "postgresql://user:pass@aws-1-eu-central-1.pooler.supabase.com:6543/postgres",
     )
-    monkeypatch.delenv("INGESTION_ALLOW_REMOTE_DB", raising=False)
 
-    ingestion_worker._enforce_safe_dev_worker_configuration()
+    ingestion_worker._enforce_safe_dev_worker_configuration(None)
