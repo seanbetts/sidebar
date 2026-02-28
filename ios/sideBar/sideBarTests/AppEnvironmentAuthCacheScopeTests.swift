@@ -4,6 +4,7 @@ import sideBarShared
 
 @MainActor
 final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
+    private static var retainedEnvironments: [AppEnvironment] = []
     private let cacheScopeKey = AppStorageKeys.cacheScopeUserId
 
     override func setUp() {
@@ -56,7 +57,9 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
             authSession: authSession,
             cacheClient: InMemoryCacheClient()
         )
-        return AppEnvironment(container: container)
+        let environment = AppEnvironment(container: container)
+        Self.retainedEnvironments.append(environment)
+        return environment
     }
 
     private func primeCachedData(_ environment: AppEnvironment) {
