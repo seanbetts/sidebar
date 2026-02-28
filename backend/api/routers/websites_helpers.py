@@ -2,104 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
-import logging
-import uuid
-from typing import Any
-
 from sqlalchemy import inspect
 from sqlalchemy.orm.attributes import NO_VALUE
 
-from api.db.session import SessionLocal, set_session_user_id
 from api.models.website import Website
-from api.services.web_save_error_service import (
-    classify_web_save_failure,
-    classify_web_save_result,
-    encode_job_error,
-)
-from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_reading_time import (
     extract_reading_time_from_frontmatter,
     normalize_reading_time,
 )
-
-logger = logging.getLogger(__name__)
-
-
-def normalize_url(value: str) -> str:
-    """Ensure the URL has a scheme."""
-    if value.startswith(("http://", "https://")):
-        return value
-    return f"https://{value}"
-
-
-def run_quick_save(
-    job_id: uuid.UUID,
-    user_id: str,
-    url: str,
-    title: str | None,
-    executor: Any,
-) -> None:
-    """Background task to save a website using the canonical web-save skill path."""
-    if title:
-        logger.info(
-            "web-save quick-save title override ignored; canonical "
-            "skill pipeline does not accept title"
-        )
-    with SessionLocal() as db:
-        set_session_user_id(db, user_id)
-        WebsiteProcessingService.update_job(db, job_id, status="running")
-        try:
-            result = asyncio.run(
-                executor.execute(
-                    "web-save",
-                    "save_url.py",
-                    [url, "--database", "--user-id", user_id],
-                    user_id=user_id,
-                )
-            )
-            if not result.get("success"):
-                classified = classify_web_save_result(
-                    result,
-                    url=url,
-                    target_url=url,
-                )
-                WebsiteProcessingService.update_job(
-                    db,
-                    job_id,
-                    status="failed",
-                    error_message=encode_job_error(classified),
-                )
-                return
-
-            data = result.get("data") if isinstance(result.get("data"), dict) else {}
-            website_id_raw = data.get("id")
-            website_id: uuid.UUID | None = None
-            if isinstance(website_id_raw, str):
-                try:
-                    website_id = uuid.UUID(website_id_raw)
-                except ValueError:
-                    website_id = None
-            WebsiteProcessingService.update_job(
-                db,
-                job_id,
-                status="completed",
-                website_id=website_id,
-            )
-        except Exception as exc:
-            WebsiteProcessingService.update_job(
-                db,
-                job_id,
-                status="failed",
-                error_message=encode_job_error(
-                    classify_web_save_failure(
-                        upstream_error_type=type(exc).__name__,
-                        upstream_message=str(exc),
-                        url=url,
-                        target_url=url,
-                    )
-                ),
-            )
 
 
 def website_summary(website: Website) -> dict:

@@ -12,11 +12,13 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import argparse
 import json
 import logging
 import random
 import sys
+import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -71,48 +73,47 @@ def ingest_url_via_pipeline(
     added_at: datetime | None,
     archived: bool,
 ) -> None:
-    """Ingest a URL via the app's quick-save pipeline and apply GoodLinks metadata."""
+    """Ingest a URL via the canonical website save pipeline and apply metadata."""
     from api.config import settings
     from api.db.session import SessionLocal, set_session_user_id
-    from api.routers.websites_helpers import run_quick_save
     from api.services.agent.skills.executor import SkillExecutor
-    from api.services.website_processing_service import WebsiteProcessingService
+    from api.services.web_save_error_service import classify_web_save_result
     from api.services.websites_service import WebsitesService
 
-    with SessionLocal() as db:
-        set_session_user_id(db, user_id)
-        job = WebsiteProcessingService.create_job(db, user_id, url)
-
     executor = SkillExecutor(settings.skills_dir, settings.workspace_base)
-    run_quick_save(job.id, user_id, url, None, executor)
+    result = asyncio.run(
+        executor.execute(
+            "web-save",
+            "save_url.py",
+            [url, "--database", "--user-id", user_id],
+            user_id=user_id,
+        )
+    )
+    if not result.get("success"):
+        classified = classify_web_save_result(result, url=url, target_url=url)
+        raise RuntimeError(
+            f"Ingestion pipeline failed for {url}: {classified.get('message')}"
+        )
+    data = result.get("data") if isinstance(result.get("data"), dict) else {}
+    website_id_raw = data.get("id")
+    if not isinstance(website_id_raw, str):
+        raise RuntimeError(f"Ingestion pipeline returned invalid payload for {url}")
+    website_id = uuid.UUID(website_id_raw)
 
     with SessionLocal() as db:
         set_session_user_id(db, user_id)
-        completed_job = WebsiteProcessingService.get_job(db, user_id, job.id)
-        if (
-            completed_job is None
-            or completed_job.status != "completed"
-            or completed_job.website_id is None
-        ):
-            error_message = (
-                completed_job.error_message if completed_job else "job not found"
-            )
-            raise RuntimeError(
-                f"Ingestion pipeline failed for {url}: {error_message or 'unknown error'}"
-            )
-
         if added_at is not None:
             WebsitesService.update_website(
                 db,
                 user_id,
-                completed_job.website_id,
+                website_id,
                 saved_at=added_at,
             )
         if archived:
             WebsitesService.update_archived(
                 db,
                 user_id,
-                completed_job.website_id,
+                website_id,
                 archived=True,
             )
 

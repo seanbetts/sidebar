@@ -154,36 +154,6 @@ private struct TranscriptQueueData: Decodable {
     let fileId: String?
 }
 
-/// Represents a website quick save response struct.
-public struct WebsiteQuickSaveResponse: Codable {
-    /// The success value.
-    public let success: Bool
-    /// The data value.
-    public let data: WebsiteQuickSaveData?
-}
-
-/// Represents a website quick save data struct.
-public struct WebsiteQuickSaveData: Codable {
-    /// The job id value.
-    public let jobId: String
-}
-
-/// Represents a website quick save job struct.
-public struct WebsiteQuickSaveJob: Codable {
-    /// The id value.
-    public let id: String
-    /// The status value.
-    public let status: String
-    /// The error message value.
-    public let errorMessage: String?
-    /// The website id value.
-    public let websiteId: String?
-    /// The created at value.
-    public let createdAt: String?
-    /// The updated at value.
-    public let updatedAt: String?
-}
-
 /// Represents a website save response struct.
 public struct WebsiteSaveResponse: Codable {
     /// The success value.

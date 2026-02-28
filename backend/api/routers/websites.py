@@ -4,7 +4,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request
+from fastapi import APIRouter, Body, Depends, Request
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
@@ -13,13 +13,9 @@ from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
 from api.routers.download_headers import markdown_download_headers
-from api.routers.websites_helpers import normalize_url, run_quick_save, website_summary
+from api.routers.websites_helpers import website_summary
 from api.schemas.filters import WebsiteFilters
-from api.services.web_save_error_service import (
-    classify_web_save_result,
-    decode_job_error,
-)
-from api.services.website_processing_service import WebsiteProcessingService
+from api.services.web_save_error_service import classify_web_save_result
 from api.services.website_transcript_service import WebsiteTranscriptService
 from api.services.websites_service import WebsitesService
 from api.services.websites_sync_service import WebsitesSyncService
@@ -138,60 +134,6 @@ def search_websites(
 
     websites = WebsitesService.search_websites(db, user_id, query, limit=limit)
     return {"items": [website_summary(site) for site in websites]}
-
-
-@router.post("/quick-save")
-def quick_save_website(
-    request_obj: Request,
-    request: dict,
-    background_tasks: BackgroundTasks,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Queue a quick-save job that executes the canonical website save pipeline."""
-    url = str(request.get("url", "")).strip()
-    if not url:
-        raise BadRequestError("url required")
-    title = request.get("title")
-    normalized_url = normalize_url(url)
-
-    job = WebsiteProcessingService.create_job(db, user_id, normalized_url)
-    background_tasks.add_task(
-        run_quick_save,
-        job.id,
-        user_id,
-        normalized_url,
-        title,
-        request_obj.app.state.executor,
-    )
-    return JSONResponse(
-        status_code=202, content={"success": True, "data": {"job_id": str(job.id)}}
-    )
-
-
-@router.get("/quick-save/{job_id}")
-def get_quick_save_job(
-    job_id: uuid.UUID,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Return quick-save job status."""
-    job = WebsiteProcessingService.get_job(db, user_id, job_id)
-    if not job:
-        raise NotFoundError("Website job", str(job_id))
-
-    error_message, error_payload = decode_job_error(job.error_message)
-    return {
-        "id": str(job.id),
-        "status": job.status,
-        "error_message": error_message,
-        "error": error_payload,
-        "website_id": str(job.website_id) if job.website_id else None,
-        "created_at": job.created_at.isoformat() if job.created_at else None,
-        "updated_at": job.updated_at.isoformat() if job.updated_at else None,
-    }
 
 
 @router.post("/save")

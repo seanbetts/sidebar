@@ -1,4 +1,3 @@
-import json
 import os
 import uuid
 from datetime import UTC, datetime
@@ -6,7 +5,6 @@ from datetime import UTC, datetime
 from api.config import settings
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.website import Website
-from api.models.website_processing_job import WebsiteProcessingJob
 from api.routers.websites_helpers import website_summary
 from sqlalchemy import inspect
 from sqlalchemy.orm import load_only
@@ -97,34 +95,19 @@ def test_websites_save_reports_no_readable_content(test_client, monkeypatch):
     assert captured["user_id"] == TEST_USER_ID
 
 
-def test_quick_save_job_exposes_structured_error(test_client, test_db):
-    job_id = uuid.uuid4()
-    payload = {
-        "code": "WEB_SAVE_JINA_PAYMENT_REQUIRED",
-        "message": "Unable to save website: Jina fallback returned 402 Payment Required.",
-        "details": {"http_status_code": 402, "url": "https://example.com"},
-        "suggestions": ["Check JINA_API_KEY billing/quota status."],
-    }
-    job = WebsiteProcessingJob(
-        id=job_id,
-        user_id=TEST_USER_ID,
-        url="https://example.com",
-        status="failed",
-        error_message=json.dumps(payload),
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
-    )
-    test_db.add(job)
-    test_db.commit()
-
-    response = test_client.get(
-        f"/api/websites/quick-save/{job_id}",
+def test_quick_save_routes_are_removed(test_client):
+    create_response = test_client.post(
+        "/api/websites/quick-save",
+        json={"url": "https://example.com"},
         headers=_auth_headers(),
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["error_message"] == payload["message"]
-    assert data["error"]["code"] == "WEB_SAVE_JINA_PAYMENT_REQUIRED"
+    assert create_response.status_code == 404
+
+    status_response = test_client.get(
+        f"/api/websites/quick-save/{uuid.uuid4()}",
+        headers=_auth_headers(),
+    )
+    assert status_response.status_code == 404
 
 
 def test_websites_get_success(test_client, test_db):

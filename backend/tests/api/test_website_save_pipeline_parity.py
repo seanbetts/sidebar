@@ -13,7 +13,22 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
 
 
-def test_save_and_quick_save_share_same_execution_pipeline(test_client, monkeypatch):
+def test_legacy_quick_save_routes_are_removed(test_client):
+    create_response = test_client.post(
+        "/api/websites/quick-save",
+        json={"url": "https://example.com/article"},
+        headers=_auth_headers(),
+    )
+    assert create_response.status_code == 404
+
+    status_response = test_client.get(
+        f"/api/websites/quick-save/{uuid.uuid4()}",
+        headers=_auth_headers(),
+    )
+    assert status_response.status_code == 404
+
+
+def test_save_website_endpoint_uses_canonical_script_contract(test_client, monkeypatch):
     url = "https://example.com/article"
     website_id = uuid.uuid4()
     expected_data = {
@@ -45,29 +60,11 @@ def test_save_and_quick_save_share_same_execution_pipeline(test_client, monkeypa
     assert save_response.status_code == 200
     assert save_response.json().get("data") == expected_data
 
-    quick_save_response = test_client.post(
-        "/api/websites/quick-save",
-        json={"url": url},
-        headers=_auth_headers(),
-    )
-    assert quick_save_response.status_code == 202
-    quick_job_id = quick_save_response.json()["data"]["job_id"]
-
-    quick_job_response = test_client.get(
-        f"/api/websites/quick-save/{quick_job_id}",
-        headers=_auth_headers(),
-    )
-    assert quick_job_response.status_code == 200
-    quick_job_payload = quick_job_response.json()
-    assert quick_job_payload["status"] == "completed"
-    assert quick_job_payload["website_id"] == str(website_id)
-
-    assert len(calls) == 2
-    for call in calls:
-        assert call["skill"] == "web-save"
-        assert call["script"] == "save_url.py"
-        assert call["args"] == [url, "--database", "--user-id", TEST_USER_ID]
-        assert call["user_id"] == TEST_USER_ID
+    assert len(calls) == 1
+    assert calls[0]["skill"] == "web-save"
+    assert calls[0]["script"] == "save_url.py"
+    assert calls[0]["args"] == [url, "--database", "--user-id", TEST_USER_ID]
+    assert calls[0]["user_id"] == TEST_USER_ID
 
 
 @pytest.mark.asyncio
