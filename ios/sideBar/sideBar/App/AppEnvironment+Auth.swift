@@ -235,6 +235,6 @@ extension AppEnvironment {
 
         // Navigate to websites and save the URL
         commandSelection = .websites
-        _ = await websitesViewModel.saveWebsite(url: url.absoluteString)
+        _ = await enqueueWebsiteSave(url: url.absoluteString, selectAfterSave: true)
     }
 }

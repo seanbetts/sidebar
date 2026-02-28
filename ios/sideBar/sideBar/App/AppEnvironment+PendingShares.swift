@@ -154,6 +154,56 @@ func shouldKeepPendingShareItem(
 }
 
 extension AppEnvironment {
+    public func enqueueWebsiteSave(
+        url: String,
+        selectAfterSave: Bool = true
+    ) async -> Bool {
+        guard let normalized = WebsiteURLValidator.normalizedCandidate(url) else {
+            websitesViewModel.saveErrorMessage = "Enter a valid URL."
+            return false
+        }
+        guard let queuedItem = PendingShareStore.shared.enqueueWebsite(
+            url: normalized.absoluteString
+        ) else {
+            websitesViewModel.saveErrorMessage = "Could not save for later."
+            return false
+        }
+        websitesViewModel.saveErrorMessage = nil
+
+        let resetQueueItem = PendingShareItem(
+            id: queuedItem.id,
+            kind: queuedItem.kind,
+            createdAt: queuedItem.createdAt,
+            url: queuedItem.url,
+            filePath: queuedItem.filePath,
+            filename: queuedItem.filename,
+            mimeType: queuedItem.mimeType,
+            retryCount: nil,
+            nextRetryAt: nil,
+            lastError: nil
+        )
+        var items = PendingShareStore.shared.loadAll()
+        if let index = items.firstIndex(where: { $0.id == queuedItem.id }) {
+            items[index] = resetQueueItem
+            PendingShareStore.shared.replaceAll(items)
+        }
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(
+            PendingShareStore.shared.loadAll(),
+            readingQueueItemId: queuedItem.id
+        )
+
+        guard !connectivityMonitor.isOffline else {
+            if selectAfterSave {
+                toastCenter.show(message: "Saved for later", style: .success)
+            }
+            return true
+        }
+        return await processQueuedWebsiteNow(
+            queueItemId: queuedItem.id,
+            selectAfterSave: selectAfterSave
+        )
+    }
+
     public func consumePendingShares() async {
         guard authState == .active else { return }
         guard !isConsumingPendingShares else { return }
@@ -236,14 +286,42 @@ extension AppEnvironment {
         return shouldKeep ? item : nil
     }
 
+    private func processQueuedWebsiteNow(
+        queueItemId: UUID,
+        selectAfterSave: Bool
+    ) async -> Bool {
+        let now = Date()
+        let items = PendingShareStore.shared.loadAll()
+        guard let item = items.first(where: { $0.id == queueItemId }) else {
+            return true
+        }
+        let processed = await processPendingWebsite(
+            item,
+            now: now,
+            selectAfterSave: selectAfterSave,
+            forceAttempt: true
+        )
+        let updatedItems = items.compactMap { current -> PendingShareItem? in
+            if current.id == queueItemId {
+                return processed
+            }
+            return current
+        }
+        PendingShareStore.shared.replaceAll(updatedItems)
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(updatedItems)
+        return processed == nil
+    }
+
     private func processPendingWebsite(
         _ item: PendingShareItem,
-        now: Date
+        now: Date,
+        selectAfterSave: Bool = false,
+        forceAttempt: Bool = false
     ) async -> PendingShareItem? {
-        if isPendingWebsiteFailed(item) {
+        if isPendingWebsiteFailed(item) && !forceAttempt {
             return item
         }
-        guard isPendingWebsiteReadyForRetry(item, now: now) else {
+        guard forceAttempt || isPendingWebsiteReadyForRetry(item, now: now) else {
             return item
         }
         guard let url = item.url else {
@@ -252,7 +330,7 @@ extension AppEnvironment {
         websitesViewModel.saveErrorMessage = nil
         let saved = await websitesViewModel.saveWebsite(
             url: url,
-            selectAfterSave: false
+            selectAfterSave: selectAfterSave
         )
         guard !saved else {
             return nil

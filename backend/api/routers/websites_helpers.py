@@ -2,40 +2,26 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
-from datetime import UTC, datetime
-from urllib.parse import urlparse
+from typing import Any
 
 from sqlalchemy import inspect
 from sqlalchemy.orm.attributes import NO_VALUE
 
-from api.config import settings
 from api.db.session import SessionLocal, set_session_user_id
 from api.models.website import Website
-from api.services.favicon_service import FaviconService
-from api.services.jina_service import JinaService
-from api.services.url_normalization_service import extract_youtube_video_id
 from api.services.web_save_error_service import (
     classify_web_save_failure,
+    classify_web_save_result,
     encode_job_error,
 )
-from api.services.web_save_parser import (
-    LocalParseFallbackError,
-    extract_favicon_url,
-    parse_url_local,
-)
-from api.services.web_save_parser_apple_news import resolve_apple_news_source_url
-from api.services.web_save_parser_wsj import apply_wsj_content_guards
-from api.services.web_save_parser_youtube import fetch_youtube_duration_seconds
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_reading_time import (
     extract_reading_time_from_frontmatter,
     normalize_reading_time,
-    reading_time_from_duration_seconds,
 )
-from api.services.website_title_service import resolve_website_title
-from api.services.websites_service import WebsitesService
 
 logger = logging.getLogger(__name__)
 
@@ -47,246 +33,72 @@ def normalize_url(value: str) -> str:
     return f"https://{value}"
 
 
-def _resolve_jina_reading_time(
-    *,
-    metadata: dict[str, str | None],
-    source: str,
-    fallback_url: str,
-) -> str | None:
-    metadata_reading_time = metadata.get("reading_time")
-    if isinstance(metadata_reading_time, str) and metadata_reading_time.strip():
-        normalized = normalize_reading_time(metadata_reading_time)
-        if normalized:
-            return normalized
-
-    for candidate in (source, fallback_url):
-        if not candidate or extract_youtube_video_id(candidate) is None:
-            continue
-        duration_seconds = fetch_youtube_duration_seconds(candidate)
-        from_duration = reading_time_from_duration_seconds(duration_seconds)
-        if from_duration:
-            return from_duration
-    return None
-
-
 def run_quick_save(
-    job_id: uuid.UUID, user_id: str, url: str, title: str | None
+    job_id: uuid.UUID,
+    user_id: str,
+    url: str,
+    title: str | None,
+    executor: Any,
 ) -> None:
-    """Background task to save a website quickly."""
+    """Background task to save a website using the canonical web-save skill path."""
+    if title:
+        logger.info(
+            "web-save quick-save title override ignored; canonical "
+            "skill pipeline does not accept title"
+        )
     with SessionLocal() as db:
         set_session_user_id(db, user_id)
         WebsiteProcessingService.update_job(db, job_id, status="running")
-        web_save_mode = settings.web_save_mode.lower().strip()
-        target_url = resolve_apple_news_source_url(url)
-        logger.info(
-            "web-save quick_save start url=%s target_url=%s mode=%s",
-            url,
-            target_url,
-            web_save_mode,
-        )
-        local_parse_error: str | None = None
         try:
-            local_parsed = None
-            if web_save_mode in {"local", "compare"}:
-                try:
-                    local_parsed = parse_url_local(target_url)
-                    logger.info(
-                        (
-                            "web-save local parse ok url=%s target_url=%s "
-                            "title=%s content_len=%s"
-                        ),
-                        url,
-                        target_url,
-                        local_parsed.title,
-                        len(local_parsed.content),
-                    )
-                except LocalParseFallbackError as exc:
-                    logger.info(
-                        (
-                            "web-save local parse requested fallback url=%s "
-                            "fallback=%s rule=%s"
-                        ),
-                        target_url,
-                        exc.fallback,
-                        exc.rule_id,
-                    )
-                    local_parsed = None
-                except Exception as exc:
-                    local_parse_error = str(exc)
-                    logger.info(
-                        "web-save local parse failed url=%s error=%s",
-                        target_url,
-                        local_parse_error,
-                    )
-                    if web_save_mode == "local":
-                        local_parsed = None
-
-            if web_save_mode == "local" and local_parsed:
-                local_reading_time = extract_reading_time_from_frontmatter(
-                    local_parsed.content
+            result = asyncio.run(
+                executor.execute(
+                    "web-save",
+                    "save_url.py",
+                    [url, "--database", "--user-id", user_id],
+                    user_id=user_id,
                 )
-                website = WebsitesService.upsert_website(
-                    db,
-                    user_id,
+            )
+            if not result.get("success"):
+                classified = classify_web_save_result(
+                    result,
                     url=url,
-                    title=local_parsed.title,
-                    content=local_parsed.content,
-                    source=local_parsed.source,
-                    url_full=url,
-                    saved_at=datetime.now(UTC),
-                    published_at=local_parsed.published_at,
-                    reading_time=local_reading_time,
-                    pinned=False,
-                    archived=False,
+                    target_url=url,
                 )
-            else:
-                logger.info(
-                    "web-save using jina url=%s target_url=%s mode=%s",
-                    url,
-                    target_url,
-                    web_save_mode,
-                )
-                markdown = JinaService.fetch_markdown(target_url)
-                metadata, cleaned = JinaService.parse_metadata(markdown)
-                source = metadata.get("url_source") or target_url
-                cleaned = JinaService.clean_markdown_for_source(cleaned, source)
-                cleaned, _wsj_flags = apply_wsj_content_guards(
-                    domain=urlparse(source).netloc.lower().strip("."),
-                    raw_html="",
-                    marker_markdown=markdown,
-                    markdown=cleaned,
-                )
-                candidate_title = (
-                    title
-                    or metadata.get("title")
-                    or JinaService.extract_title(cleaned, target_url)
-                )
-                resolved_title = (
-                    resolve_website_title(candidate_title, url=source)
-                    or urlparse(source).netloc
-                )
-                published_at = JinaService.parse_published_at(
-                    metadata.get("published_time")
-                )
-                reading_time = _resolve_jina_reading_time(
-                    metadata=metadata,
-                    source=source,
-                    fallback_url=target_url,
-                )
-                website = WebsitesService.upsert_website(
+                WebsiteProcessingService.update_job(
                     db,
-                    user_id,
-                    url=url,
-                    title=resolved_title,
-                    content=cleaned,
-                    source=source,
-                    url_full=url,
-                    saved_at=datetime.now(UTC),
-                    published_at=published_at,
-                    reading_time=reading_time,
-                    pinned=False,
-                    archived=False,
+                    job_id,
+                    status="failed",
+                    error_message=encode_job_error(classified),
                 )
-                if web_save_mode == "compare" and local_parsed:
-                    logger.info(
-                        (
-                            "Compare parse for %s: jina_len=%s local_len=%s "
-                            "jina_title=%s local_title=%s"
-                        ),
-                        url,
-                        len(cleaned),
-                        len(local_parsed.content),
-                        resolved_title,
-                        local_parsed.title,
-                    )
-            favicon_url = None
-            if local_parsed and local_parsed.favicon_url:
-                favicon_url = local_parsed.favicon_url
-            if favicon_url is None:
+                return
+
+            data = result.get("data") if isinstance(result.get("data"), dict) else {}
+            website_id_raw = data.get("id")
+            website_id: uuid.UUID | None = None
+            if isinstance(website_id_raw, str):
                 try:
-                    favicon_url = extract_favicon_url(url)
-                except Exception:
-                    favicon_url = None
-
-            if favicon_url:
-                metadata_payload = FaviconService.metadata_payload(
-                    favicon_url=favicon_url
-                )
-                if metadata_payload:
-                    try:
-                        WebsitesService.update_metadata(
-                            db,
-                            user_id,
-                            website.id,
-                            metadata_updates=metadata_payload,
-                        )
-                    except Exception as exc:
-                        logger.warning(
-                            "favicon metadata update failed url=%s error=%s",
-                            url,
-                            str(exc),
-                        )
-
-                shared_key = None
-                try:
-                    shared_key = FaviconService.existing_storage_key(website.domain)
-                except Exception as exc:
-                    logger.warning(
-                        "favicon shared key check failed url=%s error=%s", url, str(exc)
-                    )
-
-                if shared_key:
-                    try:
-                        WebsitesService.update_metadata(
-                            db,
-                            user_id,
-                            website.id,
-                            metadata_updates={"favicon_r2_key": shared_key},
-                        )
-                    except Exception as exc:
-                        logger.warning(
-                            "favicon shared key update failed url=%s error=%s",
-                            url,
-                            str(exc),
-                        )
-                else:
-                    try:
-                        favicon_key = FaviconService.fetch_and_store_favicon(
-                            website.domain,
-                            favicon_url,
-                        )
-                        if favicon_key:
-                            WebsitesService.update_metadata(
-                                db,
-                                user_id,
-                                website.id,
-                                metadata_updates={"favicon_r2_key": favicon_key},
-                            )
-                    except Exception as exc:
-                        logger.warning(
-                            "favicon upload failed url=%s error=%s", url, str(exc)
-                        )
-
+                    website_id = uuid.UUID(website_id_raw)
+                except ValueError:
+                    website_id = None
             WebsiteProcessingService.update_job(
                 db,
                 job_id,
                 status="completed",
-                website_id=website.id,
+                website_id=website_id,
             )
         except Exception as exc:
-            classified = classify_web_save_failure(
-                upstream_error_type=type(exc).__name__,
-                upstream_message=str(exc),
-                url=url,
-                target_url=target_url,
-                mode=web_save_mode,
-                local_parse_error=local_parse_error,
-            )
             WebsiteProcessingService.update_job(
                 db,
                 job_id,
                 status="failed",
-                error_message=encode_job_error(classified),
+                error_message=encode_job_error(
+                    classify_web_save_failure(
+                        upstream_error_type=type(exc).__name__,
+                        upstream_message=str(exc),
+                        url=url,
+                        target_url=url,
+                    )
+                ),
             )
 
 

@@ -142,13 +142,14 @@ def search_websites(
 
 @router.post("/quick-save")
 def quick_save_website(
+    request_obj: Request,
     request: dict,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """Save a website with lightweight Jina fetch in the background."""
+    """Queue a quick-save job that executes the canonical website save pipeline."""
     url = str(request.get("url", "")).strip()
     if not url:
         raise BadRequestError("url required")
@@ -156,7 +157,14 @@ def quick_save_website(
     normalized_url = normalize_url(url)
 
     job = WebsiteProcessingService.create_job(db, user_id, normalized_url)
-    background_tasks.add_task(run_quick_save, job.id, user_id, normalized_url, title)
+    background_tasks.add_task(
+        run_quick_save,
+        job.id,
+        user_id,
+        normalized_url,
+        title,
+        request_obj.app.state.executor,
+    )
     return JSONResponse(
         status_code=202, content={"success": True, "data": {"job_id": str(job.id)}}
     )

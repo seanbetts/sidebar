@@ -254,7 +254,10 @@ extension WebsitesPanelView {
         newWebsiteUrl = ""
         isNewWebsitePresented = false
         Task {
-            let saved = await viewModel.saveWebsite(url: normalized.absoluteString)
+            let saved = await appEnvironment.enqueueWebsiteSave(
+                url: normalized.absoluteString,
+                selectAfterSave: true
+            )
             if saved {
                 appEnvironment.notesViewModel.clearSelection()
                 appEnvironment.ingestionViewModel.clearSelection()

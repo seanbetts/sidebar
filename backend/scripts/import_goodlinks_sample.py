@@ -72,8 +72,10 @@ def ingest_url_via_pipeline(
     archived: bool,
 ) -> None:
     """Ingest a URL via the app's quick-save pipeline and apply GoodLinks metadata."""
+    from api.config import settings
     from api.db.session import SessionLocal, set_session_user_id
     from api.routers.websites_helpers import run_quick_save
+    from api.services.agent.skills.executor import SkillExecutor
     from api.services.website_processing_service import WebsiteProcessingService
     from api.services.websites_service import WebsitesService
 
@@ -81,7 +83,8 @@ def ingest_url_via_pipeline(
         set_session_user_id(db, user_id)
         job = WebsiteProcessingService.create_job(db, user_id, url)
 
-    run_quick_save(job.id, user_id, url, None)
+    executor = SkillExecutor(settings.skills_dir, settings.workspace_base)
+    run_quick_save(job.id, user_id, url, None, executor)
 
     with SessionLocal() as db:
         set_session_user_id(db, user_id)

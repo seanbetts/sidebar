@@ -100,11 +100,6 @@ private struct WebsiteTranscriptRequest: Codable {
     let url: String
 }
 
-private struct WebsiteQuickSaveRequest: Codable {
-    let url: String
-    let title: String?
-}
-
 private struct WebsitePinRequest: Codable {
     let pinned: Bool
     let clientUpdatedAt: String?
@@ -195,14 +190,6 @@ public struct WebsitesAPI {
             "websites/\(id)/youtube-transcript",
             method: "POST",
             body: WebsiteTranscriptRequest(url: url)
-        )
-    }
-
-    public func quickSave(url: String, title: String? = nil) async throws -> WebsiteQuickSaveResponse {
-        return try await client.request(
-            "websites/quick-save",
-            method: "POST",
-            body: WebsiteQuickSaveRequest(url: url, title: title)
         )
     }
 
