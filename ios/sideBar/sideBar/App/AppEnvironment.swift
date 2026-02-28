@@ -106,7 +106,12 @@ public final class AppEnvironment: ObservableObject {
         let storeStart = CFAbsoluteTimeGetCurrent()
         #endif
         self.container = container
-        let dependencies = Self.buildDependencies(container: container, isTestMode: isTestMode)
+        let workspaceStore = WorkspaceStore()
+        let dependencies = Self.buildDependencies(
+            container: container,
+            isTestMode: isTestMode,
+            workspaceStateProvider: { workspaceStore.state }
+        )
         self.themeManager = dependencies.themeManager
         self.chatStore = dependencies.chatStore
         self.notesStore = dependencies.notesStore
@@ -123,7 +128,7 @@ public final class AppEnvironment: ObservableObject {
         self.websitesViewModel = dependencies.websitesViewModel
         self.tasksViewModel = dependencies.tasksViewModel
         self.navigation = NavigationCoordinator()
-        self.workspaceStore = WorkspaceStore()
+        self.workspaceStore = workspaceStore
         self.memoriesViewModel = dependencies.memoriesViewModel
         self.settingsViewModel = dependencies.settingsViewModel
         self.weatherViewModel = dependencies.weatherViewModel

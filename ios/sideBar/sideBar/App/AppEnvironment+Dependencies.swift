@@ -32,14 +32,16 @@ extension AppEnvironment {
 
     static func buildDependencies(
         container: ServiceContainer,
-        isTestMode: Bool
+        isTestMode: Bool,
+        workspaceStateProvider: @escaping () -> WorkspaceState? = { nil }
     ) -> EnvironmentDependencies {
         let core = CoreDependencyBuilder.build(container: container, isTestMode: isTestMode)
         let stores = StoreDependencyBuilder.build(container: container, core: core)
         let viewModels = ViewModelDependencyBuilder.build(
             container: container,
             core: core,
-            stores: stores
+            stores: stores,
+            workspaceStateProvider: workspaceStateProvider
         )
 
         return EnvironmentDependencies(

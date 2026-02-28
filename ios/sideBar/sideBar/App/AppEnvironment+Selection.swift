@@ -1,4 +1,3 @@
-import Combine
 import Foundation
 
 extension AppEnvironment {
@@ -16,44 +15,8 @@ extension AppEnvironment {
     }
 
     func observeSelectionChanges() {
-        notesViewModel.$selectedNoteId
-            .compactMap { $0 }
-            .sink { [weak self] _ in
-                self?.clearNonNoteSelections()
-            }
-            .store(in: &cancellables)
-
-        websitesViewModel.$selectedWebsiteId
-            .compactMap { $0 }
-            .sink { [weak self] _ in
-                self?.clearNonWebsiteSelections()
-            }
-            .store(in: &cancellables)
-
-        ingestionViewModel.$selectedFileId
-            .compactMap { $0 }
-            .sink { [weak self] _ in
-                self?.clearNonFileSelections()
-            }
-            .store(in: &cancellables)
-    }
-
-    private func clearNonNoteSelections() {
-        websitesViewModel.clearSelection()
-        ingestionViewModel.clearSelection()
-        // NOTE: Clear tasks selection once TasksViewModel exists.
-    }
-
-    private func clearNonWebsiteSelections() {
-        notesViewModel.clearSelection()
-        ingestionViewModel.clearSelection()
-        // NOTE: Clear tasks selection once TasksViewModel exists.
-    }
-
-    private func clearNonFileSelections() {
-        notesViewModel.clearSelection()
-        websitesViewModel.clearSelection()
-        // NOTE: Clear tasks selection once TasksViewModel exists.
+        // Phase 7: cross-domain selection is now pane-scoped by workspace visibility.
+        // Keep observers disabled to avoid destructive global selection clearing.
     }
 
     func refreshOnReconnect() {

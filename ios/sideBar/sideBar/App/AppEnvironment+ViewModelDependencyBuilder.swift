@@ -4,6 +4,11 @@ import sideBarShared
 // swiftlint:disable nesting
 extension AppEnvironment {
     struct ViewModelDependencyBuilder {
+        struct WorkspaceContextSection: Equatable {
+            let pane: WorkspacePane
+            let section: AppSection
+        }
+
         struct Output {
             let chatViewModel: ChatViewModel
             let notesViewModel: NotesViewModel
@@ -26,105 +31,228 @@ extension AppEnvironment {
             )
         }
 
+        static func orderedWorkspaceContextSections(
+            workspaceState: WorkspaceState?
+        ) -> [WorkspaceContextSection] {
+            guard let workspaceState else {
+                return []
+            }
+
+            var visible: [WorkspaceContextSection] = []
+            if let section = WorkspaceLegacySectionAdapter.section(
+                from: workspaceState.primaryPane.descriptor
+            ) {
+                visible.append(WorkspaceContextSection(pane: .primary, section: section))
+            }
+            if workspaceState.layout != .compact,
+               let secondaryPane = workspaceState.secondaryPane,
+               let section = WorkspaceLegacySectionAdapter.section(from: secondaryPane.descriptor) {
+                visible.append(WorkspaceContextSection(pane: .secondary, section: section))
+            }
+
+            guard let focusedPane = resolveFocusedPane(
+                workspaceState: workspaceState,
+                visibleSections: visible
+            ) else {
+                return visible
+            }
+
+            return visible.sorted { lhs, rhs in
+                if lhs.pane == rhs.pane {
+                    return false
+                }
+                if lhs.pane == focusedPane {
+                    return true
+                }
+                if rhs.pane == focusedPane {
+                    return false
+                }
+                return lhs.pane == .primary
+            }
+        }
+
+        private static func resolveFocusedPane(
+            workspaceState: WorkspaceState,
+            visibleSections: [WorkspaceContextSection]
+        ) -> WorkspacePane? {
+            let preferredSection = workspaceState.focusedSection ?? workspaceState.activeSection
+            guard let preferredSection else {
+                return visibleSections.first?.pane
+            }
+            return visibleSections.first(where: { $0.section == preferredSection })?.pane
+                ?? visibleSections.first?.pane
+        }
+
         private static func makeChatRequestContext(
             notesViewModel: NotesViewModel,
             notesEditorViewModel: NotesEditorViewModel,
             websitesViewModel: WebsitesViewModel,
             ingestionViewModel: IngestionViewModel,
             weatherViewModel: WeatherViewModel,
-            currentLocationViewModel: CurrentLocationViewModel
+            currentLocationViewModel: CurrentLocationViewModel,
+            workspaceState: WorkspaceState?
         ) -> ChatRequestContext {
             var openContext: [String: AnyCodable] = [:]
-
-            if notesViewModel.selectedNoteId != nil, let activeNote = notesViewModel.activeNote {
-                let noteContent = notesEditorViewModel.currentMarkdownSnapshot(
-                    fallback: activeNote.content
+            let visibleSections = orderedWorkspaceContextSections(workspaceState: workspaceState)
+            let hasWorkspaceSections = !visibleSections.isEmpty
+            let visibleSectionSet = Set(visibleSections.map(\.section))
+            if shouldIncludeContext(
+                for: .notes,
+                hasWorkspaceSections: hasWorkspaceSections,
+                visibleSectionSet: visibleSectionSet,
+                fallbackSelected: notesViewModel.selectedNoteId != nil
+            ) {
+                addNoteContext(
+                    into: &openContext,
+                    notesViewModel: notesViewModel,
+                    notesEditorViewModel: notesEditorViewModel
                 )
-                let noteContext: [String: Any] = [
-                    "id": activeNote.id,
-                    "title": activeNote.name,
-                    "path": activeNote.path,
-                    "content": noteContent
-                ]
-                openContext["note"] = AnyCodable(noteContext)
             }
-
-            if let selectedWebsiteId = websitesViewModel.selectedWebsiteId,
-               let website = websitesViewModel.active,
-               website.id == selectedWebsiteId {
-                let websiteContext: [String: Any] = [
-                    "id": website.id,
-                    "title": website.title,
-                    "url": website.urlFull ?? website.url,
-                    "domain": website.domain,
-                    "content": website.content
-                ]
-                openContext["website"] = AnyCodable(websiteContext)
+            if shouldIncludeContext(
+                for: .websites,
+                hasWorkspaceSections: hasWorkspaceSections,
+                visibleSectionSet: visibleSectionSet,
+                fallbackSelected: websitesViewModel.selectedWebsiteId != nil
+            ) {
+                addWebsiteContext(
+                    into: &openContext,
+                    websitesViewModel: websitesViewModel
+                )
             }
-
-            if let selectedFileId = ingestionViewModel.selectedFileId,
-               let activeMeta = ingestionViewModel.activeMeta,
-               activeMeta.file.id == selectedFileId {
-                var fileContext: [String: Any] = [
-                    "id": activeMeta.file.id,
-                    "filename": activeMeta.file.filenameOriginal,
-                    "mime": activeMeta.file.mimeOriginal
-                ]
-                if let category = activeMeta.file.category {
-                    fileContext["category"] = category
-                }
-                openContext["file"] = AnyCodable(fileContext)
-            }
-
-            var currentWeather: [String: AnyCodable]?
-            if let weather = weatherViewModel.weather {
-                var weatherPayload: [String: AnyCodable] = [
-                    "temperature_c": AnyCodable(weather.temperatureC),
-                    "feels_like_c": AnyCodable(weather.feelsLikeC),
-                    "weather_code": AnyCodable(weather.weatherCode),
-                    "is_day": AnyCodable(weather.isDay)
-                ]
-                if let windSpeed = weather.windSpeedKph {
-                    weatherPayload["wind_speed_kph"] = AnyCodable(windSpeed)
-                }
-                if let windDirection = weather.windDirectionDegrees {
-                    weatherPayload["wind_direction_degrees"] = AnyCodable(windDirection)
-                }
-                if let precipitation = weather.precipitationMm {
-                    weatherPayload["precipitation_mm"] = AnyCodable(precipitation)
-                }
-                if let cloudCover = weather.cloudCoverPercent {
-                    weatherPayload["cloud_cover_percent"] = AnyCodable(cloudCover)
-                }
-                let daily: [[String: Any]] = weather.daily.map { day in
-                    var payload: [String: Any] = [
-                        "weather_code": day.weatherCode,
-                        "temperature_max_c": day.temperatureMaxC,
-                        "temperature_min_c": day.temperatureMinC
-                    ]
-                    if let precipitationProbability = day.precipitationProbabilityMax {
-                        payload["precipitation_probability_max"] = precipitationProbability
-                    }
-                    return payload
-                }
-                weatherPayload["daily"] = AnyCodable(daily)
-                currentWeather = weatherPayload
+            if shouldIncludeContext(
+                for: .files,
+                hasWorkspaceSections: hasWorkspaceSections,
+                visibleSectionSet: visibleSectionSet,
+                fallbackSelected: ingestionViewModel.selectedFileId != nil
+            ) {
+                addFileContext(
+                    into: &openContext,
+                    ingestionViewModel: ingestionViewModel
+                )
             }
 
             return ChatRequestContext(
                 openContext: openContext.isEmpty ? nil : openContext,
                 currentLocation: currentLocationViewModel.currentLocationLabel?.trimmedOrNil,
                 currentLocationLevels: nil,
-                currentWeather: currentWeather,
+                currentWeather: currentWeatherPayload(from: weatherViewModel),
                 currentTimezone: TimeZone.current.identifier
             )
+        }
+
+        private static func shouldIncludeContext(
+            for section: AppSection,
+            hasWorkspaceSections: Bool,
+            visibleSectionSet: Set<AppSection>,
+            fallbackSelected: Bool
+        ) -> Bool {
+            hasWorkspaceSections
+                ? visibleSectionSet.contains(section)
+                : fallbackSelected
+        }
+
+        private static func addNoteContext(
+            into openContext: inout [String: AnyCodable],
+            notesViewModel: NotesViewModel,
+            notesEditorViewModel: NotesEditorViewModel
+        ) {
+            guard let activeNote = notesViewModel.activeNote else { return }
+            let noteContent = notesEditorViewModel.currentMarkdownSnapshot(
+                fallback: activeNote.content
+            )
+            let noteContext: [String: Any] = [
+                "id": activeNote.id,
+                "title": activeNote.name,
+                "path": activeNote.path,
+                "content": noteContent
+            ]
+            openContext["note"] = AnyCodable(noteContext)
+        }
+
+        private static func addWebsiteContext(
+            into openContext: inout [String: AnyCodable],
+            websitesViewModel: WebsitesViewModel
+        ) {
+            guard let selectedWebsiteId = websitesViewModel.selectedWebsiteId,
+                  let website = websitesViewModel.active,
+                  website.id == selectedWebsiteId else {
+                return
+            }
+            let websiteContext: [String: Any] = [
+                "id": website.id,
+                "title": website.title,
+                "url": website.urlFull ?? website.url,
+                "domain": website.domain,
+                "content": website.content
+            ]
+            openContext["website"] = AnyCodable(websiteContext)
+        }
+
+        private static func addFileContext(
+            into openContext: inout [String: AnyCodable],
+            ingestionViewModel: IngestionViewModel
+        ) {
+            guard let selectedFileId = ingestionViewModel.selectedFileId,
+                  let activeMeta = ingestionViewModel.activeMeta,
+                  activeMeta.file.id == selectedFileId else {
+                return
+            }
+            var fileContext: [String: Any] = [
+                "id": activeMeta.file.id,
+                "filename": activeMeta.file.filenameOriginal,
+                "mime": activeMeta.file.mimeOriginal
+            ]
+            if let category = activeMeta.file.category {
+                fileContext["category"] = category
+            }
+            openContext["file"] = AnyCodable(fileContext)
+        }
+
+        private static func currentWeatherPayload(
+            from weatherViewModel: WeatherViewModel
+        ) -> [String: AnyCodable]? {
+            guard let weather = weatherViewModel.weather else {
+                return nil
+            }
+            var weatherPayload: [String: AnyCodable] = [
+                "temperature_c": AnyCodable(weather.temperatureC),
+                "feels_like_c": AnyCodable(weather.feelsLikeC),
+                "weather_code": AnyCodable(weather.weatherCode),
+                "is_day": AnyCodable(weather.isDay)
+            ]
+            if let windSpeed = weather.windSpeedKph {
+                weatherPayload["wind_speed_kph"] = AnyCodable(windSpeed)
+            }
+            if let windDirection = weather.windDirectionDegrees {
+                weatherPayload["wind_direction_degrees"] = AnyCodable(windDirection)
+            }
+            if let precipitation = weather.precipitationMm {
+                weatherPayload["precipitation_mm"] = AnyCodable(precipitation)
+            }
+            if let cloudCover = weather.cloudCoverPercent {
+                weatherPayload["cloud_cover_percent"] = AnyCodable(cloudCover)
+            }
+            let daily: [[String: Any]] = weather.daily.map { day in
+                var payload: [String: Any] = [
+                    "weather_code": day.weatherCode,
+                    "temperature_max_c": day.temperatureMaxC,
+                    "temperature_min_c": day.temperatureMinC
+                ]
+                if let precipitationProbability = day.precipitationProbabilityMax {
+                    payload["precipitation_probability_max"] = precipitationProbability
+                }
+                return payload
+            }
+            weatherPayload["daily"] = AnyCodable(daily)
+            return weatherPayload
         }
 
         // swiftlint:disable:next function_body_length
         static func build(
             container: ServiceContainer,
             core: CoreDependencyBuilder.Output,
-            stores: StoreDependencyBuilder.Output
+            stores: StoreDependencyBuilder.Output,
+            workspaceStateProvider: @escaping () -> WorkspaceState? = { nil }
         ) -> Output {
             let settingsViewModel = makeSettingsViewModel(container: container)
             let notesViewModel = NotesViewModel(
@@ -196,7 +324,8 @@ extension AppEnvironment {
                             websitesViewModel: websitesViewModel,
                             ingestionViewModel: ingestionViewModel,
                             weatherViewModel: weatherViewModel,
-                            currentLocationViewModel: currentLocationViewModel
+                            currentLocationViewModel: currentLocationViewModel,
+                            workspaceState: workspaceStateProvider()
                         )
                     }
                 )
