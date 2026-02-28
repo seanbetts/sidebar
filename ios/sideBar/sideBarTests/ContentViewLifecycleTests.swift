@@ -290,30 +290,6 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(action, .collapseLeftPanel)
     }
 
-    func testWorkspaceBehaviorPolicySwapPlanPromotesSecondaryToPrimary() {
-        let plan = WorkspaceBehaviorPolicy.makeSwapPlan(
-            currentPrimarySection: .notes,
-            currentSecondarySection: .tasks,
-            currentLastNonChatSection: .notes
-        )
-
-        XCTAssertEqual(plan.primarySection, .tasks)
-        XCTAssertEqual(plan.secondarySection, .notes)
-        XCTAssertEqual(plan.lastNonChatSection, .tasks)
-    }
-
-    func testWorkspaceBehaviorPolicySwapPlanPreservesLastNonChatWhenPrimaryBecomesChat() {
-        let plan = WorkspaceBehaviorPolicy.makeSwapPlan(
-            currentPrimarySection: .websites,
-            currentSecondarySection: .chat,
-            currentLastNonChatSection: .websites
-        )
-
-        XCTAssertEqual(plan.primarySection, .chat)
-        XCTAssertEqual(plan.secondarySection, .websites)
-        XCTAssertEqual(plan.lastNonChatSection, .websites)
-    }
-
     func testWorkspaceBehaviorPolicyExpandedChangeCollapsesLeftPanelWhenExpanded() {
         let plan = WorkspaceBehaviorPolicy.makeWorkspaceExpandedChangePlan(
             isExpanded: true,

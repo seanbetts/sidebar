@@ -108,6 +108,11 @@ enum WorkspaceReducer {
         let previousPrimaryDescriptor = state.primaryPane.descriptor
         state.primaryPane.descriptor = secondaryPane.descriptor
         state.secondaryPane?.descriptor = previousPrimaryDescriptor
+        if let primarySection = WorkspaceLegacySectionAdapter.section(
+            from: state.primaryPane.descriptor
+        ), primarySection != .chat {
+            state.lastNonChatSection = primarySection
+        }
     }
 
     private static func applySectionSelection(

@@ -22,11 +22,6 @@ enum InitialPhoneChatAction: Equatable {
     case openDraftConversation
     case none
 }
-struct WorkspaceSwapPlan: Equatable {
-    let primarySection: AppSection?
-    let secondarySection: AppSection?
-    let lastNonChatSection: AppSection?
-}
 struct WorkspaceExpandedChangePlan: Equatable {
     let isLeftPanelExpanded: Bool
     let previousLeftPanelExpanded: Bool?
@@ -38,26 +33,6 @@ struct WorkspaceRotationPlan: Equatable {
     let isWorkspaceExpandedByRotation: Bool?
 }
 enum WorkspaceBehaviorPolicy {
-    static func makeSwapPlan(
-        currentPrimarySection: AppSection?,
-        currentSecondarySection: AppSection?,
-        currentLastNonChatSection: AppSection?
-    ) -> WorkspaceSwapPlan {
-        let nextPrimary = currentSecondarySection
-        let nextSecondary = currentPrimarySection
-        let nextLastNonChat: AppSection?
-        if let nextPrimary, nextPrimary != .chat {
-            nextLastNonChat = nextPrimary
-        } else {
-            nextLastNonChat = currentLastNonChatSection
-        }
-        return WorkspaceSwapPlan(
-            primarySection: nextPrimary,
-            secondarySection: nextSecondary,
-            lastNonChatSection: nextLastNonChat
-        )
-    }
-
     static func makeWorkspaceExpandedChangePlan(
         isExpanded: Bool,
         isLeftPanelExpanded: Bool,

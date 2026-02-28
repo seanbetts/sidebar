@@ -255,19 +255,11 @@ extension ContentView {
 
     func swapPrimaryAndSecondary() {
         let performSwap = {
-            let projection = workspaceLegacySectionProjection
-            let plan = WorkspaceBehaviorPolicy.makeSwapPlan(
-                currentPrimarySection: WorkspaceLegacySectionAdapter.section(
-                    from: projection.primaryDescriptor
-                ),
-                currentSecondarySection: WorkspaceLegacySectionAdapter.section(
-                    from: projection.secondaryDescriptor
-                ),
-                currentLastNonChatSection: lastNonChatSection
+            environment.workspaceStore.dispatch(
+                .swapPanes,
+                source: "content_view_swap_panes",
+                expectLegacyFollowup: true
             )
-            primarySection = plan.primarySection
-            secondarySection = plan.secondarySection
-            lastNonChatSection = plan.lastNonChatSection
         }
         if reduceMotion {
             performSwap()

@@ -86,6 +86,48 @@ final class WorkspaceStoreTests: XCTestCase {
         XCTAssertNotNil(store.lastParityDivergence)
     }
 
+    func testReducerSwapPanesPromotesSecondaryAndUpdatesLastNonChatSection() {
+        let state = WorkspaceState(
+            layout: .split,
+            primaryPane: WorkspacePaneState(pane: .primary, descriptor: .builtIn(.notes)),
+            secondaryPane: WorkspacePaneState(pane: .secondary, descriptor: .builtIn(.tasks)),
+            sidebarSelection: .notes,
+            activeSection: .notes,
+            focusedSection: .notes,
+            lastNonChatSection: .notes
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .swapPanes
+        )
+
+        XCTAssertEqual(next.primaryPane.descriptor, .builtIn(.tasks))
+        XCTAssertEqual(next.secondaryPane?.descriptor, .builtIn(.notes))
+        XCTAssertEqual(next.lastNonChatSection, .tasks)
+    }
+
+    func testReducerSwapPanesPreservesLastNonChatWhenPrimaryBecomesChat() {
+        let state = WorkspaceState(
+            layout: .split,
+            primaryPane: WorkspacePaneState(pane: .primary, descriptor: .builtIn(.websites)),
+            secondaryPane: WorkspacePaneState(pane: .secondary, descriptor: .builtIn(.chat)),
+            sidebarSelection: .websites,
+            activeSection: .websites,
+            focusedSection: .websites,
+            lastNonChatSection: .websites
+        )
+
+        let next = WorkspaceReducer.reduce(
+            state: state,
+            action: .swapPanes
+        )
+
+        XCTAssertEqual(next.primaryPane.descriptor, .builtIn(.chat))
+        XCTAssertEqual(next.secondaryPane?.descriptor, .builtIn(.websites))
+        XCTAssertEqual(next.lastNonChatSection, .websites)
+    }
+
     func testDispatchWithExpectedLegacyFollowupSkipsImmediateParityCheck() {
         let store = makeStore()
         let snapshot = makeSnapshot(
