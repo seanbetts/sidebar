@@ -33,20 +33,24 @@ struct PendingWebsiteRow: View, Equatable {
                 if let queueItemId = pending.queueItemId {
                     HStack(spacing: 8) {
                         if pending.status == .failed, let onRetry {
-                            Button("Retry") {
+                            Button {
                                 onRetry(queueItemId)
+                            } label: {
+                                Image(systemName: "arrow.counterclockwise.circle")
+                                    .appFont(.labelMd)
                             }
                             .buttonStyle(.plain)
-                            .appFont(.caption)
                             .foregroundStyle(secondaryTextColor)
                             .accessibilityLabel("Retry queued website")
                         }
                         if let onRemove {
-                            Button("Remove") {
+                            Button {
                                 onRemove(queueItemId)
+                            } label: {
+                                Image(systemName: "xmark.circle")
+                                    .appFont(.labelMd)
                             }
                             .buttonStyle(.plain)
-                            .appFont(.caption)
                             .foregroundStyle(secondaryTextColor)
                             .accessibilityLabel("Remove queued website")
                         }
