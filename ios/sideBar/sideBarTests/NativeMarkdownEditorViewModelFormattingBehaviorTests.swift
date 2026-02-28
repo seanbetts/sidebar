@@ -66,6 +66,28 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
         XCTAssertGreaterThan(style?.paragraphSpacing ?? 0, 0)
     }
 
+    func testSpacingBeforeCollapsesAgainstPreviousParagraphSpacing() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("Body\n## Heading")
+
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        let ranges = allLineRanges(in: viewModel.attributedContent)
+        XCTAssertEqual(ranges.count, 2)
+
+        let bodyStyle = viewModel.attributedContent[ranges[0]].paragraphStyle
+        let headingStyle = viewModel.attributedContent[ranges[1]].paragraphStyle
+        XCTAssertNotNil(bodyStyle)
+        XCTAssertNotNil(headingStyle)
+
+        // CSS-equivalent collapse: max(body bottom 0.5rem, heading top 1rem) => 1rem total.
+        let expectedCollapsedBefore = MarkdownParagraphMetrics.bodySpacingRem * viewModel.baseFontSize
+        XCTAssertEqual(headingStyle?.paragraphSpacingBefore ?? -1, expectedCollapsedBefore, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle?.paragraphSpacing ?? -1, expectedCollapsedBefore, accuracy: 0.001)
+    }
+
     private func selectionOffsets(in viewModel: NativeMarkdownEditorViewModel) -> [Range<Int>] {
         switch viewModel.selection.indices(in: viewModel.attributedContent) {
         case .insertionPoint(let index):
@@ -98,5 +120,26 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
             cursor = text.index(afterCharacter: cursor)
         }
         return text.startIndex..<text.endIndex
+    }
+
+    private func allLineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
+        var ranges: [Range<AttributedString.Index>] = []
+        var start = text.startIndex
+        var cursor = text.startIndex
+
+        while cursor < text.endIndex {
+            if text.characters[cursor].isNewline {
+                ranges.append(start..<cursor)
+                start = text.index(afterCharacter: cursor)
+                cursor = start
+            } else {
+                cursor = text.index(afterCharacter: cursor)
+            }
+        }
+
+        if start <= text.endIndex {
+            ranges.append(start..<text.endIndex)
+        }
+        return ranges
     }
 }

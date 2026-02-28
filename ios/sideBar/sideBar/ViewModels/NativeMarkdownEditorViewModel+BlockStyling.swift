@@ -140,8 +140,8 @@ extension NativeMarkdownEditorViewModel {
         case .codeBlock:
             return paragraphStyle(
                 lineSpacing: em(0.5, fontSize: inlineCodeFontSize),
-                spacingBefore: 0,
-                spacingAfter: 0,
+                spacingBefore: rem(1),
+                spacingAfter: rem(1),
                 headIndent: DesignTokens.Spacing.md,
                 tailIndent: DesignTokens.Spacing.md
             )

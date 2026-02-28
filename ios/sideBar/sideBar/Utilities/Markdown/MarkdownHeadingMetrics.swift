@@ -38,12 +38,25 @@ enum MarkdownHeadingMetrics {
         let spacingBefore = (level == 1 ? 0 : headingSpacingBeforeRem) * baseFontSize
         let spacingAfter = headingSpacingAfterRem * baseFontSize
         let style = NSMutableParagraphStyle()
-        style.lineSpacing = 0
-        let lineHeight = lineHeightMultiple * fontSize
-        style.minimumLineHeight = lineHeight
-        style.maximumLineHeight = lineHeight
+        let desiredLineHeight = lineHeightMultiple * fontSize
+        style.lineSpacing = max(
+            0,
+            desiredLineHeight - naturalLineHeight(for: level, fontSize: fontSize)
+        )
         style.paragraphSpacingBefore = spacingBefore
         style.paragraphSpacing = spacingAfter
         return style
+    }
+
+    private static func naturalLineHeight(for level: Int, fontSize: CGFloat) -> CGFloat {
+#if canImport(UIKit)
+        let weight: UIFont.Weight = isBold(level: level) ? .bold : .semibold
+        return UIFont.systemFont(ofSize: fontSize, weight: weight).lineHeight
+#elseif canImport(AppKit)
+        let weight: NSFont.Weight = isBold(level: level) ? .bold : .semibold
+        return NSFont.systemFont(ofSize: fontSize, weight: weight).lineHeight
+#else
+        return fontSize
+#endif
     }
 }

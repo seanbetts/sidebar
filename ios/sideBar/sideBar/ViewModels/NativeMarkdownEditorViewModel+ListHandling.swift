@@ -9,13 +9,13 @@ extension NativeMarkdownEditorViewModel {
     private static let orderedListPrefixRegex = try? NSRegularExpression(pattern: #"^\s*\d+\.\s"#)
     private static let bulletListPrefixRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s"#)
 
-    func shouldRemoveSpacingBefore(
-        blockKind: BlockKind?,
-        previousBlockKind: BlockKind?
-    ) -> Bool {
-        _ = blockKind
-        _ = previousBlockKind
-        return false
+    func collapsedParagraphSpacingBefore(
+        originalBefore: CGFloat,
+        previousAfter: CGFloat
+    ) -> CGFloat {
+        guard originalBefore > 0 else { return 0 }
+        guard previousAfter > 0 else { return originalBefore }
+        return max(0, originalBefore - previousAfter)
     }
 
     func isHeading(_ blockKind: BlockKind) -> Bool {

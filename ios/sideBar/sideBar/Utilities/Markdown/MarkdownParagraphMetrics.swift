@@ -70,10 +70,8 @@ enum MarkdownParagraphMetrics {
         tailIndent: CGFloat
     ) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
-        style.lineSpacing = 0
-        let lineHeight = lineHeightMultiple * fontSize
-        style.minimumLineHeight = lineHeight
-        style.maximumLineHeight = lineHeight
+        let desiredLineHeight = lineHeightMultiple * fontSize
+        style.lineSpacing = max(0, desiredLineHeight - naturalLineHeight(for: fontSize))
         style.paragraphSpacingBefore = spacingBefore
         style.paragraphSpacing = spacingAfter
         style.headIndent = headIndent
@@ -82,5 +80,15 @@ enum MarkdownParagraphMetrics {
             style.tailIndent = -tailIndent
         }
         return style
+    }
+
+    private static func naturalLineHeight(for fontSize: CGFloat) -> CGFloat {
+#if canImport(UIKit)
+        return UIFont.systemFont(ofSize: fontSize, weight: .regular).lineHeight
+#elseif canImport(AppKit)
+        return NSFont.systemFont(ofSize: fontSize, weight: .regular).lineHeight
+#else
+        return fontSize
+#endif
     }
 }

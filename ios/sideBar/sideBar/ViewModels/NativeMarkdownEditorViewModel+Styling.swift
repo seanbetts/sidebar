@@ -219,6 +219,8 @@ extension NativeMarkdownEditorViewModel {
     func setPlatformFont(_ font: PlatformFont, in attrs: inout AttributeContainer) {
 #if os(iOS)
         attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] = font
+#else
+        attrs[AttributeScopes.AppKitAttributes.FontAttribute.self] = font
 #endif
     }
 
@@ -245,6 +247,8 @@ extension NativeMarkdownEditorViewModel {
     ) {
 #if os(iOS)
         text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = font
+#else
+        text[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = font
 #endif
     }
 

@@ -40,25 +40,22 @@ extension NativeMarkdownEditorViewModel {
                 allowInference: useLegacyMarkerHeuristics
             )
             let blockKind: BlockKind = resolvedBlockKind ?? (line.text.isEmpty ? .blankLine : .paragraph)
-            let previousBlockKind: BlockKind? = {
-                guard index > 0 else { return nil }
-                let previous = lines[index - 1]
-                let prevStart = updated.index(updated.startIndex, offsetByCharacters: previous.range.lowerBound)
-                let prevEnd = updated.index(updated.startIndex, offsetByCharacters: previous.range.upperBound)
-                let prevRange = prevStart..<prevEnd
-                if useLegacyMarkerHeuristics {
-                    return updated.blockKind(in: prevRange)
-                        ?? inferredBlockKind(from: previous.text)
-                        ?? (previous.text.isEmpty ? .blankLine : .paragraph)
-                }
-                return updated.blockKind(in: prevRange) ?? (previous.text.isEmpty ? .blankLine : .paragraph)
-            }()
+            let previousParagraphSpacingAfter = previousParagraphSpacingAfter(
+                in: updated,
+                lineIndex: index,
+                lines: lines,
+                useLegacyMarkerHeuristics: useLegacyMarkerHeuristics
+            )
 
             let listDepth = updated[lineRange].listDepth
             if let baseStyle = paragraphStyle(for: blockKind, listDepth: listDepth) {
-                if shouldRemoveSpacingBefore(blockKind: blockKind, previousBlockKind: previousBlockKind) {
+                let collapsedBefore = collapsedParagraphSpacingBefore(
+                    originalBefore: baseStyle.paragraphSpacingBefore,
+                    previousAfter: previousParagraphSpacingAfter
+                )
+                if collapsedBefore != baseStyle.paragraphSpacingBefore {
                     let mutable = baseStyle.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
-                    mutable.paragraphSpacingBefore = 0
+                    mutable.paragraphSpacingBefore = collapsedBefore
                     updated[paragraphRange].paragraphStyle = mutable
                 } else {
                     updated[paragraphRange].paragraphStyle = baseStyle
@@ -84,6 +81,29 @@ extension NativeMarkdownEditorViewModel {
                 self?.isUpdatingPrefixVisibility = false
             }
         }
+    }
+
+    private func previousParagraphSpacingAfter(
+        in text: AttributedString,
+        lineIndex: Int,
+        lines: [LineInfo],
+        useLegacyMarkerHeuristics: Bool
+    ) -> CGFloat {
+        guard lineIndex > 0 else { return 0 }
+        let previous = lines[lineIndex - 1]
+        let prevStart = text.index(text.startIndex, offsetByCharacters: previous.range.lowerBound)
+        let prevEnd = text.index(text.startIndex, offsetByCharacters: previous.range.upperBound)
+        let prevRange = prevStart..<prevEnd
+        let prevKind: BlockKind = {
+            if useLegacyMarkerHeuristics {
+                return text.blockKind(in: prevRange)
+                    ?? inferredBlockKind(from: previous.text)
+                    ?? (previous.text.isEmpty ? .blankLine : .paragraph)
+            }
+            return text.blockKind(in: prevRange) ?? (previous.text.isEmpty ? .blankLine : .paragraph)
+        }()
+        let prevDepth = text[prevRange].listDepth
+        return paragraphStyle(for: prevKind, listDepth: prevDepth)?.paragraphSpacing ?? 0
     }
 
     func applyCodeBlockSpacing(in text: inout AttributedString, lines: [LineInfo]) {
