@@ -344,12 +344,26 @@ def test_resolve_worker_user_id_prefers_explicit_env(monkeypatch):
     assert ingestion_worker._resolve_worker_user_id() == "worker-user"
 
 
-def test_resolve_worker_user_id_uses_default_in_local(monkeypatch):
+def test_resolve_worker_user_id_uses_default_in_local(monkeypatch, tmp_path):
     monkeypatch.delenv("INGESTION_WORKER_USER_ID", raising=False)
+    monkeypatch.setenv(
+        "INGESTION_ACTIVE_USER_FILE", str(tmp_path / "missing-active-user-id.txt")
+    )
     monkeypatch.setattr(ingestion_worker.settings, "app_env", "local")
     monkeypatch.setenv("TEST_USER_ID", "fallback-user")
 
     assert ingestion_worker._resolve_worker_user_id() == "fallback-user"
+
+
+def test_resolve_worker_user_id_prefers_active_user_file_in_local(monkeypatch, tmp_path):
+    active_user_file = tmp_path / "active-user-id.txt"
+    active_user_file.write_text("jwt-user-id", encoding="utf-8")
+    monkeypatch.delenv("INGESTION_WORKER_USER_ID", raising=False)
+    monkeypatch.setenv("INGESTION_ACTIVE_USER_FILE", str(active_user_file))
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "local")
+    monkeypatch.setenv("TEST_USER_ID", "fallback-user")
+
+    assert ingestion_worker._resolve_worker_user_id() == "jwt-user-id"
 
 
 def test_resolve_worker_user_id_is_unscoped_in_production(monkeypatch):

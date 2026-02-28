@@ -171,6 +171,8 @@ _audio_transcriber: Callable[..., dict] | None = None
 _youtube_transcriber: Callable[..., dict] | None = None
 _LOCAL_APP_ENVS = {"local", "dev", "development", "test", "testing"}
 _LOCAL_DB_HOSTS = {"localhost", "127.0.0.1", "::1", "postgres", "db"}
+_ACTIVE_USER_FILE_ENV = "INGESTION_ACTIVE_USER_FILE"
+_DEFAULT_ACTIVE_USER_FILE = "/tmp/sidebar-active-user-id"
 
 
 def _ensure_stdio() -> None:
@@ -395,6 +397,15 @@ def _resolve_worker_user_id() -> str | None:
 
     app_env = (settings.app_env or "").strip().lower()
     if app_env in {"local", "dev", "development", "test", "testing"}:
+        active_user_file = Path(
+            os.getenv(_ACTIVE_USER_FILE_ENV, _DEFAULT_ACTIVE_USER_FILE)
+        )
+        try:
+            hinted_user_id = active_user_file.read_text(encoding="utf-8").strip()
+        except OSError:
+            hinted_user_id = ""
+        if hinted_user_id:
+            return hinted_user_id
         fallback_user_id = (settings.default_user_id or "").strip()
         return fallback_user_id or None
     return None
@@ -2200,6 +2211,19 @@ def worker_loop() -> None:
             safe_url = f"{scheme}://{rest}"
         logger.info("Ingestion DB URL: %s", safe_url)
     while True:
+        current_worker_user_id = _resolve_worker_user_id()
+        if current_worker_user_id != worker_user_id:
+            worker_user_id = current_worker_user_id
+            if worker_user_id:
+                logger.info(
+                    "Updated ingestion worker claim scope user_id=%s", worker_user_id
+                )
+            else:
+                logger.info(
+                    "Updated ingestion worker claim scope to unscoped; "
+                    "no INGESTION_WORKER_USER_ID configured"
+                )
+        _enforce_safe_dev_worker_configuration(worker_user_id)
         with SessionLocal() as db:
             try:
                 _set_worker_claim_scope(db, worker_user_id)

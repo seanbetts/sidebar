@@ -73,3 +73,22 @@ async def test_get_current_user_id_prefers_request_state_user_when_present(monke
     user_id = await get_current_user_id(request, credentials=credentials)
 
     assert user_id == "jwt-user-id"
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_id_persists_active_user_hint_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "auth_dev_mode", True)
+    monkeypatch.setattr(settings, "app_env", "local")
+    active_user_file = tmp_path / "active-user-id.txt"
+    monkeypatch.setenv("INGESTION_ACTIVE_USER_FILE", str(active_user_file))
+
+    request = _make_request()
+    request.state.user_id = "jwt-user-id"
+    credentials = HTTPAuthorizationCredentials(
+        scheme="Bearer",
+        credentials="jwt-token",
+    )
+    user_id = await get_current_user_id(request, credentials=credentials)
+
+    assert user_id == "jwt-user-id"
+    assert active_user_file.read_text(encoding="utf-8") == "jwt-user-id"

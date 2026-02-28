@@ -1,6 +1,7 @@
 """FastAPI dependencies for database and auth."""
 
 import os
+from pathlib import Path
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
@@ -10,6 +11,10 @@ from api.auth import bearer_scheme
 from api.config import settings
 from api.models.user_settings import UserSettings
 from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
+
+_LOCAL_APP_ENVS = {"local", "dev", "development", "test", "testing"}
+_ACTIVE_USER_FILE_ENV = "INGESTION_ACTIVE_USER_FILE"
+_DEFAULT_ACTIVE_USER_FILE = "/tmp/sidebar-active-user-id"
 
 
 def _resolve_test_user_id() -> str:
@@ -28,6 +33,24 @@ def get_tool_user_id() -> str:
     return _resolve_test_user_id()
 
 
+def _persist_local_active_user_id(user_id: str) -> None:
+    app_env = (settings.app_env or "").strip().lower()
+    if app_env not in _LOCAL_APP_ENVS:
+        return
+    normalized = (user_id or "").strip()
+    if not normalized:
+        return
+    target = Path(os.getenv(_ACTIVE_USER_FILE_ENV, _DEFAULT_ACTIVE_USER_FILE))
+    tmp_target = target.with_suffix(f"{target.suffix}.tmp")
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tmp_target.write_text(normalized, encoding="utf-8")
+        tmp_target.replace(target)
+    except OSError:
+        # Best-effort hint for local ingestion worker scoping.
+        return
+
+
 async def get_current_user_id(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),  # noqa: B008
@@ -40,7 +63,9 @@ async def get_current_user_id(
             headers={"WWW-Authenticate": "Bearer"},
         )
     if settings.auth_dev_mode and (not credentials or not credentials.credentials):
-        return _resolve_test_user_id()
+        user_id = _resolve_test_user_id()
+        _persist_local_active_user_id(user_id)
+        return user_id
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -48,9 +73,11 @@ async def get_current_user_id(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_id = getattr(request.state, "user_id", None)
-    if user_id:
-        return user_id
+    state_user_id = getattr(request.state, "user_id", None)
+    if state_user_id:
+        state_user_id_str = str(state_user_id)
+        _persist_local_active_user_id(state_user_id_str)
+        return state_user_id_str
 
     token = credentials.credentials
     if token.startswith("sb_pat_"):
@@ -70,6 +97,7 @@ async def get_current_user_id(
                 headers={"WWW-Authenticate": "Bearer"},
             )
         request.state.user_id = record.user_id
+        _persist_local_active_user_id(str(record.user_id))
         return record.user_id
 
     validator = SupabaseJWTValidator()
@@ -82,12 +110,13 @@ async def get_current_user_id(
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 
-    user_id = payload.get("sub")
-    if not user_id:
+    jwt_user_id = payload.get("sub")
+    if not isinstance(jwt_user_id, str) or not jwt_user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token: missing user ID",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return user_id
+    _persist_local_active_user_id(jwt_user_id)
+    return jwt_user_id
