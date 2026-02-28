@@ -183,7 +183,9 @@ struct AttributedNoteEditorContainer: View {
 
         switch action {
         case .formatting(let formatting):
-            nativeViewModel.applyFormatting(formatting)
+            DispatchQueue.main.async {
+                nativeViewModel.applyFormatting(formatting)
+            }
         case .suppressSystemUnderline:
             break
         }
