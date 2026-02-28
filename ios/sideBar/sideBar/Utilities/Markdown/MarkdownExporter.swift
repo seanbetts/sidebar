@@ -104,6 +104,7 @@ private func exportLines(in attributedString: AttributedString) -> [String] {
 
         let lineResult = exportStandardLine(
             from: attributedString,
+            lines: lines,
             lineRange: lines[lineIndex],
             lineIndex: lineIndex,
             isInCodeBlock: &isInCodeBlock,
@@ -153,6 +154,7 @@ private func exportTableBlock(
 @available(iOS 26.0, macOS 26.0, *)
 private func exportStandardLine(
     from attributedString: AttributedString,
+    lines: [Range<AttributedString.Index>],
     lineRange: Range<AttributedString.Index>,
     lineIndex: Int,
     isInCodeBlock: inout Bool,
@@ -170,7 +172,11 @@ private func exportStandardLine(
 
     if blockKind == .blankLine {
         return ExportLineResult(
-            output: output + [MarkdownBlankLineMarker.htmlComment],
+            output: output + [blankLineOutput(
+                in: attributedString,
+                lines: lines,
+                lineIndex: lineIndex
+            )],
             nextIndex: lineIndex + 1,
             isInCodeBlock: isInCodeBlock,
             context: ExportLineContext(path: .blankLine)
