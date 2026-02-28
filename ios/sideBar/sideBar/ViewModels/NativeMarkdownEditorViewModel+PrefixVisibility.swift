@@ -215,6 +215,18 @@ extension NativeMarkdownEditorViewModel {
         blockKind: BlockKind?,
         shouldShow: Bool
     ) {
+        if blockKind == .horizontalRule {
+            setForegroundColor(DesignTokens.Colors.border, in: &text, range: range)
+            setBackgroundColor(nil, in: &text, range: range)
+            setFont(
+                baseFont(for: blockKind),
+                platformFont: platformBaseFont(for: blockKind),
+                in: &text,
+                range: range
+            )
+            return
+        }
+
         if shouldShow {
             setForegroundColor(DesignTokens.Colors.textSecondary, in: &text, range: range)
             setBackgroundColor(baseBackgroundColor(for: blockKind), in: &text, range: range)
@@ -229,21 +241,12 @@ extension NativeMarkdownEditorViewModel {
 
         setForegroundColor(.clear, in: &text, range: range)
         setBackgroundColor(nil, in: &text, range: range)
-        if blockKind == .horizontalRule {
-            setFont(
-                baseFont(for: blockKind),
-                platformFont: platformBaseFont(for: blockKind),
-                in: &text,
-                range: range
-            )
-        } else {
-            setFont(
-                .system(size: 0.1),
-                platformFont: platformSystemFont(size: 0.1, weight: .regular),
-                in: &text,
-                range: range
-            )
-        }
+        setFont(
+            .system(size: 0.1),
+            platformFont: platformSystemFont(size: 0.1, weight: .regular),
+            in: &text,
+            range: range
+        )
     }
 
     func applyInlineMarkerVisibility(

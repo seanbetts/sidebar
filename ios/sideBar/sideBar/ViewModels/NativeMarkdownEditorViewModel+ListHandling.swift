@@ -308,10 +308,10 @@ extension NativeMarkdownEditorViewModel {
     func listMarkerFont(for blockKind: BlockKind) -> (Font, PlatformFont) {
         switch blockKind {
         case .bulletList:
-            let size = baseFontSize * 1.2
+            let size = baseFontSize
             return (
-                .system(size: size, weight: .bold),
-                platformSystemFont(size: size, weight: .bold)
+                .system(size: size, weight: .regular),
+                platformSystemFont(size: size, weight: .regular)
             )
         case .orderedList:
             let size = baseFontSize

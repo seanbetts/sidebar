@@ -72,20 +72,6 @@ struct AttributedNoteFormattingToolbar: View {
                     viewModel.applyFormatting(.taskList)
                 }
                 toolbarButton(
-                    title: "Indent",
-                    systemImage: "increase.indent",
-                    isDisabled: !viewModel.canAdjustListDepth()
-                ) {
-                    viewModel.applyFormatting(.indentList)
-                }
-                toolbarButton(
-                    title: "Outdent",
-                    systemImage: "decrease.indent",
-                    isDisabled: !viewModel.canAdjustListDepth()
-                ) {
-                    viewModel.applyFormatting(.outdentList)
-                }
-                toolbarButton(
                     title: "Quote",
                     systemImage: "text.quote",
                     isActive: viewModel.isBlockKindActive(.blockquote)

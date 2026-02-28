@@ -49,7 +49,7 @@ extension NativeMarkdownEditorViewModel {
             }
 
             guard let insertIndex = safeIndex(in: text, offset: lineStartOffset) else { continue }
-            let markerText = "▎ "
+            let markerText = "│ "
             var marker = AttributedString(markerText)
             let markerRange = marker.startIndex..<marker.endIndex
             marker[markerRange].blockKind = .blockquote

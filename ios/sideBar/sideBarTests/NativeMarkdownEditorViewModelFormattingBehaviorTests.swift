@@ -20,11 +20,14 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
         XCTAssertEqual(before, after)
     }
 
-    func testCanAdjustListDepthInfersListFromVisibleMarkerText() async {
+    func testCanAdjustListDepthWhenParagraphIsListBlock() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.attributedContent = AttributedString("• Item")
-        let end = viewModel.attributedContent.endIndex
-        viewModel.selection = AttributedTextSelection(range: end..<end)
+        viewModel.loadMarkdown("Item")
+        var line = firstLineRange(in: viewModel.attributedContent)
+        viewModel.attributedContent[line].blockKind = .bulletList
+        viewModel.attributedContent[line].listDepth = 1
+        line = firstLineRange(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: line.lowerBound..<line.upperBound)
 
         XCTAssertTrue(viewModel.canAdjustListDepth())
     }
@@ -37,7 +40,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
 
-        XCTAssertTrue(String(viewModel.attributedContent.characters).hasPrefix("▎ "))
+        XCTAssertTrue(String(viewModel.attributedContent.characters).hasPrefix("│ "))
         XCTAssertEqual(viewModel.currentMarkdown(), "> Quoted")
     }
 

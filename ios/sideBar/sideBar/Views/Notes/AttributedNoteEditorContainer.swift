@@ -97,8 +97,12 @@ struct AttributedNoteEditorContainer: View {
         }
         .onKeyPress(.tab, phases: .down) { keyPress in
             guard isEditing else { return .ignored }
-            let outdent = keyPress.modifiers.contains(.shift) || keyPress.characters == "\u{19}"
-            return nativeViewModel.handleListDepthKeyboardShortcut(outdent: outdent) ? .handled : .ignored
+            guard !keyPress.modifiers.contains(.shift) else { return .ignored }
+            return nativeViewModel.handleListDepthKeyboardShortcut(outdent: false) ? .handled : .ignored
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "\u{19}"), phases: .down) { _ in
+            guard isEditing else { return .ignored }
+            return nativeViewModel.handleListDepthKeyboardShortcut(outdent: true) ? .handled : .ignored
         }
     }
 

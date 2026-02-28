@@ -107,6 +107,9 @@ extension NativeMarkdownEditorViewModel {
                isListBlockKind(inferredList) {
                 return true
             }
+            if hasLiteralListPrefix(in: lineText) {
+                return true
+            }
 
             return false
         }
@@ -298,6 +301,20 @@ extension NativeMarkdownEditorViewModel {
             }
             return nil
         }
+    }
+
+    private func hasLiteralListPrefix(in lineText: String) -> Bool {
+        let trimmed = lineText.trimmingCharacters(in: .whitespaces)
+        if trimmed.hasPrefix("•") || trimmed.hasPrefix("☐") || trimmed.hasPrefix("☑") {
+            return true
+        }
+        if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("+ ") {
+            return true
+        }
+        if trimmed.range(of: #"^\d+\.\s"#, options: .regularExpression) != nil {
+            return true
+        }
+        return false
     }
 
     func indentListItems() {
