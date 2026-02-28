@@ -98,6 +98,14 @@ _JINA_NOISE_MARKERS = (
     "navigation drawer",
     "advertiser content",
 )
+_JINA_TRUNCATION_MARKERS = (
+    "continue reading your article with",
+    "subscription required",
+    "subscribe now",
+    "this copy is for your personal, non-commercial use only",
+    "sign in to continue reading",
+    "article appears truncated",
+)
 
 
 class WebSaveScriptError(Exception):
@@ -202,13 +210,23 @@ def _count_noise_markers(content: str) -> int:
     return sum(lowered.count(marker) for marker in _JINA_NOISE_MARKERS)
 
 
+def _count_truncation_markers(content: str) -> int:
+    lowered = content.lower()
+    return sum(lowered.count(marker) for marker in _JINA_TRUNCATION_MARKERS)
+
+
 def _summarize_markdown(content: str) -> dict[str, int]:
+    word_count = compute_word_count(content)
+    links = len(re.findall(r"(?<!!)\[[^\]]+]\([^)]+\)", content))
     return {
         "chars": len(content),
         "lines": content.count("\n") + (1 if content else 0),
-        "links": len(re.findall(r"(?<!!)\[[^\]]+]\([^)]+\)", content)),
+        "words": word_count,
+        "links": links,
         "images": len(re.findall(r"!\[[^\]]*]\([^)]+\)", content)),
         "noise_hits": _count_noise_markers(content),
+        "truncation_hits": _count_truncation_markers(content),
+        "link_density_pct": int((links / max(word_count, 1)) * 100),
     }
 
 
@@ -362,6 +380,8 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 (
                     "web-save fallback result url=%s source=%s provider=jina "
                     "raw_chars=%s clean_chars=%s raw_noise=%s clean_noise=%s "
+                    "raw_link_density_pct=%s clean_link_density_pct=%s "
+                    "raw_trunc_markers=%s clean_trunc_markers=%s "
                     "clean_links=%s clean_images=%s word_count=%s "
                     "truncated=%s paywalled=%s"
                 ),
@@ -371,6 +391,10 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 cleaned_summary["chars"],
                 raw_summary["noise_hits"],
                 cleaned_summary["noise_hits"],
+                raw_summary["link_density_pct"],
+                cleaned_summary["link_density_pct"],
+                raw_summary["truncation_hits"],
+                cleaned_summary["truncation_hits"],
                 cleaned_summary["links"],
                 cleaned_summary["images"],
                 word_count,

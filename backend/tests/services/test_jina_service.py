@@ -141,6 +141,78 @@ def test_clean_markdown_for_source_passthrough_non_wsj():
     assert cleaned == "# Example\n\nBody"
 
 
+def test_clean_markdown_for_source_universal_removes_noise_and_nav_blocks():
+    markdown = """
+Anthropic gives its retired Claude AI a Substack
+===============================================
+
+In January, Anthropic retired Claude 3 Opus and later brought it back as a blog writer.
+
+Sign up for Verge Daily so you never miss out on the tech news that matters most.
+close email sign up banner
+
+*   [Tech](https://www.theverge.com/tech)
+*   [Reviews](https://www.theverge.com/reviews)
+*   [Science](https://www.theverge.com/science)
+*   [Entertainment](https://www.theverge.com/entertainment)
+*   [AI](https://www.theverge.com/ai-artificial-intelligence)
+*   [Policy](https://www.theverge.com/policy)
+
+The newsletter, called Claude's Corner, gives Opus 3 space to publish musings and creative work.
+
+Privacy Center
+--------------
+
+![tracker](https://analytics.twitter.com/1/i/adsct?event=foo)
+"""
+
+    cleaned = JinaService.clean_markdown_for_source(
+        markdown,
+        "https://example.com/article",
+    )
+
+    assert "Sign up for Verge Daily" not in cleaned
+    assert "close email sign up banner" not in cleaned
+    assert "[Tech](https://www.theverge.com/tech)" not in cleaned
+    assert "Privacy Center" not in cleaned
+    assert "analytics.twitter.com/1/i/adsct" not in cleaned
+    assert "Anthropic retired Claude 3 Opus" in cleaned
+    assert "Claude's Corner" in cleaned
+
+
+def test_clean_markdown_for_source_verge_trims_footer_and_privacy_sections():
+    markdown = """
+Anthropic gives its retired Claude AI a Substack
+===============================================
+
+After retiring Opus 3, Anthropic asked it what it wanted. The AI requested a blog.
+
+In January, Anthropic “retired” Claude 3 Opus, which at one time was the company’s most powerful AI model.
+
+Most Popular
+------------
+
+1. [Story A](https://www.theverge.com/a)
+2. [Story B](https://www.theverge.com/b)
+
+Privacy Center
+--------------
+
+Powered by Onetrust
+"""
+
+    cleaned = JinaService.clean_markdown_for_source(
+        markdown,
+        "https://www.theverge.com/ai-artificial-intelligence/885200/example",
+    )
+
+    assert "Most Popular" not in cleaned
+    assert "Privacy Center" not in cleaned
+    assert "Powered by Onetrust" not in cleaned
+    assert "After retiring Opus 3" in cleaned
+    assert "most powerful AI model" in cleaned
+
+
 def test_clean_markdown_for_source_wsj_removes_footer_legal_and_trackers():
     markdown = """
 Meet the One Woman Anthropic Trusts to Teach AI Morals

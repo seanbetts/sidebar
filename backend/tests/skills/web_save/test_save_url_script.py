@@ -207,4 +207,11 @@ def test_save_url_database_logs_jina_fallback_events(monkeypatch):
     module.save_url_database("https://www.theverge.com/ai/story-id", "user-1")
 
     assert any("web-save fallback start" in message for message, _ in logged)
-    assert any("web-save fallback result" in message for message, _ in logged)
+    result_messages = [
+        message for message, _ in logged if "web-save fallback result" in message
+    ]
+    assert result_messages
+    assert any("raw_link_density_pct" in message for message in result_messages)
+    assert any("clean_link_density_pct" in message for message in result_messages)
+    assert any("raw_trunc_markers" in message for message in result_messages)
+    assert any("clean_trunc_markers" in message for message in result_messages)

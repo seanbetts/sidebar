@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 import httpx
 
 from api.config import settings
+from api.services.jina_cleanup import clean_markdown_universal, clean_markdown_verge
 from api.services.website_title_service import resolve_website_title
 
 logger = logging.getLogger(__name__)
@@ -153,9 +154,12 @@ class JinaService:
         if not markdown:
             return markdown
         domain = urlparse(source_url).netloc.lower().strip(".")
-        cleaned = markdown
+        cleaned = clean_markdown_universal(markdown)
         if domain == "wsj.com" or domain.endswith(".wsj.com"):
             cleaned = JinaService._cleanup_wsj_markdown(cleaned)
+        elif domain == "theverge.com" or domain.endswith(".theverge.com"):
+            cleaned = clean_markdown_verge(cleaned)
+        cleaned = clean_markdown_universal(cleaned)
         return cleaned.strip()
 
     @staticmethod
