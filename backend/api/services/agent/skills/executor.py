@@ -137,10 +137,28 @@ class SkillExecutor:
     @classmethod
     def _normalize_failure_payload(cls, stderr_text: str) -> dict[str, Any]:
         """Normalize a failed script stderr payload into API shape."""
+        fallback_error = stderr_text.strip() or "Script execution failed"
         parsed = cls._extract_json_from_text(stderr_text)
-        if parsed is not None:
-            return parsed
-        return {"error": stderr_text}
+        payload = parsed if parsed is not None else {}
+        if not isinstance(payload, dict):
+            payload = {}
+
+        error_value = payload.get("error")
+        if isinstance(error_value, str):
+            normalized_error = error_value.strip() or fallback_error
+        elif error_value is not None:
+            normalized_error = error_value
+        else:
+            message_value = payload.get("message")
+            if isinstance(message_value, str) and message_value.strip():
+                normalized_error = message_value.strip()
+            else:
+                normalized_error = fallback_error
+
+        normalized: dict[str, Any] = dict(payload)
+        normalized["success"] = False
+        normalized["error"] = normalized_error
+        return normalized
 
     @staticmethod
     def _error_summary(error_payload: dict[str, Any]) -> str:
@@ -304,7 +322,7 @@ class SkillExecutor:
                         error=self._error_summary(error),
                         user_id=user_id,
                     )
-                    return {"success": False, **error}
+                    return error
 
             except subprocess.TimeoutExpired:
                 duration_ms = (time.time() - start_time) * 1000

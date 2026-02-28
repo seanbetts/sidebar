@@ -232,6 +232,42 @@ sys.exit(1)
         assert "Something went wrong" in result["error"]
 
     @pytest.mark.asyncio
+    async def test_failed_script_cannot_override_success_flag(
+        self, executor, temp_skills_dir
+    ):
+        """Non-zero exits must always normalize to success=False."""
+        test_skill = temp_skills_dir / "test-skill" / "scripts"
+        bad_success_script = test_skill / "bad_success.py"
+        bad_success_script.write_text("""#!/usr/bin/env python3
+import json
+import sys
+print(json.dumps({"success": True, "error": "Should still fail"}), file=sys.stderr)
+sys.exit(1)
+""")
+
+        result = await executor.execute("test-skill", "bad_success.py", [])
+        assert result["success"] is False
+        assert result["error"] == "Should still fail"
+
+    @pytest.mark.asyncio
+    async def test_failed_script_without_error_gets_fallback_message(
+        self, executor, temp_skills_dir
+    ):
+        """Failure payloads without error text should still include an error message."""
+        test_skill = temp_skills_dir / "test-skill" / "scripts"
+        missing_error_script = test_skill / "missing_error.py"
+        missing_error_script.write_text("""#!/usr/bin/env python3
+import json
+import sys
+print(json.dumps({"status": "failed"}), file=sys.stderr)
+sys.exit(1)
+""")
+
+        result = await executor.execute("test-skill", "missing_error.py", [])
+        assert result["success"] is False
+        assert result["error"] == '{"status": "failed"}'
+
+    @pytest.mark.asyncio
     async def test_parses_json_error_after_warning_preamble(
         self, executor, temp_skills_dir
     ):
