@@ -6,6 +6,15 @@ import UIKit
 // MARK: - ContentView+Layout
 
 extension ContentView {
+    private var workspaceLegacySectionProjection: WorkspaceLegacySectionProjection {
+        WorkspaceLegacySectionAdapter.makeProjection(
+            workspaceState: environment.workspaceStore.state,
+            fallbackPrimarySection: primarySection,
+            fallbackSecondarySection: secondarySection,
+            fallbackCompactSelection: phoneSelection
+        )
+    }
+
     @ViewBuilder
     var mainView: some View {
         #if os(macOS)
@@ -41,7 +50,8 @@ extension ContentView {
     }
 
     var splitView: some View {
-        WorkspaceLayout(
+        let projection = workspaceLegacySectionProjection
+        return WorkspaceLayout(
             selection: $sidebarSelection,
             isLeftPanelExpanded: $isLeftPanelExpanded,
             isRightSidebarCollapsed: $isWorkspaceExpanded,
@@ -57,13 +67,13 @@ extension ContentView {
             },
             mainContent: {
                 AnyView(
-                    detailView(for: primarySection)
+                    detailView(for: projection.primaryDescriptor)
                         .environment(\.workspaceColumn, .primary)
                 )
             },
             rightSidebar: {
                 AnyView(
-                    detailView(for: secondarySection)
+                    detailView(for: projection.secondaryDescriptor)
                         .environment(\.workspaceColumn, .secondary)
                 )
             }
@@ -116,7 +126,7 @@ extension ContentView {
         Self.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: UIDevice.current.userInterfaceIdiom == .phone,
             isPhonePanelListVisible: isPhonePanelListVisible,
-            phoneSelection: phoneSelection
+            phoneSelection: workspaceLegacySectionProjection.compactSelection
         )
         #else
         false
@@ -125,7 +135,7 @@ extension ContentView {
 
     @ViewBuilder
     private var phoneFloatingActionDock: some View {
-        switch phoneSelection {
+        switch workspaceLegacySectionProjection.compactSelection {
         case .notes:
             PhoneFloatingActionDock {
                 PhoneFloatingActionButton(
@@ -226,14 +236,40 @@ extension ContentView {
             .trackShortcutFocus(section: section)
     }
 
+    func detailView(for descriptor: WorkspaceContentDescriptor) -> some View {
+        switch descriptor {
+        case .empty:
+            return AnyView(WelcomeEmptyView().trackShortcutFocus(section: nil))
+        case .builtIn(let section):
+            return AnyView(detailView(for: section))
+        case .agentSurface(let surface):
+            let title = surface.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedTitle: String
+            if let title, !title.isEmpty {
+                resolvedTitle = title
+            } else {
+                resolvedTitle = "Agent Workspace"
+            }
+            return AnyView(
+                PlaceholderView(
+                    title: resolvedTitle,
+                    subtitle: "Agent surface \(surface.type) is not yet enabled in this renderer."
+                )
+                .trackShortcutFocus(section: nil)
+            )
+        }
+    }
+
     func swapPrimaryAndSecondary() {
         let performSwap = {
-            let temp = primarySection
-            primarySection = secondarySection
-            secondarySection = temp
-            if primarySection != .chat, let primarySection {
-                lastNonChatSection = primarySection
-            }
+            let plan = WorkspaceBehaviorPolicy.makeSwapPlan(
+                currentPrimarySection: primarySection,
+                currentSecondarySection: secondarySection,
+                currentLastNonChatSection: lastNonChatSection
+            )
+            primarySection = plan.primarySection
+            secondarySection = plan.secondarySection
+            lastNonChatSection = plan.lastNonChatSection
         }
         if reduceMotion {
             performSwap()

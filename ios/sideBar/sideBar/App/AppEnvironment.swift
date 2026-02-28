@@ -57,6 +57,8 @@ public final class AppEnvironment: ObservableObject {
     public let currentLocationViewModel: CurrentLocationViewModel
     /// Navigation coordinator for cross-feature section and deep-link routing state.
     public let navigation: NavigationCoordinator
+    /// Shadow workspace state store used for migration to a unified workspace engine.
+    public let workspaceStore: WorkspaceStore
     let realtimeClient: RealtimeClient
     /// Environment configuration loading error captured at startup, when present.
     public let configError: EnvironmentConfigLoadError?
@@ -121,6 +123,7 @@ public final class AppEnvironment: ObservableObject {
         self.websitesViewModel = dependencies.websitesViewModel
         self.tasksViewModel = dependencies.tasksViewModel
         self.navigation = NavigationCoordinator()
+        self.workspaceStore = WorkspaceStore()
         self.memoriesViewModel = dependencies.memoriesViewModel
         self.settingsViewModel = dependencies.settingsViewModel
         self.weatherViewModel = dependencies.weatherViewModel

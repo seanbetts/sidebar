@@ -138,6 +138,9 @@ extension ContentView {
         content = AnyView(content.onChange(of: isSettingsPresented) { _, _ in
             updateActiveSection()
         })
+        content = AnyView(content.onChange(of: isLeftPanelExpanded) { _, _ in
+            syncWorkspaceShadowState(source: "left_panel_expanded_change")
+        })
         #if !os(macOS)
         content = AnyView(content.onChange(of: horizontalSizeClass) { oldValue, newValue in
             handleHorizontalSizeClassChange(oldValue: oldValue, newValue: newValue)
@@ -436,40 +439,38 @@ extension ContentView {
 
 extension ContentView {
     private func handleWorkspaceExpandedChange(isExpanded: Bool) {
-        if isExpanded {
-            if workspaceExpandedPreviousLeftPanelExpanded == nil {
-                workspaceExpandedPreviousLeftPanelExpanded = isLeftPanelExpanded
-            }
-            if isLeftPanelExpanded {
-                isLeftPanelExpanded = false
-            }
-        } else if let previous = workspaceExpandedPreviousLeftPanelExpanded {
-            isLeftPanelExpanded = previous
-            workspaceExpandedPreviousLeftPanelExpanded = nil
-            #if os(iOS)
+        let plan = WorkspaceBehaviorPolicy.makeWorkspaceExpandedChangePlan(
+            isExpanded: isExpanded,
+            isLeftPanelExpanded: isLeftPanelExpanded,
+            previousLeftPanelExpanded: workspaceExpandedPreviousLeftPanelExpanded
+        )
+        isLeftPanelExpanded = plan.isLeftPanelExpanded
+        workspaceExpandedPreviousLeftPanelExpanded = plan.previousLeftPanelExpanded
+        #if os(iOS)
+        if plan.clearExpandedByRotation {
             isWorkspaceExpandedByRotation = false
-            #endif
         }
+        #endif
+        syncWorkspaceShadowState(source: "workspace_expanded_change")
     }
 
     #if os(iOS)
     private func handleRootSizeChange(_ size: CGSize) {
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
-        let isPortrait = size.height >= size.width
-        if lastWorkspaceIsPortrait == isPortrait {
-            return
+        let rotationPlan = WorkspaceBehaviorPolicy.makeWorkspaceRotationPlan(
+            isIPad: UIDevice.current.userInterfaceIdiom == .pad,
+            previousIsPortrait: lastWorkspaceIsPortrait,
+            size: size,
+            primaryWorkspaceSection: primaryWorkspaceSectionForRotation,
+            isWorkspaceExpanded: isWorkspaceExpanded,
+            isWorkspaceExpandedByRotation: isWorkspaceExpandedByRotation
+        )
+        guard let rotationPlan else { return }
+        lastWorkspaceIsPortrait = rotationPlan.lastWorkspaceIsPortrait
+        if let nextExpanded = rotationPlan.isWorkspaceExpanded {
+            isWorkspaceExpanded = nextExpanded
         }
-        lastWorkspaceIsPortrait = isPortrait
-        guard let section = primaryWorkspaceSectionForRotation,
-              AppSection.primaryNavigationSections.contains(section) else { return }
-        if isPortrait {
-            if !isWorkspaceExpanded {
-                isWorkspaceExpandedByRotation = true
-                isWorkspaceExpanded = true
-            }
-        } else if isWorkspaceExpandedByRotation {
-            isWorkspaceExpandedByRotation = false
-            isWorkspaceExpanded = false
+        if let nextExpandedByRotation = rotationPlan.isWorkspaceExpandedByRotation {
+            isWorkspaceExpandedByRotation = nextExpandedByRotation
         }
     }
     private var primaryWorkspaceSectionForRotation: AppSection? {

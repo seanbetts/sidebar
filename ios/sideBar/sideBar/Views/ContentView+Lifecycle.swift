@@ -25,6 +25,123 @@ enum InitialPhoneChatAction: Equatable {
     case none
 }
 
+struct WorkspaceSwapPlan: Equatable {
+    let primarySection: AppSection?
+    let secondarySection: AppSection?
+    let lastNonChatSection: AppSection?
+}
+
+struct WorkspaceExpandedChangePlan: Equatable {
+    let isLeftPanelExpanded: Bool
+    let previousLeftPanelExpanded: Bool?
+    let clearExpandedByRotation: Bool
+}
+
+struct WorkspaceRotationPlan: Equatable {
+    let lastWorkspaceIsPortrait: Bool
+    let isWorkspaceExpanded: Bool?
+    let isWorkspaceExpandedByRotation: Bool?
+}
+
+enum WorkspaceBehaviorPolicy {
+    static func makeSwapPlan(
+        currentPrimarySection: AppSection?,
+        currentSecondarySection: AppSection?,
+        currentLastNonChatSection: AppSection?
+    ) -> WorkspaceSwapPlan {
+        let nextPrimary = currentSecondarySection
+        let nextSecondary = currentPrimarySection
+        let nextLastNonChat: AppSection?
+        if let nextPrimary, nextPrimary != .chat {
+            nextLastNonChat = nextPrimary
+        } else {
+            nextLastNonChat = currentLastNonChatSection
+        }
+        return WorkspaceSwapPlan(
+            primarySection: nextPrimary,
+            secondarySection: nextSecondary,
+            lastNonChatSection: nextLastNonChat
+        )
+    }
+
+    static func makeWorkspaceExpandedChangePlan(
+        isExpanded: Bool,
+        isLeftPanelExpanded: Bool,
+        previousLeftPanelExpanded: Bool?
+    ) -> WorkspaceExpandedChangePlan {
+        if isExpanded {
+            let nextPrevious = previousLeftPanelExpanded ?? isLeftPanelExpanded
+            return WorkspaceExpandedChangePlan(
+                isLeftPanelExpanded: false,
+                previousLeftPanelExpanded: nextPrevious,
+                clearExpandedByRotation: false
+            )
+        }
+        guard let previousLeftPanelExpanded else {
+            return WorkspaceExpandedChangePlan(
+                isLeftPanelExpanded: isLeftPanelExpanded,
+                previousLeftPanelExpanded: nil,
+                clearExpandedByRotation: false
+            )
+        }
+        return WorkspaceExpandedChangePlan(
+            isLeftPanelExpanded: previousLeftPanelExpanded,
+            previousLeftPanelExpanded: nil,
+            clearExpandedByRotation: true
+        )
+    }
+
+    static func makeWorkspaceRotationPlan(
+        isIPad: Bool,
+        previousIsPortrait: Bool?,
+        size: CGSize,
+        primaryWorkspaceSection: AppSection?,
+        isWorkspaceExpanded: Bool,
+        isWorkspaceExpandedByRotation: Bool
+    ) -> WorkspaceRotationPlan? {
+        guard isIPad else { return nil }
+        let isPortrait = size.height >= size.width
+        guard previousIsPortrait != isPortrait else { return nil }
+
+        guard let primaryWorkspaceSection,
+              AppSection.primaryNavigationSections.contains(primaryWorkspaceSection) else {
+            return WorkspaceRotationPlan(
+                lastWorkspaceIsPortrait: isPortrait,
+                isWorkspaceExpanded: nil,
+                isWorkspaceExpandedByRotation: nil
+            )
+        }
+
+        if isPortrait, !isWorkspaceExpanded {
+            return WorkspaceRotationPlan(
+                lastWorkspaceIsPortrait: isPortrait,
+                isWorkspaceExpanded: true,
+                isWorkspaceExpandedByRotation: true
+            )
+        }
+        if !isPortrait, isWorkspaceExpandedByRotation {
+            return WorkspaceRotationPlan(
+                lastWorkspaceIsPortrait: isPortrait,
+                isWorkspaceExpanded: false,
+                isWorkspaceExpandedByRotation: false
+            )
+        }
+        return WorkspaceRotationPlan(
+            lastWorkspaceIsPortrait: isPortrait,
+            isWorkspaceExpanded: nil,
+            isWorkspaceExpandedByRotation: nil
+        )
+    }
+
+    static func shouldShowExpandButton(
+        workspaceColumn: WorkspaceColumn,
+        isPhoneIdiom: Bool
+    ) -> Bool {
+        guard workspaceColumn == .primary else { return false }
+        return !isPhoneIdiom
+    }
+}
+
 extension ContentView {
     func refreshWeatherIfPossible() async {
         guard environment.authState == .active else { return }
@@ -157,19 +274,9 @@ extension ContentView {
     }
 
     func updateActiveSection() {
-        #if os(macOS)
-        let section = isSettingsPresented ? AppSection.settings : (primarySection ?? sidebarSelection ?? secondarySection)
-        #else
-        let section: AppSection
-        if isSettingsPresented {
-            section = .settings
-        } else if horizontalSizeClass == .compact {
-            section = phoneSelection
-        } else {
-            section = primarySection ?? sidebarSelection ?? secondarySection ?? .chat
-        }
-        #endif
+        let section = resolvedActiveSectionForWorkspace
         environment.activeSection = section
+        syncWorkspaceShadowState(source: "update_active_section")
         #if os(iOS)
         UIMenuSystem.main.setNeedsRebuild()
         #endif

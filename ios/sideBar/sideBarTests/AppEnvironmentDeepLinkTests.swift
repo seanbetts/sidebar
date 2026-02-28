@@ -296,6 +296,50 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
         XCTAssertNil(environment.websitesViewModel.selectedWebsiteId)
     }
+
+    func testShortcutActionRouterOpenSettingsSetsCommandSelection() async {
+        let environment = requireEnvironment()
+        environment.commandSelection = nil
+
+        let router = ShortcutActionRouter()
+        router.handle(.openSettings, environment: environment)
+
+        XCTAssertEqual(environment.commandSelection, .settings)
+    }
+
+    func testShortcutActionRouterNavigateSetsCommandSelection() async {
+        let environment = requireEnvironment()
+        environment.commandSelection = nil
+
+        let router = ShortcutActionRouter()
+        router.handle(.navigate(.files), environment: environment)
+
+        XCTAssertEqual(environment.commandSelection, .files)
+    }
+
+    func testShortcutActionRouterNewItemStartsTaskWhenTasksAreActive() async {
+        let environment = requireEnvironment()
+        environment.activeSection = .tasks
+        environment.focusedSection = .tasks
+        environment.tasksViewModel.cancelNewTask()
+
+        let router = ShortcutActionRouter()
+        router.handle(.newItem, environment: environment)
+
+        XCTAssertNotNil(environment.tasksViewModel.newTaskDraft)
+    }
+
+    func testShortcutActionRouterNewItemEmitsSectionEventForNotes() async {
+        let environment = requireEnvironment()
+        environment.activeSection = .notes
+        environment.focusedSection = .notes
+
+        let router = ShortcutActionRouter()
+        router.handle(.newItem, environment: environment)
+
+        XCTAssertEqual(environment.shortcutActionEvent?.action, .newItem)
+        XCTAssertEqual(environment.shortcutActionEvent?.section, .notes)
+    }
     #endif
 
     private func primeEnvironmentForSignOutReset(_ environment: AppEnvironment) {
