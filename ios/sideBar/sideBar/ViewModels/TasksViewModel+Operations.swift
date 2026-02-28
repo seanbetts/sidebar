@@ -21,13 +21,7 @@ extension TasksViewModel {
 
         do {
             let response = try await api.apply(TaskOperationBatch(operations: [operation]))
-            if !response.nextTasks.isEmpty {
-                let count = response.nextTasks.count
-                let message = count == 1
-                    ? "Next instance scheduled: \"\(response.nextTasks[0].title)\""
-                    : "\(count) recurring instances scheduled"
-                toastCenter.show(message: message)
-            }
+            showNextInstanceScheduledToast(nextTasks: response.nextTasks)
             // Keep UX snappy by relying on optimistic removal + realtime/list refresh.
             // Avoid forcing a full list reload immediately on completion.
             updateCountsAfterLocalOperation(operation)
@@ -167,13 +161,7 @@ extension TasksViewModel {
         }
         do {
             let response = try await api.apply(TaskOperationBatch(operations: [operation]))
-            if !response.nextTasks.isEmpty {
-                let count = response.nextTasks.count
-                let message = count == 1
-                    ? "Next instance scheduled: \"\(response.nextTasks[0].title)\""
-                    : "\(count) recurring instances scheduled"
-                toastCenter.show(message: message)
-            }
+            showNextInstanceScheduledToast(nextTasks: response.nextTasks)
             if refreshSelection {
                 await load(selection: selection, force: true)
             }
@@ -237,5 +225,33 @@ extension TasksViewModel {
         default:
             break
         }
+    }
+
+    private func showNextInstanceScheduledToast(nextTasks: [TaskItem]) {
+        guard !nextTasks.isEmpty else { return }
+        let count = nextTasks.count
+        let message: String
+        if count == 1, let nextTask = nextTasks.first {
+            if let date = nextScheduledDateKey(for: nextTask) {
+                message = "Next instance scheduled for \(date): \"\(nextTask.title)\""
+            } else {
+                message = "Next instance scheduled: \"\(nextTask.title)\""
+            }
+        } else if let nextDate = nextTasks.compactMap({ nextScheduledDateKey(for: $0) }).min() {
+            message = "\(count) recurring instances scheduled (next: \(nextDate))"
+        } else {
+            message = "\(count) recurring instances scheduled"
+        }
+        toastCenter.show(message: message, style: .success)
+    }
+
+    private func nextScheduledDateKey(for task: TaskItem) -> String? {
+        if let deadline = task.deadline, deadline.count >= 10 {
+            return String(deadline.prefix(10))
+        }
+        if let nextInstanceDate = task.nextInstanceDate, nextInstanceDate.count >= 10 {
+            return String(nextInstanceDate.prefix(10))
+        }
+        return nil
     }
 }
