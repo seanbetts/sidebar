@@ -104,7 +104,7 @@ enum AttributedNoteFormattingCommands {
             viewModel.setBlockKind(.blockquote)
             return true
         case .codeBlock:
-            viewModel.setBlockKind(.codeBlock)
+            viewModel.applyCodeBlock(language: nil)
             return true
         default:
             return false

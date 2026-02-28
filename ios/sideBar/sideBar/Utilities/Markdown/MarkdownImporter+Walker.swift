@@ -187,7 +187,12 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
 
     mutating func visitCodeBlock(_ codeBlock: CodeBlock) {
         let language = codeBlock.language?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let content = codeBlock.code.split(separator: "\n", omittingEmptySubsequences: false)
+        var content = codeBlock.code.split(separator: "\n", omittingEmptySubsequences: false)
+        if content.count > 1, content.last?.isEmpty == true {
+            // Drop the parser's synthetic terminal split segment from the trailing newline
+            // that precedes a closing fence.
+            content.removeLast()
+        }
         let totalLines = content.count
 
         for (index, line) in content.enumerated() {

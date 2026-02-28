@@ -13,6 +13,9 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
     public init() {}
 
     public var body: some AttributedTextFormattingDefinition<Scope> {
+        // We intentionally normalize markdown structure in `constrainDocument` where we can
+        // reason across paragraph boundaries and related attributes together.
+        // These value constraints are placeholders required by the definition protocol.
         PresentationIntentConstraint()
         ListItemDelimiterConstraint()
     }
@@ -340,6 +343,7 @@ private struct PresentationIntentConstraint: AttributedTextValueConstraint {
     typealias AttributeKey = AttributeScopes.FoundationAttributes.PresentationIntentAttribute
 
     func constrain(_ container: inout Attributes) {
+        // Paragraph-level normalization happens in MarkdownFormattingDefinition.constrainDocument.
         _ = container
     }
 }
@@ -350,6 +354,7 @@ private struct ListItemDelimiterConstraint: AttributedTextValueConstraint {
     typealias AttributeKey = AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute
 
     func constrain(_ container: inout Attributes) {
+        // Paragraph-level normalization happens in MarkdownFormattingDefinition.constrainDocument.
         _ = container
     }
 }

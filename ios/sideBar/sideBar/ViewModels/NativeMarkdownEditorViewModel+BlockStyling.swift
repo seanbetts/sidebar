@@ -65,65 +65,7 @@ extension NativeMarkdownEditorViewModel {
     }
 
     func inferredBlockKind(from lineText: String) -> BlockKind? {
-        if isThematicBreakLine(lineText) {
-            return .horizontalRule
-        }
-        let range = NSRange(location: 0, length: lineText.utf16.count)
-
-        if let regex = Self.taskRegex, let match = regex.firstMatch(in: lineText, range: range) {
-            let prefix = (lineText as NSString).substring(with: match.range).lowercased()
-            return prefix.contains("[x]") ? .taskChecked : .taskUnchecked
-        }
-        if Self.orderedRegex?.firstMatch(in: lineText, range: range) != nil {
-            return .orderedList
-        }
-        if Self.bulletRegex?.firstMatch(in: lineText, range: range) != nil {
-            return .bulletList
-        }
-        if let headingKind = headingBlockKind(in: lineText, range: range) {
-            return headingKind
-        }
-        if Self.quoteRegex?.firstMatch(in: lineText, range: range) != nil {
-            return .blockquote
-        }
-        return nil
-    }
-
-    func isThematicBreakLine(_ lineText: String) -> Bool {
-        let trimmed = lineText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
-        var marker: Character?
-        var count = 0
-        for character in trimmed {
-            if character.isWhitespace {
-                continue
-            }
-            guard character == "-" || character == "*" || character == "_" else { return false }
-            if marker == nil {
-                marker = character
-            }
-            guard character == marker else { return false }
-            count += 1
-        }
-        return count >= 3
-    }
-
-    func headingBlockKind(in lineText: String, range: NSRange) -> BlockKind? {
-        guard let regex = Self.headingRegex,
-              let match = regex.firstMatch(in: lineText, range: range) else {
-            return nil
-        }
-        let prefix = (lineText as NSString).substring(with: match.range)
-        let count = prefix.prefix { $0 == "#" }.count
-        switch count {
-        case 1: return .heading1
-        case 2: return .heading2
-        case 3: return .heading3
-        case 4: return .heading4
-        case 5: return .heading5
-        case 6: return .heading6
-        default: return nil
-        }
+        MarkdownLineInference.inferBlockKind(from: lineText)
     }
 
     func shouldShowPrefix(

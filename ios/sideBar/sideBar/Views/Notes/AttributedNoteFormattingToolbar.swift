@@ -85,6 +85,7 @@ struct AttributedNoteFormattingToolbar: View {
                 ) {
                     viewModel.applyFormatting(.codeBlock)
                 }
+                codeLanguageMenu
                 toolbarButton(
                     title: "Rule",
                     systemImage: "minus"
@@ -96,6 +97,33 @@ struct AttributedNoteFormattingToolbar: View {
             .padding(.vertical, DesignTokens.Spacing.xs)
         }
         .background(DesignTokens.Colors.background)
+    }
+
+    private var codeLanguageMenu: some View {
+        Menu {
+            Button("No language") {
+                viewModel.applyCodeBlock(language: nil)
+            }
+            Divider()
+            ForEach(codeLanguageOptions, id: \.value) { option in
+                Button(option.label) {
+                    viewModel.applyCodeBlock(language: option.value)
+                }
+            }
+        } label: {
+            Image(systemName: "tag")
+                .appScaledFont(size: 14, weight: .regular)
+                .frame(width: 28, height: 28)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .foregroundStyle(DesignTokens.Colors.textPrimary)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(DesignTokens.Colors.muted)
+        )
+        .accessibilityLabel("Code language")
+        .disabled(viewModel.isReadOnly)
     }
 
     private var textSizeIndicator: some View {
@@ -133,5 +161,17 @@ struct AttributedNoteFormattingToolbar: View {
         .accessibilityLabel(title)
         .disabled(viewModel.isReadOnly || isDisabled)
         .opacity(isDisabled ? 0.45 : 1)
+    }
+
+    private var codeLanguageOptions: [(label: String, value: String)] {
+        [
+            ("Swift", "swift"),
+            ("TypeScript", "typescript"),
+            ("JavaScript", "javascript"),
+            ("Python", "python"),
+            ("JSON", "json"),
+            ("SQL", "sql"),
+            ("Bash", "bash")
+        ]
     }
 }

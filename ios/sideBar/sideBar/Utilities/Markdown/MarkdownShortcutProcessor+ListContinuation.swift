@@ -74,29 +74,7 @@ extension MarkdownShortcutProcessor {
     }
 
     static func inferredListBlockKind(from lineText: String) -> BlockKind? {
-        let trimmed = lineText.trimmingCharacters(in: .whitespaces)
-        if trimmed.hasPrefix("☑ ") {
-            return .taskChecked
-        }
-        if trimmed.hasPrefix("☐ ") {
-            return .taskUnchecked
-        }
-        if trimmed.hasPrefix("• ") {
-            return .bulletList
-        }
-        if trimmed.hasPrefix("- [x] ") || trimmed.hasPrefix("- [X] ") {
-            return .taskChecked
-        }
-        if trimmed.hasPrefix("- [ ] ") {
-            return .taskUnchecked
-        }
-        if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("+ ") {
-            return .bulletList
-        }
-        if trimmed.range(of: #"^\d+\.\s"#, options: .regularExpression) != nil {
-            return .orderedList
-        }
-        return nil
+        MarkdownLineInference.inferListBlockKind(from: lineText)
     }
 
     private static func insertContinuationMarker(
@@ -197,8 +175,11 @@ extension MarkdownShortcutProcessor {
 
     private static func nextOrderedOrdinal(from lineText: String) -> Int {
         let trimmed = lineText.trimmingCharacters(in: .whitespaces)
+        let blockquoteMarker = NSRegularExpression.escapedPattern(
+            for: String(MarkdownLineInference.renderedBlockquoteMarker)
+        )
         guard let matchRange = trimmed.range(
-            of: #"^(?:[│▎>\s]*)?(\d+)\.\s*"#,
+            of: "^(?:[\(blockquoteMarker)▎>\\s]*)?(\\d+)\\.\\s*",
             options: .regularExpression
         ) else {
             return 1

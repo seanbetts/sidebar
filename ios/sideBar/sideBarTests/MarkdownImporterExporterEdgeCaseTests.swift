@@ -34,6 +34,43 @@ final class MarkdownImporterExporterEdgeCaseTests: XCTestCase {
         XCTAssertEqual(String(imported.characters), "Line 1\n\nLine 2")
 
         let exported = exporter.markdown(from: imported)
+        XCTAssertEqual(exported, "Line 1\n\nLine 2")
+    }
+
+    func testExporterUsesPlainBlankLineBetweenParagraphs() {
+        let attributed = AttributedString("Line 1\n\nLine 2")
+        let exported = MarkdownExporter().markdown(from: attributed)
+
+        XCTAssertEqual(exported, "Line 1\n\nLine 2")
+    }
+
+    func testImporterPreservesExternalPlainBlankLines() {
+        let markdown = """
+        Alpha
+
+        Beta
+        """
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        let imported = importer.attributedString(from: markdown).attributedString
+        XCTAssertEqual(String(imported.characters), "Alpha\n\nBeta")
+
+        let exported = exporter.markdown(from: imported)
+        XCTAssertEqual(exported, markdown)
+    }
+
+    func testImporterDoesNotConvertBlankLinesInsideFencedCodeToBlankLineMarkers() {
+        let markdown = """
+        ```swift
+        let a = 1
+
+        let b = 2
+        ```
+        """
+        let imported = MarkdownImporter().attributedString(from: markdown).attributedString
+        let exported = MarkdownExporter().markdown(from: imported)
+
         XCTAssertEqual(exported, markdown)
     }
 

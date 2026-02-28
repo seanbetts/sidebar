@@ -27,7 +27,8 @@ public struct MarkdownImporter {
         baseFontSize: CGFloat = 16
     ) -> MarkdownImportResult {
         let split = splitFrontmatter(from: markdown)
-        let document = Document(parsing: split.body)
+        let preprocessedBody = preserveAuthorBlankLines(in: split.body)
+        let document = Document(parsing: preprocessedBody)
         var walker = MarkdownToAttributedStringWalker(
             style: style,
             baseFontSize: baseFontSize

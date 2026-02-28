@@ -42,7 +42,20 @@ private func shouldEmitPlainBlankLine(
         lineIndex: lineIndex,
         direction: 1
     )
-    return previousBlockKind == .codeBlock && nextBlockKind == .horizontalRule
+    if previousBlockKind == .codeBlock && nextBlockKind == .horizontalRule {
+        return true
+    }
+
+    let safeKinds: Set<BlockKind> = [
+        .paragraph,
+        .heading1, .heading2, .heading3, .heading4, .heading5, .heading6,
+        .bulletList, .orderedList, .taskChecked, .taskUnchecked,
+        .blockquote
+    ]
+    guard let previousBlockKind, let nextBlockKind else {
+        return false
+    }
+    return safeKinds.contains(previousBlockKind) && safeKinds.contains(nextBlockKind)
 }
 
 @available(iOS 26.0, macOS 26.0, *)
