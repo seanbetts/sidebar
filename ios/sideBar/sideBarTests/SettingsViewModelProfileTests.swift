@@ -114,6 +114,44 @@ final class SettingsViewModelProfileTests: XCTestCase {
         XCTAssertNil(viewModel.settings?.dateOfBirth)
     }
 
+    func testSaveProfileSettingsSkipsWhenSettingsBelongToDifferentAuthenticatedUser() async {
+        let initial = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Sam",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: "Boston",
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let api = RecordingSettingsAPI(initial: initial, updated: initial)
+        let viewModel = SettingsViewModel(
+            settingsAPI: api,
+            skillsAPI: EmptySkillsAPI(),
+            cache: TestCacheClient(),
+            currentAuthUserIdProvider: { "user-2" }
+        )
+
+        await viewModel.load()
+        await viewModel.saveProfileSettings(
+            name: "Sam",
+            jobTitle: "",
+            employer: "",
+            dateOfBirth: nil,
+            dateOfBirthEnabled: false,
+            gender: "",
+            pronouns: "",
+            location: "Seattle"
+        )
+
+        XCTAssertEqual(api.updateCallCount, 0)
+    }
+
     private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {
         let data = try JSONEncoder().encode(update)
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])

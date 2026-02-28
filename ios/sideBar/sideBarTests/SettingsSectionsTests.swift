@@ -25,6 +25,28 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(shouldFlush)
     }
 
+    func testProfileShouldSyncDraftsWhenUserChangesEvenIfDraftDirty() {
+        let shouldSync = ProfileSettingsView.shouldSyncDrafts(
+            hasLoadedDrafts: true,
+            isDraftDirty: true,
+            previousUserId: "user-1",
+            nextUserId: "user-2"
+        )
+
+        XCTAssertTrue(shouldSync)
+    }
+
+    func testUserShouldSyncDraftsWhenUserChangesEvenIfDraftDirty() {
+        let shouldSync = UserSettingsView.shouldSyncDrafts(
+            hasLoadedDrafts: true,
+            isDraftDirty: true,
+            previousUserId: "user-1",
+            nextUserId: "user-2"
+        )
+
+        XCTAssertTrue(shouldSync)
+    }
+
     func testPickerOptionsReturnsBaseOptionsWhenCurrentValueIsEmpty() {
         let baseOptions = ["he/him", "she/her"]
 

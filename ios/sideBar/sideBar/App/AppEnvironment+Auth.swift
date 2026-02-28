@@ -90,6 +90,7 @@ extension AppEnvironment {
         tasksStore.reset()
         chatViewModel.reset()
         tasksViewModel.reset()
+        settingsViewModel.reset()
         notesViewModel.clearSelection()
         notesViewModel.searchQuery = ""
         websitesViewModel.clearSelection()

@@ -9,6 +9,7 @@ struct UserSettingsView: View {
     @State private var workingRelationship: String = ""
     @State private var hasLoadedDrafts = false
     @State private var isSyncingDrafts = false
+    @State private var draftsUserId: String?
     @State private var autosaveTask: Task<Void, Never>?
 
     private static let systemAutosaveDelayNs: UInt64 = 800_000_000
@@ -90,9 +91,10 @@ struct UserSettingsView: View {
             return "none"
         }
         return [
+            settings.userId,
             settings.communicationStyle ?? "",
             settings.workingRelationship ?? ""
-        ].joined(separator: "|")
+        ].compactMap { $0 }.joined(separator: "|")
     }
 
     private var systemAutosaveSignature: String {
@@ -110,12 +112,22 @@ struct UserSettingsView: View {
 
     private func syncDraftsFromSettings(_ settings: UserSettings?) {
         guard let settings else { return }
-        if hasLoadedDrafts && isDraftDirty {
+        let shouldSync = Self.shouldSyncDrafts(
+            hasLoadedDrafts: hasLoadedDrafts,
+            isDraftDirty: isDraftDirty,
+            previousUserId: draftsUserId,
+            nextUserId: settings.userId
+        )
+        if !shouldSync {
             return
+        }
+        if Self.normalizedUserId(draftsUserId) != Self.normalizedUserId(settings.userId) {
+            autosaveTask?.cancel()
         }
         isSyncingDrafts = true
         communicationStyle = settings.communicationStyle ?? ""
         workingRelationship = settings.workingRelationship ?? ""
+        draftsUserId = settings.userId
         hasLoadedDrafts = true
         isSyncingDrafts = false
     }
@@ -139,6 +151,22 @@ struct UserSettingsView: View {
             return "Syncing \(environment.writeQueue.pendingCount) changes"
         }
         return "\(environment.writeQueue.pendingCount) pending changes"
+    }
+
+    static func shouldSyncDrafts(
+        hasLoadedDrafts: Bool,
+        isDraftDirty: Bool,
+        previousUserId: String?,
+        nextUserId: String?
+    ) -> Bool {
+        let didChangeUser = normalizedUserId(previousUserId) != normalizedUserId(nextUserId)
+        return didChangeUser || !hasLoadedDrafts || !isDraftDirty
+    }
+
+    private static func normalizedUserId(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 

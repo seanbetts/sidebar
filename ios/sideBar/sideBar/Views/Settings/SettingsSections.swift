@@ -1,9 +1,7 @@
-import LocalAuthentication
+import PhotosUI
 import sideBarShared
 import SwiftUI
-#if os(macOS)
 import UniformTypeIdentifiers
-#endif
 
 // MARK: - SettingsSections
 
@@ -11,8 +9,10 @@ struct ProfileSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.dismiss) private var dismiss
-    @State private var isImagePickerPresented = false
     @State private var profileImage: Image?
+    @State private var isProfilePhotoSourceDialogPresented = false
+    @State private var isProfilePhotoPickerPresented = false
+    @State private var selectedProfilePhotoItem: PhotosPickerItem?
     @State private var isProfileImageImporterPresented = false
     @State private var isUploadingProfileImage = false
     @State private var profileImageError: String?
@@ -26,6 +26,7 @@ struct ProfileSettingsView: View {
     @State private var dateOfBirth: Date = Date()
     @State private var hasLoadedDrafts = false
     @State private var isSyncingDrafts = false
+    @State private var draftsUserId: String?
     @State private var autosaveTask: Task<Void, Never>?
 
     private static let profileAutosaveDelayNs: UInt64 = 800_000_000
@@ -50,32 +51,10 @@ struct ProfileSettingsView: View {
                     }
                     Spacer()
                 }
-#if os(iOS)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    isImagePickerPresented = true
+                    isProfilePhotoSourceDialogPresented = true
                 }
-                .sheet(isPresented: $isImagePickerPresented) {
-                    ImagePicker(
-                        selectedImage: $profileImage,
-                        onImageDataPicked: { data, contentType, filename in
-                            Task {
-                                await uploadSelectedProfileImage(
-                                    data: data,
-                                    contentType: contentType,
-                                    filename: filename
-                                )
-                            }
-                        }
-                    )
-                }
-#endif
-#if os(macOS)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    isProfileImageImporterPresented = true
-                }
-#endif
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Profile photo")
                 .accessibilityHint("Double tap to change your profile photo.")
@@ -161,7 +140,32 @@ struct ProfileSettingsView: View {
         #if os(macOS)
         .formStyle(.grouped)
         #endif
-        #if os(macOS)
+        .confirmationDialog(
+            "Change Profile Photo",
+            isPresented: $isProfilePhotoSourceDialogPresented
+        ) {
+            Button("Choose from Photos") {
+                isProfilePhotoPickerPresented = true
+            }
+            Button("Choose from Files") {
+                isProfileImageImporterPresented = true
+            }
+            Button("Cancel", role: .cancel) {
+            }
+        }
+        .photosPicker(
+            isPresented: $isProfilePhotoPickerPresented,
+            selection: $selectedProfilePhotoItem,
+            matching: .images,
+            preferredItemEncoding: .current
+        )
+        .onChange(of: selectedProfilePhotoItem) { _, item in
+            guard let item else { return }
+            Task {
+                await handleProfilePhotoSelection(item)
+                selectedProfilePhotoItem = nil
+            }
+        }
         .fileImporter(
             isPresented: $isProfileImageImporterPresented,
             allowedContentTypes: [.image]
@@ -170,7 +174,6 @@ struct ProfileSettingsView: View {
                 await handleProfileImageImport(result)
             }
         }
-        #endif
         .onAppear {
             syncDraftsFromSettings(viewModel.settings)
         }
@@ -235,28 +238,6 @@ struct ProfileSettingsView: View {
         Self.pickerOptions(base: Self.pronounOptions, currentValue: pronouns)
     }
 
-#if os(macOS)
-    private func handleProfileImageImport(_ result: Result<URL, Error>) async {
-        profileImageError = nil
-        do {
-            let url = try result.get()
-            let data = try Data(contentsOf: url)
-            let contentType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "image/png"
-            let filename = url.lastPathComponent.isEmpty ? "profile-image" : url.lastPathComponent
-            if let image = NSImage(contentsOf: url) {
-                profileImage = Image(nsImage: image)
-            }
-            await uploadSelectedProfileImage(
-                data: data,
-                contentType: contentType,
-                filename: filename
-            )
-        } catch {
-            profileImageError = error.localizedDescription
-        }
-    }
-#endif
-
     private func uploadSelectedProfileImage(
         data: Data,
         contentType: String,
@@ -291,6 +272,7 @@ struct ProfileSettingsView: View {
             return "none"
         }
         return [
+            settings.userId,
             settings.name ?? "",
             settings.jobTitle ?? "",
             settings.employer ?? "",
@@ -298,7 +280,7 @@ struct ProfileSettingsView: View {
             settings.pronouns ?? "",
             settings.location ?? "",
             settings.dateOfBirth ?? ""
-        ].joined(separator: "|")
+        ].compactMap { $0 }.joined(separator: "|")
     }
 
     private var profileAutosaveSignature: String {
@@ -328,8 +310,17 @@ struct ProfileSettingsView: View {
 
     private func syncDraftsFromSettings(_ settings: UserSettings?) {
         guard let settings else { return }
-        if hasLoadedDrafts && isDraftDirty {
+        let shouldSync = Self.shouldSyncDrafts(
+            hasLoadedDrafts: hasLoadedDrafts,
+            isDraftDirty: isDraftDirty,
+            previousUserId: draftsUserId,
+            nextUserId: settings.userId
+        )
+        if !shouldSync {
             return
+        }
+        if Self.normalizedUserId(draftsUserId) != Self.normalizedUserId(settings.userId) {
+            autosaveTask?.cancel()
         }
         isSyncingDrafts = true
         name = settings.name ?? ""
@@ -345,6 +336,7 @@ struct ProfileSettingsView: View {
             dateOfBirthEnabled = false
             dateOfBirth = Date()
         }
+        draftsUserId = settings.userId
         hasLoadedDrafts = true
         isSyncingDrafts = false
     }
@@ -402,11 +394,27 @@ struct ProfileSettingsView: View {
         hasLoadedDrafts && !isSyncingDrafts && isDraftDirty && !isSavingProfile
     }
 
+    static func shouldSyncDrafts(
+        hasLoadedDrafts: Bool,
+        isDraftDirty: Bool,
+        previousUserId: String?,
+        nextUserId: String?
+    ) -> Bool {
+        let didChangeUser = normalizedUserId(previousUserId) != normalizedUserId(nextUserId)
+        return didChangeUser || !hasLoadedDrafts || !isDraftDirty
+    }
+
     private static func parseDate(_ value: String?) -> Date? {
         guard let value, !value.isEmpty else {
             return nil
         }
         return dateParser.date(from: value)
+    }
+
+    private static func normalizedUserId(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private static func dateString(from date: Date) -> String {
@@ -418,70 +426,59 @@ struct ProfileSettingsView: View {
     }
 }
 
-struct GeneralSettingsView: View {
-    @AppStorage(AppStorageKeys.biometricUnlockEnabled) private var biometricUnlockEnabled = false
-    @AppStorage(AppStorageKeys.weatherUsesFahrenheit) private var weatherUsesFahrenheit = false
-    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
-    @State private var canUseDeviceAuth = false
-    @State private var biometryType: LABiometryType = .none
-
-    var body: some View {
-        Form {
-            Section("Text") {
-                Picker("Text Size", selection: $appTextSizeRaw) {
-                    ForEach(AppTextSizeOption.allCases) { option in
-                        Text(option.displayName).tag(option.rawValue)
-                    }
-                }
-                #if os(macOS)
-                .pickerStyle(.menu)
-                #endif
+private extension ProfileSettingsView {
+    func handleProfilePhotoSelection(_ item: PhotosPickerItem) async {
+        profileImageError = nil
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                throw NSError(
+                    domain: "ProfilePhotoSelection",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Couldn’t load selected photo data."]
+                )
             }
-            Section("Security") {
-                Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
-                    .disabled(!canUseDeviceAuth)
-                if !canUseDeviceAuth {
-                    Text("Set up Face ID or Touch ID to enable biometric unlock.")
-                    .appFont(.caption)
-                    .foregroundStyle(.secondary)
-                }
+            if let image = loadProfileImage(from: data) {
+                profileImage = image
             }
-            Section("Weather") {
-                Picker("Temperature Units", selection: $weatherUsesFahrenheit) {
-                    Text("Celsius").tag(false)
-                    Text("Fahrenheit").tag(true)
-                }
-                #if os(macOS)
-                .pickerStyle(.radioGroup)
-                #else
-                .pickerStyle(.segmented)
-                #endif
-            }
-        }
-        #if os(macOS)
-        .formStyle(.grouped)
-        #endif
-        .onAppear {
-            appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
-            evaluateBiometricSupport()
+            let contentType = item.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg"
+            let fileExtension = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
+            await uploadSelectedProfileImage(
+                data: data,
+                contentType: contentType,
+                filename: "profile-image.\(fileExtension)"
+            )
+        } catch {
+            profileImageError = error.localizedDescription
         }
     }
 
-    private var biometricLabel: String {
-        switch biometryType {
-        case .faceID:
-            return "Require Face ID"
-        case .touchID:
-            return "Require Touch ID"
-        default:
-            return "Require Biometric Unlock"
+    func handleProfileImageImport(_ result: Result<URL, Error>) async {
+        profileImageError = nil
+        do {
+            let url = try result.get()
+            let data = try loadImageData(from: url)
+            let contentType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "image/png"
+            let filename = url.lastPathComponent.isEmpty ? "profile-image" : url.lastPathComponent
+            if let image = loadProfileImage(from: data) {
+                profileImage = image
+            }
+            await uploadSelectedProfileImage(
+                data: data,
+                contentType: contentType,
+                filename: filename
+            )
+        } catch {
+            profileImageError = error.localizedDescription
         }
     }
 
-    private func evaluateBiometricSupport() {
-        let context = LAContext()
-        canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
-        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
-        biometryType = context.biometryType
+    func loadImageData(from url: URL) throws -> Data {
+        let hasAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if hasAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        return try Data(contentsOf: url)
     }
 }

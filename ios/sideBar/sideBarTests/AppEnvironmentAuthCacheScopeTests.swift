@@ -50,6 +50,32 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         assertCachedDataCleared(environment)
     }
 
+    func testRefreshAuthStateClearsSettingsViewModelWhenUserScopeChanges() {
+        UserDefaults.standard.set("user-old", forKey: cacheScopeKey)
+        let environment = makeEnvironment(authState: .active, userId: "user-new")
+        let staleSettings = UserSettings(
+            userId: "user-old",
+            communicationStyle: "stale",
+            workingRelationship: "stale",
+            name: "Old User",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        environment.settingsViewModel.applySettingsResponse(staleSettings)
+
+        environment.refreshAuthState()
+
+        XCTAssertNil(environment.settingsViewModel.settings)
+        XCTAssertTrue(environment.settingsViewModel.skills.isEmpty)
+        XCTAssertEqual(environment.settingsViewModel.shortcutsToken, "")
+    }
+
     private func makeEnvironment(authState: AuthState, userId: String?) -> AppEnvironment {
         let authSession = MutableAuthSession(authState: authState, userId: userId)
         let container = ServiceContainer(

@@ -6,7 +6,7 @@ import Combine
 @MainActor
 /// Manages user settings, skills, and profile image state.
 public final class SettingsViewModel: LoadableViewModel {
-    private static let defaultAssistantDisplayName = "sideBar"
+    static let defaultAssistantDisplayName = "sideBar"
 
     @Published public private(set) var settings: UserSettings?
     @Published public private(set) var skills: [SkillItem] = []
@@ -42,14 +42,6 @@ public final class SettingsViewModel: LoadableViewModel {
         self.cache = cache
         self.currentAuthUserIdProvider = currentAuthUserIdProvider
         super.init()
-    }
-
-    public var assistantDisplayName: String {
-        guard let rawName = settings?.assistantIdentity?.name else {
-            return Self.defaultAssistantDisplayName
-        }
-        let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? Self.defaultAssistantDisplayName : trimmed
     }
 
     public func load(force: Bool = false) async {
@@ -169,7 +161,7 @@ public final class SettingsViewModel: LoadableViewModel {
         pronouns: String,
         location: String
     ) async {
-        guard let current = settings else { return }
+        guard let current = settings, isBoundToCurrentAuthUser(settings: current) else { return }
 
         let nextDateOfBirth = dateOfBirthEnabled ? dateOfBirth.map(Self.dateOnlyString(from:)) : nil
         let nameUpdate = name != (current.name ?? "") ? name : nil
@@ -221,7 +213,7 @@ public final class SettingsViewModel: LoadableViewModel {
         communicationStyle: String,
         workingRelationship: String
     ) async {
-        guard let current = settings else { return }
+        guard let current = settings, isBoundToCurrentAuthUser(settings: current) else { return }
 
         let communicationStyleUpdate = communicationStyle != (current.communicationStyle ?? "")
             ? communicationStyle
@@ -378,35 +370,39 @@ public final class SettingsViewModel: LoadableViewModel {
         isSavingSkills = false
     }
 
-    private func normalizeEnabledSkills(_ enabledSkills: [String]) -> [String] {
-        let allowedIds = Set(skills.map(\.id))
-        let requiredIds = Set(skills.filter { !$0.userToggleable }.map(\.id))
-        var seen: Set<String> = []
-        var normalized: [String] = []
-
-        for id in enabledSkills where allowedIds.contains(id) {
-            if !seen.contains(id) {
-                normalized.append(id)
-                seen.insert(id)
-            }
-        }
-
-        for id in skills.map(\.id) where requiredIds.contains(id) {
-            if !seen.contains(id) {
-                normalized.append(id)
-                seen.insert(id)
-            }
-        }
-
-        return normalized
-    }
-
     func setPrimaryProviderSaving(_ isSaving: Bool) {
         isSavingPrimaryProvider = isSaving
     }
 
     func setPrimaryProviderError(_ error: String?) {
         primaryProviderError = error
+    }
+
+    func reset() {
+        setLoading(false)
+        clearError()
+
+        settings = nil
+        skills = []
+        isLoadingSkills = false
+        isSavingSkills = false
+        skillsError = nil
+
+        shortcutsToken = ""
+        shortcutsError = nil
+        isLoadingShortcuts = false
+        isRotatingShortcuts = false
+
+        profileImageData = nil
+        isLoadingProfileImage = false
+        isSavingProfile = false
+        profileSaveError = nil
+
+        isSavingSystem = false
+        systemSaveError = nil
+
+        isSavingPrimaryProvider = false
+        primaryProviderError = nil
     }
 
     func applySettingsResponse(_ response: UserSettings) {
