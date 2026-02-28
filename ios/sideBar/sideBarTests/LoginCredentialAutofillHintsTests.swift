@@ -2,10 +2,10 @@ import XCTest
 @testable import sideBar
 
 final class LoginCredentialAutofillHintsTests: XCTestCase {
-    func testEmailUsesEmailAddressHint() {
+    func testEmailUsesUsernameHint() {
         XCTAssertEqual(
             LoginCredentialAutofillHints.emailIdentifier,
-            PlatformTextContentType.emailAddress.rawValue
+            PlatformTextContentType.username.rawValue
         )
     }
 

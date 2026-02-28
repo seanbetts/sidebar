@@ -10,6 +10,7 @@ public struct LoginView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppStorageKeys.biometricUnlockEnabled) private var biometricUnlockEnabled = false
+    @AppStorage(AppStorageKeys.lastSignInEmail) private var lastSignInEmail = ""
 
     @State private var email: String = ""
     @State private var password: String = ""
@@ -72,6 +73,7 @@ public struct LoginView: View {
             errorMessage = nil
         }
         .onAppear {
+            email = LoginEmailPrefill.initialEmail(currentEmail: email, storedEmail: lastSignInEmail)
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 150_000_000)
                 if focusedField == nil {
@@ -376,13 +378,7 @@ public struct LoginView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        #if os(macOS)
         .buttonStyle(LoginPrimaryActionButtonStyle())
-        #else
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .tint(DesignTokens.Colors.actionPrimary)
-        #endif
         .keyboardShortcut(.defaultAction)
         .disabled(isSignInDisabled)
         .accessibilitySortPriority(1)
@@ -445,6 +441,7 @@ private extension LoginView {
                 throw AuthAdapterError.networkUnavailable
             }
             try await environment.container.authSession.signIn(email: trimmedEmail, password: password)
+            lastSignInEmail = trimmedEmail
             environment.refreshAuthState()
             #if os(iOS)
             triggerHaptic(.success)

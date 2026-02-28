@@ -14,6 +14,7 @@ public enum AppStorageKeys {
     public nonisolated static let appTextSize = "sidebar.appTextSize"
     public nonisolated static let settingsSelectedSection = "sidebar.settingsSelectedSection"
     public nonisolated static let lastAuthTimestamp = "sidebar.lastAuthTimestamp"
+    public nonisolated static let lastSignInEmail = "sidebar.lastSignInEmail"
     public nonisolated static let cacheScopeUserId = "sidebar.cacheScopeUserId"
     public nonisolated static let hasShownBiometricHint = "sidebar.hasShownBiometricHint"
     public nonisolated static let useAttributedNoteEditorV2 = "sidebar.useAttributedNoteEditorV2"
