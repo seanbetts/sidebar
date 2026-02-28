@@ -41,6 +41,13 @@ _SUGGESTIONS_BY_CODE: dict[str, list[str]] = {
     ],
 }
 
+_SSL_ERROR_HINTS: tuple[str, ...] = (
+    "certificate verify failed",
+    "sslcertverificationerror",
+    "unable to get local issuer certificate",
+    "self signed certificate",
+)
+
 
 def _compact_dict(payload: dict[str, Any]) -> dict[str, Any]:
     """Drop None/empty-string values from a dictionary."""
@@ -65,8 +72,16 @@ def _extract_http_status_code(message: str) -> int | None:
     return None
 
 
-def _build_suggestions(code: str) -> list[str]:
+def _build_suggestions(code: str, *, local_ssl_error: bool = False) -> list[str]:
     suggestions = list(_SUGGESTIONS_BY_CODE.get(code, _DEFAULT_SUGGESTIONS))
+    if local_ssl_error:
+        ssl_suggestion = (
+            "Local parser hit an SSL trust issue: configure "
+            "REQUESTS_CA_BUNDLE/SSL_CERT_FILE "
+            "or install the missing CA certificate in the runtime."
+        )
+        if ssl_suggestion not in suggestions:
+            suggestions.append(ssl_suggestion)
     for suggestion in _DEFAULT_SUGGESTIONS:
         if suggestion not in suggestions:
             suggestions.append(suggestion)
@@ -104,6 +119,9 @@ def classify_web_save_failure(
     missing_api_key = "jina_api_key" in normalized_message and (
         "not configured" in normalized_message or "not set" in normalized_message
     )
+    local_error_text = (local_parse_error or "").lower()
+    combined_error_text = f"{local_error_text} {normalized_message}".strip()
+    local_ssl_error = any(hint in combined_error_text for hint in _SSL_ERROR_HINTS)
 
     if local_parse_failed and payment_required:
         code = "WEB_SAVE_LOCAL_PARSE_AND_JINA_PAYMENT_REQUIRED"
@@ -164,7 +182,7 @@ def classify_web_save_failure(
         "code": code,
         "message": message,
         "details": details,
-        "suggestions": _build_suggestions(code),
+        "suggestions": _build_suggestions(code, local_ssl_error=local_ssl_error),
     }
 
 

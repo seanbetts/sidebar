@@ -124,6 +124,27 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertTrue(environment.pendingNewTaskDeepLink)
     }
 
+    func testWidgetPendingTaskSanitizationRemovesInvalidCompletionID() async {
+        WidgetDataManager.shared.recordPendingOperation(
+            WidgetPendingOperation(itemId: "task_1", action: TaskWidgetAction.complete),
+            for: .tasks
+        )
+        WidgetDataManager.shared.recordPendingOperation(
+            WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
+            for: .tasks
+        )
+
+        WidgetDataManager.shared.sanitizePendingTaskCompletions()
+        let remaining = WidgetDataManager.shared.consumePendingOperations(
+            for: .tasks,
+            actionType: TaskWidgetAction.self
+        )
+
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.action, .addNew)
+        XCTAssertEqual(remaining.first?.itemId, "")
+    }
+
     func testConsumeWidgetAddNoteSetsPendingFlagAndSelection() async {
         let environment = requireEnvironment()
         environment.authState = .active

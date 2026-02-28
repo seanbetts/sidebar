@@ -110,11 +110,17 @@ extension AppEnvironment {
             matching: { $0 == .complete }
         )
         let taskIds = operations
-            .map { $0.itemId }
+            .map { $0.itemId.trimmingCharacters(in: .whitespacesAndNewlines) }
         guard !taskIds.isEmpty, authState == .active else { return }
 
         // Complete each task that was marked done in the widget
         for taskId in taskIds {
+            guard IdentifierValidation.isServerTaskID(taskId) else {
+                authLogger.error(
+                    "Skipping widget completion with invalid task ID \(taskId, privacy: .public)"
+                )
+                continue
+            }
             if let task = tasksStore.tasks.first(where: { $0.id == taskId }) {
                 await tasksViewModel.completeTask(task: task)
             } else {

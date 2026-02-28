@@ -346,6 +346,12 @@ extension IngestionViewModel {
             // A temporary YouTube placeholder does not have a server-side job ID yet.
             return false
         }
+        if fileId.hasPrefix("local-") {
+            return true
+        }
+        guard IdentifierValidation.isServerFileID(fileId) else {
+            return false
+        }
         return true
     }
 
@@ -355,6 +361,11 @@ extension IngestionViewModel {
 
         if fileId.hasPrefix("local-") {
             cancelUpload(fileId: fileId)
+            return
+        }
+        guard IdentifierValidation.isServerFileID(fileId) else {
+            store.removeLocalUpload(fileId: fileId)
+            toastCenter.show(message: "Can't cancel this file yet")
             return
         }
 

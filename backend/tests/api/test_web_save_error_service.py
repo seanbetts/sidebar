@@ -26,6 +26,29 @@ def test_classify_local_parse_and_jina_payment_required():
     assert payload["details"]["bug_report_context"]["error_code"] == payload["code"]
 
 
+def test_classify_local_parse_and_jina_payment_required_includes_ssl_hint():
+    payload = classify_web_save_failure(
+        upstream_error_type="RequestException",
+        upstream_message=(
+            "Failed to fetch content from Jina.ai: "
+            "402 Client Error: Payment Required"
+        ),
+        url="https://example.com",
+        target_url="https://example.com",
+        mode="local",
+        local_parse_error=(
+            "HTTPSConnectionPool(host='example.com', port=443): "
+            "SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED]"
+        ),
+    )
+
+    assert payload["code"] == "WEB_SAVE_LOCAL_PARSE_AND_JINA_PAYMENT_REQUIRED"
+    assert any(
+        "REQUESTS_CA_BUNDLE/SSL_CERT_FILE" in suggestion
+        for suggestion in payload["suggestions"]
+    )
+
+
 def test_classify_web_save_result_preserves_structured_payload():
     result = {
         "success": False,

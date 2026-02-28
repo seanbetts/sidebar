@@ -20,6 +20,7 @@ extension AppEnvironment {
 
         // Migrate widget data to new generic keys (one-time)
         WidgetDataManager.shared.migrateIfNeeded()
+        WidgetDataManager.shared.sanitizePendingTaskCompletions()
 
         // Sync initial auth state to widgets
         WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)

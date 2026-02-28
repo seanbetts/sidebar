@@ -162,6 +162,10 @@ public final class APIClient {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            if isCancellationError(error) {
+                logCancellation(request)
+                throw error
+            }
             logTransportError(error, request: request)
             NotificationCenter.default.post(
                 name: .apiClientRequestFailed,
@@ -217,6 +221,10 @@ public final class APIClient {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            if isCancellationError(error) {
+                logCancellation(request)
+                throw error
+            }
             logTransportError(error, request: request)
             NotificationCenter.default.post(
                 name: .apiClientRequestFailed,
@@ -295,6 +303,17 @@ public final class APIClient {
                 "Underlying error: domain=\(underlying.domain, privacy: .public) code=\(underlying.code)"
             )
         }
+    }
+
+    private func isCancellationError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
+    }
+
+    private func logCancellation(_ request: URLRequest) {
+        let method = request.httpMethod ?? "?"
+        let url = request.url?.absoluteString ?? "?"
+        logger.debug("Request cancelled \(method, privacy: .public) \(url, privacy: .public)")
     }
 
     private func logDecodingError<T>(_ error: Error, data: Data, type: T.Type) {

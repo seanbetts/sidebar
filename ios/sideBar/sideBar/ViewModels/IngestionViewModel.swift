@@ -116,6 +116,9 @@ public final class IngestionViewModel: ObservableObject {
             teardownBag.setListPollingTask(listPollingTask)
         }
     }
+    var isListPollRequestInFlight = false
+    var listPollingConsecutiveFailures = 0
+    var nextListPollAttemptAt: Date?
     var statusCache: [String: String] = [:]
     let readyMessageTask = ManagedTask()
     private let teardownBag = IngestionViewModelTeardownBag()

@@ -30,6 +30,7 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     let userDefaults: UserDefaults
     var isRefreshingList = false
     var refreshingMetaIds = Set<String>()
+    var inFlightListLoadTask: Task<Void, Error>?
     let localUploadsKey = "ingestion.localUploads"
 
     public init(
@@ -69,13 +70,23 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     // MARK: - Public API
 
     public func loadList(force: Bool = false) async throws {
-        let listCacheKey = self.cacheKey
-        let offlineStore = offlineStore
-        _ = try await loadWithCacheAndOffline(
-            force: force,
-            offline: { offlineStore?.get(key: listCacheKey, as: IngestionListResponse.self) },
-            isNetworkAvailable: !(networkStatus?.isOffline ?? false)
-        )
+        if let inFlight = inFlightListLoadTask {
+            return try await inFlight.value
+        }
+
+        let task = Task<Void, Error> { @MainActor [weak self] in
+            guard let self else { return }
+            let listCacheKey = self.cacheKey
+            let offlineStore = self.offlineStore
+            _ = try await self.loadWithCacheAndOffline(
+                force: force,
+                offline: { offlineStore?.get(key: listCacheKey, as: IngestionListResponse.self) },
+                isNetworkAvailable: !(self.networkStatus?.isOffline ?? false)
+            )
+        }
+        inFlightListLoadTask = task
+        defer { inFlightListLoadTask = nil }
+        try await task.value
     }
 
     public func loadMeta(fileId: String, force: Bool = false) async throws {
@@ -110,6 +121,8 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     }
 
     public func reset() {
+        inFlightListLoadTask?.cancel()
+        inFlightListLoadTask = nil
         items = []
         remoteItems = []
         localItems = [:]

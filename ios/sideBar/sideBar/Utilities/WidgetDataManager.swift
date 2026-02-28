@@ -187,6 +187,30 @@ public final class WidgetDataManager {
     defaults.synchronize()
   }
 
+  /// Removes invalid pending task completion operations that can never be applied server-side.
+  public func sanitizePendingTaskCompletions() {
+    guard let defaults = userDefaults else { return }
+    let pending = loadPendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
+    guard !pending.isEmpty else { return }
+
+    let filtered = pending.filter { operation in
+      guard operation.action == .complete else { return true }
+      let itemId = operation.itemId.trimmingCharacters(in: .whitespacesAndNewlines)
+      return IdentifierValidation.isServerTaskID(itemId)
+    }
+
+    if filtered.count == pending.count {
+      return
+    }
+
+    if filtered.isEmpty {
+      defaults.removeObject(forKey: WidgetContentType.tasks.pendingKey)
+    } else if let encoded = try? Self.makeEncoder().encode(filtered) {
+      defaults.set(encoded, forKey: WidgetContentType.tasks.pendingKey)
+    }
+    defaults.synchronize()
+  }
+
   // MARK: - Widget Reload
 
   private func reloadWidgets(for contentType: WidgetContentType) {

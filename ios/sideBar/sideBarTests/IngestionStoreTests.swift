@@ -172,6 +172,27 @@ final class IngestionStoreTests: XCTestCase {
         XCTAssertTrue(reloaded.items.contains { $0.file.id == "local-1" })
     }
 
+    func testLoadLocalUploadsDropsInvalidIdentifiers() async throws {
+        let cache = TestCacheClient()
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let validItem = IngestionStoreTestsSupport.makeItem(id: "local-1", status: "uploading", stage: "uploading")
+        let invalidItem = IngestionStoreTestsSupport.makeItem(id: "file-1", status: "processing", stage: "extracting")
+        let payload: [String: LocalUploadRecord] = [
+            validItem.file.id: LocalUploadRecord(item: validItem, bookmarkData: nil),
+            invalidItem.file.id: LocalUploadRecord(item: invalidItem, bookmarkData: nil),
+        ]
+        defaults.set(try JSONEncoder().encode(payload), forKey: "ingestion.localUploads")
+
+        let reloaded = IngestionStore(
+            api: IngestionStoreTestsSupport.MockIngestionAPI(),
+            cache: cache,
+            userDefaults: defaults
+        )
+
+        XCTAssertTrue(reloaded.items.contains { $0.file.id == "local-1" })
+        XCTAssertFalse(reloaded.items.contains { $0.file.id == "file-1" })
+    }
+
     func testApplyIngestedFileEventSkipsWebsiteTranscriptRecords() async {
         let cache = TestCacheClient()
         let defaults = IngestionStoreTestsSupport.makeDefaults()

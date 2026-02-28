@@ -127,8 +127,10 @@ extension AppLaunchDelegate {
         }
     }
 
-    func shortcutPayload(for action: ShortcutAction) -> [String: String] {
+    func shortcutPayload(for shortcut: KeyboardShortcut) -> [String: String] {
+        let action = shortcut.action
         var payload: [String: String] = [:]
+        payload[ShortcutCommandKeys.commandId] = shortcut.id
         switch action {
         case .navigate(let section):
             payload[ShortcutCommandKeys.type] = ShortcutCommandType.navigate.rawValue

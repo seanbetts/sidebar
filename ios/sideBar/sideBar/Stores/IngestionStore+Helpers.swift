@@ -333,8 +333,14 @@ extension IngestionStore {
     func loadLocalUploads() {
         guard let data = userDefaults.data(forKey: localUploadsKey) else { return }
         guard let records = try? JSONDecoder().decode([String: LocalUploadRecord].self, from: data) else { return }
-        localUploadRecords = records
-        localItems = records.mapValues { $0.item }
+        let sanitizedRecords = records.filter { fileId, record in
+            isValidPersistedLocalUploadID(fileId) && isValidPersistedLocalUploadID(record.item.file.id)
+        }
+        localUploadRecords = sanitizedRecords
+        localItems = sanitizedRecords.mapValues { $0.item }
+        if sanitizedRecords.count != records.count {
+            persistLocalUploads()
+        }
         items = mergeItems(remoteItems)
     }
 
@@ -354,6 +360,10 @@ extension IngestionStore {
         localItems.removeValue(forKey: fileId)
         localUploadRecords.removeValue(forKey: fileId)
         persistLocalUploads()
+    }
+
+    func isValidPersistedLocalUploadID(_ fileId: String) -> Bool {
+        IdentifierValidation.isLocalPlaceholderID(fileId) || IdentifierValidation.isServerFileID(fileId)
     }
 
     func shouldIncludeIngestionItem(_ item: IngestionListItem) -> Bool {

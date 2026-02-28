@@ -15,6 +15,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         static let type = "type"
         static let section = "section"
         static let direction = "direction"
+        static let commandId = "command_id"
     }
 
     enum ShortcutCommandType: String {
@@ -307,7 +308,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
     private func makeMenu(identifier: UIMenu.Identifier, shortcuts: [KeyboardShortcut]) -> UIMenu? {
         guard !shortcuts.isEmpty else { return nil }
         let commands = shortcuts.map { shortcut -> UIKeyCommand in
-            let payload = shortcutPayload(for: shortcut.action)
+            let payload = shortcutPayload(for: shortcut)
             let command = UIKeyCommand(
                 title: shortcut.title,
                 image: imageForShortcut(shortcut),

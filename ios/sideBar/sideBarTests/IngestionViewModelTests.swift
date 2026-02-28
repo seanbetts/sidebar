@@ -531,7 +531,8 @@ final class IngestionViewModelTests: XCTestCase {
     }
 
     func testCancelIngestionCallsAPIAndMarksCanceledForRemoteProcessingItem() async {
-        let processingItem = makeListItem(id: "file-1", status: "processing", stage: "extracting")
+        let fileId = UUID().uuidString
+        let processingItem = makeListItem(id: fileId, status: "processing", stage: "extracting")
         final class CancelCallTracker {
             var fileIds: [String] = []
         }
@@ -555,21 +556,22 @@ final class IngestionViewModelTests: XCTestCase {
         )
         await viewModel.load()
 
-        viewModel.cancelIngestion(fileId: "file-1")
+        viewModel.cancelIngestion(fileId: fileId)
 
         for _ in 0..<10 {
-            if viewModel.items.first(where: { $0.file.id == "file-1" })?.job.status == "canceled" {
+            if viewModel.items.first(where: { $0.file.id == fileId })?.job.status == "canceled" {
                 break
             }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
 
-        XCTAssertEqual(tracker.fileIds, ["file-1"])
-        XCTAssertEqual(viewModel.items.first(where: { $0.file.id == "file-1" })?.job.status, "canceled")
+        XCTAssertEqual(tracker.fileIds, [fileId])
+        XCTAssertEqual(viewModel.items.first(where: { $0.file.id == fileId })?.job.status, "canceled")
     }
 
     func testCancelIngestionShowsToastWhenRemoteCancelFails() async {
-        let processingItem = makeListItem(id: "file-1", status: "processing", stage: "extracting")
+        let fileId = UUID().uuidString
+        let processingItem = makeListItem(id: fileId, status: "processing", stage: "extracting")
         let api = MockIngestionAPI(
             listResult: .success(IngestionListResponse(items: [processingItem])),
             metaResult: .failure(MockError.forced),
@@ -590,7 +592,7 @@ final class IngestionViewModelTests: XCTestCase {
         )
         await viewModel.load()
 
-        viewModel.cancelIngestion(fileId: "file-1")
+        viewModel.cancelIngestion(fileId: fileId)
 
         for _ in 0..<10 {
             if toastCenter.toast?.message == "Failed to cancel ingestion" {
@@ -600,7 +602,39 @@ final class IngestionViewModelTests: XCTestCase {
         }
 
         XCTAssertEqual(toastCenter.toast?.message, "Failed to cancel ingestion")
-        XCTAssertEqual(viewModel.items.first(where: { $0.file.id == "file-1" })?.job.status, "processing")
+        XCTAssertEqual(viewModel.items.first(where: { $0.file.id == fileId })?.job.status, "processing")
+    }
+
+    func testCancelIngestionSkipsInvalidRemoteIdentifierWithoutAPIRequest() async {
+        let processingItem = makeListItem(id: "file-1", status: "processing", stage: "extracting")
+        final class CancelCallTracker {
+            var count = 0
+        }
+        let tracker = CancelCallTracker()
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [processingItem])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced),
+            onCancel: { _ in tracker.count += 1 }
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let toastCenter = ToastCenter()
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: toastCenter
+        )
+        await viewModel.load()
+
+        XCTAssertFalse(viewModel.canCancelIngestion(fileId: "file-1"))
+        viewModel.cancelIngestion(fileId: "file-1")
+
+        XCTAssertEqual(tracker.count, 0)
     }
 
     func testCanRetryFailedUploadTrueForLocalFailedWithBookmark() async throws {
@@ -837,6 +871,26 @@ final class IngestionViewModelTests: XCTestCase {
 
         XCTAssertEqual(vm.errorMessage, "Could not refresh file status. Re-open the file to retry.")
         XCTAssertNil(vm.jobPollingTasks[fileId])
+    }
+
+    func testListPollingSkipsNonServerPlaceholderItems() async {
+        let vm = makeViewModelForYouTubeParsing()
+        let placeholder = makeListItem(id: "youtube-\(UUID().uuidString)", status: "processing", stage: "queued")
+
+        vm.updateListPollingState(items: [placeholder])
+
+        XCTAssertNil(vm.listPollingTask)
+    }
+
+    func testListPollingStartsForActiveServerItem() async {
+        let vm = makeViewModelForYouTubeParsing()
+        let serverID = UUID().uuidString
+        let activeServerItem = makeListItem(id: serverID, status: "processing", stage: "extracting")
+
+        vm.updateListPollingState(items: [activeServerItem])
+
+        XCTAssertNotNil(vm.listPollingTask)
+        vm.stopListPolling()
     }
 
     private func makePollingViewModel(fileId: String, jobStatus: String) -> IngestionViewModel {

@@ -151,7 +151,7 @@ extension IngestionViewModel {
     }
 
     func updateListPollingState(items: [IngestionListItem]) {
-        if items.hasActiveItems {
+        if hasActiveServerBackedItems(items) {
             startListPolling()
         } else {
             stopListPolling()
@@ -163,17 +163,16 @@ extension IngestionViewModel {
         let task = PollingTask(interval: 3)
         listPollingTask = task
         task.start { [weak self] in
-            do {
-                try await self?.store.loadList(force: true)
-            } catch {
-                // Ignore polling errors; next tick will retry.
-            }
+            await self?.runListPollingTick()
         }
     }
 
     func stopListPolling() {
         listPollingTask?.cancel()
         listPollingTask = nil
+        isListPollRequestInFlight = false
+        listPollingConsecutiveFailures = 0
+        nextListPollAttemptAt = nil
     }
 
     func detectReadyTransitions(items: [IngestionListItem]) {

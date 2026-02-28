@@ -1,6 +1,7 @@
 import AppIntents
 import WidgetKit
 import os
+import Foundation
 
 // MARK: - Complete Task Intent
 
@@ -19,6 +20,10 @@ struct CompleteTaskIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult {
+        guard UUID(uuidString: taskId) != nil else {
+            return .result()
+        }
+
         // Record the completion for the main app to sync
         WidgetDataManager.shared.recordTaskCompletion(taskId: taskId)
 

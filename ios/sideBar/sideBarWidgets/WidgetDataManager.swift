@@ -204,6 +204,7 @@ extension WidgetDataManager {
 
   /// Backward compatible method for recording task completion
   public func recordTaskCompletion(taskId: String) {
+    guard UUID(uuidString: taskId) != nil else { return }
     let operation = WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete)
     recordPendingOperation(operation, for: .tasks)
   }
