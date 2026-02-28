@@ -97,12 +97,20 @@ final class SafariExtensionCoverageTests: XCTestCase {
 
         do {
             let store = makeStore()
+            var saveCalled = false
+            var refreshCalled = false
             let payload = await SafariExtensionMessageHandler.responsePayload(
                 for: message,
                 pendingStore: store,
-                saveWebsite: { _ in throw APIClientError.requestFailed(401) }
+                saveWebsite: { _ in saveCalled = true },
+                refreshAccessToken: {
+                    refreshCalled = true
+                    return true
+                }
             )
 
+            XCTAssertFalse(saveCalled)
+            XCTAssertFalse(refreshCalled)
             XCTAssertEqual(payload["ok"] as? Bool, true)
             XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
             XCTAssertEqual(
@@ -120,13 +128,13 @@ final class SafariExtensionCoverageTests: XCTestCase {
                 saveWebsite: { _ in throw APIClientError.requestFailed(408) }
             )
 
-            XCTAssertEqual(payload["ok"] as? Bool, false)
-            XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.networkError.rawValue)
+            XCTAssertEqual(payload["ok"] as? Bool, true)
+            XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
             XCTAssertEqual(
-                payload["error"] as? String,
-                ExtensionUserMessageCatalog.message(for: .networkError)
+                payload["message"] as? String,
+                ExtensionUserMessageCatalog.message(for: .savedForLater)
             )
-            XCTAssertTrue(store.loadAll().isEmpty)
+            XCTAssertEqual(store.loadAll().count, 1)
         }
 
         do {
@@ -138,13 +146,13 @@ final class SafariExtensionCoverageTests: XCTestCase {
                 saveWebsite: { _ in throw error }
             )
 
-            XCTAssertEqual(payload["ok"] as? Bool, false)
-            XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.uploadFailed.rawValue)
+            XCTAssertEqual(payload["ok"] as? Bool, true)
+            XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
             XCTAssertEqual(
-                payload["error"] as? String,
-                ShareExtensionMessageMapper.errorMessage(for: error)
+                payload["message"] as? String,
+                ExtensionUserMessageCatalog.message(for: .savedForLater)
             )
-            XCTAssertTrue(store.loadAll().isEmpty)
+            XCTAssertEqual(store.loadAll().count, 1)
         }
     }
 

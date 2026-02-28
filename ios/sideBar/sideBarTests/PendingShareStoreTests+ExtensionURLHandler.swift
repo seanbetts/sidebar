@@ -38,9 +38,9 @@ extension PendingShareStoreTests {
         XCTAssertEqual(response["error"] as? String, ExtensionUserMessageCatalog.message(for: .missingURL))
     }
 
-    func testExtensionURLMessageHandlerRefreshesTokenAndRetriesOnUnauthorized() async {
+    func testExtensionURLMessageHandlerQueuesWithoutCallingSaveOrRefresh() async {
         let store = makeStoreForExtensionURLHandlerTests()
-        var attempts = 0
+        var saveCalled = false
         var refreshCalled = false
 
         let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
@@ -48,10 +48,7 @@ extension PendingShareStoreTests {
             urlString: "https://example.com",
             pendingStore: store,
             saveWebsite: { _ in
-                attempts += 1
-                if attempts == 1 {
-                    throw APIClientError.requestFailed(401)
-                }
+                saveCalled = true
             },
             refreshAccessToken: {
                 refreshCalled = true
@@ -59,35 +56,26 @@ extension PendingShareStoreTests {
             }
         )
 
-        XCTAssertTrue(refreshCalled)
-        XCTAssertEqual(attempts, 2)
+        XCTAssertFalse(saveCalled)
+        XCTAssertFalse(refreshCalled)
         XCTAssertEqual(response["ok"] as? Bool, true)
-        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
         XCTAssertEqual(store.loadAll().count, 1)
         XCTAssertEqual(store.loadAll().first?.url, "https://example.com")
     }
 
-    func testExtensionURLMessageHandlerQueuesWebsiteWhenRefreshFails() async {
+    func testExtensionURLMessageHandlerQueuesWebsiteWhenSaveClosureThrows() async {
         let store = makeStoreForExtensionURLHandlerTests()
-        var attempts = 0
-        var refreshCalled = false
 
         let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "save_url",
             urlString: "https://example.com",
             pendingStore: store,
             saveWebsite: { _ in
-                attempts += 1
-                throw APIClientError.requestFailed(401)
-            },
-            refreshAccessToken: {
-                refreshCalled = true
-                return false
+                throw APIClientError.requestFailed(500)
             }
         )
 
-        XCTAssertTrue(refreshCalled)
-        XCTAssertEqual(attempts, 1)
         XCTAssertEqual(response["ok"] as? Bool, true)
         XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
         XCTAssertEqual(
@@ -99,17 +87,20 @@ extension PendingShareStoreTests {
         XCTAssertEqual(store.loadAll().first?.url, "https://example.com")
     }
 
-    func testExtensionURLMessageHandlerQueuesWebsiteWhenMissingToken() async {
+    func testExtensionURLMessageHandlerQueuesWebsiteWhenRefreshClosureReturnsFalse() async {
         let store = makeStoreForExtensionURLHandlerTests()
+        var refreshCalled = false
         let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "save_url",
             urlString: "https://example.com",
             pendingStore: store,
-            saveWebsite: { _ in
-                throw APIClientError.missingToken
+            refreshAccessToken: {
+                refreshCalled = true
+                return false
             }
         )
 
+        XCTAssertFalse(refreshCalled)
         XCTAssertEqual(response["ok"] as? Bool, true)
         XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
         XCTAssertEqual(

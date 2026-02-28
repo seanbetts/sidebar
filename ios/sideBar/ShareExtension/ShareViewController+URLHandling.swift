@@ -44,56 +44,9 @@ extension ShareViewController {
     }
 
     func saveURL(_ url: URL) {
-        guard let environment else {
-            queuePendingWebsite(url)
-            return
-        }
         setContentView(ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .savingWebsite)))
         Task { @MainActor in
-            if !(await ShareNetworkMonitor.isOnline()) {
-                queuePendingWebsite(url)
-                return
-            }
-
-            guard await environment.ensureValidAccessToken() else {
-                queuePendingWebsite(url)
-                return
-            }
-
-            func saveWebsiteNow() async throws {
-                _ = try await environment.websitesAPI.quickSave(url: url.absoluteString, title: nil)
-            }
-
-            do {
-                try await saveWebsiteNow()
-                _ = pendingShareStore.enqueueWebsite(url: normalizedWebsiteEventURL(url))
-                showSuccess(message: ExtensionUserMessageCatalog.message(for: .websiteSaved))
-            } catch {
-                if environment.isUnauthorized(error),
-                   await environment.ensureValidAccessToken(forceRefresh: true) {
-                    do {
-                        try await saveWebsiteNow()
-                        _ = pendingShareStore.enqueueWebsite(url: normalizedWebsiteEventURL(url))
-                        showSuccess(message: ExtensionUserMessageCatalog.message(for: .websiteSaved))
-                        return
-                    } catch {
-                        if isOfflineError(error) {
-                            queuePendingWebsite(url)
-                        } else if environment.isUnauthorized(error) {
-                            queuePendingWebsite(url)
-                        } else {
-                            showError(ShareExtensionMessageMapper.errorMessage(for: error))
-                        }
-                        return
-                    }
-                }
-
-                if isOfflineError(error) || environment.isUnauthorized(error) {
-                    queuePendingWebsite(url)
-                } else {
-                    showError(ShareExtensionMessageMapper.errorMessage(for: error))
-                }
-            }
+            queuePendingWebsite(url)
         }
     }
 

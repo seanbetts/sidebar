@@ -28,15 +28,17 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
             "action": "save_url",
             "url": "https://youtu.be/abc123xyzAA?t=35"
         ]
+        var saveCalled = false
 
         let payload = await SafariExtensionMessageHandler.responsePayload(
             for: message,
             pendingStore: store,
             saveWebsite: { _ in
-                throw URLError(.notConnectedToInternet)
+                saveCalled = true
             }
         )
 
+        XCTAssertFalse(saveCalled)
         XCTAssertEqual(payload["ok"] as? Bool, true)
         XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
         XCTAssertEqual(store.loadAll().count, 1)
@@ -57,7 +59,7 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
-    func testResponsePayloadReturnsErrorWhenBackendSaveFails() async {
+    func testResponsePayloadQueuesWhenSaveClosureThrows() async {
         let store = makeStore()
         let message: [String: Any] = [
             "action": "save_url",
@@ -72,32 +74,30 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
             }
         )
 
-        XCTAssertEqual(payload["ok"] as? Bool, false)
-        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.uploadFailed.rawValue)
+        XCTAssertEqual(payload["ok"] as? Bool, true)
+        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
         XCTAssertEqual(
-            payload["error"] as? String,
-            ExtensionUserMessageCatalog.uploadFailureMessage(detail: "Unable to save website")
+            payload["message"] as? String,
+            ExtensionUserMessageCatalog.message(for: .savedForLater)
         )
-        XCTAssertTrue(store.loadAll().isEmpty)
+        XCTAssertEqual(store.loadAll().count, 1)
+        XCTAssertEqual(store.loadAll().first?.url, "https://example.com/article")
     }
 
-    func testResponsePayloadRefreshesAndRetriesOnUnauthorized() async {
+    func testResponsePayloadIgnoresSaveAndRefreshClosures() async {
         let store = makeStore()
         let message: [String: Any] = [
             "action": "save_url",
             "url": "https://example.com/article"
         ]
-        var attempts = 0
+        var saveCalled = false
         var refreshCalled = false
 
         let payload = await SafariExtensionMessageHandler.responsePayload(
             for: message,
             pendingStore: store,
             saveWebsite: { _ in
-                attempts += 1
-                if attempts == 1 {
-                    throw APIClientError.requestFailed(401)
-                }
+                saveCalled = true
             },
             refreshAccessToken: {
                 refreshCalled = true
@@ -105,10 +105,10 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
             }
         )
 
-        XCTAssertTrue(refreshCalled)
-        XCTAssertEqual(attempts, 2)
+        XCTAssertFalse(saveCalled)
+        XCTAssertFalse(refreshCalled)
         XCTAssertEqual(payload["ok"] as? Bool, true)
-        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
+        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
         XCTAssertEqual(store.loadAll().count, 1)
         XCTAssertEqual(store.loadAll().first?.url, "https://example.com/article")
     }
