@@ -72,9 +72,16 @@ class GitHubIssueService:
             # If labels are missing in the repo, retry without labels to avoid
             # blocking user feedback submission.
             if not cls._is_label_validation_error(str(exc)):
-                raise
+                raise ValueError(
+                    cls._with_repository_context(str(exc), owner, repo)
+                ) from exc
             issue_payload.pop("labels", None)
-            response_payload = cls._post_issue(url, token, issue_payload)
+            try:
+                response_payload = cls._post_issue(url, token, issue_payload)
+            except ValueError as retry_exc:
+                raise ValueError(
+                    cls._with_repository_context(str(retry_exc), owner, repo)
+                ) from retry_exc
             labels_applied = []
 
         return {
@@ -224,3 +231,15 @@ class GitHubIssueService:
     def _is_label_validation_error(error_message: str) -> bool:
         lower_message = error_message.lower()
         return "label" in lower_message and "validation failed" in lower_message
+
+    @staticmethod
+    def _with_repository_context(error_message: str, owner: str, repo: str) -> str:
+        """Attach owner/repo guidance for common repository access failures."""
+        if "GitHub issue creation failed (404)" not in error_message:
+            return error_message
+
+        return (
+            f"{error_message}. Repository '{owner}/{repo}' was not found or the token "
+            "cannot access it. Check GITHUB_ISSUES_OWNER/GITHUB_ISSUES_REPO and ensure "
+            "the token has repository access with Issues write permission."
+        )

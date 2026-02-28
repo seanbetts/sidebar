@@ -137,3 +137,36 @@ def test_submit_feedback_issue_retries_without_labels_on_validation_error(
     assert len(captured_payloads) == 2
     assert "labels" in captured_payloads[0]
     assert "labels" not in captured_payloads[1]
+
+
+def test_submit_feedback_issue_404_includes_repository_guidance(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    def fake_urlopen(request, timeout=15):
+        del timeout
+        error_payload = json.dumps({"message": "Not Found"}).encode("utf-8")
+        raise HTTPError(
+            url=request.full_url,
+            code=404,
+            msg="Not Found",
+            hdrs=None,
+            fp=io.BytesIO(error_payload),
+        )
+
+    monkeypatch.setattr(settings, "github_issues_owner", "new-org")
+    monkeypatch.setattr(settings, "github_issues_repo", "sidebar")
+    monkeypatch.setattr(settings, "github_issues_token", "github_pat_test")
+    monkeypatch.setattr(settings, "github_issues_api_base", "https://api.github.com")
+    monkeypatch.setattr(github_issue_service, "urlopen", fake_urlopen)
+
+    with pytest.raises(ValueError) as exc_info:
+        GitHubIssueService.submit_feedback_issue(
+            issue_type="bug",
+            summary="Issue create fails",
+            details="API call returns 404.",
+            user_id="user-1",
+        )
+
+    message = str(exc_info.value)
+    assert "GitHub issue creation failed (404): Not Found" in message
+    assert "Repository 'new-org/sidebar' was not found or the token cannot access it" in message
