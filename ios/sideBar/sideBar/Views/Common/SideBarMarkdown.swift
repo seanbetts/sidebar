@@ -344,7 +344,6 @@ private struct SideBarYouTubeEmbedBlock: View {
     let embed: MarkdownRendering.MarkdownYouTubeEmbed
     let text: String
     let context: SideBarYouTubeTranscriptContext?
-    @Environment(\.openURL) private var openURL
     @State private var isPlayerLoaded = false
 
     var body: some View {
@@ -367,17 +366,6 @@ private struct SideBarYouTubeEmbedBlock: View {
             }
             .aspectRatio(16 / 9, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-            Button {
-                openSourceInYouTube()
-            } label: {
-                Label("Open in YouTube", systemImage: "arrow.up.right.square")
-                    .appFont(.footnoteSemibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-            }
-            .buttonStyle(.bordered)
-            .frame(maxWidth: 420)
 
             if isPlayerLoaded, let context, shouldShowTranscriptButton(context: context) {
                 Button {
@@ -408,15 +396,6 @@ private struct SideBarYouTubeEmbedBlock: View {
 
     private func isQueuedOrProcessing(context: SideBarYouTubeTranscriptContext) -> Bool {
         context.isTranscriptPending(embed.videoId)
-    }
-
-    private func openSourceInYouTube() {
-        if let sourceURL = URL(string: embed.sourceURL) {
-            openURL(YouTubeURLPolicy.preferredExternalURL(from: sourceURL))
-            return
-        }
-        guard let watchURL = YouTubeURLPolicy.watchURL(videoId: embed.videoId) else { return }
-        openURL(watchURL)
     }
 }
 
