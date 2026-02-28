@@ -109,7 +109,7 @@ public struct LoginView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 18)
             TextField("Email", text: $email)
-                .textContentType(.username)
+                .textContentType(LoginCredentialAutofillHints.email)
         #if canImport(UIKit)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
@@ -157,7 +157,7 @@ public struct LoginView: View {
                 text: $password,
                 focus: $focusedField,
                 field: .password,
-                textContentType: .password,
+                textContentType: LoginCredentialAutofillHints.password,
                 submitLabel: .go,
                 onSubmit: { Task { await signIn() } }
             )
@@ -359,7 +359,6 @@ public struct LoginView: View {
             Task { await signIn() }
         } label: {
             ZStack {
-                // Hidden content to maintain consistent size
                 HStack(spacing: 8) {
                     LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                     Text("Signing in...")
@@ -377,9 +376,14 @@ public struct LoginView: View {
             }
             .frame(maxWidth: .infinity)
         }
+        #if os(macOS)
+        .buttonStyle(LoginPrimaryActionButtonStyle())
+        #else
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
         .tint(DesignTokens.Colors.actionPrimary)
+        #endif
+        .keyboardShortcut(.defaultAction)
         .disabled(isSignInDisabled)
         .accessibilitySortPriority(1)
     }
