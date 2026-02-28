@@ -100,6 +100,7 @@ final class AudioPlayerViewModel: ObservableObject {
 
     private func play() {
         guard let player = player else { return }
+        MediaPlaybackAudioSession.activateForPlayback()
         player.play()
         isPlaying = true
         startTimer()

@@ -18,6 +18,7 @@ final class VideoPlayerState: ObservableObject {
     }
 
     func play() {
+        MediaPlaybackAudioSession.activateForPlayback()
         player.play()
     }
 
