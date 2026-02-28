@@ -70,7 +70,6 @@ private struct TextEditorFormattingConfigurator: UIViewRepresentable {
             textView.allowsEditingTextAttributes = false
             textView.inputAssistantItem.leadingBarButtonGroups = []
             textView.inputAssistantItem.trailingBarButtonGroups = []
-            guard #available(iOS 18.0, *) else { return }
             textView.textFormattingConfiguration = UITextFormattingViewController.Configuration(groups: [])
         }
     }
