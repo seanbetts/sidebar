@@ -63,6 +63,25 @@ def test_update_pinned_assigns_next_order(db_session):
     assert refreshed_b.pinned_order == 1
 
 
+def test_soft_delete_file_clears_pinned_state(db_session):
+    file_record = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="pinned.txt",
+        path="pinned.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )[0]
+    FileIngestionService.update_pinned(db_session, "user-1", file_record.id, True)
+
+    deleted = FileIngestionService.soft_delete_file(db_session, file_record.id)
+
+    assert deleted is not None
+    assert deleted.deleted_at is not None
+    assert deleted.pinned is False
+    assert deleted.pinned_order is None
+
+
 def test_list_ingestions_hides_website_transcripts(db_session):
     FileIngestionService.create_ingestion(
         db_session,

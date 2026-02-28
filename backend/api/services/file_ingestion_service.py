@@ -385,6 +385,8 @@ class FileIngestionService:
         if not record:
             return None
         now = datetime.now(UTC)
+        record.pinned = False
+        record.pinned_order = None
         record.deleted_at = now
         record.updated_at = now
         db.commit()
