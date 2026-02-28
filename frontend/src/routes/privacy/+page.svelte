@@ -33,7 +33,7 @@
 			</ul>
 			<h3>Content You Provide</h3>
 			<ul>
-				<li>Prompts, chat history, notes, files, and saved website content</li>
+				<li>Prompts, chat history, tasks, notes, files, and saved website content</li>
 				<li>Workspace metadata (such as titles, tags, and organization choices)</li>
 			</ul>
 			<h3>Technical and Usage Data</h3>
@@ -135,9 +135,15 @@
 		<section>
 			<h2>9. Children’s Privacy</h2>
 			<p>
-				sideBar is not directed to children under 13 (or the applicable minimum age in your region).
-				We do not knowingly collect personal data from children. If you believe a child provided
-				data, contact us and we will investigate and take appropriate action.
+				sideBar is intended for users who meet the minimum age requirement in their region. Based on
+				our current App Store ratings, sideBar is intended for users age 16+ in most regions, and
+				15+ in Australia and the Republic of Korea.
+			</p>
+			<p>
+				We do not knowingly collect personal data from children below the applicable minimum age. If
+				you believe a child has provided personal data, contact
+				<a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a> and we will investigate and take
+				appropriate action.
 			</p>
 		</section>
 
