@@ -280,4 +280,26 @@ final class WorkspaceLegacySectionAdapterTests: XCTestCase {
             .websites
         )
     }
+
+    func testSyncDirectiveSetsBuiltInAndEmptyDescriptors() {
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.syncDirective(for: .builtIn(.files)),
+            .set(.files)
+        )
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.syncDirective(for: .empty),
+            .set(nil)
+        )
+    }
+
+    func testSyncDirectiveIgnoresAgentSurfaceDescriptors() {
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.syncDirective(
+                for: .agentSurface(
+                    AgentWorkspaceSurfaceDescriptor(type: "map", surfaceId: "surface-6")
+                )
+            ),
+            .keepCurrent
+        )
+    }
 }

@@ -45,6 +45,29 @@ extension ContentView {
         )
     }
 
+    func reconcileLegacySectionsWithWorkspaceProjection() {
+        let projection = workspaceLegacySectionProjection
+        #if !os(macOS)
+        if isCompactWorkspaceLayout, phoneSelection != projection.compactSelection {
+            phoneSelection = projection.compactSelection
+        }
+        #endif
+
+        guard !isCompactWorkspaceLayout else { return }
+        applySyncDirective(
+            WorkspaceLegacySectionAdapter.syncDirective(
+                for: projection.primaryDescriptor
+            ),
+            toPrimarySection: true
+        )
+        applySyncDirective(
+            WorkspaceLegacySectionAdapter.syncDirective(
+                for: projection.secondaryDescriptor
+            ),
+            toPrimarySection: false
+        )
+    }
+
     private var isCompactWorkspaceLayout: Bool {
         #if os(macOS)
         return false
@@ -59,5 +82,23 @@ extension ContentView {
         #else
         return false
         #endif
+    }
+
+    private func applySyncDirective(
+        _ directive: WorkspaceLegacySectionSyncDirective,
+        toPrimarySection: Bool
+    ) {
+        switch directive {
+        case .keepCurrent:
+            break
+        case .set(let section):
+            if toPrimarySection {
+                if primarySection != section {
+                    primarySection = section
+                }
+            } else if secondarySection != section {
+                secondarySection = section
+            }
+        }
     }
 }

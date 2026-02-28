@@ -1,6 +1,7 @@
 import LocalAuthentication
 import OSLog
 import SwiftUI
+import Combine
 #if os(iOS)
 import UIKit
 #endif
@@ -134,6 +135,9 @@ extension ContentView {
         })
         content = AnyView(content.onChange(of: secondarySection) { _, _ in
             updateActiveSection()
+        })
+        content = AnyView(content.onReceive(environment.workspaceStore.$state.dropFirst()) { _ in
+            reconcileLegacySectionsWithWorkspaceProjection()
         })
         content = AnyView(content.onChange(of: isSettingsPresented) { _, _ in
             updateActiveSection()

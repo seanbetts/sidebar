@@ -7,6 +7,11 @@ struct WorkspaceLegacySectionProjection: Equatable {
     let compactSelection: AppSection
 }
 
+enum WorkspaceLegacySectionSyncDirective: Equatable {
+    case keepCurrent
+    case set(AppSection?)
+}
+
 enum WorkspaceLegacySectionAdapter {
     static func descriptor(for section: AppSection?) -> WorkspaceContentDescriptor {
         .fromOptionalBuiltInSection(section)
@@ -107,6 +112,19 @@ enum WorkspaceLegacySectionAdapter {
     ) -> AppSection? {
         guard !isCompactLayout else { return nil }
         return section(from: projection.primaryDescriptor) ?? fallbackSidebarSelection
+    }
+
+    static func syncDirective(
+        for descriptor: WorkspaceContentDescriptor
+    ) -> WorkspaceLegacySectionSyncDirective {
+        switch descriptor {
+        case .builtIn(let section):
+            return .set(section)
+        case .empty:
+            return .set(nil)
+        case .agentSurface:
+            return .keepCurrent
+        }
     }
 
     private static func preferredDescriptor(
