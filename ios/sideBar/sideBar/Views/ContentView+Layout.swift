@@ -253,9 +253,14 @@ extension ContentView {
 
     func swapPrimaryAndSecondary() {
         let performSwap = {
+            let projection = workspaceLegacySectionProjection
             let plan = WorkspaceBehaviorPolicy.makeSwapPlan(
-                currentPrimarySection: primarySection,
-                currentSecondarySection: secondarySection,
+                currentPrimarySection: WorkspaceLegacySectionAdapter.section(
+                    from: projection.primaryDescriptor
+                ),
+                currentSecondarySection: WorkspaceLegacySectionAdapter.section(
+                    from: projection.secondaryDescriptor
+                ),
                 currentLastNonChatSection: lastNonChatSection
             )
             primarySection = plan.primarySection
@@ -272,7 +277,10 @@ extension ContentView {
     }
 
     func handleNonChatSelection(_ section: AppSection) {
-        if primarySection == .chat {
+        let projectedPrimarySection = WorkspaceLegacySectionAdapter.section(
+            from: workspaceLegacySectionProjection.primaryDescriptor
+        )
+        if projectedPrimarySection == .chat {
             secondarySection = section
         } else {
             primarySection = section

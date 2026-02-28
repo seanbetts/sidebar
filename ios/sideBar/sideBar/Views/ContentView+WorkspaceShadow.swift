@@ -11,19 +11,12 @@ extension ContentView {
     }
 
     var resolvedActiveSectionForWorkspace: AppSection {
-        #if os(macOS)
-        return isSettingsPresented
-            ? .settings
-            : (primarySection ?? sidebarSelection ?? secondarySection ?? .chat)
-        #else
-        if isSettingsPresented {
-            return .settings
-        }
-        if horizontalSizeClass == .compact {
-            return workspaceLegacySectionProjection.compactSelection
-        }
-        return primarySection ?? sidebarSelection ?? secondarySection ?? .chat
-        #endif
+        WorkspaceLegacySectionAdapter.resolvedActiveSection(
+            projection: workspaceLegacySectionProjection,
+            isCompactLayout: isCompactWorkspaceLayout,
+            isSettingsPresented: isSettingsPresented,
+            fallbackSidebarSelection: sidebarSelection
+        )
     }
 
     var workspaceLegacySnapshot: WorkspaceLegacySnapshot {
@@ -32,7 +25,9 @@ extension ContentView {
             sidebarSelection: sidebarSelection,
             primarySection: primarySection,
             secondarySection: secondarySection,
-            phoneSelection: isCompactWorkspaceLayout ? phoneSelection : nil,
+            phoneSelection: isCompactWorkspaceLayout
+                ? workspaceLegacySectionProjection.compactSelection
+                : nil,
             activeSection: resolvedActiveSectionForWorkspace,
             focusedSection: environment.focusedSection,
             lastNonChatSection: lastNonChatSection,

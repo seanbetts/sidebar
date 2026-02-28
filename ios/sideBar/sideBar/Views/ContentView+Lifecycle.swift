@@ -13,36 +13,30 @@ struct MacInitialSelectionPlan {
     let focusedSection: AppSection?
     let shouldConsumeCommandSelection: Bool
 }
-
 struct DesktopSidebarSelectionPlan: Equatable {
     let primarySection: AppSection?
     let secondarySection: AppSection?
     let lastNonChatSection: AppSection?
 }
-
 enum InitialPhoneChatAction: Equatable {
     case openDraftConversation
     case none
 }
-
 struct WorkspaceSwapPlan: Equatable {
     let primarySection: AppSection?
     let secondarySection: AppSection?
     let lastNonChatSection: AppSection?
 }
-
 struct WorkspaceExpandedChangePlan: Equatable {
     let isLeftPanelExpanded: Bool
     let previousLeftPanelExpanded: Bool?
     let clearExpandedByRotation: Bool
 }
-
 struct WorkspaceRotationPlan: Equatable {
     let lastWorkspaceIsPortrait: Bool
     let isWorkspaceExpanded: Bool?
     let isWorkspaceExpandedByRotation: Bool?
 }
-
 enum WorkspaceBehaviorPolicy {
     static func makeSwapPlan(
         currentPrimarySection: AppSection?,
@@ -205,19 +199,16 @@ extension ContentView {
     }
 
     var isFilesSectionVisible: Bool {
-        #if os(macOS)
-        return primarySection == .files || secondarySection == .files
-        #else
-        if isCompact {
-            return phoneSelection == .files
-        }
-        return primarySection == .files || secondarySection == .files
-        #endif
+        WorkspaceLegacySectionAdapter.isSectionVisible(
+            .files,
+            projection: workspaceLegacySectionProjection,
+            isCompactLayout: isCompact
+        )
     }
 
     var isPhonePanelListVisible: Bool {
         guard isCompact else { return false }
-        switch phoneSelection {
+        switch workspaceLegacySectionProjection.compactSelection {
         case .chat:
             return environment.chatViewModel.selectedConversationId == nil
                 && !environment.chatViewModel.isDraftConversationActive
@@ -405,9 +396,14 @@ extension ContentView {
         guard horizontalSizeClass != .compact else { return }
         #endif
 
+        let projection = workspaceLegacySectionProjection
         let plan = Self.makeDesktopSidebarSelectionPlan(
-            currentPrimarySection: primarySection,
-            currentSecondarySection: secondarySection,
+            currentPrimarySection: WorkspaceLegacySectionAdapter.section(
+                from: projection.primaryDescriptor
+            ),
+            currentSecondarySection: WorkspaceLegacySectionAdapter.section(
+                from: projection.secondaryDescriptor
+            ),
             currentLastNonChatSection: lastNonChatSection,
             selectedSection: newValue
         )
@@ -432,7 +428,9 @@ extension ContentView {
         newValue: UserInterfaceSizeClass?
     ) {
         if oldValue == .compact, newValue != .compact {
-            let plan = Self.makeRegularLayoutPlanFromCompactSelection(phoneSelection: phoneSelection)
+            let plan = Self.makeRegularLayoutPlanFromCompactSelection(
+                phoneSelection: workspaceLegacySectionProjection.compactSelection
+            )
             primarySection = plan.primarySection
             secondarySection = plan.secondarySection
             lastNonChatSection = plan.lastNonChatSection
@@ -467,7 +465,7 @@ extension ContentView {
         guard UIDevice.current.userInterfaceIdiom == .phone else { return false }
         guard horizontalSizeClass == .compact else { return false }
         guard environment.authState == .active else { return false }
-        guard phoneSelection == .chat else { return false }
+        guard workspaceLegacySectionProjection.compactSelection == .chat else { return false }
         guard !didEnsureInitialPhoneChatInterface else { return false }
         guard environment.commandSelection == nil else { return false }
         guard !environment.pendingNewTaskDeepLink,
@@ -477,7 +475,7 @@ extension ContentView {
     }
 
     private var didInitialPhoneChatFlowGetSuperseded: Bool {
-        guard phoneSelection == .chat else { return true }
+        guard workspaceLegacySectionProjection.compactSelection == .chat else { return true }
         if let commandSelection = environment.commandSelection, commandSelection != .chat {
             return true
         }

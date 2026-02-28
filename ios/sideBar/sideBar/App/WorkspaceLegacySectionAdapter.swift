@@ -67,6 +67,48 @@ enum WorkspaceLegacySectionAdapter {
         return .builtIn(section)
     }
 
+    static func isSectionVisible(
+        _ section: AppSection,
+        projection: WorkspaceLegacySectionProjection,
+        isCompactLayout: Bool
+    ) -> Bool {
+        if isCompactLayout {
+            return projection.compactSelection == section
+        }
+
+        return self.section(from: projection.primaryDescriptor) == section
+            || self.section(from: projection.secondaryDescriptor) == section
+    }
+
+    static func resolvedActiveSection(
+        projection: WorkspaceLegacySectionProjection,
+        isCompactLayout: Bool,
+        isSettingsPresented: Bool,
+        fallbackSidebarSelection: AppSection?
+    ) -> AppSection {
+        if isSettingsPresented {
+            return .settings
+        }
+
+        if isCompactLayout {
+            return projection.compactSelection
+        }
+
+        return section(from: projection.primaryDescriptor)
+            ?? fallbackSidebarSelection
+            ?? section(from: projection.secondaryDescriptor)
+            ?? .chat
+    }
+
+    static func primaryWorkspaceSectionForRotation(
+        projection: WorkspaceLegacySectionProjection,
+        isCompactLayout: Bool,
+        fallbackSidebarSelection: AppSection?
+    ) -> AppSection? {
+        guard !isCompactLayout else { return nil }
+        return section(from: projection.primaryDescriptor) ?? fallbackSidebarSelection
+    }
+
     private static func preferredDescriptor(
         _ descriptor: WorkspaceContentDescriptor,
         fallback: WorkspaceContentDescriptor

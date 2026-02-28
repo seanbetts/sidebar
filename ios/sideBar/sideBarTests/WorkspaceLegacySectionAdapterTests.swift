@@ -127,4 +127,157 @@ final class WorkspaceLegacySectionAdapterTests: XCTestCase {
             .builtIn(.notes)
         )
     }
+
+    func testIsSectionVisibleUsesCompactSelectionWhenCompact() {
+        let projection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .agentSurface(
+                AgentWorkspaceSurfaceDescriptor(type: "table", surfaceId: "surface-3")
+            ),
+            secondaryDescriptor: .empty,
+            compactSelection: .files
+        )
+
+        XCTAssertTrue(
+            WorkspaceLegacySectionAdapter.isSectionVisible(
+                .files,
+                projection: projection,
+                isCompactLayout: true
+            )
+        )
+        XCTAssertFalse(
+            WorkspaceLegacySectionAdapter.isSectionVisible(
+                .notes,
+                projection: projection,
+                isCompactLayout: true
+            )
+        )
+    }
+
+    func testIsSectionVisibleChecksBuiltInDescriptorsWhenSplit() {
+        let projection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .builtIn(.notes),
+            secondaryDescriptor: .builtIn(.files),
+            compactSelection: .chat
+        )
+
+        XCTAssertTrue(
+            WorkspaceLegacySectionAdapter.isSectionVisible(
+                .notes,
+                projection: projection,
+                isCompactLayout: false
+            )
+        )
+        XCTAssertTrue(
+            WorkspaceLegacySectionAdapter.isSectionVisible(
+                .files,
+                projection: projection,
+                isCompactLayout: false
+            )
+        )
+        XCTAssertFalse(
+            WorkspaceLegacySectionAdapter.isSectionVisible(
+                .tasks,
+                projection: projection,
+                isCompactLayout: false
+            )
+        )
+    }
+
+    func testResolvedActiveSectionReturnsCompactSelectionWhenCompact() {
+        let projection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .builtIn(.notes),
+            secondaryDescriptor: .builtIn(.files),
+            compactSelection: .tasks
+        )
+
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.resolvedActiveSection(
+                projection: projection,
+                isCompactLayout: true,
+                isSettingsPresented: false,
+                fallbackSidebarSelection: .chat
+            ),
+            .tasks
+        )
+    }
+
+    func testResolvedActiveSectionPrioritizesSettingsAndPrimaryThenFallbacks() {
+        let settingsProjection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .builtIn(.notes),
+            secondaryDescriptor: .builtIn(.files),
+            compactSelection: .chat
+        )
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.resolvedActiveSection(
+                projection: settingsProjection,
+                isCompactLayout: false,
+                isSettingsPresented: true,
+                fallbackSidebarSelection: .chat
+            ),
+            .settings
+        )
+
+        let primaryProjection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .builtIn(.websites),
+            secondaryDescriptor: .builtIn(.files),
+            compactSelection: .chat
+        )
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.resolvedActiveSection(
+                projection: primaryProjection,
+                isCompactLayout: false,
+                isSettingsPresented: false,
+                fallbackSidebarSelection: .chat
+            ),
+            .websites
+        )
+
+        let fallbackProjection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .agentSurface(
+                AgentWorkspaceSurfaceDescriptor(type: "map", surfaceId: "surface-4")
+            ),
+            secondaryDescriptor: .builtIn(.tasks),
+            compactSelection: .chat
+        )
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.resolvedActiveSection(
+                projection: fallbackProjection,
+                isCompactLayout: false,
+                isSettingsPresented: false,
+                fallbackSidebarSelection: .notes
+            ),
+            .notes
+        )
+    }
+
+    func testPrimaryWorkspaceSectionForRotationUsesProjectionAndFallback() {
+        let compactProjection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .builtIn(.notes),
+            secondaryDescriptor: .empty,
+            compactSelection: .chat
+        )
+        XCTAssertNil(
+            WorkspaceLegacySectionAdapter.primaryWorkspaceSectionForRotation(
+                projection: compactProjection,
+                isCompactLayout: true,
+                fallbackSidebarSelection: .files
+            )
+        )
+
+        let splitProjection = WorkspaceLegacySectionProjection(
+            primaryDescriptor: .agentSurface(
+                AgentWorkspaceSurfaceDescriptor(type: "chart", surfaceId: "surface-5")
+            ),
+            secondaryDescriptor: .builtIn(.chat),
+            compactSelection: .chat
+        )
+        XCTAssertEqual(
+            WorkspaceLegacySectionAdapter.primaryWorkspaceSectionForRotation(
+                projection: splitProjection,
+                isCompactLayout: false,
+                fallbackSidebarSelection: .websites
+            ),
+            .websites
+        )
+    }
 }

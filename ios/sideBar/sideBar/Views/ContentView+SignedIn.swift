@@ -474,14 +474,11 @@ extension ContentView {
         }
     }
     private var primaryWorkspaceSectionForRotation: AppSection? {
-        #if os(macOS)
-        return primarySection ?? sidebarSelection
-        #else
-        if horizontalSizeClass == .compact {
-            return nil
-        }
-        return primarySection ?? sidebarSelection
-        #endif
+        WorkspaceLegacySectionAdapter.primaryWorkspaceSectionForRotation(
+            projection: workspaceLegacySectionProjection,
+            isCompactLayout: isCompact,
+            fallbackSidebarSelection: sidebarSelection
+        )
     }
     #endif
 }
