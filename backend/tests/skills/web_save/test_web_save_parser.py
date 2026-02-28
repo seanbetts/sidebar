@@ -1978,6 +1978,85 @@ def test_parse_url_local_force_rendering(monkeypatch):
     assert parsed.title == "Rendered"
 
 
+def test_parse_url_local_force_rendering_skips_when_playwright_fails(monkeypatch):
+    html = """
+    <html>
+      <head><title>Force Render Fallback</title></head>
+      <body>
+        <article>
+          <div class="force">Placeholder</div>
+          <p>Local parser should keep this when rendering fails.</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/render", False
+
+    def fake_render(
+        url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"
+    ):
+        raise RuntimeError("Browser executable missing")
+
+    rule = web_save_parser.Rule(
+        id="force-render",
+        phase="pre",
+        priority=0,
+        trigger={"dom": {"any": [".force"]}},
+        rendering={"mode": "force"},
+    )
+    engine = web_save_parser.RuleEngine([rule])
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "render_html_with_playwright", fake_render)
+    monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local("example.com/render")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+
+    assert data["used_js_rendering"] is False
+    assert "Local parser should keep this when rendering fails." in parsed.content
+
+
+def test_parse_url_local_auto_rendering_skips_when_playwright_fails(monkeypatch):
+    html = """
+    <html>
+      <head><title>Auto Render Fallback</title></head>
+      <body>
+        <article>
+          <p>Local parser should keep this when auto rendering fails.</p>
+          <a href="https://www.youtube.com/embed/abc123xyzAA">video</a>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/auto-render", False
+
+    def fake_render(
+        url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"
+    ):
+        raise RuntimeError("Browser executable missing")
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "render_html_with_playwright", fake_render)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local("example.com/auto-render")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+
+    assert data["used_js_rendering"] is False
+    assert "Local parser should keep this when auto rendering fails." in parsed.content
+
+
 def test_parse_url_local_includes_hero_image(monkeypatch):
     html = """
     <html>

@@ -401,14 +401,17 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             [rule.id for rule in pre_rules],
         )
     render_mode, wait_for, render_timeout = resolve_rendering_settings(pre_rules)
-    if used_js_rendering:
-        pass
-    elif render_mode == "force":
-        html, final_url = render_html_with_playwright(
-            final_url, timeout=render_timeout, wait_for=wait_for
-        )
-        used_js_rendering = True
-    elif render_mode == "auto" and requires_js_rendering(html):
+    if not used_js_rendering and render_mode == "force":
+        try:
+            html, final_url = render_html_with_playwright(
+                final_url, timeout=render_timeout, wait_for=wait_for
+            )
+            used_js_rendering = True
+        except Exception as exc:
+            logger.warning("web-save force render skip url=%s err=%s", final_url, exc)
+    elif (
+        not used_js_rendering and render_mode == "auto" and requires_js_rendering(html)
+    ):
         unrendered_embed = has_unrendered_youtube_embed(html)
         allow_render = is_playwright_allowed(final_url) or unrendered_embed
         if allow_render:
@@ -425,8 +428,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                         final_url, timeout=render_timeout, wait_for=wait_for
                     )
                 used_js_rendering = True
-            except RuntimeError:
-                pass
+            except Exception as exc:
+                logger.warning("web-save auto skip url=%s err=%s", final_url, exc)
 
     if html != initial_html or final_url != initial_url:
         pre_rules = engine.match_rules(final_url, html, phase="pre")
