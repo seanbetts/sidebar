@@ -360,7 +360,7 @@
 				/>
 			</div>
 			<h2>Welcome to sideBar</h2>
-			<p>Select a note, website, or file to get started</p>
+			<p>AI assistance with context from your notes, tasks, files, and saved websites</p>
 		</div>
 	{/if}
 </div>
