@@ -323,6 +323,103 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(keep)
     }
 
+    func testPendingWebsiteFailureKindClassifiesValidationErrorsAsTerminal() {
+        XCTAssertEqual(pendingWebsiteFailureKind(for: "Enter a valid URL."), .terminal)
+        XCTAssertEqual(
+            pendingWebsiteFailureKind(for: "Request failed (HTTP 400)."),
+            .terminal
+        )
+        XCTAssertEqual(
+            pendingWebsiteFailureKind(for: "Request failed (HTTP 422)."),
+            .terminal
+        )
+    }
+
+    func testPendingWebsiteFailureKindClassifiesNetworkAndServerErrorsAsRetryable() {
+        XCTAssertEqual(
+            pendingWebsiteFailureKind(for: "Network connection failed. Please check your internet."),
+            .retryable
+        )
+        XCTAssertEqual(
+            pendingWebsiteFailureKind(for: "Request failed (HTTP 503)."),
+            .retryable
+        )
+    }
+
+    func testNextPendingWebsiteRetryItemSchedulesBackoffAndIncrementsCount() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let item = PendingShareItem(
+            id: UUID(),
+            kind: .website,
+            createdAt: now,
+            url: "https://example.com",
+            retryCount: 1
+        )
+
+        let retry = nextPendingWebsiteRetryItem(
+            from: item,
+            now: now,
+            errorMessage: "Server error. Please try again soon."
+        )
+
+        XCTAssertNotNil(retry)
+        XCTAssertEqual(retry?.retryCount, 2)
+        XCTAssertEqual(retry?.lastError, "Server error. Please try again soon.")
+        XCTAssertEqual(retry?.nextRetryAt, now.addingTimeInterval(60))
+    }
+
+    func testNextPendingWebsiteRetryItemDropsOnTerminalOrRetryLimit() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let terminal = PendingShareItem(
+            id: UUID(),
+            kind: .website,
+            createdAt: now,
+            url: "https://example.com"
+        )
+        let capped = PendingShareItem(
+            id: UUID(),
+            kind: .website,
+            createdAt: now,
+            url: "https://example.com",
+            retryCount: 4
+        )
+
+        XCTAssertNil(
+            nextPendingWebsiteRetryItem(
+                from: terminal,
+                now: now,
+                errorMessage: "Enter a valid URL."
+            )
+        )
+        XCTAssertNil(
+            nextPendingWebsiteRetryItem(
+                from: capped,
+                now: now,
+                errorMessage: "Server error. Please try again soon."
+            )
+        )
+    }
+
+    func testIsPendingWebsiteReadyForRetryHonorsNextRetryAt() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let ready = PendingShareItem(
+            id: UUID(),
+            kind: .website,
+            createdAt: now,
+            url: "https://example.com",
+            nextRetryAt: now.addingTimeInterval(-1)
+        )
+        let waiting = PendingShareItem(
+            id: UUID(),
+            kind: .website,
+            createdAt: now,
+            url: "https://example.com",
+            nextRetryAt: now.addingTimeInterval(120)
+        )
+
+        XCTAssertTrue(isPendingWebsiteReadyForRetry(ready, now: now))
+        XCTAssertFalse(isPendingWebsiteReadyForRetry(waiting, now: now))
+    }
 }
 
 private func makeStore() -> PendingShareStore {

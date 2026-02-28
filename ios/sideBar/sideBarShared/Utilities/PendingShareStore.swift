@@ -25,6 +25,12 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
     public let filename: String?
     /// MIME type for binary payload processing.
     public let mimeType: String?
+    /// Number of failed retry attempts made by the main app processor.
+    public let retryCount: Int?
+    /// Earliest timestamp when this item should be retried again.
+    public let nextRetryAt: Date?
+    /// Last failure message captured while processing this item.
+    public let lastError: String?
 
     /// Creates a queued share payload model.
     public init(
@@ -34,7 +40,10 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
         url: String? = nil,
         filePath: String? = nil,
         filename: String? = nil,
-        mimeType: String? = nil
+        mimeType: String? = nil,
+        retryCount: Int? = nil,
+        nextRetryAt: Date? = nil,
+        lastError: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -43,6 +52,9 @@ public struct PendingShareItem: Codable, Equatable, Identifiable {
         self.filePath = filePath
         self.filename = filename
         self.mimeType = mimeType
+        self.retryCount = retryCount
+        self.nextRetryAt = nextRetryAt
+        self.lastError = lastError
     }
 }
 
