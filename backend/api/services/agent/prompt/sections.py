@@ -47,6 +47,7 @@ __all__ = [
     "build_open_context_block",
     "build_assistant_identity_block",
     "build_assistant_soul_block",
+    "build_response_style_block",
     "build_system_prompt",
     "build_first_message_prompt",
 ]
@@ -504,6 +505,28 @@ def build_assistant_soul_block(settings_record: Any) -> str:
         f"Success signals: {resolved['success_signals']}"
         f"{bootstrap_guidance}\n"
         "</assistant_soul>"
+    )
+
+
+def build_response_style_block(settings_record: Any) -> str:
+    """Build response style defaults for durable system-level guidance."""
+    communication_style = resolve_default(
+        settings_record.communication_style if settings_record else None,
+        DEFAULT_COMMUNICATION_STYLE,
+    )
+    working_relationship = resolve_default(
+        settings_record.working_relationship if settings_record else None,
+        DEFAULT_WORKING_RELATIONSHIP,
+    )
+    return (
+        "<response_style>\n"
+        "<communication_style>\n"
+        f"{communication_style}\n"
+        "</communication_style>\n\n"
+        "<working_relationship>\n"
+        f"{working_relationship}\n"
+        "</working_relationship>\n"
+        "</response_style>"
     )
 
 

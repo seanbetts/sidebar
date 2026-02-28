@@ -22,6 +22,7 @@ from api.services.agent.prompt.sections import (
     build_first_message_prompt,
     build_open_context_block,
     build_recent_activity_block,
+    build_response_style_block,
     build_system_prompt,
     detect_operating_system,
     resolve_template,
@@ -155,6 +156,7 @@ class PromptContextService:
         )
         assistant_identity = build_assistant_identity_block(settings_record)
         assistant_soul = build_assistant_soul_block(settings_record)
+        response_style = build_response_style_block(settings_record)
         open_note = open_context.get("note") if isinstance(open_context, dict) else None
         open_website = (
             open_context.get("website") if isinstance(open_context, dict) else None
@@ -201,6 +203,12 @@ class PromptContextService:
                 title="Assistant Soul",
                 source="assistant_soul",
                 content=assistant_soul,
+            ),
+            PromptContextService._build_section(
+                section_id="response_style",
+                title="Response Style",
+                source="response_style",
+                content=response_style,
             ),
             PromptContextService._build_section(
                 section_id="context_guidance",
@@ -533,6 +541,7 @@ class PromptContextService:
             "message_context",
             "assistant_soul",
             "assistant_identity",
+            "response_style",
             "context_guidance",
         ]
 

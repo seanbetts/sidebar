@@ -88,10 +88,19 @@ def test_prompt_context_service_order_and_truncation(test_db):
     idx_message = system_prompt.index("<message_context>")
     idx_identity = system_prompt.index("<assistant_identity>")
     idx_soul = system_prompt.index("<assistant_soul>")
+    idx_response_style = system_prompt.index("<response_style>")
     idx_guidance = system_prompt.index("<context_guidance>")
     idx_open = system_prompt.index("<current_open>")
     idx_recent = system_prompt.index("<recent_activity>")
-    assert idx_message < idx_identity < idx_soul < idx_guidance < idx_open < idx_recent
+    assert (
+        idx_message
+        < idx_identity
+        < idx_soul
+        < idx_response_style
+        < idx_guidance
+        < idx_open
+        < idx_recent
+    )
 
     assert len(system_prompt) <= PromptContextService.MAX_SYSTEM_PROMPT_CHARS
     assert "</current_open>" in system_prompt
@@ -118,22 +127,28 @@ def test_prompt_context_service_order_and_truncation(test_db):
             "chars": len(prompt_bundle["system_prompt"]["sections"][2]["content"]),
         },
         {
+            "id": "response_style",
+            "title": "Response Style",
+            "source": "response_style",
+            "chars": len(prompt_bundle["system_prompt"]["sections"][3]["content"]),
+        },
+        {
             "id": "context_guidance",
             "title": "Context Guidance",
             "source": "context_guidance_template",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][3]["content"]),
+            "chars": len(prompt_bundle["system_prompt"]["sections"][4]["content"]),
         },
         {
             "id": "current_open",
             "title": "Current Open Context",
             "source": "open_context",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][4]["content"]),
+            "chars": len(prompt_bundle["system_prompt"]["sections"][5]["content"]),
         },
         {
             "id": "recent_activity",
             "title": "Recent Activity",
             "source": "recent_activity",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][5]["content"]),
+            "chars": len(prompt_bundle["system_prompt"]["sections"][6]["content"]),
         },
     ]
 

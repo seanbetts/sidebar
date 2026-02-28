@@ -200,10 +200,7 @@ async def stream_chat(
             "System prompt exceeded the configured maximum size for this request"
         )
     system_prompt = prompt_bundle["system_prompt"]["text"]
-    first_message_prompt = prompt_bundle["first_message_prompt"]["text"]
     enabled_skills = SettingsService.resolve_enabled_skills(settings_record)
-    if not history:
-        history = [{"role": "user", "content": first_message_prompt}]
 
     ai_gateway = AIProviderGateway(settings)
     tool_context = ToolExecutionContext(
