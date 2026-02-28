@@ -25,6 +25,9 @@
 			you can sign in now.
 		</p>
 		<a class="primary-cta" href="https://app.trysidebar.ai">Open App</a>
+		<p class="legal-links">
+			<a href="/privacy">Privacy Policy</a>
+		</p>
 	</main>
 </div>
 
@@ -129,6 +132,17 @@
 
 	.primary-cta:hover {
 		filter: brightness(0.93);
+	}
+
+	.legal-links {
+		margin: 1rem 0 0;
+		font-size: 0.875rem;
+	}
+
+	.legal-links a {
+		color: var(--color-muted-foreground);
+		text-decoration: underline;
+		text-underline-offset: 2px;
 	}
 
 	:global(.dark) .holding-page {
