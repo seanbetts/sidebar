@@ -496,6 +496,8 @@ def update_archive(
             note_id,
             folder,
             client_updated_at=client_updated_at,
+            op="archive",
+            clear_pinned=archived,
         )
     except NoteNotFoundError as exc:
         raise NotFoundError("Note", str(note_id)) from exc

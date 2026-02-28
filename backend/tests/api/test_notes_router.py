@@ -132,9 +132,50 @@ def test_notes_pin_move_archive(test_client, test_db):
     assert moved_metadata.get("pinned") is False
     assert moved_metadata.get("pinned_order") is None
 
+    repin = test_client.patch(
+        f"/api/notes/{note_id}/pin",
+        json={"pinned": True},
+        headers=_auth_headers(),
+    )
+    assert repin.status_code == 200
+
     archive = test_client.patch(
         f"/api/notes/{note_id}/archive",
         json={"archived": True},
         headers=_auth_headers(),
     )
     assert archive.status_code == 200
+    test_db.expire_all()
+    archived = test_db.query(Note).filter(Note.id == uuid.UUID(note_id)).first()
+    assert archived is not None
+    archived_metadata = archived.metadata_ or {}
+    assert archived_metadata.get("folder") == "Archive"
+    assert archived_metadata.get("pinned") is False
+    assert archived_metadata.get("pinned_order") is None
+
+
+def test_notes_delete_unpins_note(test_client, test_db):
+    create = test_client.post(
+        "/api/notes",
+        json={"content": "# Delete Me\n\nBody"},
+        headers=_auth_headers(),
+    )
+    note_id = create.json()["id"]
+
+    pin = test_client.patch(
+        f"/api/notes/{note_id}/pin",
+        json={"pinned": True},
+        headers=_auth_headers(),
+    )
+    assert pin.status_code == 200
+
+    delete = test_client.delete(f"/api/notes/{note_id}", headers=_auth_headers())
+    assert delete.status_code == 200
+
+    test_db.expire_all()
+    deleted = test_db.query(Note).filter(Note.id == uuid.UUID(note_id)).first()
+    assert deleted is not None
+    assert deleted.deleted_at is not None
+    deleted_metadata = deleted.metadata_ or {}
+    assert deleted_metadata.get("pinned") is False
+    assert deleted_metadata.get("pinned_order") is None

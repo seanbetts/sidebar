@@ -200,7 +200,7 @@ extension NotesStore {
 
     private func applyLocalArchive(notePath: String, archived: Bool) {
         guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
-            copyNode(node, archived: archived)
+            copyNode(node, pinned: archived ? false : nil, archived: archived)
         }) else { return }
         persistLocalTree(updatedTree)
         if archived, activeNote?.path == notePath {
@@ -299,7 +299,16 @@ extension NotesStore {
         archived: Bool? = nil,
         children: [FileNode]? = nil
     ) -> FileNode {
-        FileNode(
+        let resolvedPinned = pinned ?? node.pinned
+        let resolvedPinnedOrder: Int?
+        if let pinnedOrder {
+            resolvedPinnedOrder = pinnedOrder
+        } else if resolvedPinned == false {
+            resolvedPinnedOrder = nil
+        } else {
+            resolvedPinnedOrder = node.pinnedOrder
+        }
+        return FileNode(
             name: name ?? node.name,
             path: path ?? node.path,
             type: node.type,
@@ -308,8 +317,8 @@ extension NotesStore {
             created: node.created,
             children: children ?? node.children,
             expanded: node.expanded,
-            pinned: pinned ?? node.pinned,
-            pinnedOrder: pinnedOrder ?? node.pinnedOrder,
+            pinned: resolvedPinned,
+            pinnedOrder: resolvedPinnedOrder,
             archived: archived ?? node.archived,
             folderMarker: node.folderMarker
         )

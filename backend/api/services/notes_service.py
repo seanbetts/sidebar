@@ -74,6 +74,14 @@ class NotesService:
             return None
 
     @staticmethod
+    def _clear_pinned_metadata(metadata: dict[str, object] | None) -> dict[str, object]:
+        """Return note metadata with pin state removed."""
+        next_metadata: dict[str, object] = {**(metadata or {})}
+        next_metadata["pinned"] = False
+        next_metadata.pop("pinned_order", None)
+        return next_metadata
+
+    @staticmethod
     def create_note(
         db: Session,
         user_id: str,
@@ -288,8 +296,7 @@ class NotesService:
 
         metadata = {**(note.metadata_ or {}), "folder": folder}
         if clear_pinned:
-            metadata["pinned"] = False
-            metadata.pop("pinned_order", None)
+            metadata = NotesService._clear_pinned_metadata(metadata)
 
         note.metadata_ = metadata
         flag_modified(note, "metadata_")
@@ -435,6 +442,8 @@ class NotesService:
 
         ensure_note_no_conflict(note, client_updated_at, op="delete")
 
+        note.metadata_ = NotesService._clear_pinned_metadata(note.metadata_)
+        flag_modified(note, "metadata_")
         now = datetime.now(UTC)
         note.deleted_at = now
         note.updated_at = now

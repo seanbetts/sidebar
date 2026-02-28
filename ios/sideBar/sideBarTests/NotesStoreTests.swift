@@ -186,6 +186,47 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertNotNil(offlineCached)
     }
 
+    func testEnqueueArchiveClearsPinnedStateOptimistically() async throws {
+        let pinnedNode = FileNode(
+            name: "Pinned.md",
+            path: "/pinned.md",
+            type: .file,
+            size: nil,
+            modified: nil,
+            created: nil,
+            children: nil,
+            expanded: nil,
+            pinned: true,
+            pinnedOrder: 4,
+            archived: false,
+            folderMarker: nil
+        )
+        let tree = FileTree(children: [pinnedNode])
+        let cache = TestCacheClient()
+        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let store = NotesStore(api: api, cache: cache)
+        store.applyTreeUpdate(tree, persist: false)
+
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
+
+        try await store.enqueueArchive(notePath: "/pinned.md", archived: true)
+
+        let archivedNode = try XCTUnwrap(store.tree?.children.first)
+        XCTAssertEqual(archivedNode.archived, true)
+        XCTAssertEqual(archivedNode.pinned, false)
+        XCTAssertNil(archivedNode.pinnedOrder)
+    }
+
     func testConcurrentArchivedTreeRefreshTimesOutInsteadOfWaitingIndefinitely() async {
         let cached = FileTree(children: [])
         let fresh = FileTree(children: [])

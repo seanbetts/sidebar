@@ -268,6 +268,8 @@ class NotesSyncService:
             note_id,
             folder,
             client_updated_at=client_updated_at,
+            op="archive",
+            clear_pinned=archived,
         )
 
     @staticmethod

@@ -59,6 +59,69 @@ def test_notes_sync_move_unpins_note(test_db):
     assert metadata.get("pinned_order") is None
 
 
+def test_notes_sync_archive_unpins_note(test_db):
+    note = NotesService.create_note(test_db, "user-1", "# Title\n\nBody")
+    NotesService.update_pinned(test_db, "user-1", note.id, True)
+
+    result = NotesSyncService.sync_operations(
+        test_db,
+        "user-1",
+        {
+            "last_sync": None,
+            "operations": [
+                {
+                    "operation_id": "op-archive",
+                    "op": "archive",
+                    "id": str(note.id),
+                    "archived": True,
+                }
+            ],
+        },
+    )
+
+    assert not result.conflicts
+    archived = NotesService.get_note(test_db, "user-1", note.id, mark_opened=False)
+    assert archived is not None
+    metadata = archived.metadata_ or {}
+    assert metadata.get("folder") == "Archive"
+    assert metadata.get("pinned") is False
+    assert metadata.get("pinned_order") is None
+
+
+def test_notes_sync_delete_unpins_note(test_db):
+    note = NotesService.create_note(test_db, "user-1", "# Title\n\nBody")
+    NotesService.update_pinned(test_db, "user-1", note.id, True)
+
+    result = NotesSyncService.sync_operations(
+        test_db,
+        "user-1",
+        {
+            "last_sync": None,
+            "operations": [
+                {
+                    "operation_id": "op-delete",
+                    "op": "delete",
+                    "id": str(note.id),
+                }
+            ],
+        },
+    )
+
+    assert not result.conflicts
+    deleted = NotesService.get_note(
+        test_db,
+        "user-1",
+        note.id,
+        mark_opened=False,
+        include_deleted=True,
+    )
+    assert deleted is not None
+    assert deleted.deleted_at is not None
+    metadata = deleted.metadata_ or {}
+    assert metadata.get("pinned") is False
+    assert metadata.get("pinned_order") is None
+
+
 def test_websites_sync_conflict(test_db):
     website = WebsitesService.save_website(
         test_db,

@@ -156,6 +156,19 @@ def test_archived_summary(db_session):
     assert summary_ts.astimezone(UTC) == archived_at
 
 
+def test_soft_delete_note_clears_pinned_state(db_session):
+    note = NotesService.create_note(db_session, "test_user", "# Delete Me\n\nBody")
+    NotesService.update_pinned(db_session, "test_user", note.id, True)
+
+    deleted = NotesService.soft_delete_note(db_session, "test_user", note.id)
+
+    assert deleted is not None
+    assert deleted.deleted_at is not None
+    metadata = deleted.metadata_ or {}
+    assert metadata.get("pinned") is False
+    assert metadata.get("pinned_order") is None
+
+
 def test_update_note_conflict(db_session):
     note = NotesService.create_note(db_session, "test_user", "# Title\n\nBody")
     stale = note.updated_at - timedelta(seconds=10)
