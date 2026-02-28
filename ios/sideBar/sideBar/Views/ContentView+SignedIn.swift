@@ -121,7 +121,18 @@ extension ContentView {
             environment.focusedSection = newValue
             environment.focusedWorkspacePane = .primary
             sidebarSelection = newValue
-            primarySection = newValue
+            #if !os(macOS)
+            if horizontalSizeClass == .compact {
+                environment.workspaceStore.dispatch(
+                    .setLayout(.compact),
+                    source: "phone_selection_layout"
+                )
+                environment.workspaceStore.dispatch(
+                    .selectSection(newValue),
+                    source: "phone_selection_change"
+                )
+            }
+            #endif
             Task { await loadPhoneSectionIfNeeded(newValue) }
             if newValue == .chat {
                 Task { await ensureInitialPhoneChatInterfaceIfNeeded() }
@@ -131,20 +142,22 @@ extension ContentView {
         content = AnyView(content.onChange(of: sidebarSelection) { _, newValue in
             handleSidebarSelectionChange(newValue)
         })
-        content = AnyView(content.onChange(of: primarySection) { _, _ in
+        content = AnyView(content.onReceive(environment.workspaceStore.$state.dropFirst()) { state in
+            syncLocalSectionSelectionFromWorkspaceState(state)
             updateActiveSection()
-        })
-        content = AnyView(content.onChange(of: secondarySection) { _, _ in
-            updateActiveSection()
-        })
-        content = AnyView(content.onReceive(environment.workspaceStore.$state.dropFirst()) { _ in
-            reconcileLegacySectionsWithWorkspaceProjection()
         })
         content = AnyView(content.onChange(of: isSettingsPresented) { _, _ in
+            environment.workspaceStore.dispatch(
+                .setSettingsPresented(isSettingsPresented),
+                source: "settings_presented_change"
+            )
             updateActiveSection()
         })
         content = AnyView(content.onChange(of: isLeftPanelExpanded) { _, _ in
-            syncWorkspaceShadowState(source: "left_panel_expanded_change")
+            environment.workspaceStore.dispatch(
+                .setLeftPanelExpanded(isLeftPanelExpanded),
+                source: "left_panel_expanded_change"
+            )
         })
         #if !os(macOS)
         content = AnyView(content.onChange(of: horizontalSizeClass) { oldValue, newValue in
@@ -185,6 +198,11 @@ extension ContentView {
             }
             if newValue != .chat {
                 handleNonChatSelection(newValue)
+            } else {
+                environment.workspaceStore.dispatch(
+                    .selectSection(.chat),
+                    source: "command_selection_change"
+                )
             }
             // Handle pending scratchpad deep link
             if newValue == .chat && environment.pendingScratchpadDeepLink {
@@ -204,8 +222,20 @@ extension ContentView {
             updateActiveSection()
         })
         content = AnyView(content.onChange(of: isWorkspaceExpanded) { _, newValue in
+            environment.workspaceStore.dispatch(
+                .setWorkspaceExpanded(newValue),
+                source: "workspace_expanded_change"
+            )
             handleWorkspaceExpandedChange(isExpanded: newValue)
         })
+        #if os(iOS)
+        content = AnyView(content.onChange(of: isWorkspaceExpandedByRotation) { _, newValue in
+            environment.workspaceStore.dispatch(
+                .setWorkspaceExpandedByRotation(newValue),
+                source: "workspace_rotation_flag_change"
+            )
+        })
+        #endif
         #if os(iOS)
         content = AnyView(content.background(GeometryReader { proxy in
             Color.clear.onChange(of: proxy.size) { _, newValue in
@@ -445,50 +475,4 @@ extension ContentView {
             pendingWriteConflict = nil
         }
     }
-}
-
-extension ContentView {
-    private func handleWorkspaceExpandedChange(isExpanded: Bool) {
-        let plan = WorkspaceBehaviorPolicy.makeWorkspaceExpandedChangePlan(
-            isExpanded: isExpanded,
-            isLeftPanelExpanded: isLeftPanelExpanded,
-            previousLeftPanelExpanded: workspaceExpandedPreviousLeftPanelExpanded
-        )
-        isLeftPanelExpanded = plan.isLeftPanelExpanded
-        workspaceExpandedPreviousLeftPanelExpanded = plan.previousLeftPanelExpanded
-        #if os(iOS)
-        if plan.clearExpandedByRotation {
-            isWorkspaceExpandedByRotation = false
-        }
-        #endif
-        syncWorkspaceShadowState(source: "workspace_expanded_change")
-    }
-
-    #if os(iOS)
-    private func handleRootSizeChange(_ size: CGSize) {
-        let rotationPlan = WorkspaceBehaviorPolicy.makeWorkspaceRotationPlan(
-            isIPad: UIDevice.current.userInterfaceIdiom == .pad,
-            previousIsPortrait: lastWorkspaceIsPortrait,
-            size: size,
-            primaryWorkspaceSection: primaryWorkspaceSectionForRotation,
-            isWorkspaceExpanded: isWorkspaceExpanded,
-            isWorkspaceExpandedByRotation: isWorkspaceExpandedByRotation
-        )
-        guard let rotationPlan else { return }
-        lastWorkspaceIsPortrait = rotationPlan.lastWorkspaceIsPortrait
-        if let nextExpanded = rotationPlan.isWorkspaceExpanded {
-            isWorkspaceExpanded = nextExpanded
-        }
-        if let nextExpandedByRotation = rotationPlan.isWorkspaceExpandedByRotation {
-            isWorkspaceExpandedByRotation = nextExpandedByRotation
-        }
-    }
-    private var primaryWorkspaceSectionForRotation: AppSection? {
-        WorkspaceLegacySectionAdapter.primaryWorkspaceSectionForRotation(
-            projection: workspaceLegacySectionProjection,
-            isCompactLayout: isCompact,
-            fallbackSidebarSelection: sidebarSelection
-        )
-    }
-    #endif
 }

@@ -209,20 +209,22 @@ extension ContentView {
         if horizontalSizeClass == .compact {
             phoneSelection = .chat
             sidebarSelection = .chat
-            primarySection = .chat
+            environment.workspaceStore.dispatch(.setLayout(.compact), source: "initial_selection_layout")
+            environment.workspaceStore.dispatch(.selectSection(.chat), source: "initial_selection_chat")
         } else {
-            primarySection = nil
-            secondarySection = .chat
             sidebarSelection = .chat
-            lastNonChatSection = nil
             isLeftPanelExpanded = true
+            environment.workspaceStore.dispatch(.setLayout(.split), source: "initial_selection_layout")
+            environment.workspaceStore.dispatch(.selectSection(.chat), source: "initial_selection_chat")
         }
 #else
         let plan = Self.makeMacInitialSelectionPlan(pendingSelection: environment.commandSelection)
-        primarySection = plan.primarySection
-        secondarySection = plan.secondarySection
-        lastNonChatSection = plan.lastNonChatSection
         sidebarSelection = plan.sidebarSelection
+        environment.workspaceStore.dispatch(.setLayout(.split), source: "initial_selection_layout")
+        environment.workspaceStore.dispatch(
+            .selectSection(plan.sidebarSelection),
+            source: "initial_selection_section"
+        )
         if plan.shouldConsumeCommandSelection {
             environment.focusedSection = plan.focusedSection
             environment.commandSelection = nil
@@ -242,7 +244,6 @@ extension ContentView {
     func updateActiveSection() {
         let section = resolvedActiveSectionForWorkspace
         environment.activeSection = section
-        syncWorkspaceShadowState(source: "update_active_section")
         #if os(iOS)
         UIMenuSystem.main.setNeedsRebuild()
         #endif
@@ -364,27 +365,21 @@ extension ContentView {
             environment.focusedSection = newValue
             ensureChatSidebarVisibleIfNeeded(for: newValue)
         }
-        updateActiveSection()
-
         guard let newValue else { return }
         #if !os(macOS)
-        guard horizontalSizeClass != .compact else { return }
+        guard horizontalSizeClass != .compact else {
+            updateActiveSection()
+            return
+        }
         #endif
 
-        let projection = workspaceLegacySectionProjection
-        let plan = Self.makeDesktopSidebarSelectionPlan(
-            currentPrimarySection: WorkspaceLegacySectionAdapter.section(
-                from: projection.primaryDescriptor
-            ),
-            currentSecondarySection: WorkspaceLegacySectionAdapter.section(
-                from: projection.secondaryDescriptor
-            ),
-            currentLastNonChatSection: lastNonChatSection,
-            selectedSection: newValue
-        )
-        primarySection = plan.primarySection
-        secondarySection = plan.secondarySection
-        lastNonChatSection = plan.lastNonChatSection
+        if environment.workspaceStore.state.sidebarSelection != newValue {
+            environment.workspaceStore.dispatch(
+                .selectSection(newValue),
+                source: "sidebar_selection_change"
+            )
+        }
+        updateActiveSection()
     }
 
     func ensureChatSidebarVisibleIfNeeded(for section: AppSection?) {
@@ -403,13 +398,21 @@ extension ContentView {
         newValue: UserInterfaceSizeClass?
     ) {
         if oldValue == .compact, newValue != .compact {
-            let plan = Self.makeRegularLayoutPlanFromCompactSelection(
-                phoneSelection: workspaceLegacySectionProjection.compactSelection
+            let selectedSection = workspaceLegacySectionProjection.compactSelection
+            sidebarSelection = selectedSection
+            environment.workspaceStore.dispatch(.setLayout(.split), source: "horizontal_size_class_change")
+            environment.workspaceStore.dispatch(
+                .selectSection(selectedSection),
+                source: "horizontal_size_class_change"
             )
-            primarySection = plan.primarySection
-            secondarySection = plan.secondarySection
-            lastNonChatSection = plan.lastNonChatSection
-            sidebarSelection = plan.sidebarSelection
+        } else if oldValue != .compact, newValue == .compact {
+            let compactSelection = environment.workspaceStore.state.sidebarSelection ?? .chat
+            phoneSelection = compactSelection
+            environment.workspaceStore.dispatch(.setLayout(.compact), source: "horizontal_size_class_change")
+            environment.workspaceStore.dispatch(
+                .selectSection(compactSelection),
+                source: "horizontal_size_class_change"
+            )
         }
         updateActiveSection()
     }

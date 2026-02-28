@@ -8,8 +8,7 @@ extension AppEnvironment {
     ) {
         workspaceStore.dispatch(
             .selectSection(section),
-            source: source,
-            expectLegacyFollowup: true
+            source: source
         )
         commandSelection = section
     }
@@ -21,8 +20,7 @@ extension AppEnvironment {
     ) {
         workspaceStore.dispatch(
             .presentAgentSurface(surface, pane: pane),
-            source: source,
-            expectLegacyFollowup: true
+            source: source
         )
     }
 
@@ -32,8 +30,7 @@ extension AppEnvironment {
     ) {
         workspaceStore.dispatch(
             .closePane(pane),
-            source: source,
-            expectLegacyFollowup: true
+            source: source
         )
     }
 
@@ -44,8 +41,7 @@ extension AppEnvironment {
     ) {
         workspaceStore.dispatch(
             .setAgentSurfacePinned(surfaceId: surfaceId, isPinned: isPinned),
-            source: source,
-            expectLegacyFollowup: true
+            source: source
         )
     }
 }

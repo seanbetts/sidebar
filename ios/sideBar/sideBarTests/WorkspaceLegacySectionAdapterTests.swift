@@ -35,8 +35,6 @@ final class WorkspaceLegacySectionAdapterTests: XCTestCase {
 
         let projection = WorkspaceLegacySectionAdapter.makeProjection(
             workspaceState: state,
-            fallbackPrimarySection: .notes,
-            fallbackSecondarySection: .files,
             fallbackCompactSelection: .websites
         )
 
@@ -60,13 +58,11 @@ final class WorkspaceLegacySectionAdapterTests: XCTestCase {
 
         let projection = WorkspaceLegacySectionAdapter.makeProjection(
             workspaceState: state,
-            fallbackPrimarySection: .websites,
-            fallbackSecondarySection: .chat,
             fallbackCompactSelection: .files
         )
 
-        XCTAssertEqual(projection.primaryDescriptor, .builtIn(.websites))
-        XCTAssertEqual(projection.secondaryDescriptor, .builtIn(.chat))
+        XCTAssertEqual(projection.primaryDescriptor, .empty)
+        XCTAssertEqual(projection.secondaryDescriptor, .empty)
         XCTAssertEqual(projection.compactSelection, .files)
     }
 
@@ -77,17 +73,17 @@ final class WorkspaceLegacySectionAdapterTests: XCTestCase {
                 pane: .primary,
                 descriptor: .empty
             ),
-            secondaryPane: nil
+            secondaryPane: nil,
+            sidebarSelection: .notes,
+            activeSection: .notes
         )
 
         let projection = WorkspaceLegacySectionAdapter.makeProjection(
             workspaceState: state,
-            fallbackPrimarySection: .notes,
-            fallbackSecondarySection: .chat,
             fallbackCompactSelection: nil
         )
 
-        XCTAssertEqual(projection.primaryDescriptor, .builtIn(.notes))
+        XCTAssertEqual(projection.primaryDescriptor, .empty)
         XCTAssertEqual(projection.secondaryDescriptor, .empty)
         XCTAssertEqual(projection.compactSelection, .notes)
     }

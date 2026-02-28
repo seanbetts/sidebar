@@ -1,11 +1,16 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 extension ContentView {
+    var workspaceState: WorkspaceState {
+        environment.workspaceStore.state
+    }
+
     var workspaceLegacySectionProjection: WorkspaceLegacySectionProjection {
         WorkspaceLegacySectionAdapter.makeProjection(
-            workspaceState: environment.workspaceStore.state,
-            fallbackPrimarySection: primarySection,
-            fallbackSecondarySection: secondarySection,
+            workspaceState: workspaceState,
             fallbackCompactSelection: phoneSelection
         )
     }
@@ -19,56 +24,6 @@ extension ContentView {
         )
     }
 
-    var workspaceLegacySnapshot: WorkspaceLegacySnapshot {
-        WorkspaceLegacySnapshot(
-            mode: environment.workspaceStore.state.mode,
-            isCompactLayout: isCompactWorkspaceLayout,
-            sidebarSelection: sidebarSelection,
-            primarySection: primarySection,
-            secondarySection: secondarySection,
-            phoneSelection: isCompactWorkspaceLayout
-                ? workspaceLegacySectionProjection.compactSelection
-                : nil,
-            activeSection: resolvedActiveSectionForWorkspace,
-            focusedSection: environment.focusedSection,
-            lastNonChatSection: lastNonChatSection,
-            isLeftPanelExpanded: isLeftPanelExpanded,
-            isWorkspaceExpanded: isWorkspaceExpanded,
-            isWorkspaceExpandedByRotation: workspaceExpandedByRotationFlag,
-            isSettingsPresented: isSettingsPresented
-        )
-    }
-
-    func syncWorkspaceShadowState(source: String = "content_state_change") {
-        environment.workspaceStore.syncLegacySnapshot(
-            workspaceLegacySnapshot,
-            source: source
-        )
-    }
-
-    func reconcileLegacySectionsWithWorkspaceProjection() {
-        let projection = workspaceLegacySectionProjection
-        #if !os(macOS)
-        if isCompactWorkspaceLayout, phoneSelection != projection.compactSelection {
-            phoneSelection = projection.compactSelection
-        }
-        #endif
-
-        guard !isCompactWorkspaceLayout else { return }
-        applySyncDirective(
-            WorkspaceLegacySectionAdapter.syncDirective(
-                for: projection.primaryDescriptor
-            ),
-            toPrimarySection: true
-        )
-        applySyncDirective(
-            WorkspaceLegacySectionAdapter.syncDirective(
-                for: projection.secondaryDescriptor
-            ),
-            toPrimarySection: false
-        )
-    }
-
     private var isCompactWorkspaceLayout: Bool {
         #if os(macOS)
         return false
@@ -77,29 +32,64 @@ extension ContentView {
         #endif
     }
 
-    private var workspaceExpandedByRotationFlag: Bool {
+    func syncLocalSectionSelectionFromWorkspaceState(_ state: WorkspaceState) {
+        #if !os(macOS)
+        if isCompactWorkspaceLayout {
+            let compactSelection = WorkspaceLegacySectionAdapter.section(
+                from: state.primaryPane.descriptor
+            ) ?? phoneSelection
+            if phoneSelection != compactSelection {
+                phoneSelection = compactSelection
+            }
+        }
+        #endif
+
+        if let selection = state.sidebarSelection, sidebarSelection != selection {
+            sidebarSelection = selection
+        }
+    }
+
+    func handleWorkspaceExpandedChange(isExpanded: Bool) {
+        let plan = WorkspaceBehaviorPolicy.makeWorkspaceExpandedChangePlan(
+            isExpanded: isExpanded,
+            isLeftPanelExpanded: isLeftPanelExpanded,
+            previousLeftPanelExpanded: workspaceExpandedPreviousLeftPanelExpanded
+        )
+        isLeftPanelExpanded = plan.isLeftPanelExpanded
+        workspaceExpandedPreviousLeftPanelExpanded = plan.previousLeftPanelExpanded
         #if os(iOS)
-        return isWorkspaceExpandedByRotation
-        #else
-        return false
+        if plan.clearExpandedByRotation {
+            isWorkspaceExpandedByRotation = false
+        }
         #endif
     }
 
-    private func applySyncDirective(
-        _ directive: WorkspaceLegacySectionSyncDirective,
-        toPrimarySection: Bool
-    ) {
-        switch directive {
-        case .keepCurrent:
-            break
-        case .set(let section):
-            if toPrimarySection {
-                if primarySection != section {
-                    primarySection = section
-                }
-            } else if secondarySection != section {
-                secondarySection = section
-            }
+    #if os(iOS)
+    func handleRootSizeChange(_ size: CGSize) {
+        let rotationPlan = WorkspaceBehaviorPolicy.makeWorkspaceRotationPlan(
+            isIPad: UIDevice.current.userInterfaceIdiom == .pad,
+            previousIsPortrait: lastWorkspaceIsPortrait,
+            size: size,
+            primaryWorkspaceSection: primaryWorkspaceSectionForRotation,
+            isWorkspaceExpanded: isWorkspaceExpanded,
+            isWorkspaceExpandedByRotation: isWorkspaceExpandedByRotation
+        )
+        guard let rotationPlan else { return }
+        lastWorkspaceIsPortrait = rotationPlan.lastWorkspaceIsPortrait
+        if let nextExpanded = rotationPlan.isWorkspaceExpanded {
+            isWorkspaceExpanded = nextExpanded
+        }
+        if let nextExpandedByRotation = rotationPlan.isWorkspaceExpandedByRotation {
+            isWorkspaceExpandedByRotation = nextExpandedByRotation
         }
     }
+
+    var primaryWorkspaceSectionForRotation: AppSection? {
+        WorkspaceLegacySectionAdapter.primaryWorkspaceSectionForRotation(
+            projection: workspaceLegacySectionProjection,
+            isCompactLayout: isCompact,
+            fallbackSidebarSelection: sidebarSelection
+        )
+    }
+    #endif
 }

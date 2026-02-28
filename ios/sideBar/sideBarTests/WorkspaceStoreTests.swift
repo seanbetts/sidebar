@@ -128,7 +128,7 @@ final class WorkspaceStoreTests: XCTestCase {
         XCTAssertEqual(next.lastNonChatSection, .websites)
     }
 
-    func testDispatchWithExpectedLegacyFollowupSkipsImmediateParityCheck() {
+    func testDispatchReportsParityDivergenceAfterLegacySyncWhenStateDrifts() {
         let store = makeStore()
         let snapshot = makeSnapshot(
             isCompactLayout: false,
@@ -143,12 +143,11 @@ final class WorkspaceStoreTests: XCTestCase {
 
         store.dispatch(
             .selectSection(.notes),
-            source: "unit_test_select",
-            expectLegacyFollowup: true
+            source: "unit_test_select"
         )
 
-        XCTAssertEqual(store.parityDivergenceCount, 0)
-        XCTAssertNil(store.lastParityDivergence)
+        XCTAssertEqual(store.parityDivergenceCount, 1)
+        XCTAssertNotNil(store.lastParityDivergence)
     }
 
     func testReducerSelectSectionUpdatesCompactPrimaryDescriptor() {
@@ -285,6 +284,41 @@ final class WorkspaceStoreTests: XCTestCase {
         XCTAssertEqual(next.mode, .core)
     }
 
+    func testReducerChromeActionsUpdateWorkspacePresentationState() {
+        var state = WorkspaceState(
+            mode: .core,
+            layout: .split,
+            primaryPane: WorkspacePaneState(pane: .primary, descriptor: .builtIn(.chat)),
+            secondaryPane: WorkspacePaneState(pane: .secondary, descriptor: .builtIn(.notes)),
+            isLeftPanelExpanded: true,
+            isWorkspaceExpanded: false,
+            isWorkspaceExpandedByRotation: false,
+            isSettingsPresented: false
+        )
+
+        state = WorkspaceReducer.reduce(
+            state: state,
+            action: .setLeftPanelExpanded(false)
+        )
+        state = WorkspaceReducer.reduce(
+            state: state,
+            action: .setWorkspaceExpanded(true)
+        )
+        state = WorkspaceReducer.reduce(
+            state: state,
+            action: .setWorkspaceExpandedByRotation(true)
+        )
+        state = WorkspaceReducer.reduce(
+            state: state,
+            action: .setSettingsPresented(true)
+        )
+
+        XCTAssertFalse(state.isLeftPanelExpanded)
+        XCTAssertTrue(state.isWorkspaceExpanded)
+        XCTAssertTrue(state.isWorkspaceExpandedByRotation)
+        XCTAssertTrue(state.isSettingsPresented)
+    }
+
     func testSyncLegacySnapshotDoesNotReplaceAgentDescriptorsWhenModeIsAgent() {
         let store = makeStore()
         let surface = AgentWorkspaceSurfaceDescriptor(
@@ -294,8 +328,7 @@ final class WorkspaceStoreTests: XCTestCase {
         )
         store.dispatch(
             .presentAgentSurface(surface, pane: .primary),
-            source: "unit_test_agent_surface",
-            expectLegacyFollowup: true
+            source: "unit_test_agent_surface"
         )
 
         let snapshot = makeSnapshot(

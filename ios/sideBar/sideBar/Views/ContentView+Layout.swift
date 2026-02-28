@@ -257,8 +257,7 @@ extension ContentView {
         let performSwap = {
             environment.workspaceStore.dispatch(
                 .swapPanes,
-                source: "content_view_swap_panes",
-                expectLegacyFollowup: true
+                source: "content_view_swap_panes"
             )
         }
         if reduceMotion {
@@ -271,15 +270,11 @@ extension ContentView {
     }
 
     func handleNonChatSelection(_ section: AppSection) {
-        let projectedPrimarySection = WorkspaceLegacySectionAdapter.section(
-            from: workspaceLegacySectionProjection.primaryDescriptor
+        sidebarSelection = section
+        environment.workspaceStore.dispatch(
+            .selectSection(section),
+            source: "content_non_chat_selection"
         )
-        if projectedPrimarySection == .chat {
-            secondarySection = section
-        } else {
-            primarySection = section
-        }
-        lastNonChatSection = section
     }
 
     func handleReadyFileNotification(_ notification: ReadyFileNotification) {

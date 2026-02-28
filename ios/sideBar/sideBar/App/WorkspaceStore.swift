@@ -32,6 +32,18 @@ enum WorkspaceReducer {
         case .setLayout(let layout):
             applyLayout(layout, state: &state)
 
+        case .setLeftPanelExpanded(let isExpanded):
+            state.isLeftPanelExpanded = isExpanded
+
+        case .setWorkspaceExpanded(let isExpanded):
+            state.isWorkspaceExpanded = isExpanded
+
+        case .setWorkspaceExpandedByRotation(let isExpandedByRotation):
+            state.isWorkspaceExpandedByRotation = isExpandedByRotation
+
+        case .setSettingsPresented(let isPresented):
+            state.isSettingsPresented = isPresented
+
         case .setPrimaryContent(let descriptor):
             state.primaryPane.descriptor = descriptor
 
@@ -268,29 +280,12 @@ public final class WorkspaceStore: ObservableObject {
         self.state = initialState
     }
 
-    /// Compatibility overload kept during migration so existing call sites and
-    /// test bundles linked against the older symbol continue to load.
     public func dispatch(
         _ action: WorkspaceAction,
         source: String = "workspace_action"
     ) {
-        dispatch(
-            action,
-            source: source,
-            expectLegacyFollowup: false
-        )
-    }
-
-    public func dispatch(
-        _ action: WorkspaceAction,
-        source: String,
-        expectLegacyFollowup: Bool
-    ) {
         state = WorkspaceReducer.reduce(state: state, action: action)
         guard case .applyLegacySnapshot = action else {
-            if expectLegacyFollowup {
-                return
-            }
             verifyParityIfNeeded(source: source)
             return
         }

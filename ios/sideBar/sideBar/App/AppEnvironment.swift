@@ -180,8 +180,7 @@ public final class AppEnvironment: ObservableObject {
         self.chatViewModel.workspaceActionDispatcher = { [workspaceStore = self.workspaceStore] action in
             workspaceStore.dispatch(
                 action,
-                source: "chat_workspace_patch",
-                expectLegacyFollowup: true
+                source: "chat_workspace_patch"
             )
         }
         self.authState = container.authSession.authState

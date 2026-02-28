@@ -29,30 +29,23 @@ enum WorkspaceLegacySectionAdapter {
 
     static func makeProjection(
         workspaceState: WorkspaceState,
-        fallbackPrimarySection: AppSection?,
-        fallbackSecondarySection: AppSection?,
         fallbackCompactSelection: AppSection?
     ) -> WorkspaceLegacySectionProjection {
-        let primaryDescriptor = preferredDescriptor(
-            workspaceState.primaryPane.descriptor,
-            fallback: descriptor(for: fallbackPrimarySection)
-        )
+        let primaryDescriptor = workspaceState.primaryPane.descriptor
 
         let secondaryDescriptor: WorkspaceContentDescriptor
         if workspaceState.layout == .compact {
             secondaryDescriptor = .empty
         } else if let pane = workspaceState.secondaryPane {
-            secondaryDescriptor = preferredDescriptor(
-                pane.descriptor,
-                fallback: descriptor(for: fallbackSecondarySection)
-            )
+            secondaryDescriptor = pane.descriptor
         } else {
-            secondaryDescriptor = descriptor(for: fallbackSecondarySection)
+            secondaryDescriptor = .empty
         }
 
         let compactSelection = section(from: workspaceState.primaryPane.descriptor)
             ?? fallbackCompactSelection
-            ?? fallbackPrimarySection
+            ?? workspaceState.sidebarSelection
+            ?? workspaceState.activeSection
             ?? .chat
 
         return WorkspaceLegacySectionProjection(
@@ -125,15 +118,5 @@ enum WorkspaceLegacySectionAdapter {
         case .agentSurface:
             return .keepCurrent
         }
-    }
-
-    private static func preferredDescriptor(
-        _ descriptor: WorkspaceContentDescriptor,
-        fallback: WorkspaceContentDescriptor
-    ) -> WorkspaceContentDescriptor {
-        if case .empty = descriptor {
-            return fallback
-        }
-        return descriptor
     }
 }
