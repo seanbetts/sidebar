@@ -111,8 +111,11 @@ private final class ChatViewModelTeardownBag {
     @Published public var promptPreview: ChatPromptPreview?
 
     let network: ChatNetworkCoordinator
-    let storage: ChatStorageCoordinator
     let ui: ChatUICoordinator
+    private let cacheClient: CacheClient
+    private let chatStoreReference: ChatStore
+    private let scratchpadStoreReference: ScratchpadStore?
+    private let contextProvidersReference: [any ContextProvider]
 
     var chatAPI: ChatAPI { network.chatAPI }
     var conversationsAPI: ConversationsAPIProviding { network.conversationsAPI }
@@ -120,10 +123,10 @@ private final class ChatViewModelTeardownBag {
     var streamClient: ChatStreamClient { network.streamClient }
     var networkStatus: any NetworkStatusProviding { network.networkStatus }
 
-    var cache: CacheClient { storage.cache }
-    var chatStore: ChatStore { storage.chatStore }
-    var scratchpadStore: ScratchpadStore? { storage.scratchpadStore }
-    var contextProviders: [any ContextProvider] { storage.contextProviders }
+    var cache: CacheClient { cacheClient }
+    var chatStore: ChatStore { chatStoreReference }
+    var scratchpadStore: ScratchpadStore? { scratchpadStoreReference }
+    var contextProviders: [any ContextProvider] { contextProvidersReference }
 
     var themeManager: ThemeManager { ui.themeManager }
     var toastCenter: ToastCenter? { ui.toastCenter }
@@ -165,8 +168,11 @@ private final class ChatViewModelTeardownBag {
         ui: ChatUICoordinator
     ) {
         self.network = network
-        self.storage = storage
         self.ui = ui
+        self.cacheClient = storage.cache
+        self.chatStoreReference = storage.chatStore
+        self.scratchpadStoreReference = storage.scratchpadStore
+        self.contextProvidersReference = storage.contextProviders
         self.teardownBag.setStreamClient(network.streamClient)
         self.streamClient.handler = self
         self.selectedConversationId = nil
