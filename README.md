@@ -100,8 +100,8 @@ CUSTOM_CA_BUNDLE=/path/to/ca-bundle.pem
 # Start all services
 docker compose up -d
 
-# View logs
-docker compose logs -f
+# View logs (API, ingestion worker, frontend)
+docker compose logs -f skills-api ingestion-worker frontend
 
 # Stop services
 docker compose down

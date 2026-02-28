@@ -13,6 +13,7 @@ services:
       - ./backend/skills:/skills:ro  # Read-only mount - skills are untrusted code
       - ./backend/api:/app/api
       - ./backend/scripts:/app/scripts:ro
+      - ingestion-staging:/tmp/sidebar-ingestion
     environment:
       - PYTHONUNBUFFERED=1
       - WORKSPACE_BASE=/tmp/skills
@@ -62,6 +63,68 @@ services:
       timeout: 10s
       retries: 3
 
+  # Background worker for file ingestion jobs
+  ingestion-worker:
+    build:
+      context: ./backend
+      dockerfile: docker/Dockerfile.skills-api
+    container_name: sidebar-ingestion-worker
+    command: ["python", "workers/ingestion_worker.py"]
+    volumes:
+      - ./backend/skills:/skills:ro
+      - ./backend/api:/app/api
+      - ./backend/workers:/app/workers
+      - ./backend/scripts:/app/scripts:ro
+      - ingestion-staging:/tmp/sidebar-ingestion
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WORKSPACE_BASE=/tmp/skills
+      - BEARER_TOKEN=${BEARER_TOKEN:-}
+      - DOPPLER_TOKEN=${DOPPLER_TOKEN:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY:-}
+      - JINA_API_KEY=${JINA_API_KEY:-}
+      - JINA_SSL_VERIFY=false
+      - JINA_CA_BUNDLE=
+      - SUPABASE_PROJECT_ID=${SUPABASE_PROJECT_ID:-}
+      - SUPABASE_USE_POOLER=${SUPABASE_USE_POOLER:-}
+      - SUPABASE_POOLER_HOST=${SUPABASE_POOLER_HOST:-}
+      - SUPABASE_POOLER_USER=${SUPABASE_POOLER_USER:-}
+      - SUPABASE_DB_NAME=${SUPABASE_DB_NAME:-}
+      - SUPABASE_DB_PORT=${SUPABASE_DB_PORT:-}
+      - SUPABASE_SSLMODE=${SUPABASE_SSLMODE:-}
+      - SUPABASE_POSTGRES_PSWD=${SUPABASE_POSTGRES_PSWD:-}
+      - SUPABASE_APP_PSWD=${SUPABASE_APP_PSWD:-}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - AUTH_DEV_MODE=${AUTH_DEV_MODE:-}
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-}
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+      - R2_BUCKET=${R2_BUCKET:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY:-}
+      - R2_ACCESS_KEY=${R2_ACCESS_KEY:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev
+      - /tmp/skills:exec,nosuid,nodev
+    networks:
+      - sidebar-network
+    depends_on:
+      skills-api:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
   # sideBar Frontend (SvelteKit)
   frontend:
     build:
@@ -84,3 +147,6 @@ services:
 networks:
   sidebar-network:
     driver: bridge
+
+volumes:
+  ingestion-staging:
