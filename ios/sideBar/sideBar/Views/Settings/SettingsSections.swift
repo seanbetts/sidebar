@@ -302,8 +302,8 @@ struct ProfileSettingsView: View {
         return name != (settings.name ?? "")
             || jobTitle != (settings.jobTitle ?? "")
             || employer != (settings.employer ?? "")
-            || gender != (settings.gender ?? "")
-            || pronouns != (settings.pronouns ?? "")
+            || !Self.pickerValuesEquivalent(gender, settings.gender)
+            || !Self.pickerValuesEquivalent(pronouns, settings.pronouns)
             || location != (settings.location ?? "")
             || nextDate != currentDate
     }
@@ -326,8 +326,8 @@ struct ProfileSettingsView: View {
         name = settings.name ?? ""
         jobTitle = settings.jobTitle ?? ""
         employer = settings.employer ?? ""
-        gender = settings.gender ?? ""
-        pronouns = settings.pronouns ?? ""
+        gender = Self.normalizedPickerSelection(currentValue: settings.gender, base: Self.genderOptions)
+        pronouns = Self.normalizedPickerSelection(currentValue: settings.pronouns, base: Self.pronounOptions)
         location = settings.location ?? ""
         if let parsedDate = Self.parseDate(settings.dateOfBirth) {
             dateOfBirthEnabled = true

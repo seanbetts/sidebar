@@ -35,4 +35,26 @@ extension ProfileSettingsView {
         }
         return [trimmedCurrentValue] + base
     }
+
+    static func normalizedPickerSelection(currentValue: String?, base: [String]) -> String {
+        guard let currentValue else { return "" }
+        let trimmedCurrentValue = currentValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedCurrentValue.isEmpty else { return "" }
+        if let canonicalValue = base.first(where: {
+            $0.caseInsensitiveCompare(trimmedCurrentValue) == .orderedSame
+        }) {
+            return canonicalValue
+        }
+        return trimmedCurrentValue
+    }
+
+    static func pickerValuesEquivalent(_ lhs: String, _ rhs: String?) -> Bool {
+        normalizedComparablePickerValue(lhs) == normalizedComparablePickerValue(rhs)
+    }
+
+    private static func normalizedComparablePickerValue(_ value: String?) -> String {
+        value?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? ""
+    }
 }

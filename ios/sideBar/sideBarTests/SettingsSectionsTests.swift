@@ -76,4 +76,19 @@ final class SettingsSectionsTests: XCTestCase {
 
         XCTAssertEqual(options, baseOptions)
     }
+
+    func testNormalizedPickerSelectionUsesCanonicalOptionCasing() {
+        let normalized = ProfileSettingsView.normalizedPickerSelection(
+            currentValue: "He/Him",
+            base: ["he/him", "she/her"]
+        )
+
+        XCTAssertEqual(normalized, "he/him")
+    }
+
+    func testPickerValuesEquivalentIgnoresCaseAndWhitespace() {
+        let equivalent = ProfileSettingsView.pickerValuesEquivalent("he/him", " He/Him ")
+
+        XCTAssertTrue(equivalent)
+    }
 }
