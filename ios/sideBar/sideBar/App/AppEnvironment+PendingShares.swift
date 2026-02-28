@@ -1,6 +1,8 @@
 import Foundation
 import sideBarShared
 
+let pendingWebsiteQueueMaxRetryCount = 5
+
 enum PendingWebsiteFailureKind {
     case retryable
     case terminal
@@ -67,7 +69,7 @@ func nextPendingWebsiteRetryItem(
     from item: PendingShareItem,
     now: Date,
     errorMessage: String?,
-    maxRetryCount: Int = 5
+    maxRetryCount: Int = pendingWebsiteQueueMaxRetryCount
 ) -> PendingShareItem? {
     let nextAttempt = max(0, item.retryCount ?? 0) + 1
     if nextAttempt >= maxRetryCount {
@@ -91,6 +93,34 @@ func nextPendingWebsiteRetryItem(
         nextRetryAt: nextRetryAt,
         lastError: errorMessage
     )
+}
+
+func failedPendingWebsiteItem(
+    from item: PendingShareItem,
+    errorMessage: String?,
+    maxRetryCount: Int = pendingWebsiteQueueMaxRetryCount
+) -> PendingShareItem {
+    PendingShareItem(
+        id: item.id,
+        kind: item.kind,
+        createdAt: item.createdAt,
+        url: item.url,
+        filePath: item.filePath,
+        filename: item.filename,
+        mimeType: item.mimeType,
+        retryCount: max(max(0, item.retryCount ?? 0), maxRetryCount),
+        nextRetryAt: nil,
+        lastError: errorMessage
+    )
+}
+
+func isPendingWebsiteFailed(
+    _ item: PendingShareItem,
+    maxRetryCount: Int = pendingWebsiteQueueMaxRetryCount
+) -> Bool {
+    guard item.kind == .website else { return false }
+    guard item.nextRetryAt == nil else { return false }
+    return max(0, item.retryCount ?? 0) >= maxRetryCount
 }
 
 func shouldKeepPendingShareItem(
@@ -124,8 +154,6 @@ func shouldKeepPendingShareItem(
 }
 
 extension AppEnvironment {
-    private static let websiteQueueMaxRetryCount = 5
-
     public func consumePendingShares() async {
         guard authState == .active else { return }
         guard !isConsumingPendingShares else { return }
@@ -137,59 +165,89 @@ extension AppEnvironment {
         guard !pending.isEmpty else { return }
         guard !connectivityMonitor.isOffline else { return }
 
-        let processingResult = await processPendingShares(pending)
-        let retainedItems = processingResult.items
-        let droppedQueuedWebsiteCount = processingResult.droppedQueuedWebsiteCount
-
+        let retainedItems = await processPendingShares(pending)
         PendingShareStore.shared.replaceAll(retainedItems)
-        if droppedQueuedWebsiteCount > 0 {
-            let message = droppedQueuedWebsiteCount == 1
-                ? "Removed a queued website after repeated save failures."
-                : "Removed \(droppedQueuedWebsiteCount) queued websites after repeated save failures."
-            toastCenter.show(message: message)
-        }
-
         websitesViewModel.syncPendingWebsitesFromQueuedShares(retainedItems)
     }
 
-    private func processPendingShares(
-        _ pending: [PendingShareItem]
-    ) async -> (items: [PendingShareItem], droppedQueuedWebsiteCount: Int) {
+    public func retryPendingQueuedWebsite(_ queueItemId: UUID) async {
+        let items = PendingShareStore.shared.loadAll()
+        guard !items.isEmpty else { return }
+
+        var didUpdate = false
+        let updatedItems = items.map { item -> PendingShareItem in
+            guard item.id == queueItemId, item.kind == .website else {
+                return item
+            }
+            didUpdate = true
+            return PendingShareItem(
+                id: item.id,
+                kind: item.kind,
+                createdAt: item.createdAt,
+                url: item.url,
+                filePath: item.filePath,
+                filename: item.filename,
+                mimeType: item.mimeType,
+                retryCount: nil,
+                nextRetryAt: nil,
+                lastError: nil
+            )
+        }
+        guard didUpdate else { return }
+
+        PendingShareStore.shared.replaceAll(updatedItems)
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(updatedItems)
+        await consumePendingShares()
+    }
+
+    public func removePendingQueuedWebsite(_ queueItemId: UUID) {
+        PendingShareStore.shared.remove(ids: [queueItemId])
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(PendingShareStore.shared.loadAll())
+    }
+
+    private func processPendingShares(_ pending: [PendingShareItem]) async -> [PendingShareItem] {
         let now = Date()
         var retainedItems: [PendingShareItem] = []
-        var droppedQueuedWebsiteCount = 0
 
-        for item in pending {
-            let outcome = await processPendingShare(item, now: now)
-            if let retainedItem = outcome.item {
+        for (index, item) in pending.enumerated() {
+            if item.kind == .website {
+                let remaining = Array(pending[index...])
+                websitesViewModel.syncPendingWebsitesFromQueuedShares(
+                    retainedItems + remaining,
+                    readingQueueItemId: item.id
+                )
+            }
+            if let retainedItem = await processPendingShare(item, now: now) {
                 retainedItems.append(retainedItem)
             }
-            droppedQueuedWebsiteCount += outcome.droppedQueuedWebsiteCount
         }
 
-        return (retainedItems, droppedQueuedWebsiteCount)
+        return retainedItems
     }
 
     private func processPendingShare(
         _ item: PendingShareItem,
         now: Date
-    ) async -> (item: PendingShareItem?, droppedQueuedWebsiteCount: Int) {
+    ) async -> PendingShareItem? {
         if item.kind == .website {
             return await processPendingWebsite(item, now: now)
         }
         let shouldKeep = await shouldKeepPendingShare(item)
-        return shouldKeep ? (item, 0) : (nil, 0)
+        return shouldKeep ? item : nil
     }
 
     private func processPendingWebsite(
         _ item: PendingShareItem,
         now: Date
-    ) async -> (item: PendingShareItem?, droppedQueuedWebsiteCount: Int) {
+    ) async -> PendingShareItem? {
+        if isPendingWebsiteFailed(item) {
+            return item
+        }
         guard isPendingWebsiteReadyForRetry(item, now: now) else {
-            return (item, 0)
+            return item
         }
         guard let url = item.url else {
-            return (nil, 1)
+            return nil
         }
         websitesViewModel.saveErrorMessage = nil
         let saved = await websitesViewModel.saveWebsite(
@@ -197,15 +255,19 @@ extension AppEnvironment {
             selectAfterSave: false
         )
         guard !saved else {
-            return (nil, 0)
+            return nil
         }
         let retryItem = nextPendingWebsiteRetryItem(
             from: item,
             now: now,
             errorMessage: websitesViewModel.saveErrorMessage,
-            maxRetryCount: Self.websiteQueueMaxRetryCount
+            maxRetryCount: pendingWebsiteQueueMaxRetryCount
         )
-        return retryItem.map { ($0, 0) } ?? (nil, 1)
+        return retryItem ?? failedPendingWebsiteItem(
+            from: item,
+            errorMessage: websitesViewModel.saveErrorMessage,
+            maxRetryCount: pendingWebsiteQueueMaxRetryCount
+        )
     }
 
     private func shouldKeepPendingShare(_ item: PendingShareItem) async -> Bool {

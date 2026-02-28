@@ -206,7 +206,7 @@ extension WebsitesPanelView {
                 if !viewModel.pendingWebsites.isEmpty {
                     Section {
                         ForEach(viewModel.pendingWebsites, id: \.id) { pending in
-                            PendingWebsiteRow(pending: pending, useListStyling: true)
+                            pendingWebsiteListRow(pending: pending)
                         }
                     } header: {
                         sidebarSectionHeader("Adding")
@@ -248,7 +248,7 @@ extension WebsitesPanelView {
                     if !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
                         Section {
                             ForEach(viewModel.pendingWebsites, id: \.id) { pending in
-                                PendingWebsiteRow(pending: pending, useListStyling: true)
+                                pendingWebsiteListRow(pending: pending)
                             }
                             ForEach(mainItems, id: \.id) { item in
                                 let index = staggerIndex(for: item.id, section: "main")
@@ -323,7 +323,7 @@ extension WebsitesPanelView {
                 if !viewModel.pendingWebsites.isEmpty {
                     Section {
                         ForEach(viewModel.pendingWebsites, id: \.id) { pending in
-                            PendingWebsiteRow(pending: pending, useListStyling: true)
+                            pendingWebsiteListRow(pending: pending)
                         }
                     } header: {
                         sidebarSectionHeader("Adding")
@@ -373,7 +373,7 @@ extension WebsitesPanelView {
                 if !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
                     Section {
                         ForEach(viewModel.pendingWebsites, id: \.id) { pending in
-                            PendingWebsiteRow(pending: pending, useListStyling: true)
+                            pendingWebsiteListRow(pending: pending)
                         }
                         ForEach(mainItems, id: \.id) { item in
                             let index = staggerIndex(for: item.id, section: "main")

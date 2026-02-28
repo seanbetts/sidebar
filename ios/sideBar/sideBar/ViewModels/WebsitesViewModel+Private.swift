@@ -14,8 +14,13 @@ extension WebsitesViewModel {
     }
 
     func enqueueOfflineWebsiteSave(for normalizedURL: URL) -> Bool {
-        if PendingShareStore.shared.enqueueWebsite(url: normalizedURL.absoluteString) != nil {
-            _ = upsertPendingWebsite(from: normalizedURL, source: .queuedShare)
+        if let queuedItem = PendingShareStore.shared.enqueueWebsite(url: normalizedURL.absoluteString) {
+            _ = upsertPendingWebsite(
+                from: normalizedURL,
+                source: .queuedShare,
+                queueItemId: queuedItem.id,
+                status: .queued
+            )
             saveErrorMessage = nil
             toastCenter.show(message: "Saved for later", style: .success)
             return true

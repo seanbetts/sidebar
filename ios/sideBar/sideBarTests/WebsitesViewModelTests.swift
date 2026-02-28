@@ -349,19 +349,103 @@ final class WebsitesViewModelTests: XCTestCase {
             canonicalURL: "https://manual.example",
             source: .directSave
         )
+        let queuedId = UUID()
         viewModel.syncPendingWebsitesFromQueuedShares([
             PendingShareItem(
-                id: UUID(),
+                id: queuedId,
                 kind: .website,
                 createdAt: Date(),
                 url: "https://queued.example/path"
             )
         ])
         XCTAssertEqual(viewModel.pendingWebsites.count, 2)
+        XCTAssertTrue(
+            viewModel.pendingWebsites.contains {
+                $0.source == .queuedShare &&
+                $0.queueItemId == queuedId &&
+                $0.status == .queued
+            }
+        )
 
         viewModel.syncPendingWebsitesFromQueuedShares([])
         XCTAssertEqual(viewModel.pendingWebsites.count, 1)
         XCTAssertEqual(viewModel.pendingWebsites.first?.source, .directSave)
+    }
+
+    func testSyncPendingWebsitesFromQueuedSharesMapsRetryingAndFailedStates() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let queuedURL = "https://queued.example/path"
+        let retryURL = "https://retry.example/path"
+        let failedURL = "https://failed.example/path"
+        let now = Date()
+        viewModel.syncPendingWebsitesFromQueuedShares([
+            PendingShareItem(
+                id: UUID(),
+                kind: .website,
+                createdAt: now,
+                url: queuedURL
+            ),
+            PendingShareItem(
+                id: UUID(),
+                kind: .website,
+                createdAt: now,
+                url: retryURL,
+                retryCount: 1,
+                nextRetryAt: now.addingTimeInterval(30)
+            ),
+            PendingShareItem(
+                id: UUID(),
+                kind: .website,
+                createdAt: now,
+                url: failedURL,
+                retryCount: pendingWebsiteQueueMaxRetryCount,
+                nextRetryAt: nil,
+                lastError: "Request failed (HTTP 503)."
+            )
+        ])
+
+        let statusByURL = Dictionary(
+            uniqueKeysWithValues: viewModel.pendingWebsites.map { ($0.url, $0.status) }
+        )
+        XCTAssertEqual(statusByURL[queuedURL], .queued)
+        XCTAssertEqual(statusByURL[retryURL], .retrying)
+        XCTAssertEqual(statusByURL[failedURL], .failed)
+    }
+
+    func testSyncPendingWebsitesFromQueuedSharesMarksProvidedItemAsReading() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let readingId = UUID()
+        viewModel.syncPendingWebsitesFromQueuedShares(
+            [
+                PendingShareItem(
+                    id: readingId,
+                    kind: .website,
+                    createdAt: Date(),
+                    url: "https://reading.example/path"
+                )
+            ],
+            readingQueueItemId: readingId
+        )
+
+        XCTAssertEqual(viewModel.pendingWebsites.first?.status, .reading)
     }
 
     func testSaveWebsiteWithoutSelectionPreservesCurrentDetail() async {
@@ -417,6 +501,7 @@ final class WebsitesViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.pendingWebsites.count, 1)
         XCTAssertEqual(viewModel.pendingWebsites.first?.source, .queuedShare)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.status, .reading)
 
         api.resumeSave(
             result: .success(

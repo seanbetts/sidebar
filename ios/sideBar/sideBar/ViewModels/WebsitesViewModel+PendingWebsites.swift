@@ -1,31 +1,109 @@
 import Foundation
+import sideBarShared
+
+extension WebsitesViewModel {
+    /// Source of pending website rows rendered for optimistic sidebar updates.
+    public enum PendingWebsiteSource: String {
+        case directSave
+        case queuedShare
+    }
+
+    /// User-facing processing state shown for queued website rows.
+    public enum PendingWebsiteStatus: String {
+        case queued
+        case reading
+        case retrying
+        case failed
+
+        public var label: String {
+            switch self {
+            case .queued:
+                return "Queued"
+            case .reading:
+                return "Reading..."
+            case .retrying:
+                return "Retrying"
+            case .failed:
+                return "Failed"
+            }
+        }
+    }
+
+    /// Holds a pending website captured from extension and in-app save flows.
+    public struct PendingWebsiteItem: Identifiable, Equatable {
+        public let id: String
+        public let title: String
+        public let domain: String
+        public let url: String
+        public let canonicalURL: String
+        public let source: PendingWebsiteSource
+        public let queueItemId: UUID?
+        public let status: PendingWebsiteStatus
+
+        public init(
+            id: String,
+            title: String,
+            domain: String,
+            url: String,
+            canonicalURL: String,
+            source: PendingWebsiteSource,
+            queueItemId: UUID? = nil,
+            status: PendingWebsiteStatus = .reading
+        ) {
+            self.id = id
+            self.title = title
+            self.domain = domain
+            self.url = url
+            self.canonicalURL = canonicalURL
+            self.source = source
+            self.queueItemId = queueItemId
+            self.status = status
+        }
+    }
+}
 
 @MainActor
 extension WebsitesViewModel {
+    private struct QueuedPendingWebsite {
+        let canonical: String
+        let item: PendingShareItem
+        let url: URL
+    }
+
     @discardableResult
     func upsertPendingWebsite(
         from url: URL,
         source: PendingWebsiteSource,
-        id: String? = nil
+        id: String? = nil,
+        queueItemId: UUID? = nil,
+        status: PendingWebsiteStatus? = nil
     ) -> PendingWebsiteItem {
         let canonical = canonicalWebsiteURLForPendingMatch(url.absoluteString) ?? url.absoluteString
+        let resolvedStatus = status ?? defaultPendingWebsiteStatus(for: source)
         if let index = pendingWebsites.firstIndex(where: { $0.canonicalURL == canonical }) {
             let existing = pendingWebsites[index]
-            if existing.source != source {
-                let updated = PendingWebsiteItem(
-                    id: existing.id,
-                    title: existing.title,
-                    domain: existing.domain,
-                    url: existing.url,
-                    canonicalURL: existing.canonicalURL,
-                    source: source
-                )
+            let updated = PendingWebsiteItem(
+                id: existing.id,
+                title: existing.title,
+                domain: existing.domain,
+                url: existing.url,
+                canonicalURL: existing.canonicalURL,
+                source: source,
+                queueItemId: queueItemId ?? existing.queueItemId,
+                status: resolvedStatus
+            )
+            if updated != existing {
                 pendingWebsites[index] = updated
-                return updated
             }
-            return existing
+            return pendingWebsites[index]
         }
-        let pending = makePendingWebsite(from: url, source: source, id: id)
+        let pending = makePendingWebsite(
+            from: url,
+            source: source,
+            id: id,
+            queueItemId: queueItemId,
+            status: resolvedStatus
+        )
         pendingWebsites.append(pending)
         return pending
     }
@@ -39,29 +117,67 @@ extension WebsitesViewModel {
         pendingWebsites.removeAll { $0.id == id }
     }
 
-    func syncQueuedPendingWebsites(with urls: [URL]) {
-        let canonicalToURL: [String: URL] = urls.reduce(into: [:]) { partialResult, url in
-            let canonical = canonicalWebsiteURLForPendingMatch(url.absoluteString) ?? url.absoluteString
-            partialResult[canonical] = url
+    func syncQueuedPendingWebsites(
+        with queuedItems: [PendingShareItem],
+        readingQueueItemId: UUID? = nil
+    ) {
+        var orderedQueuedEntries: [QueuedPendingWebsite] = []
+        var seenCanonical = Set<String>()
+        for item in queuedItems {
+            guard item.kind == .website,
+                  let raw = item.url,
+                  let normalized = WebsiteURLValidator.normalizedCandidate(raw) else {
+                continue
+            }
+            let canonical = canonicalWebsiteURLForPendingMatch(normalized.absoluteString) ?? normalized.absoluteString
+            guard seenCanonical.insert(canonical).inserted else { continue }
+            orderedQueuedEntries.append(
+                QueuedPendingWebsite(canonical: canonical, item: item, url: normalized)
+            )
         }
-        let queuedCanonical = Set(canonicalToURL.keys)
+        let queuedCanonical = Set(orderedQueuedEntries.map { $0.canonical })
 
         pendingWebsites.removeAll {
             $0.source == .queuedShare && !queuedCanonical.contains($0.canonicalURL)
         }
-        for canonical in queuedCanonical {
-            guard pendingWebsites.contains(where: { $0.canonicalURL == canonical }) == false,
-                  let url = canonicalToURL[canonical] else {
+
+        for entry in orderedQueuedEntries {
+            let status = pendingWebsiteStatus(
+                for: entry.item,
+                readingQueueItemId: readingQueueItemId
+            )
+
+            if let index = pendingWebsites.firstIndex(where: {
+                $0.canonicalURL == entry.canonical && $0.source == .queuedShare
+            }) {
+                pendingWebsites[index] = makePendingWebsite(
+                    from: entry.url,
+                    source: .queuedShare,
+                    id: pendingWebsites[index].id,
+                    queueItemId: entry.item.id,
+                    status: status
+                )
                 continue
             }
-            _ = upsertPendingWebsite(from: url, source: .queuedShare)
+
+            guard pendingWebsites.contains(where: { $0.canonicalURL == entry.canonical }) == false else {
+                continue
+            }
+            _ = upsertPendingWebsite(
+                from: entry.url,
+                source: .queuedShare,
+                queueItemId: entry.item.id,
+                status: status
+            )
         }
     }
 
     func makePendingWebsite(
         from url: URL,
         source: PendingWebsiteSource,
-        id: String? = nil
+        id: String? = nil,
+        queueItemId: UUID? = nil,
+        status: PendingWebsiteStatus? = nil
     ) -> PendingWebsiteItem {
         let host = url.host ?? url.absoluteString
         let domain = host.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
@@ -74,7 +190,9 @@ extension WebsitesViewModel {
             domain: domain,
             url: url.absoluteString,
             canonicalURL: canonicalWebsiteURLForPendingMatch(url.absoluteString) ?? url.absoluteString,
-            source: source
+            source: source,
+            queueItemId: queueItemId,
+            status: status ?? defaultPendingWebsiteStatus(for: source)
         )
     }
 
@@ -82,5 +200,30 @@ extension WebsitesViewModel {
         guard !pendingWebsites.isEmpty else { return }
         let savedKeys = Set(items.map { canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url })
         pendingWebsites.removeAll { savedKeys.contains($0.canonicalURL) }
+    }
+
+    private func defaultPendingWebsiteStatus(for source: PendingWebsiteSource) -> PendingWebsiteStatus {
+        switch source {
+        case .directSave:
+            return .reading
+        case .queuedShare:
+            return .queued
+        }
+    }
+
+    private func pendingWebsiteStatus(
+        for item: PendingShareItem,
+        readingQueueItemId: UUID?
+    ) -> PendingWebsiteStatus {
+        if readingQueueItemId == item.id {
+            return .reading
+        }
+        if isPendingWebsiteFailed(item) {
+            return .failed
+        }
+        if max(0, item.retryCount ?? 0) > 0 {
+            return .retrying
+        }
+        return .queued
     }
 }

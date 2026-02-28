@@ -40,22 +40,6 @@ import OSLog
 /// await viewModel.selectWebsite(id: websiteId)
 /// ```
 public final class WebsitesViewModel: ObservableObject {
-    /// Source of pending website rows rendered for optimistic sidebar updates.
-    public enum PendingWebsiteSource: String {
-        case directSave
-        case queuedShare
-    }
-
-    /// Holds a pending website captured from an extension flow.
-    public struct PendingWebsiteItem: Identifiable, Equatable {
-        public let id: String
-        public let title: String
-        public let domain: String
-        public let url: String
-        public let canonicalURL: String
-        public let source: PendingWebsiteSource
-    }
-
     @Published public internal(set) var items: [WebsiteItem] = []
     @Published public internal(set) var active: WebsiteDetail?
     @Published public internal(set) var selectedWebsiteId: String?
@@ -208,12 +192,11 @@ public final class WebsitesViewModel: ObservableObject {
         _ = upsertPendingWebsite(from: normalized, source: .queuedShare)
     }
 
-    public func syncPendingWebsitesFromQueuedShares(_ queuedItems: [PendingShareItem]) {
-        let queuedURLs = queuedItems.compactMap { item -> URL? in
-            guard item.kind == .website, let raw = item.url else { return nil }
-            return WebsiteURLValidator.normalizedCandidate(raw)
-        }
-        syncQueuedPendingWebsites(with: queuedURLs)
+    public func syncPendingWebsitesFromQueuedShares(
+        _ queuedItems: [PendingShareItem],
+        readingQueueItemId: UUID? = nil
+    ) {
+        syncQueuedPendingWebsites(with: queuedItems, readingQueueItemId: readingQueueItemId)
     }
 
     public func loadById(id: String) async {
@@ -249,7 +232,11 @@ public final class WebsitesViewModel: ObservableObject {
         }
 
         if !selectAfterSave {
-            _ = upsertPendingWebsite(from: normalized, source: .queuedShare)
+            _ = upsertPendingWebsite(
+                from: normalized,
+                source: .queuedShare,
+                status: .reading
+            )
             saveErrorMessage = nil
             do {
                 let response = try await api.save(url: normalized.absoluteString)

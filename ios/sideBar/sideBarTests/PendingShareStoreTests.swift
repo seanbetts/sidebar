@@ -400,6 +400,51 @@ final class PendingShareStoreTests: XCTestCase {
         )
     }
 
+    func testFailedPendingWebsiteItemMarksQueueEntryAsManualRetryOnly() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let item = PendingShareItem(
+            id: UUID(),
+            kind: .website,
+            createdAt: now,
+            url: "https://example.com",
+            retryCount: 2,
+            nextRetryAt: now.addingTimeInterval(30)
+        )
+
+        let failed = failedPendingWebsiteItem(
+            from: item,
+            errorMessage: "Request failed (HTTP 503)."
+        )
+
+        XCTAssertEqual(failed.retryCount, pendingWebsiteQueueMaxRetryCount)
+        XCTAssertNil(failed.nextRetryAt)
+        XCTAssertEqual(failed.lastError, "Request failed (HTTP 503).")
+        XCTAssertTrue(isPendingWebsiteFailed(failed))
+    }
+
+    func testIsPendingWebsiteFailedRequiresRetryLimitWithoutScheduledRetry() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let failed = PendingShareItem(
+            id: UUID(),
+            kind: .website,
+            createdAt: now,
+            url: "https://example.com",
+            retryCount: pendingWebsiteQueueMaxRetryCount,
+            nextRetryAt: nil
+        )
+        let retrying = PendingShareItem(
+            id: UUID(),
+            kind: .website,
+            createdAt: now,
+            url: "https://example.com",
+            retryCount: pendingWebsiteQueueMaxRetryCount,
+            nextRetryAt: now.addingTimeInterval(30)
+        )
+
+        XCTAssertTrue(isPendingWebsiteFailed(failed))
+        XCTAssertFalse(isPendingWebsiteFailed(retrying))
+    }
+
     func testIsPendingWebsiteReadyForRetryHonorsNextRetryAt() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let ready = PendingShareItem(

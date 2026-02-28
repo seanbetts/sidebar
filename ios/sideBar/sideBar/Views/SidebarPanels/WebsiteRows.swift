@@ -4,6 +4,12 @@ import SwiftUI
 struct PendingWebsiteRow: View, Equatable {
     let pending: WebsitesViewModel.PendingWebsiteItem
     let useListStyling: Bool
+    let onRetry: ((UUID) -> Void)?
+    let onRemove: ((UUID) -> Void)?
+
+    static func == (lhs: PendingWebsiteRow, rhs: PendingWebsiteRow) -> Bool {
+        lhs.pending == rhs.pending && lhs.useListStyling == rhs.useListStyling
+    }
 
     var body: some View {
         SelectableRow(
@@ -14,18 +20,48 @@ struct PendingWebsiteRow: View, Equatable {
             HStack(spacing: 8) {
                 LoadingIndicatorView(size: LoadingIndicatorSize.inline)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(pending.title)
+                    Text(displayTitle)
                         .appFont(.subheadline)
                         .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
-                    Text(formatDomain(pending.domain))
+                    Text(pending.status.label)
                         .appFont(.caption)
                         .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
                 }
                 Spacer()
+                if let queueItemId = pending.queueItemId {
+                    HStack(spacing: 8) {
+                        if pending.status == .failed, let onRetry {
+                            Button("Retry") {
+                                onRetry(queueItemId)
+                            }
+                            .buttonStyle(.plain)
+                            .appFont(.caption)
+                            .foregroundStyle(secondaryTextColor)
+                            .accessibilityLabel("Retry queued website")
+                        }
+                        if let onRemove {
+                            Button("Remove") {
+                                onRemove(queueItemId)
+                            }
+                            .buttonStyle(.plain)
+                            .appFont(.caption)
+                            .foregroundStyle(secondaryTextColor)
+                            .accessibilityLabel("Remove queued website")
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private var displayTitle: String {
+        let domain = formatDomain(pending.domain)
+        if !domain.isEmpty {
+            return domain
+        }
+        return pending.url
     }
 
     private var secondaryTextColor: Color {

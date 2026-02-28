@@ -74,6 +74,25 @@ extension WebsitesPanelView {
         #endif
     }
 
+    @ViewBuilder
+    func pendingWebsiteListRow(
+        pending: WebsitesViewModel.PendingWebsiteItem,
+        useListStyling: Bool = true
+    ) -> some View {
+        PendingWebsiteRow(
+            pending: pending,
+            useListStyling: useListStyling,
+            onRetry: { queueItemId in
+                Task {
+                    await appEnvironment.retryPendingQueuedWebsite(queueItemId)
+                }
+            },
+            onRemove: { queueItemId in
+                appEnvironment.removePendingQueuedWebsite(queueItemId)
+            }
+        )
+    }
+
     var pinnedItemsSorted: [WebsiteItem] {
         viewModel.panelPinnedItemsSorted
     }
