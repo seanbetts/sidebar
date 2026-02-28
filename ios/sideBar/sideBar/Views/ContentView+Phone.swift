@@ -61,29 +61,26 @@ extension ContentView {
     }
 
     func detailViewDefinition(for section: AppSection?) -> AnyView {
-        guard let section else {
-            return AnyView(WelcomeEmptyView())
-        }
-        return sectionDefinition(for: section).detailView()
+        workspaceBuiltInSectionRegistry.detailView(for: section)
     }
 
     func sectionDefinition(for section: AppSection) -> SectionDefinition {
-        switch section {
-        case .chat:
-            return chatSectionDefinition
-        case .notes:
-            return notesSectionDefinition
-        case .files:
-            return filesSectionDefinition
-        case .websites:
-            return websitesSectionDefinition
-        case .skillsStore:
-            return skillsStoreSectionDefinition
-        case .settings:
-            return settingsSectionDefinition
-        case .tasks:
-            return tasksSectionDefinition
-        }
+        workspaceBuiltInSectionRegistry.definition(for: section)
+            ?? settingsSectionDefinition
+    }
+
+    var workspaceBuiltInSectionRegistry: WorkspaceBuiltInSectionRegistry {
+        WorkspaceBuiltInSectionRegistry(
+            definitions: [
+                .chat: chatSectionDefinition,
+                .notes: notesSectionDefinition,
+                .files: filesSectionDefinition,
+                .websites: websitesSectionDefinition,
+                .skillsStore: skillsStoreSectionDefinition,
+                .settings: settingsSectionDefinition,
+                .tasks: tasksSectionDefinition
+            ]
+        )
     }
 
     private var chatSectionDefinition: SectionDefinition {

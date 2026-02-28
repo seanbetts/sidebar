@@ -5,6 +5,7 @@ public struct SidebarSplitView<Detail: View>: View {
     @AppStorage(AppStorageKeys.sidebarWidth) private var sidebarWidth: Double = 280
     @State private var dragWidth: Double?
 
+    private let panelContent: (AppSection?) -> AnyView
     private let detail: () -> Detail
 
     private let railWidth: Double = 56
@@ -12,8 +13,15 @@ public struct SidebarSplitView<Detail: View>: View {
     private let minPanelWidth: Double = 200
     private let maxPanelWidth: Double = 500
 
-    public init(selection: Binding<AppSection?>, @ViewBuilder detail: @escaping () -> Detail) {
+    public init(
+        selection: Binding<AppSection?>,
+        panelContent: @escaping (AppSection?) -> AnyView = { _ in
+            AnyView(SidebarPanelPlaceholder(title: "Select a section"))
+        },
+        @ViewBuilder detail: @escaping () -> Detail
+    ) {
         self._selection = selection
+        self.panelContent = panelContent
         self.detail = detail
     }
 
@@ -97,22 +105,7 @@ public struct SidebarSplitView<Detail: View>: View {
 
     @ViewBuilder
     private func panelView(for selection: AppSection?) -> some View {
-        switch selection {
-        case .chat:
-            ConversationsPanel()
-        case .notes:
-            NotesPanel()
-        case .files:
-            FilesPanel()
-        case .websites:
-            WebsitesPanel()
-        case .skillsStore:
-            SkillsStorePanel()
-        case .none:
-            SidebarPanelPlaceholder(title: "Select a section")
-        default:
-            SidebarPanelPlaceholder(title: selection?.title ?? "Select a section")
-        }
+        panelContent(selection)
     }
 
     private var handleBackground: Color {

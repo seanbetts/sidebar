@@ -72,7 +72,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         isRightSidebarCollapsed: Binding<Bool>,
         shouldAnimateSidebar: Bool = true,
         onShowSettings: (() -> Void)? = nil,
-        leftPanelContent: ((AppSection?) -> AnyView)? = nil,
+        leftPanelContent: @escaping (AppSection?) -> AnyView,
         @ViewBuilder header: @escaping () -> Header,
         @ViewBuilder mainContent: @escaping () -> Main,
         @ViewBuilder rightSidebar: @escaping () -> Sidebar
@@ -82,9 +82,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         self._isRightSidebarCollapsed = isRightSidebarCollapsed
         self.shouldAnimateSidebar = shouldAnimateSidebar
         self.onShowSettings = onShowSettings
-        self.leftPanelContent = leftPanelContent ?? { selection in
-            Self.defaultPanelView(for: selection)
-        }
+        self.leftPanelContent = leftPanelContent
         self.header = header
         self.mainContent = mainContent
         self.rightSidebar = rightSidebar
@@ -353,27 +351,6 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         #else
         false
         #endif
-    }
-
-    private static func defaultPanelView(for selection: AppSection?) -> AnyView {
-        switch selection {
-        case .chat:
-            return AnyView(ConversationsPanel())
-        case .notes:
-            return AnyView(NotesPanel())
-        case .tasks:
-            return AnyView(TasksPanel())
-        case .files:
-            return AnyView(FilesPanel())
-        case .websites:
-            return AnyView(WebsitesPanel())
-        case .skillsStore:
-            return AnyView(SkillsStorePanel())
-        case .none:
-            return AnyView(SidebarPanelPlaceholder(title: "Select a section"))
-        default:
-            return AnyView(SidebarPanelPlaceholder(title: selection?.title ?? "Select a section"))
-        }
     }
 
     private var panelBackground: Color {

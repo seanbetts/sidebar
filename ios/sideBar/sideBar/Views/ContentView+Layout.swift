@@ -233,17 +233,7 @@ extension ContentView {
     }
 
     func workspacePanelView(for section: AppSection?) -> AnyView {
-        switch section {
-        case .chat, .notes, .tasks, .files, .websites, .skillsStore:
-            guard let section else {
-                return AnyView(SidebarPanelPlaceholder(title: "Select a section"))
-            }
-            return sectionDefinition(for: section).panelView()
-        case .none:
-            return AnyView(SidebarPanelPlaceholder(title: "Select a section"))
-        default:
-            return AnyView(SidebarPanelPlaceholder(title: section?.title ?? "Select a section"))
-        }
+        workspaceBuiltInSectionRegistry.panelView(for: section)
     }
 
     var workspaceRendererRegistry: WorkspaceRendererRegistry {
