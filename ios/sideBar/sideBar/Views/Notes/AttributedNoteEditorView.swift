@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 #if os(iOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
 #endif
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -39,18 +41,14 @@ struct AttributedNoteReadOnlyView: View {
     let onTap: () -> Void
 
     var body: some View {
-        ScrollView {
-            Text(attributedContent)
-                .textSelection(.enabled)
-                .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
-                .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
-                .frame(maxWidth: maxContentWidth, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onTap()
-        }
+        NativeReadOnlyMarkdownTextView(
+            attributedContent: attributedContent,
+            onTap: onTap
+        )
+        .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+        .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
+        .frame(maxWidth: maxContentWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DesignTokens.Colors.background)
     }
 }
@@ -95,6 +93,135 @@ private struct TextEditorFormattingConfigurator: UIViewRepresentable {
             }
         }
         return nil
+    }
+}
+#endif
+
+#if os(iOS)
+@available(iOS 26.0, *)
+private struct NativeReadOnlyMarkdownTextView: UIViewRepresentable {
+    let attributedContent: AttributedString
+    let onTap: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onTap: onTap)
+    }
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.backgroundColor = .clear
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isScrollEnabled = true
+        textView.allowsEditingTextAttributes = false
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        textView.attributedText = NSAttributedString(attributedContent)
+
+        let tapRecognizer = UITapGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleTap)
+        )
+        tapRecognizer.cancelsTouchesInView = false
+        textView.addGestureRecognizer(tapRecognizer)
+        context.coordinator.tapRecognizer = tapRecognizer
+        return textView
+    }
+
+    func updateUIView(_ textView: UITextView, context: Context) {
+        context.coordinator.onTap = onTap
+        let updated = NSAttributedString(attributedContent)
+        if !textView.attributedText.isEqual(to: updated) {
+            textView.attributedText = updated
+        }
+    }
+
+    final class Coordinator: NSObject {
+        var onTap: () -> Void
+        weak var tapRecognizer: UITapGestureRecognizer?
+
+        init(onTap: @escaping () -> Void) {
+            self.onTap = onTap
+        }
+
+        @objc func handleTap() {
+            onTap()
+        }
+    }
+}
+#elseif os(macOS)
+@available(macOS 26.0, *)
+private struct NativeReadOnlyMarkdownTextView: NSViewRepresentable {
+    let attributedContent: AttributedString
+    let onTap: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onTap: onTap)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let textView = NSTextView()
+        textView.drawsBackground = false
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.allowsImageEditing = false
+        textView.textContainerInset = .zero
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.minSize = .zero
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(
+            width: 0,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.heightTracksTextView = false
+        textView.textStorage?.setAttributedString(NSAttributedString(attributedContent))
+
+        let tapRecognizer = NSClickGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleTap)
+        )
+        tapRecognizer.numberOfClicksRequired = 1
+        tapRecognizer.delaysPrimaryMouseButtonEvents = false
+        textView.addGestureRecognizer(tapRecognizer)
+        context.coordinator.tapRecognizer = tapRecognizer
+
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        context.coordinator.onTap = onTap
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+        let updated = NSAttributedString(attributedContent)
+        if !textView.attributedString().isEqual(to: updated) {
+            textView.textStorage?.setAttributedString(updated)
+        }
+    }
+
+    final class Coordinator: NSObject {
+        var onTap: () -> Void
+        weak var tapRecognizer: NSClickGestureRecognizer?
+
+        init(onTap: @escaping () -> Void) {
+            self.onTap = onTap
+        }
+
+        @objc func handleTap() {
+            onTap()
+        }
     }
 }
 #endif
