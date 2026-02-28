@@ -10,6 +10,51 @@ extension AppEnvironment {
         #endif
     }
 
+    private var shortcutResolutionPane: WorkspacePane? {
+        resolveShortcutPane(
+            section: shortcutResolutionSection,
+            focusedPane: focusedWorkspacePane,
+            workspaceState: workspaceStore.state
+        )
+    }
+
+    private func resolveShortcutPane(
+        section: AppSection?,
+        focusedPane: WorkspacePane?,
+        workspaceState: WorkspaceState
+    ) -> WorkspacePane? {
+        guard let targetSection = section else {
+            return focusedPane
+        }
+
+        if let focusedPane, paneSection(in: focusedPane, state: workspaceState) == targetSection {
+            return focusedPane
+        }
+        if paneSection(in: .primary, state: workspaceState) == targetSection {
+            return .primary
+        }
+        if paneSection(in: .secondary, state: workspaceState) == targetSection {
+            return .secondary
+        }
+        return focusedPane
+    }
+
+    private func paneSection(
+        in pane: WorkspacePane,
+        state: WorkspaceState
+    ) -> AppSection? {
+        switch pane {
+        case .primary:
+            return WorkspaceLegacySectionAdapter.section(from: state.primaryPane.descriptor)
+        case .secondary:
+            guard state.layout != .compact,
+                  let secondaryPane = state.secondaryPane else {
+                return nil
+            }
+            return WorkspaceLegacySectionAdapter.section(from: secondaryPane.descriptor)
+        }
+    }
+
     public var activeShortcutContexts: Set<ShortcutContext> {
         var contexts: Set<ShortcutContext> = [.universal]
         let section = shortcutResolutionSection
@@ -26,7 +71,11 @@ extension AppEnvironment {
     }
 
     public func emitShortcutAction(_ action: ShortcutAction) {
-        let event = ShortcutActionEvent(action: action, section: shortcutResolutionSection)
+        let event = ShortcutActionEvent(
+            action: action,
+            section: shortcutResolutionSection,
+            pane: shortcutResolutionPane
+        )
         shortcutActionEvent = event
 
         // Treat shortcut events as one-shot broadcasts so stale events are not replayed

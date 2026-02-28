@@ -243,6 +243,12 @@ public final class AppEnvironment: ObservableObject {
         set { navigation.focusedSection = newValue }
     }
 
+    /// Most recently interacted workspace pane, used for pane-scoped shortcut routing.
+    public var focusedWorkspacePane: WorkspacePane? {
+        get { navigation.focusedWorkspacePane }
+        set { navigation.focusedWorkspacePane = newValue }
+    }
+
     /// Indicates whether task-specific keyboard shortcuts should be active.
     public var isTasksFocused: Bool {
         get { navigation.isTasksFocused }

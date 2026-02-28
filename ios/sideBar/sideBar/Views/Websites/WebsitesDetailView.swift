@@ -43,7 +43,11 @@ struct WebsitesDetailView: View {
             return .handled
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
-            guard let event, event.section == .websites else { return }
+            guard let event,
+                  event.matches(
+                    section: .websites,
+                    workspacePane: workspaceColumn.workspacePane
+                  ) else { return }
             switch event.action {
             case .closeItem:
                 guard viewModel.active != nil else { return }

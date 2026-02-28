@@ -3,6 +3,7 @@ import sideBarShared
 
 public struct SkillsStoreView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    @Environment(\.workspaceColumn) private var workspaceColumn
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -54,7 +55,11 @@ public struct SkillsStoreView: View {
             }
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
-            guard let event, event.section == .skillsStore else { return }
+            guard let event,
+                  event.matches(
+                    section: .skillsStore,
+                    workspacePane: workspaceColumn.workspacePane
+                  ) else { return }
             if event.action == .focusSearch {
                 isSearchFocused = true
             }

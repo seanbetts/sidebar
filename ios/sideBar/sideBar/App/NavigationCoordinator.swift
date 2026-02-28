@@ -7,6 +7,7 @@ public final class NavigationCoordinator: ObservableObject {
     @Published public var commandSelection: AppSection?
     @Published public var activeSection: AppSection?
     @Published public var focusedSection: AppSection?
+    @Published public var focusedWorkspacePane: WorkspacePane?
     @Published public var isTasksFocused: Bool = false
     @Published public var pendingNewTaskDeepLink: Bool = false
     @Published public var pendingNewNoteDeepLink: Bool = false
@@ -22,6 +23,7 @@ public final class NavigationCoordinator: ObservableObject {
         commandSelection = nil
         activeSection = nil
         focusedSection = nil
+        focusedWorkspacePane = nil
         isTasksFocused = false
         pendingNewTaskDeepLink = false
         pendingNewNoteDeepLink = false

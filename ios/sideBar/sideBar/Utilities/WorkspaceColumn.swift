@@ -3,6 +3,15 @@ import SwiftUI
 public enum WorkspaceColumn: String {
     case primary
     case secondary
+
+    var workspacePane: WorkspacePane {
+        switch self {
+        case .primary:
+            return .primary
+        case .secondary:
+            return .secondary
+        }
+    }
 }
 
 private struct WorkspaceColumnKey: EnvironmentKey {

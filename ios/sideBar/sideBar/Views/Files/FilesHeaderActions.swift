@@ -56,7 +56,11 @@ struct FilesHeaderActions: View {
             exportDocument = nil
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
-            guard let event, event.section == .files else { return }
+            guard let event,
+                  event.matches(
+                    section: .files,
+                    workspacePane: workspaceColumn.workspacePane
+                  ) else { return }
             switch event.action {
             case .renameItem:
                 beginRename()

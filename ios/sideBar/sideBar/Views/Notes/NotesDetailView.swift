@@ -75,7 +75,11 @@ struct NotesDetailView: View {
             .interactiveDismissDisabled(true)
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
-            guard let event, event.section == .notes else { return }
+            guard let event,
+                  event.matches(
+                    section: .notes,
+                    workspacePane: workspaceColumn.workspacePane
+                  ) else { return }
             switch event.action {
             case .closeItem:
                 requestCloseNote()

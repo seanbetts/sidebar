@@ -89,6 +89,7 @@ private struct ChatDetailView: View {
     @State private var draftMessage: String = ""
     private let contentMaxWidth: CGFloat = ChatLayout.maxContentWidth
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.workspaceColumn) private var workspaceColumn
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -173,7 +174,11 @@ private struct ChatDetailView: View {
             handleFileImport(result)
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
-            guard let event, event.section == .chat else { return }
+            guard let event,
+                  event.matches(
+                    section: .chat,
+                    workspacePane: workspaceColumn.workspacePane
+                  ) else { return }
             switch event.action {
             case .sendMessage:
                 if !viewModel.isStreaming {
