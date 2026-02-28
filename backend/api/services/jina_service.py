@@ -200,9 +200,35 @@ class JinaService:
             "",
             cleaned,
         )
+        cleaned = re.sub(
+            (
+                r"(?mi)^Reviews and recommendations, independent of "
+                r"The Wall Street Journal newsroom\.\s*$\n?"
+            ),
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(
+            r"(?m)^\[Sign In]\(https?://www\.wsj\.com/client/login\?target=[^)]+\)\s*$\n?",
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(
+            (
+                r"(?m)^This copy is for your personal, non-commercial use only\."
+                r"[^\n]*\n?"
+            ),
+            "",
+            cleaned,
+        )
 
         cleaned = re.sub(
             r"(?m)^!\[[^\]]*]\(https?://(?:analytics\.twitter\.com|t\.co/1/i/adsct|bat\.bing\.com|sync\.intentiq\.com)[^)]+\)\s*",
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(
+            r"!\[[^\]]*]\(https?://(?:analytics\.twitter\.com|t\.co/1/i/adsct|bat\.bing\.com|sync\.intentiq\.com)[^)]+\)",
             "",
             cleaned,
         )
@@ -224,6 +250,7 @@ class JinaService:
             "",
             cleaned,
         )
+        cleaned = JinaService._trim_wsj_footer(cleaned)
         cleaned = JinaService._filter_wsj_navigation_blocks(cleaned)
         cleaned = re.sub(r"(?m)^\d+\.\s+WSJ\..*\n?", "", cleaned)
         cleaned = re.sub(
@@ -231,8 +258,70 @@ class JinaService:
             "",
             cleaned,
         )
+        cleaned = re.sub(
+            (
+                r"(?m)^\*\s+English Edition(?:\s+Edition)?\s+Use Alt \+ Down Arrow "
+                r"to expand\.\s*$\n?"
+            ),
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(r"(?m)^\*\s+\*\s+\*\s*$\n?", "", cleaned)
+        cleaned = JinaService._dedupe_wsj_paragraphs(cleaned)
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         return cleaned.strip()
+
+    @staticmethod
+    def _trim_wsj_footer(markdown: str) -> str:
+        """Trim WSJ footer/legal sections when a footer marker cluster is detected."""
+        lines = markdown.splitlines()
+        marker_tokens = (
+            "[the wall street journal](https://www.wsj.com/)",
+            "[subscription options](https://subscribe.wsj.com/membership",
+            "[privacy notice](https://www.dowjones.com/privacy-notice",
+            "this copy is for your personal, non-commercial use only.",
+            "[sign in](https://www.wsj.com/client/login?target=",
+        )
+        indicator_tokens = (
+            "subscribe.wsj.com",
+            "customercenter.wsj.com",
+            "corporate.wsj.com",
+            "wsj.jobs",
+            "djreprints.com",
+            "dowjones.com/privacy-notice",
+            "wsj.com/policy/legal-policies",
+            "dowjones.com/terms-of-use",
+            "back to top",
+            "copyright ©",
+        )
+        for idx, raw_line in enumerate(lines):
+            line = raw_line.strip().lower()
+            if not line:
+                continue
+            if not any(token in line for token in marker_tokens):
+                continue
+            window = "\n".join(lines[idx : idx + 25]).lower()
+            signal_count = sum(token in window for token in indicator_tokens)
+            if signal_count >= 2:
+                return "\n".join(lines[:idx]).strip()
+        return markdown
+
+    @staticmethod
+    def _dedupe_wsj_paragraphs(markdown: str) -> str:
+        """Remove duplicate long paragraphs while preserving first occurrence order."""
+        if not markdown.strip():
+            return markdown
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for block in re.split(r"\n{2,}", markdown.strip()):
+            normalized = re.sub(r"\s+", " ", block.strip()).lower()
+            is_duplicate_candidate = len(normalized) >= 80
+            if is_duplicate_candidate and normalized in seen:
+                continue
+            if is_duplicate_candidate:
+                seen.add(normalized)
+            deduped.append(block.strip())
+        return "\n\n".join(deduped).strip()
 
     @staticmethod
     def _filter_wsj_navigation_blocks(markdown: str) -> str:
@@ -262,18 +351,36 @@ class JinaService:
             "classifieds.wsj.com",
             "wsjbg-adsmanager.com",
             "subscribe.wsj.com/default",
-            "independent of The Wall Street Journal newsroom.",
+            "subscribe.wsj.com/membership",
+            "corporate.wsj.com",
+            "wsj.jobs",
+            "djreprints.com",
+            "dowjones.com/privacy-notice",
+            "wsj.com/policy/legal-policies",
+            "dowjones.com/terms-of-use",
+            "facebook.com/wsj",
+            "twitter.com/wsj",
+            "instagram.com/wsj",
+            "youtube.com/user/wsjdigitalnetwork",
+            "snapchat.com/discover/wall-street-journal",
+            "play.google.com/store/apps/details?id=wsj.reader_sp",
+            "apps.apple.com/us/app/the-wall-street-journal",
+            "back to top",
+            "independent of the wall street journal newsroom.",
         )
 
         filtered_lines: list[str] = []
         for raw_line in markdown.splitlines():
             line = raw_line.strip()
+            line_lower = line.lower()
             if not line:
                 filtered_lines.append("")
                 continue
             if line in section_headers:
                 continue
-            if any(token in line for token in noisy_substrings):
+            if any(token in line_lower for token in noisy_substrings):
+                continue
+            if line.startswith("*") and "https://www.wsj.com/" in line_lower:
                 continue
             filtered_lines.append(raw_line)
 

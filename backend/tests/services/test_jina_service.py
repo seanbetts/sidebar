@@ -127,6 +127,10 @@ Customer Service
     assert "Buy Side" not in cleaned
     assert "mod=wsjfooter" not in cleaned
     assert (
+        "Reviews and recommendations, independent of The Wall Street Journal newsroom."
+        not in cleaned
+    )
+    assert (
         "Real article continuation paragraph that should remain in output." in cleaned
     )
 
@@ -135,6 +139,76 @@ def test_clean_markdown_for_source_passthrough_non_wsj():
     markdown = "# Example\n\nBody"
     cleaned = JinaService.clean_markdown_for_source(markdown, "https://example.com/a")
     assert cleaned == "# Example\n\nBody"
+
+
+def test_clean_markdown_for_source_wsj_removes_footer_legal_and_trackers():
+    markdown = """
+Meet the One Woman Anthropic Trusts to Teach AI Morals
+======================================================
+
+The tech company has tasked Amanda Askell with giving its chatbot, Claude, a sense of right and wrong.
+------------------------------------------------------------------------------------------------------
+
+Amanda Askell knew from the age of 14 that she wanted to teach philosophy.
+
+As the resident philosopher of the tech company Anthropic, Askell spends her days learning Claude's reasoning patterns.
+
+*   [The Wall Street Journal](https://www.wsj.com/)
+*   English Edition  Edition Use Alt + Down Arrow to expand.
+*   Back to Top «
+
+*   [Subscription Options](https://subscribe.wsj.com/membership)
+*   [Corporate Subscriptions](https://corporate.wsj.com/?mod=djm_wsjfooter_44670)
+*   [Jobs at WSJ](https://wsj.jobs/)
+
+*   [Privacy Notice](https://www.dowjones.com/privacy-notice/?mod=WSJ)
+*   [Legal Policies](https://www.wsj.com/policy/legal-policies)
+*   [Terms of Use](https://www.dowjones.com/terms-of-use/)
+
+[Sign In](https://www.wsj.com/client/login?target=https%3A%2F%2Fwww.wsj.com%2Ftech%2Fai%2Fanthropic-amanda-askell-philosopher-ai-3c031883)
+
+Copyright ©2026 Dow Jones & Company, Inc. All Rights Reserved
+
+This copy is for your personal, non-commercial use only. Distribution and use of this material are governed by our Subscriber Agreement.
+
+![Image 12](https://analytics.twitter.com/1/i/adsct?event=foo)![Image 13](https://t.co/1/i/adsct?event=bar)
+"""
+
+    cleaned = JinaService.clean_markdown_for_source(
+        markdown,
+        "https://www.wsj.com/tech/ai/anthropic-amanda-askell-philosopher-ai-3c031883",
+    )
+
+    assert "Amanda Askell knew from the age of 14" in cleaned
+    assert "As the resident philosopher of the tech company Anthropic" in cleaned
+    assert "Subscription Options" not in cleaned
+    assert "Privacy Notice" not in cleaned
+    assert "Sign In](https://www.wsj.com/client/login?target=" not in cleaned
+    assert "This copy is for your personal, non-commercial use only." not in cleaned
+    assert "analytics.twitter.com/1/i/adsct" not in cleaned
+    assert "t.co/1/i/adsct" not in cleaned
+
+
+def test_clean_markdown_for_source_wsj_dedupes_repeated_long_paragraphs():
+    repeated = (
+        "As the resident philosopher of the tech company Anthropic, Askell spends "
+        "her days learning Claude's reasoning patterns and talking to the AI model."
+    )
+    markdown = f"""
+Meet the One Woman Anthropic Trusts to Teach AI Morals
+======================================================
+
+{repeated}
+
+{repeated}
+"""
+
+    cleaned = JinaService.clean_markdown_for_source(
+        markdown,
+        "https://www.wsj.com/tech/ai/anthropic-amanda-askell-philosopher-ai-3c031883",
+    )
+
+    assert cleaned.count(repeated) == 1
 
 
 def _status_response(status_code: int, url: str, text: str = "") -> httpx.Response:
