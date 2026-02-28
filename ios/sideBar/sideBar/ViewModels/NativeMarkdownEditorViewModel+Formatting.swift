@@ -76,6 +76,17 @@ extension NativeMarkdownEditorViewModel {
         }
     }
 
+    func currentTextSizeDisplay() -> String {
+        let size: CGFloat
+        if let blockKind = primarySelectedParagraphBlockKind(),
+           let level = headingLevel(for: blockKind) {
+            size = MarkdownHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
+        } else {
+            size = baseFontSize
+        }
+        return "\(Int(size.rounded()))pt"
+    }
+
     func promoteHeading() {
         adjustHeadingLevel(delta: -1, defaultLevel: 2)
     }

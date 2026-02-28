@@ -1,0 +1,123 @@
+import XCTest
+import SwiftUI
+@testable import sideBar
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+final class NativeMarkdownEditorViewModelListContinuationTests: XCTestCase {
+    func testEnterInBulletListContinuesListFormatting() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.usesInjectedListMarkers = false
+        viewModel.loadMarkdown("- Item")
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        var previous = viewModel.attributedContent
+        let firstInsert = viewModel.attributedContent.endIndex
+        viewModel.attributedContent.insert(AttributedString("\n"), at: firstInsert)
+        let firstCursor = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: firstCursor..<firstCursor)
+        viewModel.handleContentChange(previous: previous)
+
+        let newlineIndex = viewModel.attributedContent.index(beforeCharacter: viewModel.attributedContent.endIndex)
+        let newlineRange = newlineIndex..<viewModel.attributedContent.endIndex
+        XCTAssertEqual(viewModel.attributedContent[newlineRange].blockKind, .bulletList)
+        XCTAssertEqual(viewModel.attributedContent[newlineRange].listDepth, 1)
+
+        previous = viewModel.attributedContent
+        insertText("Next", in: viewModel)
+        viewModel.handleContentChange(previous: previous)
+
+        XCTAssertEqual(viewModel.currentMarkdown(), "- Item\n- Next")
+    }
+
+    func testEnterInOrderedListContinuesAndAdvancesOrdinal() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.usesInjectedListMarkers = false
+        viewModel.loadMarkdown("1. One")
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        var previous = viewModel.attributedContent
+        let firstInsert = viewModel.attributedContent.endIndex
+        viewModel.attributedContent.insert(AttributedString("\n"), at: firstInsert)
+        let firstCursor = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: firstCursor..<firstCursor)
+        viewModel.handleContentChange(previous: previous)
+
+        let newlineIndex = viewModel.attributedContent.index(beforeCharacter: viewModel.attributedContent.endIndex)
+        let newlineRange = newlineIndex..<viewModel.attributedContent.endIndex
+        XCTAssertEqual(viewModel.attributedContent[newlineRange].blockKind, .orderedList)
+
+        previous = viewModel.attributedContent
+        insertText("Two", in: viewModel)
+        viewModel.handleContentChange(previous: previous)
+
+        XCTAssertEqual(viewModel.currentMarkdown(), "1. One\n2. Two")
+    }
+
+    func testEnterAfterCheckedTaskStartsUncheckedTask() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.usesInjectedListMarkers = false
+        viewModel.loadMarkdown("- [x] Done")
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        var previous = viewModel.attributedContent
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.attributedContent.insert(AttributedString("\n"), at: insertion)
+        let cursor = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: cursor..<cursor)
+        viewModel.handleContentChange(previous: previous)
+
+        previous = viewModel.attributedContent
+        insertText("Next", in: viewModel)
+        viewModel.handleContentChange(previous: previous)
+
+        XCTAssertEqual(viewModel.currentMarkdown(), "- [x] ~~Done~~\n- [ ] Next")
+    }
+
+    private func insertText(_ string: String, in viewModel: NativeMarkdownEditorViewModel) {
+        guard let insertion = insertionIndex(in: viewModel.selection, text: viewModel.attributedContent) else {
+            XCTFail("Expected insertion selection")
+            return
+        }
+
+        var insert = AttributedString(string)
+        let range = insert.startIndex..<insert.endIndex
+        var attrs = viewModel.selection.typingAttributes(in: viewModel.attributedContent)
+        if attrs.blockKind == nil, insertion > viewModel.attributedContent.startIndex {
+            let previousIndex = viewModel.attributedContent.index(beforeCharacter: insertion)
+            let previousRange = previousIndex..<insertion
+            attrs.blockKind = viewModel.attributedContent[previousRange].blockKind
+            attrs.listDepth = viewModel.attributedContent[previousRange].listDepth
+            attrs.paragraphStyle = viewModel.attributedContent[previousRange].paragraphStyle
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] =
+                viewModel.attributedContent[previousRange][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
+            attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] =
+                viewModel.attributedContent[previousRange][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self]
+        }
+        insert[range].mergeAttributes(attrs)
+        viewModel.attributedContent.insert(insert, at: insertion)
+        let end = viewModel.attributedContent.index(insertion, offsetByCharacters: string.count)
+        viewModel.selection = AttributedTextSelection(range: end..<end)
+    }
+
+    private func insertionIndex(
+        in selection: AttributedTextSelection,
+        text: AttributedString
+    ) -> AttributedString.Index? {
+        switch selection.indices(in: text) {
+        case .insertionPoint(let index):
+            return index
+        case .ranges(let ranges):
+            for range in ranges.ranges where range.isEmpty {
+                return range.lowerBound
+            }
+            return nil
+        }
+    }
+}

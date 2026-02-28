@@ -35,18 +35,19 @@ struct AttributedNoteFormattingToolbar: View {
                     viewModel.applyFormatting(.inlineCode)
                 }
                 toolbarButton(
-                    title: "Promote heading",
-                    systemImage: "textformat.size.larger",
-                    isActive: viewModel.isHeadingActive()
-                ) {
-                    viewModel.applyFormatting(.promoteHeading)
-                }
-                toolbarButton(
                     title: "Demote heading",
                     systemImage: "textformat.size.smaller",
                     isActive: viewModel.isHeadingActive()
                 ) {
                     viewModel.applyFormatting(.demoteHeading)
+                }
+                textSizeIndicator
+                toolbarButton(
+                    title: "Promote heading",
+                    systemImage: "textformat.size.larger",
+                    isActive: viewModel.isHeadingActive()
+                ) {
+                    viewModel.applyFormatting(.promoteHeading)
                 }
                 toolbarButton(
                     title: "Bullets",
@@ -108,6 +109,19 @@ struct AttributedNoteFormattingToolbar: View {
             .padding(.vertical, DesignTokens.Spacing.xs)
         }
         .background(DesignTokens.Colors.background)
+    }
+
+    private var textSizeIndicator: some View {
+        Text(viewModel.currentTextSizeDisplay())
+            .appScaledFont(size: 12, weight: .semibold)
+            .foregroundStyle(DesignTokens.Colors.textSecondary)
+            .padding(.horizontal, 8)
+            .frame(height: 28)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(DesignTokens.Colors.muted)
+            )
+            .accessibilityLabel("Current text size \(viewModel.currentTextSizeDisplay())")
     }
 
     @ViewBuilder

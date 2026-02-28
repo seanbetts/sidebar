@@ -170,7 +170,7 @@ private func exportStandardLine(
 
     if blockKind == .blankLine {
         return ExportLineResult(
-            output: output + [""],
+            output: output + [MarkdownBlankLineMarker.htmlComment],
             nextIndex: lineIndex + 1,
             isInCodeBlock: isInCodeBlock,
             context: ExportLineContext(path: .blankLine)

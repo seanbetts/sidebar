@@ -79,7 +79,10 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     public func currentMarkdown() -> String {
-        let constrained = MarkdownFormattingDefinition().constrainedDocument(attributedContent)
+        var exportContent = attributedContent
+        let selection = selectionSnapshot(in: exportContent)
+        _ = removeInjectedListMarkers(in: &exportContent, selection: selection)
+        let constrained = MarkdownFormattingDefinition().constrainedDocument(exportContent)
         return exporter.markdown(from: constrained, frontmatter: frontmatter)
     }
 
@@ -157,17 +160,17 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         var updated = attributedContent
         stripUnsupportedInlineStyles(in: &updated)
 
-        let shortcutSelection = MarkdownShortcutProcessor.processShortcuts(
+        let shortcutResult = MarkdownShortcutProcessor.processShortcuts(
             in: &updated,
             selection: selection,
             lastInsertedCharacter: insertedCharacter,
             baseFontSize: baseFontSize
         )
 
-        if let newSelection = shortcutSelection {
+        if let shortcutResult {
             isApplyingShortcut = true
             attributedContent = updated
-            selection = newSelection
+            selection = shortcutResult.selection
             isApplyingShortcut = false
         } else if updated != attributedContent {
             isApplyingShortcut = true

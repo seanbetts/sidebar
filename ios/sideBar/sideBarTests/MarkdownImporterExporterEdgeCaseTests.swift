@@ -9,7 +9,32 @@ final class MarkdownImporterExporterEdgeCaseTests: XCTestCase {
         let exporter = MarkdownExporter()
         let exported = exporter.markdown(from: attributed)
 
-        XCTAssertEqual(exported, "Line 1\n\n\nLine 2\n")
+        XCTAssertEqual(
+            exported,
+            """
+            Line 1
+            <!-- sidebar-blank-line -->
+            <!-- sidebar-blank-line -->
+            Line 2
+            <!-- sidebar-blank-line -->
+            """
+        )
+    }
+
+    func testBlankLineMarkerRoundTripPreservesEditorBlankLines() {
+        let markdown = """
+        Line 1
+        <!-- sidebar-blank-line -->
+        Line 2
+        """
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        let imported = importer.attributedString(from: markdown).attributedString
+        XCTAssertEqual(String(imported.characters), "Line 1\n\nLine 2")
+
+        let exported = exporter.markdown(from: imported)
+        XCTAssertEqual(exported, markdown)
     }
 
     func testMixedListAndTaskRoundTripIsStable() {

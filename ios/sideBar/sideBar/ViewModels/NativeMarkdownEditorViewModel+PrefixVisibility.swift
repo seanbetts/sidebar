@@ -27,12 +27,13 @@ extension NativeMarkdownEditorViewModel {
             let lineEnd = updated.index(updated.startIndex, offsetByCharacters: line.range.upperBound)
             let lineRange = lineStart..<lineEnd
             let shouldShow = shouldShowPrefix(for: line.range, selection: adjustedSnapshot)
-            let blockKind = resolvedBlockKind(
+            let resolvedBlockKind = resolvedBlockKind(
                 in: &updated,
                 lineRange: lineRange,
                 lineText: line.text,
                 allowInference: useLegacyMarkerHeuristics
             )
+            let blockKind: BlockKind = resolvedBlockKind ?? (line.text.isEmpty ? .blankLine : .paragraph)
             let previousBlockKind: BlockKind? = {
                 guard index > 0 else { return nil }
                 let previous = lines[index - 1]
@@ -40,19 +41,21 @@ extension NativeMarkdownEditorViewModel {
                 let prevEnd = updated.index(updated.startIndex, offsetByCharacters: previous.range.upperBound)
                 let prevRange = prevStart..<prevEnd
                 if useLegacyMarkerHeuristics {
-                    return updated.blockKind(in: prevRange) ?? inferredBlockKind(from: previous.text)
+                    return updated.blockKind(in: prevRange)
+                        ?? inferredBlockKind(from: previous.text)
+                        ?? (previous.text.isEmpty ? .blankLine : .paragraph)
                 }
-                return updated.blockKind(in: prevRange)
+                return updated.blockKind(in: prevRange) ?? (previous.text.isEmpty ? .blankLine : .paragraph)
             }()
 
-            if shouldRemoveSpacingBefore(blockKind: blockKind, previousBlockKind: previousBlockKind) {
-                let listDepth = updated[lineRange].listDepth
-                let baseStyle = updated[lineRange].paragraphStyle
-                    ?? paragraphStyle(for: blockKind ?? .paragraph, listDepth: listDepth)
-                if let baseStyle {
+            let listDepth = updated[lineRange].listDepth
+            if let baseStyle = paragraphStyle(for: blockKind, listDepth: listDepth) {
+                if shouldRemoveSpacingBefore(blockKind: blockKind, previousBlockKind: previousBlockKind) {
                     let mutable = baseStyle.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
                     mutable.paragraphSpacingBefore = 0
                     updated[lineRange].paragraphStyle = mutable
+                } else {
+                    updated[lineRange].paragraphStyle = baseStyle
                 }
             }
 
@@ -61,7 +64,7 @@ extension NativeMarkdownEditorViewModel {
                 in: &updated,
                 lineRange: lineRange,
                 lineText: line.text,
-                blockKind: blockKind,
+                blockKind: resolvedBlockKind,
                 shouldShow: shouldShow,
                 useLegacyMarkerHeuristics: useLegacyMarkerHeuristics
             )

@@ -63,6 +63,13 @@ extension MarkdownToAttributedStringWalker {
         lastBlockKind = block.blockKind(in: fullRange(in: block))
     }
 
+    mutating func appendBlankLineBlock() {
+        if !result.characters.isEmpty {
+            result.append(AttributedString("\n"))
+        }
+        lastBlockKind = .blankLine
+    }
+
     func applyStrikethrough(to text: inout AttributedString) {
         let range = fullRange(in: text)
         text[range].strikethroughStyle = .single
@@ -72,12 +79,8 @@ extension MarkdownToAttributedStringWalker {
         _ style: NSParagraphStyle,
         blockKind: BlockKind
     ) -> NSParagraphStyle {
-        guard lastBlockKind.map(isHeading) == true, isParagraphOrList(blockKind) else {
-            return style
-        }
-        let mutable = style.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
-        mutable.paragraphSpacingBefore = 0
-        return mutable
+        _ = blockKind
+        return style
     }
 
     func isHeading(_ blockKind: BlockKind) -> Bool {

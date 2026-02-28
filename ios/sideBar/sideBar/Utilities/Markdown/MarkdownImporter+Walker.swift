@@ -212,6 +212,10 @@ struct MarkdownToAttributedStringWalker: MarkupWalker {
     mutating func visitHTMLBlock(_ html: HTMLBlock) {
         let raw = html.rawHTML.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return }
+        if raw == MarkdownBlankLineMarker.htmlComment {
+            appendBlankLineBlock()
+            return
+        }
         var htmlText = AttributedString(raw)
         if raw.contains("image-gallery") {
             applyBlockKind(.gallery, to: &htmlText)

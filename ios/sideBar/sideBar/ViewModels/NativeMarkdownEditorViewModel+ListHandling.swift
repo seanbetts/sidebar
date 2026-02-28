@@ -8,9 +8,9 @@ extension NativeMarkdownEditorViewModel {
         blockKind: BlockKind?,
         previousBlockKind: BlockKind?
     ) -> Bool {
-        guard let previousBlockKind, isHeading(previousBlockKind) else { return false }
-        guard let blockKind else { return false }
-        return blockKind == .paragraph || isListBlockKind(blockKind)
+        _ = blockKind
+        _ = previousBlockKind
+        return false
     }
 
     func isHeading(_ blockKind: BlockKind) -> Bool {
