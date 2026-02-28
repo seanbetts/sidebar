@@ -61,215 +61,218 @@ export function useChatSSE() {
 
 	async function connect({ assistantMessageId, ...payload }: ChatSSEConnectArgs) {
 		const { conversationId } = payload;
-		await sseClient.connect(payload, {
-			onToken: (content) => {
-				chatStore.appendToken(assistantMessageId, content);
-			},
+		await sseClient.connect(
+			{ ...payload, assistantMessageId },
+			{
+				onToken: (content) => {
+					chatStore.appendToken(assistantMessageId, content);
+				},
 
-			onToolCall: (event) => {
-				chatStore.addToolCall(assistantMessageId, {
-					id: event.id,
-					name: event.name,
-					parameters: event.parameters,
-					status: event.status
-				});
-			},
-
-			onToolResult: (event) => {
-				chatStore.updateToolResult(assistantMessageId, event.id, event.result, event.status);
-			},
-			onToolStart: (event) => {
-				if (event?.name) {
-					chatStore.setActiveTool(assistantMessageId, event.name, 'running');
-				}
-			},
-			onToolEnd: (event) => {
-				const status = event?.status === 'error' ? 'error' : 'success';
-				if (event?.name) {
-					chatStore.finalizeActiveTool(assistantMessageId, event.name, status);
-					if (event.name === 'Web Search') {
-						chatStore.markNeedsNewline(assistantMessageId);
-					}
-				} else {
-					chatStore.finalizeActiveTool(assistantMessageId, 'Tool', status);
-				}
-			},
-
-			onNoteCreated: async (data) => {
-				dispatchCacheEvent('note.created');
-				websitesStore.clearActive();
-				ingestionViewerStore.clearActive();
-				currentNoteId.set(null);
-				if (data?.id && data?.title) {
-					treeStore.addNoteNode?.({
-						id: data.id,
-						name: `${data.title}.md`,
-						folder: data.folder
+				onToolCall: (event) => {
+					chatStore.addToolCall(assistantMessageId, {
+						id: event.id,
+						name: event.name,
+						parameters: event.parameters,
+						status: event.status
 					});
-				}
-				if (data?.id) {
-					await editorStore.loadNote('notes', data.id, { source: 'ai' });
-				}
-			},
+				},
 
-			onNoteUpdated: async (data) => {
-				dispatchCacheEvent('note.updated');
-				websitesStore.clearActive();
-				ingestionViewerStore.clearActive();
-				currentNoteId.set(null);
-				if (data?.id && data?.title) {
-					treeStore.renameNoteNode?.(data.id, `${data.title}.md`);
-				}
-				if (data?.id) {
-					const editorState = get(editorStore);
-					if (editorState.currentNoteId === data.id) {
+				onToolResult: (event) => {
+					chatStore.updateToolResult(assistantMessageId, event.id, event.result, event.status);
+				},
+				onToolStart: (event) => {
+					if (event?.name) {
+						chatStore.setActiveTool(assistantMessageId, event.name, 'running');
+					}
+				},
+				onToolEnd: (event) => {
+					const status = event?.status === 'error' ? 'error' : 'success';
+					if (event?.name) {
+						chatStore.finalizeActiveTool(assistantMessageId, event.name, status);
+						if (event.name === 'Web Search') {
+							chatStore.markNeedsNewline(assistantMessageId);
+						}
+					} else {
+						chatStore.finalizeActiveTool(assistantMessageId, 'Tool', status);
+					}
+				},
+
+				onNoteCreated: async (data) => {
+					dispatchCacheEvent('note.created');
+					websitesStore.clearActive();
+					ingestionViewerStore.clearActive();
+					currentNoteId.set(null);
+					if (data?.id && data?.title) {
+						treeStore.addNoteNode?.({
+							id: data.id,
+							name: `${data.title}.md`,
+							folder: data.folder
+						});
+					}
+					if (data?.id) {
 						await editorStore.loadNote('notes', data.id, { source: 'ai' });
 					}
-				}
-			},
+				},
 
-			onNotePinned: (data) => {
-				if (data?.id && data?.pinned !== undefined) {
-					treeStore.setNotePinned?.(data.id, data.pinned);
-				}
-				dispatchCacheEvent('note.pinned');
-			},
-
-			onNoteMoved: (data) => {
-				if (data?.id && data?.folder !== undefined) {
-					treeStore.moveNoteNode?.(data.id, data.folder);
-				}
-				dispatchCacheEvent('note.moved');
-			},
-
-			onWebsiteSaved: async () => {
-				dispatchCacheEvent('website.saved');
-			},
-
-			onWebsitePinned: (data) => {
-				if (data?.id && data?.pinned !== undefined) {
-					websitesStore.setPinnedLocal?.(data.id, data.pinned);
-					websitesStore.updateActiveLocal?.({
-						pinned: data.pinned,
-						...(data.pinned ? { archived: false } : {})
-					});
-				}
-				dispatchCacheEvent('website.pinned');
-			},
-
-			onWebsiteArchived: (data) => {
-				if (data?.id && data?.archived !== undefined) {
-					websitesStore.setArchivedLocal?.(data.id, data.archived);
-					websitesStore.updateActiveLocal?.({ archived: data.archived });
-				}
-				dispatchCacheEvent('website.archived');
-			},
-
-			onNoteDeleted: async (data) => {
-				const editorState = get(editorStore);
-				if (data?.id && editorState.currentNoteId === data.id) {
-					editorStore.reset();
-				}
-				dispatchCacheEvent('note.deleted');
-				if (data?.id) {
-					treeStore.removeNode?.('notes', data.id);
-				}
-			},
-
-			onWebsiteDeleted: async (data) => {
-				dispatchCacheEvent('website.deleted');
-				if (data?.id) {
-					websitesStore.removeLocal?.(data.id);
-				}
-			},
-
-			onIngestionUpdated: async (data) => {
-				const fileId = data?.file_id;
-				if (!fileId) return;
-				try {
-					const meta = await ingestionAPI.get(fileId);
-					ingestionStore.upsertItem({
-						file: meta.file,
-						job: meta.job,
-						recommended_viewer: meta.recommended_viewer
-					});
-					const viewerState = get(ingestionViewerStore);
-					if (viewerState.active?.file.id === fileId) {
-						ingestionViewerStore.setActive(meta);
+				onNoteUpdated: async (data) => {
+					dispatchCacheEvent('note.updated');
+					websitesStore.clearActive();
+					ingestionViewerStore.clearActive();
+					currentNoteId.set(null);
+					if (data?.id && data?.title) {
+						treeStore.renameNoteNode?.(data.id, `${data.title}.md`);
 					}
-				} catch (error) {
-					logError('Failed to fetch ingestion metadata', error, {
-						scope: 'chatSSE.ingestionUpdated',
-						fileId
-					});
-				}
-			},
-
-			onThemeSet: (data) => {
-				const theme = data?.theme === 'dark' ? 'dark' : 'light';
-				setThemeMode(theme as ThemeMode, 'ai');
-			},
-
-			onScratchpadUpdated: () => {
-				scratchpadStore.bump();
-			},
-
-			onScratchpadCleared: () => {
-				scratchpadStore.bump();
-			},
-
-			onPromptPreview: (data) => {
-				chatStore.setPromptPreview(
-					data?.system_prompt ?? null,
-					data?.first_message_prompt ?? null,
-					{
-						systemPromptSections: data?.system_prompt_sections ?? [],
-						firstMessagePromptSections: data?.first_message_prompt_sections ?? [],
-						promptReport: data?.prompt_report ?? undefined
+					if (data?.id) {
+						const editorState = get(editorStore);
+						if (editorState.currentNoteId === data.id) {
+							await editorStore.loadNote('notes', data.id, { source: 'ai' });
+						}
 					}
-				);
-			},
+				},
 
-			onMemoryCreated: async () => {
-				dispatchCacheEvent('memory.created');
-				await memoriesStore.load();
-			},
+				onNotePinned: (data) => {
+					if (data?.id && data?.pinned !== undefined) {
+						treeStore.setNotePinned?.(data.id, data.pinned);
+					}
+					dispatchCacheEvent('note.pinned');
+				},
 
-			onMemoryUpdated: async () => {
-				dispatchCacheEvent('memory.updated');
-				await memoriesStore.load();
-			},
+				onNoteMoved: (data) => {
+					if (data?.id && data?.folder !== undefined) {
+						treeStore.moveNoteNode?.(data.id, data.folder);
+					}
+					dispatchCacheEvent('note.moved');
+				},
 
-			onMemoryDeleted: async () => {
-				dispatchCacheEvent('memory.deleted');
-				await memoriesStore.load();
-			},
+				onWebsiteSaved: async () => {
+					dispatchCacheEvent('website.saved');
+				},
 
-			onProfileUserSettingsUpdated: () => undefined,
+				onWebsitePinned: (data) => {
+					if (data?.id && data?.pinned !== undefined) {
+						websitesStore.setPinnedLocal?.(data.id, data.pinned);
+						websitesStore.updateActiveLocal?.({
+							pinned: data.pinned,
+							...(data.pinned ? { archived: false } : {})
+						});
+					}
+					dispatchCacheEvent('website.pinned');
+				},
 
-			onOtherPreferencesUpdated: (data) => {
-				if (data?.weather_unit === 'celsius' || data?.weather_unit === 'fahrenheit') {
-					weatherPreferencesStore.setWeatherUnit(data.weather_unit);
+				onWebsiteArchived: (data) => {
+					if (data?.id && data?.archived !== undefined) {
+						websitesStore.setArchivedLocal?.(data.id, data.archived);
+						websitesStore.updateActiveLocal?.({ archived: data.archived });
+					}
+					dispatchCacheEvent('website.archived');
+				},
+
+				onNoteDeleted: async (data) => {
+					const editorState = get(editorStore);
+					if (data?.id && editorState.currentNoteId === data.id) {
+						editorStore.reset();
+					}
+					dispatchCacheEvent('note.deleted');
+					if (data?.id) {
+						treeStore.removeNode?.('notes', data.id);
+					}
+				},
+
+				onWebsiteDeleted: async (data) => {
+					dispatchCacheEvent('website.deleted');
+					if (data?.id) {
+						websitesStore.removeLocal?.(data.id);
+					}
+				},
+
+				onIngestionUpdated: async (data) => {
+					const fileId = data?.file_id;
+					if (!fileId) return;
+					try {
+						const meta = await ingestionAPI.get(fileId);
+						ingestionStore.upsertItem({
+							file: meta.file,
+							job: meta.job,
+							recommended_viewer: meta.recommended_viewer
+						});
+						const viewerState = get(ingestionViewerStore);
+						if (viewerState.active?.file.id === fileId) {
+							ingestionViewerStore.setActive(meta);
+						}
+					} catch (error) {
+						logError('Failed to fetch ingestion metadata', error, {
+							scope: 'chatSSE.ingestionUpdated',
+							fileId
+						});
+					}
+				},
+
+				onThemeSet: (data) => {
+					const theme = data?.theme === 'dark' ? 'dark' : 'light';
+					setThemeMode(theme as ThemeMode, 'ai');
+				},
+
+				onScratchpadUpdated: () => {
+					scratchpadStore.bump();
+				},
+
+				onScratchpadCleared: () => {
+					scratchpadStore.bump();
+				},
+
+				onPromptPreview: (data) => {
+					chatStore.setPromptPreview(
+						data?.system_prompt ?? null,
+						data?.first_message_prompt ?? null,
+						{
+							systemPromptSections: data?.system_prompt_sections ?? [],
+							firstMessagePromptSections: data?.first_message_prompt_sections ?? [],
+							promptReport: data?.prompt_report ?? undefined
+						}
+					);
+				},
+
+				onMemoryCreated: async () => {
+					dispatchCacheEvent('memory.created');
+					await memoriesStore.load();
+				},
+
+				onMemoryUpdated: async () => {
+					dispatchCacheEvent('memory.updated');
+					await memoriesStore.load();
+				},
+
+				onMemoryDeleted: async () => {
+					dispatchCacheEvent('memory.deleted');
+					await memoriesStore.load();
+				},
+
+				onProfileUserSettingsUpdated: () => undefined,
+
+				onOtherPreferencesUpdated: (data) => {
+					if (data?.weather_unit === 'celsius' || data?.weather_unit === 'fahrenheit') {
+						weatherPreferencesStore.setWeatherUnit(data.weather_unit);
+					}
+				},
+
+				onFirstEvent: ({ elapsedMs }) => {
+					markFirstEvent(assistantMessageId, elapsedMs);
+				},
+
+				onComplete: async () => {
+					await chatStore.finishStreaming(assistantMessageId);
+					dispatchCacheEvent('conversation.updated');
+				},
+
+				onError: (error) => {
+					const friendlyError = getUserFriendlyError(error);
+					toast.error(friendlyError);
+					logError('Chat error', error, { scope: 'chatSSE.onError', conversationId });
+					markSseError(assistantMessageId);
+					chatStore.setError(assistantMessageId, 'Request failed');
 				}
-			},
-
-			onFirstEvent: ({ elapsedMs }) => {
-				markFirstEvent(assistantMessageId, elapsedMs);
-			},
-
-			onComplete: async () => {
-				await chatStore.finishStreaming(assistantMessageId);
-				dispatchCacheEvent('conversation.updated');
-			},
-
-			onError: (error) => {
-				const friendlyError = getUserFriendlyError(error);
-				toast.error(friendlyError);
-				logError('Chat error', error, { scope: 'chatSSE.onError', conversationId });
-				markSseError(assistantMessageId);
-				chatStore.setError(assistantMessageId, 'Request failed');
 			}
-		});
+		);
 	}
 
 	function disconnect() {

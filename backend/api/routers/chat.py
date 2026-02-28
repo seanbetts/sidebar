@@ -7,6 +7,7 @@ import logging
 import time
 from datetime import UTC, datetime
 from typing import TypedDict, cast
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -49,13 +50,12 @@ class _TitleCacheEntry(TypedDict):
 TITLE_CACHE: dict[str, _TitleCacheEntry] = {}
 
 
-def _build_history(messages, user_message_id, latest_message):
+def _build_history(messages, user_message_id):
     """Build sanitized chat history from stored messages.
 
     Args:
         messages: Conversation message list from the database.
         user_message_id: Optional message ID to exclude from history.
-        latest_message: Latest user message to de-duplicate.
 
     Returns:
         List of history messages suitable for model input.
@@ -77,11 +77,6 @@ def _build_history(messages, user_message_id, latest_message):
             continue
 
         history.append({"role": role, "content": content})
-
-    if not user_message_id and history:
-        last = history[-1]
-        if last.get("role") == "user" and last.get("content") == latest_message:
-            history = history[:-1]
 
     return history
 
@@ -157,6 +152,7 @@ async def stream_chat(
     message = data.get("message")
     conversation_id = data.get("conversation_id")
     user_message_id = data.get("user_message_id")
+    assistant_message_id = data.get("assistant_message_id")
     history = data.get("history", [])
     open_context = data.get("open_context") or {}
     attachments = data.get("attachments") or []
@@ -176,34 +172,32 @@ async def stream_chat(
         conversation = ConversationService.get_conversation(
             db, user_id, conversation_uuid
         )
-        history = _build_history(conversation.messages, user_message_id, message)
+        history = _build_history(conversation.messages, user_message_id)
 
     settings_record = UserSettingsService.get_settings(db, user_id)
     user_agent = request.headers.get("user-agent")
     app_version = request.headers.get("x-app-version")
     now = datetime.now(UTC)
-    prompt_bundle = PromptContextService.build_prompts(
-        db=db,
-        user_id=user_id,
-        open_context=open_context,
-        attachments=attachments,
-        user_agent=user_agent,
-        current_location=current_location,
-        current_location_levels=current_location_levels,
-        current_weather=current_weather,
-        current_timezone=current_timezone,
-        now=now,
-    )
+    try:
+        prompt_bundle = PromptContextService.build_prompts(
+            db=db,
+            user_id=user_id,
+            open_context=open_context,
+            attachments=attachments,
+            user_agent=user_agent,
+            current_location=current_location,
+            current_location_levels=current_location_levels,
+            current_weather=current_weather,
+            current_timezone=current_timezone,
+            now=now,
+            strict_system_prompt=True,
+        )
+    except ValueError as error:
+        raise BadRequestError(str(error)) from error
     prompt_report = prompt_bundle["report"]
     if prompt_report["system_prompt"]["truncated"]:
-        logger.warning(
-            "System prompt truncated",
-            extra={
-                "user_id": user_id,
-                "total_chars": prompt_report["system_prompt"]["total_chars"],
-                "max_chars": prompt_report["system_prompt"]["max_chars"],
-                "sections": prompt_report["system_prompt"]["sections"],
-            },
+        raise BadRequestError(
+            "System prompt exceeded the configured maximum size for this request"
         )
     system_prompt = prompt_bundle["system_prompt"]["text"]
     first_message_prompt = prompt_bundle["first_message_prompt"]["text"]
@@ -265,6 +259,10 @@ async def stream_chat(
 
     async def event_generator():
         """Generate SSE events."""
+        assistant_content_parts: list[str] = []
+        tool_call_order: list[str] = []
+        tool_calls_by_id: dict[str, dict] = {}
+
         try:
             async for event in ai_gateway.stream_chat_with_tools(
                 message=message,
@@ -280,14 +278,39 @@ async def stream_chat(
 
                 if event_type == "token":
                     # Stream text token
+                    token_content = event.get("content")
+                    if isinstance(token_content, str) and token_content:
+                        assistant_content_parts.append(token_content)
                     yield f"event: token\ndata: {json.dumps(event)}\n\n"
 
                 elif event_type == "tool_call":
                     # Tool execution started
+                    tool_call_id = event.get("id")
+                    if isinstance(tool_call_id, str) and tool_call_id:
+                        tool_call_order.append(tool_call_id)
+                        tool_calls_by_id[tool_call_id] = {
+                            "id": tool_call_id,
+                            "name": event.get("name"),
+                            "parameters": event.get("parameters"),
+                            "status": event.get("status"),
+                        }
                     yield f"event: tool_call\ndata: {json.dumps(event)}\n\n"
 
                 elif event_type == "tool_result":
                     # Tool execution completed
+                    tool_call_id = event.get("id")
+                    if isinstance(tool_call_id, str) and tool_call_id:
+                        existing = tool_calls_by_id.get(tool_call_id)
+                        if existing is None:
+                            tool_call_order.append(tool_call_id)
+                            existing = {
+                                "id": tool_call_id,
+                                "name": event.get("name"),
+                                "parameters": None,
+                            }
+                        existing["result"] = event.get("result")
+                        existing["status"] = event.get("status")
+                        tool_calls_by_id[tool_call_id] = existing
                     yield f"event: tool_result\ndata: {json.dumps(event)}\n\n"
 
                 elif event_type in {
@@ -323,6 +346,47 @@ async def stream_chat(
                     chat_stream_errors_total.labels(type="stream_error").inc()
                     yield f"event: error\ndata: {json.dumps(event)}\n\n"
                     return
+
+            if conversation_uuid is not None:
+                timestamp = datetime.now(UTC).isoformat()
+                persisted_user_message_id = (
+                    user_message_id.strip()
+                    if isinstance(user_message_id, str) and user_message_id.strip()
+                    else str(uuid4())
+                )
+                persisted_assistant_message_id = (
+                    assistant_message_id.strip()
+                    if isinstance(assistant_message_id, str)
+                    and assistant_message_id.strip()
+                    else str(uuid4())
+                )
+                persisted_tool_calls = [
+                    tool_calls_by_id[call_id]
+                    for call_id in tool_call_order
+                    if call_id in tool_calls_by_id
+                ]
+                ConversationService.add_messages(
+                    db,
+                    user_id,
+                    conversation_uuid,
+                    [
+                        {
+                            "id": persisted_user_message_id,
+                            "role": "user",
+                            "content": message,
+                            "status": "complete",
+                            "timestamp": timestamp,
+                        },
+                        {
+                            "id": persisted_assistant_message_id,
+                            "role": "assistant",
+                            "content": "".join(assistant_content_parts),
+                            "status": "complete",
+                            "timestamp": timestamp,
+                            "toolCalls": persisted_tool_calls,
+                        },
+                    ],
+                )
 
             # Stream complete
             yield "event: complete\ndata: {}\n\n"

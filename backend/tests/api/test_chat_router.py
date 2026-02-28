@@ -351,6 +351,109 @@ def test_stream_chat_persists_conversation_provider_model(
     assert updated.ai_model == "claude-sonnet-4-6"
 
 
+def test_stream_chat_persists_turn_pair_atomically(test_client, test_db, monkeypatch):
+    user_id = "user-1"
+    conversation = ConversationService.create_conversation(
+        test_db,
+        user_id,
+        "Turn Pair Test",
+    )
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **_kwargs):
+            yield {"type": "token", "content": "Hello"}
+            yield {
+                "type": "tool_call",
+                "id": "tool-1",
+                "name": "Create Note",
+                "parameters": {"title": "From test"},
+                "status": "pending",
+            }
+            yield {
+                "type": "tool_result",
+                "id": "tool-1",
+                "name": "Create Note",
+                "result": {"success": True, "data": {"id": "note-1"}},
+                "status": "success",
+            }
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda _settings_record: []),
+    )
+
+    app.dependency_overrides[get_current_user_id] = lambda: user_id
+    try:
+        with test_client.stream(
+            "POST",
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={
+                "message": "Hi",
+                "conversation_id": str(conversation.id),
+                "user_message_id": "user-msg-1",
+                "assistant_message_id": "assistant-msg-1",
+            },
+        ) as response:
+            assert response.status_code == 200
+            list(response.iter_text())
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    test_db.expire_all()
+    updated = ConversationService.get_conversation(test_db, user_id, conversation.id)
+    assert updated.message_count == 2
+    assert len(updated.messages) == 2
+    assert updated.messages[0]["id"] == "user-msg-1"
+    assert updated.messages[0]["role"] == "user"
+    assert updated.messages[0]["content"] == "Hi"
+    assert updated.messages[1]["id"] == "assistant-msg-1"
+    assert updated.messages[1]["role"] == "assistant"
+    assert updated.messages[1]["content"] == "Hello"
+    assert updated.messages[1]["toolCalls"][0]["id"] == "tool-1"
+    assert updated.messages[1]["toolCalls"][0]["status"] == "success"
+
+
+def test_stream_chat_rejects_oversized_system_prompt(test_client, monkeypatch):
+    def _raise_prompt_size_error(**_kwargs):
+        raise ValueError("too large")
+
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.PromptContextService,
+        "build_prompts",
+        staticmethod(_raise_prompt_size_error),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 400
+
+
 def test_generate_title_uses_conversation_provider_lock(
     test_client, test_db, monkeypatch
 ):

@@ -137,6 +137,44 @@ class ConversationService:
         return conversation
 
     @staticmethod
+    def add_messages(
+        db: Session,
+        user_id: str,
+        conversation_id: UUID,
+        messages_to_add: list[dict],
+    ) -> Conversation:
+        """Append multiple messages to a conversation in one commit.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            conversation_id: Conversation UUID.
+            messages_to_add: Message payload list to append in order.
+
+        Returns:
+            Updated conversation record.
+        """
+        conversation = ConversationService.get_conversation(
+            db, user_id, conversation_id
+        )
+        existing_messages = conversation.messages or []
+        existing_messages.extend(messages_to_add)
+        conversation.messages = existing_messages
+        flag_modified(conversation, "messages")
+
+        conversation.message_count = len(existing_messages)
+        conversation.updated_at = datetime.now(UTC)
+
+        if conversation.message_count > 0 and conversation.first_message is None:
+            first_content = existing_messages[0].get("content")
+            if first_content:
+                conversation.first_message = str(first_content)[:100]
+
+        db.commit()
+        db.refresh(conversation)
+        return conversation
+
+    @staticmethod
     def update_conversation(
         db: Session,
         user_id: str,

@@ -116,8 +116,6 @@ describe('chatStore', () => {
 			updatedAt: new Date().toISOString(),
 			messageCount: 0
 		});
-		conversationsAPI.addMessage.mockResolvedValue({});
-
 		const { assistantMessageId, userMessageId } = await chatStore.sendMessage('Hello');
 
 		const state = get(chatStore);
@@ -125,7 +123,7 @@ describe('chatStore', () => {
 		expect(state.isStreaming).toBe(true);
 		expect(state.currentMessageId).toBe(assistantMessageId);
 		expect(state.messages[0].id).toBe(userMessageId);
-		expect(conversationsAPI.addMessage).toHaveBeenCalled();
+		expect(conversationsAPI.addMessage).not.toHaveBeenCalled();
 	});
 
 	it('appends tokens to a streaming message', async () => {

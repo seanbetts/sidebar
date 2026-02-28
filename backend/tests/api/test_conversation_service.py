@@ -38,6 +38,38 @@ def test_add_message_updates_metadata(db_session):
     assert updated.first_message == "Hello there"
 
 
+def test_add_messages_appends_batch_in_order(db_session):
+    conversation = ConversationService.create_conversation(db_session, "user-1", "Chat")
+    timestamp = datetime.now(UTC).isoformat()
+    updated = ConversationService.add_messages(
+        db_session,
+        "user-1",
+        conversation.id,
+        [
+            {
+                "id": "msg-user-1",
+                "role": "user",
+                "content": "Hello there",
+                "status": "complete",
+                "timestamp": timestamp,
+            },
+            {
+                "id": "msg-assistant-1",
+                "role": "assistant",
+                "content": "Hi back",
+                "status": "complete",
+                "timestamp": timestamp,
+                "toolCalls": [],
+            },
+        ],
+    )
+
+    assert updated.message_count == 2
+    assert updated.messages[0]["id"] == "msg-user-1"
+    assert updated.messages[1]["id"] == "msg-assistant-1"
+    assert updated.first_message == "Hello there"
+
+
 def test_search_conversations(db_session):
     title_match = ConversationService.create_conversation(
         db_session, "user-1", "Alpha Chat"

@@ -109,6 +109,7 @@ class PromptContextService:
         current_weather: dict[str, Any] | str | None = None,
         current_timezone: str | None = None,
         now: datetime | None = None,
+        strict_system_prompt: bool = False,
     ) -> PromptBuildResult:
         """Build structured system and first-message prompts.
 
@@ -123,6 +124,8 @@ class PromptContextService:
             current_weather: Weather payload.
             current_timezone: User timezone identifier.
             now: Optional timestamp override.
+            strict_system_prompt: When True, reject requests that would require
+                truncating the system prompt.
 
         Returns:
             Structured prompt bundle with flattened text and diagnostics.
@@ -257,6 +260,12 @@ class PromptContextService:
                 first_message_document
             ),
         }
+        if strict_system_prompt and report["system_prompt"]["truncated"]:
+            raise ValueError(
+                "System prompt exceeds maximum size "
+                f"({report['system_prompt']['total_chars']} > "
+                f"{report['system_prompt']['max_chars']})"
+            )
 
         return {
             "system_prompt": system_prompt_document,

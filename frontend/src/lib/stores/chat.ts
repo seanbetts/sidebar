@@ -195,19 +195,6 @@ function createChatStore() {
 				activeTool: null
 			}));
 
-			// Persist user message to backend
-			const currentState = get({ subscribe });
-			if (currentState.conversationId) {
-				try {
-					await conversationsAPI.addMessage(currentState.conversationId, userMessage);
-				} catch (error) {
-					logError('Failed to persist user message', error, {
-						scope: 'chatStore.sendMessage',
-						conversationId: currentState.conversationId
-					});
-				}
-			}
-
 			return { assistantMessageId, userMessageId };
 		},
 
@@ -340,47 +327,37 @@ function createChatStore() {
 				currentMessageId: null
 			}));
 
-			// Persist assistant message to backend
 			const state = get({ subscribe });
 			const assistantMessage = state.messages.find((m) => m.id === messageId);
 
 			if (state.conversationId && assistantMessage) {
-				try {
-					await conversationsAPI.addMessage(state.conversationId, assistantMessage);
+				const messageCount = state.messages.length;
 
-					const messageCount = state.messages.length;
+				// Check if this is the first exchange (2 messages total)
+				if (messageCount === 2) {
+					const firstMessage = state.messages[0]?.content.substring(0, 100);
 
-					// Check if this is the first exchange (2 messages total)
-					if (messageCount === 2) {
-						const firstMessage = state.messages[0]?.content.substring(0, 100);
+					conversationListStore.setGeneratingTitle(state.conversationId, true);
 
-						conversationListStore.setGeneratingTitle(state.conversationId, true);
+					// Update conversation metadata (message count and preview)
+					conversationListStore.updateConversationMetadata(state.conversationId, {
+						messageCount,
+						firstMessage,
+						updatedAt: new Date().toISOString()
+					});
 
-						// Update conversation metadata (message count and preview)
-						conversationListStore.updateConversationMetadata(state.conversationId, {
-							messageCount,
-							firstMessage,
-							updatedAt: new Date().toISOString()
+					// Trigger title generation (generating state was set when conversation was created)
+					generateConversationTitle(state.conversationId).catch((err) => {
+						logError('Title generation failed', err, {
+							scope: 'chatStore.generateTitle',
+							conversationId: state.conversationId
 						});
-
-						// Trigger title generation (generating state was set when conversation was created)
-						generateConversationTitle(state.conversationId).catch((err) => {
-							logError('Title generation failed', err, {
-								scope: 'chatStore.generateTitle',
-								conversationId: state.conversationId
-							});
-						});
-					} else {
-						// For subsequent messages, just update the metadata
-						conversationListStore.updateConversationMetadata(state.conversationId, {
-							messageCount,
-							updatedAt: new Date().toISOString()
-						});
-					}
-				} catch (error) {
-					logError('Failed to persist assistant message', error, {
-						scope: 'chatStore.persistAssistant',
-						conversationId: state.conversationId
+					});
+				} else {
+					// For subsequent messages, just update the metadata
+					conversationListStore.updateConversationMetadata(state.conversationId, {
+						messageCount,
+						updatedAt: new Date().toISOString()
 					});
 				}
 			}

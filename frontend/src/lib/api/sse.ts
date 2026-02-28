@@ -52,6 +52,7 @@ export class SSEClient {
 	 * @param payload.message User message content.
 	 * @param payload.conversationId Conversation id to append to.
 	 * @param payload.userMessageId Client-side message id.
+	 * @param payload.assistantMessageId Client-side assistant message id.
 	 * @param payload.openContext Optional context blob from UI.
 	 * @param payload.attachments Optional file attachments.
 	 * @param payload.currentLocation User location string.
@@ -65,6 +66,7 @@ export class SSEClient {
 			message: string;
 			conversationId?: string;
 			userMessageId?: string;
+			assistantMessageId?: string;
 			openContext?: any;
 			attachments?: Array<{ file_id: string; filename?: string }>;
 			currentLocation?: string;
@@ -89,6 +91,7 @@ export class SSEClient {
 					message: payload.message,
 					conversation_id: payload.conversationId,
 					user_message_id: payload.userMessageId,
+					assistant_message_id: payload.assistantMessageId,
 					open_context: payload.openContext,
 					attachments: payload.attachments,
 					current_location: payload.currentLocation,
