@@ -132,6 +132,26 @@ describe('task_cache (memory fallback)', () => {
 		const remaining = await taskCache.getOutboxBatch(10);
 		expect(remaining.map((entry) => entry.operation_id)).toEqual(['op-2']);
 	});
+
+	it('clears memory snapshot and outbox state', async () => {
+		await taskCache.upsertTasks([createTask('task-1')]);
+		await taskCache.upsertProjects([createProject('project-1')]);
+		await taskCache.upsertGroups([createGroup('group-1')]);
+		await taskCache.setLastSync('2026-02-17T12:00:00Z');
+		await taskCache.enqueueOperation({ operation_id: 'op-1', op: 'create', id: 'task-1' });
+
+		await taskCache.clearTaskCacheStorage();
+
+		const snapshot = await taskCache.loadTaskCacheSnapshot();
+		expect(snapshot).toEqual({
+			tasks: [],
+			projects: [],
+			groups: [],
+			lastSync: null
+		});
+		const outbox = await taskCache.getOutboxBatch(10);
+		expect(outbox).toEqual([]);
+	});
 });
 
 describe('task_cache (indexeddb)', () => {
@@ -230,6 +250,27 @@ describe('task_cache (indexeddb)', () => {
 		await taskCache.removeOutboxOperations(['op-1']);
 		const remaining = await taskCache.getOutboxBatch(10);
 		expect(remaining.map((entry) => entry.operation_id)).toEqual(['op-2']);
+	});
+
+	it('clears indexeddb snapshot and outbox state', async () => {
+		taskCache = await importTaskCache();
+		await taskCache.upsertTasks([createTask('task-1')]);
+		await taskCache.upsertProjects([createProject('project-1')]);
+		await taskCache.upsertGroups([createGroup('group-1')]);
+		await taskCache.setLastSync('2026-02-17T12:34:56Z');
+		await taskCache.enqueueOperation({ operation_id: 'op-1', op: 'create', id: 'task-1' });
+
+		await taskCache.clearTaskCacheStorage();
+
+		const snapshot = await taskCache.loadTaskCacheSnapshot();
+		expect(snapshot).toEqual({
+			tasks: [],
+			projects: [],
+			groups: [],
+			lastSync: null
+		});
+		const outbox = await taskCache.getOutboxBatch(10);
+		expect(outbox).toEqual([]);
 	});
 
 	it('migrates legacy areas store into groups on database upgrade', async () => {

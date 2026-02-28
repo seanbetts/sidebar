@@ -128,6 +128,24 @@ public final class WidgetDataManager {
     reloadAllWidgets()
   }
 
+  /// Clears shared widget snapshots and pending operations on sign-out.
+  public func clearAllDataForSignOut() {
+    guard let defaults = userDefaults else { return }
+    defaults.set(false, forKey: authKey)
+
+    for contentType in WidgetContentType.allCases {
+      defaults.removeObject(forKey: contentType.dataKey)
+      defaults.removeObject(forKey: contentType.pendingKey)
+    }
+
+    defaults.removeObject(forKey: legacyTodayTasksKey)
+    defaults.removeObject(forKey: legacyPendingCompletionsKey)
+    defaults.removeObject(forKey: legacyPendingAddTaskKey)
+    defaults.removeObject(forKey: Self.pendingQuickSaveKey)
+    defaults.synchronize()
+    reloadAllWidgets()
+  }
+
   /// Called by widgets to check auth state
   public func isAuthenticated() -> Bool {
     guard let defaults = userDefaults else { return false }

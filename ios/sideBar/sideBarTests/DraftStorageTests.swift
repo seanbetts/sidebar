@@ -51,4 +51,17 @@ final class DraftStorageTests: XCTestCase {
         XCTAssertNil(try storage.getDraft(entityType: "note", entityId: "old-note"))
         XCTAssertNotNil(try storage.getDraft(entityType: "note", entityId: "new-note"))
     }
+
+    func testClearAllDraftsRemovesAllDraftEntries() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let storage = DraftStorage(container: persistence.container)
+
+        try storage.saveDraft(entityType: "note", entityId: "note-1", content: "Draft one")
+        try storage.saveDraft(entityType: "note", entityId: "note-2", content: "Draft two")
+
+        try storage.clearAllDrafts()
+
+        XCTAssertNil(try storage.getDraft(entityType: "note", entityId: "note-1"))
+        XCTAssertNil(try storage.getDraft(entityType: "note", entityId: "note-2"))
+    }
 }

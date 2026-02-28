@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	clearCaches,
+	clearCachesForAllUsers,
 	clearInFlight,
 	clearMemoryCache,
 	getCachedData,
@@ -50,5 +51,17 @@ describe('cache freshness', () => {
 
 		expect(result).toBe('Fresh Value');
 		expect(fetcher).toHaveBeenCalledTimes(1);
+	});
+
+	it('clearCachesForAllUsers removes cache entries across user prefixes', () => {
+		localStorage.setItem('sideBar.cache.user-a.tasks.list', '{"v":1}');
+		localStorage.setItem('sideBar.cache.user-b.tasks.list', '{"v":2}');
+		localStorage.setItem('sideBar.layout', '{"sidebar":"expanded"}');
+
+		clearCachesForAllUsers();
+
+		expect(localStorage.getItem('sideBar.cache.user-a.tasks.list')).toBeNull();
+		expect(localStorage.getItem('sideBar.cache.user-b.tasks.list')).toBeNull();
+		expect(localStorage.getItem('sideBar.layout')).toBe('{"sidebar":"expanded"}');
 	});
 });

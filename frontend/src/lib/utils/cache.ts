@@ -18,6 +18,7 @@ interface CacheMetadata<T> {
 }
 
 const CACHE_PREFIX = (userId: string) => `sideBar.cache.${userId}.`;
+const CACHE_PREFIX_ROOT = 'sideBar.cache.';
 const DEFAULT_TTL = 15 * 60 * 1000;
 const GLOBAL_CACHE_VERSION = '1';
 const MAX_MEMORY_ENTRIES = 100;
@@ -227,6 +228,22 @@ export function clearCaches(pattern?: RegExp): void {
 			if (!pattern || pattern.test(key)) {
 				localStorage.removeItem(key);
 			}
+		}
+	});
+}
+
+/**
+ * Clear cached entries for all users.
+ *
+ * @param pattern Optional regex filter for cache keys.
+ */
+export function clearCachesForAllUsers(pattern?: RegExp): void {
+	if (!isCacheEnabled()) return;
+	const keys = Object.keys(localStorage);
+	keys.forEach((key) => {
+		if (!key.startsWith(CACHE_PREFIX_ROOT)) return;
+		if (!pattern || pattern.test(key)) {
+			localStorage.removeItem(key);
 		}
 	});
 }

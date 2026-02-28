@@ -74,6 +74,13 @@ public final class ExtensionEventStore {
         return (try? decoder.decode([ExtensionEvent].self, from: data)) ?? []
     }
 
+    /// Clears all recorded extension events without consuming them.
+    public func clear() {
+        guard let defaults = userDefaults else { return }
+        defaults.removeObject(forKey: eventsKey)
+        defaults.synchronize()
+    }
+
     private func append(event: ExtensionEvent) {
         guard let defaults = userDefaults else {
             return

@@ -13,7 +13,7 @@
 	import SettingsShortcutsSection from '$lib/components/left-sidebar/panels/settings/SettingsShortcutsSection.svelte';
 	import type { SkillItem } from '$lib/types/skills';
 	import SettingsStorageSection from '$lib/components/left-sidebar/panels/settings/SettingsStorageSection.svelte';
-	import { clearCaches, clearInFlight, clearMemoryCache } from '$lib/utils/cache';
+	import { flushClientSessionOnLogout } from '$lib/utils/sessionCleanup';
 	import type { WeatherUnit } from '$lib/stores/weatherPreferences';
 
 	export let open = false;
@@ -78,9 +78,7 @@
 	export let onUninstallSkill: (skill: SkillItem) => Promise<void>;
 
 	function handleLogout() {
-		clearInFlight();
-		clearMemoryCache();
-		clearCaches();
+		void flushClientSessionOnLogout().catch(() => undefined);
 	}
 </script>
 

@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
-import { clearCaches, clearInFlight, clearMemoryCache, invalidateCaches } from '$lib/utils/cache';
+import { clearMemoryCache, invalidateCaches } from '$lib/utils/cache';
+import { flushClientSessionOnLogout } from '$lib/utils/sessionCleanup';
 
 type CacheEventType =
 	| 'conversation.created'
@@ -67,9 +68,7 @@ export function dispatchCacheEvent(eventType: CacheEventType): void {
 	const cacheKeys = INVALIDATION_MAP[eventType] || [];
 
 	if (cacheKeys.includes('*')) {
-		clearCaches();
-		clearMemoryCache();
-		clearInFlight();
+		void flushClientSessionOnLogout().catch(() => undefined);
 	} else {
 		invalidateCaches(cacheKeys);
 		clearMemoryCache(cacheKeys);

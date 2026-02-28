@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { clearCaches, clearInFlight, clearMemoryCache, getCacheStats } from '$lib/utils/cache';
+	import { getCacheStats } from '$lib/utils/cache';
+	import { clearClientCaches } from '$lib/utils/sessionCleanup';
 	import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
 
 	let cacheStats = { count: 0, totalSize: 0, oldestAge: 0 };
@@ -15,10 +16,8 @@
 		deleteDialog?.openDialog('cached data');
 	}
 
-	function handleClearCache(): boolean {
-		clearCaches();
-		clearMemoryCache();
-		clearInFlight();
+	async function handleClearCache(): Promise<boolean> {
+		await clearClientCaches();
 		loadCacheStats();
 		return true;
 	}

@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/sveltekit';
 import { goto, invalidateAll } from '$app/navigation';
 import { initSentryClient } from '$lib/config/sentry';
 import { getSupabaseClient } from '$lib/supabase';
+import { flushClientSessionOnLogout } from '$lib/utils/sessionCleanup';
 
 let handlingUnauthorized = false;
 
@@ -24,6 +25,7 @@ export const handleFetch: HandleFetch = async ({ request, fetch }) => {
 				} catch {
 					// Ignore if the client is not initialized.
 				}
+				await flushClientSessionOnLogout();
 				await invalidateAll();
 				await goto('/auth/login?reason=session_expired');
 			}

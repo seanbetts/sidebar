@@ -11,12 +11,8 @@
 	import { chatStore } from '$lib/stores/chat';
 	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
-	import {
-		clearCaches,
-		clearInFlight,
-		clearMemoryCache,
-		listenForStorageEvents
-	} from '$lib/utils/cache';
+	import { flushClientSessionOnLogout } from '$lib/utils/sessionCleanup';
+	import { listenForStorageEvents } from '$lib/utils/cache';
 	import { applyThemeMode, getStoredTheme } from '$lib/utils/theme';
 	import { startRealtime, stopRealtime } from '$lib/realtime/realtime';
 	import { startTaskEvents, stopTaskEvents } from '$lib/realtime/task_events';
@@ -128,9 +124,11 @@
 		});
 		stopStorageListener = listenForStorageEvents();
 		if (!data.isAuthenticated) {
-			clearCaches();
-			clearMemoryCache();
-			clearInFlight();
+			void flushClientSessionOnLogout().catch((error) => {
+				logError('Session cleanup failed on signed-out layout', error, {
+					scope: 'layout.clearSessionCleanup'
+				});
+			});
 			return;
 		}
 		checkHealth();

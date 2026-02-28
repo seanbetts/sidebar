@@ -128,6 +128,30 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
+    func testClearAllClearsItemsAndDeletesStagedFiles() throws {
+        let store = makeStore()
+        let payload = Data("hello".utf8)
+        let fileItem = store.enqueueFile(
+            data: payload,
+            filename: "sample.txt",
+            mimeType: "text/plain",
+            kind: .file
+        )
+        _ = store.enqueueWebsite(url: "https://example.com")
+        let stagedFileURL = fileItem.flatMap { store.resolveFileURL(for: $0) }
+        XCTAssertNotNil(stagedFileURL)
+        if let stagedFileURL {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: stagedFileURL.path))
+        }
+
+        store.clearAll()
+
+        XCTAssertTrue(store.loadAll().isEmpty)
+        if let stagedFileURL {
+            XCTAssertFalse(FileManager.default.fileExists(atPath: stagedFileURL.path))
+        }
+    }
+
     func testLoadAllPreservesWebsiteQueueInsertionOrder() {
         let store = makeStore()
         _ = store.enqueueWebsite(url: "https://example.com/first")
@@ -323,6 +347,8 @@ final class PendingShareStoreTests: XCTestCase {
         XCTAssertTrue(keep)
     }
 
+}
+extension PendingShareStoreTests {
     func testPendingWebsiteFailureKindClassifiesValidationErrorsAsTerminal() {
         XCTAssertEqual(pendingWebsiteFailureKind(for: "Enter a valid URL."), .terminal)
         XCTAssertEqual(

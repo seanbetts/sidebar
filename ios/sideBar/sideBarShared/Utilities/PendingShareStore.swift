@@ -250,6 +250,25 @@ public final class PendingShareStore {
         }
     }
 
+    /// Clears all queued items and removes any staged files from app-group storage.
+    public func clearAll() {
+        withAccessLock {
+            let items = loadAll()
+            for item in items {
+                guard let fileURL = resolveFileURL(for: item) else { continue }
+                try? fileManager.removeItem(at: fileURL)
+            }
+            if let defaults {
+                defaults.removeObject(forKey: itemsKey)
+                defaults.synchronize()
+            }
+            let root = rootDirectory?.appendingPathComponent(directoryName)
+            if let root {
+                try? fileManager.removeItem(at: root)
+            }
+        }
+    }
+
     /// Removes queued items matching the provided identifiers.
     public func remove(ids: [UUID]) {
         withAccessLock {

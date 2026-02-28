@@ -80,4 +80,29 @@ final class DraftStorage {
             throw capturedError
         }
     }
+
+    func clearAllDrafts() throws {
+        let context = container.newBackgroundContext()
+        var capturedError: Error?
+        context.performAndWait {
+            do {
+                let request = NSFetchRequest<NSFetchRequestResult>(entityName: "LocalDraft")
+                let deleteRequest = NSBatchDeleteRequest(fetchRequest: request)
+                deleteRequest.resultType = .resultTypeObjectIDs
+                let result = try context.execute(deleteRequest) as? NSBatchDeleteResult
+                if let deletedObjectIDs = result?.result as? [NSManagedObjectID], !deletedObjectIDs.isEmpty {
+                    let changes: [AnyHashable: Any] = [NSDeletedObjectsKey: deletedObjectIDs]
+                    NSManagedObjectContext.mergeChanges(
+                        fromRemoteContextSave: changes,
+                        into: [container.viewContext]
+                    )
+                }
+            } catch {
+                capturedError = error
+            }
+        }
+        if let capturedError {
+            throw capturedError
+        }
+    }
 }

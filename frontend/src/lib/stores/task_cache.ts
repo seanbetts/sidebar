@@ -37,6 +37,14 @@ let dbPromise: Promise<IDBDatabase | null> | null = null;
 
 const isIndexedDbAvailable = () => typeof indexedDB !== 'undefined';
 
+const resetMemoryState = (): void => {
+	memoryState.tasks.clear();
+	memoryState.projects.clear();
+	memoryState.groups.clear();
+	memoryState.operations = [];
+	memoryState.lastSync = null;
+};
+
 const requestToPromise = <T>(request: IDBRequest<T>): Promise<T> =>
 	new Promise((resolve, reject) => {
 		request.onsuccess = () => resolve(request.result);
@@ -292,5 +300,35 @@ export async function removeOutboxOperations(operationIds: string[]): Promise<vo
 		operationIds.forEach((operationId) => {
 			stores[STORE_OPERATIONS].delete(operationId);
 		});
+	});
+}
+
+/**
+ * Clear all persisted and in-memory task cache state.
+ */
+export async function clearTaskCacheStorage(): Promise<void> {
+	resetMemoryState();
+	if (!isIndexedDbAvailable()) {
+		dbPromise = null;
+		return;
+	}
+
+	if (dbPromise) {
+		try {
+			const existingDb = await dbPromise;
+			existingDb?.close();
+		} catch {
+			// Best effort.
+		} finally {
+			dbPromise = null;
+		}
+	}
+
+	await new Promise<void>((resolve, reject) => {
+		const request = indexedDB.deleteDatabase(DB_NAME);
+		request.onsuccess = () => resolve();
+		request.onblocked = () => resolve();
+		request.onerror = () =>
+			reject(request.error ?? new Error('Failed to clear task cache database'));
 	});
 }
