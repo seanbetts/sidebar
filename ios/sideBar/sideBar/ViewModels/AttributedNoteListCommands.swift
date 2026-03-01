@@ -10,16 +10,16 @@ enum AttributedNoteListCommands {
 
     private static let maxDepth = 8
 
-    static func indent(on viewModel: NativeMarkdownEditorViewModel) {
+    static func indent(on viewModel: NativeNoteEditorViewModel) {
         adjustDepth(on: viewModel, direction: .indent)
     }
 
-    static func outdent(on viewModel: NativeMarkdownEditorViewModel) {
+    static func outdent(on viewModel: NativeNoteEditorViewModel) {
         adjustDepth(on: viewModel, direction: .outdent)
     }
 
     private static func adjustDepth(
-        on viewModel: NativeMarkdownEditorViewModel,
+        on viewModel: NativeNoteEditorViewModel,
         direction: Direction
     ) {
         let paragraphRanges = viewModel.selectedParagraphRanges()

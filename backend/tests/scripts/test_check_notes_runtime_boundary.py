@@ -88,6 +88,15 @@ def test_check_reports_markdown_method_calls_in_notes_runtime_files(
         }
         """,
     )
+    _write(
+        tmp_path / "ios/sideBar/sideBar/ViewModels/AttributedNoteListCommands.swift",
+        """
+        import Foundation
+        enum AttributedNoteListCommands {
+            static func indent(on viewModel: NativeMarkdownEditorViewModel) {}
+        }
+        """,
+    )
 
     violations = check(tmp_path)
 

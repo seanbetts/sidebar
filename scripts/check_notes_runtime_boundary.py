@@ -23,6 +23,7 @@ FORBIDDEN_PATTERNS = (
 NOTES_SHELL_RELATIVE_PATHS = (
     Path("ViewModels/NotesEditorViewModel.swift"),
     Path("ViewModels/AttributedNoteFormattingCommands.swift"),
+    Path("ViewModels/AttributedNoteListCommands.swift"),
     Path("Views/Notes/NotesView.swift"),
     Path("Views/Notes/NotesDetailView.swift"),
     Path("Views/Notes/NotesDetailView+MenuActions.swift"),
