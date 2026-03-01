@@ -29,7 +29,6 @@ struct AgentWorkspaceSurfaceView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(DesignTokens.Spacing.lg)
         }
-        .platformContextMenu(items: contextMenuItems)
         .fileExporter(
             isPresented: $isExporting,
             document: exportDocument,
@@ -65,6 +64,7 @@ struct AgentWorkspaceSurfaceView: View {
                     if shouldShowExpandButton {
                         expandButton
                     }
+                    surfaceActionsMenu
                     if surface.capabilities.canRefresh {
                         HeaderActionButton(
                             systemName: "arrow.clockwise",
@@ -422,5 +422,29 @@ struct AgentWorkspaceSurfaceView: View {
         case .secondary:
             return .secondary
         }
+    }
+}
+
+private extension AgentWorkspaceSurfaceView {
+    @ViewBuilder
+    var surfaceActionsMenu: some View {
+        #if os(macOS)
+        Menu {
+            sidebarMenuItemsView(contextMenuItems)
+        } label: {
+            HeaderActionIcon(systemName: "ellipsis")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Workspace options")
+        .disabled(contextMenuItems.isEmpty)
+        #else
+        HeaderActionMenuButton(
+            systemImage: "ellipsis",
+            accessibilityLabel: "Workspace options",
+            items: contextMenuItems,
+            isCompact: true
+        )
+        .disabled(contextMenuItems.isEmpty)
+        #endif
     }
 }
