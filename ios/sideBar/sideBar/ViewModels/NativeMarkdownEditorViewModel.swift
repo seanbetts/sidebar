@@ -173,6 +173,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             isApplyingShortcut = false
         }
 
+        normalizeTypingAfterBlockquoteNewlineIfNeeded(insertedCharacter: insertedCharacter)
+
         // Mark dirty immediately so close/switch flows can prompt even before autosave fires.
         hasUnsavedChanges = true
         scheduleAutosave()

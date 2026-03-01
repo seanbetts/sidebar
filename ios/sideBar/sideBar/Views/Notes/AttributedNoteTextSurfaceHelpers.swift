@@ -95,6 +95,28 @@ func clampedContentOffset(_ offset: CGPoint, in textView: UITextView) -> CGPoint
         y: min(max(offset.y, minY), maxY)
     )
 }
+
+@available(iOS 26.0, *)
+func tappedInsertionRange(in textView: UITextView, location: CGPoint) -> NSRange {
+    let length = textView.attributedText.length
+    guard length > 0 else {
+        return NSRange(location: 0, length: 0)
+    }
+
+    let containerPoint = CGPoint(
+        x: location.x - textView.textContainerInset.left + textView.contentOffset.x,
+        y: location.y - textView.textContainerInset.top + textView.contentOffset.y
+    )
+    var fraction: CGFloat = 0
+    let glyphIndex = textView.layoutManager.glyphIndex(
+        for: containerPoint,
+        in: textView.textContainer,
+        fractionOfDistanceThroughGlyph: &fraction
+    )
+    var characterIndex = textView.layoutManager.characterIndexForGlyph(at: glyphIndex)
+    characterIndex = min(max(0, characterIndex), length)
+    return NSRange(location: characterIndex, length: 0)
+}
 #elseif os(macOS)
 @available(macOS 26.0, *)
 func clampedContentOrigin(_ origin: CGPoint, in scrollView: NSScrollView) -> CGPoint {

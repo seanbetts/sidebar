@@ -88,6 +88,25 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
         XCTAssertEqual(bodyStyle?.paragraphSpacing ?? -1, expectedCollapsedBefore, accuracy: 0.001)
     }
 
+    func testNewlineAfterBlockquoteResetsTypingAttributesToParagraph() async {
+        let viewModel = NativeMarkdownEditorViewModel()
+        viewModel.loadMarkdown("> Quote")
+        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        let previous = viewModel.attributedContent
+        viewModel.attributedContent.append(AttributedString("\n"))
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        viewModel.handleContentChange(previous: previous)
+
+        let typingAttributes = viewModel.selection.typingAttributes(in: viewModel.attributedContent)
+        XCTAssertNotEqual(typingAttributes.blockKind, .blockquote)
+        XCTAssertNil(typingAttributes.backgroundColor)
+    }
+
     private func selectionOffsets(in viewModel: NativeMarkdownEditorViewModel) -> [Range<Int>] {
         switch viewModel.selection.indices(in: viewModel.attributedContent) {
         case .insertionPoint(let index):
