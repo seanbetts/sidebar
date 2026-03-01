@@ -6,7 +6,7 @@ struct AttributedNoteEditorContainer: View {
     let maxContentWidth: CGFloat
     @EnvironmentObject var environment: AppEnvironment
 
-    @StateObject private var nativeViewModel = NativeMarkdownEditorViewModel()
+    @StateObject private var nativeViewModel = NativeNoteEditorViewModel()
     @State private var loadedNoteId: String?
     @FocusState private var isTextEditorFocused: Bool
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue

@@ -29,6 +29,7 @@ NOTES_SHELL_RELATIVE_PATHS = (
     Path("Views/Notes/AttributedNoteEditorContainer.swift"),
 )
 FORBIDDEN_NOTES_SHELL_PATTERNS = (
+    r"\bNativeMarkdownEditorViewModel\b",
     r"\bSideBarMarkdownContainer\b",
     r"\bMarkdownEditorView\b",
     r"\buseAttributedNoteEditorV2\b",

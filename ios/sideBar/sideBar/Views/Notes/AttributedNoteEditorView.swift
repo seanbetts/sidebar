@@ -8,7 +8,7 @@ import AppKit
 
 @available(iOS 26.0, macOS 26.0, *)
 struct AttributedNoteEditorView: View {
-    @ObservedObject var viewModel: NativeMarkdownEditorViewModel
+    @ObservedObject var viewModel: NativeNoteEditorViewModel
     let maxContentWidth: CGFloat
     let isEditable: Bool
     let onTap: ((AttributedTextSelection) -> Void)?

@@ -23,7 +23,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private let networkStatus: any NetworkStatusProviding
     private let logger = Logger(subsystem: "sideBar", category: "AttributedEditorMigration")
     @available(iOS 26.0, macOS 26.0, *)
-    private weak var nativeEditorViewModel: NativeMarkdownEditorViewModel?
+    private weak var nativeEditorViewModel: NativeNoteEditorViewModel?
     private var syncRequestedWhileSaving = false
     private var cancellables = Set<AnyCancellable>()
 
@@ -122,26 +122,26 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    public func makeNativeEditorViewModel() -> NativeMarkdownEditorViewModel {
-        let viewModel = NativeMarkdownEditorViewModel()
+    public func makeNativeEditorViewModel() -> NativeNoteEditorViewModel {
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText(content)
         return viewModel
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    public func attachNativeEditor(_ nativeViewModel: NativeMarkdownEditorViewModel) {
+    public func attachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
         nativeEditorViewModel = nativeViewModel
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    public func detachNativeEditor(_ nativeViewModel: NativeMarkdownEditorViewModel) {
+    public func detachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
         if nativeEditorViewModel === nativeViewModel {
             nativeEditorViewModel = nil
         }
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    public func syncFromNativeEditor(_ nativeViewModel: NativeMarkdownEditorViewModel) async {
+    public func syncFromNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) async {
         guard let noteId = currentNoteId else { return }
         if isSaving {
             syncRequestedWhileSaving = true
@@ -312,13 +312,13 @@ public final class NotesEditorViewModel: ObservableObject {
 
     @available(iOS 26.0, macOS 26.0, *)
     private func canonicalPlainTextSnapshot(from plainText: String) -> String {
-        let nativeViewModel = NativeMarkdownEditorViewModel()
+        let nativeViewModel = NativeNoteEditorViewModel()
         nativeViewModel.loadText(plainText)
         return nativeViewModel.currentPlainText()
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    private func syncFromNativeEditorIfRequested(_ nativeViewModel: NativeMarkdownEditorViewModel) async {
+    private func syncFromNativeEditorIfRequested(_ nativeViewModel: NativeNoteEditorViewModel) async {
         guard syncRequestedWhileSaving else { return }
         syncRequestedWhileSaving = false
         await syncFromNativeEditor(nativeViewModel)

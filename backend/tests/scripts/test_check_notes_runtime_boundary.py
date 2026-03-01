@@ -89,6 +89,9 @@ def test_check_reports_markdown_method_calls_in_notes_runtime_files(
 
     violations = check(tmp_path)
 
+    assert any(
+        "NativeMarkdownEditorViewModel" in violation.token for violation in violations
+    )
     assert any("loadMarkdown" in violation.token for violation in violations)
     assert any("markSaved" in violation.token for violation in violations)
 

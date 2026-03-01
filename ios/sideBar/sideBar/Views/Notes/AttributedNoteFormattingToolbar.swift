@@ -2,7 +2,7 @@ import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
 struct AttributedNoteFormattingToolbar: View {
-    @ObservedObject var viewModel: NativeMarkdownEditorViewModel
+    @ObservedObject var viewModel: NativeNoteEditorViewModel
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
