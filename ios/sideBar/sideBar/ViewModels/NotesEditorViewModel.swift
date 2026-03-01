@@ -364,9 +364,5 @@ private func folderPath(from notePath: String) -> String? {
 }
 
 private func copyTitle(from noteName: String) -> String {
-    if noteName.hasSuffix(".md") {
-        let base = String(noteName.dropLast(3))
-        return "\(base) (Offline Copy)"
-    }
     return "\(noteName) (Offline Copy)"
 }

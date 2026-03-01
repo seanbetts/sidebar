@@ -18,7 +18,7 @@ final class RealtimeMappersTests: XCTestCase {
 
         let mapped = RealtimeMappers.mapNote(record)
 
-        XCTAssertEqual(mapped?.name, "Title.md")
+        XCTAssertEqual(mapped?.name, "Title")
         XCTAssertEqual(mapped?.path, "n1")
         XCTAssertEqual(mapped?.content, "Body")
         XCTAssertNotNil(mapped?.modified)

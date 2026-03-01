@@ -152,8 +152,7 @@ extension NotesPanelView {
             environment.toastCenter.show(message: "Download unavailable")
             return
         }
-        let filename = item.name.hasSuffix(".md") ? item.name : "\(item.name).md"
-        exportFilename = filename
+        exportFilename = item.name
         exportDocument = MarkdownFileDocument(text: content)
         isExporting = true
     }

@@ -14,7 +14,7 @@ public struct RealtimeMappers {
         // NOTE: Align note mapping with native models and folder/archive semantics.
         return NotePayload(
             id: id,
-            name: "\(record.title ?? "Untitled").md",
+            name: record.title ?? "Untitled",
             content: resolvedContent,
             path: id,
             modified: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970,

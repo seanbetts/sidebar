@@ -53,11 +53,11 @@ public struct WidgetNoteData: WidgetDataContainer {
     notes: [
       WidgetNote(
         id: "1", name: "Meeting Notes", contentPreview: "Discussed project timeline...",
-        path: "/notes/meeting.md", pinned: true, pinnedOrder: 0
+        path: "/notes/meeting", pinned: true, pinnedOrder: 0
       ),
       WidgetNote(
         id: "2", name: "Ideas", contentPreview: "New feature concepts",
-        path: "/notes/ideas.md", pinned: true, pinnedOrder: 1
+        path: "/notes/ideas", pinned: true, pinnedOrder: 1
       )
     ],
     totalCount: 2
@@ -70,7 +70,7 @@ extension WidgetNote {
   /// Creates a WidgetNote from a FileNode
   public init(from node: FileNode) {
     self.id = node.path
-    self.name = node.name.hasSuffix(".md") ? String(node.name.dropLast(3)) : node.name
+    self.name = node.name
     self.contentPreview = nil
     self.path = node.path
     self.modifiedAt = node.modified.map { Date(timeIntervalSince1970: $0) }

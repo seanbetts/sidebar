@@ -81,6 +81,12 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertTrue(actions.contains(.shareText))
     }
 
+    func testFileNodeDisplayNamePreservesMarkdownLikeSuffixes() {
+        let item = FileNodeItem(id: "note-1", name: "Note.md", type: .file)
+
+        XCTAssertEqual(item.displayName, "Note.md")
+    }
+
     func testNoteContextMenuDoesNotIncludeShareTextForFolderItems() {
         let item = FileNodeItem(id: "folder", name: "Folder", type: .directory)
 

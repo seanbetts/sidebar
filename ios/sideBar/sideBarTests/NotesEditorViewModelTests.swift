@@ -659,17 +659,17 @@ extension NotesEditorViewModelTests {
 
         let created = NotePayload(
             id: "copy-id",
-            name: "Note (Offline Copy).md",
+            name: "Note.md (Offline Copy)",
             content: "",
-            path: "/Note (Offline Copy).md",
+            path: "/Note.md (Offline Copy)",
             modified: nil,
             created: nil
         )
         let updated = NotePayload(
             id: "copy-id",
-            name: "Note (Offline Copy).md",
+            name: "Note.md (Offline Copy)",
             content: canonical,
-            path: "/Note (Offline Copy).md",
+            path: "/Note.md (Offline Copy)",
             modified: 100,
             created: nil
         )
@@ -726,6 +726,7 @@ extension NotesEditorViewModelTests {
         XCTAssertFalse(viewModel.isQueuedForSync)
         XCTAssertEqual(notesViewModel.activeNote?.id, "n1")
         XCTAssertEqual(notesViewModel.selectedNoteId, "/folder/Note.md")
+        XCTAssertEqual(api.createdTitles, ["Note.md (Offline Copy)"])
         XCTAssertEqual(api.updatedContents, [canonical])
         let draft = try draftStorage.getDraft(entityType: "note", entityId: "n1")
         XCTAssertNil(draft)
@@ -901,6 +902,7 @@ private struct TestNetworkStatus: NetworkStatusProviding {
 private final class NotesAPISpy: NotesProviding {
     private(set) var updateCallCount = 0
     private(set) var updatedContents: [String] = []
+    private(set) var createdTitles: [String] = []
     var updateDelayNanoseconds: UInt64 = 0
     let updateResult: Result<NotePayload, Error>
     let createResult: Result<NotePayload, Error>
@@ -945,7 +947,7 @@ private final class NotesAPISpy: NotesProviding {
     }
 
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {
-        _ = request
+        createdTitles.append(request.title ?? "")
         return try createResult.get()
     }
 

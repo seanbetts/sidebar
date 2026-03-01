@@ -268,11 +268,7 @@ public final class SpotlightIndexer: SpotlightIndexing {
   private func makeNoteSearchableItem(_ note: SpotlightNote) -> CSSearchableItem {
     let attributes = CSSearchableItemAttributeSet(contentType: .text)
 
-    // Title: note name without .md extension
-    let displayName = note.name.hasSuffix(".md")
-      ? String(note.name.dropLast(3))
-      : note.name
-    attributes.title = displayName
+    attributes.title = note.name
 
     // Content preview (first N chars) for display, if content available
     if let content = note.content {

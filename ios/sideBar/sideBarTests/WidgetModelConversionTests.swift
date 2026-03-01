@@ -43,7 +43,7 @@ final class WidgetModelConversionTests: XCTestCase {
         let widgetNote = WidgetNote(from: node)
 
         XCTAssertEqual(widgetNote.id, "/notes/meeting.md")
-        XCTAssertEqual(widgetNote.name, "meeting")
+        XCTAssertEqual(widgetNote.name, "meeting.md")
         XCTAssertEqual(widgetNote.path, "/notes/meeting.md")
         XCTAssertEqual(widgetNote.modifiedAt, Date(timeIntervalSince1970: timestamp))
         XCTAssertFalse(widgetNote.pinned)

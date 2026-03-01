@@ -245,9 +245,6 @@ struct FileNodeItem: Identifiable {
     var isFile: Bool { type == .file }
 
     var displayName: String {
-        if isFile, name.hasSuffix(".md") {
-            return String(name.dropLast(3))
-        }
         return name
     }
 
