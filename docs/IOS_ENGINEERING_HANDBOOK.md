@@ -9,7 +9,7 @@ This is the canonical iOS/macOS engineering document for sideBar.
 
 - Source of truth for Apple-platform setup, architecture, and operations.
 - Applies to: `ios/sideBar` app target, extensions, shared framework, and Apple test targets.
-- Last reviewed: `2026-02-10`.
+- Last reviewed: `2026-03-01`.
 
 ## Scope and Project Layout
 
@@ -73,6 +73,26 @@ Core data flow:
 2. View model delegates to store/service APIs.
 3. Store updates `@Published` state from cache/network/realtime.
 4. SwiftUI reacts to published state changes.
+
+## Workspace Engine and Agent Surfaces
+
+The Apple app now uses a unified workspace model that supports both built-in sections and agent-driven dynamic surfaces.
+
+- Canonical state: `WorkspaceStore` + `WorkspaceState` (`ios/sideBar/sideBar/App/WorkspaceStore.swift`, `WorkspaceModels.swift`).
+- Modes:
+  - `core`: built-in content sections (notes, websites, files, tasks, chat, etc.).
+  - `agent`: dynamic assistant surfaces rendered in workspace panes.
+- Pane model:
+  - `primary` and `secondary` panes can each render either built-in descriptors or `agentSurface` descriptors.
+  - Existing UX remains preserved (pane swapping, expand/fullscreen behavior, compact/split layouts).
+- Stream integration:
+  - Chat SSE `workspace_patch` events are parsed by `ChatWorkspacePatchParser` and dispatched as typed `WorkspaceAction`s.
+- Rendering:
+  - `AgentWorkspaceSurfaceView` renders agent surface types (`markdown`, `table`, `chart`, `map`, `form`, `actionPanel`).
+  - Title-bar affordances are consistent with other content headers (expand, `...` menu, close/refresh where capability-enabled).
+  - Surface menu actions are payload-driven (`context_menu_actions`).
+- Reopen behavior:
+  - Chat tool results can expose "Show ..." workspace action buttons for reopening previously presented surfaces.
 
 ## Architecture Boundaries (CI-Enforced)
 

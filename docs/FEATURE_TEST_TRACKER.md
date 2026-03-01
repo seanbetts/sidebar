@@ -30,6 +30,10 @@ Single-file source of truth for Apple-platform feature coverage.
 | Widgets | EXT-WIDGET-001 | Widget data model/provider behavior | Medium | Unit | `WidgetModelConversionTests`, `WidgetBridgeContractTests` | `seeded_user` | Partial |
 | Safari Extension | EXT-SAFARI-001 | Safari message/deeplink handling | Medium | Unit | `SafariExtensionMessageHandlerTests` | `seeded_user` | Partial |
 | Shell | UI-001 | App launch + navigation shell | High | UI smoke + `TC-UI-001` login success | `sideBarUITests`, `sideBarUITestsLaunchTests` | `clean_user` | Partial |
+| Workspace | WS-001 | Parse and apply AI workspace patch events | High | Unit | `ChatWorkspacePatchParserTests`, `WorkspaceStoreTests`, `WorkspaceModelsAgentSurfaceTests` | `seeded_user` | Covered |
+| Workspace | WS-002 | Assistant surface title-bar menu actions (copy/share/download) | Medium | Unit | `ToolResultWorkspaceSurfaceParserTests`, `PromptPreviewWorkspaceSurfaceFactoryTests` | `seeded_user` | Partial |
+| Workspace | WS-003 | Reopen assistant surface from chat tool bubble action | High | Unit + UI deterministic | `ToolResultWorkspaceSurfaceParserTests` + pending UI journey (`TC-UI-013`) | `seeded_user` | Partial |
+| Workspace | WS-004 | Keyboard and pane parity for assistant surfaces (Esc close, expand/swap) | High | Unit + manual checkpoint coverage | `WorkspaceStoreTests`, `WorkspaceLegacySectionAdapterTests` | `seeded_user` | Partial |
 
 ## UI Journey Cases (Deterministic)
 
@@ -49,14 +53,19 @@ Target: at least 12 stable UI journeys in CI.
 | TC-UI-010 | Offline task create then reconnect sync | `SYNC-001`, `TASK-001` | P0 | Planned |
 | TC-UI-011 | Share extension handoff appears in app | `EXT-SHARE-001`, `FILE-001` | P1 | Planned |
 | TC-UI-012 | Settings update persists after relaunch | `SET-001` | P1 | Planned |
+| TC-UI-013 | Prompt preview shows "Show System Prompt" and reopens assistant workspace | `WS-003`, `CHAT-002` | P0 | Planned |
+| TC-UI-014 | Assistant workspace header `...` menu executes copy/share/download actions | `WS-002` | P1 | Planned |
+| TC-UI-015 | Escape key closes assistant workspace surface in focused pane | `WS-004` | P1 | Planned |
+| TC-UI-016 | iPad rotate/expand and pane swap preserve assistant surface state | `WS-004` | P1 | Planned |
 
-## Backlog (Next 5)
+## Backlog (Next 6)
 
 - [ ] Implement `TC-UI-005` using local upload fixtures.
 - [ ] Implement `TC-UI-006` against seeded overdue/someday/completed task states.
 - [ ] Implement `TC-UI-009` by forcing network off/on during note edit flow.
 - [ ] Implement `TC-UI-008` for end-to-end website save and detail rendering.
 - [ ] Implement `TC-UI-010` for deterministic offline task create/reconnect sync.
+- [ ] Implement `TC-UI-013` for chat-to-assistant-surface reopen flow.
 
 ## How To Add New Features
 

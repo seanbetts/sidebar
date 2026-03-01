@@ -163,6 +163,74 @@ Tool-backed skills must follow this execution contract:
   - `{"success": false, "error": "..."}`
 - Keep scripts deterministic and argument-driven (no hidden prompts/interactive input).
 
+## Assistant Workspace Output (Optional)
+
+Some tool-backed skills can also drive the dynamic Assistant Workspace in iOS/macOS.
+This is optional and should be used only when the output benefits from a dedicated surface (for example rich markdown, table/chart/map previews, or interactive follow-up actions).
+
+### When To Use
+
+- Use chat-only output for short/simple results.
+- Use workspace surfaces when users need to revisit, copy/share/export, or interact with richer content.
+- Do not emit workspace patches for every skill by default.
+
+### Result Contract
+
+In successful tool output (`{"success": true, "data": ...}`), include one of:
+
+- `workspace_patch`: single patch object
+- `workspace_patches`: array of patch objects
+
+Patch schema (versioned):
+
+```json
+{
+  "version": 1,
+  "operations": [
+    {
+      "op": "present_agent_surface",
+      "pane": "primary",
+      "surface": {
+        "type": "markdown",
+        "surface_id": "example-surface",
+        "title": "Example",
+        "payload": {
+          "markdown": "# Example"
+        },
+        "context_menu_actions": ["copy_markdown", "share_text", "download"],
+        "capabilities": {
+          "can_refresh": false,
+          "can_close": true
+        }
+      }
+    }
+  ]
+}
+```
+
+### Supported Operations (v1)
+
+- `present_agent_surface` (aliases accepted by clients: `upsert_agent_surface`, `update_agent_surface`)
+- `close_pane`
+- `set_surface_pinned`
+- `swap_panes`
+
+### Surface Fields
+
+- `type`: `markdown`, `table`, `chart`, `map`, `form`, `actionPanel`
+- `surface_id`: stable identifier for updates/reopen targeting
+- `title`: optional user-facing title for header and chat action labels
+- `payload`: string map used by the renderer (`markdown` key is used for markdown surfaces)
+- `context_menu_actions`: optional list (`copy_markdown`, `share_text`, `download`) used to populate the header `...` menu
+- `capabilities`: optional UI capability flags (`can_refresh`, `can_close`, `can_pin`, `can_inspect_data`)
+
+### Authoring Notes
+
+- Keep `version` as an integer (`1` currently supported).
+- Unknown operations may be ignored by clients; always include at least one valid operation.
+- Use deterministic `surface_id` values so users can reliably reopen/replace the same surface.
+- Keep chat text useful even when a client does not render workspace surfaces.
+
 ## Register Tool-Backed Skills In Agent Runtime
 
 Creating `backend/skills/<skill-id>/scripts/*.py` is not sufficient by itself. Wire the skill into runtime:
@@ -255,6 +323,7 @@ If the skill is visible in iOS Skills Store, update symbol mappings:
 - All skills pass quick validation (local loop or CI `Skills Validation` workflow).
 - Store skill includes `metadata.long_description`, `metadata.how_it_works`, `metadata.version`, and `metadata.updated_at` (`metadata.requirements` included when setup prerequisites exist).
 - Tool-backed skills are wired through definitions, registry, and parameter builders/mappers.
+- If workspace output is used, `workspace_patch` payloads validate against v1 schema and include at least one valid operation.
 - Catalog metadata, tier, and category are updated.
 - `CATALOG_VERSION` is bumped.
 - Backend tests for mapper + catalog/API pass.

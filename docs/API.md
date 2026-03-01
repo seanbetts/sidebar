@@ -57,6 +57,77 @@ These are the standardized error codes returned by the backend:
 | `EXTERNAL_SERVICE_ERROR` | 502 | Upstream service failed. |
 | `HTTP_ERROR` | varies | Legacy FastAPI HTTPException normalization. |
 
+## Chat Streaming API
+
+Base path: `/api/v1/chat/stream` (legacy `/api/chat/stream` supported with deprecation headers).
+
+Response is Server-Sent Events (SSE). Events are emitted as:
+
+```text
+event: <event_name>
+data: <json_payload>
+```
+
+### Workspace-Related SSE Events
+
+#### `prompt_preview`
+
+Emitted when prompt preview tooling returns diagnostic payloads.
+
+```json
+{
+  "system_prompt": "<assistant_prompt>...</assistant_prompt>",
+  "first_message_prompt": "<first_message_prompt>...</first_message_prompt>",
+  "system_prompt_sections": [],
+  "first_message_prompt_sections": [],
+  "prompt_report": {
+    "system_prompt": {
+      "total_chars": 1234,
+      "max_chars": 20000,
+      "truncated": false,
+      "sections": []
+    }
+  },
+  "workspace_context_menu_actions": ["copy_markdown", "share_text", "download"]
+}
+```
+
+#### `workspace_patch`
+
+Emitted when a tool result includes `workspace_patch` or `workspace_patches`.
+
+```json
+{
+  "version": 1,
+  "operations": [
+    {
+      "op": "present_agent_surface",
+      "pane": "primary",
+      "surface": {
+        "type": "markdown",
+        "surface_id": "prompt-preview",
+        "title": "System Prompt",
+        "payload": {
+          "markdown": "## Prompt"
+        },
+        "context_menu_actions": ["copy_markdown", "share_text", "download"],
+        "capabilities": {
+          "can_refresh": false,
+          "can_close": true
+        }
+      }
+    }
+  ]
+}
+```
+
+Supported operation names in v1:
+
+- `present_agent_surface` (`upsert_agent_surface` and `update_agent_surface` are accepted aliases)
+- `close_pane`
+- `set_surface_pinned`
+- `swap_panes`
+
 ## Tasks API
 
 Base path: `/api/v1/tasks`

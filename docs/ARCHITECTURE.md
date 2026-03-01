@@ -329,6 +329,8 @@ The app uses one cross-surface routing policy for YouTube URLs:
        - token: Append to message content
        - tool_call: Show tool execution status
        - tool_result: Update with results
+       - prompt_preview: Prompt diagnostics + preview payload
+       - workspace_patch: Typed workspace mutation payload
        - complete: Finalize message
        - error: Show error state
 
@@ -337,6 +339,35 @@ The app uses one cross-surface routing policy for YouTube URLs:
        - Messages array updated
        - title generated (if new conversation)
        - Metadata updated (message_count, etc.)
+```
+
+### Assistant Workspace Patch Flow
+
+```
+1. Tool execution returns side-effect patch payload
+   └─> result.data.workspace_patch or result.data.workspace_patches
+
+2. Backend event mapping
+   └─> tool_event_mapper.workspace_patch_stream_events()
+       - Validates shape (version int + operations list)
+       - Emits SSE "workspace_patch" event(s)
+
+3. iOS/macOS stream handling
+   └─> ChatWorkspacePatchParser.parse()
+       - Enforces supported version (v1)
+       - Maps operations to WorkspaceAction values
+       - Ignores unknown/invalid operations for forward compatibility
+
+4. Workspace reducer update
+   └─> WorkspaceStore.dispatch(...)
+       - Applies present/close/swap/pin mutations
+       - Renders built-in or agent-surface descriptors per pane
+
+5. Surface rendering + affordances
+   └─> AgentWorkspaceSurfaceView
+       - Dynamic content renderer by surface type
+       - Title-bar controls (expand, header "..." menu, refresh/close when enabled)
+       - Surface-specific context menu actions injected from tool payload
 ```
 
 ### Tool Execution Flow
