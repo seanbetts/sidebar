@@ -49,11 +49,7 @@ struct NotesPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            #if os(macOS)
-            notesPanelContentWithArchive
-            #else
             notesPanelContent
-            #endif
         }
         .frame(maxHeight: .infinity)
         .onAppear {

@@ -40,11 +40,7 @@ struct WebsitesPanelView: View {
     var body: some View {
         let base = VStack(spacing: 0) {
             header
-            #if os(macOS)
-            websitesPanelContentWithArchive
-            #else
             content
-            #endif
         }
         .frame(maxHeight: .infinity)
         .onAppear {
@@ -259,93 +255,50 @@ extension WebsitesPanelView {
                         }
                     }
                 }
-#if !os(macOS)
                 Section {
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                        Divider()
-                            .overlay(DesignTokens.Colors.border)
-                        DisclosureGroup(
-                            isExpanded: $isArchiveExpanded,
-                            content: {
-                                if showArchiveLoadingPlaceholder {
-                                    archiveLoadingRow(message: "Loading archive...")
-                                        .padding(.leading, -DesignTokens.Spacing.sm)
-                                        .listRowSeparator(.hidden, edges: .top)
-                                } else if showArchiveEmptyState {
-                                    Text(archivedEmptyStateText)
-                                        .appFont(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .listRowSeparator(.hidden, edges: .top)
-                                } else {
-                                    ForEach(archivedItems, id: \.id) { item in
-                                        let index = staggerIndex(for: item.id, section: "archived")
-                                        websiteListRow(item: item, index: index, allowArchive: false)
-                                            .padding(.leading, -DesignTokens.Spacing.sm)
-                                    }
-                                }
-                            },
-                            label: {
-                                archiveLabel
-                            }
-                        )
-                    }
-                    .padding(.top, DesignTokens.Spacing.sm)
-                    .listRowInsets(
-                        EdgeInsets(
-                            top: 0,
+                    SelectableRow(
+                        isSelected: false,
+                        insets: EdgeInsets(
+                            top: DesignTokens.Spacing.sm,
                             leading: DesignTokens.Spacing.sm,
                             bottom: 0,
                             trailing: DesignTokens.Spacing.sm
                         )
-                    )
-                    .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
-                }
-#endif
-            }
-            .sidebarPanelListStyle()
-            .scrollContentBackground(.hidden)
-            .background(panelBackground)
-            .refreshable {
-                await viewModel.load()
-            }
-        }
-    }
+                    ) {
+                        HStack(spacing: DesignTokens.Spacing.xs) {
+                            Label("Archive", systemImage: "archivebox")
+                                .appFont(SidebarTypography.primary)
+                            Spacer()
+                            if isArchiveLoading && !archivedItems.isEmpty {
+                                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                            }
+                            Image(systemName: isArchiveExpanded ? "chevron.down" : "chevron.right")
+                                .appFont(SidebarTypography.secondary)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .onTapGesture {
+                        isArchiveExpanded.toggle()
+                    }
 
-    @ViewBuilder
-    var websitesPanelContentWithArchive: some View {
-        if viewModel.isLoading && viewModel.items.isEmpty {
-            SidebarListSkeleton(rowCount: 8, showSubtitle: true)
-        } else if let error = viewModel.errorMessage {
-            SidebarPanelPlaceholder(
-                title: "Unable to load websites",
-                subtitle: error,
-                actionTitle: "Retry",
-                style: .error
-            ) {
-                Task { await viewModel.load() }
-            }
-        } else if !viewModel.panelSearchQuery.trimmed.isEmpty {
-            List {
-                if !viewModel.pendingWebsites.isEmpty {
-                    Section {
-                        ForEach(viewModel.pendingWebsites, id: \.id) { pending in
-                            pendingWebsiteListRow(pending: pending)
-                        }
-                    } header: {
-                        sidebarProminentSectionHeader("Adding")
-                    }
-                }
-                Section {
-                    if filteredItems.isEmpty {
-                        SidebarPanelPlaceholder(title: "No results.")
-                    } else {
-                        ForEach(filteredItems, id: \.id) { item in
-                            let index = staggerIndex(for: item.id, section: "search")
-                            websiteListRow(item: item, index: index, allowArchive: !item.archived)
+                    if isArchiveExpanded {
+                        if showArchiveLoadingPlaceholder {
+                            SelectableRow(isSelected: false) {
+                                archiveLoadingRow(message: "Loading archive...")
+                            }
+                        } else if showArchiveEmptyState {
+                            SelectableRow(isSelected: false) {
+                                Text(archivedEmptyStateText)
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            ForEach(archivedItems, id: \.id) { item in
+                                let index = staggerIndex(for: item.id, section: "archived")
+                                websiteListRow(item: item, index: index, allowArchive: false)
+                            }
                         }
                     }
-                } header: {
-                    sidebarProminentSectionHeader("Results")
                 }
             }
             .sidebarPanelListStyle()
@@ -354,48 +307,6 @@ extension WebsitesPanelView {
             .refreshable {
                 await viewModel.load()
             }
-        } else {
-            VStack(spacing: DesignTokens.Spacing.xs) {
-                websitesListView
-                websitesArchiveSection
-            }
-        }
-    }
-
-    var websitesListView: some View {
-        List {
-            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
-                if !pinnedItemsSorted.isEmpty {
-                    Section {
-                        ForEach(pinnedItemsSorted, id: \.id) { item in
-                            let index = staggerIndex(for: item.id, section: "pinned")
-                            websiteListRow(item: item, index: index, allowArchive: true)
-                        }
-                    } header: {
-                        sidebarProminentSectionHeader("Pinned")
-                    }
-                }
-
-                if !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
-                    Section {
-                        ForEach(viewModel.pendingWebsites, id: \.id) { pending in
-                            pendingWebsiteListRow(pending: pending)
-                        }
-                        ForEach(mainItems, id: \.id) { item in
-                            let index = staggerIndex(for: item.id, section: "main")
-                            websiteListRow(item: item, index: index, allowArchive: true)
-                        }
-                    } header: {
-                        sidebarProminentSectionHeader("Websites")
-                    }
-                }
-            }
-        }
-        .sidebarPanelListStyle()
-        .scrollContentBackground(.hidden)
-        .background(panelBackground)
-        .refreshable {
-            await viewModel.load()
         }
     }
 }

@@ -129,42 +129,6 @@ extension WebsitesPanelView {
         DesignTokens.Colors.sidebar
     }
 
-    var websitesArchiveSection: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            Divider()
-                .overlay(DesignTokens.Colors.border)
-                .padding(.bottom, DesignTokens.Spacing.xs)
-            DisclosureGroup(
-                isExpanded: $isArchiveExpanded,
-                content: {
-                    if showArchiveLoadingPlaceholder {
-                        archiveLoadingRow(message: "Loading archived websites...")
-                    } else if showArchiveEmptyState {
-                        Text(archivedEmptyStateText)
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: DesignTokens.Spacing.xs) {
-                                ForEach(archivedItems, id: \.id) { item in
-                                    let index = staggerIndex(for: item.id, section: "archive")
-                                    websiteListRow(item: item, index: index, useListStyling: false, allowArchive: false)
-                                }
-                            }
-                        }
-                        .frame(maxHeight: 650)
-                    }
-                },
-                label: {
-                    archiveLabel
-                }
-            )
-        }
-        .padding(.horizontal, DesignTokens.Spacing.md)
-        .padding(.vertical, DesignTokens.Spacing.sm)
-        .background(panelBackground)
-    }
-
     func staggerIndex(for id: String, section: String? = nil) -> Int {
         let key = section.map { "\($0):\(id)" } ?? id
         return abs(key.hashValue % 32)
@@ -189,17 +153,6 @@ extension WebsitesPanelView {
             Text(message)
                 .appFont(SidebarTypography.secondary)
                 .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    var archiveLabel: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Label("Archive", systemImage: "archivebox")
-                .appFont(SidebarTypography.primary)
-            if isArchiveLoading && !archivedItems.isEmpty {
-                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-            }
         }
     }
 

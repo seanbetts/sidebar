@@ -55,60 +55,63 @@ extension NotesPanelView {
             } header: {
                 sidebarProminentSectionHeader("Notes")
             }
-#if !os(macOS)
             Section {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                    Divider()
-                        .overlay(DesignTokens.Colors.border)
-                    DisclosureGroup(
-                        isExpanded: $isArchiveExpanded,
-                        content: {
-                            if showArchiveLoadingPlaceholder {
-                                archiveLoadingRow(message: "Loading archive...")
-                                    .padding(.leading, -DesignTokens.Spacing.sm)
-                                    .listRowSeparator(.hidden, edges: .top)
-                            } else if showArchiveEmptyState {
-                                Text(archivedEmptyStateText)
-                                    .appFont(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .listRowSeparator(.hidden, edges: .top)
-                            } else {
-                                OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-                                    NotesTreeRow(
-                                        item: item,
-                                        isSelected: viewModel.selectedNoteId == item.id
-                                    ) {
-                                        if item.isFile {
-                                            requestNoteSelection(id: item.id)
-                                        }
-                                    } onRename: {
-                                        beginRename(for: item)
-                                    } onDelete: {
-                                        confirmDelete(for: item)
-                                    }
-                                    .padding(.leading, -DesignTokens.Spacing.sm)
-                                    .platformContextMenu(items: noteContextMenuItemsList(for: item))
-                                }
-                                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
-                            }
-                        },
-                        label: {
-                            archiveLabel
-                        }
-                    )
-                }
-                .padding(.top, DesignTokens.Spacing.sm)
-                .listRowInsets(
-                    EdgeInsets(
-                        top: 0,
+                SelectableRow(
+                    isSelected: false,
+                    insets: EdgeInsets(
+                        top: DesignTokens.Spacing.sm,
                         leading: DesignTokens.Spacing.sm,
                         bottom: 0,
                         trailing: DesignTokens.Spacing.sm
                     )
-                )
-                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
+                ) {
+                    HStack(spacing: DesignTokens.Spacing.xs) {
+                        Label("Archive", systemImage: "archivebox")
+                            .appFont(SidebarTypography.primary)
+                        Spacer()
+                        if isArchiveLoading && !archivedNodes.isEmpty {
+                            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                        }
+                        Image(systemName: isArchiveExpanded ? "chevron.down" : "chevron.right")
+                            .appFont(SidebarTypography.secondary)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .onTapGesture {
+                    isArchiveExpanded.toggle()
+                }
+
+                if isArchiveExpanded {
+                    if showArchiveLoadingPlaceholder {
+                        SelectableRow(isSelected: false) {
+                            archiveLoadingRow(message: "Loading archive...")
+                        }
+                    } else if showArchiveEmptyState {
+                        SelectableRow(isSelected: false) {
+                            Text(archivedEmptyStateText)
+                                .appFont(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                            NotesTreeRow(
+                                item: item,
+                                isSelected: viewModel.selectedNoteId == item.id
+                            ) {
+                                if item.isFile {
+                                    requestNoteSelection(id: item.id)
+                                }
+                            } onRename: {
+                                beginRename(for: item)
+                            } onDelete: {
+                                confirmDelete(for: item)
+                            }
+                            .platformContextMenu(items: noteContextMenuItemsList(for: item))
+                        }
+                        .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
+                    }
+                }
             }
-#endif
         }
         .sidebarPanelListStyle()
         .scrollContentBackground(.hidden)
@@ -145,52 +148,6 @@ extension NotesPanelView {
         .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
     }
 
-    var notesArchiveSection: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            Divider()
-                .overlay(DesignTokens.Colors.border)
-                .padding(.bottom, DesignTokens.Spacing.xs)
-            DisclosureGroup(
-                isExpanded: $isArchiveExpanded,
-                content: {
-                    if showArchiveLoadingPlaceholder {
-                        archiveLoadingRow(message: "Loading archived notes...")
-                    } else if showArchiveEmptyState {
-                        Text(archivedEmptyStateText)
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ScrollView {
-                            OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-                                NotesTreeRow(
-                                    item: item,
-                                    isSelected: viewModel.selectedNoteId == item.id,
-                                    useListStyling: false
-                                ) {
-                                    if item.isFile {
-                                        requestNoteSelection(id: item.id)
-                                    }
-                                } onRename: {
-                                    beginRename(for: item)
-                                } onDelete: {
-                                    confirmDelete(for: item)
-                                }
-                                .platformContextMenu(items: noteContextMenuItemsList(for: item))
-                            }
-                        }
-                        .frame(maxHeight: 650)
-                    }
-                },
-                label: {
-                    archiveLabel
-                }
-            )
-        }
-        .padding(.horizontal, DesignTokens.Spacing.md)
-        .padding(.vertical, DesignTokens.Spacing.sm)
-        .background(panelBackground)
-    }
-
     @ViewBuilder
     private func archiveLoadingRow(message: String) -> some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
@@ -198,17 +155,6 @@ extension NotesPanelView {
             Text(message)
                 .appFont(SidebarTypography.secondary)
                 .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private var archiveLabel: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Label("Archive", systemImage: "archivebox")
-                .appFont(SidebarTypography.primary)
-            if isArchiveLoading && !archivedNodes.isEmpty {
-                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-            }
         }
     }
 

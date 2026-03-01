@@ -317,28 +317,4 @@ extension NotesPanelView {
             }
         }
     }
-
-    var notesPanelContentWithArchive: some View {
-        Group {
-            if let error = viewModel.errorMessage, viewModel.tree == nil {
-                SidebarPanelPlaceholder(
-                    title: "Unable to load notes",
-                    subtitle: error,
-                    actionTitle: "Retry",
-                    style: .error
-                ) {
-                    Task { await viewModel.loadTree() }
-                }
-            } else if viewModel.tree == nil {
-                SidebarListSkeleton(rowCount: 8, showSubtitle: false)
-            } else if !viewModel.searchQuery.trimmed.isEmpty {
-                searchResultsView
-            } else {
-                VStack(spacing: DesignTokens.Spacing.xs) {
-                    notesTreeListView
-                    notesArchiveSection
-                }
-            }
-        }
-    }
 }
