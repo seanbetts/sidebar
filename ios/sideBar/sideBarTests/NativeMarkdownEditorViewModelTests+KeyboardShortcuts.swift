@@ -28,7 +28,7 @@ extension NativeMarkdownEditorViewModelTests {
 
     func testHandleListDepthKeyboardShortcutReturnsFalseWhenReadOnlyListSelected() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("List item")
+        viewModel.loadText("List item")
         var line = keyboardFirstLine(in: viewModel.attributedContent)
         viewModel.attributedContent[line].blockKind = .bulletList
         viewModel.attributedContent[line].listDepth = 1

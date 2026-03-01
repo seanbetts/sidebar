@@ -7,7 +7,7 @@ import XCTest
 final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
     func testPromoteHeadingKeepsSelectedRange() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("hello world")
+        viewModel.loadText("hello world")
 
         let start = viewModel.attributedContent.startIndex
         let end = viewModel.attributedContent.index(start, offsetByCharacters: 5)
@@ -22,7 +22,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
 
     func testCanAdjustListDepthWhenParagraphIsListBlock() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("Item")
+        viewModel.loadText("Item")
         var line = firstLineRange(in: viewModel.attributedContent)
         viewModel.attributedContent[line].blockKind = .bulletList
         viewModel.attributedContent[line].listDepth = 1
@@ -34,7 +34,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
 
     func testBlockquoteDisplaysReadMarkerAndExportsCleanMarkdown() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("> Quoted")
+        viewModel.loadText("> Quoted")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
@@ -45,7 +45,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
 
     func testHorizontalRuleInsertionProducesMarkdownRule() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("alpha")
+        viewModel.loadText("alpha")
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
 
@@ -56,7 +56,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
 
     func testHeadingParagraphStyleRetainsVerticalSpacing() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("## Heading\nBody")
+        viewModel.loadText("## Heading\nBody")
 
         let firstLine = firstLineRange(in: viewModel.attributedContent)
         let style = viewModel.attributedContent[firstLine].paragraphStyle
@@ -67,7 +67,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
 
     func testSpacingBeforeCollapsesAgainstPreviousParagraphSpacing() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("Body\n## Heading")
+        viewModel.loadText("Body\n## Heading")
 
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
@@ -89,7 +89,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
 
     func testNewlineAfterBlockquoteResetsTypingAttributesToParagraph() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("> Quote")
+        viewModel.loadText("> Quote")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }

@@ -7,7 +7,7 @@ import SwiftUI
 final class NativeMarkdownListContinuationTests: XCTestCase {
     func testEnterInBulletListContinuesListFormatting() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("- Item")
+        viewModel.loadText("- Item")
         await waitForPrefixVisibility(on: viewModel)
 
         pressReturn(in: viewModel)
@@ -26,7 +26,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterInOrderedListContinuesAndAdvancesOrdinal() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("1. One")
+        viewModel.loadText("1. One")
         await waitForPrefixVisibility(on: viewModel)
 
         pressReturn(in: viewModel)
@@ -44,7 +44,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterAfterCheckedTaskStartsUncheckedTask() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("- [x] Done")
+        viewModel.loadText("- [x] Done")
         await waitForPrefixVisibility(on: viewModel)
 
         pressReturn(in: viewModel)
@@ -58,7 +58,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterOnEmptyBulletListItemExitsList() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("- Item")
+        viewModel.loadText("- Item")
         await waitForPrefixVisibility(on: viewModel)
 
         pressReturn(in: viewModel)
@@ -71,7 +71,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterOnEmptyOrderedListItemExitsList() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("1. One")
+        viewModel.loadText("1. One")
         await waitForPrefixVisibility(on: viewModel)
 
         pressReturn(in: viewModel)
@@ -84,7 +84,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterOnEmptyTaskListItemExitsList() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("- [ ] Todo")
+        viewModel.loadText("- [ ] Todo")
         await waitForPrefixVisibility(on: viewModel)
 
         pressReturn(in: viewModel)

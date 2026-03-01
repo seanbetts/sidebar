@@ -737,7 +737,7 @@ extension NotesEditorViewModelTests {
         }
         let nonCanonical = "- [x] Done"
         let canonicalProbe = NativeMarkdownEditorViewModel()
-        canonicalProbe.loadMarkdown(nonCanonical)
+        canonicalProbe.loadText(nonCanonical)
         let canonicalPlainText = canonicalProbe.currentPlainText()
         XCTAssertNotEqual(canonicalPlainText, nonCanonical)
 
@@ -838,7 +838,7 @@ extension NotesEditorViewModelTests {
 @MainActor
 private func canonicalPlainTextPass(_ plainText: String) -> String {
     let probe = NativeMarkdownEditorViewModel()
-    probe.loadMarkdown(plainText)
+    probe.loadText(plainText)
     return probe.currentPlainText()
 }
 

@@ -7,7 +7,7 @@ import SwiftUI
 final class NativeMarkdownEditorRegressionTests: XCTestCase {
     func testApplyFormattingPromoteAndDemoteHeadingAdjustLevel() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("hello")
+        viewModel.loadText("hello")
         var lineRange = firstLine(in: viewModel.attributedContent)
         viewModel.attributedContent[lineRange].blockKind = .heading3
         viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
@@ -24,7 +24,7 @@ final class NativeMarkdownEditorRegressionTests: XCTestCase {
 
     func testApplyFormattingPromoteHeadingDefaultsParagraphToHeadingTwo() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("hello")
+        viewModel.loadText("hello")
         let lineRange = firstLine(in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
 
@@ -36,7 +36,7 @@ final class NativeMarkdownEditorRegressionTests: XCTestCase {
 
     func testHandleContentChangeRemovesUnderlineFromNonLinksOnly() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("plain\nlinked")
+        viewModel.loadText("plain\nlinked")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }

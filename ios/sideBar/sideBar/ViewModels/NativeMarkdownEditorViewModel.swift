@@ -75,10 +75,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         updatePrefixVisibility()
     }
 
-    public func loadMarkdown(_ markdown: String) {
-        loadText(markdown)
-    }
-
     public func currentMarkdown() -> String {
         var exportContent = attributedContent
         let selection = selectionSnapshot(in: exportContent)
@@ -98,10 +94,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     public func markSaved(plainText: String) {
         lastSavedContent = plainText
         hasUnsavedChanges = false
-    }
-
-    public func markSaved(markdown: String) {
-        markSaved(plainText: markdown)
     }
 
     public func isBoldActive() -> Bool {
