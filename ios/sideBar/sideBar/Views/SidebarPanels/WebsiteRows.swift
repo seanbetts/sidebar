@@ -24,7 +24,7 @@ struct PendingWebsiteRow: View, Equatable {
                         .appFont(.subheadline)
                         .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
-                    Text(pending.status.label)
+                    Text(pending.statusLabel)
                         .appFont(.caption)
                         .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)

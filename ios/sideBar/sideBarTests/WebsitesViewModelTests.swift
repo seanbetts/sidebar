@@ -232,6 +232,7 @@ final class WebsitesViewModelTests: XCTestCase {
 
         XCTAssertNotNil(viewModel.pendingWebsite)
         XCTAssertEqual(viewModel.pendingWebsite?.title, "Watching...")
+        XCTAssertEqual(viewModel.pendingWebsite?.statusLabel, "Watching...")
         XCTAssertEqual(viewModel.detailLoadingMessage, "Watching...")
         XCTAssertEqual(viewModel.selectedWebsiteId, viewModel.pendingWebsite?.id)
         XCTAssertTrue(viewModel.isLoadingDetail)

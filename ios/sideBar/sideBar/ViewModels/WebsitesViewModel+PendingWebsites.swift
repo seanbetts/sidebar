@@ -59,6 +59,14 @@ extension WebsitesViewModel {
             self.queueItemId = queueItemId
             self.status = status
         }
+
+        /// User-facing status label with YouTube-specific wording for active processing.
+        public var statusLabel: String {
+            if status == .reading, YouTubeURLPolicy.extractVideoId(from: url) != nil {
+                return "Watching..."
+            }
+            return status.label
+        }
     }
 }
 
