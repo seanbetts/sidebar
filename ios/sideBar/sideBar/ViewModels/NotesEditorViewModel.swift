@@ -232,22 +232,22 @@ public final class NotesEditorViewModel: ObservableObject {
         }
     }
 
-    public func currentMarkdownSnapshot(fallback: String = "") -> String {
+    public func currentPlainTextSnapshot(fallback: String = "") -> String {
         if #available(iOS 26.0, macOS 26.0, *) {
             if let nativeEditorViewModel {
-                let markdown = nativeEditorViewModel.currentMarkdown()
-                return markdown.isEmpty ? fallback : markdown
+                let plainText = nativeEditorViewModel.currentPlainText()
+                return plainText.isEmpty ? fallback : plainText
             }
             let source = content.isEmpty ? fallback : content
             guard !source.isEmpty else { return "" }
-            return canonicalMarkdownSnapshot(from: source)
+            return canonicalPlainTextSnapshot(from: source)
         }
         return content.isEmpty ? fallback : content
     }
 
     public func resolveConflictKeepLocal() async {
         guard let conflict else { return }
-        let canonicalLocalContent = canonicalMarkdownForPersistence(conflict.localContent)
+        let canonicalLocalContent = canonicalPlainTextForPersistence(conflict.localContent)
         content = canonicalLocalContent
         isDirty = true
         isQueuedForSync = true
@@ -272,7 +272,7 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let conflict else { return }
         let folder = folderPath(from: conflict.notePath)
         let copyTitle = copyTitle(from: conflict.noteName)
-        let localContent = canonicalMarkdownForPersistence(conflict.localContent)
+        let localContent = canonicalPlainTextForPersistence(conflict.localContent)
         content = conflict.serverContent
         isDirty = false
         try? draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
@@ -303,18 +303,18 @@ public final class NotesEditorViewModel: ObservableObject {
         }
     }
 
-    private func canonicalMarkdownForPersistence(_ markdown: String) -> String {
+    private func canonicalPlainTextForPersistence(_ plainText: String) -> String {
         if #available(iOS 26.0, macOS 26.0, *) {
-            return canonicalMarkdownSnapshot(from: markdown)
+            return canonicalPlainTextSnapshot(from: plainText)
         }
-        return markdown
+        return plainText
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    private func canonicalMarkdownSnapshot(from markdown: String) -> String {
+    private func canonicalPlainTextSnapshot(from plainText: String) -> String {
         let nativeViewModel = NativeMarkdownEditorViewModel()
-        nativeViewModel.loadMarkdown(markdown)
-        return nativeViewModel.currentMarkdown()
+        nativeViewModel.loadMarkdown(plainText)
+        return nativeViewModel.currentPlainText()
     }
 
     @available(iOS 26.0, macOS 26.0, *)

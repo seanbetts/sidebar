@@ -332,7 +332,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(api.updatedContents, ["First", "Second"])
     }
 
-    func testCurrentMarkdownSnapshotUsesAttachedNativeEditorContent() async throws {
+    func testCurrentPlainTextSnapshotUsesAttachedNativeEditorContent() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -379,12 +379,12 @@ final class NotesEditorViewModelTests: XCTestCase {
         nativeViewModel.attributedContent = AttributedString("Local unsaved body")
 
         XCTAssertEqual(
-            viewModel.currentMarkdownSnapshot(fallback: "fallback"),
+            viewModel.currentPlainTextSnapshot(fallback: "fallback"),
             "Local unsaved body"
         )
     }
 
-    func testCurrentMarkdownSnapshotCanonicalizesWhenNativeEditorDetached() async throws {
+    func testCurrentPlainTextSnapshotCanonicalizesWhenNativeEditorDetached() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -429,7 +429,7 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         let canonical = canonicalSnapshotOutput(nonCanonical)
 
-        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), canonical)
+        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), canonical)
     }
 
 }
@@ -481,10 +481,10 @@ extension NotesEditorViewModelTests {
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
         nativeViewModel.attributedContent = AttributedString("Local unsaved body")
-        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), "Local unsaved body")
+        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
 
         viewModel.detachNativeEditor(nativeViewModel)
-        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), "Server body")
+        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Server body")
     }
 
     func testDetachNativeEditorIgnoresDifferentEditorInstance() async throws {
@@ -532,11 +532,11 @@ extension NotesEditorViewModelTests {
         let attachedEditor = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(attachedEditor)
         attachedEditor.attributedContent = AttributedString("Local unsaved body")
-        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), "Local unsaved body")
+        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
 
         let differentEditor = NativeMarkdownEditorViewModel()
         viewModel.detachNativeEditor(differentEditor)
-        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), "Local unsaved body")
+        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
     }
 
     func testResolveConflictKeepLocalCanonicalizesDraftContent() async throws {
@@ -597,7 +597,7 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(draft?.content, canonical)
     }
 
-    func testCurrentMarkdownSnapshotCanonicalizationDriftReturnsStableOutput() async throws {
+    func testCurrentPlainTextSnapshotCanonicalizationDriftReturnsStableOutput() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -644,9 +644,9 @@ extension NotesEditorViewModelTests {
         store.applyEditorUpdate(note)
         await Task.yield()
 
-        let snapshot = viewModel.currentMarkdownSnapshot(fallback: "fallback")
+        let snapshot = viewModel.currentPlainTextSnapshot(fallback: "fallback")
         XCTAssertNotEqual(snapshot, driftInput)
-        XCTAssertEqual(viewModel.currentMarkdownSnapshot(fallback: "fallback"), snapshot)
+        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), snapshot)
     }
 
     func testResolveConflictKeepBothCanonicalizesCopiedContent() async throws {
@@ -836,16 +836,16 @@ extension NotesEditorViewModelTests {
 
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-private func canonicalMarkdownPass(_ markdown: String) -> String {
+private func canonicalPlainTextPass(_ plainText: String) -> String {
     let probe = NativeMarkdownEditorViewModel()
-    probe.loadMarkdown(markdown)
-    return probe.currentMarkdown()
+    probe.loadMarkdown(plainText)
+    return probe.currentPlainText()
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
 private func canonicalSnapshotOutput(_ markdown: String) -> String {
-    canonicalMarkdownPass(markdown)
+    canonicalPlainTextPass(markdown)
 }
 
 private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {

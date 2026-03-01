@@ -44,7 +44,7 @@ public final class NotesRuntime: ObservableObject {
     /// Build canonical open-note context for prompt requests.
     public func openNoteContext() -> [String: Any]? {
         guard let activeNote else { return nil }
-        let noteText = editorViewModel.currentMarkdownSnapshot(
+        let noteText = editorViewModel.currentPlainTextSnapshot(
             fallback: activeNote.content
         )
         return [
