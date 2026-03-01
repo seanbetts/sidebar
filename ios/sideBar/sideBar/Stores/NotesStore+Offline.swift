@@ -72,7 +72,6 @@ extension NotesStore {
 
     /// Enqueues an offline note-content update operation.
     public func enqueueUpdate(noteId: String, content: String) async throws {
-        let canonicalContent = canonicalizedNoteContentForPersistence(content)
         let snapshot = makeServerSnapshot(noteId: noteId, notePath: nil)
         try await enqueueOfflineOperation(
             writeQueue: writeQueue,
@@ -80,8 +79,8 @@ extension NotesStore {
             entityType: .note,
             entityId: noteId,
             payload: NoteUpdateRequest(
-                content: canonicalContent,
-                plainText: canonicalContent
+                content: content,
+                plainText: content
             ),
             serverSnapshot: snapshot
         )
@@ -228,10 +227,6 @@ extension NotesStore {
         let lastSyncAt = offlineStore?.lastSyncAt(for: cacheKey)
         offlineStore?.set(key: cacheKey, entityType: "notesTree", value: updatedTree, lastSyncAt: lastSyncAt)
         updateWidgetData(from: updatedTree)
-    }
-
-    private func canonicalizedNoteContentForPersistence(_ content: String) -> String {
-        NoteTextCanonicalizer.canonicalized(content)
     }
 
     private func updateCachedNotePath(from oldPath: String, to newPath: String, newName: String?) {

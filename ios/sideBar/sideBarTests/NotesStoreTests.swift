@@ -257,13 +257,8 @@ final class NotesStoreTests: XCTestCase {
         await firstRefresh.value
     }
 
-    func testResolveConflictKeepLocalEnqueuesCanonicalizedOfflineUpdate() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
+    func testResolveConflictKeepLocalEnqueuesOfflineUpdateWithLocalPlainText() async throws {
         let nonCanonical = "- [x] Done"
-        let canonical = NoteTextCanonicalizer.canonicalized(nonCanonical)
-        XCTAssertNotEqual(canonical, nonCanonical)
 
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
@@ -310,8 +305,8 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertEqual(writes.count, 1)
         let write = try XCTUnwrap(writes.first)
         let payload = try JSONDecoder().decode(NoteUpdateRequest.self, from: write.payload)
-        XCTAssertEqual(payload.content, canonical)
-        XCTAssertEqual(payload.plainText, canonical)
+        XCTAssertEqual(payload.content, nonCanonical)
+        XCTAssertEqual(payload.plainText, nonCanonical)
     }
 }
 

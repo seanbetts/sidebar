@@ -5,14 +5,8 @@ import XCTest
 
 @MainActor
 final class NotesWriteQueueExecutorTests: XCTestCase {
-    func testExecuteUpdateCanonicalizesQueuedNoteContentBeforeApiCall() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-
+    func testExecuteUpdateForwardsQueuedNotePlainTextBeforeApiCall() async throws {
         let nonCanonical = "- [x] Done"
-        let canonical = NoteTextCanonicalizer.canonicalized(nonCanonical)
-        XCTAssertNotEqual(canonical, nonCanonical)
 
         let api = NotesWriteQueueExecutorAPISpy()
         let store = NotesWriteQueueExecutorStoreSpy()
@@ -31,8 +25,8 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
 
         try await executor.execute(write: write)
 
-        XCTAssertEqual(api.updatedContents, [canonical])
-        XCTAssertEqual(store.appliedNotes.map(\.content), [canonical])
+        XCTAssertEqual(api.updatedContents, [nonCanonical])
+        XCTAssertEqual(store.appliedNotes.map(\.content), [nonCanonical])
     }
 }
 

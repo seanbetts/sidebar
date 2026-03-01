@@ -151,34 +151,6 @@ def test_check_reports_direct_markdown_utility_references_in_native_note_editor(
     assert any("MarkdownHeadingMetrics" in violation.token for violation in violations)
 
 
-def test_check_reports_direct_markdown_utility_references_in_note_text_canonicalizer(
-    tmp_path: Path,
-) -> None:
-    """Note text canonicalizer should not directly reference markdown utility symbols."""
-    canonicalizer_file = (
-        tmp_path / "ios/sideBar/sideBar/Utilities/NoteTextCanonicalizer.swift"
-    )
-    _write(
-        canonicalizer_file,
-        """
-        import Foundation
-        enum NoteTextCanonicalizer {
-            static func canonicalized(_ content: String) -> String {
-                let imported = MarkdownImporter().attributedString(from: content)
-                let constrained = MarkdownFormattingDefinition().constrainedDocument(imported.attributedString)
-                return MarkdownExporter().markdown(from: constrained, frontmatter: imported.frontmatter)
-            }
-        }
-        """,
-    )
-
-    violations = check(tmp_path)
-
-    assert any("MarkdownImporter" in violation.token for violation in violations)
-    assert any("MarkdownFormattingDefinition" in violation.token for violation in violations)
-    assert any("MarkdownExporter" in violation.token for violation in violations)
-
-
 def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
     """No violations should be reported for clean runtime and shell files."""
     _write(

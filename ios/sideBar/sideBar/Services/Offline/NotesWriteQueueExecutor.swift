@@ -42,8 +42,7 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
             content: payload.content,
             plainText: payload.plainText
         )
-        let canonicalContent = canonicalizedNoteContent(normalized.plainText)
-        let updated = try await api.updateNote(id: noteId, content: canonicalContent)
+        let updated = try await api.updateNote(id: noteId, content: normalized.plainText)
         store.applyEditorUpdate(updated)
     }
 
@@ -159,9 +158,5 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         } catch {
             logger.error("Failed to refresh note tree after queued write: \(error.localizedDescription, privacy: .public)")
         }
-    }
-
-    private func canonicalizedNoteContent(_ content: String) -> String {
-        NoteTextCanonicalizer.canonicalized(content)
     }
 }
