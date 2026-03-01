@@ -38,9 +38,6 @@ try:
 except ImportError:  # pragma: no cover - direct script invocation path
     from db_env import setup_environment  # type: ignore[no-redef]
 
-from api.db.session import SessionLocal, set_session_user_id  # noqa: E402
-from api.models.note import Note  # noqa: E402
-
 logger = logging.getLogger(__name__)
 
 MAX_NOTE_RTF_BYTES = 2_097_152
@@ -48,6 +45,7 @@ JSON_HEADROOM = 512
 MAX_NOTE_CONTENT_B64_CHARS = ((MAX_NOTE_RTF_BYTES + 2) // 3) * 4 + JSON_HEADROOM
 MIGRATION_VERSION_DEFAULT = "notes-rtf-v1"
 NON_CANONICAL_SAMPLE_LIMIT = 20
+NOTE_MODEL: Any = None
 
 
 @dataclass
@@ -227,7 +225,7 @@ def canonical_metadata_issues(metadata: Any) -> list[str]:
     return issues
 
 
-def is_note_canonical(note: Note) -> tuple[bool, list[str]]:
+def is_note_canonical(note: Any) -> tuple[bool, list[str]]:
     issues = []
     issues.extend(canonical_content_issues(note.content))
     issues.extend(canonical_metadata_issues(note.metadata_))
@@ -254,14 +252,24 @@ def build_canonical_payload(
 
 
 def _build_note_query(db: Session, options: MigrationOptions):
-    query = db.query(Note).order_by(Note.created_at.asc(), Note.id.asc())
+    global NOTE_MODEL
+    if NOTE_MODEL is None:
+        from api.models.note import Note as NoteModel
+
+        NOTE_MODEL = NoteModel
+    query = db.query(NOTE_MODEL).order_by(NOTE_MODEL.created_at.asc(), NOTE_MODEL.id.asc())
     if options.user_id:
-        query = query.filter(Note.user_id == options.user_id)
+        query = query.filter(NOTE_MODEL.user_id == options.user_id)
     if not options.include_deleted:
-        query = query.filter(Note.deleted_at.is_(None))
+        query = query.filter(NOTE_MODEL.deleted_at.is_(None))
     if options.limit is not None:
         query = query.limit(options.limit)
     return query
+
+
+def _list_note_ids(db: Session, options: MigrationOptions) -> list[Any]:
+    query = _build_note_query(db, options).with_entities(NOTE_MODEL.id)
+    return [row[0] for row in query.all()]
 
 
 def _scan_non_canonical_after(
@@ -270,7 +278,10 @@ def _scan_non_canonical_after(
 ) -> tuple[int, list[str]]:
     non_canonical_count = 0
     sample_ids: list[str] = []
-    for note in _build_note_query(db, options).yield_per(200):
+    for note_id in _list_note_ids(db, options):
+        note = db.query(NOTE_MODEL).filter(NOTE_MODEL.id == note_id).first()
+        if note is None:
+            continue
         is_canonical, _ = is_note_canonical(note)
         if is_canonical:
             continue
@@ -289,7 +300,10 @@ def migrate_notes(db: Session, options: MigrationOptions) -> MigrationReport:
     )
     migrated_at = datetime.now(UTC).isoformat()
 
-    for note in _build_note_query(db, options).yield_per(200):
+    for note_id in _list_note_ids(db, options):
+        note = db.query(NOTE_MODEL).filter(NOTE_MODEL.id == note_id).first()
+        if note is None:
+            continue
         report.total_rows += 1
         is_canonical, _issues = is_note_canonical(note)
         if is_canonical:
@@ -379,6 +393,11 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     setup_environment(database_url=args.database_url, supabase=args.supabase)
+    global NOTE_MODEL
+    from api.models.note import Note as NoteModel
+    from api.db.session import SessionLocal, set_session_user_id
+    NOTE_MODEL = NoteModel
+
     try:
         assert_safe_environment(allow_production=args.allow_production)
     except RuntimeError as exc:
