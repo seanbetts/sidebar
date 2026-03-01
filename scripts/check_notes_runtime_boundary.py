@@ -30,6 +30,7 @@ NOTES_SHELL_RELATIVE_PATHS = (
     Path("Views/Notes/NotesDetailView+FileOperations.swift"),
     Path("Views/Notes/AttributedNoteEditorContainer.swift"),
     Path("Views/Notes/AttributedNoteKeyboardShortcuts.swift"),
+    Path("Utilities/NoteTextCanonicalizer.swift"),
 )
 NOTES_EDITOR_GLOB = "ViewModels/NativeNoteEditorViewModel*.swift"
 FORBIDDEN_NOTES_SHELL_PATTERNS = (
