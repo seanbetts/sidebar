@@ -40,7 +40,7 @@ struct NotesDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !isCompact {
+            if !isCompact, !isShowingWelcomeHome {
                 header
                 Divider()
             }
@@ -358,6 +358,12 @@ extension NotesDetailView {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+
+    private var isShowingWelcomeHome: Bool {
+        viewModel.activeNote == nil
+            && viewModel.selectedNoteId == nil
+            && viewModel.tree != nil
     }
 
     #if os(iOS)

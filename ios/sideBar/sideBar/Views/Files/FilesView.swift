@@ -17,7 +17,7 @@ public struct FilesView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            if !isCompact {
+            if !isCompact, !isShowingWelcomeHome {
                 FilesHeaderView(
                     viewModel: environment.ingestionViewModel,
                     pdfController: pdfController
@@ -99,6 +99,31 @@ public struct FilesView: View {
     private var shouldShowPdfControls: Bool {
         guard let mime = selectedMimeOriginal else { return false }
         return mime.split(separator: ";").first?.trimmed.lowercased() == "application/pdf"
+    }
+
+    private var isShowingWelcomeHome: Bool {
+        let viewModel = environment.ingestionViewModel
+        if viewModel.activeMeta != nil {
+            return false
+        }
+        if let selectedItem = viewModel.selectedItem,
+           viewModel.selectedFileId != nil,
+           viewModel.errorMessage == nil,
+           !viewModel.isSelecting,
+           !viewModel.isLoadingContent,
+           FilesWorkspaceDisplayPolicy.shouldShowProcessingStateInMainWorkspace(for: selectedItem) {
+            return false
+        }
+        if viewModel.errorMessage != nil {
+            return false
+        }
+        if viewModel.isSelecting || viewModel.selectedFileId != nil {
+            return false
+        }
+        if viewModel.isLoading && viewModel.items.isEmpty {
+            return false
+        }
+        return true
     }
 
     private var selectedMimeOriginal: String? {

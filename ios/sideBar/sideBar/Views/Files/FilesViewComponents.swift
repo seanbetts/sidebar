@@ -130,7 +130,7 @@ struct FilesDetailContainer: View {
                   viewModel.errorMessage == nil,
                   !viewModel.isSelecting,
                   !viewModel.isLoadingContent,
-                  shouldShowProcessingState(for: selectedItem) {
+                  FilesWorkspaceDisplayPolicy.shouldShowProcessingStateInMainWorkspace(for: selectedItem) {
             FilesProcessingView(item: selectedItem)
         } else if let message = viewModel.errorMessage {
             PlaceholderView(
@@ -150,11 +150,6 @@ struct FilesDetailContainer: View {
         } else {
             WelcomeEmptyView()
         }
-    }
-
-    private func shouldShowProcessingState(for item: IngestionListItem) -> Bool {
-        let status = item.statusValue
-        return ![IngestionListItem].terminalStatuses.contains(status)
     }
 
     private var shouldShowPdfHeader: Bool {
@@ -205,6 +200,11 @@ struct FilesProcessingView: View {
 }
 
 enum FilesWorkspaceDisplayPolicy {
+    static func shouldShowProcessingStateInMainWorkspace(for item: IngestionListItem) -> Bool {
+        let status = item.statusValue
+        return ![IngestionListItem].terminalStatuses.contains(status)
+    }
+
     static func shouldShowUploadProgressInMainWorkspace(for _: IngestionListItem) -> Bool {
         false
     }

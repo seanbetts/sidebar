@@ -30,7 +30,7 @@ struct WebsitesDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !isCompact {
+            if !isCompact, !isShowingWelcomeHome {
                 header
                 Divider()
             }
@@ -361,6 +361,14 @@ extension WebsitesDetailView {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+
+    private var isShowingWelcomeHome: Bool {
+        viewModel.active == nil
+            && !viewModel.isLoadingDetail
+            && viewModel.pendingWebsites.isEmpty
+            && !(viewModel.errorMessage != nil && viewModel.selectedWebsiteId != nil)
+            && !(viewModel.isLoading && viewModel.items.isEmpty)
     }
 
     func openSource() {
