@@ -38,7 +38,11 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         guard let noteId = write.entityId else { return }
         try await checkForConflictIfNeeded(noteId: noteId, write: write)
         let payload = try decoder.decode(NoteUpdateRequest.self, from: write.payload)
-        let canonicalContent = canonicalizedNoteContent(payload.content)
+        let normalized = NotesRichTextCodec.normalizeWriteInput(
+            content: payload.content,
+            plainText: payload.plainText
+        )
+        let canonicalContent = canonicalizedNoteContent(normalized.plainText)
         let updated = try await api.updateNote(id: noteId, content: canonicalContent)
         store.applyEditorUpdate(updated)
     }

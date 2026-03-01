@@ -21,6 +21,26 @@ final class RealtimeMappersTests: XCTestCase {
         XCTAssertNotNil(mapped?.modified)
     }
 
+    func testMapNotePrefersMetadataPlainText() {
+        let encoded = NotesRichTextCodec.encodePlainTextToBase64RTF("Rich text body")
+        let record = NoteRealtimeRecord(
+            id: "n2",
+            title: "Title",
+            content: encoded,
+            metadata: [
+                "plain_text": AnyCodable("Cached plain text"),
+                "content_format": AnyCodable("rtf")
+            ],
+            updatedAt: "2024-01-01T12:00:00.000Z",
+            deletedAt: nil
+        )
+
+        let mapped = RealtimeMappers.mapNote(record)
+
+        XCTAssertEqual(mapped?.content, "Cached plain text")
+        XCTAssertEqual(mapped?.contentFormat, "rtf")
+    }
+
     func testMapWebsiteUsesMetadataFlags() {
         let record = WebsiteRealtimeRecord(
             id: "w1",

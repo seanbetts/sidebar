@@ -163,7 +163,10 @@ public final class NotesEditorViewModel: ObservableObject {
         }
 
         if !networkStatus.isNetworkAvailable {
-            let payload = NoteUpdatePayload(content: markdown)
+            let payload = NoteUpdatePayload(
+                content: markdown,
+                plainText: markdown
+            )
             let snapshot = makeServerSnapshot(noteId: noteId)
             do {
                 try await writeQueue.enqueue(
@@ -198,7 +201,10 @@ public final class NotesEditorViewModel: ObservableObject {
             isQueuedForSync = false
         } else {
             saveErrorMessage = "Failed to save note"
-            let payload = NoteUpdatePayload(content: markdown)
+            let payload = NoteUpdatePayload(
+                content: markdown,
+                plainText: markdown
+            )
             let snapshot = makeServerSnapshot(noteId: noteId)
             do {
                 try await writeQueue.enqueue(
@@ -342,6 +348,12 @@ public final class NotesEditorViewModel: ObservableObject {
 
 private struct NoteUpdatePayload: Codable {
     let content: String
+    let plainText: String?
+
+    enum CodingKeys: String, CodingKey {
+        case content
+        case plainText = "plain_text"
+    }
 }
 
 private func folderPath(from notePath: String) -> String? {

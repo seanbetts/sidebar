@@ -66,11 +66,23 @@ public struct NotesAPI {
     }
 
     public func createNote(request: NoteCreateRequest) async throws -> NotePayload {
-        try await client.request("notes", method: "POST", body: request)
+        try await client.request(
+            "notes",
+            method: "POST",
+            body: request.canonicalized()
+        )
     }
 
     public func updateNote(id: String, content: String) async throws -> NotePayload {
-        try await client.request("notes/\(id)", method: "PATCH", body: NoteUpdateRequest(content: content))
+        let normalized = NotesRichTextCodec.normalizeWriteInput(content: content)
+        return try await client.request(
+            "notes/\(id)",
+            method: "PATCH",
+            body: NoteUpdateRequest(
+                content: normalized.content,
+                plainText: normalized.plainText
+            )
+        )
     }
 
     public func renameNote(id: String, newName: String) async throws -> NotePayload {
@@ -130,6 +142,66 @@ public struct NotePayload: Codable, Equatable {
     public let path: String
     public let modified: Double?
     public let created: Double?
+    public let contentFormat: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case content
+        case path
+        case modified
+        case created
+        case plainText = "plain_text"
+        case plainTextCamel = "plainText"
+        case contentFormat = "content_format"
+        case contentFormatCamel = "contentFormat"
+    }
+
+    public init(
+        id: String,
+        name: String,
+        content: String,
+        path: String,
+        modified: Double?,
+        created: Double?,
+        contentFormat: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.content = content
+        self.path = path
+        self.modified = modified
+        self.created = created
+        self.contentFormat = contentFormat
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        path = try container.decode(String.self, forKey: .path)
+        modified = try container.decodeIfPresent(Double.self, forKey: .modified)
+        created = try container.decodeIfPresent(Double.self, forKey: .created)
+        let rawContent = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
+        let plainText = try container.decodeIfPresent(String.self, forKey: .plainText)
+            ?? container.decodeIfPresent(String.self, forKey: .plainTextCamel)
+            ?? NotesRichTextCodec.decodeBase64RTFToPlainText(rawContent)
+        content = plainText ?? rawContent
+        contentFormat = try container.decodeIfPresent(String.self, forKey: .contentFormat)
+            ?? container.decodeIfPresent(String.self, forKey: .contentFormatCamel)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(content, forKey: .content)
+        try container.encode(path, forKey: .path)
+        try container.encodeIfPresent(modified, forKey: .modified)
+        try container.encodeIfPresent(created, forKey: .created)
+        try container.encode(content, forKey: .plainText)
+        try container.encodeIfPresent(contentFormat, forKey: .contentFormat)
+    }
 }
 
 /// Request body for creating a note.
@@ -138,11 +210,59 @@ public struct NoteCreateRequest: Codable {
     public let title: String?
     public let path: String?
     public let folder: String?
+    public let plainText: String?
+
+    enum CodingKeys: String, CodingKey {
+        case content
+        case title
+        case path
+        case folder
+        case plainText = "plain_text"
+    }
+
+    public init(
+        content: String,
+        title: String? = nil,
+        path: String? = nil,
+        folder: String? = nil,
+        plainText: String? = nil
+    ) {
+        self.content = content
+        self.title = title
+        self.path = path
+        self.folder = folder
+        self.plainText = plainText
+    }
+
+    func canonicalized() -> NoteCreateRequest {
+        let normalized = NotesRichTextCodec.normalizeWriteInput(
+            content: content,
+            plainText: plainText
+        )
+        return NoteCreateRequest(
+            content: normalized.content,
+            title: title,
+            path: path,
+            folder: folder,
+            plainText: normalized.plainText
+        )
+    }
 }
 
 /// Request body for updating note content.
 public struct NoteUpdateRequest: Codable {
     public let content: String
+    public let plainText: String?
+
+    enum CodingKeys: String, CodingKey {
+        case content
+        case plainText = "plain_text"
+    }
+
+    public init(content: String, plainText: String? = nil) {
+        self.content = content
+        self.plainText = plainText
+    }
 }
 
 /// Request body for renaming a note.

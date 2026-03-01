@@ -79,7 +79,10 @@ extension NotesStore {
             operation: .update,
             entityType: .note,
             entityId: noteId,
-            payload: NoteUpdateRequest(content: canonicalContent),
+            payload: NoteUpdateRequest(
+                content: canonicalContent,
+                plainText: canonicalContent
+            ),
             serverSnapshot: snapshot
         )
     }
