@@ -114,8 +114,6 @@ private struct NativeReadOnlyMarkdownTextView: UIViewRepresentable {
         textView.isSelectable = true
         textView.isScrollEnabled = true
         textView.allowsEditingTextAttributes = false
-        textView.textContainerInset = .zero
-        textView.textContainer.lineFragmentPadding = 0
         textView.attributedText = NSAttributedString(attributedContent)
 
         let tapRecognizer = UITapGestureRecognizer(
@@ -165,8 +163,6 @@ private struct NativeReadOnlyMarkdownTextView: NSViewRepresentable {
         textView.isEditable = false
         textView.isSelectable = true
         textView.allowsImageEditing = false
-        textView.textContainerInset = .zero
-        textView.textContainer?.lineFragmentPadding = 0
         textView.minSize = .zero
         textView.maxSize = NSSize(
             width: CGFloat.greatestFiniteMagnitude,
