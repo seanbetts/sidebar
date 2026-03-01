@@ -12,12 +12,18 @@ struct AttributedNoteEditorView: View {
     let maxContentWidth: CGFloat
 
     var body: some View {
-        TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
+        AttributedNoteTextSurface(
+            text: $viewModel.attributedContent,
+            selection: $viewModel.selection,
+            isEditable: true,
+            isSelectable: true,
+            syncSelection: true,
+            autoFocus: true
+        )
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
             .frame(maxWidth: maxContentWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .writingToolsBehavior(.disabled)
             .onChange(of: viewModel.attributedContent) { oldValue, _ in
                 viewModel.handleContentChange(previous: oldValue)
             }
@@ -25,12 +31,6 @@ struct AttributedNoteEditorView: View {
                 viewModel.handleSelectionChange()
             }
             .background(DesignTokens.Colors.background)
-            #if os(iOS)
-            .background {
-                TextEditorFormattingConfigurator()
-                    .frame(width: 0, height: 0)
-            }
-            #endif
     }
 }
 
@@ -41,8 +41,13 @@ struct AttributedNoteReadOnlyView: View {
     let onTap: () -> Void
 
     var body: some View {
-        NativeReadOnlyMarkdownTextView(
-            attributedContent: attributedContent,
+        AttributedNoteTextSurface(
+            text: .constant(attributedContent),
+            selection: .constant(AttributedTextSelection()),
+            isEditable: false,
+            isSelectable: true,
+            syncSelection: false,
+            autoFocus: false,
             onTap: onTap
         )
         .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
@@ -55,67 +60,23 @@ struct AttributedNoteReadOnlyView: View {
 
 #if os(iOS)
 @available(iOS 26.0, *)
-private struct TextEditorFormattingConfigurator: UIViewRepresentable {
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
-        view.isUserInteractionEnabled = false
-        return view
-    }
-
-    func updateUIView(_ uiView: UIView, context: Context) {
-        DispatchQueue.main.async {
-            guard let textView = findTextView(near: uiView) else { return }
-            textView.allowsEditingTextAttributes = false
-            textView.inputAssistantItem.leadingBarButtonGroups = []
-            textView.inputAssistantItem.trailingBarButtonGroups = []
-            textView.textFormattingConfiguration = UITextFormattingViewController.Configuration(groups: [])
-        }
-    }
-
-    private func findTextView(near view: UIView) -> UITextView? {
-        var current: UIView? = view
-        while let node = current {
-            if let textView = firstTextView(in: node) {
-                return textView
-            }
-            current = node.superview
-        }
-        return nil
-    }
-
-    private func firstTextView(in root: UIView) -> UITextView? {
-        if let textView = root as? UITextView {
-            return textView
-        }
-        for child in root.subviews {
-            if let textView = firstTextView(in: child) {
-                return textView
-            }
-        }
-        return nil
-    }
-}
-#endif
-
-#if os(iOS)
-@available(iOS 26.0, *)
-private struct NativeReadOnlyMarkdownTextView: UIViewRepresentable {
-    let attributedContent: AttributedString
-    let onTap: () -> Void
+private struct AttributedNoteTextSurface: UIViewRepresentable {
+    @Binding var text: AttributedString
+    @Binding var selection: AttributedTextSelection
+    let isEditable: Bool
+    let isSelectable: Bool
+    let syncSelection: Bool
+    let autoFocus: Bool
+    var onTap: (() -> Void)?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onTap: onTap)
+        Coordinator(self)
     }
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
+        textView.delegate = context.coordinator
         textView.backgroundColor = .clear
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.isScrollEnabled = true
-        textView.allowsEditingTextAttributes = false
-        textView.attributedText = NSAttributedString(attributedContent)
-
         let tapRecognizer = UITapGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleTap)
@@ -123,61 +84,111 @@ private struct NativeReadOnlyMarkdownTextView: UIViewRepresentable {
         tapRecognizer.cancelsTouchesInView = false
         textView.addGestureRecognizer(tapRecognizer)
         context.coordinator.tapRecognizer = tapRecognizer
+        configure(textView, coordinator: context.coordinator)
+        textView.attributedText = NSAttributedString(text)
         return textView
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
-        context.coordinator.onTap = onTap
-        let updated = NSAttributedString(attributedContent)
+        context.coordinator.parent = self
+        context.coordinator.isUpdating = true
+        configure(textView, coordinator: context.coordinator)
+
+        let updated = NSAttributedString(text)
         if !textView.attributedText.isEqual(to: updated) {
             textView.attributedText = updated
         }
+
+        if syncSelection {
+            let desiredRange = nsRange(from: selection, in: text)
+            if textView.selectedRange != desiredRange {
+                textView.selectedRange = desiredRange
+            }
+        }
+
+        DispatchQueue.main.async {
+            context.coordinator.isUpdating = false
+        }
     }
 
-    final class Coordinator: NSObject {
-        var onTap: () -> Void
+    private func configure(_ textView: UITextView, coordinator: Coordinator) {
+        textView.isEditable = isEditable
+        textView.isSelectable = isSelectable
+        textView.isScrollEnabled = true
+        textView.allowsEditingTextAttributes = false
+        textView.inputAssistantItem.leadingBarButtonGroups = []
+        textView.inputAssistantItem.trailingBarButtonGroups = []
+        textView.textFormattingConfiguration = UITextFormattingViewController.Configuration(groups: [])
+        coordinator.tapRecognizer?.isEnabled = onTap != nil
+
+        guard autoFocus, isEditable else {
+            coordinator.didAutoFocus = false
+            return
+        }
+
+        guard !coordinator.didAutoFocus else { return }
+        DispatchQueue.main.async {
+            guard textView.window != nil else { return }
+            if !textView.isFirstResponder {
+                textView.becomeFirstResponder()
+            }
+            coordinator.didAutoFocus = true
+        }
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var parent: AttributedNoteTextSurface
+        var isUpdating: Bool = false
+        var didAutoFocus: Bool = false
         weak var tapRecognizer: UITapGestureRecognizer?
 
-        init(onTap: @escaping () -> Void) {
-            self.onTap = onTap
+        init(_ parent: AttributedNoteTextSurface) {
+            self.parent = parent
         }
 
         @objc func handleTap() {
-            onTap()
+            parent.onTap?()
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            guard !isUpdating else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.isUpdating else { return }
+                self.parent.text = AttributedString(textView.attributedText)
+            }
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            guard !isUpdating, parent.syncSelection else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.isUpdating else { return }
+                guard self.parent.syncSelection else { return }
+                self.parent.selection = selectionFromRange(
+                    textView.selectedRange,
+                    in: self.parent.text
+                )
+            }
         }
     }
 }
 #elseif os(macOS)
 @available(macOS 26.0, *)
-private struct NativeReadOnlyMarkdownTextView: NSViewRepresentable {
-    let attributedContent: AttributedString
-    let onTap: () -> Void
+private struct AttributedNoteTextSurface: NSViewRepresentable {
+    @Binding var text: AttributedString
+    @Binding var selection: AttributedTextSelection
+    let isEditable: Bool
+    let isSelectable: Bool
+    let syncSelection: Bool
+    let autoFocus: Bool
+    var onTap: (() -> Void)?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onTap: onTap)
+        Coordinator(self)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = NSTextView()
-        textView.drawsBackground = false
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.allowsImageEditing = false
-        textView.minSize = .zero
-        textView.maxSize = NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.autoresizingMask = [.width]
-        textView.textContainer?.containerSize = NSSize(
-            width: 0,
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.heightTracksTextView = false
-        textView.textStorage?.setAttributedString(NSAttributedString(attributedContent))
+        textView.delegate = context.coordinator
 
         let tapRecognizer = NSClickGestureRecognizer(
             target: context.coordinator,
@@ -195,29 +206,152 @@ private struct NativeReadOnlyMarkdownTextView: NSViewRepresentable {
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
         scrollView.documentView = textView
+        configure(scrollView, textView: textView, coordinator: context.coordinator)
+        textView.textStorage?.setAttributedString(NSAttributedString(text))
         return scrollView
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        context.coordinator.onTap = onTap
+        context.coordinator.parent = self
         guard let textView = scrollView.documentView as? NSTextView else { return }
-        let updated = NSAttributedString(attributedContent)
+        context.coordinator.isUpdating = true
+        configure(scrollView, textView: textView, coordinator: context.coordinator)
+
+        let updated = NSAttributedString(text)
         if !textView.attributedString().isEqual(to: updated) {
             textView.textStorage?.setAttributedString(updated)
         }
+
+        if syncSelection {
+            let desiredRange = nsRange(from: selection, in: text)
+            if textView.selectedRange() != desiredRange {
+                textView.setSelectedRange(desiredRange)
+            }
+        }
+
+        DispatchQueue.main.async {
+            context.coordinator.isUpdating = false
+        }
     }
 
-    final class Coordinator: NSObject {
-        var onTap: () -> Void
+    private func configure(
+        _ scrollView: NSScrollView,
+        textView: NSTextView,
+        coordinator: Coordinator
+    ) {
+        textView.drawsBackground = false
+        textView.isEditable = isEditable
+        textView.isSelectable = isSelectable
+        textView.allowsImageEditing = false
+        textView.minSize = .zero
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(
+            width: 0,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.heightTracksTextView = false
+        scrollView.hasVerticalScroller = true
+        coordinator.tapRecognizer?.isEnabled = onTap != nil
+
+        guard autoFocus, isEditable else {
+            coordinator.didAutoFocus = false
+            return
+        }
+
+        guard !coordinator.didAutoFocus else { return }
+        DispatchQueue.main.async {
+            guard let window = scrollView.window else { return }
+            if window.firstResponder !== textView {
+                window.makeFirstResponder(textView)
+            }
+            coordinator.didAutoFocus = true
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: AttributedNoteTextSurface
+        var isUpdating: Bool = false
+        var didAutoFocus: Bool = false
         weak var tapRecognizer: NSClickGestureRecognizer?
 
-        init(onTap: @escaping () -> Void) {
-            self.onTap = onTap
+        init(_ parent: AttributedNoteTextSurface) {
+            self.parent = parent
         }
 
         @objc func handleTap() {
-            onTap()
+            parent.onTap?()
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard !isUpdating,
+                  let textView = notification.object as? NSTextView else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.isUpdating else { return }
+                self.parent.text = AttributedString(textView.attributedString())
+            }
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard !isUpdating,
+                  let textView = notification.object as? NSTextView,
+                  parent.syncSelection else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.isUpdating else { return }
+                guard self.parent.syncSelection else { return }
+                self.parent.selection = selectionFromRange(
+                    textView.selectedRange(),
+                    in: self.parent.text
+                )
+            }
         }
     }
 }
 #endif
+
+@available(iOS 26.0, macOS 26.0, *)
+private func nsRange(from selection: AttributedTextSelection, in text: AttributedString) -> NSRange {
+    let string = String(text.characters)
+    switch selection.indices(in: text) {
+    case .insertionPoint(let index):
+        let characterOffset = text.characters.distance(from: text.startIndex, to: index)
+        let stringIndex = string.index(string.startIndex, offsetBy: characterOffset)
+        let location = stringIndex.utf16Offset(in: string)
+        return NSRange(location: location, length: 0)
+    case .ranges(let ranges):
+        guard let first = ranges.ranges.first else {
+            return NSRange(location: 0, length: 0)
+        }
+        let lowerOffset = text.characters.distance(from: text.startIndex, to: first.lowerBound)
+        let upperOffset = text.characters.distance(from: text.startIndex, to: first.upperBound)
+        let lowerIndex = string.index(string.startIndex, offsetBy: lowerOffset)
+        let upperIndex = string.index(string.startIndex, offsetBy: upperOffset)
+        let location = lowerIndex.utf16Offset(in: string)
+        let length = upperIndex.utf16Offset(in: string) - location
+        return NSRange(location: location, length: max(0, length))
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func selectionFromRange(_ range: NSRange, in text: AttributedString) -> AttributedTextSelection {
+    let string = String(text.characters)
+    let maxLocation = string.utf16.count
+    let safeLocation = min(max(0, range.location), maxLocation)
+    let safeEnd = min(max(0, range.location + range.length), maxLocation)
+    let startIndex = String.Index(utf16Offset: safeLocation, in: string)
+    let endIndex = String.Index(utf16Offset: safeEnd, in: string)
+    let startOffset = string.distance(from: string.startIndex, to: startIndex)
+    let endOffset = string.distance(from: string.startIndex, to: endIndex)
+    let start = text.index(text.startIndex, offsetByCharacters: startOffset)
+    let end = text.index(text.startIndex, offsetByCharacters: endOffset)
+    if start == end {
+        return AttributedTextSelection(range: start..<start)
+    }
+    return AttributedTextSelection(range: start..<end)
+}
