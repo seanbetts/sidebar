@@ -5,6 +5,9 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeMarkdownEditorViewModel {
     public func applyCodeBlock(language: String?) {
+        guard !isReadOnly else { return }
+        let previousContent = attributedContent
+        let previousSelection = selection
         let trimmedLanguage = language?.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedLanguage = (trimmedLanguage?.isEmpty == false) ? trimmedLanguage : nil
         let paragraphRanges = selectedParagraphRanges()
@@ -18,15 +21,21 @@ extension NativeMarkdownEditorViewModel {
                     range: paragraphRange
                 )
             }
-            return
+        } else {
+            transformSelectionAttributes { attrs in
+                attrs.codeLanguage = normalizedLanguage
+                attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                    .codeBlock(languageHint: normalizedLanguage),
+                    identity: 1
+                )
+            }
         }
 
-        transformSelectionAttributes { attrs in
-            attrs.codeLanguage = normalizedLanguage
-            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
-                .codeBlock(languageHint: normalizedLanguage),
-                identity: 1
-            )
-        }
+        guard attributedContent != previousContent || selection != previousSelection else { return }
+        hasUnsavedChanges = true
+        scheduleAutosave()
+        let selectionSpan = selectionLineSpan(in: attributedContent)
+        lastSelectionLineSpan = selectionSpan
+        refreshPrefixVisibility(scope: .full)
     }
 }

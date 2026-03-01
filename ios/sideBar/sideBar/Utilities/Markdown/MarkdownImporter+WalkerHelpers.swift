@@ -42,8 +42,7 @@ extension MarkdownToAttributedStringWalker {
             }
             return result
         case is SoftBreak:
-            // Preserve authored single-line breaks as real editor lines.
-            return AttributedString("\n")
+            return AttributedString(" ")
         case is LineBreak:
             return AttributedString("\n")
         default:

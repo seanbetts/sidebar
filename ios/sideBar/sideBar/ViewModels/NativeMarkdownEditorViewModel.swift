@@ -52,15 +52,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     var frontmatter: String?
     var lastSavedContent: String = ""
     var autosaveTask: Task<Void, Never>?
-    var isApplyingShortcut = false
     var isUpdatingPrefixVisibility = false
-    var usesInjectedListMarkers = true
+    var usesInjectedListMarkers = false
+    var lastHandledContentSourceGeneration: Int = 0
+    var lastHandledSelectionSourceGeneration: Int = 0
     var lastSelectionLineSpan: ClosedRange<Int>?
-    static let headingRegex = try? NSRegularExpression(pattern: #"^#{1,6}\s"#)
-    static let bulletRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s"#)
-    static let orderedRegex = try? NSRegularExpression(pattern: #"^\s*\d+\.\s"#)
-    static let taskRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s+\[[ xX]\]\s"#)
-    static let quoteRegex = try? NSRegularExpression(pattern: #"^\s*>\s"#)
 
     public init() {}
 
@@ -75,6 +71,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         selection = AttributedTextSelection()
         lastSavedContent = markdown
         hasUnsavedChanges = false
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
         updatePrefixVisibility()
     }
 
@@ -138,17 +135,27 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     public func applyFormatting(_ formatting: MarkdownFormatting) {
         guard !isReadOnly else { return }
+        let previousContent = attributedContent
+        let previousSelection = selection
         AttributedNoteFormattingCommands.apply(formatting, on: self)
+        guard attributedContent != previousContent || selection != previousSelection else { return }
+
+        hasUnsavedChanges = true
+        scheduleAutosave()
+        let selectionSpan = selectionLineSpan(in: attributedContent)
+        lastSelectionLineSpan = selectionSpan
+        refreshPrefixVisibility(scope: formatting.requiresStructuralRefresh ? .full : .lineSpan(selectionSpan))
     }
 
     public func handleContentChange(previous: AttributedString) {
-        if isUpdatingPrefixVisibility {
-            isUpdatingPrefixVisibility = false
-            return
-        }
+        handleContentChange(previous: previous, sourceGeneration: nil)
+    }
 
-        guard !isReadOnly, !isApplyingShortcut else {
-            return
+    public func handleContentChange(previous: AttributedString, sourceGeneration: Int?) {
+        guard !isReadOnly else { return }
+        if let sourceGeneration {
+            guard sourceGeneration > lastHandledContentSourceGeneration else { return }
+            lastHandledContentSourceGeneration = sourceGeneration
         }
 
         let insertedCharacter = lastInsertedCharacter(previous: previous, current: attributedContent)
@@ -162,15 +169,14 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             baseFontSize: baseFontSize
         )
 
+        var didApplyShortcutMutation = false
         if let shortcutResult {
-            isApplyingShortcut = true
             attributedContent = updated
             selection = shortcutResult.selection
-            isApplyingShortcut = false
+            didApplyShortcutMutation = true
         } else if updated != attributedContent {
-            isApplyingShortcut = true
             attributedContent = updated
-            isApplyingShortcut = false
+            didApplyShortcutMutation = true
         }
 
         normalizeTypingAfterBlockquoteNewlineIfNeeded(insertedCharacter: insertedCharacter)
@@ -178,57 +184,32 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         // Mark dirty immediately so close/switch flows can prompt even before autosave fires.
         hasUnsavedChanges = true
         scheduleAutosave()
-        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
-        updatePrefixVisibility()
+        let selectionSpan = selectionLineSpan(in: attributedContent)
+        lastSelectionLineSpan = selectionSpan
+        let structuralRefresh = requiresStructuralPrefixRefresh(
+            previous: previous,
+            current: attributedContent,
+            insertedCharacter: insertedCharacter,
+            didApplyShortcutMutation: didApplyShortcutMutation
+        )
+        refreshPrefixVisibility(scope: structuralRefresh ? .full : .lineSpan(selectionSpan))
     }
 
     public func handleSelectionChange() {
-        guard !isReadOnly, !isUpdatingPrefixVisibility else { return }
+        handleSelectionChange(sourceGeneration: nil)
+    }
+
+    public func handleSelectionChange(sourceGeneration: Int?) {
+        guard !isReadOnly else { return }
+        if let sourceGeneration {
+            guard sourceGeneration > lastHandledSelectionSourceGeneration else { return }
+            lastHandledSelectionSourceGeneration = sourceGeneration
+        }
+        let previousSpan = lastSelectionLineSpan
         let selectionSpan = selectionLineSpan(in: attributedContent)
-        guard selectionSpan != lastSelectionLineSpan else { return }
+        guard selectionSpan != previousSpan else { return }
         lastSelectionLineSpan = selectionSpan
-        updatePrefixVisibility()
-    }
-
-    struct TableRowInfo {
-        let isHeader: Bool
-        let rowIndex: Int?
-        let alignments: [PresentationIntent.TableColumn.Alignment]?
-    }
-
-    func tableRowInfo(from intent: PresentationIntent?) -> TableRowInfo? {
-        guard let intent else { return nil }
-        var isHeader = false
-        var rowIndex: Int?
-        var foundRow = false
-
-        for component in intent.components {
-            switch component.kind {
-            case .tableHeaderRow:
-                isHeader = true
-                rowIndex = 0
-                foundRow = true
-            case .tableRow(let index):
-                rowIndex = index
-                foundRow = true
-            default:
-                break
-            }
-        }
-
-        guard foundRow else { return nil }
-        return TableRowInfo(isHeader: isHeader, rowIndex: rowIndex, alignments: nil)
-    }
-
-    func tableRowBackground(from info: TableRowInfo?) -> Color? {
-        guard let info else { return nil }
-        if info.isHeader {
-            return DesignTokens.Colors.muted
-        }
-        if let rowIndex = info.rowIndex, rowIndex % 2 == 1 {
-            return DesignTokens.Colors.muted.opacity(0.4)
-        }
-        return nil
+        refreshPrefixVisibility(scope: .lineSpan(unionLineSpan(previousSpan, selectionSpan)))
     }
 
     func hasInlineIntent(_ intent: InlinePresentationIntent) -> Bool {
@@ -456,25 +437,4 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
     }
 
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-/// Formatting actions available for native markdown editing.
-public enum MarkdownFormatting: Equatable {
-    case bold
-    case italic
-    case strikethrough
-    case inlineCode
-    case heading(level: Int)
-    case promoteHeading
-    case demoteHeading
-    case bulletList
-    case orderedList
-    case taskList
-    case indentList
-    case outdentList
-    case blockquote
-    case codeBlock
-    case link(URL)
-    case horizontalRule
 }

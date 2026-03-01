@@ -4,42 +4,69 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeMarkdownEditorViewModel {
+    enum PrefixRefreshScope {
+        case full
+        case lineSpan(ClosedRange<Int>?)
+    }
+
     func updatePrefixVisibility() {
+        refreshPrefixVisibility(scope: .full)
+    }
+
+    func refreshPrefixVisibility(scope: PrefixRefreshScope) {
         let originalSnapshot = selectionSnapshot(in: attributedContent)
         var updated = attributedContent
         let useLegacyMarkerHeuristics = usesInjectedListMarkers
+        let initialLines = lineInfos(in: updated)
+        let requestedLineIndexes = requestedLineIndexes(for: scope, lineCount: initialLines.count)
 
-        let originalLines = lineInfos(in: updated)
-        let listOrdinals = orderedListOrdinals(in: updated, lines: originalLines)
+        let listOrdinals = orderedListOrdinals(in: updated, lines: initialLines)
         var adjustedSnapshot = normalizeListMarkers(
             in: &updated,
-            lines: originalLines,
+            lines: initialLines,
             listOrdinals: listOrdinals,
             selection: originalSnapshot,
-            forceReadMarkers: !useLegacyMarkerHeuristics
+            lineIndexes: requestedLineIndexes
         )
         adjustedSnapshot = normalizeBlockquoteMarkers(
             in: &updated,
             lines: lineInfos(in: updated),
-            selection: adjustedSnapshot
+            selection: adjustedSnapshot,
+            lineIndexes: requestedLineIndexes
         )
 
         let lines = lineInfos(in: updated)
-        applyCodeBlockSpacing(in: &updated, lines: lines)
-        applyTableLayout(in: &updated, lines: lines)
+        let activeLineIndexes = clampedLineIndexes(requestedLineIndexes, lineCount: lines.count)
+
+        if shouldApplyTableLayout(
+            in: updated,
+            lines: lines,
+            activeLineIndexes: activeLineIndexes
+        ) {
+            applyTableLayout(in: &updated, lines: lines)
+        }
+        applyCodeBlockSpacing(
+            in: &updated,
+            lines: lines,
+            targetLineIndexes: activeLineIndexes
+        )
+
         for (index, line) in lines.enumerated() {
+            if let activeLineIndexes, !activeLineIndexes.contains(index) {
+                continue
+            }
+
             let lineStart = updated.index(updated.startIndex, offsetByCharacters: line.range.lowerBound)
             let lineEnd = updated.index(updated.startIndex, offsetByCharacters: line.range.upperBound)
             let lineRange = lineStart..<lineEnd
             let paragraphRange = lineRangeIncludingTrailingNewline(in: updated, lineRange: lineRange)
-            let shouldShow = shouldShowPrefix(for: line.range, selection: adjustedSnapshot)
-            let resolvedBlockKind = resolvedBlockKind(
+            let blockKind = resolvedBlockKind(
                 in: &updated,
                 lineRange: lineRange,
                 lineText: line.text,
                 allowInference: useLegacyMarkerHeuristics
             )
-            let blockKind: BlockKind = resolvedBlockKind ?? (line.text.isEmpty ? .blankLine : .paragraph)
+                ?? (line.text.isEmpty ? .blankLine : .paragraph)
             let previousParagraphSpacingAfter = previousParagraphSpacingAfter(
                 in: updated,
                 lineIndex: index,
@@ -68,24 +95,57 @@ extension NativeMarkdownEditorViewModel {
             }
 
             applyInlineIntentStyling(in: &updated, lineRange: lineRange, blockKind: blockKind)
-            applyLegacyMarkerVisibilityIfNeeded(
-                in: &updated,
-                lineRange: lineRange,
-                lineText: line.text,
-                blockKind: resolvedBlockKind,
-                shouldShow: shouldShow,
-                useLegacyMarkerHeuristics: useLegacyMarkerHeuristics
-            )
         }
 
-        if updated != attributedContent {
-            isUpdatingPrefixVisibility = true
-            attributedContent = updated
-            selection = selection(from: adjustedSnapshot, in: updated)
-            Task { @MainActor [weak self] in
-                self?.isUpdatingPrefixVisibility = false
+        guard updated != attributedContent else { return }
+
+        isUpdatingPrefixVisibility = true
+        attributedContent = updated
+        selection = selection(from: adjustedSnapshot, in: updated)
+        isUpdatingPrefixVisibility = false
+    }
+
+    private func requestedLineIndexes(
+        for scope: PrefixRefreshScope,
+        lineCount: Int
+    ) -> IndexSet? {
+        switch scope {
+        case .full:
+            return nil
+        case .lineSpan(let span):
+            guard lineCount > 0 else { return IndexSet() }
+            guard let span else { return IndexSet(integersIn: 0..<lineCount) }
+            let lowerBound = max(0, span.lowerBound - 1)
+            let upperBound = min(lineCount - 1, span.upperBound + 1)
+            guard lowerBound <= upperBound else { return IndexSet() }
+            return IndexSet(integersIn: lowerBound..<(upperBound + 1))
+        }
+    }
+
+    private func clampedLineIndexes(
+        _ lineIndexes: IndexSet?,
+        lineCount: Int
+    ) -> IndexSet? {
+        guard let lineIndexes else { return nil }
+        guard lineCount > 0 else { return IndexSet() }
+        return lineIndexes.intersection(IndexSet(integersIn: 0..<lineCount))
+    }
+
+    private func shouldApplyTableLayout(
+        in text: AttributedString,
+        lines: [LineInfo],
+        activeLineIndexes: IndexSet?
+    ) -> Bool {
+        guard let activeLineIndexes else { return true }
+        for lineIndex in activeLineIndexes {
+            guard lineIndex >= 0, lineIndex < lines.count else { continue }
+            let line = lines[lineIndex]
+            let lineRange = attributedRange(for: line.range, in: text)
+            if tableRowInfo(in: text, range: lineRange) != nil {
+                return true
             }
         }
+        return false
     }
 
     private func previousParagraphSpacingAfter(
@@ -111,7 +171,11 @@ extension NativeMarkdownEditorViewModel {
         return paragraphStyle(for: prevKind, listDepth: prevDepth)?.paragraphSpacing ?? 0
     }
 
-    func applyCodeBlockSpacing(in text: inout AttributedString, lines: [LineInfo]) {
+    func applyCodeBlockSpacing(
+        in text: inout AttributedString,
+        lines: [LineInfo],
+        targetLineIndexes: IndexSet? = nil
+    ) {
         var index = 0
         while index < lines.count {
             let line = lines[index]
@@ -139,25 +203,41 @@ extension NativeMarkdownEditorViewModel {
                 }
             }
 
-            for lineIndex in index...endIndex {
-                let info = lines[lineIndex]
-                let start = text.index(text.startIndex, offsetByCharacters: info.range.lowerBound)
-                let end = text.index(text.startIndex, offsetByCharacters: info.range.upperBound)
-                let range = lineRangeIncludingTrailingNewline(in: text, lineRange: start..<end)
-                let isFirst = lineIndex == index
-                let isLast = lineIndex == endIndex
-                let style = paragraphStyle(
-                    lineSpacing: em(0.5, fontSize: inlineCodeFontSize),
-                    spacingBefore: isFirst ? rem(1) : 0,
-                    spacingAfter: isLast ? rem(1) : 0,
-                    headIndent: DesignTokens.Spacing.md,
-                    tailIndent: DesignTokens.Spacing.md
-                )
-                text[range].paragraphStyle = style
+            if shouldStyleCodeBlock(
+                startIndex: index,
+                endIndex: endIndex,
+                targetLineIndexes: targetLineIndexes
+            ) {
+                for lineIndex in index...endIndex {
+                    let info = lines[lineIndex]
+                    let start = text.index(text.startIndex, offsetByCharacters: info.range.lowerBound)
+                    let end = text.index(text.startIndex, offsetByCharacters: info.range.upperBound)
+                    let range = lineRangeIncludingTrailingNewline(in: text, lineRange: start..<end)
+                    let isFirst = lineIndex == index
+                    let isLast = lineIndex == endIndex
+                    let style = paragraphStyle(
+                        lineSpacing: em(0.5, fontSize: inlineCodeFontSize),
+                        spacingBefore: isFirst ? rem(1) : 0,
+                        spacingAfter: isLast ? rem(1) : 0,
+                        headIndent: DesignTokens.Spacing.md,
+                        tailIndent: DesignTokens.Spacing.md
+                    )
+                    text[range].paragraphStyle = style
+                }
             }
 
             index = endIndex + 1
         }
+    }
+
+    private func shouldStyleCodeBlock(
+        startIndex: Int,
+        endIndex: Int,
+        targetLineIndexes: IndexSet?
+    ) -> Bool {
+        guard let targetLineIndexes else { return true }
+        let blockIndexes = IndexSet(integersIn: startIndex..<(endIndex + 1))
+        return !targetLineIndexes.isDisjoint(with: blockIndexes)
     }
 
     func lineRangeIncludingTrailingNewline(
@@ -191,124 +271,6 @@ extension NativeMarkdownEditorViewModel {
             }
         }
         return blockKind
-    }
-
-    func applyLegacyMarkerVisibilityIfNeeded(
-        in text: inout AttributedString,
-        lineRange: Range<AttributedString.Index>,
-        lineText: String,
-        blockKind: BlockKind?,
-        shouldShow: Bool,
-        useLegacyMarkerHeuristics: Bool
-    ) {
-        guard useLegacyMarkerHeuristics else { return }
-
-        let prefixRange = markdownPrefixRange(
-            in: text,
-            lineRange: lineRange,
-            lineText: lineText,
-            blockKind: blockKind
-        )
-
-        if let prefixRange {
-            applyPrefixVisibility(
-                in: &text,
-                range: prefixRange,
-                blockKind: blockKind,
-                shouldShow: shouldShow
-            )
-        }
-
-        let inlineRanges = ensureInlineMarkerRanges(
-            in: &text,
-            lineRange: lineRange,
-            lineText: lineText
-        )
-        for inlineRange in inlineRanges {
-            applyInlineMarkerVisibility(
-                in: &text,
-                range: inlineRange,
-                blockKind: blockKind,
-                shouldShow: shouldShow
-            )
-        }
-    }
-
-    func applyPrefixVisibility(
-        in text: inout AttributedString,
-        range: Range<AttributedString.Index>,
-        blockKind: BlockKind?,
-        shouldShow: Bool
-    ) {
-        if blockKind == .horizontalRule {
-            setForegroundColor(DesignTokens.Colors.border, in: &text, range: range)
-            setBackgroundColor(nil, in: &text, range: range)
-            setFont(
-                baseFont(for: blockKind),
-                platformFont: platformBaseFont(for: blockKind),
-                in: &text,
-                range: range
-            )
-            return
-        }
-
-        if shouldShow {
-            setForegroundColor(DesignTokens.Colors.textSecondary, in: &text, range: range)
-            setBackgroundColor(baseBackgroundColor(for: blockKind), in: &text, range: range)
-            setFont(
-                baseFont(for: blockKind),
-                platformFont: platformBaseFont(for: blockKind),
-                in: &text,
-                range: range
-            )
-            return
-        }
-
-        setForegroundColor(.clear, in: &text, range: range)
-        setBackgroundColor(nil, in: &text, range: range)
-        setFont(
-            .system(size: 0.1),
-            platformFont: platformSystemFont(size: 0.1, weight: .regular),
-            in: &text,
-            range: range
-        )
-    }
-
-    func applyInlineMarkerVisibility(
-        in text: inout AttributedString,
-        range: Range<AttributedString.Index>,
-        blockKind: BlockKind?,
-        shouldShow: Bool
-    ) {
-        if shouldShow {
-            setForegroundColor(DesignTokens.Colors.textSecondary, in: &text, range: range)
-            setBackgroundColor(nil, in: &text, range: range)
-            setFont(
-                baseFont(for: blockKind),
-                platformFont: platformBaseFont(for: blockKind),
-                in: &text,
-                range: range
-            )
-            return
-        }
-
-        setForegroundColor(.clear, in: &text, range: range)
-        setBackgroundColor(nil, in: &text, range: range)
-        if blockKind == .horizontalRule {
-            setFont(
-                baseFont(for: blockKind),
-                platformFont: platformBaseFont(for: blockKind),
-                in: &text,
-                range: range
-            )
-        } else {
-            setFont(
-                .system(size: 0.1),
-                platformFont: platformSystemFont(size: 0.1, weight: .regular),
-                in: &text,
-                range: range
-            )
-        }
     }
 
     func attributedRange(for range: Range<Int>, in text: AttributedString) -> Range<AttributedString.Index> {
@@ -371,112 +333,4 @@ extension NativeMarkdownEditorViewModel {
               let upper = coveredLineIndexes.last else { return nil }
         return lower...upper
     }
-
-    func markdownPrefixRange(
-        in text: AttributedString,
-        lineRange: Range<AttributedString.Index>,
-        lineText: String,
-        blockKind: BlockKind?
-    ) -> Range<AttributedString.Index>? {
-        if blockKind == .horizontalRule {
-            return lineRange
-        }
-        if let blockKind, let range = prefixRangeForBlockKind(
-            blockKind,
-            in: text,
-            lineRange: lineRange,
-            lineText: lineText
-        ) {
-            guard !containsListMarker(in: text, range: range) else { return nil }
-            return range
-        }
-
-        let range = NSRange(location: 0, length: lineText.utf16.count)
-        let regexes = [
-            Self.taskRegex,
-            Self.orderedRegex,
-            Self.bulletRegex,
-            Self.headingRegex,
-            Self.quoteRegex
-        ]
-
-        for regex in regexes {
-            guard let regex, let match = regex.firstMatch(in: lineText, range: range) else { continue }
-            guard let matchRange = Range(match.range, in: lineText) else { continue }
-            let prefixCount = lineText.distance(from: lineText.startIndex, to: matchRange.upperBound)
-            let prefixEnd = text.index(lineRange.lowerBound, offsetByCharacters: prefixCount)
-            let range = lineRange.lowerBound..<prefixEnd
-            guard !containsListMarker(in: text, range: range) else { return nil }
-            return range
-        }
-
-        return nil
-    }
-
-    func containsListMarker(
-        in text: AttributedString,
-        range: Range<AttributedString.Index>
-    ) -> Bool {
-        for run in text[range].runs where run.listMarker == true {
-            return true
-        }
-        return false
-    }
-
-    func prefixRangeForBlockKind(
-        _ blockKind: BlockKind,
-        in text: AttributedString,
-        lineRange: Range<AttributedString.Index>,
-        lineText: String
-    ) -> Range<AttributedString.Index>? {
-        let prefix: String
-        switch blockKind {
-        case .heading1:
-            prefix = "# "
-        case .heading2:
-            prefix = "## "
-        case .heading3:
-            prefix = "### "
-        case .heading4:
-            prefix = "#### "
-        case .heading5:
-            prefix = "##### "
-        case .heading6:
-            prefix = "###### "
-        default:
-            return nil
-        }
-
-        guard let firstNonWhitespace = lineText.firstIndex(where: { !$0.isWhitespace }) else {
-            return nil
-        }
-        guard lineText[firstNonWhitespace...].hasPrefix(prefix) else {
-            return nil
-        }
-
-        let leadingOffset = lineText.distance(from: lineText.startIndex, to: firstNonWhitespace)
-        let prefixEnd = text.index(lineRange.lowerBound, offsetByCharacters: leadingOffset + prefix.count)
-        return lineRange.lowerBound..<prefixEnd
-    }
-
-    func inlineMarkerRanges(
-        in text: AttributedString,
-        lineRange: Range<AttributedString.Index>
-    ) -> [Range<AttributedString.Index>] {
-        var ranges: [Range<AttributedString.Index>] = []
-        for run in text[lineRange].runs {
-            guard run.inlineMarker == true else { continue }
-            ranges.append(run.range)
-        }
-        return ranges
-    }
-
-    func ensureInlineMarkerRanges(
-        in text: inout AttributedString,
-        lineRange: Range<AttributedString.Index>,
-        lineText _: String
-    ) -> [Range<AttributedString.Index>] {
-        inlineMarkerRanges(in: text, lineRange: lineRange)
-    }
-
 }

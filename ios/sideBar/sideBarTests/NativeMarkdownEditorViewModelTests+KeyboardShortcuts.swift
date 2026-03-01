@@ -7,7 +7,7 @@ import XCTest
 extension NativeMarkdownEditorViewModelTests {
     func testHandleListDepthKeyboardShortcutIndentsListParagraphWithinMixedSelection() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("List line\nPlain line")
+        viewModel.attributedContent = AttributedString("List line\nPlain line")
         var ranges = keyboardLineRanges(in: viewModel.attributedContent)
         XCTAssertEqual(ranges.count, 2)
 
@@ -22,7 +22,7 @@ extension NativeMarkdownEditorViewModelTests {
         let updatedRanges = keyboardLineRanges(in: viewModel.attributedContent)
         XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[0]), .bulletList)
         XCTAssertEqual(viewModel.attributedContent[updatedRanges[0]].listDepth, 2)
-        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[1]), .paragraph)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[1]) ?? .paragraph, .paragraph)
         XCTAssertNil(viewModel.attributedContent[updatedRanges[1]].listDepth)
     }
 

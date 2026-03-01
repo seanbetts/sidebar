@@ -49,6 +49,61 @@ final class MarkdownImporterExporterRegressionTests: XCTestCase {
         XCTAssertEqual(exported, "- Bullet\n\n1. Ordered", exported)
     }
 
+    func testCanonicalImportExportIsIdempotentForRepresentativeDocuments() {
+        let cases: [String] = [
+            """
+            # Title
+
+            Paragraph with **bold** and *italic* and `code`.
+            """,
+            """
+            - Parent
+              - Child
+            - Sibling
+            """,
+            """
+            > 1. Numbered
+            > 2. Numbered
+            >
+            > - [ ] Task
+            > - [x] Done
+            """,
+            """
+            | Name | Count |
+            | --- | ---: |
+            | Alpha | 1 |
+            """,
+            """
+            ```swift
+            let a = 1
+            print(a)
+            ```
+            """,
+            """
+            Line 1
+            <!-- sidebar-blank-line -->
+            Line 2
+            """
+        ]
+
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        for (index, markdown) in cases.enumerated() {
+            let firstImport = importer.attributedString(from: markdown)
+            let canonical = exporter.markdown(
+                from: firstImport.attributedString,
+                frontmatter: firstImport.frontmatter
+            )
+            let secondImport = importer.attributedString(from: canonical)
+            let canonicalAgain = exporter.markdown(
+                from: secondImport.attributedString,
+                frontmatter: secondImport.frontmatter
+            )
+            XCTAssertEqual(canonicalAgain, canonical, "Idempotency failed for case \\(index)")
+        }
+    }
+
     private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
         var ranges: [Range<AttributedString.Index>] = []
         var lineStart = text.startIndex

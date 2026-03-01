@@ -68,24 +68,6 @@ extension NativeMarkdownEditorViewModel {
         MarkdownLineInference.inferBlockKind(from: lineText)
     }
 
-    func shouldShowPrefix(
-        for lineRange: Range<Int>,
-        selection: SelectionSnapshot
-    ) -> Bool {
-        guard !isReadOnly else { return false }
-        switch selection {
-        case .insertionPoint(let offset):
-            return lineRange.contains(offset) || offset == lineRange.upperBound
-        case .ranges(let ranges):
-            return ranges.contains { range in
-                if range.isEmpty {
-                    return lineRange.contains(range.lowerBound) || range.lowerBound == lineRange.upperBound
-                }
-                return range.overlaps(lineRange)
-            }
-        }
-    }
-
     func lineInfos(in text: AttributedString) -> [LineInfo] {
         var lines: [LineInfo] = []
         var startIndex = text.startIndex

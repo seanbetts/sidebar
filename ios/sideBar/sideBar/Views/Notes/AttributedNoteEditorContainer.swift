@@ -8,7 +8,6 @@ struct AttributedNoteEditorContainer: View {
 
     @StateObject private var nativeViewModel = NativeMarkdownEditorViewModel()
     @State private var loadedNoteId: String?
-    @State private var isEditing: Bool = false
     @FocusState private var isTextEditorFocused: Bool
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
 
@@ -22,19 +21,17 @@ struct AttributedNoteEditorContainer: View {
         }
         .onAppear {
             nativeViewModel.setBaseFontSize(editorBaseFontSize)
-            nativeViewModel.usesInjectedListMarkers = false
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
             applyAutosaveDelay(isOffline: environment.isOffline)
-            nativeViewModel.isReadOnly = !isEditing
-            editorViewModel.setReadOnly(!isEditing)
+            nativeViewModel.isReadOnly = editorViewModel.isReadOnly
+            isTextEditorFocused = !editorViewModel.isReadOnly
         }
         .onDisappear {
             editorViewModel.detachNativeEditor(nativeViewModel)
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
             nativeViewModel.setBaseFontSize(editorBaseFontSize)
-            isEditing = false
             editorViewModel.setReadOnly(true)
             loadIfNeeded()
         }
@@ -47,16 +44,11 @@ struct AttributedNoteEditorContainer: View {
                 await editorViewModel.syncFromNativeEditor(nativeViewModel)
             }
         }
-        .onChange(of: isEditing) { _, editing in
-            isTextEditorFocused = editing
-            nativeViewModel.isReadOnly = !editing
-            editorViewModel.setReadOnly(!editing)
-        }
         .onChange(of: editorViewModel.isReadOnly) { _, readOnly in
-            let editing = !readOnly
-            guard isEditing != editing else { return }
-            isEditing = editing
-            isTextEditorFocused = editing
+            let shouldFocus = !readOnly
+            if isTextEditorFocused != shouldFocus {
+                isTextEditorFocused = shouldFocus
+            }
             nativeViewModel.isReadOnly = readOnly
         }
         .onChange(of: environment.isOffline) { _, isOffline in
@@ -69,10 +61,14 @@ struct AttributedNoteEditorContainer: View {
         }
         .onChange(of: isTextEditorFocused) { _, focused in
             // When user taps into the editor, enter edit mode.
-            if focused && !isEditing {
-                isEditing = true
+            if focused && editorViewModel.isReadOnly {
+                editorViewModel.setReadOnly(false)
             }
         }
+    }
+
+    private var isEditing: Bool {
+        !editorViewModel.isReadOnly
     }
 
     private var editorBaseFontSize: CGFloat {
@@ -92,7 +88,7 @@ struct AttributedNoteEditorContainer: View {
         .focused($isTextEditorFocused)
         .onKeyPress(.escape) {
             guard isEditing else { return .ignored }
-            isEditing = false
+            editorViewModel.setReadOnly(true)
             return .handled
         }
         .onKeyPress(.tab, phases: .down) { keyPress in
@@ -151,7 +147,7 @@ struct AttributedNoteEditorContainer: View {
             maxContentWidth: maxContentWidth,
             onTap: { selection in
                 nativeViewModel.selection = selection
-                isEditing = true
+                editorViewModel.setReadOnly(false)
             }
         )
         .onKeyPress(.escape) {
@@ -177,7 +173,7 @@ struct AttributedNoteEditorContainer: View {
         _ key: AttributedNoteKeyboardShortcutKey,
         modifiers: EventModifiers
     ) -> KeyPress.Result {
-        guard isEditing else { return .ignored }
+        guard !editorViewModel.isReadOnly else { return .ignored }
         guard let action = AttributedNoteKeyboardShortcuts.action(for: key, modifiers: modifiers) else {
             return .ignored
         }

@@ -7,7 +7,6 @@ import SwiftUI
 final class NativeMarkdownListContinuationTests: XCTestCase {
     func testEnterInBulletListContinuesListFormatting() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.usesInjectedListMarkers = false
         viewModel.loadMarkdown("- Item")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -27,7 +26,6 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterInOrderedListContinuesAndAdvancesOrdinal() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.usesInjectedListMarkers = false
         viewModel.loadMarkdown("1. One")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -46,7 +44,6 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterAfterCheckedTaskStartsUncheckedTask() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.usesInjectedListMarkers = false
         viewModel.loadMarkdown("- [x] Done")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -61,7 +58,6 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterOnEmptyBulletListItemExitsList() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.usesInjectedListMarkers = false
         viewModel.loadMarkdown("- Item")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -75,7 +71,6 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterOnEmptyOrderedListItemExitsList() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.usesInjectedListMarkers = false
         viewModel.loadMarkdown("1. One")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -89,7 +84,6 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
 
     func testEnterOnEmptyTaskListItemExitsList() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.usesInjectedListMarkers = false
         viewModel.loadMarkdown("- [ ] Todo")
         await waitForPrefixVisibility(on: viewModel)
 

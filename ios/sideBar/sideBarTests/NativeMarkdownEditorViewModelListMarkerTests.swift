@@ -28,7 +28,6 @@ final class NativeMarkdownListMarkerTests: XCTestCase {
 #endif
 
         viewModel.attributedContent = content
-        viewModel.usesInjectedListMarkers = false
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
 

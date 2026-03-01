@@ -845,9 +845,7 @@ private func canonicalMarkdownPass(_ markdown: String) -> String {
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
 private func canonicalSnapshotOutput(_ markdown: String) -> String {
-    let firstPass = canonicalMarkdownPass(markdown)
-    let secondPass = canonicalMarkdownPass(firstPass)
-    return firstPass == secondPass ? firstPass : secondPass
+    canonicalMarkdownPass(markdown)
 }
 
 private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {

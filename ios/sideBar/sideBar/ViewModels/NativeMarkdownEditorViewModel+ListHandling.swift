@@ -92,12 +92,14 @@ extension NativeMarkdownEditorViewModel {
         lines: [LineInfo],
         listOrdinals: [Int: Int],
         selection: SelectionSnapshot,
-        forceReadMarkers: Bool = false
+        lineIndexes: IndexSet? = nil
     ) -> SelectionSnapshot {
         var snapshot = selection
 
         for (index, line) in lines.enumerated().reversed() {
-            let showPrefix = shouldShowPrefix(for: line.range, selection: selection)
+            if let lineIndexes, !lineIndexes.contains(index) {
+                continue
+            }
             let lineRange = attributedRange(for: line.range, in: text)
             let blockKind = text.blockKind(in: lineRange) ?? inferredBlockKind(from: line.text)
             let lineStyle = text[lineRange].paragraphStyle
@@ -131,16 +133,12 @@ extension NativeMarkdownEditorViewModel {
                 lineStyle: lineStyle
             )
 
-            if showPrefix && !forceReadMarkers {
-                snapshot = applyCaretListPrefix(context, text: &text, snapshot: snapshot)
-            } else {
-                snapshot = applyReadListMarker(
-                    context,
-                    text: &text,
-                    snapshot: snapshot,
-                    listOrdinals: listOrdinals
-                )
-            }
+            snapshot = applyReadListMarker(
+                context,
+                text: &text,
+                snapshot: snapshot,
+                listOrdinals: listOrdinals
+            )
         }
 
         return snapshot
@@ -172,38 +170,6 @@ extension NativeMarkdownEditorViewModel {
             text.removeSubrange(range)
             updated = adjustSnapshot(updated, removing: length, at: startOffset)
         }
-        return updated
-    }
-
-    func applyCaretListPrefix(
-        _ context: ListMarkerContext,
-        text: inout AttributedString,
-        snapshot: SelectionSnapshot
-    ) -> SelectionSnapshot {
-        var updated = snapshot
-
-        if let markerRange = context.markerRange {
-            let startOffset = text.characters.distance(from: text.startIndex, to: markerRange.lowerBound)
-            let length = text.characters.distance(from: markerRange.lowerBound, to: markerRange.upperBound)
-            text.removeSubrange(markerRange)
-            updated = adjustSnapshot(updated, removing: length, at: startOffset)
-        }
-
-        if context.listPrefixRange == nil {
-            let prefixText = listPrefixString(depth: context.depth, blockKind: context.blockKind)
-            guard !prefixText.isEmpty else { return updated }
-            guard let insertIndex = safeIndex(in: text, offset: context.insertionOffset) else { return updated }
-            var insert = AttributedString(prefixText)
-            let insertRange = insert.startIndex..<insert.endIndex
-            insert[insertRange].blockKind = context.blockKind
-            insert[insertRange].listDepth = context.depth
-            if let style = context.lineStyle {
-                insert[insertRange].paragraphStyle = style
-            }
-            text.insert(insert, at: insertIndex)
-            updated = adjustSnapshot(updated, inserting: prefixText.count, at: context.insertionOffset)
-        }
-
         return updated
     }
 
@@ -424,20 +390,6 @@ extension NativeMarkdownEditorViewModel {
             return lower..<upper
         }
         return nil
-    }
-
-    func listPrefixString(depth: Int, blockKind: BlockKind?) -> String {
-        let indent = String(repeating: "  ", count: max(0, depth - 1))
-        switch blockKind {
-        case .orderedList:
-            return indent + "1. "
-        case .taskChecked:
-            return indent + "- [x] "
-        case .taskUnchecked:
-            return indent + "- [ ] "
-        default:
-            return indent + "- "
-        }
     }
 
     func adjustSnapshot(

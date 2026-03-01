@@ -308,24 +308,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private func canonicalMarkdownSnapshot(from markdown: String) -> String {
         let nativeViewModel = NativeMarkdownEditorViewModel()
         nativeViewModel.loadMarkdown(markdown)
-        let firstPass = nativeViewModel.currentMarkdown()
-
-        let stabilityProbe = NativeMarkdownEditorViewModel()
-        stabilityProbe.loadMarkdown(firstPass)
-        let secondPass = stabilityProbe.currentMarkdown()
-        guard firstPass != secondPass else {
-            return firstPass
-        }
-
-        logger.error(
-            """
-            Markdown canonicalization drift detected during snapshot normalization \
-            (input=\(markdown.count, privacy: .public), \
-            first=\(firstPass.count, privacy: .public), \
-            second=\(secondPass.count, privacy: .public))
-            """
-        )
-        return secondPass
+        return nativeViewModel.currentMarkdown()
     }
 
     @available(iOS 26.0, macOS 26.0, *)

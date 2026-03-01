@@ -34,7 +34,6 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
 
     func testBlockquoteDisplaysReadMarkerAndExportsCleanMarkdown() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.usesInjectedListMarkers = false
         viewModel.loadMarkdown("> Quoted")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)

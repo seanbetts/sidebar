@@ -78,7 +78,9 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
 
         let updatedLine = firstLine(in: viewModel.attributedContent)
         XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedLine), .taskChecked)
-        XCTAssertEqual(viewModel.attributedContent[updatedLine].strikethroughStyle, .single)
+        let contentRuns = viewModel.attributedContent[updatedLine].runs.filter { $0.listMarker != true }
+        XCTAssertFalse(contentRuns.isEmpty)
+        XCTAssertTrue(contentRuns.allSatisfy { $0.strikethroughStyle == .single })
     }
 
     func testApplyFormattingTaskListTogglesCheckedTaskToUnchecked() async {
@@ -166,7 +168,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
 
     func testIndentListItemsAppliesToEachSelectedParagraphAcrossMixedListKinds() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("Bullet line\nTask line\nPlain line")
+        viewModel.attributedContent = AttributedString("Bullet line\nTask line\nPlain line")
         let initialRanges = lineRanges(in: viewModel.attributedContent)
         XCTAssertEqual(initialRanges.count, 3)
 
@@ -186,13 +188,13 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent[updatedRanges[0]].listDepth, 2)
         XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[1]), .taskUnchecked)
         XCTAssertEqual(viewModel.attributedContent[updatedRanges[1]].listDepth, 2)
-        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[2]), .paragraph)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[2]) ?? .paragraph, .paragraph)
         XCTAssertNil(viewModel.attributedContent[updatedRanges[2]].listDepth)
     }
 
     func testOutdentListItemsConvertsEachSelectedDepthOneParagraphToParagraph() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("Bullet line\nOrdered line\nPlain line")
+        viewModel.attributedContent = AttributedString("Bullet line\nOrdered line\nPlain line")
         let initialRanges = lineRanges(in: viewModel.attributedContent)
         XCTAssertEqual(initialRanges.count, 3)
 
@@ -208,11 +210,11 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         viewModel.outdentListItems()
 
         let updatedRanges = lineRanges(in: viewModel.attributedContent)
-        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[0]), .paragraph)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[0]) ?? .paragraph, .paragraph)
         XCTAssertNil(viewModel.attributedContent[updatedRanges[0]].listDepth)
-        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[1]), .paragraph)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[1]) ?? .paragraph, .paragraph)
         XCTAssertNil(viewModel.attributedContent[updatedRanges[1]].listDepth)
-        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[2]), .paragraph)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedRanges[2]) ?? .paragraph, .paragraph)
         XCTAssertNil(viewModel.attributedContent[updatedRanges[2]].listDepth)
     }
 
@@ -262,7 +264,6 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
         viewModel.attributedContent = content
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
-        viewModel.usesInjectedListMarkers = false
 
         viewModel.updatePrefixVisibility()
 
@@ -273,7 +274,6 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     func testUpdatePrefixVisibilityDoesNotInferHorizontalRuleWhenInjectedMarkersDisabled() async {
         let viewModel = NativeMarkdownEditorViewModel()
         viewModel.attributedContent = AttributedString("---")
-        viewModel.usesInjectedListMarkers = false
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
 
@@ -344,7 +344,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
 
     func testSelectionLineSpanCoversInsertionAndMultiLineRanges() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("line1\nline2\nline3")
+        viewModel.attributedContent = AttributedString("line1\nline2\nline3")
 
         let line2Start = viewModel.attributedContent.index(viewModel.attributedContent.startIndex, offsetByCharacters: 6)
         viewModel.selection = AttributedTextSelection(range: line2Start..<line2Start)
@@ -358,7 +358,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
 
     func testHandleSelectionChangeTracksSpanTransitions() async {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown("line1\nline2")
+        viewModel.attributedContent = AttributedString("line1\nline2")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
