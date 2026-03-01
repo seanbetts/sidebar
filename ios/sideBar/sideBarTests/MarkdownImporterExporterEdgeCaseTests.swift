@@ -60,6 +60,21 @@ final class MarkdownImporterExporterEdgeCaseTests: XCTestCase {
         XCTAssertEqual(exported, markdown)
     }
 
+    func testEditorBlankLineRoundTripUsesExplicitMarker() {
+        var attributed = AttributedString("Alpha\n\nBeta")
+        let lines = lineRanges(in: attributed)
+        XCTAssertEqual(lines.count, 3)
+        let blankLineRange = lines[1]
+        let newlineRange = blankLineRange.lowerBound..<lines[2].lowerBound
+        attributed[newlineRange].blockKind = .blankLine
+
+        let exported = MarkdownExporter().markdown(from: attributed)
+        XCTAssertEqual(exported, "Alpha\n\(MarkdownBlankLineMarker.htmlComment)\nBeta")
+
+        let reimported = MarkdownImporter().attributedString(from: exported).attributedString
+        XCTAssertEqual(String(reimported.characters), "Alpha\n\nBeta")
+    }
+
     func testImporterDoesNotConvertBlankLinesInsideFencedCodeToBlankLineMarkers() {
         let markdown = """
         ```swift
@@ -96,5 +111,26 @@ final class MarkdownImporterExporterEdgeCaseTests: XCTestCase {
         XCTAssertTrue(canonical.contains("> - [x]"), canonical)
         XCTAssertTrue(canonical.contains("- Parent"), canonical)
         XCTAssertTrue(canonical.contains("  - Child"), canonical)
+    }
+
+    private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
+        var ranges: [Range<AttributedString.Index>] = []
+        var lineStart = text.startIndex
+        var current = text.startIndex
+
+        while current < text.endIndex {
+            if text.characters[current].isNewline {
+                ranges.append(lineStart..<current)
+                lineStart = text.index(afterCharacter: current)
+                current = lineStart
+            } else {
+                current = text.index(afterCharacter: current)
+            }
+        }
+
+        if lineStart <= text.endIndex {
+            ranges.append(lineStart..<text.endIndex)
+        }
+        return ranges
     }
 }

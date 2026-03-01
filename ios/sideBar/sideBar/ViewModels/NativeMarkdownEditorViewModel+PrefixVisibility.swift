@@ -47,6 +47,11 @@ extension NativeMarkdownEditorViewModel {
                 useLegacyMarkerHeuristics: useLegacyMarkerHeuristics
             )
 
+            // Persist explicit editor blank lines so export can round-trip them as authored.
+            if line.text.isEmpty, !paragraphRange.isEmpty {
+                updated[paragraphRange].blockKind = .blankLine
+            }
+
             let listDepth = updated[lineRange].listDepth
             if let baseStyle = paragraphStyle(for: blockKind, listDepth: listDepth) {
                 let collapsedBefore = collapsedParagraphSpacingBefore(

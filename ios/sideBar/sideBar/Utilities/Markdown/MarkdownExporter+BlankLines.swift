@@ -7,6 +7,13 @@ func blankLineOutput(
     lines: [Range<AttributedString.Index>],
     lineIndex: Int
 ) -> String {
+    if isExplicitEditorBlankLine(
+        in: attributedString,
+        lines: lines,
+        lineIndex: lineIndex
+    ) {
+        return MarkdownBlankLineMarker.htmlComment
+    }
     if shouldEmitPlainBlankLine(
         in: attributedString,
         lines: lines,
@@ -15,6 +22,43 @@ func blankLineOutput(
         return ""
     }
     return MarkdownBlankLineMarker.htmlComment
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func isExplicitEditorBlankLine(
+    in attributedString: AttributedString,
+    lines: [Range<AttributedString.Index>],
+    lineIndex: Int
+) -> Bool {
+    guard lines.indices.contains(lineIndex) else { return false }
+    guard let lineRange = lineRangeIncludingTrailingNewline(
+        in: attributedString,
+        lines: lines,
+        lineIndex: lineIndex
+    ) else {
+        return false
+    }
+    return attributedString.blockKind(in: lineRange) == .blankLine
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func lineRangeIncludingTrailingNewline(
+    in attributedString: AttributedString,
+    lines: [Range<AttributedString.Index>],
+    lineIndex: Int
+) -> Range<AttributedString.Index>? {
+    guard lines.indices.contains(lineIndex) else { return nil }
+    let lineRange = lines[lineIndex]
+    if lineIndex + 1 < lines.count {
+        let upper = lines[lineIndex + 1].lowerBound
+        if lineRange.lowerBound < upper {
+            return lineRange.lowerBound..<upper
+        }
+    }
+    if !lineRange.isEmpty {
+        return lineRange
+    }
+    return nil
 }
 
 @available(iOS 26.0, macOS 26.0, *)
