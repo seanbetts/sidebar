@@ -33,6 +33,9 @@ NOTES_SHELL_RELATIVE_PATHS = (
     Path("Views/Notes/AttributedNoteKeyboardShortcuts.swift"),
 )
 NOTES_EDITOR_GLOB = "ViewModels/NativeNoteEditorViewModel*.swift"
+NOTES_DEPENDENCY_RELATIVE_PATHS = (
+    Path("Utilities/NoteTextDependencies.swift"),
+)
 FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bNativeMarkdownEditorViewModel\b",
     r"\bMarkdownFormatting\b",
@@ -53,6 +56,13 @@ FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bSideBarMarkdownStyle\b",
     r"\bMarkdownEditorAttributes\b",
     r"\bSideBarMarkdownLayout\b",
+)
+FORBIDDEN_NOTES_DEPENDENCY_PATTERNS = (
+    r"\bMarkdownEditorAttributes\b",
+    r"\bSideBarMarkdownLayout\b",
+    r"\bSideBarMarkdownStyle\b",
+    r"\bMarkdownFormattingDefinition\b",
+    r"\bMarkdownShortcutProcessor\b",
 )
 
 
@@ -110,6 +120,17 @@ def _notes_shell_files(repo_root: Path) -> list[Path]:
     return files
 
 
+def _notes_dependency_files(repo_root: Path) -> list[Path]:
+    """Return notes dependency files that should avoid markdown-named layout/style/attribute symbols."""
+    root = repo_root / RUNTIME_ROOT
+    files: list[Path] = []
+    for relative_path in NOTES_DEPENDENCY_RELATIVE_PATHS:
+        candidate = root / relative_path
+        if candidate.exists() and candidate.is_file():
+            files.append(candidate)
+    return files
+
+
 def check(repo_root: Path) -> list[Violation]:
     """Run NotesRuntime boundary checks and return violations."""
     runtime_files = _runtime_boundary_files(repo_root)
@@ -118,11 +139,17 @@ def check(repo_root: Path) -> list[Violation]:
     notes_shell_compiled = tuple(
         re.compile(pattern) for pattern in FORBIDDEN_NOTES_SHELL_PATTERNS
     )
+    notes_dependency_files = _notes_dependency_files(repo_root)
+    notes_dependency_compiled = tuple(
+        re.compile(pattern) for pattern in FORBIDDEN_NOTES_DEPENDENCY_PATTERNS
+    )
     violations: list[Violation] = []
     for file_path in runtime_files:
         violations.extend(_scan_file(file_path, runtime_compiled))
     for file_path in notes_shell_files:
         violations.extend(_scan_file(file_path, notes_shell_compiled))
+    for file_path in notes_dependency_files:
+        violations.extend(_scan_file(file_path, notes_dependency_compiled))
     return violations
 
 

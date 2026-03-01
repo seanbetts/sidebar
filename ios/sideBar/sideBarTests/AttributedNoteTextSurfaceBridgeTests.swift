@@ -3,7 +3,7 @@ import XCTest
 
 final class AttributedNoteTextSurfaceBridgeTests: XCTestCase {
     @available(iOS 26.0, macOS 26.0, *)
-    func testScopedBridgePreservesMarkdownEditorAttributes() throws {
+    func testScopedBridgePreservesNoteTextEditorAttributes() throws {
         var text = AttributedString("- [ ] Item")
         let range = text.startIndex..<text.endIndex
 
@@ -26,7 +26,7 @@ final class AttributedNoteTextSurfaceBridgeTests: XCTestCase {
 @available(iOS 26.0, macOS 26.0, *)
 private extension AttributeScopes {
     struct TestAttributedNoteBridgeAttributes: AttributeScope {
-        let markdownEditor: MarkdownEditorAttributes
+        let noteTextEditor: NoteTextEditorAttributes
         #if os(iOS)
         let uiKit: UIKitAttributes
         #elseif os(macOS)

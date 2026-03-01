@@ -182,6 +182,44 @@ def test_check_reports_direct_markdown_utility_references_in_native_note_editor(
     assert any("MarkdownHeadingMetrics" in violation.token for violation in violations)
 
 
+def test_check_reports_markdown_layout_style_attribute_references_in_note_dependencies(
+    tmp_path: Path,
+) -> None:
+    """Notes dependency wrappers should fail if markdown layout/style/attribute symbols are referenced."""
+    dependencies_file = (
+        tmp_path / "ios/sideBar/sideBar/Utilities/NoteTextDependencies.swift"
+    )
+    _write(
+        dependencies_file,
+        """
+        import SwiftUI
+        typealias NoteTextEditorAttributes = AttributeScopes.MarkdownEditorAttributes
+        enum NoteTextLayout {
+            static let maxContentWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
+        }
+        struct NoteTextStyle {
+            static let `default` = SideBarMarkdownStyle.default
+        }
+        struct NoteTextFormattingDefinition {
+            let definition = MarkdownFormattingDefinition()
+        }
+        struct NoteTextShortcutProcessor {
+            static func process() {
+                _ = MarkdownShortcutProcessor.processShortcuts
+            }
+        }
+        """,
+    )
+
+    violations = check(tmp_path)
+
+    assert any("MarkdownEditorAttributes" in violation.token for violation in violations)
+    assert any("SideBarMarkdownLayout" in violation.token for violation in violations)
+    assert any("SideBarMarkdownStyle" in violation.token for violation in violations)
+    assert any("MarkdownFormattingDefinition" in violation.token for violation in violations)
+    assert any("MarkdownShortcutProcessor" in violation.token for violation in violations)
+
+
 def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
     """No violations should be reported for clean runtime and shell files."""
     _write(

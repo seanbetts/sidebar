@@ -30,7 +30,7 @@ enum NoteTextShortcutProcessor {
         lastInsertedCharacter: Character?,
         baseFontSize: CGFloat = 16
     ) -> ShortcutResult? {
-        guard let result = MarkdownShortcutProcessor.processShortcuts(
+        guard let result = NoteTextShortcutEngine.processShortcuts(
             in: &text,
             selection: selection,
             lastInsertedCharacter: lastInsertedCharacter,
@@ -42,20 +42,7 @@ enum NoteTextShortcutProcessor {
     }
 
     static func inferredListBlockKind(from lineText: String) -> BlockKind? {
-        MarkdownShortcutProcessor.inferredListBlockKind(from: lineText)
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-struct NoteTextFormattingDefinition {
-    private let definition = MarkdownFormattingDefinition()
-
-    func constrainedDocument(_ text: AttributedString) -> AttributedString {
-        definition.constrainedDocument(text)
-    }
-
-    func constrainDocument(_ text: inout AttributedString) {
-        definition.constrainDocument(&text)
+        NoteTextShortcutEngine.inferredListBlockKind(from: lineText)
     }
 }
 
@@ -377,19 +364,34 @@ struct NoteTextStyle: Equatable {
     let codeBackground: Color
     let codeBlockBackground: Color
 
-    static let `default` = NoteTextStyle(markdownStyle: .default)
-
-    private init(markdownStyle: SideBarMarkdownStyle) {
-        self.codeBackground = markdownStyle.codeBackground
-        self.codeBlockBackground = markdownStyle.codeBlockBackground
-    }
+    static let `default` = NoteTextStyle(
+        codeBackground: DesignTokens.Colors.muted,
+        codeBlockBackground: DesignTokens.Colors.muted
+    )
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-typealias NoteTextEditorAttributes = AttributeScopes.MarkdownEditorAttributes
+public extension AttributeScopes {
+    struct NoteTextEditorAttributes: AttributeScope {
+        public let blockKind: BlockKindAttribute
+        public let listDepth: ListDepthAttribute
+        public let codeLanguage: CodeLanguageAttribute
+        public let inlineMarker: InlineMarkerAttribute
+        public let listMarker: ListMarkerAttribute
+        public let imageInfo: ImageInfoAttribute
+        public let presentationIntent: AttributeScopes.FoundationAttributes.PresentationIntentAttribute
+        public let listItemDelimiter: AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute
+        public let foundation: AttributeScopes.FoundationAttributes
+        public let swiftUI: AttributeScopes.SwiftUIAttributes
+    }
+
+    var noteTextEditor: NoteTextEditorAttributes.Type {
+        NoteTextEditorAttributes.self
+    }
+}
 
 enum NoteTextLayout {
-    static let maxContentWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
-    static let horizontalPadding: CGFloat = SideBarMarkdownLayout.horizontalPadding
-    static let verticalPadding: CGFloat = SideBarMarkdownLayout.verticalPadding
+    static let maxContentWidth: CGFloat = ContentLayout.maxContentWidth
+    static let horizontalPadding: CGFloat = 20
+    static let verticalPadding: CGFloat = 16
 }
