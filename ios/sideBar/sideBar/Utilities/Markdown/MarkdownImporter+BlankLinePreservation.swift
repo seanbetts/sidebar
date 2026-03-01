@@ -42,6 +42,15 @@ func preserveAuthorBlankLines(in markdown: String) -> String {
 
 @available(iOS 26.0, macOS 26.0, *)
 private func shouldConvertBlankLine(at index: Int, in lines: [String]) -> Bool {
+    guard let run = blankLineRun(containing: index, in: lines) else {
+        return false
+    }
+    // Keep the first blank line in a run as a structural markdown paragraph separator.
+    // Preserve only additional blank lines as explicit editor markers.
+    guard run.length > 1, index > run.start else {
+        return false
+    }
+
     guard let previousIndex = previousNonEmptyLineIndex(before: index, in: lines),
           let nextIndex = nextNonEmptyLineIndex(after: index, in: lines) else {
         return false
@@ -75,6 +84,26 @@ private func shouldConvertBlankLine(at index: Int, in lines: [String]) -> Bool {
     }
 
     return true
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func blankLineRun(containing index: Int, in lines: [String]) -> (start: Int, length: Int)? {
+    guard lines.indices.contains(index) else { return nil }
+    guard lines[index].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        return nil
+    }
+
+    var start = index
+    while start > 0 && lines[start - 1].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        start -= 1
+    }
+
+    var end = index
+    while end + 1 < lines.count && lines[end + 1].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        end += 1
+    }
+
+    return (start, end - start + 1)
 }
 
 @available(iOS 26.0, macOS 26.0, *)

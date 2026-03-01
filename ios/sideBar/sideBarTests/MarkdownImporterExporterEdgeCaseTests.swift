@@ -44,7 +44,7 @@ final class MarkdownImporterExporterEdgeCaseTests: XCTestCase {
         XCTAssertEqual(exported, "Line 1\n\nLine 2")
     }
 
-    func testImporterPreservesExternalPlainBlankLines() {
+    func testImporterTreatsSingleBlankLineAsParagraphSeparator() {
         let markdown = """
         Alpha
 
@@ -54,7 +54,7 @@ final class MarkdownImporterExporterEdgeCaseTests: XCTestCase {
         let exporter = MarkdownExporter()
 
         let imported = importer.attributedString(from: markdown).attributedString
-        XCTAssertEqual(String(imported.characters), "Alpha\n\nBeta")
+        XCTAssertEqual(String(imported.characters), "Alpha\nBeta")
 
         let exported = exporter.markdown(from: imported)
         XCTAssertEqual(exported, markdown)
