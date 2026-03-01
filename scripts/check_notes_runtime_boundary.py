@@ -21,15 +21,19 @@ FORBIDDEN_PATTERNS = (
     r"\bMarkdownRendering\b",
 )
 NOTES_SHELL_RELATIVE_PATHS = (
+    Path("ViewModels/NotesEditorViewModel.swift"),
     Path("Views/Notes/NotesView.swift"),
     Path("Views/Notes/NotesDetailView.swift"),
     Path("Views/Notes/NotesDetailView+MenuActions.swift"),
     Path("Views/Notes/NotesDetailView+FileOperations.swift"),
+    Path("Views/Notes/AttributedNoteEditorContainer.swift"),
 )
 FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bSideBarMarkdownContainer\b",
     r"\bMarkdownEditorView\b",
     r"\buseAttributedNoteEditorV2\b",
+    r"\bloadMarkdown\s*\(",
+    r"\bmarkSaved\s*\(\s*markdown\s*:",
 )
 
 

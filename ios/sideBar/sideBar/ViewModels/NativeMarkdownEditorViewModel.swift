@@ -9,7 +9,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-/// View model for editing and styling native markdown content.
+/// View model for editing and styling native note content.
 public final class NativeMarkdownEditorViewModel: ObservableObject {
     @Published public var attributedContent: AttributedString = AttributedString()
     @Published public var selection: AttributedTextSelection = AttributedTextSelection()
@@ -64,15 +64,19 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         baseFontSize = max(12, size)
     }
 
-    public func loadMarkdown(_ markdown: String) {
-        let result = importer.attributedString(from: markdown, baseFontSize: baseFontSize)
+    public func loadText(_ text: String) {
+        let result = importer.attributedString(from: text, baseFontSize: baseFontSize)
         frontmatter = result.frontmatter
         attributedContent = result.attributedString
         selection = AttributedTextSelection()
-        lastSavedContent = markdown
+        lastSavedContent = text
         hasUnsavedChanges = false
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
         updatePrefixVisibility()
+    }
+
+    public func loadMarkdown(_ markdown: String) {
+        loadText(markdown)
     }
 
     public func currentMarkdown() -> String {
@@ -91,9 +95,13 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         return String(constrained.characters)
     }
 
-    public func markSaved(markdown: String) {
-        lastSavedContent = markdown
+    public func markSaved(plainText: String) {
+        lastSavedContent = plainText
         hasUnsavedChanges = false
+    }
+
+    public func markSaved(markdown: String) {
+        markSaved(plainText: markdown)
     }
 
     public func isBoldActive() -> Bool {

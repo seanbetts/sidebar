@@ -162,7 +162,7 @@ struct AttributedNoteEditorContainer: View {
         guard let noteId = editorViewModel.currentNoteId else { return }
         guard noteId != loadedNoteId else { return }
         loadedNoteId = noteId
-        nativeViewModel.loadMarkdown(editorViewModel.content)
+        nativeViewModel.loadText(editorViewModel.content)
     }
 
     private func applyAutosaveDelay(isOffline: Bool) {

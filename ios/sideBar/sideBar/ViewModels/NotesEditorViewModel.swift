@@ -124,7 +124,7 @@ public final class NotesEditorViewModel: ObservableObject {
     @available(iOS 26.0, macOS 26.0, *)
     public func makeNativeEditorViewModel() -> NativeMarkdownEditorViewModel {
         let viewModel = NativeMarkdownEditorViewModel()
-        viewModel.loadMarkdown(content)
+        viewModel.loadText(content)
         return viewModel
     }
 
@@ -181,7 +181,7 @@ public final class NotesEditorViewModel: ObservableObject {
             } catch {
                 saveErrorMessage = "Failed to queue changes"
             }
-            nativeViewModel.markSaved(markdown: plainText)
+            nativeViewModel.markSaved(plainText: plainText)
             content = plainText
             isSaving = false
             isDirty = false
@@ -194,7 +194,7 @@ public final class NotesEditorViewModel: ObservableObject {
         isSaving = false
         if saved {
             try? draftStorage.markSynced(entityType: "note", entityId: noteId)
-            nativeViewModel.markSaved(markdown: plainText)
+            nativeViewModel.markSaved(plainText: plainText)
             content = plainText
             isDirty = false
             lastSavedAt = Date()
@@ -299,7 +299,7 @@ public final class NotesEditorViewModel: ObservableObject {
         if #available(iOS 26.0, macOS 26.0, *) {
             guard let nativeEditorViewModel else { return }
             guard nativeEditorViewModel.currentPlainText() != plainText else { return }
-            nativeEditorViewModel.loadMarkdown(plainText)
+            nativeEditorViewModel.loadText(plainText)
         }
     }
 
@@ -313,7 +313,7 @@ public final class NotesEditorViewModel: ObservableObject {
     @available(iOS 26.0, macOS 26.0, *)
     private func canonicalPlainTextSnapshot(from plainText: String) -> String {
         let nativeViewModel = NativeMarkdownEditorViewModel()
-        nativeViewModel.loadMarkdown(plainText)
+        nativeViewModel.loadText(plainText)
         return nativeViewModel.currentPlainText()
     }
 

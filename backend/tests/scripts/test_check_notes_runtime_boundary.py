@@ -67,6 +67,32 @@ def test_check_reports_notes_shell_forbidden_references(tmp_path: Path) -> None:
     assert any("SideBarMarkdownContainer" in violation.token for violation in violations)
 
 
+def test_check_reports_markdown_method_calls_in_notes_runtime_files(
+    tmp_path: Path,
+) -> None:
+    """Active notes runtime files should fail if markdown-named bridge methods are used."""
+    runtime_callsite = (
+        tmp_path / "ios/sideBar/sideBar/ViewModels/NotesEditorViewModel.swift"
+    )
+    _write(
+        runtime_callsite,
+        """
+        import Foundation
+        final class NotesEditorViewModel {
+            func sync(vm: NativeMarkdownEditorViewModel) {
+                vm.loadMarkdown("body")
+                vm.markSaved(markdown: "body")
+            }
+        }
+        """,
+    )
+
+    violations = check(tmp_path)
+
+    assert any("loadMarkdown" in violation.token for violation in violations)
+    assert any("markSaved" in violation.token for violation in violations)
+
+
 def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
     """No violations should be reported for clean runtime and shell files."""
     _write(
