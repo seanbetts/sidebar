@@ -326,7 +326,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         user_id: str,
         content: str,
         *,
-        plain_text: str | None = None,
+        plain_text: str,
         title: str | None = None,
         path: str = "",
         folder: str = "",
@@ -337,8 +337,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         Args:
             db: Database session.
             user_id: Current user ID.
-            content: Canonical Base64 RTF or legacy plain text content.
-            plain_text: Canonical plain-text cache for strict writes.
+            content: Canonical Base64 RTF content.
+            plain_text: Canonical plain-text cache.
             title: Optional note title.
             path: Optional file path hint.
             folder: Optional folder override.
@@ -370,7 +370,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             note_id = getattr(created, "_snapshot_id", None)
             updated_at = getattr(created, "_snapshot_updated_at", None)
             fallback_title = title or NotesService.extract_title(
-                content, "Untitled Note"
+                plain_text, "Untitled Note"
             )
             return {
                 "id": str(note_id),
@@ -378,7 +378,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
                 "path": str(note_id),
                 "modified": updated_at.timestamp() if updated_at else None,
                 "content": content,
-                "plain_text": plain_text if plain_text is not None else content,
+                "plain_text": plain_text,
                 "content_format": "rtf",
             }
 
@@ -389,7 +389,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         note_id: str,
         content: str,
         *,
-        plain_text: str | None = None,
+        plain_text: str,
         client_updated_at: datetime | None = None,
     ) -> dict:
         """Update note content using workspace request data.
@@ -398,8 +398,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             db: Database session.
             user_id: Current user ID.
             note_id: Note ID (UUID string).
-            content: Canonical Base64 RTF or legacy plain text content.
-            plain_text: Canonical plain-text cache for strict writes.
+            content: Canonical Base64 RTF content.
+            plain_text: Canonical plain-text cache.
             client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:

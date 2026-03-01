@@ -32,9 +32,7 @@ def test_scratchpad_update_roundtrip(test_client):
     assert "Hello" in updated.json()["content"]
 
 
-def test_scratchpad_update_roundtrip_with_strict_writes(test_client, monkeypatch):
-    monkeypatch.setenv("NOTES_STRICT_RTF_WRITES", "true")
-
+def test_scratchpad_update_roundtrip_without_write_flag(test_client):
     response = test_client.post(
         "/api/scratchpad",
         json={"content": "Strict Hello"},

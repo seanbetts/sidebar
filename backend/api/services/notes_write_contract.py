@@ -20,7 +20,6 @@ from api.services.notes_content_codec import (
 MAX_NOTE_RTF_BYTES = 2_097_152
 JSON_HEADROOM = 512
 MAX_NOTE_CONTENT_B64_CHARS = ((MAX_NOTE_RTF_BYTES + 2) // 3) * 4 + JSON_HEADROOM
-STRICT_NOTES_WRITE_ENV_VAR = "NOTES_STRICT_RTF_WRITES"
 NOTES_READ_DIAGNOSTICS_ENV_VAR = "NOTES_READ_CANONICALITY_DIAGNOSTICS"
 _SEEN_READ_DIAGNOSTIC_KEYS: set[tuple[str, str]] = set()
 logger = logging.getLogger(__name__)
@@ -32,12 +31,6 @@ class CanonicalNoteWrite:
 
     content: str
     plain_text: str
-
-
-def strict_content_writes_enabled() -> bool:
-    """Return whether strict canonical writes are required."""
-    value = (os.getenv(STRICT_NOTES_WRITE_ENV_VAR) or "").strip().lower()
-    return value in {"1", "true", "yes", "on"}
 
 
 def plain_text_to_rtf_base64(plain_text: str) -> str:
@@ -160,46 +153,10 @@ def validate_canonical_base64_rtf(content: Any) -> str:
 def build_canonical_note_write(
     content: Any,
     plain_text: Any,
-    *,
-    existing_plain_text: str | None = None,
 ) -> CanonicalNoteWrite:
-    """Build canonical content/plain-text payload for note writes.
-
-    Strict mode:
-        Requires canonical Base64 RTF `content` and explicit `plain_text`.
-
-    Compatibility mode:
-        Accepts legacy plain-text `content` and canonicalizes it to Base64 RTF.
-        If `content` is already canonical and `plain_text` is omitted, falls back
-        to existing note metadata plain text when available.
-    """
-    strict_mode = strict_content_writes_enabled()
-    if strict_mode:
-        canonical_content = validate_canonical_base64_rtf(content)
-        resolved_plain_text = validate_plain_text(plain_text)
-        return CanonicalNoteWrite(
-            content=canonical_content,
-            plain_text=resolved_plain_text,
-        )
-
-    if not isinstance(content, str):
-        raise BadRequestError("content required")
-
-    if is_canonical_base64_rtf(content):
-        if plain_text is None:
-            if existing_plain_text is None:
-                raise BadRequestError("plain_text required")
-            resolved_plain_text = validate_plain_text(existing_plain_text)
-        else:
-            resolved_plain_text = validate_plain_text(plain_text)
-        return CanonicalNoteWrite(content=content, plain_text=resolved_plain_text)
-
-    if plain_text is None:
-        resolved_plain_text = validate_plain_text(content)
-    else:
-        resolved_plain_text = validate_plain_text(plain_text)
-    canonical_content = plain_text_to_rtf_base64(resolved_plain_text)
-    validate_canonical_base64_rtf(canonical_content)
+    """Build canonical content/plain-text payload for note writes."""
+    canonical_content = validate_canonical_base64_rtf(content)
+    resolved_plain_text = validate_plain_text(plain_text)
     return CanonicalNoteWrite(
         content=canonical_content,
         plain_text=resolved_plain_text,

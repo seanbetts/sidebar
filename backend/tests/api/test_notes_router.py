@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from api.config import settings
 from api.models.note import Note
+from api.services.notes_content_codec import canonical_note_content_from_plain_text
 
 from tests.helpers import error_message
 
@@ -12,6 +13,14 @@ TEST_USER_ID = os.environ["TEST_USER_ID"]
 
 def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
+
+
+def _canonical_payload(plain_text: str) -> dict[str, str]:
+    canonical = canonical_note_content_from_plain_text(plain_text)
+    return {
+        "content": canonical.content,
+        "plain_text": canonical.plain_text,
+    }
 
 
 def test_notes_search_requires_query(test_client):
@@ -23,9 +32,11 @@ def test_notes_search_requires_query(test_client):
 
 
 def test_notes_search_matches_plain_text_cache(test_client):
+    create_payload = _canonical_payload("# Searchable\n\nAlpha Needle Body")
+    create_payload["title"] = "Searchable"
     create = test_client.post(
         "/api/notes",
-        json={"title": "Searchable", "content": "# Searchable\n\nAlpha Needle Body"},
+        json=create_payload,
         headers=_auth_headers(),
     )
     assert create.status_code == 200
@@ -44,6 +55,16 @@ def test_notes_create_folder_requires_path(test_client):
     response = test_client.post("/api/notes/folders", json={}, headers=_auth_headers())
     assert response.status_code == 400
     assert error_message(response) == "path required"
+
+
+def test_notes_create_requires_plain_text(test_client):
+    response = test_client.post(
+        "/api/notes",
+        json={"content": "not-canonical"},
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 400
+    assert error_message(response) == "plain_text required"
 
 
 def test_notes_get_invalid_id(test_client):
@@ -105,9 +126,10 @@ def test_notes_download_handles_unicode_filename(test_client, test_db):
 
 def test_notes_create_update_and_rename(test_client):
     created_content = "# Title\n\nBody"
+    create_payload = _canonical_payload(created_content)
     create = test_client.post(
         "/api/notes",
-        json={"content": created_content},
+        json=create_payload,
         headers=_auth_headers(),
     )
     assert create.status_code == 200
@@ -117,9 +139,10 @@ def test_notes_create_update_and_rename(test_client):
     assert created_payload["content_format"] == "rtf"
 
     updated_content = "# Title\n\nUpdated"
+    update_payload = _canonical_payload(updated_content)
     update = test_client.patch(
         f"/api/notes/{note_id}",
-        json={"content": updated_content},
+        json=update_payload,
         headers=_auth_headers(),
     )
     assert update.status_code == 200
@@ -135,10 +158,31 @@ def test_notes_create_update_and_rename(test_client):
     assert rename.status_code == 200
 
 
-def test_notes_pin_move_archive(test_client, test_db):
+def test_notes_update_requires_plain_text(test_client):
+    create_payload = _canonical_payload("# Title\n\nBody")
     create = test_client.post(
         "/api/notes",
-        json={"content": "# Title\n\nBody"},
+        json=create_payload,
+        headers=_auth_headers(),
+    )
+    assert create.status_code == 200
+    note_id = create.json()["id"]
+
+    canonical_update = _canonical_payload("# Title\n\nUpdated")
+    response = test_client.patch(
+        f"/api/notes/{note_id}",
+        json={"content": canonical_update["content"]},
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 400
+    assert error_message(response) == "plain_text required"
+
+
+def test_notes_pin_move_archive(test_client, test_db):
+    create_payload = _canonical_payload("# Title\n\nBody")
+    create = test_client.post(
+        "/api/notes",
+        json=create_payload,
         headers=_auth_headers(),
     )
     note_id = create.json()["id"]
@@ -186,9 +230,10 @@ def test_notes_pin_move_archive(test_client, test_db):
 
 
 def test_notes_delete_unpins_note(test_client, test_db):
+    create_payload = _canonical_payload("# Delete Me\n\nBody")
     create = test_client.post(
         "/api/notes",
-        json={"content": "# Delete Me\n\nBody"},
+        json=create_payload,
         headers=_auth_headers(),
     )
     note_id = create.json()["id"]

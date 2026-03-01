@@ -60,7 +60,7 @@ class NotesService:
         user_id: str,
         content: str,
         *,
-        plain_text: str | None = None,
+        plain_text: str,
         title: str | None = None,
         folder: str = "",
         pinned: bool = False,
@@ -72,8 +72,8 @@ class NotesService:
         Args:
             db: Database session.
             user_id: Current user ID.
-            content: Canonical Base64 RTF or legacy plain text content.
-            plain_text: Canonical plain-text cache for strict writes.
+            content: Canonical Base64 RTF content.
+            plain_text: Canonical plain-text cache.
             title: Note title. Defaults to "Untitled Note" if not provided.
             folder: Folder path. Defaults to "".
             pinned: Whether the note is pinned. Defaults to False.
@@ -147,7 +147,7 @@ class NotesService:
         note_id: uuid.UUID,
         content: str,
         *,
-        plain_text: str | None = None,
+        plain_text: str,
         title: str | None = None,
         client_updated_at: datetime | None = None,
     ) -> Note:
@@ -157,8 +157,8 @@ class NotesService:
             db: Database session.
             user_id: Current user ID.
             note_id: Note UUID.
-            content: Canonical Base64 RTF or legacy plain text content.
-            plain_text: Canonical plain-text cache for strict writes.
+            content: Canonical Base64 RTF content.
+            plain_text: Canonical plain-text cache.
             title: Optional explicit title. If not provided, existing title
                 is preserved.
             client_updated_at: Optional client timestamp for conflict checks.
@@ -183,11 +183,7 @@ class NotesService:
 
         ensure_note_no_conflict(note, client_updated_at, op="update")
 
-        canonical_write = build_canonical_note_write(
-            content,
-            plain_text,
-            existing_plain_text=(note.metadata_ or {}).get("plain_text"),
-        )
+        canonical_write = build_canonical_note_write(content, plain_text)
         if title is not None:
             note.title = title
         note.content = canonical_write.content

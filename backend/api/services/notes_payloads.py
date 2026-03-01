@@ -17,9 +17,12 @@ def read_plain_text_field(payload: dict[str, Any]) -> str | None:
     return str(plain_text)
 
 
-def parse_content_write_payload(payload: dict[str, Any]) -> tuple[str, str | None]:
-    """Parse required content and optional plain-text cache fields."""
+def parse_content_write_payload(payload: dict[str, Any]) -> tuple[str, str]:
+    """Parse required content and plain-text cache fields."""
     content = payload.get("content")
     if content is None:
         raise BadRequestError("content required")
-    return str(content), read_plain_text_field(payload)
+    plain_text = read_plain_text_field(payload)
+    if plain_text is None:
+        raise BadRequestError("plain_text required")
+    return str(content), plain_text

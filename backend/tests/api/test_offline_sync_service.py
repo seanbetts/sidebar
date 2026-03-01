@@ -2,14 +2,27 @@ from datetime import timedelta
 
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.files_sync_service import FilesSyncService
+from api.services.notes_content_codec import canonical_note_content_from_plain_text
 from api.services.notes_service import NotesService
 from api.services.notes_sync_service import NotesSyncService
 from api.services.websites_service import WebsitesService
 from api.services.websites_sync_service import WebsitesSyncService
 
 
+def _canonical_pair(plain_text: str) -> tuple[str, str]:
+    canonical = canonical_note_content_from_plain_text(plain_text)
+    return canonical.content, canonical.plain_text
+
+
 def test_notes_sync_conflict(test_db):
-    note = NotesService.create_note(test_db, "user-1", "# Title\n\nBody")
+    original_content, original_plain_text = _canonical_pair("# Title\n\nBody")
+    note = NotesService.create_note(
+        test_db,
+        "user-1",
+        original_content,
+        plain_text=original_plain_text,
+    )
+    updated_content, updated_plain_text = _canonical_pair("Updated")
     stale = note.updated_at - timedelta(seconds=10)
     result = NotesSyncService.sync_operations(
         test_db,
@@ -21,7 +34,8 @@ def test_notes_sync_conflict(test_db):
                     "operation_id": "op-1",
                     "op": "update",
                     "id": str(note.id),
-                    "content": "Updated",
+                    "content": updated_content,
+                    "plain_text": updated_plain_text,
                     "client_updated_at": stale.isoformat(),
                 }
             ],
@@ -31,7 +45,13 @@ def test_notes_sync_conflict(test_db):
 
 
 def test_notes_sync_move_unpins_note(test_db):
-    note = NotesService.create_note(test_db, "user-1", "# Title\n\nBody")
+    content, plain_text = _canonical_pair("# Title\n\nBody")
+    note = NotesService.create_note(
+        test_db,
+        "user-1",
+        content,
+        plain_text=plain_text,
+    )
     NotesService.update_pinned(test_db, "user-1", note.id, True)
 
     result = NotesSyncService.sync_operations(
@@ -60,7 +80,13 @@ def test_notes_sync_move_unpins_note(test_db):
 
 
 def test_notes_sync_archive_unpins_note(test_db):
-    note = NotesService.create_note(test_db, "user-1", "# Title\n\nBody")
+    content, plain_text = _canonical_pair("# Title\n\nBody")
+    note = NotesService.create_note(
+        test_db,
+        "user-1",
+        content,
+        plain_text=plain_text,
+    )
     NotesService.update_pinned(test_db, "user-1", note.id, True)
 
     result = NotesSyncService.sync_operations(
@@ -89,7 +115,13 @@ def test_notes_sync_archive_unpins_note(test_db):
 
 
 def test_notes_sync_delete_unpins_note(test_db):
-    note = NotesService.create_note(test_db, "user-1", "# Title\n\nBody")
+    content, plain_text = _canonical_pair("# Title\n\nBody")
+    note = NotesService.create_note(
+        test_db,
+        "user-1",
+        content,
+        plain_text=plain_text,
+    )
     NotesService.update_pinned(test_db, "user-1", note.id, True)
 
     result = NotesSyncService.sync_operations(
