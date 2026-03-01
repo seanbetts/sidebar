@@ -23,7 +23,7 @@ extension NativeNoteEditorViewModel {
             if intents.contains(.code) {
                 setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &text, range: range)
                 setForegroundColor(DesignTokens.Colors.textPrimary, in: &text, range: range)
-                setBackgroundColor(style.codeBackground, in: &text, range: range)
+                setBackgroundColor(Self.noteStyle.codeBackground, in: &text, range: range)
                 continue
             }
 

@@ -134,7 +134,7 @@ extension NativeNoteEditorViewModel {
         case .blockquote:
             return DesignTokens.Colors.muted.opacity(0.45)
         case .codeBlock:
-            return style.codeBlockBackground
+            return Self.noteStyle.codeBlockBackground
         default:
             return nil
         }

@@ -11,6 +11,8 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 /// View model for editing and styling native note content.
 public final class NativeNoteEditorViewModel: ObservableObject {
+    static let noteStyle = NoteTextStyle.default
+
     @Published public var attributedContent: AttributedString = AttributedString()
     @Published public var selection: AttributedTextSelection = AttributedTextSelection()
     @Published public var isReadOnly: Bool = false {
@@ -47,7 +49,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     var blockCodeFont: Font {
         Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
     }
-    let style = NoteTextStyle.default
     var lastSavedContent: String = ""
     var autosaveTask: Task<Void, Never>?
     var isUpdatingPrefixVisibility = false
@@ -275,7 +276,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
             if enabled {
                 setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &attrs)
                 setForegroundColor(DesignTokens.Colors.textPrimary, in: &attrs)
-                setBackgroundColor(style.codeBackground, in: &attrs)
+                setBackgroundColor(Self.noteStyle.codeBackground, in: &attrs)
             } else {
                 setFont(baseFont(for: blockKind), platformFont: platformBaseFont(for: blockKind), in: &attrs)
                 setForegroundColor(baseForegroundColor(for: blockKind), in: &attrs)
@@ -302,7 +303,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         if enabled {
             setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &attributedContent, range: range)
             setForegroundColor(DesignTokens.Colors.textPrimary, in: &attributedContent, range: range)
-            setBackgroundColor(style.codeBackground, in: &attributedContent, range: range)
+            setBackgroundColor(Self.noteStyle.codeBackground, in: &attributedContent, range: range)
         } else {
             let blockKind = attributedContent.blockKind(in: range)
             setFont(baseFont(for: blockKind), platformFont: platformBaseFont(for: blockKind), in: &attributedContent, range: range)
