@@ -149,7 +149,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         setBlockKind(.blockquote)
     }
 
-    public func applyFormatting(_ formatting: MarkdownFormatting) {
+    public func applyFormatting(_ formatting: NoteFormatting) {
         guard !isReadOnly else { return }
         let previousContent = attributedContent
         let previousSelection = selection

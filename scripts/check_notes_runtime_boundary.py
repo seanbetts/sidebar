@@ -22,14 +22,17 @@ FORBIDDEN_PATTERNS = (
 )
 NOTES_SHELL_RELATIVE_PATHS = (
     Path("ViewModels/NotesEditorViewModel.swift"),
+    Path("ViewModels/AttributedNoteFormattingCommands.swift"),
     Path("Views/Notes/NotesView.swift"),
     Path("Views/Notes/NotesDetailView.swift"),
     Path("Views/Notes/NotesDetailView+MenuActions.swift"),
     Path("Views/Notes/NotesDetailView+FileOperations.swift"),
     Path("Views/Notes/AttributedNoteEditorContainer.swift"),
+    Path("Views/Notes/AttributedNoteKeyboardShortcuts.swift"),
 )
 FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bNativeMarkdownEditorViewModel\b",
+    r"\bMarkdownFormatting\b",
     r"\bSideBarMarkdownContainer\b",
     r"\bMarkdownEditorView\b",
     r"\buseAttributedNoteEditorV2\b",

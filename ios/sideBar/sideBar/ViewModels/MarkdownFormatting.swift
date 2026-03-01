@@ -1,8 +1,8 @@
 import Foundation
 
 @available(iOS 26.0, macOS 26.0, *)
-/// Formatting actions available for native markdown editing.
-public enum MarkdownFormatting: Equatable {
+/// Formatting actions available for native notes editing.
+public enum NoteFormatting: Equatable {
     case bold
     case italic
     case strikethrough
@@ -22,7 +22,7 @@ public enum MarkdownFormatting: Equatable {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-extension MarkdownFormatting {
+extension NoteFormatting {
     var requiresStructuralRefresh: Bool {
         switch self {
         case .bold, .italic, .strikethrough, .inlineCode, .link:
@@ -42,3 +42,6 @@ extension MarkdownFormatting {
         }
     }
 }
+
+@available(iOS 26.0, macOS 26.0, *)
+public typealias MarkdownFormatting = NoteFormatting

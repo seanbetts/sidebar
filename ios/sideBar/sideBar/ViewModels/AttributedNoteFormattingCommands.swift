@@ -3,7 +3,7 @@ import Foundation
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 enum AttributedNoteFormattingCommands {
-    static func apply(_ formatting: MarkdownFormatting, on viewModel: NativeMarkdownEditorViewModel) {
+    static func apply(_ formatting: NoteFormatting, on viewModel: NativeNoteEditorViewModel) {
         if applyInline(formatting, on: viewModel) {
             return
         }
@@ -14,8 +14,8 @@ enum AttributedNoteFormattingCommands {
     }
 
     private static func applyInline(
-        _ formatting: MarkdownFormatting,
-        on viewModel: NativeMarkdownEditorViewModel
+        _ formatting: NoteFormatting,
+        on viewModel: NativeNoteEditorViewModel
     ) -> Bool {
         switch formatting {
         case .bold:
@@ -36,8 +36,8 @@ enum AttributedNoteFormattingCommands {
     }
 
     private static func applyBlock(
-        _ formatting: MarkdownFormatting,
-        on viewModel: NativeMarkdownEditorViewModel
+        _ formatting: NoteFormatting,
+        on viewModel: NativeNoteEditorViewModel
     ) -> Bool {
         if applyHeadingCommands(formatting, on: viewModel) {
             return true
@@ -52,8 +52,8 @@ enum AttributedNoteFormattingCommands {
     }
 
     private static func applyHeadingCommands(
-        _ formatting: MarkdownFormatting,
-        on viewModel: NativeMarkdownEditorViewModel
+        _ formatting: NoteFormatting,
+        on viewModel: NativeNoteEditorViewModel
     ) -> Bool {
         switch formatting {
         case .heading(let level):
@@ -71,8 +71,8 @@ enum AttributedNoteFormattingCommands {
     }
 
     private static func applyListCommands(
-        _ formatting: MarkdownFormatting,
-        on viewModel: NativeMarkdownEditorViewModel
+        _ formatting: NoteFormatting,
+        on viewModel: NativeNoteEditorViewModel
     ) -> Bool {
         switch formatting {
         case .bulletList:
@@ -96,8 +96,8 @@ enum AttributedNoteFormattingCommands {
     }
 
     private static func applyContainerCommands(
-        _ formatting: MarkdownFormatting,
-        on viewModel: NativeMarkdownEditorViewModel
+        _ formatting: NoteFormatting,
+        on viewModel: NativeNoteEditorViewModel
     ) -> Bool {
         switch formatting {
         case .blockquote:
@@ -111,7 +111,7 @@ enum AttributedNoteFormattingCommands {
         }
     }
 
-    private static func toggleTaskList(on viewModel: NativeMarkdownEditorViewModel) {
+    private static func toggleTaskList(on viewModel: NativeNoteEditorViewModel) {
         let paragraphRanges = viewModel.selectedParagraphRanges()
         guard !paragraphRanges.isEmpty else {
             viewModel.setBlockKind(.taskUnchecked, listDepth: 1)
@@ -149,8 +149,8 @@ enum AttributedNoteFormattingCommands {
     }
 
     private static func applySpecial(
-        _ formatting: MarkdownFormatting,
-        on viewModel: NativeMarkdownEditorViewModel
+        _ formatting: NoteFormatting,
+        on viewModel: NativeNoteEditorViewModel
     ) {
         switch formatting {
         case .link(let url):

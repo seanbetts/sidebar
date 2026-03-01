@@ -19,7 +19,7 @@ enum AttributedNoteKeyboardShortcutKey {
 
 @available(iOS 26.0, macOS 26.0, *)
 enum AttributedNoteKeyboardShortcutAction: Equatable {
-    case formatting(MarkdownFormatting)
+    case formatting(NoteFormatting)
     case suppressSystemUnderline
 }
 
