@@ -180,7 +180,9 @@ struct AgentSettingsView: View {
             Section {
                 Picker("Provider", selection: $selectedPrimaryProvider) {
                     ForEach(viewModel.supportedPrimaryProviders) { provider in
-                        Text(provider.displayName).tag(provider)
+                        Text(provider.displayName)
+                            .appFont(.body)
+                            .tag(provider)
                     }
                 }
                 .appFont(.body)

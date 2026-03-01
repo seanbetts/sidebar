@@ -35,8 +35,12 @@ struct GeneralSettingsView: View {
             }
             Section("Weather") {
                 Picker("Temperature Units", selection: $weatherUsesFahrenheit) {
-                    Text("Celsius").tag(false)
-                    Text("Fahrenheit").tag(true)
+                    Text("Celsius")
+                        .appFont(.body)
+                        .tag(false)
+                    Text("Fahrenheit")
+                        .appFont(.body)
+                        .tag(true)
                 }
                 .appFont(.body)
                 #if os(macOS)

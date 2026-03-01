@@ -95,22 +95,24 @@ struct ProfileSettingsView: View {
                 }
                 LabeledContent("Gender") {
                     Picker("Gender", selection: $gender) {
-                        Text("Not set").tag("")
+                        Text("Not set").appFont(.body).tag("")
                         ForEach(genderPickerOptions, id: \.self) { option in
-                            Text(option).tag(option)
+                            Text(option).appFont(.body).tag(option)
                         }
                     }
+                    .appFont(.body)
                     .labelsHidden()
                     .pickerStyle(.menu)
                 }
                 .appFont(.body)
                 LabeledContent("Pronouns") {
                     Picker("Pronouns", selection: $pronouns) {
-                        Text("Not set").tag("")
+                        Text("Not set").appFont(.body).tag("")
                         ForEach(pronounPickerOptions, id: \.self) { option in
-                            Text(option).tag(option)
+                            Text(option).appFont(.body).tag(option)
                         }
                     }
+                    .appFont(.body)
                     .labelsHidden()
                     .pickerStyle(.menu)
                 }
