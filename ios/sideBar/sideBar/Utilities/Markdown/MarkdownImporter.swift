@@ -81,6 +81,3 @@ public enum NoteTextCanonicalizer {
         return MarkdownExporter().markdown(from: constrained, frontmatter: imported.frontmatter)
     }
 }
-
-@available(*, unavailable, renamed: "NoteTextCanonicalizer")
-public typealias MarkdownCanonicalizer = NoteTextCanonicalizer
