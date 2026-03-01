@@ -61,7 +61,8 @@ def test_prompt_context_service_order_and_truncation(test_db):
             "id": str(note.id),
             "title": note.title,
             "path": "notes/daily-log.md",
-            "content": "x" * (PromptContextService.MAX_SYSTEM_PROMPT_CHARS + 1000),
+            "content": "ignored content",
+            "plain_text": "x" * (PromptContextService.MAX_SYSTEM_PROMPT_CHARS + 1000),
         },
         "website": {
             "id": str(website.id),

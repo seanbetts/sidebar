@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import ObjectDeletedError
 
-from api.exceptions import NoteNotFoundError
+from api.exceptions import BadRequestError, NoteNotFoundError
 from api.models.note import Note
 from api.schemas.filters import NoteFilters
 from api.services.notes_helpers import build_notes_tree
@@ -25,6 +25,13 @@ from api.utils.validation import parse_uuid
 
 class NotesWorkspaceService(WorkspaceService[Note]):
     """Workspace-facing note operations for the API layer."""
+
+    @staticmethod
+    def _parse_note_id(note_id: str):
+        try:
+            return parse_uuid(note_id, "note", "id")
+        except BadRequestError:
+            return None
 
     @staticmethod
     def build_note_payload(note: Note, *, include_content: bool = True) -> dict:
@@ -109,7 +116,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
                 Note.user_id == user_id,
                 Note.deleted_at.is_(None),
                 build_text_search_filter(
-                    [Note.title, Note.content],
+                    [Note.title, Note.metadata_["plain_text"].astext],
                     query,
                 ),
             )
@@ -286,7 +293,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             ValueError: If note_id is invalid.
             NoteNotFoundError: If note is not found.
         """
-        note_uuid = NotesService.parse_note_id(note_id)
+        note_uuid = NotesWorkspaceService._parse_note_id(note_id)
         if not note_uuid:
             raise ValueError("Invalid note ID")
 
@@ -381,7 +388,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         Returns:
             Update result payload.
         """
-        note_uuid = NotesService.parse_note_id(note_id)
+        note_uuid = NotesWorkspaceService._parse_note_id(note_id)
         if not note_uuid:
             raise ValueError("Invalid note ID")
 
@@ -420,7 +427,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             ValueError: If note_id is invalid.
             NoteNotFoundError: If note is not found.
         """
-        note_uuid = NotesService.parse_note_id(note_id)
+        note_uuid = NotesWorkspaceService._parse_note_id(note_id)
         if not note_uuid:
             raise ValueError("Invalid note ID")
 
@@ -450,7 +457,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             ValueError: If note_id is invalid.
             NoteNotFoundError: If note is not found.
         """
-        note_uuid = NotesService.parse_note_id(note_id)
+        note_uuid = NotesWorkspaceService._parse_note_id(note_id)
         if not note_uuid:
             raise ValueError("Invalid note ID")
 

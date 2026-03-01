@@ -22,6 +22,24 @@ def test_notes_search_requires_query(test_client):
     assert error_message(response) == "query required"
 
 
+def test_notes_search_matches_plain_text_cache(test_client):
+    create = test_client.post(
+        "/api/notes",
+        json={"title": "Searchable", "content": "# Searchable\n\nAlpha Needle Body"},
+        headers=_auth_headers(),
+    )
+    assert create.status_code == 200
+
+    response = test_client.post(
+        "/api/notes/search",
+        json={"query": "Needle", "limit": 10},
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert any(item["name"] == "Searchable.md" for item in payload.get("items", []))
+
+
 def test_notes_create_folder_requires_path(test_client):
     response = test_client.post("/api/notes/folders", json={}, headers=_auth_headers())
     assert response.status_code == 400

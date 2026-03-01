@@ -7,7 +7,6 @@ import uuid
 
 from fastapi import APIRouter, Body, Depends
 from fastapi.responses import Response
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
@@ -17,6 +16,7 @@ from api.exceptions import BadRequestError, NoteNotFoundError, NotFoundError
 from api.routers.download_headers import markdown_download_headers
 from api.routers.notes_folders import router as notes_folders_router
 from api.services.notes_helpers import note_sync_payload
+from api.services.notes_payloads import parse_content_write_payload
 from api.services.notes_service import NotesService
 from api.services.notes_sync_service import NotesSyncService
 from api.services.notes_workspace_service import NotesWorkspaceService
@@ -25,13 +25,6 @@ from api.utils.timestamps import parse_client_timestamp
 router = APIRouter(prefix="/notes", tags=["notes"])
 ARCHIVED_LIST_MAX_LIMIT = 500
 router.include_router(notes_folders_router, tags=["notes"])
-
-
-class NotesSearchRequest(BaseModel):
-    """Search request payload for notes."""
-
-    query: str
-    limit: int = 50
 
 
 @router.get("/tree")
@@ -78,7 +71,7 @@ def list_archived_tree(
 def search_notes(
     query: str | None = None,
     limit: int = 50,
-    request: NotesSearchRequest | None = Body(default=None),
+    request: dict | None = Body(default=None),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -100,8 +93,10 @@ def search_notes(
         BadRequestError: If query is missing.
     """
     if request is not None:
-        query = request.query
-        limit = request.limit
+        query = request.get("query")
+        request_limit = request.get("limit")
+        if request_limit is not None:
+            limit = int(request_limit)
     if not query:
         raise BadRequestError("query required")
 
@@ -160,19 +155,11 @@ def create_note(
     Raises:
         BadRequestError: If content is missing.
     """
-    content = request.get("content")
-    plain_text = (
-        request.get("plain_text")
-        if request.get("plain_text") is not None
-        else request.get("plainText")
-    )
+    content, plain_text = parse_content_write_payload(request)
     title = request.get("title") or None
     path = request.get("path", "")
     folder = (request.get("folder") or "").strip("/")
     client_id = request.get("client_id") or request.get("clientId")
-
-    if content is None:
-        raise BadRequestError("content required")
 
     return NotesWorkspaceService.create_note(
         db,
@@ -399,18 +386,11 @@ def update_note(
         BadRequestError: For invalid request.
         NotFoundError: If not found.
     """
-    content = request.get("content")
-    plain_text = (
-        request.get("plain_text")
-        if request.get("plain_text") is not None
-        else request.get("plainText")
-    )
+    content, plain_text = parse_content_write_payload(request)
     client_updated_at = parse_client_timestamp(
         request.get("client_updated_at") or request.get("clientUpdatedAt"),
         field_name="client_updated_at",
     )
-    if content is None:
-        raise BadRequestError("content required")
 
     try:
         return NotesWorkspaceService.update_note(

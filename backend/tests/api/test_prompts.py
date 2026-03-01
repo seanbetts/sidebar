@@ -205,7 +205,8 @@ def test_build_open_context_block_truncates() -> None:
         "id": "note-1",
         "title": "Draft",
         "path": "notes/draft.md",
-        "content": "x" * 10,
+        "content": "z" * 10,
+        "plain_text": "x" * 10,
     }
     website = {
         "id": "web-1",
@@ -220,6 +221,7 @@ def test_build_open_context_block_truncates() -> None:
     assert "Note currently open:" in block
     assert "Website currently open:" in block
     assert "xxxxx" in block
+    assert "zzzzz" not in block
     assert "yyyyy" in block
     assert "\n\n</current_open>" in block
 

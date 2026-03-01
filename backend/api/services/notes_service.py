@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import ObjectDeletedError
 
-from api.exceptions import BadRequestError, NoteNotFoundError
+from api.exceptions import NoteNotFoundError
 from api.models.note import Note
 from api.schemas.filters import NoteFilters
 from api.services.notes_helpers import ensure_note_no_conflict
@@ -23,7 +23,6 @@ from api.services.notes_write_contract import (
 )
 from api.utils.metadata_helpers import get_max_pinned_order
 from api.utils.pinned_order import lock_pinned_order
-from api.utils.validation import parse_uuid
 
 
 class NotesService:
@@ -46,36 +45,6 @@ class NotesService:
         if match:
             return match.group(1).strip()
         return fallback
-
-    @staticmethod
-    def update_content_title(content: str, title: str) -> str:
-        """Ensure the content has a leading H1 with the given title.
-
-        Args:
-            content: Markdown content to update.
-            title: Title to inject or replace.
-
-        Returns:
-            Updated content with a leading H1.
-        """
-        if NotesService.H1_PATTERN.search(content or ""):
-            return NotesService.H1_PATTERN.sub(f"# {title}", content, count=1)
-        return f"# {title}\n\n{content or ''}".strip() + "\n"
-
-    @staticmethod
-    def parse_note_id(value: str) -> uuid.UUID | None:
-        """Parse a UUID from a note ID string.
-
-        Args:
-            value: Note ID string.
-
-        Returns:
-            Parsed UUID or None if invalid.
-        """
-        try:
-            return parse_uuid(value, "note", "id")
-        except BadRequestError:
-            return None
 
     @staticmethod
     def _clear_pinned_metadata(metadata: dict[str, object] | None) -> dict[str, object]:

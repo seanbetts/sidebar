@@ -325,7 +325,10 @@ def build_open_context_block(
         path = note.get("path") or note.get("folder")
         path_text = f", path: {path}" if path else ""
         lines.append(f"- {title} (id: {note_id}{path_text})")
-        content = truncate_content(note.get("content"), max_chars)
+        note_text = note.get("plain_text")
+        if note_text is None:
+            note_text = note.get("plainText")
+        content = truncate_content(note_text, max_chars)
         if content:
             lines.append(CURRENT_OPEN_CONTENT_HEADER)
             lines.append(content)

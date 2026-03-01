@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from api.exceptions import BadRequestError, ConflictError, NoteNotFoundError
 from api.models.note import Note
+from api.services.notes_payloads import parse_content_write_payload
 from api.services.notes_service import NotesService
 from api.utils.timestamps import parse_client_timestamp
 from api.utils.validation import parse_uuid
@@ -101,14 +102,7 @@ class NotesSyncService:
 
             try:
                 if op == "create":
-                    content = operation.get("content")
-                    plain_text = (
-                        operation.get("plain_text")
-                        if operation.get("plain_text") is not None
-                        else operation.get("plainText")
-                    )
-                    if content is None:
-                        raise BadRequestError("content required")
+                    content, plain_text = parse_content_write_payload(operation)
                     title = operation.get("title") or None
                     folder = (operation.get("folder") or "").strip("/")
                     note_id_value = (
@@ -124,8 +118,8 @@ class NotesSyncService:
                     note = NotesService.create_note(
                         db,
                         user_id,
-                        str(content),
-                        plain_text=str(plain_text) if plain_text is not None else None,
+                        content,
+                        plain_text=plain_text,
                         title=title,
                         folder=folder,
                         note_id=note_id,
@@ -192,20 +186,13 @@ class NotesSyncService:
         client_updated_at: datetime | None,
     ) -> Note:
         note_id = NotesSyncService._parse_note_id(operation)
-        content = operation.get("content")
-        plain_text = (
-            operation.get("plain_text")
-            if operation.get("plain_text") is not None
-            else operation.get("plainText")
-        )
-        if content is None:
-            raise BadRequestError("content required")
+        content, plain_text = parse_content_write_payload(operation)
         return NotesService.update_note(
             db,
             user_id,
             note_id,
-            str(content),
-            plain_text=str(plain_text) if plain_text is not None else None,
+            content,
+            plain_text=plain_text,
             client_updated_at=client_updated_at,
         )
 
