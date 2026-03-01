@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforce NotesRuntime boundary against legacy markdown editor dependencies."""
+"""Enforce NotesRuntime and notes shell boundaries against legacy editor dependencies."""
 from __future__ import annotations
 
 import argparse
@@ -19,6 +19,17 @@ FORBIDDEN_PATTERNS = (
     r"\bMarkdownExporter\b",
     r"\bMarkdownShortcutProcessor\b",
     r"\bMarkdownRendering\b",
+)
+NOTES_SHELL_RELATIVE_PATHS = (
+    Path("Views/Notes/NotesView.swift"),
+    Path("Views/Notes/NotesDetailView.swift"),
+    Path("Views/Notes/NotesDetailView+MenuActions.swift"),
+    Path("Views/Notes/NotesDetailView+FileOperations.swift"),
+)
+FORBIDDEN_NOTES_SHELL_PATTERNS = (
+    r"\bSideBarMarkdownContainer\b",
+    r"\bMarkdownEditorView\b",
+    r"\buseAttributedNoteEditorV2\b",
 )
 
 
@@ -62,13 +73,30 @@ def _scan_file(path: Path, patterns: tuple[re.Pattern[str], ...]) -> list[Violat
     return violations
 
 
+def _notes_shell_files(repo_root: Path) -> list[Path]:
+    """Return notes shell files that should not reintroduce removed legacy symbols."""
+    root = repo_root / RUNTIME_ROOT
+    files: list[Path] = []
+    for relative_path in NOTES_SHELL_RELATIVE_PATHS:
+        candidate = root / relative_path
+        if candidate.exists() and candidate.is_file():
+            files.append(candidate)
+    return files
+
+
 def check(repo_root: Path) -> list[Violation]:
     """Run NotesRuntime boundary checks and return violations."""
     runtime_files = _runtime_boundary_files(repo_root)
-    compiled = tuple(re.compile(pattern) for pattern in FORBIDDEN_PATTERNS)
+    runtime_compiled = tuple(re.compile(pattern) for pattern in FORBIDDEN_PATTERNS)
+    notes_shell_files = _notes_shell_files(repo_root)
+    notes_shell_compiled = tuple(
+        re.compile(pattern) for pattern in FORBIDDEN_NOTES_SHELL_PATTERNS
+    )
     violations: list[Violation] = []
     for file_path in runtime_files:
-        violations.extend(_scan_file(file_path, compiled))
+        violations.extend(_scan_file(file_path, runtime_compiled))
+    for file_path in notes_shell_files:
+        violations.extend(_scan_file(file_path, notes_shell_compiled))
     return violations
 
 
