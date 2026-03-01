@@ -7,8 +7,8 @@ import AppKit
 #endif
 
 enum NotesEditorRenderingMode: Equatable {
-    case markdownLegacy
-    case attributedV2
+    case attributed
+    case unavailable
 }
 
 struct NotesDetailView: View {
@@ -33,7 +33,6 @@ struct NotesDetailView: View {
     #if os(iOS)
     @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
     #endif
-    @AppStorage(AppStorageKeys.useAttributedNoteEditorV2) private var useAttributedNoteEditorV2 = true
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -159,62 +158,79 @@ extension NotesDetailView {
 
     @ViewBuilder
     private var content: some View {
-            if let activeNote = viewModel.activeNote {
-                if activeNote.isCorrupt {
-                    corruptionStateView(note: activeNote)
-                } else {
-                if #available(iOS 26.0, macOS 26.0, *) {
-                    switch editorRenderingMode {
-                    case .attributedV2:
-                        AttributedNoteEditorContainer(
-                            editorViewModel: editorViewModel,
-                            maxContentWidth: contentMaxWidth
-                        )
-                    case .markdownLegacy:
-                        SideBarMarkdownContainer(text: editorViewModel.content)
-                            .onAppear {
-                                editorViewModel.setReadOnly(true)
-                            }
-                    }
-                } else {
-                    SideBarMarkdownContainer(text: editorViewModel.content)
-                        .onAppear {
-                            editorViewModel.setReadOnly(true)
-                        }
-                }
-                }
-            } else if viewModel.selectedNoteId != nil {
-                if let error = viewModel.errorMessage {
-                    PlaceholderView(
-                        title: "Unable to load note",
-                        subtitle: environment.isOffline ? "This note isn't available offline yet." : error,
-                        actionTitle: "Retry"
-                    ) {
-                        guard let selectedId = viewModel.selectedNoteId else { return }
-                        Task { await viewModel.loadNote(id: selectedId) }
-                    }
-                } else if !environment.isNetworkAvailable {
-                    PlaceholderView(
-                        title: "Unable to load note",
-                        subtitle: "This note isn't available offline yet.",
-                        actionTitle: "Retry"
-                    ) {
-                        guard let selectedId = viewModel.selectedNoteId else { return }
-                        Task { await viewModel.loadNote(id: selectedId) }
-                    }
-                } else {
-                    LoadingView(message: "Loading note…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+        if let activeNote = viewModel.activeNote {
+            if activeNote.isCorrupt {
+                corruptionStateView(note: activeNote)
             } else {
-                if viewModel.tree == nil {
-                    LoadingView(message: "Loading notes…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    WelcomeEmptyView()
+                switch editorRenderingMode {
+                case .attributed:
+                    AttributedNoteEditorContainer(
+                        editorViewModel: editorViewModel,
+                        maxContentWidth: contentMaxWidth
+                    )
+                case .unavailable:
+                    nativeEditorUnavailableView
                 }
             }
+        } else if viewModel.selectedNoteId != nil {
+            if let error = viewModel.errorMessage {
+                PlaceholderView(
+                    title: "Unable to load note",
+                    subtitle: environment.isOffline ? "This note isn't available offline yet." : error,
+                    actionTitle: "Retry"
+                ) {
+                    guard let selectedId = viewModel.selectedNoteId else { return }
+                    Task { await viewModel.loadNote(id: selectedId) }
+                }
+            } else if !environment.isNetworkAvailable {
+                PlaceholderView(
+                    title: "Unable to load note",
+                    subtitle: "This note isn't available offline yet.",
+                    actionTitle: "Retry"
+                ) {
+                    guard let selectedId = viewModel.selectedNoteId else { return }
+                    Task { await viewModel.loadNote(id: selectedId) }
+                }
+            } else {
+                LoadingView(message: "Loading note…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        } else {
+            if viewModel.tree == nil {
+                LoadingView(message: "Loading notes…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                WelcomeEmptyView()
+            }
         }
+    }
+
+    private var nativeEditorUnavailableView: some View {
+        PlaceholderView(
+            title: "Editor unavailable",
+            subtitle: "Notes editing requires the native rich text editor on this OS version.",
+            actionTitle: nil
+        ) { }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func editorRenderingModeForCurrentOS() -> NotesEditorRenderingMode {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            return .attributed
+        }
+        return .unavailable
+    }
+
+    private var editorRenderingMode: NotesEditorRenderingMode {
+        Self.resolveEditorRenderingMode(osSupportsNative: editorRenderingModeForCurrentOS() == .attributed)
+    }
+
+    static func resolveEditorRenderingMode(osSupportsNative: Bool) -> NotesEditorRenderingMode {
+        if osSupportsNative {
+            return .attributed
+        }
+        return .unavailable
+    }
 
     private func corruptionStateView(note: NotePayload) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
@@ -293,26 +309,6 @@ extension NotesDetailView {
             return NoteStatus(text: "Saved \(label)", color: DesignTokens.Colors.textSecondary)
         }
         return nil
-    }
-
-    private var editorRenderingMode: NotesEditorRenderingMode {
-        Self.resolveEditorRenderingMode(
-            osSupportsNative: true,
-            useAttributedNoteEditorV2: useAttributedNoteEditorV2
-        )
-    }
-
-    static func resolveEditorRenderingMode(
-        osSupportsNative: Bool,
-        useAttributedNoteEditorV2: Bool
-    ) -> NotesEditorRenderingMode {
-        guard osSupportsNative else {
-            return .markdownLegacy
-        }
-        if useAttributedNoteEditorV2 {
-            return .attributedV2
-        }
-        return .markdownLegacy
     }
 
     private var lastSavedLabel: String? {
