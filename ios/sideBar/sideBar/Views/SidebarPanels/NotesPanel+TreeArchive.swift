@@ -59,10 +59,10 @@ extension NotesPanelView {
                 SelectableRow(
                     isSelected: false,
                     insets: EdgeInsets(
-                        top: DesignTokens.Spacing.sm,
-                        leading: DesignTokens.Spacing.sm,
+                        top: DesignTokens.Spacing.xxl,
+                        leading: archiveRowHorizontalInset,
                         bottom: 0,
-                        trailing: DesignTokens.Spacing.sm
+                        trailing: archiveRowHorizontalInset
                     )
                 ) {
                     HStack(spacing: DesignTokens.Spacing.xs) {
@@ -156,6 +156,14 @@ extension NotesPanelView {
                 .appFont(SidebarTypography.secondary)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var archiveRowHorizontalInset: CGFloat {
+        #if os(macOS)
+        return DesignTokens.Spacing.sm
+        #else
+        return DesignTokens.Spacing.smPlus
+        #endif
     }
 
 }

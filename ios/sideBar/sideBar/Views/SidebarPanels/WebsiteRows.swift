@@ -79,9 +79,9 @@ struct PendingWebsiteRow: View, Equatable {
     private var rowInsets: EdgeInsets {
         let horizontalPadding: CGFloat
         #if os(macOS)
-        horizontalPadding = DesignTokens.Spacing.xs
-        #else
         horizontalPadding = DesignTokens.Spacing.sm
+        #else
+        horizontalPadding = DesignTokens.Spacing.smPlus
         #endif
         return EdgeInsets(
             top: 0,
@@ -220,9 +220,9 @@ struct WebsiteRow: View, Equatable {
     private var rowInsets: EdgeInsets {
         let horizontalPadding: CGFloat
         #if os(macOS)
-        horizontalPadding = DesignTokens.Spacing.xs
-        #else
         horizontalPadding = DesignTokens.Spacing.sm
+        #else
+        horizontalPadding = DesignTokens.Spacing.smPlus
         #endif
         return EdgeInsets(
             top: 0,

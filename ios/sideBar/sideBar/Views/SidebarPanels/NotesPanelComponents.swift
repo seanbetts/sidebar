@@ -194,9 +194,9 @@ struct NotesTreeRow: View {
     private var rowInsets: EdgeInsets {
         let horizontalPadding: CGFloat
         #if os(macOS)
-        horizontalPadding = DesignTokens.Spacing.xs
+        horizontalPadding = DesignTokens.Spacing.sm
         #else
-        horizontalPadding = item.isFile ? DesignTokens.Spacing.sm : DesignTokens.Spacing.xs
+        horizontalPadding = item.isFile ? DesignTokens.Spacing.smPlus : DesignTokens.Spacing.sm
         #endif
         return EdgeInsets(
             top: 0,

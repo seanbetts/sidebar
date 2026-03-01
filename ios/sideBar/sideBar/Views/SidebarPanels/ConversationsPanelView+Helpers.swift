@@ -130,7 +130,15 @@ extension ConversationsPanelView {
             ForEach(filteredGroups) { group in
                 Section {
                     ForEach(group.conversations) { conversation in
-                        SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
+                        SelectableRow(
+                            isSelected: viewModel.selectedConversationId == conversation.id,
+                            insets: EdgeInsets(
+                                top: 0,
+                                leading: conversationRowHorizontalInset,
+                                bottom: 0,
+                                trailing: conversationRowHorizontalInset
+                            )
+                        ) {
                             ConversationRow(
                                 conversation: conversation,
                                 isSelected: viewModel.selectedConversationId == conversation.id
@@ -242,6 +250,14 @@ extension ConversationsPanelView {
 
     var panelBackground: Color {
         DesignTokens.Colors.sidebar
+    }
+
+    var conversationRowHorizontalInset: CGFloat {
+        #if os(macOS)
+        return DesignTokens.Spacing.sm
+        #else
+        return DesignTokens.Spacing.smPlus
+        #endif
     }
 
     var isRenameDialogPresented: Binding<Bool> {
