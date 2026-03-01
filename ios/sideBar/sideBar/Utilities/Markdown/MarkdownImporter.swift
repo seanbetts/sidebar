@@ -82,4 +82,5 @@ public enum NoteTextCanonicalizer {
     }
 }
 
+@available(*, unavailable, renamed: "NoteTextCanonicalizer")
 public typealias MarkdownCanonicalizer = NoteTextCanonicalizer
