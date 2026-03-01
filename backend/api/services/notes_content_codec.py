@@ -85,8 +85,9 @@ def note_plain_text_from_record(
     content: str | None,
     metadata: dict[str, Any] | None,
 ) -> str:
-    """Resolve note plain text from metadata first, then fallback content."""
+    """Resolve note plain text from canonical metadata."""
+    _ = content  # Content remains encoded RTF Base64 and is not a plain-text fallback.
     plain_text = (metadata or {}).get("plain_text")
     if isinstance(plain_text, str):
         return plain_text
-    return content or ""
+    return ""

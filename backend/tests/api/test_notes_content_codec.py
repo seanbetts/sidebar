@@ -28,6 +28,6 @@ def test_note_plain_text_from_record_prefers_metadata():
     assert resolved == "metadata text"
 
 
-def test_note_plain_text_from_record_falls_back_to_content():
+def test_note_plain_text_from_record_missing_metadata_returns_empty_string():
     resolved = note_plain_text_from_record("raw-content", {})
-    assert resolved == "raw-content"
+    assert resolved == ""
