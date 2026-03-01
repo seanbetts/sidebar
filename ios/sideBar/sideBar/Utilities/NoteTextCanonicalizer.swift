@@ -11,8 +11,8 @@ public enum NoteTextCanonicalizer {
 
     @available(iOS 26.0, macOS 26.0, *)
     private static func canonicalizedForLatestAttributedText(_ content: String) -> String {
-        let imported = MarkdownImporter().attributedString(from: content)
-        let constrained = MarkdownFormattingDefinition().constrainedDocument(imported.attributedString)
-        return MarkdownExporter().markdown(from: constrained, frontmatter: imported.frontmatter)
+        let imported = NoteTextImporter().attributedString(from: content)
+        let constrained = NoteTextFormattingDefinition().constrainedDocument(imported.attributedString)
+        return NoteTextExporter().markdown(from: constrained, frontmatter: imported.frontmatter)
     }
 }
