@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import sideBar
 
 final class AppTextSizeOptionTests: XCTestCase {
@@ -18,5 +19,12 @@ final class AppTextSizeOptionTests: XCTestCase {
         XCTAssertEqual(AppTextSizeOption.small.scaleMultiplier, 0.8, accuracy: 0.0001)
         XCTAssertEqual(AppTextSizeOption.medium.scaleMultiplier, 0.9, accuracy: 0.0001)
         XCTAssertEqual(AppTextSizeOption.large.scaleMultiplier, 1.05, accuracy: 0.0001)
+    }
+
+    func testControlSizeMapping() {
+        XCTAssertEqual(AppTextSizeOption.system.controlSize, .regular)
+        XCTAssertEqual(AppTextSizeOption.small.controlSize, .small)
+        XCTAssertEqual(AppTextSizeOption.medium.controlSize, .regular)
+        XCTAssertEqual(AppTextSizeOption.large.controlSize, .large)
     }
 }

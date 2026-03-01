@@ -66,6 +66,7 @@ struct SkillsSettingsView: View {
                 }
             }
         }
+        .appControlSize()
         #if os(macOS)
         .formStyle(.grouped)
         #endif

@@ -30,6 +30,7 @@ struct DueDateSheet: View {
                     }
                 }
             }
+            .appControlSize()
             .navigationTitle("Due date")
             .navigationBarTitleDisplayModeInline()
             .toolbar {
@@ -71,6 +72,7 @@ struct MoveTaskSheet: View {
                     .appFont(.body)
                 }
             }
+            .appControlSize()
             .navigationTitle("Move task")
             .navigationBarTitleDisplayModeInline()
             .toolbar {
@@ -142,6 +144,7 @@ struct RepeatTaskSheet: View {
                     }
                 }
             }
+            .appControlSize()
             .navigationTitle("Repeat")
             .navigationBarTitleDisplayModeInline()
             .toolbar {

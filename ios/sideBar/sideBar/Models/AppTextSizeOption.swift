@@ -35,6 +35,17 @@ public enum AppTextSizeOption: String, CaseIterable, Identifiable {
         }
     }
 
+    var controlSize: ControlSize {
+        switch self {
+        case .small:
+            return .small
+        case .system, .medium:
+            return .regular
+        case .large:
+            return .large
+        }
+    }
+
     static func resolved(from rawValue: String) -> AppTextSizeOption {
         AppTextSizeOption(rawValue: rawValue) ?? .system
     }
