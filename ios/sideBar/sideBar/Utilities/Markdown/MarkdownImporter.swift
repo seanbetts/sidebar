@@ -65,19 +65,3 @@ func splitFrontmatter(from markdown: String) -> (frontmatter: String?, body: Str
     let bodyLines = lines.dropFirst(endIndex + 1).joined(separator: "\n")
     return (frontmatterLines, bodyLines)
 }
-
-public enum NoteTextCanonicalizer {
-    public static func canonicalized(_ markdown: String) -> String {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            return markdown
-        }
-        return canonicalizedForLatestAttributedMarkdown(markdown)
-    }
-
-    @available(iOS 26.0, macOS 26.0, *)
-    private static func canonicalizedForLatestAttributedMarkdown(_ markdown: String) -> String {
-        let imported = MarkdownImporter().attributedString(from: markdown)
-        let constrained = MarkdownFormattingDefinition().constrainedDocument(imported.attributedString)
-        return MarkdownExporter().markdown(from: constrained, frontmatter: imported.frontmatter)
-    }
-}
