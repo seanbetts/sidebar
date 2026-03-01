@@ -93,30 +93,8 @@ struct ProfileSettingsView: View {
                     TextField("Not set", text: $employer)
                         .multilineTextAlignment(.trailing)
                 }
-                LabeledContent("Gender") {
-                    #if os(iOS)
-                    ProfileGenderSelectorMenu(selection: $gender, options: genderPickerOptions)
-                    #else
-                    Picker("Gender", selection: $gender) {
-                        Text("Not set").tag("")
-                        ForEach(genderPickerOptions, id: \.self) { option in
-                            Text(option).tag(option)
-                        }
-                    }
-                    .labelsHidden().pickerStyle(.menu)
-                    #endif
-                }
-                .appFont(.body)
-                LabeledContent("Pronouns") {
-                    Picker("Pronouns", selection: $pronouns) {
-                        Text("Not set").tag("")
-                        ForEach(pronounPickerOptions, id: \.self) { option in
-                            Text(option).tag(option)
-                        }
-                    }
-                    .labelsHidden().pickerStyle(.menu)
-                }
-                .appFont(.body)
+                genderField
+                pronounsField
                 LabeledContent("Location") {
                     TextField("Not set", text: $location)
                         .multilineTextAlignment(.trailing)
@@ -414,13 +392,11 @@ struct ProfileSettingsView: View {
         }
         return dateParser.date(from: value)
     }
-
     private static func normalizedUserId(_ value: String?) -> String? {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
-
     private static func dateString(from date: Date) -> String {
         let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
         let year = components.year ?? 1970
@@ -431,6 +407,40 @@ struct ProfileSettingsView: View {
 }
 
 private extension ProfileSettingsView {
+    @ViewBuilder
+    var genderField: some View {
+        LabeledContent("Gender") {
+            #if os(iOS)
+            ProfileStringSelectorMenu(selection: $gender, options: genderPickerOptions)
+            #else
+            Picker("Gender", selection: $gender) {
+                Text("Not set").tag("")
+                ForEach(genderPickerOptions, id: \.self) { option in
+                    Text(option).tag(option)
+                }
+            }
+            .labelsHidden().pickerStyle(.menu)
+            #endif
+        }
+        .appFont(.body)
+    }
+    @ViewBuilder
+    var pronounsField: some View {
+        LabeledContent("Pronouns") {
+            #if os(iOS)
+            ProfileStringSelectorMenu(selection: $pronouns, options: pronounPickerOptions)
+            #else
+            Picker("Pronouns", selection: $pronouns) {
+                Text("Not set").tag("")
+                ForEach(pronounPickerOptions, id: \.self) { option in
+                    Text(option).tag(option)
+                }
+            }
+            .labelsHidden().pickerStyle(.menu)
+            #endif
+        }
+        .appFont(.body)
+    }
     func handleProfilePhotoSelection(_ item: PhotosPickerItem) async {
         profileImageError = nil
         do {

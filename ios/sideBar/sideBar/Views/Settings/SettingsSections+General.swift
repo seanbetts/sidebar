@@ -12,6 +12,33 @@ struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section("Text") {
+                #if os(iOS)
+                LabeledContent("Text Size") {
+                    Menu {
+                        ForEach(AppTextSizeOption.allCases) { option in
+                            Button {
+                                appTextSizeRaw = option.rawValue
+                            } label: {
+                                if option.rawValue == appTextSizeRaw {
+                                    Label(option.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(option.displayName)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(AppTextSizeOption.resolved(from: appTextSizeRaw).displayName)
+                                .appFont(.body)
+                                .foregroundStyle(DesignTokens.Colors.textPrimary)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .appFont(.caption2)
+                                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        }
+                    }
+                }
+                .appFont(.body)
+                #else
                 Picker("Text Size", selection: $appTextSizeRaw) {
                     ForEach(AppTextSizeOption.allCases) { option in
                         Text(option.displayName)
@@ -22,6 +49,7 @@ struct GeneralSettingsView: View {
                 .appFont(.body)
                 #if os(macOS)
                 .pickerStyle(.menu)
+                #endif
                 #endif
             }
             Section("Security") {
