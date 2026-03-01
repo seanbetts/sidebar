@@ -54,8 +54,8 @@ struct AgentWorkspaceSurfaceView: View {
             titleWeight: .semibold,
             titleLineLimit: 1,
             subtitleLineLimit: 1,
-            titleSubtitleAxis: .vertical
-        ) {
+            titleSubtitleAxis: .vertical,
+            trailing: {
             HeaderActionRow {
                 if surface.capabilities.canRefresh {
                     HeaderActionButton(
@@ -87,7 +87,7 @@ struct AgentWorkspaceSurfaceView: View {
                     )
                 }
             }
-        }
+        })
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
