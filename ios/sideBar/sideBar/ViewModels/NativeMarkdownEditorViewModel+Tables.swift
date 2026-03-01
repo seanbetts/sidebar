@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-extension NativeMarkdownEditorViewModel {
+extension NativeNoteEditorViewModel {
     func applyTableLayout(in text: inout AttributedString, lines: [LineInfo]) {
         let string = String(text.characters)
         let nsText = NSAttributedString(text)

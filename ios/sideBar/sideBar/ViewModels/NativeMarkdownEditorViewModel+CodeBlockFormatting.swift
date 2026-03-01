@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-extension NativeMarkdownEditorViewModel {
+extension NativeNoteEditorViewModel {
     public func applyCodeBlock(language: String?) {
         guard !isReadOnly else { return }
         let previousContent = attributedContent

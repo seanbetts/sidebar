@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-extension NativeMarkdownEditorViewModel {
+extension NativeNoteEditorViewModel {
     private static let blockquotePrefixRegex = try? NSRegularExpression(pattern: #"^(?:\s*>\s*)+"#)
     private static let taskListPrefixRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s+\[[ xX]\]\s"#)
     private static let orderedListPrefixRegex = try? NSRegularExpression(pattern: #"^\s*\d+\.\s"#)

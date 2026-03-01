@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-extension NativeMarkdownEditorViewModel {
+extension NativeNoteEditorViewModel {
     func selectionRanges() -> RangeSet<AttributedString.Index> {
         switch selection.indices(in: attributedContent) {
         case .insertionPoint(let index):

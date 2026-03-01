@@ -2,7 +2,7 @@
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-extension NativeMarkdownEditorViewModel {
+extension NativeNoteEditorViewModel {
     func scheduleAutosave() {
         autosaveTask?.cancel()
         let delay = max(0.3, autosaveDelay)

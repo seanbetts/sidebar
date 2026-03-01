@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-extension NativeMarkdownEditorViewModel {
+extension NativeNoteEditorViewModel {
     func toggleInlineIntent(_ intent: InlinePresentationIntent) {
         let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
         guard !nonEmptyRanges.isEmpty else {

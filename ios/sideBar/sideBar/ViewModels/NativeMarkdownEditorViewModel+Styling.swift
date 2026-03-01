@@ -8,7 +8,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-extension NativeMarkdownEditorViewModel {
+extension NativeNoteEditorViewModel {
     func headingKind(for level: Int) -> BlockKind {
         switch level {
         case 1: return .heading1

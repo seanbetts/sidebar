@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-extension NativeMarkdownEditorViewModel {
+extension NativeNoteEditorViewModel {
     func normalizeTypingAfterBlockquoteNewlineIfNeeded(insertedCharacter: Character?) {
         guard insertedCharacter == "\n" else { return }
         guard let insertionIndex = insertionIndexAfterEdit(in: attributedContent),
