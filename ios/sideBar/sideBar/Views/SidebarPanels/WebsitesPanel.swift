@@ -285,6 +285,14 @@ extension WebsitesPanelView {
                             archiveLabel
                         }
                     )
+                    .listRowInsets(
+                        EdgeInsets(
+                            top: DesignTokens.Spacing.sm,
+                            leading: DesignTokens.Spacing.sm,
+                            bottom: 0,
+                            trailing: DesignTokens.Spacing.sm
+                        )
+                    )
                     .listRowBackground(
                         DesignTokens.Colors.sidebarRowBackground
                             .overlay(alignment: .top) {
