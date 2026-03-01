@@ -248,7 +248,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.pendingNewNoteDeepLink = true
         environment.pendingScratchpadDeepLink = true
         environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
-        environment.skillsStoreSelectedSkillId = "audio-transcribe"
         environment.tasksViewModel.updateSearch(query: "follow up")
         environment.tasksViewModel.startNewTask()
         environment.notesViewModel.updateSearch(query: "project")
@@ -306,7 +305,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertNil(environment.tasksViewModel.newTaskDraft)
         XCTAssertEqual(environment.tasksViewModel.searchQuery, "")
         XCTAssertNil(environment.tasksPhoneDetailRouteId)
-        XCTAssertNil(environment.skillsStoreSelectedSkillId)
         XCTAssertFalse(environment.pendingNewTaskDeepLink)
         XCTAssertFalse(environment.pendingNewNoteDeepLink)
         XCTAssertFalse(environment.pendingScratchpadDeepLink)

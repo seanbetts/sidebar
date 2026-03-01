@@ -174,16 +174,12 @@ extension ContentView {
     }
 
     var isFilesSectionVisible: Bool {
-        WorkspaceLegacySectionAdapter.isSectionVisible(
-            .files,
-            projection: workspaceLegacySectionProjection,
-            isCompactLayout: isCompact
-        )
+        isSectionVisibleInWorkspace(.files)
     }
 
     var isPhonePanelListVisible: Bool {
         guard isCompact else { return false }
-        switch workspaceLegacySectionProjection.compactSelection {
+        switch compactWorkspaceSection {
         case .chat:
             return environment.chatViewModel.selectedConversationId == nil
                 && !environment.chatViewModel.isDraftConversationActive
@@ -398,7 +394,7 @@ extension ContentView {
         newValue: UserInterfaceSizeClass?
     ) {
         if oldValue == .compact, newValue != .compact {
-            let selectedSection = workspaceLegacySectionProjection.compactSelection
+            let selectedSection = compactWorkspaceSection
             sidebarSelection = selectedSection
             environment.workspaceStore.dispatch(.setLayout(.split), source: "horizontal_size_class_change")
             environment.workspaceStore.dispatch(
@@ -443,7 +439,7 @@ extension ContentView {
         guard UIDevice.current.userInterfaceIdiom == .phone else { return false }
         guard horizontalSizeClass == .compact else { return false }
         guard environment.authState == .active else { return false }
-        guard workspaceLegacySectionProjection.compactSelection == .chat else { return false }
+        guard compactWorkspaceSection == .chat else { return false }
         guard !didEnsureInitialPhoneChatInterface else { return false }
         guard environment.commandSelection == nil else { return false }
         guard !environment.pendingNewTaskDeepLink,
@@ -453,7 +449,7 @@ extension ContentView {
     }
 
     private var didInitialPhoneChatFlowGetSuperseded: Bool {
-        guard workspaceLegacySectionProjection.compactSelection == .chat else { return true }
+        guard compactWorkspaceSection == .chat else { return true }
         if let commandSelection = environment.commandSelection, commandSelection != .chat {
             return true
         }

@@ -54,10 +54,7 @@ extension ContentView {
     }
 
     func workspaceCompactDetailDescriptor(for section: AppSection) -> WorkspaceContentDescriptor {
-        WorkspaceLegacySectionAdapter.compactDetailDescriptor(
-            for: section,
-            projection: workspaceLegacySectionProjection
-        )
+        compactDetailDescriptor(for: section)
     }
 
     func detailViewDefinition(for section: AppSection?) -> AnyView {

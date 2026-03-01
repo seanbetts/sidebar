@@ -41,7 +41,6 @@ extension ContentView {
     }
 
     var splitView: some View {
-        let projection = workspaceLegacySectionProjection
         return WorkspaceLayout(
             selection: $sidebarSelection,
             isLeftPanelExpanded: $isLeftPanelExpanded,
@@ -59,13 +58,13 @@ extension ContentView {
             },
             mainContent: {
                 AnyView(
-                    detailView(for: projection.primaryDescriptor)
+                    detailView(for: primaryWorkspaceDescriptor)
                         .environment(\.workspaceColumn, .primary)
                 )
             },
             rightSidebar: {
                 AnyView(
-                    detailView(for: projection.secondaryDescriptor)
+                    detailView(for: secondaryWorkspaceDescriptor)
                         .environment(\.workspaceColumn, .secondary)
                 )
             }
@@ -118,7 +117,7 @@ extension ContentView {
         Self.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: UIDevice.current.userInterfaceIdiom == .phone,
             isPhonePanelListVisible: isPhonePanelListVisible,
-            phoneSelection: workspaceLegacySectionProjection.compactSelection
+            phoneSelection: compactWorkspaceSection
         )
         #else
         false
@@ -127,7 +126,7 @@ extension ContentView {
 
     @ViewBuilder
     private var phoneFloatingActionDock: some View {
-        switch workspaceLegacySectionProjection.compactSelection {
+        switch compactWorkspaceSection {
         case .notes:
             PhoneFloatingActionDock {
                 PhoneFloatingActionButton(

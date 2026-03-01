@@ -8,20 +8,36 @@ extension ContentView {
         environment.workspaceStore.state
     }
 
-    var workspaceLegacySectionProjection: WorkspaceLegacySectionProjection {
-        WorkspaceLegacySectionAdapter.makeProjection(
-            workspaceState: workspaceState,
-            fallbackCompactSelection: phoneSelection
-        )
+    var primaryWorkspaceDescriptor: WorkspaceContentDescriptor {
+        workspaceState.primaryPane.descriptor
+    }
+
+    var secondaryWorkspaceDescriptor: WorkspaceContentDescriptor {
+        guard workspaceState.layout != .compact else {
+            return .empty
+        }
+        return workspaceState.secondaryPane?.descriptor ?? .empty
+    }
+
+    var compactWorkspaceSection: AppSection {
+        WorkspaceLegacySectionAdapter.section(from: primaryWorkspaceDescriptor)
+            ?? phoneSelection
     }
 
     var resolvedActiveSectionForWorkspace: AppSection {
-        WorkspaceLegacySectionAdapter.resolvedActiveSection(
-            projection: workspaceLegacySectionProjection,
-            isCompactLayout: isCompactWorkspaceLayout,
-            isSettingsPresented: isSettingsPresented,
-            fallbackSidebarSelection: sidebarSelection
-        )
+        if isSettingsPresented {
+            return .settings
+        }
+        if isCompactWorkspaceLayout {
+            return compactWorkspaceSection
+        }
+        let primarySection = WorkspaceLegacySectionAdapter.section(from: primaryWorkspaceDescriptor)
+        let secondarySection = WorkspaceLegacySectionAdapter.section(from: secondaryWorkspaceDescriptor)
+        return primarySection
+            ?? sidebarSelection
+            ?? secondarySection
+            ?? workspaceState.activeSection
+            ?? .chat
     }
 
     private var isCompactWorkspaceLayout: Bool {
@@ -47,6 +63,22 @@ extension ContentView {
         if let selection = state.sidebarSelection, sidebarSelection != selection {
             sidebarSelection = selection
         }
+    }
+
+    func compactDetailDescriptor(for section: AppSection) -> WorkspaceContentDescriptor {
+        if section == compactWorkspaceSection {
+            return primaryWorkspaceDescriptor
+        }
+        return .builtIn(section)
+    }
+
+    func isSectionVisibleInWorkspace(_ section: AppSection) -> Bool {
+        if isCompactWorkspaceLayout {
+            return compactWorkspaceSection == section
+        }
+        let primarySection = WorkspaceLegacySectionAdapter.section(from: primaryWorkspaceDescriptor)
+        let secondarySection = WorkspaceLegacySectionAdapter.section(from: secondaryWorkspaceDescriptor)
+        return primarySection == section || secondarySection == section
     }
 
     func handleWorkspaceExpandedChange(isExpanded: Bool) {
@@ -85,11 +117,9 @@ extension ContentView {
     }
 
     var primaryWorkspaceSectionForRotation: AppSection? {
-        WorkspaceLegacySectionAdapter.primaryWorkspaceSectionForRotation(
-            projection: workspaceLegacySectionProjection,
-            isCompactLayout: isCompact,
-            fallbackSidebarSelection: sidebarSelection
-        )
+        guard !isCompact else { return nil }
+        return WorkspaceLegacySectionAdapter.section(from: primaryWorkspaceDescriptor)
+            ?? sidebarSelection
     }
     #endif
 }
