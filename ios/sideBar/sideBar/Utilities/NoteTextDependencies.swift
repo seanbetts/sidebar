@@ -358,26 +358,6 @@ struct NoteTextStyle: Equatable {
     )
 }
 
-@available(iOS 26.0, macOS 26.0, *)
-public extension AttributeScopes {
-    struct NoteTextEditorAttributes: AttributeScope {
-        public let blockKind: BlockKindAttribute
-        public let listDepth: ListDepthAttribute
-        public let codeLanguage: CodeLanguageAttribute
-        public let inlineMarker: InlineMarkerAttribute
-        public let listMarker: ListMarkerAttribute
-        public let imageInfo: ImageInfoAttribute
-        public let presentationIntent: AttributeScopes.FoundationAttributes.PresentationIntentAttribute
-        public let listItemDelimiter: AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute
-        public let foundation: AttributeScopes.FoundationAttributes
-        public let swiftUI: AttributeScopes.SwiftUIAttributes
-    }
-
-    var noteTextEditor: NoteTextEditorAttributes.Type {
-        NoteTextEditorAttributes.self
-    }
-}
-
 enum NoteTextLayout {
     static let maxContentWidth: CGFloat = ContentLayout.maxContentWidth
     static let horizontalPadding: CGFloat = 20

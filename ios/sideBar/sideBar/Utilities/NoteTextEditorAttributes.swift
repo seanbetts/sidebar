@@ -93,7 +93,7 @@ public enum ImageInfoAttribute: CodableAttributedStringKey {
 
 @available(iOS 26.0, macOS 26.0, *)
 public extension AttributeScopes {
-    struct MarkdownEditorAttributes: AttributeScope {
+    struct NoteTextEditorAttributes: AttributeScope {
         public let blockKind: BlockKindAttribute
         public let listDepth: ListDepthAttribute
         public let codeLanguage: CodeLanguageAttribute
@@ -106,8 +106,8 @@ public extension AttributeScopes {
         public let swiftUI: AttributeScopes.SwiftUIAttributes
     }
 
-    var markdownEditor: MarkdownEditorAttributes.Type {
-        MarkdownEditorAttributes.self
+    var noteTextEditor: NoteTextEditorAttributes.Type {
+        NoteTextEditorAttributes.self
     }
 }
 
@@ -116,7 +116,7 @@ public extension AttributeScopes {
 @available(iOS 26.0, macOS 26.0, *)
 public extension AttributeDynamicLookup {
     subscript<T: AttributedStringKey>(
-        dynamicMember keyPath: KeyPath<AttributeScopes.MarkdownEditorAttributes, T>
+        dynamicMember keyPath: KeyPath<AttributeScopes.NoteTextEditorAttributes, T>
     ) -> T {
         self[T.self]
     }
