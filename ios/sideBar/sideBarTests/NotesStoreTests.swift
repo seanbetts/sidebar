@@ -73,6 +73,8 @@ final class NotesStoreTests: XCTestCase {
                 id: "n1",
                 title: nil,
                 content: nil,
+                plainText: nil,
+                contentFormat: nil,
                 metadata: nil,
                 updatedAt: nil,
                 deletedAt: nil

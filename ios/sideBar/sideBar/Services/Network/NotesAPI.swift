@@ -186,7 +186,7 @@ public struct NotePayload: Codable, Equatable {
         let plainText = try container.decodeIfPresent(String.self, forKey: .plainText)
             ?? container.decodeIfPresent(String.self, forKey: .plainTextCamel)
             ?? NotesRichTextCodec.decodeBase64RTFToPlainText(rawContent)
-        content = plainText ?? rawContent
+        content = plainText ?? ""
         contentFormat = try container.decodeIfPresent(String.self, forKey: .contentFormat)
             ?? container.decodeIfPresent(String.self, forKey: .contentFormatCamel)
     }

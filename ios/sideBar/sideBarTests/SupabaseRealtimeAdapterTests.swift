@@ -14,6 +14,8 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
             id: "n1",
             title: "Title",
             content: "Body",
+            plainText: nil,
+            contentFormat: nil,
             metadata: nil,
             updatedAt: nil,
             deletedAt: nil

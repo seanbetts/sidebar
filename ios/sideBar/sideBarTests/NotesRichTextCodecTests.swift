@@ -30,6 +30,13 @@ final class NotesRichTextCodecTests: XCTestCase {
         XCTAssertEqual(normalized.plainText, "Stored body")
     }
 
+    func testNormalizeWriteInputDerivesPlainTextFromEncodedSnapshot() {
+        let normalized = NotesRichTextCodec.normalizeWriteInput(content: "Derived body")
+        let decoded = NotesRichTextCodec.decodeBase64RTFToPlainText(normalized.content)
+
+        XCTAssertEqual(normalized.plainText, decoded)
+    }
+
     func testNotePayloadDecodesPlainTextFromResponse() throws {
         let encoded = NotesRichTextCodec.encodePlainTextToBase64RTF("Decoded body")
         let json = """
@@ -52,5 +59,25 @@ final class NotesRichTextCodecTests: XCTestCase {
 
         XCTAssertEqual(payload.content, "Decoded body")
         XCTAssertEqual(payload.contentFormat, "rtf")
+    }
+
+    func testNotePayloadDropsRawFallbackWhenCanonicalDecodeFails() throws {
+        let json = """
+        {
+          "id": "n2",
+          "name": "Title.md",
+          "content": "not-base64",
+          "path": "n2",
+          "modified": 1,
+          "created": 1
+        }
+        """
+
+        let payload = try JSONDecoder().decode(
+            NotePayload.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(payload.content, "")
     }
 }

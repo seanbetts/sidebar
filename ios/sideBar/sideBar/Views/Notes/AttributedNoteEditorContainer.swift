@@ -12,13 +12,7 @@ struct AttributedNoteEditorContainer: View {
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
 
     var body: some View {
-        Group {
-            if isEditing {
-                editingView
-            } else {
-                readOnlyView
-            }
-        }
+        editorSurface
         .onAppear {
             nativeViewModel.setBaseFontSize(editorBaseFontSize)
             editorViewModel.attachNativeEditor(nativeViewModel)
@@ -87,19 +81,31 @@ struct AttributedNoteEditorContainer: View {
         return MarkdownTypography.defaultBodyFontSize(for: option)
     }
 
-    private var editingView: some View {
+    private var editorSurface: some View {
         VStack(spacing: 0) {
-            AttributedNoteFormattingToolbar(viewModel: nativeViewModel)
-            Divider()
+            if isEditing {
+                AttributedNoteFormattingToolbar(viewModel: nativeViewModel)
+                Divider()
+            }
             AttributedNoteEditorView(
                 viewModel: nativeViewModel,
-                maxContentWidth: maxContentWidth
+                maxContentWidth: maxContentWidth,
+                isEditable: isEditing,
+                onTap: isEditing ? nil : { selection in
+                    guard editorViewModel.isReadOnly else { return }
+                    nativeViewModel.selection = selection
+                    editorViewModel.setReadOnly(false)
+                }
             )
         }
         .focused($isTextEditorFocused)
         .onKeyPress(.escape) {
-            guard isEditing else { return .ignored }
-            editorViewModel.setReadOnly(true)
+            if isEditing {
+                editorViewModel.setReadOnly(true)
+                return .handled
+            }
+            guard editorViewModel.currentNoteId != nil else { return .ignored }
+            environment.emitShortcutAction(.closeItem)
             return .handled
         }
         .onKeyPress(.tab, phases: .down) { keyPress in
@@ -149,22 +155,6 @@ struct AttributedNoteEditorContainer: View {
         }
         .onKeyPress(characters: CharacterSet(charactersIn: "uU"), phases: .down) { keyPress in
             handleFormattingShortcut(.suppressUnderline, modifiers: keyPress.modifiers)
-        }
-    }
-
-    private var readOnlyView: some View {
-        AttributedNoteReadOnlyView(
-            attributedContent: nativeViewModel.attributedContent,
-            maxContentWidth: maxContentWidth,
-            onTap: { selection in
-                nativeViewModel.selection = selection
-                editorViewModel.setReadOnly(false)
-            }
-        )
-        .onKeyPress(.escape) {
-            guard !isEditing, editorViewModel.currentNoteId != nil else { return .ignored }
-            environment.emitShortcutAction(.closeItem)
-            return .handled
         }
     }
 

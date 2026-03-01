@@ -6,11 +6,10 @@ public struct RealtimeMappers {
     public static func mapNote(_ record: NoteRealtimeRecord) -> NotePayload? {
         let id = record.id
         let metadata = record.metadata
-        let plainTextFromMetadata = metadata?["plain_text"]?.value as? String
-        let contentFormat = metadata?["content_format"]?.value as? String
-        let resolvedContent = plainTextFromMetadata
+        let plainText = record.plainText ?? (metadata?["plain_text"]?.value as? String)
+        let contentFormat = record.contentFormat ?? (metadata?["content_format"]?.value as? String)
+        let resolvedContent = plainText
             ?? NotesRichTextCodec.decodeBase64RTFToPlainText(record.content ?? "")
-            ?? record.content
             ?? ""
         // NOTE: Align note mapping with native models and folder/archive semantics.
         return NotePayload(

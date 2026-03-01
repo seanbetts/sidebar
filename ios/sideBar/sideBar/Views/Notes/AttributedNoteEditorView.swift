@@ -10,24 +10,27 @@ import AppKit
 struct AttributedNoteEditorView: View {
     @ObservedObject var viewModel: NativeMarkdownEditorViewModel
     let maxContentWidth: CGFloat
+    let isEditable: Bool
+    let onTap: ((AttributedTextSelection) -> Void)?
 
     var body: some View {
         AttributedNoteTextSurface(
             text: $viewModel.attributedContent,
             selection: $viewModel.selection,
-            isEditable: true,
+            isEditable: isEditable,
             isSelectable: true,
-            syncSelection: true,
-            autoFocus: true,
-            onTextDidChange: { previous, sourceGeneration in
+            syncSelection: isEditable,
+            autoFocus: isEditable,
+            onTextDidChange: isEditable ? { previous, sourceGeneration in
                 viewModel.handleContentChange(
                     previous: previous,
                     sourceGeneration: sourceGeneration
                 )
-            },
-            onSelectionDidChange: { sourceGeneration in
+            } : nil,
+            onSelectionDidChange: isEditable ? { sourceGeneration in
                 viewModel.handleSelectionChange(sourceGeneration: sourceGeneration)
-            }
+            } : nil,
+            onTap: onTap
         )
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
@@ -51,32 +54,6 @@ extension AttributeScopes {
         AttributedNoteTextSurfaceAttributes.self
     }
 }
-@available(iOS 26.0, macOS 26.0, *)
-struct AttributedNoteReadOnlyView: View {
-    let attributedContent: AttributedString
-    let maxContentWidth: CGFloat
-    let onTap: (AttributedTextSelection) -> Void
-
-    var body: some View {
-        AttributedNoteTextSurface(
-            text: .constant(attributedContent),
-            selection: .constant(AttributedTextSelection()),
-            isEditable: false,
-            isSelectable: true,
-            syncSelection: false,
-            autoFocus: false,
-            onTextDidChange: nil,
-            onSelectionDidChange: nil,
-            onTap: onTap
-        )
-        .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
-        .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
-        .frame(maxWidth: maxContentWidth, alignment: .leading)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(DesignTokens.Colors.background)
-    }
-}
-
 #if os(iOS)
 @available(iOS 26.0, *)
 private struct AttributedNoteTextSurface: UIViewRepresentable {

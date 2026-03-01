@@ -183,6 +183,8 @@ final class NotesViewModelTests: XCTestCase {
                 id: "note-id",
                 title: "Note",
                 content: nil,
+                plainText: nil,
+                contentFormat: nil,
                 metadata: nil,
                 updatedAt: nil,
                 deletedAt: nil

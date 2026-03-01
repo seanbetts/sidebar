@@ -4,10 +4,13 @@ import sideBarShared
 
 final class RealtimeMappersTests: XCTestCase {
     func testMapNoteUsesTitleAndUpdatedAt() {
+        let encoded = NotesRichTextCodec.encodePlainTextToBase64RTF("Body")
         let record = NoteRealtimeRecord(
             id: "n1",
             title: "Title",
-            content: "Body",
+            content: encoded,
+            plainText: nil,
+            contentFormat: nil,
             metadata: nil,
             updatedAt: "2024-01-01T12:00:00.000Z",
             deletedAt: nil
@@ -21,12 +24,31 @@ final class RealtimeMappersTests: XCTestCase {
         XCTAssertNotNil(mapped?.modified)
     }
 
+    func testMapNoteDropsRawFallbackWhenContentIsNotCanonical() {
+        let record = NoteRealtimeRecord(
+            id: "n3",
+            title: "Title",
+            content: "not-base64",
+            plainText: nil,
+            contentFormat: nil,
+            metadata: nil,
+            updatedAt: "2024-01-01T12:00:00.000Z",
+            deletedAt: nil
+        )
+
+        let mapped = RealtimeMappers.mapNote(record)
+
+        XCTAssertEqual(mapped?.content, "")
+    }
+
     func testMapNotePrefersMetadataPlainText() {
         let encoded = NotesRichTextCodec.encodePlainTextToBase64RTF("Rich text body")
         let record = NoteRealtimeRecord(
             id: "n2",
             title: "Title",
             content: encoded,
+            plainText: nil,
+            contentFormat: nil,
             metadata: [
                 "plain_text": AnyCodable("Cached plain text"),
                 "content_format": AnyCodable("rtf")
@@ -38,6 +60,28 @@ final class RealtimeMappersTests: XCTestCase {
         let mapped = RealtimeMappers.mapNote(record)
 
         XCTAssertEqual(mapped?.content, "Cached plain text")
+        XCTAssertEqual(mapped?.contentFormat, "rtf")
+    }
+
+    func testMapNotePrefersTopLevelPlainText() {
+        let encoded = NotesRichTextCodec.encodePlainTextToBase64RTF("Rich text body")
+        let record = NoteRealtimeRecord(
+            id: "n4",
+            title: "Title",
+            content: encoded,
+            plainText: "Top level plain text",
+            contentFormat: "rtf",
+            metadata: [
+                "plain_text": AnyCodable("Metadata plain text"),
+                "content_format": AnyCodable("markdown")
+            ],
+            updatedAt: "2024-01-01T12:00:00.000Z",
+            deletedAt: nil
+        )
+
+        let mapped = RealtimeMappers.mapNote(record)
+
+        XCTAssertEqual(mapped?.content, "Top level plain text")
         XCTAssertEqual(mapped?.contentFormat, "rtf")
     }
 

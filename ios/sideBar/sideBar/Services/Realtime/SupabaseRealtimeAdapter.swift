@@ -310,6 +310,8 @@ public struct NoteRealtimeRecord: Codable {
     public let id: String
     public let title: String?
     public let content: String?
+    public let plainText: String?
+    public let contentFormat: String?
     public let metadata: [String: AnyCodable]?
     public let updatedAt: String?
     public let deletedAt: String?
