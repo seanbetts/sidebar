@@ -48,7 +48,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
     }
     let style = NoteTextStyle.default
-    var frontmatter: String?
     var lastSavedContent: String = ""
     var autosaveTask: Task<Void, Never>?
     var isUpdatingPrefixVisibility = false
@@ -65,7 +64,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
 
     public func loadText(_ text: String) {
         let result = importer.attributedString(from: text, baseFontSize: baseFontSize)
-        frontmatter = result.frontmatter
         attributedContent = result.attributedString
         selection = AttributedTextSelection()
         lastSavedContent = text

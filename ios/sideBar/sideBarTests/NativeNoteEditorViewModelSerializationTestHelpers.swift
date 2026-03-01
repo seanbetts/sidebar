@@ -8,5 +8,5 @@ func serializedNoteContent(_ viewModel: NativeNoteEditorViewModel) -> String {
     let selection = viewModel.selectionSnapshot(in: exportContent)
     _ = viewModel.removeInjectedListMarkers(in: &exportContent, selection: selection)
     let constrained = NoteTextFormattingDefinition().constrainedDocument(exportContent)
-    return MarkdownExporter().markdown(from: constrained, frontmatter: viewModel.frontmatter)
+    return MarkdownExporter().markdown(from: constrained, frontmatter: nil)
 }
