@@ -211,7 +211,9 @@ extension ChatViewModel {
 
     func handlePromptPreview(_ event: ChatStreamEvent) {
         let payload = dictionaryValue(from: event.data) ?? [:]
-        promptPreview = PromptPreviewPayloadParser.parseEventPayload(payload)
+        let preview = PromptPreviewPayloadParser.parseEventPayload(payload)
+        promptPreview = preview
+        dispatchPromptPreviewToWorkspace(preview)
     }
 
     func handleOtherPreferencesUpdated(_ event: ChatStreamEvent) {
