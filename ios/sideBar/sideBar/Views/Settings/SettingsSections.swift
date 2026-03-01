@@ -94,14 +94,17 @@ struct ProfileSettingsView: View {
                         .multilineTextAlignment(.trailing)
                 }
                 LabeledContent("Gender") {
+                    #if os(iOS)
+                    ProfileGenderSelectorMenu(selection: $gender, options: genderPickerOptions)
+                    #else
                     Picker("Gender", selection: $gender) {
                         Text("Not set").tag("")
                         ForEach(genderPickerOptions, id: \.self) { option in
                             Text(option).tag(option)
                         }
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
+                    .labelsHidden().pickerStyle(.menu)
+                    #endif
                 }
                 .appFont(.body)
                 LabeledContent("Pronouns") {
@@ -111,8 +114,7 @@ struct ProfileSettingsView: View {
                             Text(option).tag(option)
                         }
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
+                    .labelsHidden().pickerStyle(.menu)
                 }
                 .appFont(.body)
                 LabeledContent("Location") {
