@@ -131,7 +131,7 @@ extension NativeMarkdownEditorViewModel {
     }
 
     func demoteHeading() {
-        adjustHeadingLevel(delta: 1, defaultLevel: 2)
+        adjustHeadingLevel(delta: 1, defaultLevel: 3)
     }
 
     func stripUnsupportedInlineStyles(in text: inout AttributedString) {

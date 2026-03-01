@@ -54,7 +54,8 @@ enum MarkdownHeadingMetrics {
         return UIFont.systemFont(ofSize: fontSize, weight: weight).lineHeight
 #elseif canImport(AppKit)
         let weight: NSFont.Weight = isBold(level: level) ? .bold : .semibold
-        return NSFont.systemFont(ofSize: fontSize, weight: weight).lineHeight
+        let font = NSFont.systemFont(ofSize: fontSize, weight: weight)
+        return font.ascender - font.descender + font.leading
 #else
         return fontSize
 #endif

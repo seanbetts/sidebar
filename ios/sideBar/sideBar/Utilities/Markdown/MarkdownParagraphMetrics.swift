@@ -86,7 +86,8 @@ enum MarkdownParagraphMetrics {
 #if canImport(UIKit)
         return UIFont.systemFont(ofSize: fontSize, weight: .regular).lineHeight
 #elseif canImport(AppKit)
-        return NSFont.systemFont(ofSize: fontSize, weight: .regular).lineHeight
+        let font = NSFont.systemFont(ofSize: fontSize, weight: .regular)
+        return font.ascender - font.descender + font.leading
 #else
         return fontSize
 #endif
