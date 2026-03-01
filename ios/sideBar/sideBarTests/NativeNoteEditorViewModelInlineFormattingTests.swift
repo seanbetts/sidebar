@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeMarkdownEditorViewModelInlineFormattingTests: XCTestCase {
+final class NativeNoteEditorViewModelInlineFormattingTests: XCTestCase {
     func testApplyFormattingItalicTogglesTypingAttributesAtInsertionPoint() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")

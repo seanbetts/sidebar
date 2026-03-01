@@ -17,7 +17,7 @@ Single-file source of truth for Apple-platform feature coverage.
 | Chat | CHAT-001 | Send message in existing conversation | High | Unit + integration + UI deterministic | `ChatViewModelTests`, `ChatStoreTests`, `ChatAPITests`, `TC-UI-003` | `seeded_user` | Partial |
 | Chat | CHAT-002 | Streaming response lifecycle | High | Unit + integration + UI deterministic | `ChatStreamParserTests`, `URLSessionChatStreamClientTests`, `TC-UI-003` | `seeded_user` | Partial |
 | Notes | NOTE-001 | Notes create/edit/delete | High | Unit + integration + UI deterministic | `NotesViewModelTests`, `NotesStoreTests`, `NotesAPITests`, `TC-UI-004` | `seeded_user` | Partial |
-| Notes | NOTE-002 | Editor formatting + markdown behavior | Medium | Unit | `NotesEditorViewModelTests`, `NativeMarkdownEditorViewModelTests` | `seeded_user` | Partial |
+| Notes | NOTE-002 | Editor formatting + markdown behavior | Medium | Unit | `NotesEditorViewModelTests`, `NativeNoteEditorViewModelTests` | `seeded_user` | Partial |
 | Files | FILE-001 | Local file upload flow | High | Unit + integration | `IngestionUploadManagerTests`, `IngestionStoreTests`, `FilesAPITests` | `seeded_user` + upload fixtures | Partial |
 | Files | FILE-002 | Upload polling, retry, and failure states | High | Unit | `IngestionViewModelTests`, `IngestionViewModelPollingStressTests` | `seeded_user` + upload fixtures | Partial |
 | Tasks | TASK-001 | Task CRUD in inbox/list views | High | Unit + integration | `TasksViewModelTests`, `TasksStoreTests`, `TasksAPITests` | `seeded_user` | Partial |

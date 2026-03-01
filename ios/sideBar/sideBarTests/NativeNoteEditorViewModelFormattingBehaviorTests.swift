@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
+final class NativeNoteFormattingBehaviorTests: XCTestCase {
     func testPromoteHeadingKeepsSelectedRange() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello world")

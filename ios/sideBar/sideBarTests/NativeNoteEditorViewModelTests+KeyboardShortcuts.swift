@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-extension NativeMarkdownEditorViewModelTests {
+extension NativeNoteEditorViewModelTests {
     func testHandleListDepthKeyboardShortcutIndentsListParagraphWithinMixedSelection() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.attributedContent = AttributedString("List line\nPlain line")

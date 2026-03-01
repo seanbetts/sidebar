@@ -4,7 +4,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeMarkdownEditorRegressionTests: XCTestCase {
+final class NativeNoteEditorRegressionTests: XCTestCase {
     func testApplyFormattingPromoteAndDemoteHeadingAdjustLevel() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")

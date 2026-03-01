@@ -4,7 +4,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeMarkdownEditorViewModelTests: XCTestCase {
+final class NativeNoteEditorViewModelTests: XCTestCase {
     func testApplyFormattingBoldTogglesInlineIntentOnSelection() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")

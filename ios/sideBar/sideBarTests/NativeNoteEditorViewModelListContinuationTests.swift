@@ -4,7 +4,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeMarkdownListContinuationTests: XCTestCase {
+final class NativeNoteListContinuationTests: XCTestCase {
     func testEnterInBulletListContinuesListFormatting() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("- Item")

@@ -4,7 +4,7 @@ import SwiftUI
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeMarkdownCodeBlockTests: XCTestCase {
+final class NativeNoteCodeBlockTests: XCTestCase {
     func testApplyCodeBlockSetsLanguageWhenProvided() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("print(\"hello\")")

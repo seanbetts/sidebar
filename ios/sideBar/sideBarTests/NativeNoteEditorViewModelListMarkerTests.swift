@@ -9,7 +9,7 @@ import AppKit
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeMarkdownListMarkerTests: XCTestCase {
+final class NativeNoteListMarkerTests: XCTestCase {
     func testUpdatePrefixVisibilityRestylesExistingReadMarkerFont() async {
         let viewModel = NativeNoteEditorViewModel()
         var content = AttributedString("• Item")
