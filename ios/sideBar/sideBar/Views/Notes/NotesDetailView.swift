@@ -203,25 +203,12 @@ extension NotesDetailView {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
-                #if os(macOS)
                 if viewModel.tree == nil {
                     LoadingView(message: "Loading notes…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     WelcomeEmptyView()
                 }
-                #else
-                if viewModel.tree == nil {
-                    LoadingView(message: "Loading notes…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    PlaceholderView(
-                        title: "Select a note",
-                        subtitle: "Choose a note from the sidebar to start reading.",
-                        iconName: "text.document"
-                    )
-                }
-                #endif
             }
         }
 

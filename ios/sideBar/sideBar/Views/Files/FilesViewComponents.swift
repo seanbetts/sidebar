@@ -148,11 +148,7 @@ struct FilesDetailContainer: View {
             LoadingView(message: "Loading files…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            PlaceholderView(
-                title: "Select a file",
-                subtitle: "Choose a file from the sidebar.",
-                iconName: "folder"
-            )
+            WelcomeEmptyView()
         }
     }
 

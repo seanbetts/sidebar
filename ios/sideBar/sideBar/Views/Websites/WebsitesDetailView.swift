@@ -203,11 +203,7 @@ extension WebsitesDetailView {
             LoadingView(message: "Loading websites…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            PlaceholderView(
-                title: "Select a website",
-                subtitle: "Choose a website from the sidebar to read it.",
-                iconName: "globe"
-            )
+            WelcomeEmptyView()
         }
     }
 
