@@ -115,7 +115,7 @@ struct AgentWorkspaceSurfaceView: View {
         ScrollView {
             SideBarMarkdown(
                 text: surface.payload["markdown"] ?? "No markdown payload provided.",
-                renderingContext: .website
+                renderingContext: .standard
             )
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)

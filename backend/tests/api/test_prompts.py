@@ -25,6 +25,7 @@ class DummySettings:
         working_relationship: str | None = None,
         location: str | None = None,
         assistant_identity: dict | None = None,
+        tasks_ai_snapshot: str | None = None,
     ):
         self.name = name
         self.gender = gender
@@ -36,6 +37,7 @@ class DummySettings:
         self.working_relationship = working_relationship
         self.location = location
         self.assistant_identity = assistant_identity
+        self.tasks_ai_snapshot = tasks_ai_snapshot
 
 
 def test_resolve_template_keeps_unknown_tokens() -> None:
@@ -60,6 +62,18 @@ def test_build_system_prompt_renders_variables() -> None:
     assert "Home location: Unknown" in prompt
     assert "Current location: London" in prompt
     assert "Current weather at current location: Unavailable" in prompt
+
+
+def test_build_system_prompt_wraps_tasks_with_blank_lines() -> None:
+    settings = DummySettings(
+        name="Sam",
+        tasks_ai_snapshot="### Today\n\n- [ ] Ship release",
+    )
+    now = datetime(2025, 1, 2, 13, 45, tzinfo=UTC)
+    prompt = build_system_prompt(settings, "London", None, None, now)
+    assert "<tasks>\n\n### Today" in prompt
+    assert "Ship release" in prompt
+    assert "\n\n</tasks>" in prompt
 
 
 def test_build_first_message_prompt_includes_profile() -> None:
@@ -165,6 +179,7 @@ def test_build_recent_activity_block() -> None:
     ]
     block = build_recent_activity_block(notes, websites, conversations, files)
     assert "<recent_activity>" in block
+    assert "<recent_activity>\n\n" in block
     assert "Notes opened today:" in block
     assert "Websites opened today:" in block
     assert "Chats active today:" in block
@@ -177,6 +192,7 @@ def test_build_recent_activity_block() -> None:
     assert "Project X" in block
     assert "messages: 4" in block
     assert "gentle-guide.pdf" in block
+    assert "\n\n</recent_activity>" in block
 
 
 def test_build_recent_activity_block_empty() -> None:
@@ -200,10 +216,12 @@ def test_build_open_context_block_truncates() -> None:
     }
     block = build_open_context_block(note, website, max_chars=5)
     assert "<current_open>" in block
+    assert "<current_open>\n\n" in block
     assert "Note currently open:" in block
     assert "Website currently open:" in block
     assert "xxxxx" in block
     assert "yyyyy" in block
+    assert "\n\n</current_open>" in block
 
 
 def test_build_open_context_block_empty() -> None:

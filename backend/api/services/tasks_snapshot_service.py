@@ -71,12 +71,14 @@ class TasksSnapshotService:
         blocks: list[str] = []
 
         if overdue_tasks:
-            blocks.append("Overdue")
+            blocks.append("### Overdue")
+            blocks.append("")
             for task in overdue_tasks:
                 blocks.extend(format_task(task, checked=False))
             blocks.append("")
 
-        blocks.append("Today")
+        blocks.append("### Today")
+        blocks.append("")
         if due_today_tasks:
             for task in due_today_tasks:
                 blocks.extend(format_task(task, checked=False))
@@ -84,7 +86,8 @@ class TasksSnapshotService:
             blocks.append("- [ ] None")
 
         blocks.append("")
-        blocks.append("Tomorrow")
+        blocks.append("### Tomorrow")
+        blocks.append("")
         if tomorrow_tasks:
             for task in tomorrow_tasks:
                 blocks.extend(format_task(task, checked=False))
@@ -92,7 +95,8 @@ class TasksSnapshotService:
             blocks.append("- [ ] None")
 
         blocks.append("")
-        blocks.append("Completed today")
+        blocks.append("### Completed today")
+        blocks.append("")
         if completed_today:
             for task in completed_today:
                 blocks.extend(format_task(task, checked=True))

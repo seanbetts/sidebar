@@ -599,7 +599,7 @@ class PromptContextService:
         if wrapped is None:
             return min(len(content), 64)
         opening_tag, _inner, closing_tag = wrapped
-        return len(opening_tag) + len(closing_tag) + 1
+        return len(opening_tag) + len(closing_tag) + 2
 
     @staticmethod
     def _truncate_section_content(content: str, max_chars: int) -> str:
@@ -611,11 +611,11 @@ class PromptContextService:
             return PromptContextService._truncate_text(content, max_chars)
 
         opening_tag, inner, closing_tag = wrapped
-        overhead = len(opening_tag) + len(closing_tag)
+        overhead = len(opening_tag) + len(closing_tag) + 2
         available = max_chars - overhead
         if available <= 0:
             return PromptContextService._truncate_text(content, max_chars)
-        return f"{opening_tag}{inner[:available]}{closing_tag}"
+        return f"{opening_tag}\n{inner[:available]}\n{closing_tag}"
 
     @staticmethod
     def _extract_wrapped_section(content: str) -> tuple[str, str, str] | None:

@@ -349,25 +349,64 @@ struct WorkspaceSurfaceInlineActionsBar: View {
     let targets: [ToolResultWorkspaceSurfaceTarget]
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                ForEach(targets) { target in
-                    Button {
-                        environment.presentAgentSurface(
-                            target.surface,
-                            in: target.pane,
-                            source: "chat_workspace_surface_inline"
-                        )
-                    } label: {
-                        Label(target.label, systemImage: "rectangle.on.rectangle")
-                            .appFont(.captionSemibold)
-                            .lineLimit(1)
+        Group {
+            if targets.count == 1, let target = targets.first {
+                HStack {
+                    Spacer(minLength: 0)
+                    actionButton(target, prominent: true)
+                        .frame(maxWidth: 280)
+                    Spacer(minLength: 0)
+                }
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: DesignTokens.Spacing.xs) {
+                        ForEach(targets) { target in
+                            actionButton(target, prominent: false)
+                        }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
-            .padding(.vertical, 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    @ViewBuilder
+    private func actionButton(
+        _ target: ToolResultWorkspaceSurfaceTarget,
+        prominent: Bool
+    ) -> some View {
+        if prominent {
+            Button {
+                environment.presentAgentSurface(
+                    target.surface,
+                    in: target.pane,
+                    source: "chat_workspace_surface_inline"
+                )
+            } label: {
+                Label(target.label, systemImage: "rectangle.on.rectangle")
+                    .appFont(.captionSemibold)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.roundedRectangle(radius: 10))
+            .controlSize(.regular)
+        } else {
+            Button {
+                environment.presentAgentSurface(
+                    target.surface,
+                    in: target.pane,
+                    source: "chat_workspace_surface_inline"
+                )
+            } label: {
+                Label(target.label, systemImage: "rectangle.on.rectangle")
+                    .appFont(.captionSemibold)
+                    .lineLimit(1)
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.roundedRectangle(radius: 10))
+            .controlSize(.regular)
         }
     }
 }

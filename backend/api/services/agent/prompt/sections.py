@@ -186,7 +186,7 @@ def build_prompt_variables(
         tasks_snapshot_raw.strip() if isinstance(tasks_snapshot_raw, str) else ""
     )
     tasks_snapshot_block = (
-        f"<tasks>\n{tasks_snapshot}\n</tasks>" if tasks_snapshot else ""
+        f"<tasks>\n\n{tasks_snapshot}\n\n</tasks>" if tasks_snapshot else ""
     )
 
     return {
