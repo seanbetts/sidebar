@@ -46,6 +46,26 @@ final class AppEnvironmentShortcutPaneTests: XCTestCase {
         XCTAssertEqual(environment.shortcutActionEvent?.pane, .secondary)
     }
 
+    func testEmitShortcutActionResolvesAgentSurfaceAsChatInPrimaryPane() {
+        let environment = makeEnvironment()
+        environment.workspaceStore.dispatch(
+            .setPrimaryContent(
+                .agentSurface(
+                    AgentWorkspaceSurfaceDescriptor(type: "markdown", surfaceId: "surface-1")
+                )
+            ),
+            source: "shortcut_pane_test"
+        )
+        environment.activeSection = .chat
+        environment.focusedSection = nil
+        environment.focusedWorkspacePane = nil
+
+        environment.emitShortcutAction(.closeItem)
+
+        XCTAssertEqual(environment.shortcutActionEvent?.section, .chat)
+        XCTAssertEqual(environment.shortcutActionEvent?.pane, .primary)
+    }
+
     func testNavigationResetClearsFocusedWorkspacePane() {
         let navigation = NavigationCoordinator()
         navigation.focusedWorkspacePane = .secondary

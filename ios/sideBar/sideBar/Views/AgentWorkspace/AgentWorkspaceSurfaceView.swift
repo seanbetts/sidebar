@@ -1,12 +1,25 @@
 import SwiftUI
+import UniformTypeIdentifiers
+import sideBarShared
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 struct AgentWorkspaceSurfaceView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.workspaceColumn) private var workspaceColumn
+    @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
+    #if os(iOS)
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
+    #endif
 
     let surface: AgentWorkspaceSurfaceDescriptor
 
-    @State private var isInspectingDataPresented = false
+    @State private var exportDocument: MarkdownFileDocument?
+    @State private var exportFilename = "agent-surface.md"
+    @State private var isExporting = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,32 +29,24 @@ struct AgentWorkspaceSurfaceView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(DesignTokens.Spacing.lg)
         }
-        .contextMenu {
-            if surface.capabilities.canRefresh {
-                Button("Refresh", systemImage: "arrow.clockwise", action: refreshSurface)
-            }
-            if surface.capabilities.canPin {
-                Button(
-                    surface.isPinned ? "Unpin" : "Pin",
-                    systemImage: surface.isPinned ? "pin.slash" : "pin"
-                ) {
-                    togglePinned()
-                }
-            }
-            if surface.capabilities.canInspectData {
-                Button("Inspect Data", systemImage: "doc.text.magnifyingglass") {
-                    isInspectingDataPresented = true
-                }
-            }
-            if surface.capabilities.canClose {
-                Button("Close", systemImage: "xmark") {
-                    closeSurface()
-                }
-            }
+        .platformContextMenu(items: contextMenuItems)
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .sideBarMarkdown,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
         }
-        .sheet(isPresented: $isInspectingDataPresented) {
-            AgentWorkspaceSurfaceInspectorView(surface: surface)
-                .phoneSheetGrabBarVisible()
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
+            guard let event,
+                  event.matches(
+                    section: .chat,
+                    workspacePane: workspacePane
+                  ) else { return }
+            guard case .closeItem = event.action else { return }
+            guard surface.capabilities.canClose else { return }
+            closeSurface()
         }
     }
 
@@ -57,6 +62,9 @@ struct AgentWorkspaceSurfaceView: View {
             titleSubtitleAxis: .vertical,
             trailing: {
                 HeaderActionRow {
+                    if shouldShowExpandButton {
+                        expandButton
+                    }
                     if surface.capabilities.canRefresh {
                         HeaderActionButton(
                             systemName: "arrow.clockwise",
@@ -64,33 +72,57 @@ struct AgentWorkspaceSurfaceView: View {
                             action: refreshSurface
                         )
                     }
-                    if surface.capabilities.canPin {
-                        HeaderActionButton(
-                            systemName: surface.isPinned ? "pin.fill" : "pin",
-                            accessibilityLabel: surface.isPinned ? "Unpin surface" : "Pin surface",
-                            action: togglePinned
-                        )
-                    }
-                    if surface.capabilities.canInspectData {
-                        HeaderActionButton(
-                            systemName: "doc.text.magnifyingglass",
-                            accessibilityLabel: "Inspect surface data"
-                        ) {
-                            isInspectingDataPresented = true
-                        }
-                    }
                     if surface.capabilities.canClose {
                         HeaderActionButton(
                             systemName: "xmark",
                             accessibilityLabel: "Close surface",
                             action: closeSurface
                         )
+                        .keyboardShortcut(.escape, modifiers: [])
                     }
                 }
             }
         )
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
+    }
+
+    private var contextMenuItems: [SidebarMenuItem] {
+        var items: [SidebarMenuItem] = []
+
+        for action in surface.contextMenuActions {
+            switch action {
+            case .copyMarkdown:
+                items.append(.copyMarkdown { copyMarkdownPayload() })
+            case .shareText:
+                items.append(.shareText { shareSurfaceText() })
+            case .download:
+                items.append(.download { downloadMarkdownPayload() })
+            }
+        }
+
+        if surface.capabilities.canRefresh {
+            items.append(
+                SidebarMenuItem(
+                    title: "Refresh",
+                    systemImage: "arrow.clockwise",
+                    role: nil,
+                    handler: refreshSurface
+                )
+            )
+        }
+        if surface.capabilities.canClose {
+            items.append(
+                SidebarMenuItem(
+                    title: "Close",
+                    systemImage: "xmark",
+                    role: nil,
+                    handler: closeSurface
+                )
+            )
+        }
+
+        return items
     }
 
     @ViewBuilder
@@ -235,12 +267,57 @@ struct AgentWorkspaceSurfaceView: View {
     private var surfaceLabel: String {
         var label = surface.surfaceType.rawValue
         label = label.replacingOccurrences(of: "([A-Z])", with: " $1", options: .regularExpression)
-        label = label.prefix(1).uppercased() + label.dropFirst()
-        if surface.isPinned {
-            return "\(label) • pinned"
-        }
-        return label
+        return label.prefix(1).uppercased() + label.dropFirst()
     }
+
+    private var shouldShowExpandButton: Bool {
+        WorkspaceBehaviorPolicy.shouldShowExpandButton(
+            workspaceColumn: workspaceColumn,
+            isPhoneIdiom: {
+                #if os(iOS)
+                isPhone
+                #else
+                false
+                #endif
+            }()
+        )
+    }
+
+    private var expandButton: some View {
+        Button(action: expandWorkspaceView) {
+            Image(systemName: expandButtonIconName)
+                .appFont(.labelMd)
+                .frame(width: 28, height: 20)
+                .imageScale(.medium)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(expandButtonLabel)
+    }
+
+    private var expandButtonIconName: String {
+        isWorkspaceExpanded
+            ? "arrow.up.right.and.arrow.down.left"
+            : "arrow.down.left.and.arrow.up.right"
+    }
+
+    private var expandButtonLabel: String {
+        isWorkspaceExpanded ? "Exit expanded mode" : "Expand workspace"
+    }
+
+    private func expandWorkspaceView() {
+        #if os(iOS)
+        if !isPhone {
+            isWorkspaceExpandedByRotation = false
+        }
+        #endif
+        isWorkspaceExpanded.toggle()
+    }
+
+    #if os(iOS)
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+    #endif
 
     private func refreshSurface() {
         environment.toastCenter.show(message: "Agent surface refreshed.", style: .success)
@@ -250,12 +327,75 @@ struct AgentWorkspaceSurfaceView: View {
         environment.closeWorkspacePane(workspacePane, source: "agent_surface_close")
     }
 
-    private func togglePinned() {
-        environment.setAgentSurfacePinned(
-            surfaceId: surface.surfaceId,
-            isPinned: !surface.isPinned,
-            source: "agent_surface_pin_toggle"
+    private func copyMarkdownPayload() {
+        guard let markdown = markdownPayload else { return }
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = markdown
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(markdown, forType: .string)
+        #endif
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(iOS)
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == markdown {
+                pasteboard.string = ""
+            }
+            #elseif os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == markdown {
+                pasteboard.clearContents()
+            }
+            #endif
+        }
+    }
+
+    private func shareSurfaceText() {
+        guard let text = sharableTextPayload else { return }
+        SystemSharePresenter.share(text: text)
+    }
+
+    private func downloadMarkdownPayload() {
+        guard let markdown = markdownPayload else { return }
+        exportFilename = exportMarkdownFilename
+        exportDocument = MarkdownFileDocument(text: markdown)
+        isExporting = true
+    }
+
+    private var markdownPayload: String? {
+        if let markdown = surface.payload["markdown"]?.trimmedOrNil {
+            return markdown
+        }
+        if let text = surface.payload["text"]?.trimmedOrNil {
+            return text
+        }
+        return nil
+    }
+
+    private var sharableTextPayload: String? {
+        if let markdown = markdownPayload {
+            return markdown
+        }
+        if let summary = surface.payload["summary"]?.trimmedOrNil {
+            return summary
+        }
+        return nil
+    }
+
+    private var exportMarkdownFilename: String {
+        let base = (surface.title?.trimmedOrNil ?? surface.surfaceId).replacingOccurrences(of: " ", with: "-")
+        let sanitized = base.replacingOccurrences(
+            of: #"[^A-Za-z0-9._-]"#,
+            with: "-",
+            options: .regularExpression
         )
+        if sanitized.hasSuffix(".md") {
+            return sanitized
+        }
+        return "\(sanitized).md"
     }
 
     private func iconName(for type: AgentWorkspaceSurfaceType) -> String {
@@ -282,58 +422,5 @@ struct AgentWorkspaceSurfaceView: View {
         case .secondary:
             return .secondary
         }
-    }
-}
-
-private struct AgentWorkspaceSurfaceInspectorView: View {
-    let surface: AgentWorkspaceSurfaceDescriptor
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Surface") {
-                    labeledValue("ID", surface.surfaceId)
-                    labeledValue("Type", surface.surfaceType.rawValue)
-                    labeledValue("Pinned", surface.isPinned ? "Yes" : "No")
-                }
-                Section("Capabilities") {
-                    labeledValue("Refresh", yesNo(surface.capabilities.canRefresh))
-                    labeledValue("Close", yesNo(surface.capabilities.canClose))
-                    labeledValue("Pin", yesNo(surface.capabilities.canPin))
-                    labeledValue("Inspect", yesNo(surface.capabilities.canInspectData))
-                }
-                Section("Payload") {
-                    if surface.payload.isEmpty {
-                        Text("No payload values supplied.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(surface.payload.keys.sorted(), id: \.self) { key in
-                            labeledValue(key, surface.payload[key] ?? "")
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Surface Inspector")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-        }
-    }
-
-    @ViewBuilder
-    private func labeledValue(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .appFont(.captionSemibold)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .appFont(.subheadline)
-                .textSelection(.enabled)
-        }
-        .padding(.vertical, 2)
-    }
-
-    private func yesNo(_ value: Bool) -> String {
-        value ? "Yes" : "No"
     }
 }

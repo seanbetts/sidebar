@@ -71,6 +71,23 @@ struct SidebarCommands: Commands {
         if environment.notesViewModel.activeNote != nil, environment.notesEditorViewModel.isReadOnly {
             return true
         }
+        if hasCloseableAgentSurface {
+            return true
+        }
+        return false
+    }
+
+    private var hasCloseableAgentSurface: Bool {
+        let state = environment.workspaceStore.state
+        if case .agentSurface(let surface) = state.primaryPane.descriptor,
+           surface.capabilities.canClose {
+            return true
+        }
+        if let secondaryPane = state.secondaryPane,
+           case .agentSurface(let surface) = secondaryPane.descriptor,
+           surface.capabilities.canClose {
+            return true
+        }
         return false
     }
 }

@@ -88,6 +88,14 @@ extension KeyboardShortcutRegistry {
     private static func buildChatShortcuts() -> [KeyboardShortcut] {
         [
             KeyboardShortcut(
+                input: UIKeyCommand.inputEscape,
+                modifiers: [],
+                title: "Close Assistant Workspace",
+                description: "Close the assistant workspace surface",
+                action: .closeItem,
+                contexts: [.chat]
+            ),
+            KeyboardShortcut(
                 input: "\r",
                 modifiers: [.command],
                 title: "Send Message",
