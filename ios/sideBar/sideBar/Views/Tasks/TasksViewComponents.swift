@@ -123,7 +123,7 @@ struct TaskRow<MenuContent: View>: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .appFont(.subheadline)
+                            .appFont(.body)
                             .foregroundStyle(DesignTokens.Colors.textPrimary)
                             .lineLimit(isExpanded ? nil : 1)
                             .fixedSize(horizontal: false, vertical: isExpanded)
