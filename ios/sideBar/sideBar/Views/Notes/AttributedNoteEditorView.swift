@@ -35,6 +35,22 @@ struct AttributedNoteEditorView: View {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+private extension AttributeScopes {
+    struct AttributedNoteTextSurfaceAttributes: AttributeScope {
+        let markdownEditor: MarkdownEditorAttributes
+        #if os(iOS)
+        let uiKit: UIKitAttributes
+        #elseif os(macOS)
+        let appKit: AppKitAttributes
+        #endif
+    }
+
+    var attributedNoteTextSurface: AttributedNoteTextSurfaceAttributes.Type {
+        AttributedNoteTextSurfaceAttributes.self
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 struct AttributedNoteReadOnlyView: View {
     let attributedContent: AttributedString
     let maxContentWidth: CGFloat
@@ -85,7 +101,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         textView.addGestureRecognizer(tapRecognizer)
         context.coordinator.tapRecognizer = tapRecognizer
         configure(textView, coordinator: context.coordinator)
-        textView.attributedText = NSAttributedString(text)
+        textView.attributedText = bridgeToNSAttributedString(text)
         return textView
     }
 
@@ -94,7 +110,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         context.coordinator.isUpdating = true
         configure(textView, coordinator: context.coordinator)
 
-        let updated = NSAttributedString(text)
+        let updated = bridgeToNSAttributedString(text)
         if !textView.attributedText.isEqual(to: updated) {
             textView.attributedText = updated
         }
@@ -154,7 +170,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             guard !isUpdating else { return }
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
-                self.parent.text = AttributedString(textView.attributedText)
+                self.parent.text = bridgeToAttributedString(textView.attributedText)
             }
         }
 
@@ -207,7 +223,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
         scrollView.borderType = .noBorder
         scrollView.documentView = textView
         configure(scrollView, textView: textView, coordinator: context.coordinator)
-        textView.textStorage?.setAttributedString(NSAttributedString(text))
+        textView.textStorage?.setAttributedString(bridgeToNSAttributedString(text))
         return scrollView
     }
 
@@ -217,7 +233,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
         context.coordinator.isUpdating = true
         configure(scrollView, textView: textView, coordinator: context.coordinator)
 
-        let updated = NSAttributedString(text)
+        let updated = bridgeToNSAttributedString(text)
         if !textView.attributedString().isEqual(to: updated) {
             textView.textStorage?.setAttributedString(updated)
         }
@@ -294,7 +310,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
                   let textView = notification.object as? NSTextView else { return }
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
-                self.parent.text = AttributedString(textView.attributedString())
+                self.parent.text = bridgeToAttributedString(textView.attributedString())
             }
         }
 
@@ -314,6 +330,22 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
     }
 }
 #endif
+
+@available(iOS 26.0, macOS 26.0, *)
+private func bridgeToNSAttributedString(_ text: AttributedString) -> NSAttributedString {
+    if let scoped = try? NSAttributedString(text, including: \.attributedNoteTextSurface) {
+        return scoped
+    }
+    return NSAttributedString(text)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func bridgeToAttributedString(_ text: NSAttributedString) -> AttributedString {
+    if let scoped = try? AttributedString(text, including: \.attributedNoteTextSurface) {
+        return scoped
+    }
+    return AttributedString(text)
+}
 
 @available(iOS 26.0, macOS 26.0, *)
 private func nsRange(from selection: AttributedTextSelection, in text: AttributedString) -> NSRange {
