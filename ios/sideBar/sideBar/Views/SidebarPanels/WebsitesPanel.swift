@@ -225,7 +225,7 @@ extension WebsitesPanelView {
                     sidebarSectionHeader("Results")
                 }
             }
-            .listStyle(.sidebar)
+            .sidebarPanelListStyle()
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {
@@ -296,7 +296,7 @@ extension WebsitesPanelView {
                 }
 #endif
             }
-            .listStyle(.sidebar)
+            .sidebarPanelListStyle()
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {
@@ -342,7 +342,7 @@ extension WebsitesPanelView {
                     sidebarSectionHeader("Results")
                 }
             }
-            .listStyle(.sidebar)
+            .sidebarPanelListStyle()
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {
@@ -385,7 +385,7 @@ extension WebsitesPanelView {
                 }
             }
         }
-        .listStyle(.sidebar)
+        .sidebarPanelListStyle()
         .scrollContentBackground(.hidden)
         .background(panelBackground)
         .refreshable {

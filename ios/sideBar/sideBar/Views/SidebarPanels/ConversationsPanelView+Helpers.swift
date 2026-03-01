@@ -156,7 +156,7 @@ extension ConversationsPanelView {
                 transaction.disablesAnimations = true
             }
         }
-        .listStyle(.sidebar)
+        .sidebarPanelListStyle()
         .scrollContentBackground(.hidden)
         .background(panelBackground)
         .refreshable {

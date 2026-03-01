@@ -104,7 +104,7 @@ extension NotesPanelView {
             }
 #endif
         }
-        .listStyle(.sidebar)
+        .sidebarPanelListStyle()
         .scrollContentBackground(.hidden)
         .background(panelBackground)
         .refreshable {

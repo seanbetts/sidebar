@@ -339,7 +339,7 @@ extension FilesPanelView {
             }
 
         }
-        .listStyle(.sidebar)
+        .sidebarPanelListStyle()
         .scrollContentBackground(.hidden)
         .background(panelBackground)
         .refreshable {

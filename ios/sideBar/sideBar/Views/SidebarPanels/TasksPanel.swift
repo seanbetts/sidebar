@@ -233,7 +233,7 @@ extension TasksPanelView {
                     }
                 }
             }
-            .listStyle(.sidebar)
+            .sidebarPanelListStyle()
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {

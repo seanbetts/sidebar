@@ -268,7 +268,7 @@ extension NotesPanelView {
                 sidebarSectionHeader("Results")
             }
         }
-        .listStyle(.sidebar)
+        .sidebarPanelListStyle()
         .scrollContentBackground(.hidden)
         .background(panelBackground)
     }
