@@ -31,6 +31,7 @@ NOTES_SHELL_RELATIVE_PATHS = (
     Path("Views/Notes/AttributedNoteEditorContainer.swift"),
     Path("Views/Notes/AttributedNoteKeyboardShortcuts.swift"),
 )
+NOTES_EDITOR_GLOB = "ViewModels/NativeNoteEditorViewModel*.swift"
 FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bNativeMarkdownEditorViewModel\b",
     r"\bMarkdownFormatting\b",
@@ -39,6 +40,15 @@ FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\buseAttributedNoteEditorV2\b",
     r"\bloadMarkdown\s*\(",
     r"\bmarkSaved\s*\(\s*markdown\s*:",
+    r"\bMarkdownImporter\b",
+    r"\bMarkdownExporter\b",
+    r"\bMarkdownShortcutProcessor\b",
+    r"\bMarkdownFormattingDefinition\b",
+    r"\bMarkdownTypography\b",
+    r"\bMarkdownLineInference\b",
+    r"\bMarkdownParagraphMetrics\b",
+    r"\bMarkdownHeadingMetrics\b",
+    r"\bSideBarMarkdownStyle\b",
 )
 
 
@@ -88,6 +98,9 @@ def _notes_shell_files(repo_root: Path) -> list[Path]:
     files: list[Path] = []
     for relative_path in NOTES_SHELL_RELATIVE_PATHS:
         candidate = root / relative_path
+        if candidate.exists() and candidate.is_file():
+            files.append(candidate)
+    for candidate in sorted(root.glob(NOTES_EDITOR_GLOB)):
         if candidate.exists() and candidate.is_file():
             files.append(candidate)
     return files

@@ -108,6 +108,47 @@ def test_check_reports_markdown_method_calls_in_notes_runtime_files(
     assert any("markSaved" in violation.token for violation in violations)
 
 
+def test_check_reports_direct_markdown_utility_references_in_native_note_editor(
+    tmp_path: Path,
+) -> None:
+    """Native notes editor files should not directly reference markdown utility symbols."""
+    editor_file = (
+        tmp_path / "ios/sideBar/sideBar/ViewModels/NativeNoteEditorViewModel.swift"
+    )
+    _write(
+        editor_file,
+        """
+        import Foundation
+        final class NativeNoteEditorViewModel {
+            let importer = MarkdownImporter()
+            let exporter = MarkdownExporter()
+            let style = SideBarMarkdownStyle.default
+
+            func process() {
+                _ = MarkdownShortcutProcessor.processShortcuts
+                _ = MarkdownFormattingDefinition()
+                _ = MarkdownTypography.defaultBodyFontSize
+                _ = MarkdownLineInference.inferBlockKind(from: "x")
+                _ = MarkdownParagraphMetrics.blockquoteIndentEm
+                _ = MarkdownHeadingMetrics.isBold(level: 2)
+            }
+        }
+        """,
+    )
+
+    violations = check(tmp_path)
+
+    assert any("MarkdownImporter" in violation.token for violation in violations)
+    assert any("MarkdownExporter" in violation.token for violation in violations)
+    assert any("SideBarMarkdownStyle" in violation.token for violation in violations)
+    assert any("MarkdownShortcutProcessor" in violation.token for violation in violations)
+    assert any("MarkdownFormattingDefinition" in violation.token for violation in violations)
+    assert any("MarkdownTypography" in violation.token for violation in violations)
+    assert any("MarkdownLineInference" in violation.token for violation in violations)
+    assert any("MarkdownParagraphMetrics" in violation.token for violation in violations)
+    assert any("MarkdownHeadingMetrics" in violation.token for violation in violations)
+
+
 def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
     """No violations should be reported for clean runtime and shell files."""
     _write(
@@ -125,6 +166,15 @@ def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
         import SwiftUI
         struct NotesView: View {
             var body: some View { Text("Notes") }
+        }
+        """,
+    )
+    _write(
+        tmp_path / "ios/sideBar/sideBar/ViewModels/NativeNoteEditorViewModel.swift",
+        """
+        import Foundation
+        final class NativeNoteEditorViewModel {
+            let importer = NoteTextImporter()
         }
         """,
     )

@@ -33,11 +33,11 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     typealias PlatformColor = NSColor
 #endif
 
-    let importer = MarkdownImporter()
-    let exporter = MarkdownExporter()
-    var baseFontSize: CGFloat = MarkdownTypography.defaultBodyFontSize
+    let importer = NoteTextImporter()
+    let exporter = NoteTextExporter()
+    var baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
     var inlineCodeFontSize: CGFloat {
-        MarkdownTypography.inlineCodeFontSize(baseFontSize: baseFontSize)
+        NoteTextTypography.inlineCodeFontSize(baseFontSize: baseFontSize)
     }
     var bodyFont: Font {
         Font.system(size: baseFontSize)
@@ -48,7 +48,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     var blockCodeFont: Font {
         Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
     }
-    let style = SideBarMarkdownStyle.default
+    let style = NoteTextStyle.default
     var frontmatter: String?
     var lastSavedContent: String = ""
     var autosaveTask: Task<Void, Never>?
@@ -79,7 +79,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         var exportContent = attributedContent
         let selection = selectionSnapshot(in: exportContent)
         _ = removeInjectedListMarkers(in: &exportContent, selection: selection)
-        let constrained = MarkdownFormattingDefinition().constrainedDocument(exportContent)
+        let constrained = NoteTextFormattingDefinition().constrainedDocument(exportContent)
         return exporter.markdown(from: constrained, frontmatter: frontmatter)
     }
 
@@ -87,7 +87,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         var exportContent = attributedContent
         let selection = selectionSnapshot(in: exportContent)
         _ = removeInjectedListMarkers(in: &exportContent, selection: selection)
-        let constrained = MarkdownFormattingDefinition().constrainedDocument(exportContent)
+        let constrained = NoteTextFormattingDefinition().constrainedDocument(exportContent)
         return String(constrained.characters)
     }
 
@@ -170,7 +170,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         var updated = attributedContent
         stripUnsupportedInlineStyles(in: &updated)
 
-        let shortcutResult = MarkdownShortcutProcessor.processShortcuts(
+        let shortcutResult = NoteTextShortcutProcessor.processShortcuts(
             in: &updated,
             selection: selection,
             lastInsertedCharacter: insertedCharacter,

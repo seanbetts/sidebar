@@ -103,7 +103,7 @@ extension NativeNoteEditorViewModel {
             if let inferred = inferredBlockKind(from: lineText), isListBlockKind(inferred) {
                 return true
             }
-            if let inferredList = MarkdownShortcutProcessor.inferredListBlockKind(from: lineText),
+            if let inferredList = NoteTextShortcutProcessor.inferredListBlockKind(from: lineText),
                isListBlockKind(inferredList) {
                 return true
             }
@@ -119,7 +119,7 @@ extension NativeNoteEditorViewModel {
         let size: CGFloat
         if let blockKind = primarySelectedParagraphBlockKind(),
            let level = headingLevel(for: blockKind) {
-            size = MarkdownHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
+            size = NoteTextHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
         } else {
             size = baseFontSize
         }

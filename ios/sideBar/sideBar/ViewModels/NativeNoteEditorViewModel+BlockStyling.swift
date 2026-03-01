@@ -65,7 +65,7 @@ extension NativeNoteEditorViewModel {
     }
 
     func inferredBlockKind(from lineText: String) -> BlockKind? {
-        MarkdownLineInference.inferBlockKind(from: lineText)
+        NoteTextLineInference.inferBlockKind(from: lineText)
     }
 
     func lineInfos(in text: AttributedString) -> [LineInfo] {
@@ -103,17 +103,17 @@ extension NativeNoteEditorViewModel {
         case .heading1, .heading2, .heading3, .heading4, .heading5, .heading6:
             return paragraphStyleForHeading(level: headingLevel(for: blockKind) ?? 1)
         case .paragraph:
-            return MarkdownParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
+            return NoteTextParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
         case .blockquote:
-            return MarkdownParagraphMetrics.blockquoteParagraphStyle(
+            return NoteTextParagraphMetrics.blockquoteParagraphStyle(
                 baseFontSize: baseFontSize,
-                headIndent: em(MarkdownParagraphMetrics.blockquoteIndentEm, fontSize: baseFontSize)
+                headIndent: em(NoteTextParagraphMetrics.blockquoteIndentEm, fontSize: baseFontSize)
             )
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
             let depth = max(1, listDepth ?? 1)
             let listIndentUnit = em(1.5, fontSize: baseFontSize)
             let listIndent = listIndentUnit * CGFloat(depth)
-            let style = MarkdownParagraphMetrics.listParagraphStyle(
+            let style = NoteTextParagraphMetrics.listParagraphStyle(
                 baseFontSize: baseFontSize,
                 listDepth: depth,
                 headIndent: listIndent
@@ -151,7 +151,7 @@ extension NativeNoteEditorViewModel {
     }
 
     func paragraphStyleForHeading(level: Int) -> NSParagraphStyle {
-        MarkdownHeadingMetrics.paragraphStyle(level: level, baseFontSize: baseFontSize)
+        NoteTextHeadingMetrics.paragraphStyle(level: level, baseFontSize: baseFontSize)
     }
 
     func rem(_ value: CGFloat) -> CGFloat {

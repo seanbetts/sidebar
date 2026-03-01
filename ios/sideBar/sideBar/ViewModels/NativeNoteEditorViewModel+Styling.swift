@@ -22,15 +22,15 @@ extension NativeNoteEditorViewModel {
 
     func baseFont(for blockKind: BlockKind?) -> Font {
         if let blockKind, let level = headingLevel(for: blockKind) {
-            let size = MarkdownHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
-            let weight: Font.Weight = MarkdownHeadingMetrics.isBold(level: level) ? .bold : .semibold
+            let size = NoteTextHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
+            let weight: Font.Weight = NoteTextHeadingMetrics.isBold(level: level) ? .bold : .semibold
             return .system(size: size, weight: weight)
         }
         switch blockKind {
         case .codeBlock:
             return blockCodeFont
         case .imageCaption:
-            return .system(size: MarkdownTypography.footnoteFontSize(baseFontSize: baseFontSize))
+            return .system(size: NoteTextTypography.footnoteFontSize(baseFontSize: baseFontSize))
         default:
             return bodyFont
         }
@@ -38,8 +38,8 @@ extension NativeNoteEditorViewModel {
 
     func platformBaseFont(for blockKind: BlockKind?) -> PlatformFont {
         if let blockKind, let level = headingLevel(for: blockKind) {
-            let size = MarkdownHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
-            let weight: PlatformFontWeight = MarkdownHeadingMetrics.isBold(level: level) ? .bold : .semibold
+            let size = NoteTextHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
+            let weight: PlatformFontWeight = NoteTextHeadingMetrics.isBold(level: level) ? .bold : .semibold
             return platformSystemFont(size: size, weight: weight)
         }
         switch blockKind {
@@ -58,7 +58,7 @@ extension NativeNoteEditorViewModel {
 
     func platformFootnoteFont() -> PlatformFont {
         platformSystemFont(
-            size: MarkdownTypography.footnoteFontSize(baseFontSize: baseFontSize),
+            size: NoteTextTypography.footnoteFontSize(baseFontSize: baseFontSize),
             weight: .regular
         )
     }

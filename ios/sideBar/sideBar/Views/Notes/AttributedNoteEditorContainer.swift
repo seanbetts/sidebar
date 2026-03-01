@@ -57,7 +57,7 @@ struct AttributedNoteEditorContainer: View {
             Task { @MainActor in
                 guard appTextSizeRaw == newValue else { return }
                 let option = AppTextSizeOption.resolved(from: newValue)
-                nativeViewModel.setBaseFontSize(MarkdownTypography.defaultBodyFontSize(for: option))
+                nativeViewModel.setBaseFontSize(NoteTextTypography.defaultBodyFontSize(for: option))
                 nativeViewModel.updatePrefixVisibility()
             }
         }
@@ -78,7 +78,7 @@ struct AttributedNoteEditorContainer: View {
 
     private var editorBaseFontSize: CGFloat {
         let option = AppTextSizeOption.resolved(from: appTextSizeRaw)
-        return MarkdownTypography.defaultBodyFontSize(for: option)
+        return NoteTextTypography.defaultBodyFontSize(for: option)
     }
 
     private var editorSurface: some View {
