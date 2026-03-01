@@ -9,6 +9,10 @@ from api.auth import bearer_scheme, verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError
+from api.services.notes_content_codec import (
+    canonical_note_content_from_plain_text,
+    note_plain_text_from_record,
+)
 from api.services.notes_service import NotesService
 
 router = APIRouter(prefix="/scratchpad", tags=["scratchpad"])
@@ -71,11 +75,7 @@ def merge_content(existing: str, incoming: str, mode: str) -> str:
 
 
 def _note_plain_text(note) -> str:
-    metadata = note.metadata_ or {}
-    plain_text = metadata.get("plain_text")
-    if isinstance(plain_text, str):
-        return plain_text
-    return note.content or ""
+    return note_plain_text_from_record(note.content, note.metadata_)
 
 
 @router.get("")
@@ -98,11 +98,12 @@ def get_scratchpad(
         db, user_id, SCRATCHPAD_TITLE, mark_opened=True
     )
     if not note:
+        canonical = canonical_note_content_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n")
         note = NotesService.create_note(
             db,
             user_id,
-            content=f"# {SCRATCHPAD_TITLE}\n\n",
-            plain_text=f"# {SCRATCHPAD_TITLE}\n\n",
+            content=canonical.content,
+            plain_text=canonical.plain_text,
             title=SCRATCHPAD_TITLE,
             folder="",
         )
@@ -150,11 +151,12 @@ def update_scratchpad(
         db, user_id, SCRATCHPAD_TITLE, mark_opened=False
     )
     if not note:
+        canonical = canonical_note_content_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n")
         note = NotesService.create_note(
             db,
             user_id,
-            content=f"# {SCRATCHPAD_TITLE}\n\n",
-            plain_text=f"# {SCRATCHPAD_TITLE}\n\n",
+            content=canonical.content,
+            plain_text=canonical.plain_text,
             title=SCRATCHPAD_TITLE,
             folder="",
         )
@@ -162,12 +164,13 @@ def update_scratchpad(
     if mode_raw is None and not strip_heading(content):
         mode = "replace"
     merged_content = merge_content(_note_plain_text(note), content, mode)
+    canonical = canonical_note_content_from_plain_text(merged_content)
     updated = NotesService.update_note(
         db,
         user_id,
         note.id,
-        merged_content,
-        plain_text=merged_content,
+        canonical.content,
+        plain_text=canonical.plain_text,
         title=SCRATCHPAD_TITLE,
     )
 
@@ -193,12 +196,13 @@ def clear_scratchpad(
     note = NotesService.get_note_by_title(
         db, user_id, SCRATCHPAD_TITLE, mark_opened=False
     )
+    canonical = canonical_note_content_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n")
     if not note:
         note = NotesService.create_note(
             db,
             user_id,
-            content=f"# {SCRATCHPAD_TITLE}\n\n",
-            plain_text=f"# {SCRATCHPAD_TITLE}\n\n",
+            content=canonical.content,
+            plain_text=canonical.plain_text,
             title=SCRATCHPAD_TITLE,
             folder="",
         )
@@ -207,8 +211,8 @@ def clear_scratchpad(
             db,
             user_id,
             note.id,
-            f"# {SCRATCHPAD_TITLE}\n\n",
-            plain_text=f"# {SCRATCHPAD_TITLE}\n\n",
+            canonical.content,
+            plain_text=canonical.plain_text,
             title=SCRATCHPAD_TITLE,
         )
 

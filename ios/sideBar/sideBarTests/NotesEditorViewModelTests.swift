@@ -731,17 +731,17 @@ extension NotesEditorViewModelTests {
         XCTAssertNil(draft)
     }
 
-    func testSyncFromNativeEditorSendsConstrainedMarkdown() async throws {
+    func testSyncFromNativeEditorSendsConstrainedPlainText() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
         let nonCanonical = "- [x] Done"
         let canonicalProbe = NativeMarkdownEditorViewModel()
         canonicalProbe.loadMarkdown(nonCanonical)
-        let canonical = canonicalProbe.currentMarkdown()
-        XCTAssertNotEqual(canonical, nonCanonical)
+        let canonicalPlainText = canonicalProbe.currentPlainText()
+        XCTAssertNotEqual(canonicalPlainText, nonCanonical)
 
-        let updated = NotePayload(id: "n1", name: "Note", content: canonical, path: "/note.md", modified: 100, created: nil)
+        let updated = NotePayload(id: "n1", name: "Note", content: canonicalPlainText, path: "/note.md", modified: 100, created: nil)
         let api = NotesAPISpy(updateResult: .success(updated))
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
@@ -777,8 +777,8 @@ extension NotesEditorViewModelTests {
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         await viewModel.syncFromNativeEditor(nativeViewModel)
 
-        XCTAssertEqual(api.updatedContents, [canonical])
-        XCTAssertEqual(viewModel.content, canonical)
+        XCTAssertEqual(api.updatedContents, [canonicalPlainText])
+        XCTAssertEqual(viewModel.content, canonicalPlainText)
     }
 
     func testOfflineSaveQueuesDraftWithoutApiCall() async throws {
@@ -818,17 +818,17 @@ extension NotesEditorViewModelTests {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
-        let canonical = nativeViewModel.currentMarkdown()
-        XCTAssertNotEqual(canonical, note.content)
+        let canonicalPlainText = nativeViewModel.currentPlainText()
+        XCTAssertNotEqual(canonicalPlainText, note.content)
 
         await viewModel.syncFromNativeEditor(nativeViewModel)
 
         XCTAssertTrue(viewModel.isQueuedForSync)
         XCTAssertFalse(viewModel.isSaving)
         XCTAssertEqual(api.updateCallCount, 0)
-        XCTAssertEqual(viewModel.content, canonical)
+        XCTAssertEqual(viewModel.content, canonicalPlainText)
         let draft = try draftStorage.getDraft(entityType: "note", entityId: "n1")
-        XCTAssertEqual(draft?.content, canonical)
+        XCTAssertEqual(draft?.content, canonicalPlainText)
         let pending = try await writeQueue.fetchPendingWrites()
         XCTAssertEqual(pending.count, 1)
     }

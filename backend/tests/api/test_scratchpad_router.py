@@ -30,3 +30,18 @@ def test_scratchpad_update_roundtrip(test_client):
     updated = test_client.get("/api/scratchpad", headers=_auth_headers())
     assert updated.status_code == 200
     assert "Hello" in updated.json()["content"]
+
+
+def test_scratchpad_update_roundtrip_with_strict_writes(test_client, monkeypatch):
+    monkeypatch.setenv("NOTES_STRICT_RTF_WRITES", "true")
+
+    response = test_client.post(
+        "/api/scratchpad",
+        json={"content": "Strict Hello"},
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 200
+
+    updated = test_client.get("/api/scratchpad", headers=_auth_headers())
+    assert updated.status_code == 200
+    assert "Strict Hello" in updated.json()["content"]

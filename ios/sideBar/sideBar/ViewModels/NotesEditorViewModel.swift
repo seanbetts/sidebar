@@ -148,8 +148,8 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
 
-        let markdown = nativeViewModel.currentMarkdown()
-        guard markdown != content else {
+        let plainText = nativeViewModel.currentPlainText()
+        guard plainText != content else {
             syncRequestedWhileSaving = false
             return
         }
@@ -157,15 +157,15 @@ public final class NotesEditorViewModel: ObservableObject {
         isSaving = true
         saveErrorMessage = nil
         do {
-            try draftStorage.saveDraft(entityType: "note", entityId: noteId, content: markdown)
+            try draftStorage.saveDraft(entityType: "note", entityId: noteId, content: plainText)
         } catch {
             saveErrorMessage = "Failed to save draft"
         }
 
         if !networkStatus.isNetworkAvailable {
             let payload = NoteUpdatePayload(
-                content: markdown,
-                plainText: markdown
+                content: plainText,
+                plainText: plainText
             )
             let snapshot = makeServerSnapshot(noteId: noteId)
             do {
@@ -181,8 +181,8 @@ public final class NotesEditorViewModel: ObservableObject {
             } catch {
                 saveErrorMessage = "Failed to queue changes"
             }
-            nativeViewModel.markSaved(markdown: markdown)
-            content = markdown
+            nativeViewModel.markSaved(markdown: plainText)
+            content = plainText
             isSaving = false
             isDirty = false
             isQueuedForSync = true
@@ -190,20 +190,20 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
 
-        let saved = await notesViewModel.updateNoteContent(id: noteId, content: markdown)
+        let saved = await notesViewModel.updateNoteContent(id: noteId, content: plainText)
         isSaving = false
         if saved {
             try? draftStorage.markSynced(entityType: "note", entityId: noteId)
-            nativeViewModel.markSaved(markdown: markdown)
-            content = markdown
+            nativeViewModel.markSaved(markdown: plainText)
+            content = plainText
             isDirty = false
             lastSavedAt = Date()
             isQueuedForSync = false
         } else {
             saveErrorMessage = "Failed to save note"
             let payload = NoteUpdatePayload(
-                content: markdown,
-                plainText: markdown
+                content: plainText,
+                plainText: plainText
             )
             let snapshot = makeServerSnapshot(noteId: noteId)
             do {
@@ -295,11 +295,11 @@ public final class NotesEditorViewModel: ObservableObject {
         isReadOnly = readOnly
     }
 
-    private func syncNativeEditorContent(_ markdown: String) {
+    private func syncNativeEditorContent(_ plainText: String) {
         if #available(iOS 26.0, macOS 26.0, *) {
             guard let nativeEditorViewModel else { return }
-            guard nativeEditorViewModel.currentMarkdown() != markdown else { return }
-            nativeEditorViewModel.loadMarkdown(markdown)
+            guard nativeEditorViewModel.currentPlainText() != plainText else { return }
+            nativeEditorViewModel.loadMarkdown(plainText)
         }
     }
 

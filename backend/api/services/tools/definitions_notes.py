@@ -10,7 +10,7 @@ def get_notes_definitions() -> dict:
     return {
         "Create Note": {
             "description": (
-                "Create a searchable, persistent markdown note in the database "
+                "Create a searchable, persistent note in the database "
                 "with metadata. Notes are visible in the UI and fully searchable. "
                 "Preferred for remembering information across sessions."
             ),
@@ -21,7 +21,7 @@ def get_notes_definitions() -> dict:
                         "type": "string",
                         "description": "Note title",
                     },
-                    "content": {"type": "string", "description": "Markdown content"},
+                    "content": {"type": "string", "description": "Note content text"},
                     "folder": {"type": "string", "description": "Optional folder path"},
                     "tags": {"type": "array", "items": {"type": "string"}},
                 },
@@ -38,7 +38,7 @@ def get_notes_definitions() -> dict:
                 "properties": {
                     "note_id": {"type": "string", "description": "Note UUID"},
                     "title": {"type": "string", "description": "Optional note title"},
-                    "content": {"type": "string", "description": "Markdown content"},
+                    "content": {"type": "string", "description": "Note content text"},
                 },
                 "required": ["note_id", "content"],
             },
@@ -204,7 +204,9 @@ def get_notes_definitions() -> dict:
             "build_args": pm.build_notes_read_args,
         },
         "Download Note": {
-            "description": "Export a note as markdown content plus filename metadata.",
+            "description": (
+                "Export a note as plain-text content plus filename metadata."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {

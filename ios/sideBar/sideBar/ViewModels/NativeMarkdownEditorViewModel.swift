@@ -83,6 +83,14 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         return exporter.markdown(from: constrained, frontmatter: frontmatter)
     }
 
+    public func currentPlainText() -> String {
+        var exportContent = attributedContent
+        let selection = selectionSnapshot(in: exportContent)
+        _ = removeInjectedListMarkers(in: &exportContent, selection: selection)
+        let constrained = MarkdownFormattingDefinition().constrainedDocument(exportContent)
+        return String(constrained.characters)
+    }
+
     public func markSaved(markdown: String) {
         lastSavedContent = markdown
         hasUnsavedChanges = false

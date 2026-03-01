@@ -15,7 +15,7 @@ struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     @ObservedObject var editorViewModel: NotesEditorViewModel
     private let contentMaxWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var environment: AppEnvironment
     @Binding var isRenameDialogPresented: Bool
     @Binding var renameValue: String
     @Binding var isMoveSheetPresented: Bool
@@ -159,7 +159,10 @@ extension NotesDetailView {
 
     @ViewBuilder
     private var content: some View {
-            if viewModel.activeNote != nil {
+            if let activeNote = viewModel.activeNote {
+                if activeNote.isCorrupt {
+                    corruptionStateView(note: activeNote)
+                } else {
                 if #available(iOS 26.0, macOS 26.0, *) {
                     switch editorRenderingMode {
                     case .attributedV2:
@@ -178,6 +181,7 @@ extension NotesDetailView {
                         .onAppear {
                             editorViewModel.setReadOnly(true)
                         }
+                }
                 }
             } else if viewModel.selectedNoteId != nil {
                 if let error = viewModel.errorMessage {
@@ -211,6 +215,45 @@ extension NotesDetailView {
                 }
             }
         }
+
+    private func corruptionStateView(note: NotePayload) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            Text("This note content is corrupted")
+                .appFont(.bodySemibold)
+                .foregroundStyle(DesignTokens.Colors.textPrimary)
+            Text(
+                "Stored content is not valid canonical RTF. "
+                    + "You can copy available plain text, restore from legacy content, or report this issue."
+            )
+                .appFont(.subheadline)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                Button("Copy plain text") {
+                    copyCorruptPlainText(note)
+                }
+                .buttonStyle(.bordered)
+                .disabled(note.content.isEmpty)
+
+                Button("Restore from legacy") {
+                    Task {
+                        await restoreCorruptNoteFromLegacy(note)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled((note.legacyContent ?? "").isEmpty)
+
+                Button("Report issue") {
+                    copyCorruptionReport(note)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+        .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
+        .frame(maxWidth: contentMaxWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
 
     private var contentWithToolbar: some View {
         VStack(spacing: 0) {

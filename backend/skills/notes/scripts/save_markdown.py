@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Save Markdown Note
+"""Save Note
 
-Create or update markdown notes stored in the database.
+Create or update notes stored in the database.
 """
 
 import argparse
@@ -17,6 +17,10 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
+    from api.services.notes_content_codec import (
+        canonical_note_content_from_plain_text,
+        note_plain_text_from_record,
+    )
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -56,15 +60,21 @@ def save_markdown_database(
             if not note:
                 raise ValueError("note_id is required for update mode")
 
+            existing_plain_text = note_plain_text_from_record(
+                note.content, note.metadata_
+            )
             updated_content = content
             if mode == "append":
-                updated_content = f"{note.content}{content}"
+                updated_content = f"{existing_plain_text}{content}"
+
+            canonical = canonical_note_content_from_plain_text(updated_content)
 
             note = NotesService.update_note(
                 db,
                 user_id,
                 uuid.UUID(resolved_id),
-                updated_content,
+                canonical.content,
+                plain_text=canonical.plain_text,
                 title=title,
             )
             return {"id": str(note.id), "title": note.title}
@@ -72,10 +82,12 @@ def save_markdown_database(
         if mode != "create":
             raise ValueError("Database mode supports create, update, or append only")
 
+        canonical = canonical_note_content_from_plain_text(content)
         note = NotesService.create_note(
             db,
             user_id,
-            content,
+            canonical.content,
+            plain_text=canonical.plain_text,
             title=title,
             folder=folder or "",
             tags=tags,
@@ -92,7 +104,7 @@ def save_markdown_database(
 def main():
     """Main entry point for save_markdown script."""
     parser = argparse.ArgumentParser(
-        description="Save markdown note with metadata",
+        description="Save note with metadata",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -100,7 +112,8 @@ Examples:
   %(prog)s "Meeting Notes" --content "Discussion points" --database
 
   # Update existing note
-  %(prog)s "Meeting Notes" --content "New content" --mode update --note-id <uuid> --database
+  %(prog)s "Meeting Notes" --content "New content" \\
+    --mode update --note-id <uuid> --database
 
   # Custom folder
   %(prog)s "Personal Note" --content "Content" --folder "personal" --database
@@ -108,7 +121,7 @@ Examples:
     )
 
     parser.add_argument("title", help="Note title")
-    parser.add_argument("--content", required=True, help="Note content (markdown)")
+    parser.add_argument("--content", required=True, help="Note content text")
     parser.add_argument(
         "--mode",
         default="create",

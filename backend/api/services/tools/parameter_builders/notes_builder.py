@@ -13,7 +13,7 @@ class NotesParameterBuilder(BaseParameterBuilder):
         """Derive a note title from content.
 
         Args:
-            content: Markdown or plain text.
+            content: Note content text.
 
         Returns:
             A non-empty title capped at 120 characters.

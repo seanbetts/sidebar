@@ -14,6 +14,10 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
+    from api.services.notes_content_codec import (
+        canonical_note_content_from_plain_text,
+        note_plain_text_from_record,
+    )
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -34,10 +38,14 @@ def get_scratchpad(user_id: str) -> dict:
             db, user_id, SCRATCHPAD_TITLE, mark_opened=True
         )
         if not note:
+            canonical = canonical_note_content_from_plain_text(
+                f"# {SCRATCHPAD_TITLE}\n\n"
+            )
             note = NotesService.create_note(
                 db,
                 user_id,
-                content=f"# {SCRATCHPAD_TITLE}\n\n",
+                content=canonical.content,
+                plain_text=canonical.plain_text,
                 title=SCRATCHPAD_TITLE,
                 folder="",
             )
@@ -45,7 +53,7 @@ def get_scratchpad(user_id: str) -> dict:
         return {
             "id": str(note.id),
             "title": note.title,
-            "content": note.content,
+            "content": note_plain_text_from_record(note.content, note.metadata_),
             "created_at": note.created_at.isoformat() if note.created_at else None,
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
             "last_opened_at": note.last_opened_at.isoformat()

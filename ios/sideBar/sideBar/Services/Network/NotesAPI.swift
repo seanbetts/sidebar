@@ -143,6 +143,8 @@ public struct NotePayload: Codable, Equatable {
     public let modified: Double?
     public let created: Double?
     public let contentFormat: String?
+    public let legacyContent: String?
+    public let isCorrupt: Bool
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -155,6 +157,9 @@ public struct NotePayload: Codable, Equatable {
         case plainTextCamel = "plainText"
         case contentFormat = "content_format"
         case contentFormatCamel = "contentFormat"
+        case legacyContent = "legacy_content"
+        case metadata
+        case isCorrupt = "_is_corrupt"
     }
 
     public init(
@@ -164,7 +169,9 @@ public struct NotePayload: Codable, Equatable {
         path: String,
         modified: Double?,
         created: Double?,
-        contentFormat: String? = nil
+        contentFormat: String? = nil,
+        legacyContent: String? = nil,
+        isCorrupt: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -173,6 +180,8 @@ public struct NotePayload: Codable, Equatable {
         self.modified = modified
         self.created = created
         self.contentFormat = contentFormat
+        self.legacyContent = legacyContent
+        self.isCorrupt = isCorrupt
     }
 
     public init(from decoder: Decoder) throws {
@@ -183,10 +192,16 @@ public struct NotePayload: Codable, Equatable {
         modified = try container.decodeIfPresent(Double.self, forKey: .modified)
         created = try container.decodeIfPresent(Double.self, forKey: .created)
         let rawContent = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
+        let metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
         let plainText = try container.decodeIfPresent(String.self, forKey: .plainText)
             ?? container.decodeIfPresent(String.self, forKey: .plainTextCamel)
             ?? NotesRichTextCodec.decodeBase64RTFToPlainText(rawContent)
         content = plainText ?? ""
+        let rawContentHasData = !rawContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        isCorrupt = try container.decodeIfPresent(Bool.self, forKey: .isCorrupt)
+            ?? (plainText == nil && rawContentHasData)
+        legacyContent = try container.decodeIfPresent(String.self, forKey: .legacyContent)
+            ?? (metadata?["legacy_content"]?.value as? String)
         contentFormat = try container.decodeIfPresent(String.self, forKey: .contentFormat)
             ?? container.decodeIfPresent(String.self, forKey: .contentFormatCamel)
     }
@@ -201,6 +216,8 @@ public struct NotePayload: Codable, Equatable {
         try container.encodeIfPresent(created, forKey: .created)
         try container.encode(content, forKey: .plainText)
         try container.encodeIfPresent(contentFormat, forKey: .contentFormat)
+        try container.encode(isCorrupt, forKey: .isCorrupt)
+        try container.encodeIfPresent(legacyContent, forKey: .legacyContent)
     }
 }
 
