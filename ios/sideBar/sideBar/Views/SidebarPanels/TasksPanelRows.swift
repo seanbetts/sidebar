@@ -49,19 +49,19 @@ struct TaskPanelRow: View, Equatable {
                 Image(systemName: iconName)
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 Text(title)
-                    .appFont(.subheadline)
+                    .appFont(SidebarTypography.primary)
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                     .lineLimit(1)
                 Spacer()
                 if let count {
                     if count == 0 {
                         Image(systemName: "checkmark")
-                            .appFont(.caption)
+                            .appFont(SidebarTypography.secondary)
                             .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
                             .accessibilityLabel("No tasks")
                     } else {
                         Text("\(count)")
-                            .appFont(.caption)
+                            .appFont(SidebarTypography.secondary)
                             .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
                     }
                 }

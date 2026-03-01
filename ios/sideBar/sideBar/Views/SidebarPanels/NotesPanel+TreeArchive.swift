@@ -190,7 +190,7 @@ extension NotesPanelView {
         HStack(spacing: DesignTokens.Spacing.xs) {
             LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             Text(message)
-                .appFont(.caption)
+                .appFont(SidebarTypography.secondary)
                 .foregroundStyle(.secondary)
         }
     }
@@ -199,7 +199,7 @@ extension NotesPanelView {
     private var archiveLabel: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Label("Archive", systemImage: "archivebox")
-                .appFont(.subheadline)
+                .appFont(SidebarTypography.primary)
             if isArchiveLoading && !archivedNodes.isEmpty {
                 LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             }

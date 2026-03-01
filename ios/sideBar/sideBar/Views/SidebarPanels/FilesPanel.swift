@@ -327,7 +327,7 @@ extension FilesPanelView {
                                             .frame(width: 20, alignment: .center)
                                         Text(categoryLabels[category] ?? "Files")
                                     }
-                                    .appFont(.subheadline)
+                                    .appFont(SidebarTypography.primary)
                                 }
                                 .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                             }

@@ -30,11 +30,11 @@ struct ConversationRow: View, Equatable {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(conversation.title)
-                    .appFont(.subheadline)
+                    .appFont(SidebarTypography.primary)
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                     .lineLimit(1)
                 Text(subtitleText)
-                    .appFont(.caption2)
+                    .appFont(SidebarTypography.tertiary)
                     .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)
             }
             Spacer(minLength: 0)

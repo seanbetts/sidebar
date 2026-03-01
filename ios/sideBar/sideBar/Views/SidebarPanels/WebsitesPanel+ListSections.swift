@@ -187,7 +187,7 @@ extension WebsitesPanelView {
         HStack(spacing: DesignTokens.Spacing.xs) {
             LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             Text(message)
-                .appFont(.caption)
+                .appFont(SidebarTypography.secondary)
                 .foregroundStyle(.secondary)
         }
     }
@@ -196,7 +196,7 @@ extension WebsitesPanelView {
     var archiveLabel: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Label("Archive", systemImage: "archivebox")
-                .appFont(.subheadline)
+                .appFont(SidebarTypography.primary)
             if isArchiveLoading && !archivedItems.isEmpty {
                 LoadingIndicatorView(size: LoadingIndicatorSize.inline)
             }
