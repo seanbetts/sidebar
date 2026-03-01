@@ -12,35 +12,45 @@ struct AttributedNoteFormattingToolbar: View {
                     systemImage: "bold",
                     isActive: viewModel.isBoldActive()
                 ) {
-                    viewModel.applyFormatting(.bold)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.bold)
+                    }
                 }
                 toolbarButton(
                     title: "Italic",
                     systemImage: "italic",
                     isActive: viewModel.isItalicActive()
                 ) {
-                    viewModel.applyFormatting(.italic)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.italic)
+                    }
                 }
                 toolbarButton(
                     title: "Strike",
                     systemImage: "strikethrough",
                     isActive: viewModel.isStrikethroughActive()
                 ) {
-                    viewModel.applyFormatting(.strikethrough)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.strikethrough)
+                    }
                 }
                 toolbarButton(
                     title: "Code",
                     systemImage: "chevron.left.forwardslash.chevron.right",
                     isActive: viewModel.isInlineCodeActive()
                 ) {
-                    viewModel.applyFormatting(.inlineCode)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.inlineCode)
+                    }
                 }
                 toolbarButton(
                     title: "Demote heading",
                     systemImage: "textformat.size.smaller",
                     isActive: viewModel.isHeadingActive()
                 ) {
-                    viewModel.applyFormatting(.demoteHeading)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.demoteHeading)
+                    }
                 }
                 textSizeIndicator
                 toolbarButton(
@@ -48,49 +58,63 @@ struct AttributedNoteFormattingToolbar: View {
                     systemImage: "textformat.size.larger",
                     isActive: viewModel.isHeadingActive()
                 ) {
-                    viewModel.applyFormatting(.promoteHeading)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.promoteHeading)
+                    }
                 }
                 toolbarButton(
                     title: "Bullets",
                     systemImage: "list.bullet",
                     isActive: viewModel.isBlockKindActive(.bulletList)
                 ) {
-                    viewModel.applyFormatting(.bulletList)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.bulletList)
+                    }
                 }
                 toolbarButton(
                     title: "Numbers",
                     systemImage: "list.number",
                     isActive: viewModel.isBlockKindActive(.orderedList)
                 ) {
-                    viewModel.applyFormatting(.orderedList)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.orderedList)
+                    }
                 }
                 toolbarButton(
                     title: "Tasks",
                     systemImage: "checklist",
                     isActive: viewModel.isTaskListActive()
                 ) {
-                    viewModel.applyFormatting(.taskList)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.taskList)
+                    }
                 }
                 toolbarButton(
                     title: "Quote",
                     systemImage: "text.quote",
                     isActive: viewModel.isBlockKindActive(.blockquote)
                 ) {
-                    viewModel.applyFormatting(.blockquote)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.blockquote)
+                    }
                 }
                 toolbarButton(
                     title: "Code Block",
                     systemImage: "curlybraces",
                     isActive: viewModel.isBlockKindActive(.codeBlock)
                 ) {
-                    viewModel.applyFormatting(.codeBlock)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.codeBlock)
+                    }
                 }
                 codeLanguageMenu
                 toolbarButton(
                     title: "Rule",
                     systemImage: "minus"
                 ) {
-                    viewModel.applyFormatting(.horizontalRule)
+                    DispatchQueue.main.async {
+                        viewModel.applyFormatting(.horizontalRule)
+                    }
                 }
             }
             .padding(.horizontal, DesignTokens.Spacing.md)
