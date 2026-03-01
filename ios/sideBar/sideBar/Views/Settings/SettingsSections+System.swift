@@ -58,7 +58,6 @@ struct UserSettingsView: View {
                 }
             }
         }
-        .appControlSize()
         #if os(macOS)
         .formStyle(.grouped)
         #endif
@@ -336,7 +335,6 @@ struct AgentSettingsView: View {
                 }
             }
         }
-        .appControlSize()
         #if os(macOS)
         .formStyle(.grouped)
         #endif

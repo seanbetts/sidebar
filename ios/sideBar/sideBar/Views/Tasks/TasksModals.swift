@@ -33,7 +33,6 @@ struct RenameTaskSheet: View {
                         .onSubmit { handleSave() }
                 }
             }
-            .appControlSize()
             .navigationTitle("Rename task")
             .navigationBarTitleDisplayModeInline()
             .toolbar {
@@ -180,7 +179,6 @@ struct NewTaskSheet: View {
                     }
                 }
             }
-            .appControlSize()
             .navigationTitle("New task")
             .navigationBarTitleDisplayModeInline()
             .toolbar {
@@ -260,7 +258,6 @@ struct NewGroupSheet: View {
                     }
                 }
             }
-            .appControlSize()
             .navigationTitle("New group")
             .navigationBarTitleDisplayModeInline()
             .toolbar {
@@ -338,7 +335,6 @@ struct NewProjectSheet: View {
                     }
                 }
             }
-            .appControlSize()
             .navigationTitle("New project")
             .navigationBarTitleDisplayModeInline()
             .toolbar {

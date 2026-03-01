@@ -46,7 +46,6 @@ struct GeneralSettingsView: View {
                 #endif
             }
         }
-        .appControlSize()
         #if os(macOS)
         .formStyle(.grouped)
         #endif

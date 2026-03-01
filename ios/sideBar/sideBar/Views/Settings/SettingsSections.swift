@@ -139,7 +139,6 @@ struct ProfileSettingsView: View {
                 }
             }
         }
-        .appControlSize()
         #if os(macOS)
         .formStyle(.grouped)
         #endif

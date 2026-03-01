@@ -69,7 +69,6 @@ struct NewFolderSheet: View {
                     .appFont(.body)
                 }
             }
-            .appControlSize()
             .navigationTitle("New Folder")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
