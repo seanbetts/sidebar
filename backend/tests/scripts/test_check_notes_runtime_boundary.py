@@ -67,6 +67,37 @@ def test_check_reports_notes_shell_forbidden_references(tmp_path: Path) -> None:
     assert any("SideBarMarkdownContainer" in violation.token for violation in violations)
 
 
+def test_check_reports_notes_shell_markdown_layout_and_attribute_references(
+    tmp_path: Path,
+) -> None:
+    """Notes shell files should fail if markdown layout/attribute symbols are referenced directly."""
+    editor_shell_file = (
+        tmp_path / "ios/sideBar/sideBar/Views/Notes/AttributedNoteEditorView.swift"
+    )
+    _write(
+        editor_shell_file,
+        """
+        import SwiftUI
+        extension AttributeScopes {
+            struct AttributedNoteTextSurfaceAttributes: AttributeScope {
+                let markdownEditor: MarkdownEditorAttributes
+            }
+        }
+        struct AttributedNoteEditorView: View {
+            var body: some View {
+                Text("x")
+                    .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+            }
+        }
+        """,
+    )
+
+    violations = check(tmp_path)
+
+    assert any("MarkdownEditorAttributes" in violation.token for violation in violations)
+    assert any("SideBarMarkdownLayout" in violation.token for violation in violations)
+
+
 def test_check_reports_markdown_method_calls_in_notes_runtime_files(
     tmp_path: Path,
 ) -> None:

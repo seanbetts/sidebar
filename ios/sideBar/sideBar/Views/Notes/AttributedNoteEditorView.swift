@@ -32,8 +32,8 @@ struct AttributedNoteEditorView: View {
             } : nil,
             onTap: onTap
         )
-            .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
-            .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
+            .padding(.horizontal, NoteTextLayout.horizontalPadding)
+            .padding(.vertical, NoteTextLayout.verticalPadding)
             .frame(maxWidth: maxContentWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(DesignTokens.Colors.background)
@@ -42,7 +42,7 @@ struct AttributedNoteEditorView: View {
 @available(iOS 26.0, macOS 26.0, *)
 extension AttributeScopes {
     struct AttributedNoteTextSurfaceAttributes: AttributeScope {
-        let markdownEditor: MarkdownEditorAttributes
+        let noteTextEditor: NoteTextEditorAttributes
         #if os(iOS)
         let uiKit: UIKitAttributes
         #elseif os(macOS)

@@ -29,6 +29,7 @@ NOTES_SHELL_RELATIVE_PATHS = (
     Path("Views/Notes/NotesDetailView+MenuActions.swift"),
     Path("Views/Notes/NotesDetailView+FileOperations.swift"),
     Path("Views/Notes/AttributedNoteEditorContainer.swift"),
+    Path("Views/Notes/AttributedNoteEditorView.swift"),
     Path("Views/Notes/AttributedNoteKeyboardShortcuts.swift"),
 )
 NOTES_EDITOR_GLOB = "ViewModels/NativeNoteEditorViewModel*.swift"
@@ -50,6 +51,8 @@ FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bMarkdownParagraphMetrics\b",
     r"\bMarkdownHeadingMetrics\b",
     r"\bSideBarMarkdownStyle\b",
+    r"\bMarkdownEditorAttributes\b",
+    r"\bSideBarMarkdownLayout\b",
 )
 
 

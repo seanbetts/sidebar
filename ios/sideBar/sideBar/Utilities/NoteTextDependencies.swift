@@ -145,3 +145,12 @@ struct NoteTextStyle: Equatable {
         self.codeBlockBackground = markdownStyle.codeBlockBackground
     }
 }
+
+@available(iOS 26.0, macOS 26.0, *)
+typealias NoteTextEditorAttributes = AttributeScopes.MarkdownEditorAttributes
+
+enum NoteTextLayout {
+    static let maxContentWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
+    static let horizontalPadding: CGFloat = SideBarMarkdownLayout.horizontalPadding
+    static let verticalPadding: CGFloat = SideBarMarkdownLayout.verticalPadding
+}

@@ -14,7 +14,7 @@ enum NotesEditorRenderingMode: Equatable {
 struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     @ObservedObject var editorViewModel: NotesEditorViewModel
-    private let contentMaxWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
+    private let contentMaxWidth: CGFloat = NoteTextLayout.maxContentWidth
     @EnvironmentObject var environment: AppEnvironment
     @Binding var isRenameDialogPresented: Bool
     @Binding var renameValue: String
@@ -265,8 +265,8 @@ extension NotesDetailView {
                 .buttonStyle(.bordered)
             }
         }
-        .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
-        .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
+        .padding(.horizontal, NoteTextLayout.horizontalPadding)
+        .padding(.vertical, NoteTextLayout.verticalPadding)
         .frame(maxWidth: contentMaxWidth, alignment: .leading)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
