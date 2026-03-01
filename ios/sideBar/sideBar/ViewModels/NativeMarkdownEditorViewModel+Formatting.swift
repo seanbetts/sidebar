@@ -26,7 +26,7 @@ extension NativeMarkdownEditorViewModel {
     func toggleStrikethrough() {
         let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
         guard !nonEmptyRanges.isEmpty else {
-            attributedContent.transformAttributes(in: &selection) { attrs in
+            transformSelectionAttributes { attrs in
                 let enable = attrs.strikethroughStyle == nil
                 attrs.strikethroughStyle = enable ? .single : nil
                 if !enable {
@@ -217,7 +217,7 @@ extension NativeMarkdownEditorViewModel {
         }
 
         guard !appliedToParagraph else { return }
-        attributedContent.transformAttributes(in: &selection) { attrs in
+        transformSelectionAttributes { attrs in
             attrs.blockKind = blockKind
             attrs.listDepth = listDepth
             if blockKind != .codeBlock {

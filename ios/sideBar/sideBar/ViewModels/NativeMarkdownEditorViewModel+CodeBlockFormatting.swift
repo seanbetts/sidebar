@@ -21,7 +21,7 @@ extension NativeMarkdownEditorViewModel {
             return
         }
 
-        attributedContent.transformAttributes(in: &selection) { attrs in
+        transformSelectionAttributes { attrs in
             attrs.codeLanguage = normalizedLanguage
             attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
                 .codeBlock(languageHint: normalizedLanguage),

@@ -35,7 +35,7 @@ struct AttributedNoteEditorView: View {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private extension AttributeScopes {
+extension AttributeScopes {
     struct AttributedNoteTextSurfaceAttributes: AttributeScope {
         let markdownEditor: MarkdownEditorAttributes
         #if os(iOS)
@@ -54,7 +54,7 @@ private extension AttributeScopes {
 struct AttributedNoteReadOnlyView: View {
     let attributedContent: AttributedString
     let maxContentWidth: CGFloat
-    let onTap: () -> Void
+    let onTap: (AttributedTextSelection) -> Void
 
     var body: some View {
         AttributedNoteTextSurface(
@@ -83,7 +83,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
     let isSelectable: Bool
     let syncSelection: Bool
     let autoFocus: Bool
-    var onTap: (() -> Void)?
+    var onTap: ((AttributedTextSelection) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -95,7 +95,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         textView.backgroundColor = .clear
         let tapRecognizer = UITapGestureRecognizer(
             target: context.coordinator,
-            action: #selector(Coordinator.handleTap)
+            action: #selector(Coordinator.handleTap(_:))
         )
         tapRecognizer.cancelsTouchesInView = false
         textView.addGestureRecognizer(tapRecognizer)
@@ -135,6 +135,14 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
                 if shouldSyncSelection && textView.selectedRange != desiredRange {
                     textView.selectedRange = desiredRange
                 }
+            }
+        }
+        if syncSelection && isEditable {
+            let desiredTypingAttributes = typingAttributesDictionary(
+                from: selection.typingAttributes(in: text)
+            )
+            if !NSDictionary(dictionary: textView.typingAttributes).isEqual(to: desiredTypingAttributes) {
+                textView.typingAttributes = desiredTypingAttributes
             }
         }
         if preserveNativeSelection && textChanged {
@@ -186,12 +194,28 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             self.parent = parent
         }
 
-        @objc func handleTap() {
-            parent.onTap?()
+        @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
+            guard let onTap = parent.onTap else { return }
+            guard let textView = recognizer.view as? UITextView else {
+                onTap(AttributedTextSelection())
+                return
+            }
+            let location = recognizer.location(in: textView)
+            let tappedRange: NSRange
+            if let position = textView.closestPosition(to: location) {
+                let offset = textView.offset(from: textView.beginningOfDocument, to: position)
+                tappedRange = NSRange(location: max(0, offset), length: 0)
+            } else {
+                tappedRange = textView.selectedRange
+            }
+            let updatedText = bridgeToAttributedString(textView.attributedText)
+            let updatedSelection = selectionFromRange(tappedRange, in: updatedText)
+            onTap(updatedSelection)
         }
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isUpdating else { return }
+            guard textView.isFirstResponder else { return }
             let updatedText = bridgeToAttributedString(textView.attributedText)
             let updatedSelection = selectionFromRange(textView.selectedRange, in: updatedText)
             preferNativeSelectionOnNextUpdate = true
@@ -206,6 +230,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isUpdating, parent.syncSelection else { return }
+            guard textView.isFirstResponder else { return }
             let updatedText = bridgeToAttributedString(textView.attributedText)
             let updatedSelection = selectionFromRange(textView.selectedRange, in: updatedText)
             preferNativeSelectionOnNextUpdate = true
@@ -226,7 +251,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
     let isSelectable: Bool
     let syncSelection: Bool
     let autoFocus: Bool
-    var onTap: (() -> Void)?
+    var onTap: ((AttributedTextSelection) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -238,7 +263,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
 
         let tapRecognizer = NSClickGestureRecognizer(
             target: context.coordinator,
-            action: #selector(Coordinator.handleTap)
+            action: #selector(Coordinator.handleTap(_:))
         )
         tapRecognizer.numberOfClicksRequired = 1
         tapRecognizer.delaysPrimaryMouseButtonEvents = false
@@ -289,6 +314,14 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
                 if shouldSyncSelection && textView.selectedRange() != desiredRange {
                     textView.setSelectedRange(desiredRange)
                 }
+            }
+        }
+        if syncSelection && isEditable {
+            let desiredTypingAttributes = typingAttributesDictionary(
+                from: selection.typingAttributes(in: text)
+            )
+            if !NSDictionary(dictionary: textView.typingAttributes).isEqual(to: desiredTypingAttributes) {
+                textView.typingAttributes = desiredTypingAttributes
             }
         }
         if preserveNativeSelection && textChanged {
@@ -357,13 +390,25 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             self.parent = parent
         }
 
-        @objc func handleTap() {
-            parent.onTap?()
+        @objc func handleTap(_ recognizer: NSClickGestureRecognizer) {
+            guard let onTap = parent.onTap else { return }
+            guard let textView = recognizer.view as? NSTextView else {
+                onTap(AttributedTextSelection())
+                return
+            }
+            let point = recognizer.location(in: textView)
+            let offset = textView.characterIndexForInsertion(at: point)
+            let clampedOffset = min(max(0, offset), textView.string.utf16.count)
+            let tappedRange = NSRange(location: clampedOffset, length: 0)
+            let updatedText = bridgeToAttributedString(textView.attributedString())
+            let updatedSelection = selectionFromRange(tappedRange, in: updatedText)
+            onTap(updatedSelection)
         }
 
         func textDidChange(_ notification: Notification) {
             guard !isUpdating,
                   let textView = notification.object as? NSTextView else { return }
+            guard textView.window?.firstResponder === textView else { return }
             let updatedText = bridgeToAttributedString(textView.attributedString())
             let updatedSelection = selectionFromRange(textView.selectedRange(), in: updatedText)
             preferNativeSelectionOnNextUpdate = true
@@ -380,6 +425,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             guard !isUpdating,
                   let textView = notification.object as? NSTextView,
                   parent.syncSelection else { return }
+            guard textView.window?.firstResponder === textView else { return }
             let updatedText = bridgeToAttributedString(textView.attributedString())
             let updatedSelection = selectionFromRange(textView.selectedRange(), in: updatedText)
             preferNativeSelectionOnNextUpdate = true
@@ -390,98 +436,5 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             }
         }
     }
-}
-#endif
-
-@available(iOS 26.0, macOS 26.0, *)
-private func bridgeToNSAttributedString(_ text: AttributedString) -> NSAttributedString {
-    if let scoped = try? NSAttributedString(text, including: \.attributedNoteTextSurface) {
-        return scoped
-    }
-    return NSAttributedString(text)
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func bridgeToAttributedString(_ text: NSAttributedString) -> AttributedString {
-    if let scoped = try? AttributedString(text, including: \.attributedNoteTextSurface) {
-        return scoped
-    }
-    return AttributedString(text)
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func nsRange(from selection: AttributedTextSelection, in text: AttributedString) -> NSRange {
-    let string = String(text.characters)
-    switch selection.indices(in: text) {
-    case .insertionPoint(let index):
-        let characterOffset = text.characters.distance(from: text.startIndex, to: index)
-        let stringIndex = string.index(string.startIndex, offsetBy: characterOffset)
-        let location = stringIndex.utf16Offset(in: string)
-        return NSRange(location: location, length: 0)
-    case .ranges(let ranges):
-        guard let first = ranges.ranges.first else {
-            return NSRange(location: 0, length: 0)
-        }
-        let lowerOffset = text.characters.distance(from: text.startIndex, to: first.lowerBound)
-        let upperOffset = text.characters.distance(from: text.startIndex, to: first.upperBound)
-        let lowerIndex = string.index(string.startIndex, offsetBy: lowerOffset)
-        let upperIndex = string.index(string.startIndex, offsetBy: upperOffset)
-        let location = lowerIndex.utf16Offset(in: string)
-        let length = upperIndex.utf16Offset(in: string) - location
-        return NSRange(location: location, length: max(0, length))
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func selectionFromRange(_ range: NSRange, in text: AttributedString) -> AttributedTextSelection {
-    let string = String(text.characters)
-    let maxLocation = string.utf16.count
-    let safeLocation = min(max(0, range.location), maxLocation)
-    let safeEnd = min(max(0, range.location + range.length), maxLocation)
-    let startIndex = String.Index(utf16Offset: safeLocation, in: string)
-    let endIndex = String.Index(utf16Offset: safeEnd, in: string)
-    let startOffset = string.distance(from: string.startIndex, to: startIndex)
-    let endOffset = string.distance(from: string.startIndex, to: endIndex)
-    let start = text.index(text.startIndex, offsetByCharacters: startOffset)
-    let end = text.index(text.startIndex, offsetByCharacters: endOffset)
-    if start == end {
-        return AttributedTextSelection(range: start..<start)
-    }
-    return AttributedTextSelection(range: start..<end)
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func clampedRange(_ range: NSRange, maxLength: Int) -> NSRange {
-    let safeLocation = min(max(range.location, 0), maxLength)
-    let safeLength = min(max(range.length, 0), max(0, maxLength - safeLocation))
-    return NSRange(location: safeLocation, length: safeLength)
-}
-
-#if os(iOS)
-@available(iOS 26.0, *)
-private func clampedContentOffset(_ offset: CGPoint, in textView: UITextView) -> CGPoint {
-    let inset = textView.adjustedContentInset
-    let minX = -inset.left
-    let minY = -inset.top
-    let maxX = max(minX, textView.contentSize.width - textView.bounds.width + inset.right)
-    let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
-    return CGPoint(
-        x: min(max(offset.x, minX), maxX),
-        y: min(max(offset.y, minY), maxY)
-    )
-}
-#elseif os(macOS)
-@available(macOS 26.0, *)
-private func clampedContentOrigin(_ origin: CGPoint, in scrollView: NSScrollView) -> CGPoint {
-    guard let documentView = scrollView.documentView else {
-        return origin
-    }
-    let contentBounds = scrollView.contentView.bounds
-    let maxX = max(0, documentView.bounds.width - contentBounds.width)
-    let maxY = max(0, documentView.bounds.height - contentBounds.height)
-    return CGPoint(
-        x: min(max(origin.x, 0), maxX),
-        y: min(max(origin.y, 0), maxY)
-    )
 }
 #endif

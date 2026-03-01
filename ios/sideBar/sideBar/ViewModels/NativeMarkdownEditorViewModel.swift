@@ -113,7 +113,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     public func applyLink(_ url: URL) {
-        attributedContent.transformAttributes(in: &selection) { attrs in
+        transformSelectionAttributes { attrs in
             attrs.link = url
             setForegroundColor(.accentColor, in: &attrs)
             attrs.underlineStyle = .single
@@ -272,7 +272,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             applyInlineIntentToRange(intent, enabled: enabled, range: range)
             return
         }
-        attributedContent.transformAttributes(in: &selection) { attrs in
+        transformSelectionAttributes { attrs in
             updateInlineIntent(intent, enabled: enabled, attrs: &attrs)
         }
     }

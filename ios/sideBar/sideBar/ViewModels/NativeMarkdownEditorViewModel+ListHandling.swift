@@ -214,6 +214,13 @@ extension NativeMarkdownEditorViewModel {
         listOrdinals: [Int: Int]
     ) -> SelectionSnapshot {
         var updated = snapshot
+        var markerRange = context.markerRange
+        let ordinal = listOrdinals[context.index] ?? 1
+        let markerText = listMarkerString(
+            depth: context.depth,
+            blockKind: context.blockKind,
+            ordinal: ordinal
+        )
 
         if let listPrefixRange = context.listPrefixRange {
             let prefixStart = context.line.text.distance(from: context.line.text.startIndex, to: listPrefixRange.lowerBound)
@@ -224,30 +231,69 @@ extension NativeMarkdownEditorViewModel {
                   removeStart < removeEnd else { return updated }
             text.removeSubrange(removeStart..<removeEnd)
             updated = adjustSnapshot(updated, removing: prefixLength, at: removeOffset)
+            // Rebuild marker from scratch after removing a literal markdown prefix.
+            markerRange = nil
         }
 
-        if context.markerRange == nil {
-            let ordinal = listOrdinals[context.index] ?? 1
-            let markerText = listMarkerString(depth: context.depth, blockKind: context.blockKind, ordinal: ordinal)
-            guard !markerText.isEmpty else { return updated }
-            guard let insertIndex = safeIndex(in: text, offset: context.insertionOffset) else { return updated }
-            var insert = AttributedString(markerText)
-            let insertRange = insert.startIndex..<insert.endIndex
-            insert[insertRange].blockKind = context.blockKind
-            insert[insertRange].listDepth = context.depth
-            insert[insertRange].listMarker = true
-            let (markerFont, markerPlatformFont) = listMarkerFont(for: context.blockKind)
-            setFont(markerFont, platformFont: markerPlatformFont, in: &insert, range: insertRange)
-            setForegroundColor(baseForegroundColor(for: context.blockKind), in: &insert, range: insertRange)
-            setBackgroundColor(baseBackgroundColor(for: context.blockKind), in: &insert, range: insertRange)
-            if let style = context.lineStyle {
-                insert[insertRange].paragraphStyle = style
-            }
-            text.insert(insert, at: insertIndex)
-            updated = adjustSnapshot(updated, inserting: markerText.count, at: context.insertionOffset)
+        guard !markerText.isEmpty else { return updated }
+        if let markerRange {
+            styleListMarker(
+                in: &text,
+                range: markerRange,
+                blockKind: context.blockKind,
+                depth: context.depth,
+                lineStyle: context.lineStyle
+            )
+            return updated
         }
 
+        guard let insertIndex = safeIndex(in: text, offset: context.insertionOffset) else { return updated }
+        let insert = makeListMarkerAttributedString(
+            markerText: markerText,
+            blockKind: context.blockKind,
+            depth: context.depth,
+            lineStyle: context.lineStyle
+        )
+        text.insert(insert, at: insertIndex)
+        updated = adjustSnapshot(updated, inserting: markerText.count, at: context.insertionOffset)
         return updated
+    }
+
+    private func makeListMarkerAttributedString(
+        markerText: String,
+        blockKind: BlockKind,
+        depth: Int,
+        lineStyle: NSParagraphStyle?
+    ) -> AttributedString {
+        var marker = AttributedString(markerText)
+        let range = marker.startIndex..<marker.endIndex
+        styleListMarker(
+            in: &marker,
+            range: range,
+            blockKind: blockKind,
+            depth: depth,
+            lineStyle: lineStyle
+        )
+        return marker
+    }
+
+    private func styleListMarker(
+        in text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        blockKind: BlockKind,
+        depth: Int,
+        lineStyle: NSParagraphStyle?
+    ) {
+        text[range].blockKind = blockKind
+        text[range].listDepth = depth
+        text[range].listMarker = true
+        let (markerFont, markerPlatformFont) = listMarkerFont(for: blockKind)
+        setFont(markerFont, platformFont: markerPlatformFont, in: &text, range: range)
+        setForegroundColor(baseForegroundColor(for: blockKind), in: &text, range: range)
+        setBackgroundColor(baseBackgroundColor(for: blockKind), in: &text, range: range)
+        if let lineStyle {
+            text[range].paragraphStyle = lineStyle
+        }
     }
 
     func safeIndex(in text: AttributedString, offset: Int) -> AttributedString.Index? {

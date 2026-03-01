@@ -149,7 +149,8 @@ struct AttributedNoteEditorContainer: View {
         AttributedNoteReadOnlyView(
             attributedContent: nativeViewModel.attributedContent,
             maxContentWidth: maxContentWidth,
-            onTap: {
+            onTap: { selection in
+                nativeViewModel.selection = selection
                 isEditing = true
             }
         )
