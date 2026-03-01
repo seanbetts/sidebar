@@ -111,14 +111,29 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         configure(textView, coordinator: context.coordinator)
 
         let updated = bridgeToNSAttributedString(text)
-        if !textView.attributedText.isEqual(to: updated) {
+        let nativeSelection = textView.selectedRange
+        let preserveNativeSelection = syncSelection &&
+            isEditable &&
+            textView.isFirstResponder &&
+            context.coordinator.preferNativeSelectionOnNextUpdate
+        let textChanged = !textView.attributedText.isEqual(to: updated)
+        if textChanged {
             textView.attributedText = updated
         }
 
         if syncSelection {
             let desiredRange = nsRange(from: selection, in: text)
-            if textView.selectedRange != desiredRange {
-                textView.selectedRange = desiredRange
+            if preserveNativeSelection {
+                let clamped = clampedRange(nativeSelection, maxLength: updated.length)
+                if textView.selectedRange != clamped {
+                    textView.selectedRange = clamped
+                }
+                context.coordinator.preferNativeSelectionOnNextUpdate = false
+            } else {
+                let shouldSyncSelection = !isEditable || !textView.isFirstResponder || textChanged
+                if shouldSyncSelection && textView.selectedRange != desiredRange {
+                    textView.selectedRange = desiredRange
+                }
             }
         }
 
@@ -156,6 +171,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         var parent: AttributedNoteTextSurface
         var isUpdating: Bool = false
         var didAutoFocus: Bool = false
+        var preferNativeSelectionOnNextUpdate: Bool = false
         weak var tapRecognizer: UITapGestureRecognizer?
 
         init(_ parent: AttributedNoteTextSurface) {
@@ -168,21 +184,27 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isUpdating else { return }
+            let updatedText = bridgeToAttributedString(textView.attributedText)
+            let updatedSelection = selectionFromRange(textView.selectedRange, in: updatedText)
+            preferNativeSelectionOnNextUpdate = true
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
-                self.parent.text = bridgeToAttributedString(textView.attributedText)
+                self.parent.text = updatedText
+                if self.parent.syncSelection {
+                    self.parent.selection = updatedSelection
+                }
             }
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isUpdating, parent.syncSelection else { return }
+            let updatedText = bridgeToAttributedString(textView.attributedText)
+            let updatedSelection = selectionFromRange(textView.selectedRange, in: updatedText)
+            preferNativeSelectionOnNextUpdate = true
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
                 guard self.parent.syncSelection else { return }
-                self.parent.selection = selectionFromRange(
-                    textView.selectedRange,
-                    in: self.parent.text
-                )
+                self.parent.selection = updatedSelection
             }
         }
     }
@@ -234,14 +256,30 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
         configure(scrollView, textView: textView, coordinator: context.coordinator)
 
         let updated = bridgeToNSAttributedString(text)
-        if !textView.attributedString().isEqual(to: updated) {
+        let nativeSelection = textView.selectedRange()
+        let isFocused = scrollView.window?.firstResponder === textView
+        let preserveNativeSelection = syncSelection &&
+            isEditable &&
+            isFocused &&
+            context.coordinator.preferNativeSelectionOnNextUpdate
+        let textChanged = !textView.attributedString().isEqual(to: updated)
+        if textChanged {
             textView.textStorage?.setAttributedString(updated)
         }
 
         if syncSelection {
             let desiredRange = nsRange(from: selection, in: text)
-            if textView.selectedRange() != desiredRange {
-                textView.setSelectedRange(desiredRange)
+            if preserveNativeSelection {
+                let clamped = clampedRange(nativeSelection, maxLength: updated.length)
+                if textView.selectedRange() != clamped {
+                    textView.setSelectedRange(clamped)
+                }
+                context.coordinator.preferNativeSelectionOnNextUpdate = false
+            } else {
+                let shouldSyncSelection = !isEditable || !isFocused || textChanged
+                if shouldSyncSelection && textView.selectedRange() != desiredRange {
+                    textView.setSelectedRange(desiredRange)
+                }
             }
         }
 
@@ -295,6 +333,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
         var parent: AttributedNoteTextSurface
         var isUpdating: Bool = false
         var didAutoFocus: Bool = false
+        var preferNativeSelectionOnNextUpdate: Bool = false
         weak var tapRecognizer: NSClickGestureRecognizer?
 
         init(_ parent: AttributedNoteTextSurface) {
@@ -308,9 +347,15 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard !isUpdating,
                   let textView = notification.object as? NSTextView else { return }
+            let updatedText = bridgeToAttributedString(textView.attributedString())
+            let updatedSelection = selectionFromRange(textView.selectedRange(), in: updatedText)
+            preferNativeSelectionOnNextUpdate = true
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
-                self.parent.text = bridgeToAttributedString(textView.attributedString())
+                self.parent.text = updatedText
+                if self.parent.syncSelection {
+                    self.parent.selection = updatedSelection
+                }
             }
         }
 
@@ -318,13 +363,13 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             guard !isUpdating,
                   let textView = notification.object as? NSTextView,
                   parent.syncSelection else { return }
+            let updatedText = bridgeToAttributedString(textView.attributedString())
+            let updatedSelection = selectionFromRange(textView.selectedRange(), in: updatedText)
+            preferNativeSelectionOnNextUpdate = true
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
                 guard self.parent.syncSelection else { return }
-                self.parent.selection = selectionFromRange(
-                    textView.selectedRange(),
-                    in: self.parent.text
-                )
+                self.parent.selection = updatedSelection
             }
         }
     }
@@ -386,4 +431,11 @@ private func selectionFromRange(_ range: NSRange, in text: AttributedString) -> 
         return AttributedTextSelection(range: start..<start)
     }
     return AttributedTextSelection(range: start..<end)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func clampedRange(_ range: NSRange, maxLength: Int) -> NSRange {
+    let safeLocation = min(max(range.location, 0), maxLength)
+    let safeLength = min(max(range.length, 0), max(0, maxLength - safeLocation))
+    return NSRange(location: safeLocation, length: safeLength)
 }
