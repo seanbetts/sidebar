@@ -21,7 +21,7 @@ final class NativeNoteListContinuationTests: XCTestCase {
         insertText("Next", in: viewModel)
         viewModel.handleContentChange(previous: previous)
 
-        XCTAssertEqual(viewModel.currentSerializedContent(), "- Item\n- Next")
+        XCTAssertEqual(serializedNoteContent(viewModel), "- Item\n- Next")
     }
 
     func testEnterInOrderedListContinuesAndAdvancesOrdinal() async {
@@ -39,7 +39,7 @@ final class NativeNoteListContinuationTests: XCTestCase {
         insertText("Two", in: viewModel)
         viewModel.handleContentChange(previous: previous)
 
-        XCTAssertEqual(viewModel.currentSerializedContent(), "1. One\n2. Two")
+        XCTAssertEqual(serializedNoteContent(viewModel), "1. One\n2. Two")
     }
 
     func testEnterAfterCheckedTaskStartsUncheckedTask() async {
@@ -53,7 +53,7 @@ final class NativeNoteListContinuationTests: XCTestCase {
         insertText("Next", in: viewModel)
         viewModel.handleContentChange(previous: previous)
 
-        XCTAssertEqual(viewModel.currentSerializedContent(), "- [x] ~~Done~~\n- [ ] Next")
+        XCTAssertEqual(serializedNoteContent(viewModel), "- [x] ~~Done~~\n- [ ] Next")
     }
 
     func testEnterOnEmptyBulletListItemExitsList() async {
@@ -64,7 +64,7 @@ final class NativeNoteListContinuationTests: XCTestCase {
         pressReturn(in: viewModel)
         pressReturn(in: viewModel)
 
-        let markdown = viewModel.currentSerializedContent()
+        let markdown = serializedNoteContent(viewModel)
         XCTAssertTrue(markdown.hasPrefix("- Item"))
         XCTAssertFalse(markdown.contains("\n- "))
     }
@@ -77,7 +77,7 @@ final class NativeNoteListContinuationTests: XCTestCase {
         pressReturn(in: viewModel)
         pressReturn(in: viewModel)
 
-        let markdown = viewModel.currentSerializedContent()
+        let markdown = serializedNoteContent(viewModel)
         XCTAssertTrue(markdown.hasPrefix("1. One"))
         XCTAssertFalse(markdown.contains("\n2. "))
     }
@@ -90,7 +90,7 @@ final class NativeNoteListContinuationTests: XCTestCase {
         pressReturn(in: viewModel)
         pressReturn(in: viewModel)
 
-        let markdown = viewModel.currentSerializedContent()
+        let markdown = serializedNoteContent(viewModel)
         XCTAssertTrue(markdown.hasPrefix("- [ ] Todo"))
         XCTAssertEqual(markdown.components(separatedBy: "- [ ]").count - 1, 1)
     }

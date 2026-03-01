@@ -34,7 +34,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
 #endif
 
     let importer = NoteTextImporter()
-    let exporter = NoteTextExporter()
     var baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
     var inlineCodeFontSize: CGFloat {
         NoteTextTypography.inlineCodeFontSize(baseFontSize: baseFontSize)
@@ -73,14 +72,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         hasUnsavedChanges = false
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
         updatePrefixVisibility()
-    }
-
-    public func currentSerializedContent() -> String {
-        var exportContent = attributedContent
-        let selection = selectionSnapshot(in: exportContent)
-        _ = removeInjectedListMarkers(in: &exportContent, selection: selection)
-        let constrained = NoteTextFormattingDefinition().constrainedDocument(exportContent)
-        return exporter.markdown(from: constrained, frontmatter: frontmatter)
     }
 
     public func currentPlainText() -> String {

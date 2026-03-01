@@ -84,6 +84,7 @@ def test_check_reports_markdown_method_calls_in_notes_runtime_files(
                 _ = formatting
                 vm.loadMarkdown("body")
                 vm.markSaved(markdown: "body")
+                _ = vm.currentSerializedContent()
             }
         }
         """,
@@ -106,6 +107,7 @@ def test_check_reports_markdown_method_calls_in_notes_runtime_files(
     assert any("MarkdownFormatting" in violation.token for violation in violations)
     assert any("loadMarkdown" in violation.token for violation in violations)
     assert any("markSaved" in violation.token for violation in violations)
+    assert any("currentSerializedContent" in violation.token for violation in violations)
 
 
 def test_check_reports_direct_markdown_utility_references_in_native_note_editor(

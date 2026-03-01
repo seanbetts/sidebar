@@ -40,6 +40,7 @@ FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\buseAttributedNoteEditorV2\b",
     r"\bloadMarkdown\s*\(",
     r"\bmarkSaved\s*\(\s*markdown\s*:",
+    r"\bcurrentSerializedContent\s*\(",
     r"\bMarkdownImporter\b",
     r"\bMarkdownExporter\b",
     r"\bMarkdownShortcutProcessor\b",
