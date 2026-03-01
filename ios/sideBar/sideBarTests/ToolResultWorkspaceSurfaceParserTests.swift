@@ -79,4 +79,47 @@ final class ToolResultWorkspaceSurfaceParserTests: XCTestCase {
         XCTAssertEqual(targets.count, 1)
         XCTAssertEqual(targets.first?.id, "primary:surface-1")
     }
+
+    func testParseToolCallAddsPromptPreviewTarget() {
+        let toolCall = ToolCall(
+            id: "call-1",
+            name: "prompt_preview",
+            parameters: [:],
+            status: .success,
+            result: AnyCodable([
+                "system_prompt": "# System Prompt\n\nYou are concise."
+            ])
+        )
+
+        let targets = ToolResultWorkspaceSurfaceParser.parse(toolCall)
+
+        XCTAssertEqual(targets.count, 1)
+        XCTAssertEqual(targets.first?.id, "primary:prompt-preview")
+        XCTAssertEqual(targets.first?.label, "Show System Prompt")
+    }
+
+    func testParseToolCallsDeduplicatesPromptPreviewTargetsAcrossCalls() {
+        let promptResult = AnyCodable([
+            "system_prompt": "# System Prompt\n\nYou are concise."
+        ])
+        let firstCall = ToolCall(
+            id: "call-1",
+            name: "prompt_preview",
+            parameters: [:],
+            status: .success,
+            result: promptResult
+        )
+        let secondCall = ToolCall(
+            id: "call-2",
+            name: "prompt_preview",
+            parameters: [:],
+            status: .success,
+            result: promptResult
+        )
+
+        let targets = ToolResultWorkspaceSurfaceParser.parse(toolCalls: [firstCall, secondCall])
+
+        XCTAssertEqual(targets.count, 1)
+        XCTAssertEqual(targets.first?.id, "primary:prompt-preview")
+    }
 }

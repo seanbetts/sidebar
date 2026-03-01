@@ -12,6 +12,35 @@ struct ToolResultWorkspaceSurfaceTarget: Equatable, Identifiable {
 }
 
 enum ToolResultWorkspaceSurfaceParser {
+    static func parse(_ toolCall: ToolCall) -> [ToolResultWorkspaceSurfaceTarget] {
+        var targets = parse(toolCall.result)
+        if let promptPreview = PromptPreviewPayloadParser.parseToolResult(toolCall.result),
+           let surface = PromptPreviewWorkspaceSurfaceFactory.makeSurface(from: promptPreview) {
+            let promptPreviewTarget = ToolResultWorkspaceSurfaceTarget(
+                surface: surface,
+                pane: .primary,
+                label: "Show System Prompt"
+            )
+            if !targets.contains(where: { $0.id == promptPreviewTarget.id }) {
+                targets.insert(promptPreviewTarget, at: 0)
+            }
+        }
+        return targets
+    }
+
+    static func parse(toolCalls: [ToolCall]) -> [ToolResultWorkspaceSurfaceTarget] {
+        var targets: [ToolResultWorkspaceSurfaceTarget] = []
+        var seenTargetIDs: Set<String> = []
+
+        for toolCall in toolCalls {
+            for target in parse(toolCall) {
+                guard seenTargetIDs.insert(target.id).inserted else { continue }
+                targets.append(target)
+            }
+        }
+        return targets
+    }
+
     static func parse(_ result: AnyCodable?) -> [ToolResultWorkspaceSurfaceTarget] {
         guard let payload = result?.value as? [String: Any] else {
             return []

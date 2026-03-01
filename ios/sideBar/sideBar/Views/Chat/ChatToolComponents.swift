@@ -296,25 +296,7 @@ struct ToolCallDetailView: View {
     }
 
     private var workspaceSurfaceTargets: [ToolResultWorkspaceSurfaceTarget] {
-        var targets = ToolResultWorkspaceSurfaceParser.parse(toolCall.result)
-        if let promptPreviewTarget {
-            if !targets.contains(where: { $0.id == promptPreviewTarget.id }) {
-                targets.insert(promptPreviewTarget, at: 0)
-            }
-        }
-        return targets
-    }
-
-    private var promptPreviewTarget: ToolResultWorkspaceSurfaceTarget? {
-        guard let promptPreview = PromptPreviewPayloadParser.parseToolResult(toolCall.result),
-              let surface = PromptPreviewWorkspaceSurfaceFactory.makeSurface(from: promptPreview) else {
-            return nil
-        }
-        return ToolResultWorkspaceSurfaceTarget(
-            surface: surface,
-            pane: .primary,
-            label: "Show System Prompt"
-        )
+        ToolResultWorkspaceSurfaceParser.parse(toolCall)
     }
 
     private func formattedValue(_ value: Any) -> String {
@@ -359,5 +341,33 @@ struct WorkspaceSurfaceActionGroup: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(DesignTokens.Colors.surface)
         )
+    }
+}
+
+struct WorkspaceSurfaceInlineActionsBar: View {
+    @EnvironmentObject private var environment: AppEnvironment
+    let targets: [ToolResultWorkspaceSurfaceTarget]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
+                ForEach(targets) { target in
+                    Button {
+                        environment.presentAgentSurface(
+                            target.surface,
+                            in: target.pane,
+                            source: "chat_workspace_surface_inline"
+                        )
+                    } label: {
+                        Label(target.label, systemImage: "rectangle.on.rectangle")
+                            .appFont(.captionSemibold)
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            .padding(.vertical, 2)
+        }
     }
 }

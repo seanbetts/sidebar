@@ -56,38 +56,39 @@ struct AgentWorkspaceSurfaceView: View {
             subtitleLineLimit: 1,
             titleSubtitleAxis: .vertical,
             trailing: {
-            HeaderActionRow {
-                if surface.capabilities.canRefresh {
-                    HeaderActionButton(
-                        systemName: "arrow.clockwise",
-                        accessibilityLabel: "Refresh surface",
-                        action: refreshSurface
-                    )
-                }
-                if surface.capabilities.canPin {
-                    HeaderActionButton(
-                        systemName: surface.isPinned ? "pin.fill" : "pin",
-                        accessibilityLabel: surface.isPinned ? "Unpin surface" : "Pin surface",
-                        action: togglePinned
-                    )
-                }
-                if surface.capabilities.canInspectData {
-                    HeaderActionButton(
-                        systemName: "doc.text.magnifyingglass",
-                        accessibilityLabel: "Inspect surface data"
-                    ) {
-                        isInspectingDataPresented = true
+                HeaderActionRow {
+                    if surface.capabilities.canRefresh {
+                        HeaderActionButton(
+                            systemName: "arrow.clockwise",
+                            accessibilityLabel: "Refresh surface",
+                            action: refreshSurface
+                        )
+                    }
+                    if surface.capabilities.canPin {
+                        HeaderActionButton(
+                            systemName: surface.isPinned ? "pin.fill" : "pin",
+                            accessibilityLabel: surface.isPinned ? "Unpin surface" : "Pin surface",
+                            action: togglePinned
+                        )
+                    }
+                    if surface.capabilities.canInspectData {
+                        HeaderActionButton(
+                            systemName: "doc.text.magnifyingglass",
+                            accessibilityLabel: "Inspect surface data"
+                        ) {
+                            isInspectingDataPresented = true
+                        }
+                    }
+                    if surface.capabilities.canClose {
+                        HeaderActionButton(
+                            systemName: "xmark",
+                            accessibilityLabel: "Close surface",
+                            action: closeSurface
+                        )
                     }
                 }
-                if surface.capabilities.canClose {
-                    HeaderActionButton(
-                        systemName: "xmark",
-                        accessibilityLabel: "Close surface",
-                        action: closeSurface
-                    )
-                }
             }
-        })
+        )
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
@@ -112,8 +113,10 @@ struct AgentWorkspaceSurfaceView: View {
 
     private var markdownSurface: some View {
         ScrollView {
-            Text(surface.payload["markdown"] ?? "No markdown payload provided.")
-                .appFont(.body)
+            SideBarMarkdown(
+                text: surface.payload["markdown"] ?? "No markdown payload provided.",
+                renderingContext: .website
+            )
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
         }

@@ -96,6 +96,10 @@ struct ChatMessageRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            if !workspaceSurfaceTargets.isEmpty {
+                WorkspaceSurfaceInlineActionsBar(targets: workspaceSurfaceTargets)
+            }
+
             if message.status == .error, let error = message.error {
                 Text(error)
                     .appFont(.caption)
@@ -198,6 +202,15 @@ struct ChatMessageRow: View {
 
     private var showsHeaderThinkingIndicator: Bool {
         ChatMessagePresentation.showsHeaderThinkingIndicator(for: message)
+    }
+
+    private var workspaceSurfaceTargets: [ToolResultWorkspaceSurfaceTarget] {
+        guard message.role == .assistant,
+              let toolCalls = message.toolCalls,
+              !toolCalls.isEmpty else {
+            return []
+        }
+        return ToolResultWorkspaceSurfaceParser.parse(toolCalls: toolCalls)
     }
 
     private func handleMessageContentChange(from oldContent: String, to newContent: String) {
