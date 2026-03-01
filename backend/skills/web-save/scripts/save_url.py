@@ -25,6 +25,7 @@ try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.favicon_service import FaviconService
     from api.services.jina_service import JinaService
+    from api.services.url_normalization_service import is_youtube_host
     from api.services.web_save_error_service import classify_web_save_failure
     from api.services.web_save_parser import (
         ParsedPage,
@@ -32,12 +33,17 @@ try:
         extract_favicon_url,
         parse_url_local,
     )
+    from api.services.web_save_parser_youtube import fetch_youtube_duration_seconds
     from api.services.web_save_parser_apple_news import resolve_apple_news_source_url
     from api.services.web_save_parser_wsj import apply_wsj_content_guards
     from api.services.web_save_tagger import (
         calculate_reading_time,
         compute_word_count,
         extract_tags,
+    )
+    from api.services.website_reading_time import (
+        normalize_reading_time,
+        reading_time_from_duration_seconds,
     )
     from api.services.website_title_service import resolve_website_title
     from api.services.websites_service import WebsitesService
@@ -49,6 +55,10 @@ except Exception:
     resolve_apple_news_source_url = None
     JinaService = None
     apply_wsj_content_guards = None
+    is_youtube_host = None
+    fetch_youtube_duration_seconds = None
+    normalize_reading_time = None
+    reading_time_from_duration_seconds = None
 
     def classify_web_save_failure(
         *,
@@ -177,10 +187,20 @@ def parse_published_at(value: str | None) -> datetime | None:
 
 
 def parse_jina_metadata(content: str) -> tuple[dict[str, str | None], str]:
+    if JinaService is not None:
+        metadata, cleaned = JinaService.parse_metadata(content)
+        return {
+            "title": metadata.get("title"),
+            "url_source": metadata.get("url_source"),
+            "published_time": metadata.get("published_time"),
+            "reading_time": metadata.get("reading_time"),
+        }, cleaned
+
     metadata: dict[str, str | None] = {
         "title": None,
         "url_source": None,
         "published_time": None,
+        "reading_time": None,
     }
 
     title_match = re.search(r"^Title:\s*(.+)$", content, re.MULTILINE)
@@ -194,15 +214,67 @@ def parse_jina_metadata(content: str) -> tuple[dict[str, str | None], str]:
     published_match = re.search(r"^Published Time:\s*(.+)$", content, re.MULTILINE)
     if published_match:
         metadata["published_time"] = _clean_metadata_value(published_match.group(1))
+    reading_time_match = re.search(r"^Reading Time:\s*(.+)$", content, re.MULTILINE)
+    if reading_time_match:
+        metadata["reading_time"] = _clean_metadata_value(reading_time_match.group(1))
 
     cleaned = content
     cleaned = re.sub(r"^Title:.*\n?", "", cleaned, flags=re.MULTILINE)
     cleaned = re.sub(r"^URL Source:.*\n?", "", cleaned, flags=re.MULTILINE)
     cleaned = re.sub(r"^Published Time:.*\n?", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"^Reading Time:.*\n?", "", cleaned, flags=re.MULTILINE)
     cleaned = re.sub(r"^Markdown Content:\s*", "", cleaned, flags=re.MULTILINE)
     cleaned = cleaned.lstrip()
 
     return metadata, cleaned
+
+
+def _is_youtube_url(value: str) -> bool:
+    try:
+        host = urlparse(value).netloc
+    except ValueError:
+        return False
+    if not host:
+        return False
+    if is_youtube_host is not None:
+        return is_youtube_host(host)
+    normalized = host.lower().strip(".")
+    return (
+        normalized == "youtube.com"
+        or normalized.endswith(".youtube.com")
+        or normalized == "youtu.be"
+        or normalized.endswith(".youtu.be")
+    )
+
+
+def _resolve_jina_reading_time(
+    *,
+    metadata: dict[str, str | None],
+    source: str,
+    fallback_url: str,
+    word_count: int,
+) -> str:
+    metadata_reading_time = (metadata.get("reading_time") or "").strip()
+    if metadata_reading_time:
+        if normalize_reading_time is not None:
+            normalized = normalize_reading_time(metadata_reading_time)
+            if normalized:
+                return normalized
+        return metadata_reading_time
+
+    duration_url = source if _is_youtube_url(source) else fallback_url
+    if (
+        duration_url
+        and _is_youtube_url(duration_url)
+        and fetch_youtube_duration_seconds is not None
+        and reading_time_from_duration_seconds is not None
+    ):
+        youtube_seconds = fetch_youtube_duration_seconds(duration_url)
+        youtube_reading_time = reading_time_from_duration_seconds(youtube_seconds)
+        if youtube_reading_time:
+            return youtube_reading_time
+
+    return calculate_reading_time(word_count)
 
 
 def _count_noise_markers(content: str) -> int:
@@ -374,6 +446,12 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 title = candidate_title or urlparse(source).netloc
             published_at = parse_published_at(parsed_metadata.get("published_time"))
             word_count = compute_word_count(cleaned_content)
+            reading_time = _resolve_jina_reading_time(
+                metadata=parsed_metadata,
+                source=source,
+                fallback_url=target_url,
+                word_count=word_count,
+            )
             domain = urlparse(source).netloc
             tags = extract_tags(cleaned_content, domain, title)
             logger.info(
@@ -411,7 +489,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                     else None,
                     "domain": domain,
                     "word_count": word_count,
-                    "reading_time": calculate_reading_time(word_count),
+                    "reading_time": reading_time,
                     "tags": tags,
                     "paywalled": wsj_flags["paywalled"] or None,
                     "truncated": wsj_flags["truncated"] or None,

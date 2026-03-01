@@ -215,3 +215,32 @@ def test_save_url_database_logs_jina_fallback_events(monkeypatch):
     assert any("clean_link_density_pct" in message for message in result_messages)
     assert any("raw_trunc_markers" in message for message in result_messages)
     assert any("clean_trunc_markers" in message for message in result_messages)
+
+
+def test_save_url_database_jina_uses_youtube_duration_for_reading_time(monkeypatch):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "jina")
+    module.resolve_apple_news_source_url = lambda url: url
+    module.get_markdown_content = lambda _url, _api_key: (
+        "Title: Video Story\n"
+        "URL Source: https://www.youtube.com/watch?v=abc123xyzAA\n"
+        "Markdown Content:\n"
+        "[YouTube](https://www.youtube.com/watch?v=abc123xyzAA)\n"
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda _content: 1
+    module.calculate_reading_time = lambda _count: (_ for _ in ()).throw(
+        AssertionError("text-based reading time should not be used for YouTube")
+    )
+    module.fetch_youtube_duration_seconds = lambda _url: 214
+    module.reading_time_from_duration_seconds = (
+        lambda seconds: "4 mins" if seconds == 214 else None
+    )
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    module.save_url_database("https://www.youtube.com/watch?v=abc123xyzAA", "user-1")
+
+    saved_content = captured["upsert_kwargs"]["content"]
+    assert "reading_time: 4 mins" in saved_content
