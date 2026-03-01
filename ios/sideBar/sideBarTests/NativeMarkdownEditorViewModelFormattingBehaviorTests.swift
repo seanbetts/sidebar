@@ -40,7 +40,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
         }
 
         XCTAssertTrue(String(viewModel.attributedContent.characters).hasPrefix("│ "))
-        XCTAssertEqual(viewModel.currentMarkdown(), "> Quoted")
+        XCTAssertEqual(viewModel.currentSerializedContent(), "> Quoted")
     }
 
     func testHorizontalRuleInsertionProducesMarkdownRule() async {
@@ -51,7 +51,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
 
         viewModel.applyFormatting(.horizontalRule)
 
-        XCTAssertEqual(viewModel.currentMarkdown(), "alpha\n\n---")
+        XCTAssertEqual(viewModel.currentSerializedContent(), "alpha\n\n---")
     }
 
     func testHeadingParagraphStyleRetainsVerticalSpacing() async {

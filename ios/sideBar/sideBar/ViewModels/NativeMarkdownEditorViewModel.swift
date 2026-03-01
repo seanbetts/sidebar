@@ -75,7 +75,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         updatePrefixVisibility()
     }
 
-    public func currentMarkdown() -> String {
+    public func currentSerializedContent() -> String {
         var exportContent = attributedContent
         let selection = selectionSnapshot(in: exportContent)
         _ = removeInjectedListMarkers(in: &exportContent, selection: selection)
