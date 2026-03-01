@@ -6,7 +6,7 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeMarkdownEditorViewModelTests: XCTestCase {
     func testApplyFormattingBoldTogglesInlineIntentOnSelection() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let firstSelection = characterRange(length: 5, in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(range: firstSelection)
@@ -25,7 +25,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testApplyFormattingBoldTogglesTypingAttributesAtInsertionPoint() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
@@ -40,7 +40,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testApplyFormattingHeadingSetsBlockKindForCurrentParagraph() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello\nworld")
         let insertion = viewModel.attributedContent.startIndex
         let next = viewModel.attributedContent.index(afterCharacter: insertion)
@@ -53,7 +53,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testApplyFormattingTaskListSetsTaskBlockKindForCurrentParagraph() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let insertion = viewModel.attributedContent.startIndex
         let next = viewModel.attributedContent.index(afterCharacter: insertion)
@@ -66,7 +66,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testApplyFormattingTaskListTogglesUncheckedTaskToChecked() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let line = firstLine(in: viewModel.attributedContent)
         viewModel.attributedContent[line].blockKind = .taskUnchecked
@@ -84,7 +84,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testApplyFormattingTaskListTogglesCheckedTaskToUnchecked() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let line = firstLine(in: viewModel.attributedContent)
         viewModel.attributedContent[line].blockKind = .taskChecked
@@ -101,7 +101,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testIndentAndOutdentListItemsAdjustDepthDeterministically() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let insertion = viewModel.attributedContent.startIndex
         let next = viewModel.attributedContent.index(afterCharacter: insertion)
@@ -141,7 +141,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testApplyFormattingIndentAndOutdentRoutesThroughCommandLayer() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let insertion = viewModel.attributedContent.startIndex
         let next = viewModel.attributedContent.index(afterCharacter: insertion)
@@ -167,7 +167,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testIndentListItemsAppliesToEachSelectedParagraphAcrossMixedListKinds() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.attributedContent = AttributedString("Bullet line\nTask line\nPlain line")
         let initialRanges = lineRanges(in: viewModel.attributedContent)
         XCTAssertEqual(initialRanges.count, 3)
@@ -193,7 +193,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testOutdentListItemsConvertsEachSelectedDepthOneParagraphToParagraph() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.attributedContent = AttributedString("Bullet line\nOrdered line\nPlain line")
         let initialRanges = lineRanges(in: viewModel.attributedContent)
         XCTAssertEqual(initialRanges.count, 3)
@@ -219,7 +219,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testHandleListDepthKeyboardShortcutReturnsFalseForNonListSelection() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("Plain line")
         let line = firstLine(in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(range: line.lowerBound..<line.upperBound)
@@ -233,7 +233,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testHandleListDepthKeyboardShortcutOutdentsWhenListSelected() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("List item")
         var line = firstLine(in: viewModel.attributedContent)
         viewModel.attributedContent[line].blockKind = .bulletList
@@ -250,7 +250,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testUpdatePrefixVisibilityShowsReadMarkersWhenInjectedMarkersDisabled() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         var content = AttributedString("• Item")
         let markerEnd = content.index(content.startIndex, offsetByCharacters: 2)
         let markerRange = content.startIndex..<markerEnd
@@ -272,7 +272,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testUpdatePrefixVisibilityDoesNotInferHorizontalRuleWhenInjectedMarkersDisabled() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.attributedContent = AttributedString("---")
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
@@ -285,7 +285,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testApplyFormattingStrikethroughTogglesTypingAttributesAtInsertionPoint() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
@@ -298,7 +298,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testApplyFormattingHorizontalRuleInsertsHorizontalRuleBlock() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
@@ -317,7 +317,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testHandleContentChangeSetsUnsavedStateAndMarkSavedClearsIt() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.autosaveDelay = 0.3
         viewModel.loadText("hello")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
@@ -343,7 +343,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testSelectionLineSpanCoversInsertionAndMultiLineRanges() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.attributedContent = AttributedString("line1\nline2\nline3")
 
         let line2Start = viewModel.attributedContent.index(viewModel.attributedContent.startIndex, offsetByCharacters: 6)
@@ -357,7 +357,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testHandleSelectionChangeTracksSpanTransitions() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.attributedContent = AttributedString("line1\nline2")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
@@ -380,7 +380,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testHandleContentChangeMarksUnsavedImmediately() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.autosaveDelay = 2.0
         viewModel.loadText("hello")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
@@ -397,7 +397,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testScheduleAutosaveCancelsSupersededTask() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.autosaveDelay = 0.5
         viewModel.loadText("hello")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
@@ -423,7 +423,7 @@ final class NativeMarkdownEditorViewModelTests: XCTestCase {
     }
 
     func testPlainPunctuationDoesNotBecomeInlineMarker() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("line one\nliteral * punctuation")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)

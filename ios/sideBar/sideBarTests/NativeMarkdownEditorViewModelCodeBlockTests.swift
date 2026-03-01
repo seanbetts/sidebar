@@ -6,7 +6,7 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeMarkdownCodeBlockTests: XCTestCase {
     func testApplyCodeBlockSetsLanguageWhenProvided() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("print(\"hello\")")
         let line = firstLine(in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(range: line.lowerBound..<line.upperBound)
@@ -23,7 +23,7 @@ final class NativeMarkdownCodeBlockTests: XCTestCase {
     }
 
     func testApplyCodeBlockClearsLanguageWhenNotProvided() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("```swift\nprint(\"hello\")\n```")
         let line = firstLine(in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(range: line.lowerBound..<line.upperBound)

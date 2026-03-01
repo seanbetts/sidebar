@@ -6,7 +6,7 @@ import XCTest
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
     func testPromoteHeadingKeepsSelectedRange() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello world")
 
         let start = viewModel.attributedContent.startIndex
@@ -21,7 +21,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
     }
 
     func testCanAdjustListDepthWhenParagraphIsListBlock() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("Item")
         var line = firstLineRange(in: viewModel.attributedContent)
         viewModel.attributedContent[line].blockKind = .bulletList
@@ -33,7 +33,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
     }
 
     func testBlockquoteDisplaysReadMarkerAndExportsCleanMarkdown() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("> Quoted")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
@@ -44,7 +44,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
     }
 
     func testHorizontalRuleInsertionProducesMarkdownRule() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("alpha")
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
@@ -55,7 +55,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
     }
 
     func testHeadingParagraphStyleRetainsVerticalSpacing() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("## Heading\nBody")
 
         let firstLine = firstLineRange(in: viewModel.attributedContent)
@@ -66,7 +66,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
     }
 
     func testSpacingBeforeCollapsesAgainstPreviousParagraphSpacing() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("Body\n## Heading")
 
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
@@ -88,7 +88,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
     }
 
     func testNewlineAfterBlockquoteResetsTypingAttributesToParagraph() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("> Quote")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
@@ -106,7 +106,7 @@ final class NativeMarkdownFormattingBehaviorTests: XCTestCase {
         XCTAssertNil(typingAttributes.backgroundColor)
     }
 
-    private func selectionOffsets(in viewModel: NativeMarkdownEditorViewModel) -> [Range<Int>] {
+    private func selectionOffsets(in viewModel: NativeNoteEditorViewModel) -> [Range<Int>] {
         switch viewModel.selection.indices(in: viewModel.attributedContent) {
         case .insertionPoint(let index):
             let offset = viewModel.attributedContent.characters.distance(

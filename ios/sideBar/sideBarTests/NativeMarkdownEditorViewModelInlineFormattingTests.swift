@@ -6,7 +6,7 @@ import XCTest
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeMarkdownEditorViewModelInlineFormattingTests: XCTestCase {
     func testApplyFormattingItalicTogglesTypingAttributesAtInsertionPoint() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
@@ -19,7 +19,7 @@ final class NativeMarkdownEditorViewModelInlineFormattingTests: XCTestCase {
     }
 
     func testApplyFormattingInlineCodeTogglesTypingAttributesAtInsertionPoint() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
@@ -32,7 +32,7 @@ final class NativeMarkdownEditorViewModelInlineFormattingTests: XCTestCase {
     }
 
     func testApplyFormattingDemoteHeadingDefaultsParagraphToHeadingThree() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let lineRange = firstLine(in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)

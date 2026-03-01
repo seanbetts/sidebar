@@ -6,7 +6,7 @@ import XCTest
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeMarkdownEditorViewModelTests {
     func testHandleListDepthKeyboardShortcutIndentsListParagraphWithinMixedSelection() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.attributedContent = AttributedString("List line\nPlain line")
         var ranges = keyboardLineRanges(in: viewModel.attributedContent)
         XCTAssertEqual(ranges.count, 2)
@@ -27,7 +27,7 @@ extension NativeMarkdownEditorViewModelTests {
     }
 
     func testHandleListDepthKeyboardShortcutReturnsFalseWhenReadOnlyListSelected() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("List item")
         var line = keyboardFirstLine(in: viewModel.attributedContent)
         viewModel.attributedContent[line].blockKind = .bulletList

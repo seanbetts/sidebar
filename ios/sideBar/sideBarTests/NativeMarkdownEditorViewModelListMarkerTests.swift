@@ -11,7 +11,7 @@ import AppKit
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeMarkdownListMarkerTests: XCTestCase {
     func testUpdatePrefixVisibilityRestylesExistingReadMarkerFont() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         var content = AttributedString("• Item")
         let markerEnd = content.index(content.startIndex, offsetByCharacters: 2)
         let markerRange = content.startIndex..<markerEnd

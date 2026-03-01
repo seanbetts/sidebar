@@ -6,7 +6,7 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeMarkdownListContinuationTests: XCTestCase {
     func testEnterInBulletListContinuesListFormatting() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("- Item")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -25,7 +25,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
     }
 
     func testEnterInOrderedListContinuesAndAdvancesOrdinal() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("1. One")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -43,7 +43,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
     }
 
     func testEnterAfterCheckedTaskStartsUncheckedTask() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("- [x] Done")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -57,7 +57,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
     }
 
     func testEnterOnEmptyBulletListItemExitsList() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("- Item")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -70,7 +70,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
     }
 
     func testEnterOnEmptyOrderedListItemExitsList() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("1. One")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -83,7 +83,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
     }
 
     func testEnterOnEmptyTaskListItemExitsList() async {
-        let viewModel = NativeMarkdownEditorViewModel()
+        let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("- [ ] Todo")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -95,13 +95,13 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
         XCTAssertEqual(markdown.components(separatedBy: "- [ ]").count - 1, 1)
     }
 
-    private func waitForPrefixVisibility(on viewModel: NativeMarkdownEditorViewModel) async {
+    private func waitForPrefixVisibility(on viewModel: NativeNoteEditorViewModel) async {
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
     }
 
-    private func pressReturn(in viewModel: NativeMarkdownEditorViewModel) {
+    private func pressReturn(in viewModel: NativeNoteEditorViewModel) {
         let previous = viewModel.attributedContent
         guard let insertion = insertionIndex(in: viewModel.selection, text: viewModel.attributedContent) else {
             XCTFail("Expected insertion selection")
@@ -113,7 +113,7 @@ final class NativeMarkdownListContinuationTests: XCTestCase {
         viewModel.handleContentChange(previous: previous)
     }
 
-    private func insertText(_ string: String, in viewModel: NativeMarkdownEditorViewModel) {
+    private func insertText(_ string: String, in viewModel: NativeNoteEditorViewModel) {
         guard let insertion = insertionIndex(in: viewModel.selection, text: viewModel.attributedContent) else {
             XCTFail("Expected insertion selection")
             return

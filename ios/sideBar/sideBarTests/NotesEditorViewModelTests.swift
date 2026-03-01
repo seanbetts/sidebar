@@ -534,7 +534,7 @@ extension NotesEditorViewModelTests {
         attachedEditor.attributedContent = AttributedString("Local unsaved body")
         XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
 
-        let differentEditor = NativeMarkdownEditorViewModel()
+        let differentEditor = NativeNoteEditorViewModel()
         viewModel.detachNativeEditor(differentEditor)
         XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
     }
@@ -736,7 +736,7 @@ extension NotesEditorViewModelTests {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
         let nonCanonical = "- [x] Done"
-        let canonicalProbe = NativeMarkdownEditorViewModel()
+        let canonicalProbe = NativeNoteEditorViewModel()
         canonicalProbe.loadText(nonCanonical)
         let canonicalPlainText = canonicalProbe.currentPlainText()
         XCTAssertNotEqual(canonicalPlainText, nonCanonical)
@@ -837,7 +837,7 @@ extension NotesEditorViewModelTests {
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
 private func canonicalPlainTextPass(_ plainText: String) -> String {
-    let probe = NativeMarkdownEditorViewModel()
+    let probe = NativeNoteEditorViewModel()
     probe.loadText(plainText)
     return probe.currentPlainText()
 }
