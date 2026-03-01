@@ -82,7 +82,7 @@ final class NativeNoteFormattingBehaviorTests: XCTestCase {
         XCTAssertNotNil(headingStyle)
 
         // CSS-equivalent collapse: max(body bottom 0.5rem, heading top 1rem) => 1rem total.
-        let expectedCollapsedBefore = MarkdownParagraphMetrics.bodySpacingRem * viewModel.baseFontSize
+        let expectedCollapsedBefore = NoteTextParagraphMetrics.bodySpacingRem * viewModel.baseFontSize
         XCTAssertEqual(headingStyle?.paragraphSpacingBefore ?? -1, expectedCollapsedBefore, accuracy: 0.001)
         XCTAssertEqual(bodyStyle?.paragraphSpacing ?? -1, expectedCollapsedBefore, accuracy: 0.001)
     }

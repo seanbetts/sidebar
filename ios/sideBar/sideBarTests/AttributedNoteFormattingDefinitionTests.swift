@@ -13,7 +13,7 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "-"
 
         var constrained = text
-        MarkdownFormattingDefinition().constrainDocument(&constrained)
+        NoteTextFormattingDefinition().constrainDocument(&constrained)
 
         XCTAssertEqual(constrained[range].listDepth, 1)
         XCTAssertEqual(
@@ -34,7 +34,7 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         text[range].codeLanguage = "swift"
 
         var constrained = text
-        MarkdownFormattingDefinition().constrainDocument(&constrained)
+        NoteTextFormattingDefinition().constrainDocument(&constrained)
 
         XCTAssertNil(constrained[range].listDepth)
         XCTAssertNil(constrained[range].runs.first?[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self])
@@ -49,7 +49,7 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         text[range].listMarker = true
 
         var constrained = text
-        MarkdownFormattingDefinition().constrainDocument(&constrained)
+        NoteTextFormattingDefinition().constrainDocument(&constrained)
 
         XCTAssertNil(constrained[range].runs.first?.inlineMarker)
         XCTAssertNil(constrained[range].runs.first?.listMarker)
@@ -71,7 +71,7 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         text[range].strikethroughStyle = .single
 
         var constrained = text
-        MarkdownFormattingDefinition().constrainDocument(&constrained)
+        NoteTextFormattingDefinition().constrainDocument(&constrained)
 
         XCTAssertNil(constrained[range].font)
         XCTAssertNil(constrained[range].foregroundColor)
@@ -87,7 +87,7 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         text[range].codeLanguage = "swift"
 
         var constrained = text
-        MarkdownFormattingDefinition().constrainDocument(&constrained)
+        NoteTextFormattingDefinition().constrainDocument(&constrained)
 
         let intent = constrained[range].runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
         XCTAssertEqual(codeBlockLanguageHint(in: intent), "swift")
@@ -97,14 +97,14 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         let markdown = """
         > > Nested quote
         """
-        let imported = MarkdownImporter().attributedString(from: markdown).attributedString
+        let imported = NoteTextImporter().attributedString(from: markdown).attributedString
         let range = imported.startIndex..<imported.endIndex
         let originalIntent = imported[range].runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
         let originalBlockquoteIdentities = blockquoteIdentities(in: originalIntent)
         XCTAssertEqual(originalBlockquoteIdentities.count, 2)
 
         var constrained = imported
-        MarkdownFormattingDefinition().constrainDocument(&constrained)
+        NoteTextFormattingDefinition().constrainDocument(&constrained)
 
         let constrainedIntent = constrained[range].runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
         XCTAssertEqual(blockquoteIdentities(in: constrainedIntent), originalBlockquoteIdentities)
