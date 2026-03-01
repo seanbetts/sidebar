@@ -10,17 +10,17 @@ final class AppFontStyleTests: XCTestCase {
         )
         XCTAssertEqual(
             AppFontStyle.labelMd.pointSize(for: .small),
-            12.6,
+            11.2,
             accuracy: 0.0001
         )
         XCTAssertEqual(
             AppFontStyle.labelMd.pointSize(for: .medium),
-            14.7,
+            12.6,
             accuracy: 0.0001
         )
         XCTAssertEqual(
             AppFontStyle.labelMd.pointSize(for: .large),
-            16.8,
+            14.7,
             accuracy: 0.0001
         )
     }
@@ -59,12 +59,12 @@ final class AppFontStyleTests: XCTestCase {
 
         XCTAssertEqual(
             AppFontStyle.labelMd.pointSize(for: .small),
-            12.6,
+            11.2,
             accuracy: 0.0001
         )
         XCTAssertEqual(
             AppFontStyle.labelMd.pointSize(for: .large),
-            16.8,
+            14.7,
             accuracy: 0.0001
         )
     }
@@ -72,12 +72,12 @@ final class AppFontStyleTests: XCTestCase {
     func testAdditionalStylesScaleWithConfiguredOption() {
         XCTAssertEqual(
             AppFontStyle.size10Bold.pointSize(for: .medium),
-            10.5,
+            9.0,
             accuracy: 0.0001
         )
         XCTAssertEqual(
             AppFontStyle.size16Semibold.pointSize(for: .large),
-            19.2,
+            16.8,
             accuracy: 0.0001
         )
 
@@ -115,17 +115,17 @@ final class AppFontStyleTests: XCTestCase {
     func testScaledPointSizeHelperUsesOptionMultiplier() {
         XCTAssertEqual(
             AppFontStyle.scaledPointSize(14, for: .small),
-            12.6,
+            11.2,
             accuracy: 0.0001
         )
         XCTAssertEqual(
             AppFontStyle.scaledPointSize(14, for: .medium),
-            14.7,
+            12.6,
             accuracy: 0.0001
         )
         XCTAssertEqual(
             AppFontStyle.scaledPointSize(14, for: .large),
-            16.8,
+            14.7,
             accuracy: 0.0001
         )
     }

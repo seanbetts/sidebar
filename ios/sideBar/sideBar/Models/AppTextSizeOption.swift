@@ -27,11 +27,11 @@ public enum AppTextSizeOption: String, CaseIterable, Identifiable {
         case .system:
             return 1
         case .small:
-            return 0.9
+            return 0.8
         case .medium:
-            return 1.05
+            return 0.9
         case .large:
-            return 1.2
+            return 1.05
         }
     }
 
