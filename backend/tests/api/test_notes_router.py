@@ -81,20 +81,28 @@ def test_notes_download_handles_unicode_filename(test_client, test_db):
 
 
 def test_notes_create_update_and_rename(test_client):
+    created_content = "# Title\n\nBody"
     create = test_client.post(
         "/api/notes",
-        json={"content": "# Title\n\nBody"},
+        json={"content": created_content},
         headers=_auth_headers(),
     )
     assert create.status_code == 200
-    note_id = create.json()["id"]
+    created_payload = create.json()
+    note_id = created_payload["id"]
+    assert created_payload["plain_text"] == created_content
+    assert created_payload["content_format"] == "rtf"
 
+    updated_content = "# Title\n\nUpdated"
     update = test_client.patch(
         f"/api/notes/{note_id}",
-        json={"content": "# Title\n\nUpdated"},
+        json={"content": updated_content},
         headers=_auth_headers(),
     )
     assert update.status_code == 200
+    updated_payload = update.json()
+    assert updated_payload["plain_text"] == updated_content
+    assert updated_payload["content_format"] == "rtf"
 
     rename = test_client.patch(
         f"/api/notes/{note_id}/rename",

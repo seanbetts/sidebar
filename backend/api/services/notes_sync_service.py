@@ -102,6 +102,11 @@ class NotesSyncService:
             try:
                 if op == "create":
                     content = operation.get("content")
+                    plain_text = (
+                        operation.get("plain_text")
+                        if operation.get("plain_text") is not None
+                        else operation.get("plainText")
+                    )
                     if content is None:
                         raise BadRequestError("content required")
                     title = operation.get("title") or None
@@ -120,6 +125,7 @@ class NotesSyncService:
                         db,
                         user_id,
                         str(content),
+                        plain_text=str(plain_text) if plain_text is not None else None,
                         title=title,
                         folder=folder,
                         note_id=note_id,
@@ -187,6 +193,11 @@ class NotesSyncService:
     ) -> Note:
         note_id = NotesSyncService._parse_note_id(operation)
         content = operation.get("content")
+        plain_text = (
+            operation.get("plain_text")
+            if operation.get("plain_text") is not None
+            else operation.get("plainText")
+        )
         if content is None:
             raise BadRequestError("content required")
         return NotesService.update_note(
@@ -194,6 +205,7 @@ class NotesSyncService:
             user_id,
             note_id,
             str(content),
+            plain_text=str(plain_text) if plain_text is not None else None,
             client_updated_at=client_updated_at,
         )
 

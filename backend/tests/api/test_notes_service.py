@@ -4,6 +4,7 @@ import pytest
 from api.exceptions import ConflictError
 from api.schemas.filters import NoteFilters
 from api.services.notes_service import NotesService
+from api.services.notes_write_contract import is_canonical_base64_rtf
 
 
 @pytest.fixture
@@ -25,7 +26,9 @@ def test_create_and_read_note(db_session):
     fetched = NotesService.get_note(db_session, "test_user", note.id, mark_opened=True)
     assert fetched is not None
     assert fetched.title == "Test Note"
-    assert fetched.content == content
+    assert is_canonical_base64_rtf(fetched.content) is True
+    assert (fetched.metadata_ or {}).get("plain_text") == content
+    assert (fetched.metadata_ or {}).get("content_format") == "rtf"
     assert fetched.last_opened_at is not None
 
 
@@ -45,7 +48,8 @@ def test_update_note_title(db_session):
     )
 
     assert updated.title == "New Title"
-    assert "New Title" in updated.content
+    assert is_canonical_base64_rtf(updated.content) is True
+    assert (updated.metadata_ or {}).get("plain_text") == "# New Title\n\nBody"
 
 
 def test_update_folder_and_pinned(db_session):

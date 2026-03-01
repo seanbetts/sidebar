@@ -92,6 +92,8 @@ def note_sync_payload(note: Note) -> dict[str, object]:
         "id": str(note.id),
         "name": f"{note.title}.md",
         "content": note.content or "",
+        "plain_text": metadata.get("plain_text", ""),
+        "content_format": metadata.get("content_format", "rtf"),
         "path": str(note.id),
         "modified": note.updated_at.timestamp() if note.updated_at else None,
         "created": note.created_at.timestamp() if note.created_at else None,

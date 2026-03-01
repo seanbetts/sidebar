@@ -17,6 +17,10 @@ from api.exceptions import BadRequestError, NoteNotFoundError
 from api.models.note import Note
 from api.schemas.filters import NoteFilters
 from api.services.notes_helpers import ensure_note_no_conflict
+from api.services.notes_write_contract import (
+    apply_canonical_note_metadata,
+    build_canonical_note_write,
+)
 from api.utils.metadata_helpers import get_max_pinned_order
 from api.utils.pinned_order import lock_pinned_order
 from api.utils.validation import parse_uuid
@@ -87,6 +91,7 @@ class NotesService:
         user_id: str,
         content: str,
         *,
+        plain_text: str | None = None,
         title: str | None = None,
         folder: str = "",
         pinned: bool = False,
@@ -98,7 +103,8 @@ class NotesService:
         Args:
             db: Database session.
             user_id: Current user ID.
-            content: Markdown content.
+            content: Canonical Base64 RTF or legacy plain text content.
+            plain_text: Canonical plain-text cache for strict writes.
             title: Note title. Defaults to "Untitled Note" if not provided.
             folder: Folder path. Defaults to "".
             pinned: Whether the note is pinned. Defaults to False.
@@ -109,8 +115,12 @@ class NotesService:
             Newly created Note.
         """
         now = datetime.now(UTC)
+        canonical_write = build_canonical_note_write(content, plain_text)
         resolved_title = title or "Untitled Note"
-        metadata = {"folder": folder, "pinned": pinned}
+        metadata = apply_canonical_note_metadata(
+            {"folder": folder, "pinned": pinned},
+            canonical_write.plain_text,
+        )
         if tags:
             metadata["tags"] = tags
         if note_id is not None:
@@ -123,7 +133,7 @@ class NotesService:
                 if existing.deleted_at is not None:
                     existing.deleted_at = None
                     existing.title = resolved_title
-                    existing.content = content
+                    existing.content = canonical_write.content
                     existing.metadata_ = metadata
                     flag_modified(existing, "metadata_")
                     existing.updated_at = now
@@ -134,7 +144,7 @@ class NotesService:
             id=note_id or uuid.uuid4(),
             user_id=user_id,
             title=resolved_title,
-            content=content,
+            content=canonical_write.content,
             metadata_=metadata,
             created_at=now,
             updated_at=now,
@@ -168,6 +178,7 @@ class NotesService:
         note_id: uuid.UUID,
         content: str,
         *,
+        plain_text: str | None = None,
         title: str | None = None,
         client_updated_at: datetime | None = None,
     ) -> Note:
@@ -177,7 +188,8 @@ class NotesService:
             db: Database session.
             user_id: Current user ID.
             note_id: Note UUID.
-            content: Updated markdown content.
+            content: Canonical Base64 RTF or legacy plain text content.
+            plain_text: Canonical plain-text cache for strict writes.
             title: Optional explicit title. If not provided, existing title
                 is preserved.
             client_updated_at: Optional client timestamp for conflict checks.
@@ -202,9 +214,19 @@ class NotesService:
 
         ensure_note_no_conflict(note, client_updated_at, op="update")
 
+        canonical_write = build_canonical_note_write(
+            content,
+            plain_text,
+            existing_plain_text=(note.metadata_ or {}).get("plain_text"),
+        )
         if title is not None:
             note.title = title
-        note.content = content
+        note.content = canonical_write.content
+        note.metadata_ = apply_canonical_note_metadata(
+            note.metadata_,
+            canonical_write.plain_text,
+        )
+        flag_modified(note, "metadata_")
         note.updated_at = datetime.now(UTC)
         db.commit()
         return note

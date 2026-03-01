@@ -14,6 +14,10 @@ from api.models.note import Note
 from api.schemas.filters import NoteFilters
 from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
+from api.services.notes_write_contract import (
+    apply_canonical_note_metadata,
+    plain_text_to_rtf_base64,
+)
 from api.services.workspace_service import WorkspaceService
 from api.utils.search import build_text_search_filter
 from api.utils.validation import parse_uuid
@@ -25,12 +29,15 @@ class NotesWorkspaceService(WorkspaceService[Note]):
     @staticmethod
     def build_note_payload(note: Note, *, include_content: bool = True) -> dict:
         """Build a note payload for API responses."""
+        metadata = note.metadata_ or {}
         payload = {
             "id": str(note.id),
             "name": f"{note.title}.md",
             "path": str(note.id),
             "modified": note.updated_at.timestamp() if note.updated_at else None,
             "created": note.created_at.timestamp() if note.created_at else None,
+            "plain_text": metadata.get("plain_text", ""),
+            "content_format": metadata.get("content_format", "rtf"),
         }
         if include_content:
             payload["content"] = note.content
@@ -151,8 +158,11 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         note = Note(
             user_id=user_id,
             title="__folder__",
-            content="",
-            metadata_={"folder": path, "pinned": False, "folder_marker": True},
+            content=plain_text_to_rtf_base64(""),
+            metadata_=apply_canonical_note_metadata(
+                {"folder": path, "pinned": False, "folder_marker": True},
+                "",
+            ),
             created_at=now,
             updated_at=now,
             last_opened_at=None,
@@ -292,6 +302,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         user_id: str,
         content: str,
         *,
+        plain_text: str | None = None,
         title: str | None = None,
         path: str = "",
         folder: str = "",
@@ -302,7 +313,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         Args:
             db: Database session.
             user_id: Current user ID.
-            content: Markdown content.
+            content: Canonical Base64 RTF or legacy plain text content.
+            plain_text: Canonical plain-text cache for strict writes.
             title: Optional note title.
             path: Optional file path hint.
             folder: Optional folder override.
@@ -321,6 +333,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             db,
             user_id,
             content,
+            plain_text=plain_text,
             title=title,
             folder=resolved_folder,
             note_id=note_uuid,
@@ -341,6 +354,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
                 "path": str(note_id),
                 "modified": updated_at.timestamp() if updated_at else None,
                 "content": content,
+                "plain_text": plain_text if plain_text is not None else content,
+                "content_format": "rtf",
             }
 
     @staticmethod
@@ -350,6 +365,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         note_id: str,
         content: str,
         *,
+        plain_text: str | None = None,
         client_updated_at: datetime | None = None,
     ) -> dict:
         """Update note content using workspace request data.
@@ -358,7 +374,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             db: Database session.
             user_id: Current user ID.
             note_id: Note ID (UUID string).
-            content: Updated markdown content.
+            content: Canonical Base64 RTF or legacy plain text content.
+            plain_text: Canonical plain-text cache for strict writes.
             client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
@@ -373,6 +390,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             user_id,
             note_uuid,
             content,
+            plain_text=plain_text,
             client_updated_at=client_updated_at,
         )
         return NotesWorkspaceService.build_note_payload(updated, include_content=True)

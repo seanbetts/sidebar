@@ -70,6 +70,14 @@ def merge_content(existing: str, incoming: str, mode: str) -> str:
     return ensure_title(merged)
 
 
+def _note_plain_text(note) -> str:
+    metadata = note.metadata_ or {}
+    plain_text = metadata.get("plain_text")
+    if isinstance(plain_text, str):
+        return plain_text
+    return note.content or ""
+
+
 @router.get("")
 def get_scratchpad(
     user_id: str = Depends(get_current_user_id),
@@ -94,6 +102,7 @@ def get_scratchpad(
             db,
             user_id,
             content=f"# {SCRATCHPAD_TITLE}\n\n",
+            plain_text=f"# {SCRATCHPAD_TITLE}\n\n",
             title=SCRATCHPAD_TITLE,
             folder="",
         )
@@ -101,7 +110,7 @@ def get_scratchpad(
     return {
         "id": str(note.id),
         "title": note.title,
-        "content": note.content,
+        "content": _note_plain_text(note),
         "updated_at": note.updated_at.isoformat() if note.updated_at else None,
     }
 
@@ -145,15 +154,21 @@ def update_scratchpad(
             db,
             user_id,
             content=f"# {SCRATCHPAD_TITLE}\n\n",
+            plain_text=f"# {SCRATCHPAD_TITLE}\n\n",
             title=SCRATCHPAD_TITLE,
             folder="",
         )
 
     if mode_raw is None and not strip_heading(content):
         mode = "replace"
-    merged_content = merge_content(note.content, content, mode)
+    merged_content = merge_content(_note_plain_text(note), content, mode)
     updated = NotesService.update_note(
-        db, user_id, note.id, merged_content, title=SCRATCHPAD_TITLE
+        db,
+        user_id,
+        note.id,
+        merged_content,
+        plain_text=merged_content,
+        title=SCRATCHPAD_TITLE,
     )
 
     return {"success": True, "id": str(updated.id)}
@@ -183,12 +198,18 @@ def clear_scratchpad(
             db,
             user_id,
             content=f"# {SCRATCHPAD_TITLE}\n\n",
+            plain_text=f"# {SCRATCHPAD_TITLE}\n\n",
             title=SCRATCHPAD_TITLE,
             folder="",
         )
     else:
         NotesService.update_note(
-            db, user_id, note.id, f"# {SCRATCHPAD_TITLE}\n\n", title=SCRATCHPAD_TITLE
+            db,
+            user_id,
+            note.id,
+            f"# {SCRATCHPAD_TITLE}\n\n",
+            plain_text=f"# {SCRATCHPAD_TITLE}\n\n",
+            title=SCRATCHPAD_TITLE,
         )
 
     return {"success": True, "id": str(note.id)}

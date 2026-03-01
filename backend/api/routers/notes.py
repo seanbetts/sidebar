@@ -161,6 +161,11 @@ def create_note(
         BadRequestError: If content is missing.
     """
     content = request.get("content")
+    plain_text = (
+        request.get("plain_text")
+        if request.get("plain_text") is not None
+        else request.get("plainText")
+    )
     title = request.get("title") or None
     path = request.get("path", "")
     folder = (request.get("folder") or "").strip("/")
@@ -173,6 +178,7 @@ def create_note(
         db,
         user_id,
         content,
+        plain_text=plain_text,
         title=title,
         path=path,
         folder=folder,
@@ -394,6 +400,11 @@ def update_note(
         NotFoundError: If not found.
     """
     content = request.get("content")
+    plain_text = (
+        request.get("plain_text")
+        if request.get("plain_text") is not None
+        else request.get("plainText")
+    )
     client_updated_at = parse_client_timestamp(
         request.get("client_updated_at") or request.get("clientUpdatedAt"),
         field_name="client_updated_at",
@@ -407,6 +418,7 @@ def update_note(
             user_id,
             str(note_id),
             content,
+            plain_text=plain_text,
             client_updated_at=client_updated_at,
         )
     except ValueError as exc:

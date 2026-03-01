@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import base64
+import uuid
 from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.orm.attributes import flag_modified
 
-from api.services.notes_service import NotesService
+from api.models.note import Note
 from scripts.migrate_notes_to_rtf import (
     MigrationOptions,
     build_canonical_payload,
@@ -22,6 +23,24 @@ from scripts.migrate_notes_to_rtf import (
 @pytest.fixture
 def db_session(test_db):
     return test_db
+
+
+def _create_legacy_note(db_session, *, user_id: str, title: str, content: str) -> Note:
+    now = datetime.now(UTC)
+    note = Note(
+        id=uuid.uuid4(),
+        user_id=user_id,
+        title=title,
+        content=content,
+        metadata_={"folder": "", "pinned": False},
+        created_at=now,
+        updated_at=now,
+        last_opened_at=None,
+        deleted_at=None,
+    )
+    db_session.add(note)
+    db_session.commit()
+    return note
 
 
 def test_plain_text_to_rtf_base64_produces_valid_canonical_payload() -> None:
@@ -49,11 +68,11 @@ def test_build_canonical_payload_preserves_existing_legacy_content() -> None:
 
 def test_migrate_notes_converts_legacy_rows_and_is_idempotent(db_session) -> None:
     legacy_text = "# Legacy Note\n\nBody"
-    note = NotesService.create_note(
+    note = _create_legacy_note(
         db_session,
-        "test_user",
-        legacy_text,
+        user_id="test_user",
         title="Legacy Note",
+        content=legacy_text,
     )
 
     first = migrate_notes(
@@ -87,11 +106,11 @@ def test_migrate_notes_converts_legacy_rows_and_is_idempotent(db_session) -> Non
 
 def test_migrate_notes_dry_run_does_not_mutate_rows(db_session) -> None:
     legacy_text = "plain legacy note"
-    note = NotesService.create_note(
+    note = _create_legacy_note(
         db_session,
-        "test_user",
-        legacy_text,
+        user_id="test_user",
         title="Legacy Dry Run",
+        content=legacy_text,
     )
 
     report = migrate_notes(
@@ -110,11 +129,11 @@ def test_migrate_notes_dry_run_does_not_mutate_rows(db_session) -> None:
 
 
 def test_migrate_notes_preserves_write_once_legacy_content(db_session) -> None:
-    note = NotesService.create_note(
+    note = _create_legacy_note(
         db_session,
-        "test_user",
-        "new content",
+        user_id="test_user",
         title="Legacy Marker Preservation",
+        content="new content",
     )
     metadata = dict(note.metadata_ or {})
     metadata["legacy_content"] = "original snapshot"
