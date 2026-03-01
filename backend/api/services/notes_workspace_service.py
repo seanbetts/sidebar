@@ -48,7 +48,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         )
         payload = {
             "id": str(note.id),
-            "name": f"{note.title}.md",
+            "name": note.title,
             "path": str(note.id),
             "modified": note.updated_at.timestamp() if note.updated_at else None,
             "created": note.created_at.timestamp() if note.created_at else None,
@@ -146,7 +146,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             require_content=False,
         )
         return {
-            "name": f"{item.title}.md",
+            "name": item.title,
             "path": str(item.id),
             "type": "file",
             "modified": item.updated_at.timestamp() if item.updated_at else None,
@@ -374,7 +374,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             )
             return {
                 "id": str(note_id),
-                "name": f"{fallback_title}.md",
+                "name": fallback_title,
                 "path": str(note_id),
                 "modified": updated_at.timestamp() if updated_at else None,
                 "content": content,
@@ -448,7 +448,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         if not note_uuid:
             raise ValueError("Invalid note ID")
 
-        title = Path(new_name).stem
+        title = Path(new_name).name
         updated = NotesService.rename_note(
             db,
             user_id,
@@ -488,7 +488,13 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         if not note:
             raise NoteNotFoundError("Note not found")
 
+        metadata = note.metadata_ or {}
+        plain_text = metadata.get("plain_text", "")
+        safe_plain_text = plain_text if isinstance(plain_text, str) else ""
+        filename = (
+            note.title if note.title.lower().endswith(".txt") else f"{note.title}.txt"
+        )
         return {
-            "content": note.content or "",
-            "filename": f"{note.title}.md",
+            "content": safe_plain_text,
+            "filename": filename,
         }

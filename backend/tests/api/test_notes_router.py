@@ -37,7 +37,7 @@ def test_notes_search_matches_plain_text_cache(test_client):
     )
     assert response.status_code == 200
     payload = response.json()
-    assert any(item["name"] == "Searchable.md" for item in payload.get("items", []))
+    assert any(item["name"] == "Searchable" for item in payload.get("items", []))
 
 
 def test_notes_create_folder_requires_path(test_client):
@@ -82,7 +82,12 @@ def test_notes_download_handles_unicode_filename(test_client, test_db):
         user_id=TEST_USER_ID,
         title="Codex Log🦞",
         content="# Codex Log\n\nBody",
-        metadata_={"folder": "", "pinned": False},
+        metadata_={
+            "folder": "",
+            "pinned": False,
+            "plain_text": "# Codex Log\n\nBody",
+            "content_format": "rtf",
+        },
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
@@ -93,8 +98,8 @@ def test_notes_download_handles_unicode_filename(test_client, test_db):
     assert response.status_code == 200
     assert response.text == "# Codex Log\n\nBody"
     header = response.headers["content-disposition"]
-    assert 'filename="Codex Log.md"' in header
-    assert "filename*=UTF-8''Codex%20Log%F0%9F%A6%9E.md" in header
+    assert 'filename="Codex Log.txt"' in header
+    assert "filename*=UTF-8''Codex%20Log%F0%9F%A6%9E.txt" in header
     assert "🦞" not in header
 
 
@@ -124,7 +129,7 @@ def test_notes_create_update_and_rename(test_client):
 
     rename = test_client.patch(
         f"/api/notes/{note_id}/rename",
-        json={"newName": "Renamed Note.md"},
+        json={"newName": "Renamed Note"},
         headers=_auth_headers(),
     )
     assert rename.status_code == 200

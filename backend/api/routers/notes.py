@@ -13,7 +13,7 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NoteNotFoundError, NotFoundError
-from api.routers.download_headers import markdown_download_headers
+from api.routers.download_headers import plain_text_download_headers
 from api.routers.notes_folders import router as notes_folders_router
 from api.services.notes_helpers import note_sync_payload
 from api.services.notes_payloads import parse_content_write_payload
@@ -294,7 +294,7 @@ def download_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """Download a note as a markdown attachment.
+    """Download a note as a plain-text attachment.
 
     Args:
         note_id: Note UUID.
@@ -303,7 +303,7 @@ def download_note(
         db: Database session.
 
     Returns:
-        Markdown response with attachment headers.
+        Plain-text response with attachment headers.
 
     Raises:
         BadRequestError: For invalid ID.
@@ -316,8 +316,8 @@ def download_note(
     except NoteNotFoundError as exc:
         raise NotFoundError("Note", str(note_id)) from exc
 
-    headers = markdown_download_headers(result["filename"])
-    return Response(result["content"], media_type="text/markdown", headers=headers)
+    headers = plain_text_download_headers(result["filename"])
+    return Response(result["content"], media_type="text/plain", headers=headers)
 
 
 @router.patch("/{note_id}/pin")

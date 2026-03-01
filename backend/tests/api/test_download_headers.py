@@ -1,4 +1,7 @@
-from api.routers.download_headers import markdown_download_headers
+from api.routers.download_headers import (
+    markdown_download_headers,
+    plain_text_download_headers,
+)
 
 
 def test_markdown_download_headers_supports_unicode_filenames():
@@ -17,3 +20,21 @@ def test_markdown_download_headers_rejects_header_breaking_characters():
     assert "\r" not in disposition
     assert "\n" not in disposition
     assert "line1 line2.md" in disposition
+
+
+def test_plain_text_download_headers_supports_unicode_filenames():
+    headers = plain_text_download_headers("OpenClaw🦞.txt")
+    disposition = headers["Content-Disposition"]
+
+    assert 'filename="OpenClaw.txt"' in disposition
+    assert "filename*=UTF-8''OpenClaw%F0%9F%A6%9E.txt" in disposition
+    assert "🦞" not in disposition
+
+
+def test_plain_text_download_headers_rejects_header_breaking_characters():
+    headers = plain_text_download_headers("line1\r\nline2.txt")
+    disposition = headers["Content-Disposition"]
+
+    assert "\r" not in disposition
+    assert "\n" not in disposition
+    assert "line1 line2.txt" in disposition

@@ -228,9 +228,7 @@ public struct NotesView: View {
     }
 
     private func copyNoteText() {
-        let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot(
-            fallback: environment.notesRuntime.viewModel.activeNote?.content ?? ""
-        )
+        let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot()
         guard !text.isEmpty else { return }
         #if os(iOS)
         let pasteboard = UIPasteboard.general
@@ -256,9 +254,7 @@ public struct NotesView: View {
     }
 
     private func exportNoteText() {
-        let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot(
-            fallback: environment.notesRuntime.viewModel.activeNote?.content ?? ""
-        )
+        let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot()
         guard let name = environment.notesRuntime.viewModel.activeNote?.name else { return }
         exportFilename = name
         exportDocument = MarkdownFileDocument(text: text)
@@ -266,9 +262,7 @@ public struct NotesView: View {
     }
 
     private func shareNoteText() {
-        let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot(
-            fallback: environment.notesRuntime.viewModel.activeNote?.content ?? ""
-        )
+        let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot()
         guard !text.isEmpty else { return }
         SystemSharePresenter.share(text: text)
     }

@@ -53,7 +53,7 @@ extension NotesDetailView {
     }
 
     func copyNoteText() {
-        let text = editorViewModel.currentPlainTextSnapshot(fallback: viewModel.activeNote?.content ?? "")
+        let text = editorViewModel.currentPlainTextSnapshot()
         guard !text.isEmpty else { return }
         #if os(iOS)
         let pasteboard = UIPasteboard.general
@@ -79,7 +79,7 @@ extension NotesDetailView {
     }
 
     func exportNoteText() {
-        let text = editorViewModel.currentPlainTextSnapshot(fallback: viewModel.activeNote?.content ?? "")
+        let text = editorViewModel.currentPlainTextSnapshot()
         guard let name = viewModel.activeNote?.name else { return }
         exportFilename = name
         exportDocument = MarkdownFileDocument(text: text)
@@ -87,7 +87,7 @@ extension NotesDetailView {
     }
 
     func shareNoteText() {
-        let text = editorViewModel.currentPlainTextSnapshot(fallback: viewModel.activeNote?.content ?? "")
+        let text = editorViewModel.currentPlainTextSnapshot()
         guard !text.isEmpty else { return }
         SystemSharePresenter.share(text: text)
     }

@@ -73,7 +73,7 @@ def test_list_tree_uses_notes_service(monkeypatch):
 def test_search_returns_items():
     db = FakeDB([_note(title="Alpha", folder="Inbox", pinned=True)])
     result = NotesWorkspaceService.search(db, "user-1", "Alpha", limit=10)
-    assert result["items"][0]["name"] == "Alpha.md"
+    assert result["items"][0]["name"] == "Alpha"
     assert result["items"][0]["pinned"] is True
 
 
