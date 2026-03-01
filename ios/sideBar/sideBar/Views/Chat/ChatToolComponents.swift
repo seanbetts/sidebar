@@ -234,6 +234,9 @@ struct ToolCallDetailView: View {
             } else {
                 fallbackDetail
             }
+            if !workspaceSurfaceTargets.isEmpty {
+                WorkspaceSurfaceActionGroup(targets: workspaceSurfaceTargets)
+            }
         }
     }
 
@@ -292,6 +295,28 @@ struct ToolCallDetailView: View {
         return formattedValue(resultPayload)
     }
 
+    private var workspaceSurfaceTargets: [ToolResultWorkspaceSurfaceTarget] {
+        var targets = ToolResultWorkspaceSurfaceParser.parse(toolCall.result)
+        if let promptPreviewTarget {
+            if !targets.contains(where: { $0.id == promptPreviewTarget.id }) {
+                targets.insert(promptPreviewTarget, at: 0)
+            }
+        }
+        return targets
+    }
+
+    private var promptPreviewTarget: ToolResultWorkspaceSurfaceTarget? {
+        guard let promptPreview = PromptPreviewPayloadParser.parseToolResult(toolCall.result),
+              let surface = PromptPreviewWorkspaceSurfaceFactory.makeSurface(from: promptPreview) else {
+            return nil
+        }
+        return ToolResultWorkspaceSurfaceTarget(
+            surface: surface,
+            pane: .primary,
+            label: "Show System Prompt"
+        )
+    }
+
     private func formattedValue(_ value: Any) -> String {
         if let stringValue = value as? String {
             return stringValue
@@ -301,5 +326,38 @@ struct ToolCallDetailView: View {
             return jsonString
         }
         return String(describing: value)
+    }
+}
+
+struct WorkspaceSurfaceActionGroup: View {
+    @EnvironmentObject private var environment: AppEnvironment
+    let targets: [ToolResultWorkspaceSurfaceTarget]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Workspace")
+                .appFont(.captionSemibold)
+                .foregroundStyle(.secondary)
+
+            ForEach(targets) { target in
+                Button {
+                    environment.presentAgentSurface(
+                        target.surface,
+                        in: target.pane,
+                        source: "chat_workspace_surface_link"
+                    )
+                } label: {
+                    Label(target.label, systemImage: "rectangle.on.rectangle")
+                        .appFont(.captionSemibold)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(DesignTokens.Spacing.xsPlus)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(DesignTokens.Colors.surface)
+        )
     }
 }

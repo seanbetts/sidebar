@@ -127,7 +127,7 @@ extension ChatViewModelTests {
         XCTAssertEqual(pane, .primary)
         XCTAssertEqual(surface.surfaceType, .markdown)
         XCTAssertEqual(surface.surfaceId, "prompt-preview")
-        XCTAssertEqual(surface.title, "Prompt Preview")
+        XCTAssertEqual(surface.title, "System Prompt")
         XCTAssertFalse(surface.capabilities.canRefresh)
         XCTAssertTrue(surface.capabilities.canClose)
         XCTAssertTrue(surface.capabilities.canPin)

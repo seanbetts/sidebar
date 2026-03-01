@@ -16,7 +16,6 @@ struct AgentWorkspaceSurfaceView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(DesignTokens.Spacing.lg)
         }
-        .background(DesignTokens.Colors.background)
         .contextMenu {
             if surface.capabilities.canRefresh {
                 Button("Refresh", systemImage: "arrow.clockwise", action: refreshSurface)
@@ -47,24 +46,17 @@ struct AgentWorkspaceSurfaceView: View {
     }
 
     private var header: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            Image(systemName: iconName(for: surface.surfaceType))
-                .appFont(.title3Semibold)
-                .foregroundStyle(.secondary)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(resolvedTitle)
-                    .appFont(.headline)
-                    .lineLimit(1)
-                Text(surfaceLabel)
-                    .appFont(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: DesignTokens.Spacing.md)
-
-            HeaderActionRow(spacing: DesignTokens.Spacing.sm) {
+        ContentHeaderRow(
+            iconName: iconName(for: surface.surfaceType),
+            title: resolvedTitle,
+            subtitle: surfaceLabel,
+            titleStyle: .subheadline,
+            titleWeight: .semibold,
+            titleLineLimit: 1,
+            subtitleLineLimit: 1,
+            titleSubtitleAxis: .vertical
+        ) {
+            HeaderActionRow {
                 if surface.capabilities.canRefresh {
                     HeaderActionButton(
                         systemName: "arrow.clockwise",
@@ -96,9 +88,8 @@ struct AgentWorkspaceSurfaceView: View {
                 }
             }
         }
-        .padding(.horizontal, DesignTokens.Spacing.lg)
-        .padding(.vertical, DesignTokens.Spacing.md)
-        .background(DesignTokens.Colors.surface)
+        .padding(DesignTokens.Spacing.md)
+        .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
 
     @ViewBuilder

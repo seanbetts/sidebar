@@ -1,17 +1,19 @@
 import Foundation
 import sideBarShared
 
-extension ChatViewModel {
-    func dispatchPromptPreviewToWorkspace(_ preview: ChatPromptPreview) {
-        guard let workspaceActionDispatcher else { return }
+enum PromptPreviewWorkspaceSurfaceFactory {
+    static let surfaceId = "prompt-preview"
 
+    static func makeSurface(
+        from preview: ChatPromptPreview
+    ) -> AgentWorkspaceSurfaceDescriptor? {
         let markdown = promptPreviewWorkspaceMarkdown(preview)
-        guard !markdown.isEmpty else { return }
+        guard !markdown.isEmpty else { return nil }
 
-        let surface = AgentWorkspaceSurfaceDescriptor(
+        return AgentWorkspaceSurfaceDescriptor(
             type: .markdown,
-            surfaceId: "prompt-preview",
-            title: "Prompt Preview",
+            surfaceId: surfaceId,
+            title: "System Prompt",
             payload: [
                 "markdown": markdown,
                 "summary": "Generated from current system and first-message prompts."
@@ -23,10 +25,9 @@ extension ChatViewModel {
                 canInspectData: true
             )
         )
-        workspaceActionDispatcher(.presentAgentSurface(surface, pane: .primary))
     }
 
-    private func promptPreviewWorkspaceMarkdown(_ preview: ChatPromptPreview) -> String {
+    private static func promptPreviewWorkspaceMarkdown(_ preview: ChatPromptPreview) -> String {
         var blocks: [String] = []
 
         if let report = preview.promptReport {
@@ -71,12 +72,12 @@ extension ChatViewModel {
         return blocks.joined(separator: "\n\n---\n\n")
     }
 
-    private func promptReportSummary(_ document: ChatPromptReportDocument) -> String {
+    private static func promptReportSummary(_ document: ChatPromptReportDocument) -> String {
         let base = "\(document.totalChars)/\(document.maxChars) chars"
         return document.truncated ? "\(base) (truncated)" : base
     }
 
-    private func sectionSummaryBlock(
+    private static func sectionSummaryBlock(
         title: String,
         sections: [ChatPromptSection]
     ) -> String {
