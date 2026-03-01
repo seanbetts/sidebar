@@ -11,6 +11,7 @@ extension AppEnvironment {
 
         struct Output {
             let chatViewModel: ChatViewModel
+            let notesRuntime: NotesRuntime
             let notesViewModel: NotesViewModel
             let notesEditorViewModel: NotesEditorViewModel
             let ingestionViewModel: IngestionViewModel
@@ -84,8 +85,7 @@ extension AppEnvironment {
         }
 
         private static func makeChatRequestContext(
-            notesViewModel: NotesViewModel,
-            notesEditorViewModel: NotesEditorViewModel,
+            notesRuntime: NotesRuntime,
             websitesViewModel: WebsitesViewModel,
             ingestionViewModel: IngestionViewModel,
             weatherViewModel: WeatherViewModel,
@@ -100,12 +100,11 @@ extension AppEnvironment {
                 for: .notes,
                 hasWorkspaceSections: hasWorkspaceSections,
                 visibleSectionSet: visibleSectionSet,
-                fallbackSelected: notesViewModel.selectedNoteId != nil
+                fallbackSelected: notesRuntime.selectedNoteId != nil
             ) {
                 addNoteContext(
                     into: &openContext,
-                    notesViewModel: notesViewModel,
-                    notesEditorViewModel: notesEditorViewModel
+                    notesRuntime: notesRuntime
                 )
             }
             if shouldIncludeContext(
@@ -153,19 +152,9 @@ extension AppEnvironment {
 
         private static func addNoteContext(
             into openContext: inout [String: AnyCodable],
-            notesViewModel: NotesViewModel,
-            notesEditorViewModel: NotesEditorViewModel
+            notesRuntime: NotesRuntime
         ) {
-            guard let activeNote = notesViewModel.activeNote else { return }
-            let noteContent = notesEditorViewModel.currentMarkdownSnapshot(
-                fallback: activeNote.content
-            )
-            let noteContext: [String: Any] = [
-                "id": activeNote.id,
-                "title": activeNote.name,
-                "path": activeNote.path,
-                "content": noteContent
-            ]
+            guard let noteContext = notesRuntime.openNoteContext() else { return }
             openContext["note"] = AnyCodable(noteContext)
         }
 
@@ -267,6 +256,10 @@ extension AppEnvironment {
                 writeQueue: stores.writeQueue,
                 networkStatus: core.connectivityMonitor
             )
+            let notesRuntime = NotesRuntime(
+                viewModel: notesViewModel,
+                editorViewModel: notesEditorViewModel
+            )
             let ingestionViewModel = IngestionViewModel(
                 api: container.ingestionAPI,
                 store: stores.ingestionStore,
@@ -319,8 +312,7 @@ extension AppEnvironment {
                     onAssistantSettingsUpdated: { settingsViewModel.applyAssistantSettingsUpdate($0) },
                     requestContextProvider: {
                         makeChatRequestContext(
-                            notesViewModel: notesViewModel,
-                            notesEditorViewModel: notesEditorViewModel,
+                            notesRuntime: notesRuntime,
                             websitesViewModel: websitesViewModel,
                             ingestionViewModel: ingestionViewModel,
                             weatherViewModel: weatherViewModel,
@@ -333,6 +325,7 @@ extension AppEnvironment {
 
             return Output(
                 chatViewModel: chatViewModel,
+                notesRuntime: notesRuntime,
                 notesViewModel: notesViewModel,
                 notesEditorViewModel: notesEditorViewModel,
                 ingestionViewModel: ingestionViewModel,

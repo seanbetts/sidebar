@@ -13,6 +13,7 @@ extension AppEnvironment {
         let offlineStore: OfflineStore
         let toastCenter: ToastCenter
         let chatViewModel: ChatViewModel
+        let notesRuntime: NotesRuntime
         let notesViewModel: NotesViewModel
         let notesEditorViewModel: NotesEditorViewModel
         let ingestionViewModel: IngestionViewModel
@@ -55,6 +56,7 @@ extension AppEnvironment {
             offlineStore: core.offlineStore,
             toastCenter: core.toastCenter,
             chatViewModel: viewModels.chatViewModel,
+            notesRuntime: viewModels.notesRuntime,
             notesViewModel: viewModels.notesViewModel,
             notesEditorViewModel: viewModels.notesEditorViewModel,
             ingestionViewModel: viewModels.ingestionViewModel,

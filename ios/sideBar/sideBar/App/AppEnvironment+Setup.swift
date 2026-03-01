@@ -89,13 +89,7 @@ extension AppEnvironment {
             }
             .store(in: &cancellables)
 
-        notesViewModel.objectWillChange
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-
-        notesEditorViewModel.objectWillChange
+        notesRuntime.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
             }

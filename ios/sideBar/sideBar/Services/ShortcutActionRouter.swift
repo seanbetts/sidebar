@@ -93,7 +93,7 @@ public final class ShortcutActionRouter {
         case .chat:
             Task { await environment.chatViewModel.loadConversations() }
         case .notes:
-            Task { await environment.notesViewModel.loadTree() }
+            Task { await environment.notesRuntime.viewModel.loadTree() }
         case .websites:
             Task { await environment.websitesViewModel.load(force: true) }
         case .files:
@@ -111,9 +111,9 @@ public final class ShortcutActionRouter {
     private func handlePinToggle(section: AppSection?, environment: AppEnvironment) {
         switch section {
         case .notes:
-            guard let noteId = environment.notesViewModel.selectedNoteId else { return }
-            let isPinned = environment.notesViewModel.noteNode(id: noteId)?.pinned == true
-            Task { await environment.notesViewModel.setPinned(id: noteId, pinned: !isPinned) }
+            guard let noteId = environment.notesRuntime.viewModel.selectedNoteId else { return }
+            let isPinned = environment.notesRuntime.viewModel.noteNode(id: noteId)?.pinned == true
+            Task { await environment.notesRuntime.viewModel.setPinned(id: noteId, pinned: !isPinned) }
         case .websites:
             guard let website = environment.websitesViewModel.active else { return }
             Task { await environment.websitesViewModel.setPinned(id: website.id, pinned: !website.pinned) }

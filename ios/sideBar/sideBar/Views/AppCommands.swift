@@ -68,7 +68,7 @@ struct SidebarCommands: Commands {
         if environment.websitesViewModel.active != nil {
             return true
         }
-        if environment.notesViewModel.activeNote != nil, environment.notesEditorViewModel.isReadOnly {
+        if environment.notesRuntime.viewModel.activeNote != nil, environment.notesRuntime.editorViewModel.isReadOnly {
             return true
         }
         if hasCloseableAgentSurface {

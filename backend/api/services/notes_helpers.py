@@ -8,6 +8,7 @@ from typing import Any
 
 from api.exceptions import ConflictError
 from api.models.note import Note
+from api.services.notes_write_contract import diagnose_note_read_canonicality
 
 
 def is_archived_folder(folder: str) -> bool:
@@ -87,6 +88,14 @@ def build_notes_tree(notes: Iterable[Note]) -> dict[str, Any]:
 def note_sync_payload(note: Note) -> dict[str, object]:
     """Build a sync payload for a note."""
     metadata = note.metadata_ or {}
+    diagnose_note_read_canonicality(
+        note_id=note.id,
+        user_id=note.user_id,
+        context="notes_helpers.note_sync_payload",
+        content=note.content,
+        metadata=metadata,
+        require_content=True,
+    )
     folder = metadata.get("folder") or ""
     return {
         "id": str(note.id),

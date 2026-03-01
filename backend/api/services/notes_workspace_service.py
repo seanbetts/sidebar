@@ -16,6 +16,7 @@ from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
 from api.services.notes_write_contract import (
     apply_canonical_note_metadata,
+    diagnose_note_read_canonicality,
     plain_text_to_rtf_base64,
 )
 from api.services.workspace_service import WorkspaceService
@@ -37,6 +38,14 @@ class NotesWorkspaceService(WorkspaceService[Note]):
     def build_note_payload(note: Note, *, include_content: bool = True) -> dict:
         """Build a note payload for API responses."""
         metadata = note.metadata_ or {}
+        diagnose_note_read_canonicality(
+            note_id=note.id,
+            user_id=note.user_id,
+            context="workspace.build_note_payload",
+            content=note.content if include_content else None,
+            metadata=metadata,
+            require_content=include_content,
+        )
         payload = {
             "id": str(note.id),
             "name": f"{note.title}.md",
@@ -128,6 +137,14 @@ class NotesWorkspaceService(WorkspaceService[Note]):
     @classmethod
     def _item_to_dict(cls, item: Note, **kwargs: object) -> dict:
         metadata = item.metadata_ or {}
+        diagnose_note_read_canonicality(
+            note_id=item.id,
+            user_id=item.user_id,
+            context="workspace.item_to_dict",
+            content=None,
+            metadata=metadata,
+            require_content=False,
+        )
         return {
             "name": f"{item.title}.md",
             "path": str(item.id),

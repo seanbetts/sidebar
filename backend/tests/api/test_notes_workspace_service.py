@@ -51,6 +51,7 @@ def _note(title="Title", content="Body", folder="", pinned=False):
     timestamp = datetime(2024, 1, 1, tzinfo=UTC)
     return SimpleNamespace(
         id="note-1",
+        user_id="user-1",
         title=title,
         content=content,
         metadata_={"folder": folder, "pinned": pinned},

@@ -154,7 +154,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
             await environment.tasksViewModel.loadCounts(force: true)
             // Refresh all widget data in parallel
             async let tasks: () = environment.tasksViewModel.refreshWidgetData()
-            async let notes: () = environment.notesViewModel.refreshWidgetData()
+            async let notes: () = environment.notesRuntime.viewModel.refreshWidgetData()
             async let websites: () = environment.websitesViewModel.refreshWidgetData()
             async let files: () = environment.ingestionViewModel.refreshWidgetData()
             _ = await (tasks, notes, websites, files)

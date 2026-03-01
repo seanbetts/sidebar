@@ -34,6 +34,7 @@ from api.services.agent.prompt.templates import (
     SUPPORTED_VARIABLES,
     SYSTEM_PROMPT_TEMPLATE,
 )
+from api.services.notes_write_contract import diagnose_note_read_canonicality
 
 # Re-export shared prompt helpers/constants for callers/tests.
 __all__ = [
@@ -328,6 +329,15 @@ def build_open_context_block(
         note_text = note.get("plain_text")
         if note_text is None:
             note_text = note.get("plainText")
+        note_content_format = note.get("content_format") or note.get("contentFormat")
+        diagnose_note_read_canonicality(
+            note_id=note.get("id"),
+            user_id=note.get("user_id") or "unknown",
+            context="prompt.build_open_context_block",
+            content=note.get("content"),
+            metadata={"content_format": note_content_format, "plain_text": note_text},
+            require_content="content" in note,
+        )
         content = truncate_content(note_text, max_chars)
         if content:
             lines.append(CURRENT_OPEN_CONTENT_HEADER)

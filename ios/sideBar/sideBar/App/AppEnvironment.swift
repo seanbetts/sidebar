@@ -37,6 +37,8 @@ public final class AppEnvironment: ObservableObject {
     public let toastCenter: ToastCenter
     /// View model coordinating chat UI actions and streaming state.
     public let chatViewModel: ChatViewModel
+    /// Runtime boundary for notes list/editor state and notes context routing.
+    public let notesRuntime: NotesRuntime
     /// View model coordinating notes list and selection state.
     public let notesViewModel: NotesViewModel
     /// View model coordinating note editor behavior.
@@ -122,6 +124,7 @@ public final class AppEnvironment: ObservableObject {
         self.offlineStore = dependencies.offlineStore
         self.toastCenter = dependencies.toastCenter
         self.chatViewModel = dependencies.chatViewModel
+        self.notesRuntime = dependencies.notesRuntime
         self.notesViewModel = dependencies.notesViewModel
         self.notesEditorViewModel = dependencies.notesEditorViewModel
         self.ingestionViewModel = dependencies.ingestionViewModel

@@ -129,7 +129,7 @@ extension ContentView {
     func loadPhoneSectionIfNeeded(_ section: AppSection) async {
         switch section {
         case .notes:
-            await environment.notesViewModel.loadTree()
+            await environment.notesRuntime.viewModel.loadTree()
         case .websites:
             await environment.websitesViewModel.load()
         case .files:
@@ -184,7 +184,7 @@ extension ContentView {
             return environment.chatViewModel.selectedConversationId == nil
                 && !environment.chatViewModel.isDraftConversationActive
         case .notes:
-            return environment.notesViewModel.selectedNoteId == nil
+            return environment.notesRuntime.viewModel.selectedNoteId == nil
         case .files:
             return environment.ingestionViewModel.selectedFileId == nil
         case .websites:

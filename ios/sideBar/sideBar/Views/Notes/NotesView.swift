@@ -28,8 +28,8 @@ public struct NotesView: View {
 
     public var body: some View {
         NotesDetailView(
-            viewModel: environment.notesViewModel,
-            editorViewModel: environment.notesEditorViewModel,
+            viewModel: environment.notesRuntime.viewModel,
+            editorViewModel: environment.notesRuntime.editorViewModel,
             isRenameDialogPresented: $isRenameDialogPresented,
             renameValue: $renameValue,
             isMoveSheetPresented: $isMoveSheetPresented,
@@ -46,7 +46,7 @@ public struct NotesView: View {
             .toolbar {
                 if isCompact {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        if environment.notesViewModel.activeNote != nil, !isPhone {
+                        if environment.notesRuntime.viewModel.activeNote != nil, !isPhone {
                             noteToolbarMenu
                         }
                     }
@@ -67,9 +67,9 @@ public struct NotesView: View {
                     selection: $moveSelection,
                     options: folderOptions,
                     onConfirm: { selection in
-                        guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                        guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
                         Task {
-                            await environment.notesViewModel.moveNote(id: noteId, folder: selection)
+                            await environment.notesRuntime.viewModel.moveNote(id: noteId, folder: selection)
                         }
                     }
                 )
@@ -79,21 +79,21 @@ public struct NotesView: View {
                 TextField("Note name", text: $renameValue)
                     .submitLabel(.done)
                     .onSubmit {
-                        guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                        guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
                         let updatedName = renameValue
                         isRenameDialogPresented = false
                         renameValue = ""
                         Task {
-                            await environment.notesViewModel.renameNote(id: noteId, newName: updatedName)
+                            await environment.notesRuntime.viewModel.renameNote(id: noteId, newName: updatedName)
                         }
                     }
                 Button("Rename") {
-                    guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                    guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
                     let updatedName = renameValue
                     isRenameDialogPresented = false
                     renameValue = ""
                     Task {
-                        await environment.notesViewModel.renameNote(id: noteId, newName: updatedName)
+                        await environment.notesRuntime.viewModel.renameNote(id: noteId, newName: updatedName)
                     }
                 }
                 .keyboardShortcut(.defaultAction)
@@ -107,7 +107,7 @@ public struct NotesView: View {
                 message: "This will remove the note and cannot be undone.",
                 confirmAsDefaultAction: true,
                 onConfirm: {
-                    guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                    guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
                     Task {
                         await deleteNoteAfterDismissal(id: noteId)
                     }
@@ -117,12 +117,12 @@ public struct NotesView: View {
             .confirmationDialog("Save changes?", isPresented: $isCloseConfirmPresented, titleVisibility: .visible) {
                 Button("Save changes") {
                     Task {
-                        await environment.notesEditorViewModel.saveIfNeeded()
-                        environment.notesViewModel.clearSelection()
+                        await environment.notesRuntime.editorViewModel.saveIfNeeded()
+                        environment.notesRuntime.viewModel.clearSelection()
                     }
                 }
                 Button("Don't save", role: .destructive) {
-                    environment.notesViewModel.clearSelection()
+                    environment.notesRuntime.viewModel.clearSelection()
                 }
                 Button("Cancel", role: .cancel) { }
             } message: {
@@ -137,7 +137,7 @@ public struct NotesView: View {
         guard horizontalSizeClass == .compact else {
             return "Notes"
         }
-        guard let name = environment.notesViewModel.activeNote?.name else {
+        guard let name = environment.notesRuntime.viewModel.activeNote?.name else {
             return "Notes"
         }
         if name.hasSuffix(".md") {
@@ -162,9 +162,9 @@ public struct NotesView: View {
             accessibilityLabel: "Note options",
             items: [
                 .pin(isPinned: isPinned) {
-                    guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+                    guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
                     Task {
-                        await environment.notesViewModel.setPinned(id: noteId, pinned: !isPinned)
+                        await environment.notesRuntime.viewModel.setPinned(id: noteId, pinned: !isPinned)
                     }
                 },
                 .rename {
@@ -201,7 +201,7 @@ public struct NotesView: View {
     #endif
 
     private var displayTitle: String {
-        guard let name = environment.notesViewModel.activeNote?.name else {
+        guard let name = environment.notesRuntime.viewModel.activeNote?.name else {
             return "Notes"
         }
         if name.hasSuffix(".md") {
@@ -211,8 +211,8 @@ public struct NotesView: View {
     }
 
     private var activeNode: FileNode? {
-        guard let noteId = environment.notesViewModel.activeNote?.path else { return nil }
-        return environment.notesViewModel.noteNode(id: noteId)
+        guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return nil }
+        return environment.notesRuntime.viewModel.noteNode(id: noteId)
     }
 
     private var isPinned: Bool {
@@ -230,13 +230,13 @@ public struct NotesView: View {
     }
 
     private var folderOptions: [FolderOption] {
-        FolderOption.build(from: environment.notesViewModel.tree?.children ?? [])
+        FolderOption.build(from: environment.notesRuntime.viewModel.tree?.children ?? [])
     }
 
     private func copyMarkdown() {
-        let text = environment.notesEditorViewModel.content.isEmpty
-            ? environment.notesViewModel.activeNote?.content ?? ""
-            : environment.notesEditorViewModel.content
+        let text = environment.notesRuntime.editorViewModel.content.isEmpty
+            ? environment.notesRuntime.viewModel.activeNote?.content ?? ""
+            : environment.notesRuntime.editorViewModel.content
         guard !text.isEmpty else { return }
         #if os(iOS)
         let pasteboard = UIPasteboard.general
@@ -262,10 +262,10 @@ public struct NotesView: View {
     }
 
     private func exportMarkdown() {
-        let text = environment.notesEditorViewModel.content.isEmpty
-            ? environment.notesViewModel.activeNote?.content ?? ""
-            : environment.notesEditorViewModel.content
-        guard let name = environment.notesViewModel.activeNote?.name else { return }
+        let text = environment.notesRuntime.editorViewModel.content.isEmpty
+            ? environment.notesRuntime.viewModel.activeNote?.content ?? ""
+            : environment.notesRuntime.editorViewModel.content
+        guard let name = environment.notesRuntime.viewModel.activeNote?.name else { return }
         let filename = name.hasSuffix(".md") ? name : "\(name).md"
         exportFilename = filename
         exportDocument = MarkdownFileDocument(text: text)
@@ -273,28 +273,28 @@ public struct NotesView: View {
     }
 
     private func shareMarkdown() {
-        let text = environment.notesEditorViewModel.content.isEmpty
-            ? environment.notesViewModel.activeNote?.content ?? ""
-            : environment.notesEditorViewModel.content
+        let text = environment.notesRuntime.editorViewModel.content.isEmpty
+            ? environment.notesRuntime.viewModel.activeNote?.content ?? ""
+            : environment.notesRuntime.editorViewModel.content
         guard !text.isEmpty else { return }
         SystemSharePresenter.share(text: text)
     }
 
     private func archiveActiveNote() {
-        guard let noteId = environment.notesViewModel.activeNote?.path else { return }
+        guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
         Task {
-            await environment.notesViewModel.setArchived(id: noteId, archived: !isArchived)
+            await environment.notesRuntime.viewModel.setArchived(id: noteId, archived: !isArchived)
         }
     }
 
     private func deleteNoteAfterDismissal(id: String) async {
         prepareForDestructiveAction()
         await waitForKeyboardDismissal()
-        await environment.notesViewModel.deleteNote(id: id)
+        await environment.notesRuntime.viewModel.deleteNote(id: id)
     }
 
     private func prepareForDestructiveAction() {
-        environment.notesEditorViewModel.setReadOnly(true)
+        environment.notesRuntime.editorViewModel.setReadOnly(true)
         #if os(iOS)
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),

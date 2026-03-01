@@ -13,7 +13,7 @@ public struct NotesPanel: View {
     }
 
     public var body: some View {
-        NotesPanelView(viewModel: environment.notesViewModel)
+        NotesPanelView(viewModel: environment.notesRuntime.viewModel)
     }
 }
 
@@ -193,7 +193,7 @@ struct NotesPanelView: View {
     }
 
     func prepareForDestructiveAction() {
-        environment.notesEditorViewModel.setReadOnly(true)
+        environment.notesRuntime.editorViewModel.setReadOnly(true)
         #if os(iOS)
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),

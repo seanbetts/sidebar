@@ -164,7 +164,7 @@ extension ContentView {
             handleHorizontalSizeClassChange(oldValue: oldValue, newValue: newValue)
         })
         #endif
-        content = AnyView(content.onReceive(environment.notesViewModel.$selectedNoteId) { newValue in
+        content = AnyView(content.onReceive(environment.notesRuntime.viewModel.$selectedNoteId) { newValue in
             guard newValue != nil else { return }
             handleNonChatSelection(.notes)
         })
