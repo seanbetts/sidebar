@@ -38,6 +38,7 @@ struct GeneralSettingsView: View {
                     Text("Celsius").tag(false)
                     Text("Fahrenheit").tag(true)
                 }
+                .appFont(.body)
                 #if os(macOS)
                 .pickerStyle(.radioGroup)
                 #else

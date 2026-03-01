@@ -15,6 +15,7 @@ struct DueDateSheet: View {
                 Section("Due date") {
                     HStack {
                         DatePicker("Due date", selection: $selectedDate, displayedComponents: .date)
+                            .appFont(.body)
                             .datePickerStyle(.compact)
                         Spacer()
                         Button {
@@ -67,6 +68,7 @@ struct MoveTaskSheet: View {
                             Text(option.label).tag(option.id)
                         }
                     }
+                    .appFont(.body)
                 }
             }
             .navigationTitle("Move task")
@@ -114,6 +116,7 @@ struct RepeatTaskSheet: View {
                         Text("Weekly").tag(RepeatType.weekly)
                         Text("Monthly").tag(RepeatType.monthly)
                     }
+                    .appFont(.body)
                     .pickerStyle(.segmented)
                     if selectedType != .none {
                         Stepper(value: $intervalValue, in: 1...30) {
@@ -124,6 +127,7 @@ struct RepeatTaskSheet: View {
                 if selectedType != .none {
                     Section("Start date") {
                         DatePicker("Start", selection: $startDateValue, displayedComponents: .date)
+                            .appFont(.body)
                             .datePickerStyle(.compact)
                         if selectedType == .weekly {
                             Text("On \(weekdayLabel(for: startDateValue))")

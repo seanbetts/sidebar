@@ -66,6 +66,7 @@ struct NewFolderSheet: View {
                                 .tag(option.value)
                         }
                     }
+                    .appFont(.body)
                 }
             }
             .navigationTitle("New Folder")

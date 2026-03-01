@@ -183,6 +183,7 @@ struct AgentSettingsView: View {
                         Text(provider.displayName).tag(provider)
                     }
                 }
+                .appFont(.body)
                 if selectedProviderHasKey {
                     HStack(spacing: DesignTokens.Spacing.sm) {
                         Text(maskedProviderKeyText)

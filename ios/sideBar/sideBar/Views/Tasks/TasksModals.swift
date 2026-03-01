@@ -100,6 +100,7 @@ struct NewTaskSheet: View {
                     HStack {
                         if hasDueDate {
                             DatePicker("Due date", selection: $dueDate, displayedComponents: .date)
+                                .appFont(.body)
                                 .datePickerStyle(.compact)
                         } else {
                             Text("Due date")
@@ -129,6 +130,7 @@ struct NewTaskSheet: View {
                             Text(option.label).tag(option.id)
                         }
                     }
+                    .appFont(.body)
                     #if os(macOS)
                     .pickerStyle(.menu)
                     #endif
@@ -322,6 +324,7 @@ struct NewProjectSheet: View {
                             Text(group.title).tag(group.id)
                         }
                     }
+                    .appFont(.body)
                 }
 
                 if !errorMessage.isEmpty {

@@ -17,6 +17,7 @@ struct SkillsSettingsView: View {
                         Text(tier.title).tag(tier)
                     }
                 }
+                .appFont(.body)
                 .pickerStyle(.segmented)
 
                 Toggle("Enable all", isOn: Binding(
