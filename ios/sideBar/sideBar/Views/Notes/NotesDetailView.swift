@@ -23,7 +23,7 @@ struct NotesDetailView: View {
     @Binding var isDeleteAlertPresented: Bool
     @Binding var isCloseConfirmPresented: Bool
     @Binding var isExporting: Bool
-    @Binding var exportDocument: MarkdownFileDocument?
+    @Binding var exportDocument: PlainTextFileDocument?
     @Binding var exportFilename: String
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0

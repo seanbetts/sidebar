@@ -82,7 +82,7 @@ extension NotesDetailView {
         let text = editorViewModel.currentPlainTextSnapshot()
         guard let name = viewModel.activeNote?.name else { return }
         exportFilename = name
-        exportDocument = MarkdownFileDocument(text: text)
+        exportDocument = PlainTextFileDocument(text: text)
         isExporting = true
     }
 

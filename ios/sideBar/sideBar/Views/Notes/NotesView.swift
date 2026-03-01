@@ -20,7 +20,7 @@ public struct NotesView: View {
     @State private var isDeleteAlertPresented = false
     @State private var isCloseConfirmPresented = false
     @State private var isExporting = false
-    @State private var exportDocument: MarkdownFileDocument?
+    @State private var exportDocument: PlainTextFileDocument?
     @State private var exportFilename: String = "note"
 
     public init() {
@@ -56,7 +56,7 @@ public struct NotesView: View {
             .fileExporter(
                 isPresented: $isExporting,
                 document: exportDocument,
-                contentType: .sideBarMarkdown,
+                contentType: .plainText,
                 defaultFilename: exportFilename
             ) { _ in
                 exportDocument = nil
@@ -257,7 +257,7 @@ public struct NotesView: View {
         let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot()
         guard let name = environment.notesRuntime.viewModel.activeNote?.name else { return }
         exportFilename = name
-        exportDocument = MarkdownFileDocument(text: text)
+        exportDocument = PlainTextFileDocument(text: text)
         isExporting = true
     }
 

@@ -153,7 +153,7 @@ extension NotesPanelView {
             return
         }
         exportFilename = item.name
-        exportDocument = MarkdownFileDocument(text: content)
+        exportDocument = PlainTextFileDocument(text: content)
         isExporting = true
     }
 

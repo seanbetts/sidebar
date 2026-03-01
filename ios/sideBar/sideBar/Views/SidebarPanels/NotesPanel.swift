@@ -39,7 +39,7 @@ struct NotesPanelView: View {
     @State var moveTargetId: String?
     @State var moveSelection: String = ""
     @State var isMoveSheetPresented = false
-    @State var exportDocument: MarkdownFileDocument?
+    @State var exportDocument: PlainTextFileDocument?
     @State var isExporting = false
     @State var exportFilename: String = "note"
     @State var pendingNoteId: String?
@@ -154,7 +154,7 @@ struct NotesPanelView: View {
         .fileExporter(
             isPresented: $isExporting,
             document: exportDocument,
-            contentType: .sideBarMarkdown,
+            contentType: .plainText,
             defaultFilename: exportFilename
         ) { _ in
             exportDocument = nil
