@@ -11,7 +11,7 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
         }
 
         let nonCanonical = "- [x] Done"
-        let canonical = MarkdownCanonicalizer.canonicalized(nonCanonical)
+        let canonical = NoteTextCanonicalizer.canonicalized(nonCanonical)
         XCTAssertNotEqual(canonical, nonCanonical)
 
         let api = NotesWriteQueueExecutorAPISpy()

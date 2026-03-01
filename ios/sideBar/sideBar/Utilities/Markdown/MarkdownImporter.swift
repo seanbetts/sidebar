@@ -66,7 +66,7 @@ func splitFrontmatter(from markdown: String) -> (frontmatter: String?, body: Str
     return (frontmatterLines, bodyLines)
 }
 
-public enum MarkdownCanonicalizer {
+public enum NoteTextCanonicalizer {
     public static func canonicalized(_ markdown: String) -> String {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             return markdown
@@ -81,3 +81,5 @@ public enum MarkdownCanonicalizer {
         return MarkdownExporter().markdown(from: constrained, frontmatter: imported.frontmatter)
     }
 }
+
+public typealias MarkdownCanonicalizer = NoteTextCanonicalizer

@@ -162,6 +162,6 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
     }
 
     private func canonicalizedNoteContent(_ content: String) -> String {
-        MarkdownCanonicalizer.canonicalized(content)
+        NoteTextCanonicalizer.canonicalized(content)
     }
 }

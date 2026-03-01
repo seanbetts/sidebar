@@ -262,7 +262,7 @@ final class NotesStoreTests: XCTestCase {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
         let nonCanonical = "- [x] Done"
-        let canonical = MarkdownCanonicalizer.canonicalized(nonCanonical)
+        let canonical = NoteTextCanonicalizer.canonicalized(nonCanonical)
         XCTAssertNotEqual(canonical, nonCanonical)
 
         let persistence = PersistenceController(inMemory: true)

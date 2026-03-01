@@ -231,7 +231,7 @@ extension NotesStore {
     }
 
     private func canonicalizedNoteContentForPersistence(_ content: String) -> String {
-        MarkdownCanonicalizer.canonicalized(content)
+        NoteTextCanonicalizer.canonicalized(content)
     }
 
     private func updateCachedNotePath(from oldPath: String, to newPath: String, newName: String?) {
