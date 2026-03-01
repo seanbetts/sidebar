@@ -125,13 +125,9 @@ struct NewTaskSheet: View {
                     }
                     .frame(minHeight: 44)
                     Picker("Group or project", selection: $listId) {
-                        Text("Select group or project")
-                            .appFont(.body)
-                            .tag("")
+                        Text("Select group or project").tag("")
                         ForEach(listOptions, id: \.id) { option in
-                            Text(option.label)
-                                .appFont(.body)
-                                .tag(option.id)
+                            Text(option.label).tag(option.id)
                         }
                     }
                     .appFont(.body)
@@ -323,13 +319,9 @@ struct NewProjectSheet: View {
 
                 Section("Group") {
                     Picker("Group", selection: $groupId) {
-                        Text("No group")
-                            .appFont(.body)
-                            .tag("")
+                        Text("No group").tag("")
                         ForEach(groupsSorted, id: \.id) { group in
-                            Text(group.title)
-                                .appFont(.body)
-                                .tag(group.id)
+                            Text(group.title).tag(group.id)
                         }
                     }
                     .appFont(.body)

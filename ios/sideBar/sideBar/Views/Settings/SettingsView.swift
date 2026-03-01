@@ -272,7 +272,7 @@ private struct SettingsSplitView: View {
             .modifier(SidebarToggleHider())
         } detail: {
             settingsDetailView(for: selectedSection)
-                .appFont(.body)
+                .appFont(.subheadline)
                 .navigationTitle(selectedSection.displayTitle(assistantDisplayName: viewModel.assistantDisplayName))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .modifier(SidebarToggleHider())
@@ -406,7 +406,7 @@ private struct SettingsTabsView: View {
     @ViewBuilder
     private func settingsTabContent<Content: View>(_ content: Content) -> some View {
         content
-            .appFont(.body)
+            .appFont(.subheadline)
             .overlay(alignment: .bottom) {
                 if let savePillState {
                     SettingsSaveStatusPill(state: savePillState)

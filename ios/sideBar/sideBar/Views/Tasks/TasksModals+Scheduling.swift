@@ -63,13 +63,9 @@ struct MoveTaskSheet: View {
             Form {
                 Section("Move to") {
                     Picker("Group or project", selection: $selectedId) {
-                        Text("No group")
-                            .appFont(.body)
-                            .tag("")
+                        Text("No group").tag("")
                         ForEach(listOptions, id: \.id) { option in
-                            Text(option.label)
-                                .appFont(.body)
-                                .tag(option.id)
+                            Text(option.label).tag(option.id)
                         }
                     }
                     .appFont(.body)
@@ -115,18 +111,10 @@ struct RepeatTaskSheet: View {
             Form {
                 Section("Repeat") {
                     Picker("Repeat", selection: $selectedType) {
-                        Text("None")
-                            .appFont(.body)
-                            .tag(RepeatType.none)
-                        Text("Daily")
-                            .appFont(.body)
-                            .tag(RepeatType.daily)
-                        Text("Weekly")
-                            .appFont(.body)
-                            .tag(RepeatType.weekly)
-                        Text("Monthly")
-                            .appFont(.body)
-                            .tag(RepeatType.monthly)
+                        Text("None").tag(RepeatType.none)
+                        Text("Daily").tag(RepeatType.daily)
+                        Text("Weekly").tag(RepeatType.weekly)
+                        Text("Monthly").tag(RepeatType.monthly)
                     }
                     .appFont(.body)
                     .pickerStyle(.segmented)

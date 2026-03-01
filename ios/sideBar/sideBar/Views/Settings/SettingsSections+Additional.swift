@@ -14,9 +14,7 @@ struct SkillsSettingsView: View {
             Section {
                 Picker("Skill Type", selection: $selectedTier) {
                     ForEach(SkillsTierFilter.allCases) { tier in
-                        Text(tier.title)
-                            .appFont(.body)
-                            .tag(tier)
+                        Text(tier.title).tag(tier)
                     }
                 }
                 .appFont(.body)

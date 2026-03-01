@@ -63,7 +63,6 @@ struct NewFolderSheet: View {
                     Picker("Location", selection: $selectedFolder) {
                         ForEach(options) { option in
                             Text(optionLabel(option))
-                                .appFont(.body)
                                 .tag(option.value)
                         }
                     }
