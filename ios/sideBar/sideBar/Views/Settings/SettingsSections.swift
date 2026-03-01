@@ -103,6 +103,7 @@ struct ProfileSettingsView: View {
                     .labelsHidden()
                     .pickerStyle(.menu)
                 }
+                .appFont(.body)
                 LabeledContent("Pronouns") {
                     Picker("Pronouns", selection: $pronouns) {
                         Text("Not set").tag("")
@@ -113,6 +114,7 @@ struct ProfileSettingsView: View {
                     .labelsHidden()
                     .pickerStyle(.menu)
                 }
+                .appFont(.body)
                 LabeledContent("Location") {
                     TextField("Not set", text: $location)
                         .multilineTextAlignment(.trailing)

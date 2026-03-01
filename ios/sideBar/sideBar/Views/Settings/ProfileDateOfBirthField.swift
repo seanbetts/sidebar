@@ -5,7 +5,7 @@ struct ProfileDateOfBirthField: View {
     @Binding var dateOfBirth: Date
 
     var body: some View {
-        LabeledContent("Date of Birth") {
+        LabeledContent {
             if dateOfBirthEnabled {
                 HStack(spacing: 8) {
                     DatePicker(
@@ -14,6 +14,7 @@ struct ProfileDateOfBirthField: View {
                         displayedComponents: .date
                     )
                     .labelsHidden()
+                    .appFont(.body)
                     #if os(iOS)
                     .datePickerStyle(.compact)
                     #endif
@@ -33,8 +34,11 @@ struct ProfileDateOfBirthField: View {
                     dateOfBirth = Date()
                     dateOfBirthEnabled = true
                 }
-                .appFont(.subheadline)
+                .appFont(.body)
             }
+        } label: {
+            Text("Date of Birth")
+                .appFont(.body)
         }
     }
 }

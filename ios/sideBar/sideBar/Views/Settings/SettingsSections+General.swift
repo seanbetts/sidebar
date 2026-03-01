@@ -14,9 +14,12 @@ struct GeneralSettingsView: View {
             Section("Text") {
                 Picker("Text Size", selection: $appTextSizeRaw) {
                     ForEach(AppTextSizeOption.allCases) { option in
-                        Text(option.displayName).tag(option.rawValue)
+                        Text(option.displayName)
+                            .appFont(.body)
+                            .tag(option.rawValue)
                     }
                 }
+                .appFont(.body)
                 #if os(macOS)
                 .pickerStyle(.menu)
                 #endif
