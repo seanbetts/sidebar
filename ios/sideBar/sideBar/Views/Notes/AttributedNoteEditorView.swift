@@ -25,10 +25,14 @@ struct AttributedNoteEditorView: View {
             .frame(maxWidth: maxContentWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onChange(of: viewModel.attributedContent) { oldValue, _ in
-                viewModel.handleContentChange(previous: oldValue)
+                DispatchQueue.main.async {
+                    viewModel.handleContentChange(previous: oldValue)
+                }
             }
             .onChange(of: viewModel.selection) { _, _ in
-                viewModel.handleSelectionChange()
+                DispatchQueue.main.async {
+                    viewModel.handleSelectionChange()
+                }
             }
             .background(DesignTokens.Colors.background)
     }
@@ -209,18 +213,27 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             let updatedText = bridgeToAttributedString(textView.attributedText)
             let updatedSelection = selectionFromRange(textView.selectedRange, in: updatedText)
             preferNativeSelectionOnNextUpdate = true
-            parent.text = updatedText
-            if parent.syncSelection {
-                parent.selection = updatedSelection
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.isUpdating else { return }
+                self.parent.text = updatedText
+                if self.parent.syncSelection {
+                    self.parent.selection = updatedSelection
+                }
             }
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isUpdating, parent.syncSelection else { return }
-            let updatedText = bridgeToAttributedString(textView.attributedText)
-            let updatedSelection = selectionFromRange(textView.selectedRange, in: updatedText)
+            let updatedSelection = selectionFromRange(
+                textView.selectedRange,
+                in: bridgeToAttributedString(textView.attributedText)
+            )
             preferNativeSelectionOnNextUpdate = true
-            parent.selection = updatedSelection
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.isUpdating else { return }
+                guard self.parent.syncSelection else { return }
+                self.parent.selection = updatedSelection
+            }
         }
     }
 }
@@ -390,9 +403,12 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             let updatedText = bridgeToAttributedString(textView.attributedString())
             let updatedSelection = selectionFromRange(textView.selectedRange(), in: updatedText)
             preferNativeSelectionOnNextUpdate = true
-            parent.text = updatedText
-            if parent.syncSelection {
-                parent.selection = updatedSelection
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.isUpdating else { return }
+                self.parent.text = updatedText
+                if self.parent.syncSelection {
+                    self.parent.selection = updatedSelection
+                }
             }
         }
 
@@ -400,10 +416,16 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             guard !isUpdating,
                   let textView = notification.object as? NSTextView,
                   parent.syncSelection else { return }
-            let updatedText = bridgeToAttributedString(textView.attributedString())
-            let updatedSelection = selectionFromRange(textView.selectedRange(), in: updatedText)
+            let updatedSelection = selectionFromRange(
+                textView.selectedRange(),
+                in: bridgeToAttributedString(textView.attributedString())
+            )
             preferNativeSelectionOnNextUpdate = true
-            parent.selection = updatedSelection
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.isUpdating else { return }
+                guard self.parent.syncSelection else { return }
+                self.parent.selection = updatedSelection
+            }
         }
     }
 }

@@ -102,20 +102,12 @@ func tappedInsertionRange(in textView: UITextView, location: CGPoint) -> NSRange
     guard length > 0 else {
         return NSRange(location: 0, length: 0)
     }
-
-    let containerPoint = CGPoint(
-        x: location.x - textView.textContainerInset.left + textView.contentOffset.x,
-        y: location.y - textView.textContainerInset.top + textView.contentOffset.y
-    )
-    var fraction: CGFloat = 0
-    let glyphIndex = textView.layoutManager.glyphIndex(
-        for: containerPoint,
-        in: textView.textContainer,
-        fractionOfDistanceThroughGlyph: &fraction
-    )
-    var characterIndex = textView.layoutManager.characterIndexForGlyph(at: glyphIndex)
-    characterIndex = min(max(0, characterIndex), length)
-    return NSRange(location: characterIndex, length: 0)
+    if let position = textView.closestPosition(to: location) {
+        let offset = textView.offset(from: textView.beginningOfDocument, to: position)
+        let clamped = min(max(0, offset), length)
+        return NSRange(location: clamped, length: 0)
+    }
+    return clampedRange(textView.selectedRange, maxLength: length)
 }
 #elseif os(macOS)
 @available(macOS 26.0, *)
