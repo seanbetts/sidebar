@@ -7,7 +7,10 @@ enum WorkspaceLegacySectionAdapter {
         switch descriptor {
         case .builtIn(let section):
             return section
-        case .empty, .agentSurface:
+        case .agentSurface:
+            // Agent surfaces are currently driven from chat interactions.
+            return .chat
+        case .empty:
             return nil
         }
     }

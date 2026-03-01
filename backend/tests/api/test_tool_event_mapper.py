@@ -73,3 +73,39 @@ def test_tool_side_effect_events_ignores_invalid_workspace_patch_payloads() -> N
             "data": {"version": 1, "operations": [{"op": "swap_panes"}]},
         }
     ]
+
+
+def test_tool_side_effect_events_maps_prompt_preview_workspace_actions() -> None:
+    events = tool_side_effect_events(
+        "Generate Prompts",
+        {
+            "success": True,
+            "data": {
+                "system_prompt": "system",
+                "first_message_prompt": "first",
+                "workspace_context_menu_actions": [
+                    "copy_markdown",
+                    "share_text",
+                    "download",
+                ],
+            },
+        },
+    )
+
+    assert events == [
+        {
+            "type": "prompt_preview",
+            "data": {
+                "system_prompt": "system",
+                "first_message_prompt": "first",
+                "system_prompt_sections": None,
+                "first_message_prompt_sections": None,
+                "prompt_report": None,
+                "workspace_context_menu_actions": [
+                    "copy_markdown",
+                    "share_text",
+                    "download",
+                ],
+            },
+        }
+    ]

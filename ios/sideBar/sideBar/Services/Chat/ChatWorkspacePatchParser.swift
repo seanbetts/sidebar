@@ -166,15 +166,43 @@ enum ChatWorkspacePatchParser {
         let payload = payloadStrings(
             from: dictionaryValue(from: rawSurface, keys: ["payload"]) ?? [:]
         )
+        let contextMenuActions = contextMenuActions(from: rawSurface)
 
         return AgentWorkspaceSurfaceDescriptor(
             type: type,
             surfaceId: surfaceId,
             title: title,
             payload: payload,
+            contextMenuActions: contextMenuActions,
             capabilities: capabilities,
             isPinned: isPinned
         )
+    }
+
+    private static func contextMenuActions(
+        from rawSurface: [String: Any]
+    ) -> [AgentWorkspaceContextMenuAction] {
+        guard let rawActions = firstArray(
+            in: rawSurface,
+            keys: ["context_menu_actions", "contextMenuActions"]
+        ) else {
+            return []
+        }
+
+        var parsed: [AgentWorkspaceContextMenuAction] = []
+        var seen: Set<AgentWorkspaceContextMenuAction> = []
+        for rawAction in rawActions {
+            guard let name = rawAction as? String,
+                  let action = AgentWorkspaceContextMenuAction(
+                      rawValue: name.trimmingCharacters(in: .whitespacesAndNewlines)
+                  ),
+                  !seen.contains(action) else {
+                continue
+            }
+            seen.insert(action)
+            parsed.append(action)
+        }
+        return parsed
     }
 
     private static func payloadStrings(
@@ -264,6 +292,18 @@ enum ChatWorkspacePatchParser {
         for key in keys {
             if let bool = payload[key] as? Bool {
                 return bool
+            }
+        }
+        return nil
+    }
+
+    private static func firstArray(
+        in payload: [String: Any],
+        keys: [String]
+    ) -> [Any]? {
+        for key in keys {
+            if let array = payload[key] as? [Any] {
+                return array
             }
         }
         return nil

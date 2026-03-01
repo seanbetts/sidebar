@@ -31,6 +31,7 @@ final class ChatWorkspacePatchParserTests: XCTestCase {
                         "surface_id": "surface-chart-1",
                         "title": "Revenue",
                         "payload": ["summary": "Q1"],
+                        "context_menu_actions": ["copy_markdown", "share_text", "download"],
                         "future_field": "ignored"
                     ],
                     "unknown_field": 123
@@ -52,6 +53,10 @@ final class ChatWorkspacePatchParserTests: XCTestCase {
         XCTAssertEqual(surface.type, "chart")
         XCTAssertEqual(surface.surfaceId, "surface-chart-1")
         XCTAssertEqual(surface.payload["summary"], "Q1")
+        XCTAssertEqual(
+            surface.contextMenuActions,
+            [.copyMarkdown, .shareText, .download]
+        )
     }
 
     func testParseRejectsUnsupportedVersion() {

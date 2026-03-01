@@ -246,19 +246,22 @@ public struct ChatPromptPreview: Equatable {
     public let systemPromptSections: [ChatPromptSection]
     public let firstMessagePromptSections: [ChatPromptSection]
     public let promptReport: ChatPromptReport?
+    public let workspaceContextMenuActions: [AgentWorkspaceContextMenuAction]
 
     public init(
         systemPrompt: String?,
         firstMessagePrompt: String?,
         systemPromptSections: [ChatPromptSection] = [],
         firstMessagePromptSections: [ChatPromptSection] = [],
-        promptReport: ChatPromptReport? = nil
+        promptReport: ChatPromptReport? = nil,
+        workspaceContextMenuActions: [AgentWorkspaceContextMenuAction] = []
     ) {
         self.systemPrompt = systemPrompt
         self.firstMessagePrompt = firstMessagePrompt
         self.systemPromptSections = systemPromptSections
         self.firstMessagePromptSections = firstMessagePromptSections
         self.promptReport = promptReport
+        self.workspaceContextMenuActions = workspaceContextMenuActions
     }
 }
 

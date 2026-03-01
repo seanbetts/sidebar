@@ -7,7 +7,8 @@ enum PromptPreviewPayloadParser {
         "first_message_prompt",
         "system_prompt_sections",
         "first_message_prompt_sections",
-        "prompt_report"
+        "prompt_report",
+        "workspace_context_menu_actions"
     ]
 
     static func parseEventPayload(_ payload: [String: Any]) -> ChatPromptPreview {
@@ -16,7 +17,11 @@ enum PromptPreviewPayloadParser {
             firstMessagePrompt: payload["first_message_prompt"] as? String,
             systemPromptSections: promptSections(from: payload, key: "system_prompt_sections"),
             firstMessagePromptSections: promptSections(from: payload, key: "first_message_prompt_sections"),
-            promptReport: promptReport(from: payload, key: "prompt_report")
+            promptReport: promptReport(from: payload, key: "prompt_report"),
+            workspaceContextMenuActions: contextMenuActions(
+                from: payload,
+                key: "workspace_context_menu_actions"
+            )
         )
     }
 
@@ -109,5 +114,26 @@ enum PromptPreviewPayloadParser {
             return Int(stringValue)
         }
         return nil
+    }
+
+    private static func contextMenuActions(
+        from payload: [String: Any],
+        key: String
+    ) -> [AgentWorkspaceContextMenuAction] {
+        guard let actionNames = payload[key] as? [String] else {
+            return []
+        }
+        var parsed: [AgentWorkspaceContextMenuAction] = []
+        var seen: Set<AgentWorkspaceContextMenuAction> = []
+        for actionName in actionNames {
+            let normalized = actionName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let action = AgentWorkspaceContextMenuAction(rawValue: normalized),
+                  !seen.contains(action) else {
+                continue
+            }
+            seen.insert(action)
+            parsed.append(action)
+        }
+        return parsed
     }
 }

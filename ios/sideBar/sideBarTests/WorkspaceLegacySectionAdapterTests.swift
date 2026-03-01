@@ -9,14 +9,15 @@ final class WorkspaceLegacySectionAdapterTests: XCTestCase {
         )
     }
 
-    func testSectionMappingIgnoresEmptyAndAgentSurfaceDescriptors() {
+    func testSectionMappingIgnoresEmptyDescriptorAndMapsAgentSurfaceToChat() {
         XCTAssertNil(WorkspaceLegacySectionAdapter.section(from: .empty))
-        XCTAssertNil(
+        XCTAssertEqual(
             WorkspaceLegacySectionAdapter.section(
                 from: .agentSurface(
                     AgentWorkspaceSurfaceDescriptor(type: "map", surfaceId: "surface-1")
                 )
-            )
+            ),
+            .chat
         )
     }
 

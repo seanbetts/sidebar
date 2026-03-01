@@ -5,6 +5,7 @@ struct ToolResultWorkspaceSurfaceTarget: Equatable, Identifiable {
     let surface: AgentWorkspaceSurfaceDescriptor
     let pane: WorkspacePane
     let label: String
+    let iconName: String
 
     var id: String {
         "\(pane.rawValue):\(surface.surfaceId)"
@@ -13,13 +14,22 @@ struct ToolResultWorkspaceSurfaceTarget: Equatable, Identifiable {
 
 enum ToolResultWorkspaceSurfaceParser {
     static func parse(_ toolCall: ToolCall) -> [ToolResultWorkspaceSurfaceTarget] {
-        var targets = parse(toolCall.result)
+        let skillIconName = SkillIconResolver.iconName(for: toolCall)
+        var targets = parse(toolCall.result).map { target in
+            ToolResultWorkspaceSurfaceTarget(
+                surface: target.surface,
+                pane: target.pane,
+                label: target.label,
+                iconName: skillIconName
+            )
+        }
         if let promptPreview = PromptPreviewPayloadParser.parseToolResult(toolCall.result),
            let surface = PromptPreviewWorkspaceSurfaceFactory.makeSurface(from: promptPreview) {
             let promptPreviewTarget = ToolResultWorkspaceSurfaceTarget(
                 surface: surface,
                 pane: .primary,
-                label: "Show System Prompt"
+                label: "Show System Prompt",
+                iconName: skillIconName
             )
             if !targets.contains(where: { $0.id == promptPreviewTarget.id }) {
                 targets.insert(promptPreviewTarget, at: 0)
@@ -61,7 +71,8 @@ enum ToolResultWorkspaceSurfaceParser {
                     let target = ToolResultWorkspaceSurfaceTarget(
                         surface: surface,
                         pane: pane,
-                        label: label
+                        label: label,
+                        iconName: "rectangle.on.rectangle"
                     )
                     if seenTargetIDs.insert(target.id).inserted {
                         targets.append(target)

@@ -18,13 +18,23 @@ enum PromptPreviewWorkspaceSurfaceFactory {
                 "markdown": markdown,
                 "summary": "Generated from current system and first-message prompts."
             ],
+            contextMenuActions: contextMenuActions(for: preview),
             capabilities: AgentWorkspaceSurfaceCapabilities(
                 canRefresh: false,
                 canClose: true,
-                canPin: true,
-                canInspectData: true
+                canPin: false,
+                canInspectData: false
             )
         )
+    }
+
+    private static func contextMenuActions(
+        for preview: ChatPromptPreview
+    ) -> [AgentWorkspaceContextMenuAction] {
+        if preview.workspaceContextMenuActions.isEmpty {
+            return [.copyMarkdown, .shareText, .download]
+        }
+        return preview.workspaceContextMenuActions
     }
 
     private static func promptPreviewWorkspaceMarkdown(_ preview: ChatPromptPreview) -> String {

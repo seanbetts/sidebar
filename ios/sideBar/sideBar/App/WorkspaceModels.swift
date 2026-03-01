@@ -28,6 +28,13 @@ public enum AgentWorkspaceSurfaceType: String, CaseIterable, Equatable {
     case actionPanel
 }
 
+/// Context-menu actions surfaced for agent-rendered content.
+public enum AgentWorkspaceContextMenuAction: String, CaseIterable, Equatable {
+    case copyMarkdown = "copy_markdown"
+    case shareText = "share_text"
+    case download
+}
+
 /// Capability flags for agent-rendered surface controls.
 public struct AgentWorkspaceSurfaceCapabilities: Equatable {
     public var canRefresh: Bool
@@ -53,6 +60,7 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
     public let surfaceId: String
     public let title: String?
     public let payload: [String: String]
+    public let contextMenuActions: [AgentWorkspaceContextMenuAction]
     public var capabilities: AgentWorkspaceSurfaceCapabilities
     public var isPinned: Bool
 
@@ -65,6 +73,7 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
         surfaceId: String,
         title: String? = nil,
         payload: [String: String] = [:],
+        contextMenuActions: [AgentWorkspaceContextMenuAction] = [],
         capabilities: AgentWorkspaceSurfaceCapabilities = AgentWorkspaceSurfaceCapabilities(),
         isPinned: Bool = false
     ) {
@@ -72,6 +81,7 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
         self.surfaceId = surfaceId
         self.title = title
         self.payload = payload
+        self.contextMenuActions = contextMenuActions
         self.capabilities = capabilities
         self.isPinned = isPinned
     }
@@ -81,6 +91,7 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
         surfaceId: String,
         title: String? = nil,
         payload: [String: String] = [:],
+        contextMenuActions: [AgentWorkspaceContextMenuAction] = [],
         capabilities: AgentWorkspaceSurfaceCapabilities = AgentWorkspaceSurfaceCapabilities(),
         isPinned: Bool = false
     ) {
@@ -89,6 +100,7 @@ public struct AgentWorkspaceSurfaceDescriptor: Equatable {
             surfaceId: surfaceId,
             title: title,
             payload: payload,
+            contextMenuActions: contextMenuActions,
             capabilities: capabilities,
             isPinned: isPinned
         )

@@ -30,6 +30,7 @@ final class ToolResultWorkspaceSurfaceParserTests: XCTestCase {
         XCTAssertEqual(targets.first?.pane, .secondary)
         XCTAssertEqual(targets.first?.surface.surfaceId, "surface-chart-1")
         XCTAssertEqual(targets.first?.label, "Show Revenue")
+        XCTAssertEqual(targets.first?.iconName, "rectangle.on.rectangle")
     }
 
     func testParseIgnoresInvalidWorkspacePatchPayloads() {
@@ -88,7 +89,9 @@ final class ToolResultWorkspaceSurfaceParserTests: XCTestCase {
             status: .success,
             result: AnyCodable([
                 "system_prompt": "# System Prompt\n\nYou are concise."
-            ])
+            ]),
+            skillId: "prompt-preview",
+            iconKey: "prompt-preview"
         )
 
         let targets = ToolResultWorkspaceSurfaceParser.parse(toolCall)
@@ -96,6 +99,41 @@ final class ToolResultWorkspaceSurfaceParserTests: XCTestCase {
         XCTAssertEqual(targets.count, 1)
         XCTAssertEqual(targets.first?.id, "primary:prompt-preview")
         XCTAssertEqual(targets.first?.label, "Show System Prompt")
+        XCTAssertEqual(targets.first?.iconName, "eye")
+    }
+
+    func testParseToolCallAssignsOriginatingSkillIconToWorkspacePatchTargets() {
+        let toolCall = ToolCall(
+            id: "call-1",
+            name: "Generate Prompts",
+            parameters: [:],
+            status: .success,
+            result: AnyCodable([
+                "data": [
+                    "workspace_patch": [
+                        "version": 1,
+                        "operations": [
+                            [
+                                "op": "upsert_agent_surface",
+                                "pane": "primary",
+                                "surface": [
+                                    "type": "markdown",
+                                    "surface_id": "surface-1",
+                                    "title": "Preview"
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]),
+            skillId: "prompt-preview",
+            iconKey: "prompt-preview"
+        )
+
+        let targets = ToolResultWorkspaceSurfaceParser.parse(toolCall)
+
+        XCTAssertEqual(targets.count, 1)
+        XCTAssertEqual(targets.first?.iconName, "eye")
     }
 
     func testParseToolCallsDeduplicatesPromptPreviewTargetsAcrossCalls() {

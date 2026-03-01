@@ -58,6 +58,11 @@ def handle_prompt_preview(context: dict[str, Any] | None) -> dict[str, Any]:
                 "sections"
             ],
             "prompt_report": prompt_bundle["report"],
+            "workspace_context_menu_actions": [
+                "copy_markdown",
+                "share_text",
+                "download",
+            ],
         },
     }
 

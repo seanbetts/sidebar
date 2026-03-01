@@ -17,6 +17,11 @@ final class PromptPreviewPayloadParserTests: XCTestCase {
                         "chars": 42
                     ]
                 ],
+                "workspace_context_menu_actions": [
+                    "copy_markdown",
+                    "share_text",
+                    "download"
+                ],
                 "prompt_report": [
                     "system_prompt": [
                         "total_chars": 42,
@@ -34,6 +39,10 @@ final class PromptPreviewPayloadParserTests: XCTestCase {
         XCTAssertEqual(preview?.firstMessagePrompt, "First prompt text")
         XCTAssertEqual(preview?.systemPromptSections.first?.id, "context")
         XCTAssertEqual(preview?.promptReport?.systemPrompt?.totalChars, 42)
+        XCTAssertEqual(
+            preview?.workspaceContextMenuActions,
+            [.copyMarkdown, .shareText, .download]
+        )
     }
 
     func testParseToolResultReadsPromptPreviewFromTopLevelPayload() {

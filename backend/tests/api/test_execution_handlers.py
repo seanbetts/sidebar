@@ -82,6 +82,11 @@ def test_handle_prompt_preview_uses_prompt_context_service(monkeypatch):
     assert result["data"]["system_prompt"] == "system prompt"
     assert result["data"]["first_message_prompt"] == "first message"
     assert result["data"]["prompt_report"]["system_prompt"]["truncated"] is False
+    assert result["data"]["workspace_context_menu_actions"] == [
+        "copy_markdown",
+        "share_text",
+        "download",
+    ]
     assert captured["db"] == context["db"]
     assert captured["user_id"] == "user-123"
     assert captured["current_weather"] == "sunny"

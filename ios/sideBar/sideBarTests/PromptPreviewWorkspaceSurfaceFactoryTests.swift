@@ -16,6 +16,10 @@ final class PromptPreviewSurfaceFactoryTests: XCTestCase {
         XCTAssertTrue(markdown.contains("`</tasks>`"))
         XCTAssertTrue(markdown.contains("### Overdue"))
         XCTAssertTrue(markdown.contains("- [ ] Pay rent"))
+        XCTAssertEqual(
+            surface?.contextMenuActions,
+            [.copyMarkdown, .shareText, .download]
+        )
     }
 
     func testMakeSurfaceUsesStructuredMarkdownHeadings() {

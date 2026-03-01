@@ -218,6 +218,9 @@ def tool_side_effect_events(
                         "first_message_prompt_sections"
                     ),
                     "prompt_report": result_data.get("prompt_report"),
+                    "workspace_context_menu_actions": result_data.get(
+                        "workspace_context_menu_actions"
+                    ),
                 },
             }
         )

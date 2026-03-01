@@ -329,7 +329,7 @@ struct WorkspaceSurfaceActionGroup: View {
                         source: "chat_workspace_surface_link"
                     )
                 } label: {
-                    Label(target.label, systemImage: "rectangle.on.rectangle")
+                    Label(target.label, systemImage: target.iconName)
                         .appFont(.captionSemibold)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -384,7 +384,7 @@ struct WorkspaceSurfaceInlineActionsBar: View {
                     source: "chat_workspace_surface_inline"
                 )
             } label: {
-                Label(target.label, systemImage: "rectangle.on.rectangle")
+                Label(target.label, systemImage: target.iconName)
                     .appFont(.captionSemibold)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
@@ -400,7 +400,7 @@ struct WorkspaceSurfaceInlineActionsBar: View {
                     source: "chat_workspace_surface_inline"
                 )
             } label: {
-                Label(target.label, systemImage: "rectangle.on.rectangle")
+                Label(target.label, systemImage: target.iconName)
                     .appFont(.captionSemibold)
                     .lineLimit(1)
             }
