@@ -52,7 +52,7 @@ extension NotesDetailView {
         }
     }
 
-    func copyMarkdown() {
+    func copyNoteText() {
         let text = editorViewModel.currentPlainTextSnapshot(fallback: viewModel.activeNote?.content ?? "")
         guard !text.isEmpty else { return }
         #if os(iOS)
@@ -78,16 +78,15 @@ extension NotesDetailView {
         }
     }
 
-    func exportMarkdown() {
+    func exportNoteText() {
         let text = editorViewModel.currentPlainTextSnapshot(fallback: viewModel.activeNote?.content ?? "")
         guard let name = viewModel.activeNote?.name else { return }
-        let filename = name.hasSuffix(".md") ? name : "\(name).md"
-        exportFilename = filename
+        exportFilename = name
         exportDocument = MarkdownFileDocument(text: text)
         isExporting = true
     }
 
-    func shareMarkdown() {
+    func shareNoteText() {
         let text = editorViewModel.currentPlainTextSnapshot(fallback: viewModel.activeNote?.content ?? "")
         guard !text.isEmpty else { return }
         SystemSharePresenter.share(text: text)

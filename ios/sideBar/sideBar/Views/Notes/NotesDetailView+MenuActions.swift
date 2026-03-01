@@ -49,7 +49,7 @@ struct NoteActionsMenuButton: UIViewRepresentable {
         let moveAction = UIAction(title: "Move", image: UIImage(systemName: "arrow.forward.folder")) { _ in
             onMove()
         }
-        let copyAction = UIAction(title: "Copy Markdown", image: UIImage(systemName: "doc.on.doc")) { _ in
+        let copyAction = UIAction(title: "Copy Text", image: UIImage(systemName: "doc.on.doc")) { _ in
             onCopy()
         }
         let shareAction = UIAction(title: "Share Text", image: UIImage(systemName: "square.and.arrow.up.on.square")) { _ in
@@ -134,13 +134,13 @@ extension NotesDetailView {
                     isMoveSheetPresented = true
                 },
                 onCopy: {
-                    copyMarkdown()
+                    copyNoteText()
                 },
                 onShare: {
-                    shareMarkdown()
+                    shareNoteText()
                 },
                 onDownload: {
-                    exportMarkdown()
+                    exportNoteText()
                 },
                 onArchive: {
                     archiveActiveNote()
@@ -171,14 +171,14 @@ extension NotesDetailView {
                 moveSelection = currentFolderPath
                 isMoveSheetPresented = true
             },
-            .copyMarkdown {
-                copyMarkdown()
+            .copyText {
+                copyNoteText()
             },
             .shareText {
-                shareMarkdown()
+                shareNoteText()
             },
             .download {
-                exportMarkdown()
+                exportNoteText()
             },
             .archive(isArchived: isArchived) {
                 archiveActiveNote()
@@ -212,17 +212,17 @@ extension NotesDetailView {
             Label("Move", systemImage: "arrow.forward.folder")
         }
         Button {
-            copyMarkdown()
+            copyNoteText()
         } label: {
-            Label("Copy Markdown", systemImage: "doc.on.doc")
+            Label("Copy Text", systemImage: "doc.on.doc")
         }
         Button {
-            shareMarkdown()
+            shareNoteText()
         } label: {
             Label("Share Text", systemImage: "square.and.arrow.up.on.square")
         }
         Button {
-            exportMarkdown()
+            exportNoteText()
         } label: {
             Label("Download", systemImage: "square.and.arrow.down")
         }

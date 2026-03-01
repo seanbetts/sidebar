@@ -21,7 +21,7 @@ public struct NotesView: View {
     @State private var isCloseConfirmPresented = false
     @State private var isExporting = false
     @State private var exportDocument: MarkdownFileDocument?
-    @State private var exportFilename: String = "note.md"
+    @State private var exportFilename: String = "note"
 
     public init() {
     }
@@ -140,9 +140,6 @@ public struct NotesView: View {
         guard let name = environment.notesRuntime.viewModel.activeNote?.name else {
             return "Notes"
         }
-        if name.hasSuffix(".md") {
-            return String(name.dropLast(3))
-        }
         return name
         #endif
     }
@@ -175,14 +172,14 @@ public struct NotesView: View {
                     moveSelection = currentFolderPath
                     isMoveSheetPresented = true
                 },
-                .copyMarkdown {
-                    copyMarkdown()
+                .copyText {
+                    copyNoteText()
                 },
                 .shareText {
-                    shareMarkdown()
+                    shareNoteText()
                 },
                 .download {
-                    exportMarkdown()
+                    exportNoteText()
                 },
                 .archive(isArchived: isArchived) {
                     archiveActiveNote()
@@ -203,9 +200,6 @@ public struct NotesView: View {
     private var displayTitle: String {
         guard let name = environment.notesRuntime.viewModel.activeNote?.name else {
             return "Notes"
-        }
-        if name.hasSuffix(".md") {
-            return String(name.dropLast(3))
         }
         return name
     }
@@ -233,10 +227,10 @@ public struct NotesView: View {
         FolderOption.build(from: environment.notesRuntime.viewModel.tree?.children ?? [])
     }
 
-    private func copyMarkdown() {
-        let text = environment.notesRuntime.editorViewModel.content.isEmpty
-            ? environment.notesRuntime.viewModel.activeNote?.content ?? ""
-            : environment.notesRuntime.editorViewModel.content
+    private func copyNoteText() {
+        let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot(
+            fallback: environment.notesRuntime.viewModel.activeNote?.content ?? ""
+        )
         guard !text.isEmpty else { return }
         #if os(iOS)
         let pasteboard = UIPasteboard.general
@@ -261,21 +255,20 @@ public struct NotesView: View {
         }
     }
 
-    private func exportMarkdown() {
-        let text = environment.notesRuntime.editorViewModel.content.isEmpty
-            ? environment.notesRuntime.viewModel.activeNote?.content ?? ""
-            : environment.notesRuntime.editorViewModel.content
+    private func exportNoteText() {
+        let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot(
+            fallback: environment.notesRuntime.viewModel.activeNote?.content ?? ""
+        )
         guard let name = environment.notesRuntime.viewModel.activeNote?.name else { return }
-        let filename = name.hasSuffix(".md") ? name : "\(name).md"
-        exportFilename = filename
+        exportFilename = name
         exportDocument = MarkdownFileDocument(text: text)
         isExporting = true
     }
 
-    private func shareMarkdown() {
-        let text = environment.notesRuntime.editorViewModel.content.isEmpty
-            ? environment.notesRuntime.viewModel.activeNote?.content ?? ""
-            : environment.notesRuntime.editorViewModel.content
+    private func shareNoteText() {
+        let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot(
+            fallback: environment.notesRuntime.viewModel.activeNote?.content ?? ""
+        )
         guard !text.isEmpty else { return }
         SystemSharePresenter.share(text: text)
     }

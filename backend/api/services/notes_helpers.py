@@ -58,7 +58,7 @@ def build_notes_tree(notes: Iterable[Note]) -> dict[str, Any]:
         is_archived = bool(note.is_archived)
         current_node["children"].append(
             {
-                "name": f"{note.title}.md",
+                "name": note.title,
                 "path": str(note.id),
                 "type": "file",
                 "modified": note.updated_at.timestamp() if note.updated_at else None,
@@ -99,7 +99,7 @@ def note_sync_payload(note: Note) -> dict[str, object]:
     folder = metadata.get("folder") or ""
     return {
         "id": str(note.id),
-        "name": f"{note.title}.md",
+        "name": note.title,
         "content": note.content or "",
         "plain_text": metadata.get("plain_text", ""),
         "content_format": metadata.get("content_format", "rtf"),

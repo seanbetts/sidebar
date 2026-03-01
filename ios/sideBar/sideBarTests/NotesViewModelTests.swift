@@ -244,9 +244,9 @@ final class NotesViewModelTests: XCTestCase {
         api.createNoteResult = .success(
             NotePayload(
                 id: "note-blank",
-                name: "Untitled 2026-02-12 101500.md",
+                name: "Untitled 2026-02-12 101500",
                 content: "",
-                path: "Untitled 2026-02-12 101500.md",
+                path: "Untitled 2026-02-12 101500",
                 modified: nil,
                 created: nil
             )
@@ -268,7 +268,7 @@ final class NotesViewModelTests: XCTestCase {
         let path = try XCTUnwrap(request.path)
         XCTAssertTrue(title.hasPrefix("Untitled "))
         XCTAssertTrue(path.hasPrefix("Untitled "))
-        XCTAssertTrue(path.hasSuffix(".md"))
+        XCTAssertFalse(path.hasSuffix(".md"))
         XCTAssertEqual(created?.id, "note-blank")
         XCTAssertEqual(viewModel.selectedNoteId, created?.path)
     }
@@ -278,7 +278,7 @@ final class NotesViewModelTests: XCTestCase {
         api.listTreeResult = .success(
             FileTree(children: [
                 FileNode(
-                    name: "Test note for editing.md",
+                    name: "Test note for editing",
                     path: "note-id",
                     type: .file,
                     size: nil,
@@ -296,7 +296,7 @@ final class NotesViewModelTests: XCTestCase {
         api.getNoteResult = .success(
             NotePayload(
                 id: "uuid-note-1",
-                name: "Test note for editing.md",
+                name: "Test note for editing",
                 content: "",
                 path: "note-id",
                 modified: nil,
@@ -306,7 +306,7 @@ final class NotesViewModelTests: XCTestCase {
         api.renameNoteResult = .success(
             NotePayload(
                 id: "uuid-note-1",
-                name: "Test Note for Editing.md",
+                name: "Test Note for Editing",
                 content: "",
                 path: "note-id",
                 modified: nil,
@@ -329,7 +329,7 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(api.renameRequests.count, 1)
         let request = try XCTUnwrap(api.renameRequests.first)
         XCTAssertEqual(request.id, "uuid-note-1")
-        XCTAssertEqual(request.newName, "Test Note for Editing.md")
+        XCTAssertEqual(request.newName, "Test Note for Editing")
     }
 
     func testSearchSuccessClearsPreviousSearchError() async throws {

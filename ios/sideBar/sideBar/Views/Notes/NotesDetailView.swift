@@ -385,9 +385,6 @@ extension NotesDetailView {
         guard let name = viewModel.activeNote?.name else {
             return "Notes"
         }
-        if name.hasSuffix(".md") {
-            return String(name.dropLast(3))
-        }
         return name
     }
 

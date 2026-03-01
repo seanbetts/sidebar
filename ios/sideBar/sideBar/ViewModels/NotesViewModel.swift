@@ -31,7 +31,7 @@ import Combine
 ///     networkStatus: connectivityMonitor
 /// )
 /// await viewModel.loadTree()
-/// await viewModel.selectNote(id: "path/to/note.md")
+/// await viewModel.selectNote(id: "path/to/note")
 /// await viewModel.createNote(title: "New Note", folder: "subfolder")
 /// ```
 public final class NotesViewModel: ObservableObject {
@@ -167,7 +167,7 @@ public final class NotesViewModel: ObservableObject {
         guard let trimmed = title.trimmedOrNil else {
             return nil
         }
-        let filename = trimmed.lowercased().hasSuffix(".md") ? trimmed : "\(trimmed).md"
+        let filename = trimmed
         let pathPrefix = folder?.trimmed ?? ""
         let fullPath = pathPrefix.isEmpty ? filename : "\(pathPrefix)/\(filename)"
         do {
@@ -204,7 +204,7 @@ public final class NotesViewModel: ObservableObject {
         guard let trimmed = newName.trimmedOrNil else {
             return
         }
-        let filename = trimmed.lowercased().hasSuffix(".md") ? trimmed : "\(trimmed).md"
+        let filename = trimmed
         let currentName = noteNode(id: id)?.name ?? activeNote?.name
         guard filename != currentName else {
             return
