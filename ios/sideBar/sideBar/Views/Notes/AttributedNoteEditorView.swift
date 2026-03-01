@@ -20,17 +20,13 @@ struct AttributedNoteEditorView: View {
             syncSelection: true,
             autoFocus: true,
             onTextDidChange: { previous, sourceGeneration in
-                DispatchQueue.main.async {
-                    viewModel.handleContentChange(
-                        previous: previous,
-                        sourceGeneration: sourceGeneration
-                    )
-                }
+                viewModel.handleContentChange(
+                    previous: previous,
+                    sourceGeneration: sourceGeneration
+                )
             },
             onSelectionDidChange: { sourceGeneration in
-                DispatchQueue.main.async {
-                    viewModel.handleSelectionChange(sourceGeneration: sourceGeneration)
-                }
+                viewModel.handleSelectionChange(sourceGeneration: sourceGeneration)
             }
         )
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)

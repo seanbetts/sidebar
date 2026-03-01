@@ -36,7 +36,9 @@ struct AttributedNoteEditorContainer: View {
             loadIfNeeded()
         }
         .onChange(of: nativeViewModel.hasUnsavedChanges) { _, hasChanges in
-            editorViewModel.setDirty(hasChanges)
+            Task { @MainActor in
+                editorViewModel.setDirty(hasChanges)
+            }
         }
         .onChange(of: nativeViewModel.autosaveToken) { _, _ in
             guard nativeViewModel.hasUnsavedChanges, !nativeViewModel.isReadOnly else { return }
@@ -45,24 +47,33 @@ struct AttributedNoteEditorContainer: View {
             }
         }
         .onChange(of: editorViewModel.isReadOnly) { _, readOnly in
-            let shouldFocus = !readOnly
-            if isTextEditorFocused != shouldFocus {
-                isTextEditorFocused = shouldFocus
+            Task { @MainActor in
+                guard editorViewModel.isReadOnly == readOnly else { return }
+                let shouldFocus = !readOnly
+                if isTextEditorFocused != shouldFocus {
+                    isTextEditorFocused = shouldFocus
+                }
+                nativeViewModel.isReadOnly = readOnly
             }
-            nativeViewModel.isReadOnly = readOnly
         }
         .onChange(of: environment.isOffline) { _, isOffline in
             applyAutosaveDelay(isOffline: isOffline)
         }
         .onChange(of: appTextSizeRaw) { _, newValue in
-            let option = AppTextSizeOption.resolved(from: newValue)
-            nativeViewModel.setBaseFontSize(MarkdownTypography.defaultBodyFontSize(for: option))
-            nativeViewModel.updatePrefixVisibility()
+            Task { @MainActor in
+                guard appTextSizeRaw == newValue else { return }
+                let option = AppTextSizeOption.resolved(from: newValue)
+                nativeViewModel.setBaseFontSize(MarkdownTypography.defaultBodyFontSize(for: option))
+                nativeViewModel.updatePrefixVisibility()
+            }
         }
         .onChange(of: isTextEditorFocused) { _, focused in
             // When user taps into the editor, enter edit mode.
-            if focused && editorViewModel.isReadOnly {
-                editorViewModel.setReadOnly(false)
+            Task { @MainActor in
+                guard isTextEditorFocused == focused else { return }
+                if focused && editorViewModel.isReadOnly {
+                    editorViewModel.setReadOnly(false)
+                }
             }
         }
     }
