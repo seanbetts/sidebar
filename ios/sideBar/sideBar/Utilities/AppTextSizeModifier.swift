@@ -5,9 +5,7 @@ struct AppTextSizeModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let option = AppTextSizeOption.resolved(from: appTextSizeRaw)
-        content
-            .font(AppFontStyle.body.font(for: option))
-            .controlSize(option.controlSize)
+        content.font(AppFontStyle.body.font(for: option))
     }
 }
 
