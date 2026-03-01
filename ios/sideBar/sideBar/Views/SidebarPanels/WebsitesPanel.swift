@@ -209,7 +209,7 @@ extension WebsitesPanelView {
                             pendingWebsiteListRow(pending: pending)
                         }
                     } header: {
-                        sidebarSectionHeader("Adding")
+                        sidebarProminentSectionHeader("Adding")
                     }
                 }
                 Section {
@@ -222,7 +222,7 @@ extension WebsitesPanelView {
                         }
                     }
                 } header: {
-                    sidebarSectionHeader("Results")
+                    sidebarProminentSectionHeader("Results")
                 }
             }
             .sidebarPanelListStyle()
@@ -241,7 +241,7 @@ extension WebsitesPanelView {
                                 websiteListRow(item: item, index: index, allowArchive: true)
                             }
                         } header: {
-                            sidebarSectionHeader("Pinned")
+                            sidebarProminentSectionHeader("Pinned")
                         }
                     }
 
@@ -255,7 +255,7 @@ extension WebsitesPanelView {
                                 websiteListRow(item: item, index: index, allowArchive: true)
                             }
                         } header: {
-                            sidebarSectionHeader("Websites")
+                            sidebarProminentSectionHeader("Websites")
                         }
                     }
                 }
@@ -326,7 +326,7 @@ extension WebsitesPanelView {
                             pendingWebsiteListRow(pending: pending)
                         }
                     } header: {
-                        sidebarSectionHeader("Adding")
+                        sidebarProminentSectionHeader("Adding")
                     }
                 }
                 Section {
@@ -339,7 +339,7 @@ extension WebsitesPanelView {
                         }
                     }
                 } header: {
-                    sidebarSectionHeader("Results")
+                    sidebarProminentSectionHeader("Results")
                 }
             }
             .sidebarPanelListStyle()
@@ -366,7 +366,7 @@ extension WebsitesPanelView {
                             websiteListRow(item: item, index: index, allowArchive: true)
                         }
                     } header: {
-                        sidebarSectionHeader("Pinned")
+                        sidebarProminentSectionHeader("Pinned")
                     }
                 }
 
@@ -380,7 +380,7 @@ extension WebsitesPanelView {
                             websiteListRow(item: item, index: index, allowArchive: true)
                         }
                     } header: {
-                        sidebarSectionHeader("Websites")
+                        sidebarProminentSectionHeader("Websites")
                     }
                 }
             }

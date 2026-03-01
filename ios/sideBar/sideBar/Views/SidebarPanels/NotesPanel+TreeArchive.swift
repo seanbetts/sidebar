@@ -46,14 +46,14 @@ extension NotesPanelView {
                     }
                 }
             } header: {
-                sidebarSectionHeader("Pinned")
+                sidebarProminentSectionHeader("Pinned")
             }
             .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
 
             Section {
                 mainOutlineGroup
             } header: {
-                sidebarSectionHeader("Notes")
+                sidebarProminentSectionHeader("Notes")
             }
 #if !os(macOS)
             Section {

@@ -265,7 +265,7 @@ extension NotesPanelView {
                     }
                 }
             } header: {
-                sidebarSectionHeader("Results")
+                sidebarProminentSectionHeader("Results")
             }
         }
         .sidebarPanelListStyle()

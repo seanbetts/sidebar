@@ -4,4 +4,5 @@ enum SidebarTypography {
     static let primary: AppFontStyle = .body
     static let secondary: AppFontStyle = .caption
     static let tertiary: AppFontStyle = .caption2
+    static let sectionHeader: AppFontStyle = .labelMd
 }

@@ -9,6 +9,13 @@ func sidebarSectionHeader(_ title: String) -> some View {
         .appFont(.caption)
 }
 
+func sidebarProminentSectionHeader(_ title: String) -> some View {
+    Text(title)
+        .appFont(SidebarTypography.sectionHeader)
+        .foregroundStyle(.secondary)
+        .textCase(nil)
+}
+
 extension View {
     @ViewBuilder
     func sidebarPanelListStyle() -> some View {

@@ -282,7 +282,7 @@ extension FilesPanelView {
                             }
                         }
                     } header: {
-                        sidebarSectionHeader("Pinned")
+                        sidebarProminentSectionHeader("Pinned")
                     }
                 }
 
@@ -333,7 +333,7 @@ extension FilesPanelView {
                             }
                         }
                     } header: {
-                        sidebarSectionHeader("Files")
+                        sidebarProminentSectionHeader("Files")
                     }
                 }
             }

@@ -147,7 +147,7 @@ extension ConversationsPanelView {
                         .platformContextMenu(items: conversationContextMenuItemsList(for: conversation))
                     }
                 } header: {
-                    sidebarSectionHeader(group.title)
+                    sidebarProminentSectionHeader(group.title)
                 }
             }
         }
