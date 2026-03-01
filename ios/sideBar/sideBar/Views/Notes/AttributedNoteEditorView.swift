@@ -18,22 +18,22 @@ struct AttributedNoteEditorView: View {
             isEditable: true,
             isSelectable: true,
             syncSelection: true,
-            autoFocus: true
+            autoFocus: true,
+            onTextDidChange: { previous in
+                DispatchQueue.main.async {
+                    viewModel.handleContentChange(previous: previous)
+                }
+            },
+            onSelectionDidChange: {
+                DispatchQueue.main.async {
+                    viewModel.handleSelectionChange()
+                }
+            }
         )
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
             .frame(maxWidth: maxContentWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onChange(of: viewModel.attributedContent) { oldValue, _ in
-                DispatchQueue.main.async {
-                    viewModel.handleContentChange(previous: oldValue)
-                }
-            }
-            .onChange(of: viewModel.selection) { _, _ in
-                DispatchQueue.main.async {
-                    viewModel.handleSelectionChange()
-                }
-            }
             .background(DesignTokens.Colors.background)
     }
 }
@@ -87,6 +87,8 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
     let isSelectable: Bool
     let syncSelection: Bool
     let autoFocus: Bool
+    var onTextDidChange: ((AttributedString) -> Void)?
+    var onSelectionDidChange: (() -> Void)?
     var onTap: ((AttributedTextSelection) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -97,6 +99,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         let textView = UITextView()
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
+        suppressSystemFormattingControls(in: textView)
         let tapRecognizer = UITapGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleTap(_:))
@@ -164,9 +167,6 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         textView.isSelectable = isSelectable
         textView.isScrollEnabled = true
         textView.allowsEditingTextAttributes = false
-        textView.inputAssistantItem.leadingBarButtonGroups = []
-        textView.inputAssistantItem.trailingBarButtonGroups = []
-        textView.textFormattingConfiguration = UITextFormattingViewController.Configuration(groups: [])
         coordinator.tapRecognizer?.isEnabled = onTap != nil
 
         guard autoFocus, isEditable else {
@@ -182,6 +182,12 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             }
             coordinator.didAutoFocus = true
         }
+    }
+
+    private func suppressSystemFormattingControls(in textView: UITextView) {
+        textView.inputAssistantItem.leadingBarButtonGroups = []
+        textView.inputAssistantItem.trailingBarButtonGroups = []
+        textView.textFormattingConfiguration = UITextFormattingViewController.Configuration(groups: [])
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
@@ -215,10 +221,12 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             preferNativeSelectionOnNextUpdate = true
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
+                let previousText = self.parent.text
                 self.parent.text = updatedText
                 if self.parent.syncSelection {
                     self.parent.selection = updatedSelection
                 }
+                self.parent.onTextDidChange?(previousText)
             }
         }
 
@@ -233,6 +241,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
                 guard let self, !self.isUpdating else { return }
                 guard self.parent.syncSelection else { return }
                 self.parent.selection = updatedSelection
+                self.parent.onSelectionDidChange?()
             }
         }
     }
@@ -246,6 +255,8 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
     let isSelectable: Bool
     let syncSelection: Bool
     let autoFocus: Bool
+    var onTextDidChange: ((AttributedString) -> Void)?
+    var onSelectionDidChange: (() -> Void)?
     var onTap: ((AttributedTextSelection) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -405,10 +416,12 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             preferNativeSelectionOnNextUpdate = true
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
+                let previousText = self.parent.text
                 self.parent.text = updatedText
                 if self.parent.syncSelection {
                     self.parent.selection = updatedSelection
                 }
+                self.parent.onTextDidChange?(previousText)
             }
         }
 
@@ -425,6 +438,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
                 guard let self, !self.isUpdating else { return }
                 guard self.parent.syncSelection else { return }
                 self.parent.selection = updatedSelection
+                self.parent.onSelectionDidChange?()
             }
         }
     }
