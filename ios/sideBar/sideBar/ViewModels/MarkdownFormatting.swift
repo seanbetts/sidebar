@@ -42,7 +42,3 @@ extension NoteFormatting {
         }
     }
 }
-
-@available(iOS 26.0, macOS 26.0, *)
-@available(*, unavailable, renamed: "NoteFormatting")
-public typealias MarkdownFormatting = NoteFormatting
