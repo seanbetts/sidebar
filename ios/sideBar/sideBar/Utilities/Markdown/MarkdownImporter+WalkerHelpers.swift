@@ -42,7 +42,8 @@ extension MarkdownToAttributedStringWalker {
             }
             return result
         case is SoftBreak:
-            return AttributedString(blockquoteDepth > 0 ? "\n" : " ")
+            // Preserve authored single-line breaks as real editor lines.
+            return AttributedString("\n")
         case is LineBreak:
             return AttributedString("\n")
         default:
