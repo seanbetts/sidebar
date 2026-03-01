@@ -112,6 +112,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
 
         let updated = bridgeToNSAttributedString(text)
         let nativeSelection = textView.selectedRange
+        let nativeContentOffset = textView.contentOffset
         let preserveNativeSelection = syncSelection &&
             isEditable &&
             textView.isFirstResponder &&
@@ -134,6 +135,13 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
                 if shouldSyncSelection && textView.selectedRange != desiredRange {
                     textView.selectedRange = desiredRange
                 }
+            }
+        }
+        if preserveNativeSelection && textChanged {
+            textView.layoutIfNeeded()
+            let clampedOffset = clampedContentOffset(nativeContentOffset, in: textView)
+            if textView.contentOffset != clampedOffset {
+                textView.setContentOffset(clampedOffset, animated: false)
             }
         }
 
@@ -257,6 +265,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
 
         let updated = bridgeToNSAttributedString(text)
         let nativeSelection = textView.selectedRange()
+        let nativeContentOrigin = scrollView.contentView.bounds.origin
         let isFocused = scrollView.window?.firstResponder === textView
         let preserveNativeSelection = syncSelection &&
             isEditable &&
@@ -280,6 +289,14 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
                 if shouldSyncSelection && textView.selectedRange() != desiredRange {
                     textView.setSelectedRange(desiredRange)
                 }
+            }
+        }
+        if preserveNativeSelection && textChanged {
+            textView.layoutSubtreeIfNeeded()
+            let clampedOrigin = clampedContentOrigin(nativeContentOrigin, in: scrollView)
+            if scrollView.contentView.bounds.origin != clampedOrigin {
+                scrollView.contentView.setBoundsOrigin(clampedOrigin)
+                scrollView.reflectScrolledClipView(scrollView.contentView)
             }
         }
 
@@ -439,3 +456,32 @@ private func clampedRange(_ range: NSRange, maxLength: Int) -> NSRange {
     let safeLength = min(max(range.length, 0), max(0, maxLength - safeLocation))
     return NSRange(location: safeLocation, length: safeLength)
 }
+
+#if os(iOS)
+@available(iOS 26.0, *)
+private func clampedContentOffset(_ offset: CGPoint, in textView: UITextView) -> CGPoint {
+    let inset = textView.adjustedContentInset
+    let minX = -inset.left
+    let minY = -inset.top
+    let maxX = max(minX, textView.contentSize.width - textView.bounds.width + inset.right)
+    let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
+    return CGPoint(
+        x: min(max(offset.x, minX), maxX),
+        y: min(max(offset.y, minY), maxY)
+    )
+}
+#elseif os(macOS)
+@available(macOS 26.0, *)
+private func clampedContentOrigin(_ origin: CGPoint, in scrollView: NSScrollView) -> CGPoint {
+    guard let documentView = scrollView.documentView else {
+        return origin
+    }
+    let contentBounds = scrollView.contentView.bounds
+    let maxX = max(0, documentView.bounds.width - contentBounds.width)
+    let maxY = max(0, documentView.bounds.height - contentBounds.height)
+    return CGPoint(
+        x: min(max(origin.x, 0), maxX),
+        y: min(max(origin.y, 0), maxY)
+    )
+}
+#endif
