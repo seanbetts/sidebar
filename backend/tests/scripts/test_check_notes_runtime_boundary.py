@@ -185,7 +185,7 @@ def test_check_reports_direct_markdown_utility_references_in_native_note_editor(
 def test_check_reports_markdown_layout_style_attribute_references_in_note_dependencies(
     tmp_path: Path,
 ) -> None:
-    """Notes dependency wrappers should fail if markdown layout/style/attribute symbols are referenced."""
+    """Notes dependency wrappers should fail if markdown utility/layout/style/attribute symbols are referenced."""
     dependencies_file = (
         tmp_path / "ios/sideBar/sideBar/Utilities/NoteTextDependencies.swift"
     )
@@ -210,9 +210,21 @@ def test_check_reports_markdown_layout_style_attribute_references_in_note_depend
         }
         """,
     )
+    _write(
+        tmp_path / "ios/sideBar/sideBar/Utilities/NoteTextImporter.swift",
+        """
+        import Foundation
+        struct NoteTextImporter {
+            let importer = MarkdownImporter()
+            let resultType: MarkdownImportResult.Type? = nil
+        }
+        """,
+    )
 
     violations = check(tmp_path)
 
+    assert any("MarkdownImporter" in violation.token for violation in violations)
+    assert any("MarkdownImportResult" in violation.token for violation in violations)
     assert any("MarkdownEditorAttributes" in violation.token for violation in violations)
     assert any("SideBarMarkdownLayout" in violation.token for violation in violations)
     assert any("SideBarMarkdownStyle" in violation.token for violation in violations)

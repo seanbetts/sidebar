@@ -35,6 +35,11 @@ NOTES_SHELL_RELATIVE_PATHS = (
 NOTES_EDITOR_GLOB = "ViewModels/NativeNoteEditorViewModel*.swift"
 NOTES_DEPENDENCY_RELATIVE_PATHS = (
     Path("Utilities/NoteTextDependencies.swift"),
+    Path("Utilities/NoteTextImporter.swift"),
+    Path("Utilities/NoteTextImporter+Walker.swift"),
+    Path("Utilities/NoteTextImporter+WalkerHelpers.swift"),
+    Path("Utilities/NoteTextImporter+InlineStyled.swift"),
+    Path("Utilities/NoteTextImporter+BlankLinePreservation.swift"),
 )
 FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bNativeMarkdownEditorViewModel\b",
@@ -58,6 +63,8 @@ FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bSideBarMarkdownLayout\b",
 )
 FORBIDDEN_NOTES_DEPENDENCY_PATTERNS = (
+    r"\bMarkdownImporter\b",
+    r"\bMarkdownImportResult\b",
     r"\bMarkdownEditorAttributes\b",
     r"\bSideBarMarkdownLayout\b",
     r"\bSideBarMarkdownStyle\b",

@@ -7,18 +7,6 @@ import AppKit
 #endif
 
 @available(iOS 26.0, macOS 26.0, *)
-struct NoteTextImporter {
-    private let importer = MarkdownImporter()
-
-    func attributedString(
-        from content: String,
-        baseFontSize: CGFloat = 16
-    ) -> MarkdownImportResult {
-        importer.attributedString(from: content, baseFontSize: baseFontSize)
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
 enum NoteTextShortcutProcessor {
     struct ShortcutResult {
         let selection: AttributedTextSelection
