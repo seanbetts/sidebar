@@ -334,7 +334,7 @@ extension NotesPanelView {
             } else if !viewModel.searchQuery.trimmed.isEmpty {
                 searchResultsView
             } else {
-                VStack(spacing: 0) {
+                VStack(spacing: DesignTokens.Spacing.xs) {
                     notesTreeListView
                     notesArchiveSection
                 }

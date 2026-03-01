@@ -57,58 +57,56 @@ extension NotesPanelView {
             }
 #if !os(macOS)
             Section {
-                DisclosureGroup(
-                    isExpanded: $isArchiveExpanded,
-                    content: {
-                        if showArchiveLoadingPlaceholder {
-                            archiveLoadingRow(message: "Loading archive...")
-                                .padding(.leading, -DesignTokens.Spacing.sm)
-                                .listRowSeparator(.hidden, edges: .top)
-                        } else if showArchiveEmptyState {
-                            Text(archivedEmptyStateText)
-                                .appFont(.caption)
-                                .foregroundStyle(.secondary)
-                                .listRowSeparator(.hidden, edges: .top)
-                        } else {
-                            OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-                                NotesTreeRow(
-                                    item: item,
-                                    isSelected: viewModel.selectedNoteId == item.id
-                                ) {
-                                    if item.isFile {
-                                        requestNoteSelection(id: item.id)
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                    Divider()
+                        .overlay(DesignTokens.Colors.border)
+                    DisclosureGroup(
+                        isExpanded: $isArchiveExpanded,
+                        content: {
+                            if showArchiveLoadingPlaceholder {
+                                archiveLoadingRow(message: "Loading archive...")
+                                    .padding(.leading, -DesignTokens.Spacing.sm)
+                                    .listRowSeparator(.hidden, edges: .top)
+                            } else if showArchiveEmptyState {
+                                Text(archivedEmptyStateText)
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .listRowSeparator(.hidden, edges: .top)
+                            } else {
+                                OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                                    NotesTreeRow(
+                                        item: item,
+                                        isSelected: viewModel.selectedNoteId == item.id
+                                    ) {
+                                        if item.isFile {
+                                            requestNoteSelection(id: item.id)
+                                        }
+                                    } onRename: {
+                                        beginRename(for: item)
+                                    } onDelete: {
+                                        confirmDelete(for: item)
                                     }
-                                } onRename: {
-                                    beginRename(for: item)
-                                } onDelete: {
-                                    confirmDelete(for: item)
+                                    .padding(.leading, -DesignTokens.Spacing.sm)
+                                    .platformContextMenu(items: noteContextMenuItemsList(for: item))
                                 }
-                                .padding(.leading, -DesignTokens.Spacing.sm)
-                                .platformContextMenu(items: noteContextMenuItemsList(for: item))
+                                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                             }
-                            .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
+                        },
+                        label: {
+                            archiveLabel
                         }
-                    },
-                    label: {
-                        archiveLabel
-                    }
-                )
+                    )
+                }
+                .padding(.top, DesignTokens.Spacing.sm)
                 .listRowInsets(
                     EdgeInsets(
-                        top: DesignTokens.Spacing.sm,
+                        top: 0,
                         leading: DesignTokens.Spacing.sm,
                         bottom: 0,
                         trailing: DesignTokens.Spacing.sm
                     )
                 )
-                .listRowBackground(
-                    DesignTokens.Colors.sidebarRowBackground
-                        .overlay(alignment: .top) {
-                            Rectangle()
-                                .fill(DesignTokens.Colors.border)
-                                .frame(height: 1)
-                        }
-                )
+                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
             }
 #endif
         }

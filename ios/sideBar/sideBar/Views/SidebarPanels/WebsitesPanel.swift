@@ -261,46 +261,44 @@ extension WebsitesPanelView {
                 }
 #if !os(macOS)
                 Section {
-                    DisclosureGroup(
-                        isExpanded: $isArchiveExpanded,
-                        content: {
-                            if showArchiveLoadingPlaceholder {
-                                archiveLoadingRow(message: "Loading archive...")
-                                    .padding(.leading, -DesignTokens.Spacing.sm)
-                                    .listRowSeparator(.hidden, edges: .top)
-                            } else if showArchiveEmptyState {
-                                Text(archivedEmptyStateText)
-                                    .appFont(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .listRowSeparator(.hidden, edges: .top)
-                            } else {
-                                ForEach(archivedItems, id: \.id) { item in
-                                    let index = staggerIndex(for: item.id, section: "archived")
-                                    websiteListRow(item: item, index: index, allowArchive: false)
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                        Divider()
+                            .overlay(DesignTokens.Colors.border)
+                        DisclosureGroup(
+                            isExpanded: $isArchiveExpanded,
+                            content: {
+                                if showArchiveLoadingPlaceholder {
+                                    archiveLoadingRow(message: "Loading archive...")
                                         .padding(.leading, -DesignTokens.Spacing.sm)
+                                        .listRowSeparator(.hidden, edges: .top)
+                                } else if showArchiveEmptyState {
+                                    Text(archivedEmptyStateText)
+                                        .appFont(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .listRowSeparator(.hidden, edges: .top)
+                                } else {
+                                    ForEach(archivedItems, id: \.id) { item in
+                                        let index = staggerIndex(for: item.id, section: "archived")
+                                        websiteListRow(item: item, index: index, allowArchive: false)
+                                            .padding(.leading, -DesignTokens.Spacing.sm)
+                                    }
                                 }
+                            },
+                            label: {
+                                archiveLabel
                             }
-                        },
-                        label: {
-                            archiveLabel
-                        }
-                    )
+                        )
+                    }
+                    .padding(.top, DesignTokens.Spacing.sm)
                     .listRowInsets(
                         EdgeInsets(
-                            top: DesignTokens.Spacing.sm,
+                            top: 0,
                             leading: DesignTokens.Spacing.sm,
                             bottom: 0,
                             trailing: DesignTokens.Spacing.sm
                         )
                     )
-                    .listRowBackground(
-                        DesignTokens.Colors.sidebarRowBackground
-                            .overlay(alignment: .top) {
-                                Rectangle()
-                                    .fill(DesignTokens.Colors.border)
-                                    .frame(height: 1)
-                            }
-                    )
+                    .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                 }
 #endif
             }
@@ -357,7 +355,7 @@ extension WebsitesPanelView {
                 await viewModel.load()
             }
         } else {
-            VStack(spacing: 0) {
+            VStack(spacing: DesignTokens.Spacing.xs) {
                 websitesListView
                 websitesArchiveSection
             }
