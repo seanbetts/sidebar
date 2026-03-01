@@ -20,13 +20,17 @@ struct AttributedNoteEditorView: View {
             syncSelection: true,
             autoFocus: true,
             onTextDidChange: { previous, sourceGeneration in
-                viewModel.handleContentChange(
-                    previous: previous,
-                    sourceGeneration: sourceGeneration
-                )
+                DispatchQueue.main.async {
+                    viewModel.handleContentChange(
+                        previous: previous,
+                        sourceGeneration: sourceGeneration
+                    )
+                }
             },
             onSelectionDidChange: { sourceGeneration in
-                viewModel.handleSelectionChange(sourceGeneration: sourceGeneration)
+                DispatchQueue.main.async {
+                    viewModel.handleSelectionChange(sourceGeneration: sourceGeneration)
+                }
             }
         )
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
@@ -116,7 +120,6 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         context.coordinator.isUpdating = true
         configure(textView, coordinator: context.coordinator)
 
-        let skipTextSyncFromNativeEdit = context.coordinator.skipNextTextSyncFromNativeEdit
         let synchronizedTextLength: Int
         let nativeSelection = textView.selectedRange
         let nativeContentOffset = textView.contentOffset
@@ -125,16 +128,11 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             textView.isFirstResponder &&
             context.coordinator.preferNativeSelectionOnNextUpdate
         var textChanged = false
-        if skipTextSyncFromNativeEdit {
-            context.coordinator.skipNextTextSyncFromNativeEdit = false
-            synchronizedTextLength = textView.attributedText.length
-        } else {
-            let bridged = bridgeToNSAttributedString(text)
-            synchronizedTextLength = bridged.length
-            if !textView.attributedText.isEqual(to: bridged) {
-                textView.attributedText = bridged
-                textChanged = true
-            }
+        let bridged = bridgeToNSAttributedString(text)
+        synchronizedTextLength = bridged.length
+        if !textView.attributedText.isEqual(to: bridged) {
+            textView.attributedText = bridged
+            textChanged = true
         }
 
         if syncSelection {
@@ -203,7 +201,6 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         var isUpdating: Bool = false
         var didAutoFocus: Bool = false
         var preferNativeSelectionOnNextUpdate: Bool = false
-        var skipNextTextSyncFromNativeEdit: Bool = false
         var contentChangeGeneration: Int = 0
         var selectionChangeGeneration: Int = 0
         weak var tapRecognizer: UITapGestureRecognizer?
@@ -230,7 +227,6 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             let updatedText = bridgeToAttributedString(textView.attributedText)
             let updatedSelection = selectionFromRange(textView.selectedRange, in: updatedText)
             preferNativeSelectionOnNextUpdate = true
-            skipNextTextSyncFromNativeEdit = true
             contentChangeGeneration &+= 1
             let generation = contentChangeGeneration
             DispatchQueue.main.async { [weak self] in
@@ -314,8 +310,7 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             isFocused &&
             context.coordinator.preferNativeSelectionOnNextUpdate
         let syncResult = synchronizeMacText(
-            textView: textView,
-            coordinator: context.coordinator
+            textView: textView
         )
         synchronizeMacSelection(
             textView: textView,
@@ -338,13 +333,8 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
     }
 
     private func synchronizeMacText(
-        textView: NSTextView,
-        coordinator: Coordinator
+        textView: NSTextView
     ) -> (synchronizedTextLength: Int, textChanged: Bool) {
-        if coordinator.skipNextTextSyncFromNativeEdit {
-            coordinator.skipNextTextSyncFromNativeEdit = false
-            return (textView.attributedString().length, false)
-        }
         let bridged = bridgeToNSAttributedString(text)
         let synchronizedTextLength = bridged.length
         guard !textView.attributedString().isEqual(to: bridged) else {
@@ -433,7 +423,6 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
         var isUpdating: Bool = false
         var didAutoFocus: Bool = false
         var preferNativeSelectionOnNextUpdate: Bool = false
-        var skipNextTextSyncFromNativeEdit: Bool = false
         var contentChangeGeneration: Int = 0
         var selectionChangeGeneration: Int = 0
         weak var tapRecognizer: NSClickGestureRecognizer?
@@ -463,7 +452,6 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             let updatedText = bridgeToAttributedString(textView.attributedString())
             let updatedSelection = selectionFromRange(textView.selectedRange(), in: updatedText)
             preferNativeSelectionOnNextUpdate = true
-            skipNextTextSyncFromNativeEdit = true
             contentChangeGeneration &+= 1
             let generation = contentChangeGeneration
             DispatchQueue.main.async { [weak self] in
