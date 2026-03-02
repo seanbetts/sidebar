@@ -66,11 +66,13 @@ public final class NativeNoteEditorViewModel: ObservableObject {
 
     public func loadText(_ text: String) {
         let result = importer.attributedString(from: text, baseFontSize: baseFontSize)
-        attributedContent = result.attributedString
+        var detectedContent = result.attributedString
+        _ = applyDetectedLinks(in: &detectedContent)
+        attributedContent = detectedContent
         selection = AttributedTextSelection()
         lastSavedContent = text
         lastSavedCanonicalContent =
-            NotesRichTextCodec.encodeAttributedStringToBase64RTF(result.attributedString)
+            NotesRichTextCodec.encodeAttributedStringToBase64RTF(detectedContent)
             ?? NotesRichTextCodec.encodePlainTextToBase64RTF(text)
         hasUnsavedChanges = false
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
@@ -173,6 +175,9 @@ public final class NativeNoteEditorViewModel: ObservableObject {
             didApplyShortcutMutation = true
         } else if updated != attributedContent {
             attributedContent = updated
+            didApplyShortcutMutation = true
+        }
+        if applyDetectedLinks(in: &attributedContent) {
             didApplyShortcutMutation = true
         }
 

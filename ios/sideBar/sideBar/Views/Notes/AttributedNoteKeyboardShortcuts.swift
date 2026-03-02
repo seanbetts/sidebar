@@ -4,23 +4,13 @@ import SwiftUI
 enum AttributedNoteKeyboardShortcutKey {
     case bold
     case italic
-    case strikethrough
-    case inlineCode
-    case promoteHeading
-    case demoteHeading
-    case orderedList
+    case underline
     case bulletList
-    case taskList
-    case blockquote
-    case codeBlock
-    case horizontalRule
-    case suppressUnderline
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 enum AttributedNoteKeyboardShortcutAction: Equatable {
     case formatting(NoteFormatting)
-    case suppressSystemUnderline
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -39,49 +29,13 @@ enum AttributedNoteKeyboardShortcuts {
             modifiers: [.command],
             action: .formatting(.italic)
         ),
-        .strikethrough: ShortcutBinding(
-            modifiers: [.command, .shift],
-            action: .formatting(.strikethrough)
-        ),
-        .inlineCode: ShortcutBinding(
+        .underline: ShortcutBinding(
             modifiers: [.command],
-            action: .formatting(.inlineCode)
-        ),
-        .promoteHeading: ShortcutBinding(
-            modifiers: [.command],
-            action: .formatting(.promoteHeading)
-        ),
-        .demoteHeading: ShortcutBinding(
-            modifiers: [.command],
-            action: .formatting(.demoteHeading)
-        ),
-        .orderedList: ShortcutBinding(
-            modifiers: [.command, .shift],
-            action: .formatting(.orderedList)
+            action: .formatting(.underline)
         ),
         .bulletList: ShortcutBinding(
             modifiers: [.command, .shift],
             action: .formatting(.bulletList)
-        ),
-        .taskList: ShortcutBinding(
-            modifiers: [.command, .shift],
-            action: .formatting(.taskList)
-        ),
-        .blockquote: ShortcutBinding(
-            modifiers: [.command, .shift],
-            action: .formatting(.blockquote)
-        ),
-        .codeBlock: ShortcutBinding(
-            modifiers: [.command, .shift],
-            action: .formatting(.codeBlock)
-        ),
-        .horizontalRule: ShortcutBinding(
-            modifiers: [.command, .shift],
-            action: .formatting(.horizontalRule)
-        ),
-        .suppressUnderline: ShortcutBinding(
-            modifiers: [.command],
-            action: .suppressSystemUnderline
         )
     ]
 

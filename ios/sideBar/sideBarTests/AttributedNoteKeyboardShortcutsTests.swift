@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class AttributedNoteKeyboardShortcutsTests: XCTestCase {
-    func testInlineFormattingShortcutsMapToToolbarActions() {
+    func testSupportedFormattingShortcutsMapToToolbarActions() {
         assertShortcut(
             key: .bold,
             modifiers: [.command],
@@ -17,75 +17,21 @@ final class AttributedNoteKeyboardShortcutsTests: XCTestCase {
             expected: .formatting(.italic)
         )
         assertShortcut(
-            key: .strikethrough,
-            modifiers: [.command, .shift],
-            expected: .formatting(.strikethrough)
-        )
-        assertShortcut(
-            key: .inlineCode,
+            key: .underline,
             modifiers: [.command],
-            expected: .formatting(.inlineCode)
+            expected: .formatting(.underline)
         )
-    }
-
-    func testHeadingShortcutsMapToToolbarActions() {
-        assertShortcut(
-            key: .promoteHeading,
-            modifiers: [.command],
-            expected: .formatting(.promoteHeading)
-        )
-        assertShortcut(
-            key: .demoteHeading,
-            modifiers: [.command],
-            expected: .formatting(.demoteHeading)
-        )
-    }
-
-    func testBlockShortcutsMapToToolbarActions() {
         assertShortcut(
             key: .bulletList,
             modifiers: [.command, .shift],
             expected: .formatting(.bulletList)
-        )
-        assertShortcut(
-            key: .orderedList,
-            modifiers: [.command, .shift],
-            expected: .formatting(.orderedList)
-        )
-        assertShortcut(
-            key: .taskList,
-            modifiers: [.command, .shift],
-            expected: .formatting(.taskList)
-        )
-        assertShortcut(
-            key: .blockquote,
-            modifiers: [.command, .shift],
-            expected: .formatting(.blockquote)
-        )
-        assertShortcut(
-            key: .codeBlock,
-            modifiers: [.command, .shift],
-            expected: .formatting(.codeBlock)
-        )
-        assertShortcut(
-            key: .horizontalRule,
-            modifiers: [.command, .shift],
-            expected: .formatting(.horizontalRule)
-        )
-    }
-
-    func testCommandUSuppressesSystemUnderlineShortcut() {
-        assertShortcut(
-            key: .suppressUnderline,
-            modifiers: [.command],
-            expected: .suppressSystemUnderline
         )
     }
 
     func testShortcutsRequireExpectedModifierCombination() {
         assertNoShortcut(key: .bold, modifiers: [])
         assertNoShortcut(key: .bulletList, modifiers: [.command])
-        assertNoShortcut(key: .horizontalRule, modifiers: [.command, .control])
+        assertNoShortcut(key: .underline, modifiers: [.command, .control])
     }
 
     private func assertShortcut(

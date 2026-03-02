@@ -6,7 +6,9 @@ import SwiftUI
 extension NativeNoteEditorViewModel {
     public func loadDocument(canonicalContent: String, plainText: String) {
         if let attributed = NotesRichTextCodec.decodeBase64RTFToAttributedString(canonicalContent) {
-            attributedContent = attributed
+            var detectedContent = attributed
+            _ = applyDetectedLinks(in: &detectedContent)
+            attributedContent = detectedContent
             selection = AttributedTextSelection()
             lastSavedContent = plainText
             lastSavedCanonicalContent = canonicalContent

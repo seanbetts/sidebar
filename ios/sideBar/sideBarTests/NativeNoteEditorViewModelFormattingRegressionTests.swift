@@ -34,19 +34,11 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedLine), .heading2)
     }
 
-    func testHandleContentChangeRemovesUnderlineFromNonLinksOnly() async {
+    func testHandleContentChangePreservesUnderlineStyling() async {
         let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("plain\nlinked")
-        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
-
-        let firstLineRange = firstLine(in: viewModel.attributedContent)
-        var secondLineRange = lineRanges(in: viewModel.attributedContent)[1]
-
-        viewModel.attributedContent[firstLineRange].underlineStyle = .single
-        viewModel.attributedContent[secondLineRange].underlineStyle = .single
-        viewModel.attributedContent[secondLineRange].link = URL(string: "https://example.com")!
+        viewModel.loadText("plain text")
+        let lineRange = firstLine(in: viewModel.attributedContent)
+        viewModel.attributedContent[lineRange].underlineStyle = .single
 
         let previous = viewModel.attributedContent
         let insertion = viewModel.attributedContent.endIndex
@@ -54,10 +46,41 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
 
         viewModel.handleContentChange(previous: previous)
 
-        let updatedFirstLine = firstLine(in: viewModel.attributedContent)
-        secondLineRange = lineRanges(in: viewModel.attributedContent)[1]
-        XCTAssertNil(viewModel.attributedContent[updatedFirstLine].underlineStyle)
-        XCTAssertEqual(viewModel.attributedContent[secondLineRange].underlineStyle, .single)
+        let updatedLine = firstLine(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent[updatedLine].underlineStyle, .single)
+    }
+
+    func testLoadTextDetectsLinksUsingDataDetector() async {
+        let viewModel = NativeNoteEditorViewModel()
+        let urlString = "https://example.com"
+        viewModel.loadText("Open \(urlString) for details")
+
+        guard let linkRange = attributedRange(matching: urlString, in: viewModel.attributedContent) else {
+            XCTFail("Expected detected link range")
+            return
+        }
+
+        XCTAssertEqual(viewModel.attributedContent[linkRange].link, URL(string: urlString))
+        XCTAssertEqual(viewModel.attributedContent[linkRange].underlineStyle, .single)
+    }
+
+    func testHandleContentChangeDetectsNewLinkText() async {
+        let viewModel = NativeNoteEditorViewModel()
+        let urlString = "https://example.com"
+        viewModel.loadText("hello")
+        let previous = viewModel.attributedContent
+
+        viewModel.attributedContent = AttributedString("hello \(urlString)")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+        viewModel.handleContentChange(previous: previous)
+
+        guard let linkRange = attributedRange(matching: urlString, in: viewModel.attributedContent) else {
+            XCTFail("Expected detected link range")
+            return
+        }
+
+        XCTAssertEqual(viewModel.attributedContent[linkRange].link, URL(string: urlString))
     }
 
     private func firstLine(in text: AttributedString) -> Range<AttributedString.Index> {
@@ -91,5 +114,18 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
         }
 
         return ranges
+    }
+
+    private func attributedRange(
+        matching substring: String,
+        in text: AttributedString
+    ) -> Range<AttributedString.Index>? {
+        let plain = String(text.characters)
+        guard let stringRange = plain.range(of: substring) else { return nil }
+        let lowerOffset = plain.distance(from: plain.startIndex, to: stringRange.lowerBound)
+        let upperOffset = plain.distance(from: plain.startIndex, to: stringRange.upperBound)
+        let lower = text.index(text.startIndex, offsetByCharacters: lowerOffset)
+        let upper = text.index(text.startIndex, offsetByCharacters: upperOffset)
+        return lower..<upper
     }
 }
