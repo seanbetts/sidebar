@@ -6,11 +6,6 @@ import UIKit
 import AppKit
 #endif
 
-enum NotesEditorRenderingMode: Equatable {
-    case attributed
-    case unavailable
-}
-
 struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     @ObservedObject var editorViewModel: NotesEditorViewModel
@@ -158,20 +153,11 @@ extension NotesDetailView {
 
     @ViewBuilder
     private var content: some View {
-        if let activeNote = viewModel.activeNote {
-            if activeNote.isCorrupt {
-                corruptionStateView(note: activeNote)
-            } else {
-                switch editorRenderingMode {
-                case .attributed:
-                    AttributedNoteEditorContainer(
-                        editorViewModel: editorViewModel,
-                        maxContentWidth: contentMaxWidth
-                    )
-                case .unavailable:
-                    nativeEditorUnavailableView
-                }
-            }
+        if viewModel.activeNote != nil {
+            AttributedNoteEditorContainer(
+                editorViewModel: editorViewModel,
+                maxContentWidth: contentMaxWidth
+            )
         } else if viewModel.selectedNoteId != nil {
             if let error = viewModel.errorMessage {
                 PlaceholderView(
@@ -203,72 +189,6 @@ extension NotesDetailView {
                 WelcomeEmptyView()
             }
         }
-    }
-
-    private var nativeEditorUnavailableView: some View {
-        PlaceholderView(
-            title: "Editor unavailable",
-            subtitle: "Notes editing requires the native rich text editor on this OS version.",
-            actionTitle: nil
-        ) { }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func editorRenderingModeForCurrentOS() -> NotesEditorRenderingMode {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            return .attributed
-        }
-        return .unavailable
-    }
-
-    private var editorRenderingMode: NotesEditorRenderingMode {
-        Self.resolveEditorRenderingMode(osSupportsNative: editorRenderingModeForCurrentOS() == .attributed)
-    }
-
-    static func resolveEditorRenderingMode(osSupportsNative: Bool) -> NotesEditorRenderingMode {
-        if osSupportsNative {
-            return .attributed
-        }
-        return .unavailable
-    }
-
-    private func corruptionStateView(note: NotePayload) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            Text("This note content is corrupted")
-                .appFont(.bodySemibold)
-                .foregroundStyle(DesignTokens.Colors.textPrimary)
-            Text(
-                "Stored content is not valid canonical RTF. "
-                    + "You can copy available plain text, restore from legacy content, or report this issue."
-            )
-                .appFont(.subheadline)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
-
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                Button("Copy plain text") {
-                    copyCorruptPlainText(note)
-                }
-                .buttonStyle(.bordered)
-                .disabled(note.plainText.isEmpty)
-
-                Button("Restore from legacy") {
-                    Task {
-                        await restoreCorruptNoteFromLegacy(note)
-                    }
-                }
-                .buttonStyle(.bordered)
-                .disabled((note.legacyContent ?? "").isEmpty)
-
-                Button("Report issue") {
-                    copyCorruptionReport(note)
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-        .padding(.horizontal, NoteTextLayout.horizontalPadding)
-        .padding(.vertical, NoteTextLayout.verticalPadding)
-        .frame(maxWidth: contentMaxWidth, alignment: .leading)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var contentWithToolbar: some View {
