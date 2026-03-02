@@ -35,7 +35,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     typealias PlatformColor = NSColor
 #endif
 
-    let importer = NoteTextImporter()
     var baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
     var inlineCodeFontSize: CGFloat {
         NoteTextTypography.inlineCodeFontSize(baseFontSize: baseFontSize)
@@ -64,21 +63,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
 
     public func setBaseFontSize(_ size: CGFloat) {
         baseFontSize = max(12, size)
-    }
-
-    public func loadText(_ text: String) {
-        let result = importer.attributedString(from: text, baseFontSize: baseFontSize)
-        var detectedContent = result.attributedString
-        _ = applyDetectedLinks(in: &detectedContent)
-        attributedContent = detectedContent
-        selection = AttributedTextSelection()
-        lastSavedContent = text
-        lastSavedCanonicalContent =
-            NotesRichTextCodec.encodeAttributedStringToBase64RTF(detectedContent)
-            ?? NotesRichTextCodec.encodePlainTextToBase64RTF(text)
-        hasUnsavedChanges = false
-        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
-        updatePrefixVisibility()
     }
 
     public func currentPlainText() -> String {

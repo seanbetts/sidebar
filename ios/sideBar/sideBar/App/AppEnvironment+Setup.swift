@@ -91,7 +91,8 @@ extension AppEnvironment {
 
         notesRuntime.objectWillChange
             .sink { [weak self] _ in
-                DispatchQueue.main.async {
+                Task { @MainActor [weak self] in
+                    await Task.yield()
                     self?.objectWillChange.send()
                 }
             }

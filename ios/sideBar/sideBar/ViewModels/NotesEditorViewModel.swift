@@ -56,6 +56,7 @@ public final class NotesEditorViewModel: ObservableObject {
             isSaving = false
             lastSavedAt = nil
             saveErrorMessage = nil
+            isReadOnly = true
             isQueuedForSync = false
             conflict = nil
             syncRequestedWhileSaving = false
@@ -75,6 +76,7 @@ public final class NotesEditorViewModel: ObservableObject {
         isSaving = false
         lastSavedAt = nil
         saveErrorMessage = nil
+        isReadOnly = false
         isQueuedForSync = false
         conflict = nil
         if !isSameNote {

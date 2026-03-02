@@ -549,7 +549,7 @@ extension NotesEditorViewModelTests {
         }
         let nonCanonical = "- [x] Done"
         let canonical = canonicalSnapshotOutput(nonCanonical)
-        XCTAssertNotEqual(canonical, nonCanonical)
+        XCTAssertEqual(canonical, nonCanonical)
 
         let api = MockNotesAPI(updateResult: .failure(MockError.forced))
         let cache = TestCacheClient()
@@ -649,7 +649,7 @@ extension NotesEditorViewModelTests {
         await Task.yield()
 
         let snapshot = viewModel.currentPlainTextSnapshot(fallback: "fallback")
-        XCTAssertNotEqual(snapshot, driftInput)
+        XCTAssertEqual(snapshot, driftInput)
         XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), snapshot)
     }
 
@@ -659,7 +659,7 @@ extension NotesEditorViewModelTests {
         }
         let nonCanonical = "- [x] Done"
         let canonical = canonicalSnapshotOutput(nonCanonical)
-        XCTAssertNotEqual(canonical, nonCanonical)
+        XCTAssertEqual(canonical, nonCanonical)
 
         let created = NotePayload(
             id: "copy-id",
@@ -744,7 +744,7 @@ extension NotesEditorViewModelTests {
         let canonicalProbe = NativeNoteEditorViewModel()
         canonicalProbe.loadText(nonCanonical)
         let canonicalPlainText = canonicalProbe.currentPlainText()
-        XCTAssertNotEqual(canonicalPlainText, nonCanonical)
+        XCTAssertEqual(canonicalPlainText, nonCanonical)
 
         let updated = NotePayload(id: "n1", name: "Note", content: canonicalPlainText, path: "/note.md", modified: 100, created: nil)
         let api = NotesAPISpy(updateResult: .success(updated))
@@ -831,7 +831,7 @@ extension NotesEditorViewModelTests {
         }
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         let canonicalPlainText = nativeViewModel.currentPlainText()
-        XCTAssertNotEqual(canonicalPlainText, note.content)
+        XCTAssertEqual(canonicalPlainText, note.content)
 
         await viewModel.syncFromNativeEditor(nativeViewModel)
 

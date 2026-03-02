@@ -209,7 +209,11 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
                 if self.parent.syncSelection {
                     self.parent.selection = updatedSelection
                 }
-                self.parent.onTextDidChange?(previousText, generation)
+                guard let onTextDidChange = self.parent.onTextDidChange else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, !self.isUpdating else { return }
+                    onTextDidChange(previousText, generation)
+                }
             }
         }
 
@@ -226,7 +230,11 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
                 guard let self, !self.isUpdating else { return }
                 guard self.parent.syncSelection else { return }
                 self.parent.selection = updatedSelection
-                self.parent.onSelectionDidChange?(generation)
+                guard let onSelectionDidChange = self.parent.onSelectionDidChange else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, !self.isUpdating else { return }
+                    onSelectionDidChange(generation)
+                }
             }
         }
     }
@@ -434,7 +442,11 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
                 if self.parent.syncSelection {
                     self.parent.selection = updatedSelection
                 }
-                self.parent.onTextDidChange?(previousText, generation)
+                guard let onTextDidChange = self.parent.onTextDidChange else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, !self.isUpdating else { return }
+                    onTextDidChange(previousText, generation)
+                }
             }
         }
 
@@ -453,7 +465,11 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
                 guard let self, !self.isUpdating else { return }
                 guard self.parent.syncSelection else { return }
                 self.parent.selection = updatedSelection
-                self.parent.onSelectionDidChange?(generation)
+                guard let onSelectionDidChange = self.parent.onSelectionDidChange else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, !self.isUpdating else { return }
+                    onSelectionDidChange(generation)
+                }
             }
         }
     }
