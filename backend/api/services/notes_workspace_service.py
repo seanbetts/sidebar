@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy.orm import Session, load_only
-from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.exceptions import BadRequestError, NoteNotFoundError
@@ -14,11 +13,7 @@ from api.models.note import Note
 from api.schemas.filters import NoteFilters
 from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
-from api.services.notes_write_contract import (
-    apply_canonical_note_metadata,
-    diagnose_note_read_canonicality,
-    plain_text_to_rtf_base64,
-)
+from api.services.notes_write_contract import plain_text_to_rtf_base64
 from api.services.workspace_service import WorkspaceService
 from api.utils.search import build_text_search_filter
 from api.utils.validation import parse_uuid
@@ -35,25 +30,21 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             return None
 
     @staticmethod
+    def _is_archive_folder(folder_path: str) -> bool:
+        normalized = (folder_path or "").strip("/")
+        return normalized == "Archive" or normalized.startswith("Archive/")
+
+    @staticmethod
     def build_note_payload(note: Note, *, include_content: bool = True) -> dict:
         """Build a note payload for API responses."""
-        metadata = note.metadata_ or {}
-        diagnose_note_read_canonicality(
-            note_id=note.id,
-            user_id=note.user_id,
-            context="workspace.build_note_payload",
-            content=note.content if include_content else None,
-            metadata=metadata,
-            require_content=include_content,
-        )
         payload = {
             "id": str(note.id),
             "name": note.title,
             "path": str(note.id),
             "modified": note.updated_at.timestamp() if note.updated_at else None,
             "created": note.created_at.timestamp() if note.created_at else None,
-            "plain_text": metadata.get("plain_text", ""),
-            "content_format": metadata.get("content_format", "rtf"),
+            "plain_text": note.plain_text or "",
+            "content_format": note.content_format or "rtf",
         }
         if include_content:
             payload["content"] = note.content
@@ -73,7 +64,12 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             load_only(
                 Note.id,
                 Note.title,
-                Note.metadata_,
+                Note.plain_text,
+                Note.content_format,
+                Note.folder_path,
+                Note.pinned,
+                Note.pinned_order,
+                Note.is_folder_marker,
                 Note.updated_at,
                 Note.created_at,
                 Note.is_archived,
@@ -124,8 +120,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             .filter(
                 Note.user_id == user_id,
                 Note.deleted_at.is_(None),
+                Note.is_folder_marker.is_(False),
                 build_text_search_filter(
-                    [Note.title, Note.metadata_["plain_text"].astext],
+                    [Note.title, Note.plain_text],
                     query,
                 ),
             )
@@ -136,23 +133,14 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
     @classmethod
     def _item_to_dict(cls, item: Note, **kwargs: object) -> dict:
-        metadata = item.metadata_ or {}
-        diagnose_note_read_canonicality(
-            note_id=item.id,
-            user_id=item.user_id,
-            context="workspace.item_to_dict",
-            content=None,
-            metadata=metadata,
-            require_content=False,
-        )
         return {
             "name": item.title,
             "path": str(item.id),
             "type": "file",
             "modified": item.updated_at.timestamp() if item.updated_at else None,
             "created": item.created_at.timestamp() if item.created_at else None,
-            "pinned": bool(metadata.get("pinned")),
-            "pinned_order": metadata.get("pinned_order"),
+            "pinned": bool(item.pinned),
+            "pinned_order": item.pinned_order,
             "archived": bool(item.is_archived),
         }
 
@@ -174,7 +162,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             .all()
         )
         for note in notes:
-            note_folder = (note.metadata_ or {}).get("folder") or ""
+            note_folder = (note.folder_path or "").strip("/")
             if note_folder == path or note_folder.startswith(f"{path}/"):
                 return {"success": True, "exists": True}
 
@@ -183,10 +171,13 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             user_id=user_id,
             title="__folder__",
             content=plain_text_to_rtf_base64(""),
-            metadata_=apply_canonical_note_metadata(
-                {"folder": path, "pinned": False, "folder_marker": True},
-                "",
-            ),
+            plain_text="",
+            content_format="rtf",
+            folder_path=path,
+            pinned=False,
+            pinned_order=None,
+            is_folder_marker=True,
+            is_archived=NotesWorkspaceService._is_archive_folder(path),
             created_at=now,
             updated_at=now,
             last_opened_at=None,
@@ -218,12 +209,13 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             .all()
         )
         for note in notes:
-            folder = (note.metadata_ or {}).get("folder") or ""
+            folder = (note.folder_path or "").strip("/")
             if folder == old_path or folder.startswith(f"{old_path}/"):
                 updated_folder = folder.replace(old_path, new_folder, 1)
-                note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
-                if hasattr(note, "_sa_instance_state"):
-                    flag_modified(note, "metadata_")
+                note.folder_path = updated_folder
+                note.is_archived = NotesWorkspaceService._is_archive_folder(
+                    updated_folder
+                )
                 note.updated_at = datetime.now(UTC)
         db.commit()
         return {"success": True, "newPath": f"folder:{new_folder}"}
@@ -258,12 +250,13 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             .all()
         )
         for note in notes:
-            folder = (note.metadata_ or {}).get("folder") or ""
+            folder = (note.folder_path or "").strip("/")
             if folder == old_path or folder.startswith(f"{old_path}/"):
                 updated_folder = folder.replace(old_path, new_folder, 1)
-                note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
-                if hasattr(note, "_sa_instance_state"):
-                    flag_modified(note, "metadata_")
+                note.folder_path = updated_folder
+                note.is_archived = NotesWorkspaceService._is_archive_folder(
+                    updated_folder
+                )
                 note.updated_at = datetime.now(UTC)
         db.commit()
         return {"success": True, "newPath": f"folder:{new_folder}"}
@@ -287,7 +280,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         )
         now = datetime.now(UTC)
         for note in notes:
-            note_folder = (note.metadata_ or {}).get("folder") or ""
+            note_folder = (note.folder_path or "").strip("/")
             if note_folder == path or note_folder.startswith(f"{path}/"):
                 note.deleted_at = now
                 note.updated_at = now
@@ -488,9 +481,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         if not note:
             raise NoteNotFoundError("Note not found")
 
-        metadata = note.metadata_ or {}
-        plain_text = metadata.get("plain_text", "")
-        safe_plain_text = plain_text if isinstance(plain_text, str) else ""
+        safe_plain_text = note.plain_text or ""
         filename = (
             note.title if note.title.lower().endswith(".txt") else f"{note.title}.txt"
         )

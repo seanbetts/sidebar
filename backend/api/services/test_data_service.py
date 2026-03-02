@@ -343,11 +343,11 @@ class TestDataService:
                 continue
             metadata = note.metadata_ or {}
             tags = metadata.get("tags") or []
-            folder = metadata.get("folder") or ""
+            folder = (note.folder_path or "").strip("/")
             if seed_tag in tags:
                 notes.append(note)
                 continue
-            if metadata.get("folder_marker") and folder in folder_set:
+            if note.is_folder_marker and folder in folder_set:
                 notes.append(note)
 
         websites = [

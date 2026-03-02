@@ -35,7 +35,9 @@ def test_prompt_context_service_order_and_truncation(test_db):
         user_id=user_id,
         title="Daily Log",
         content="Note body",
-        metadata_={"folder": "work"},
+        plain_text="Note body",
+        content_format="rtf",
+        folder_path="work",
         last_opened_at=now,
     )
     website = Website(
@@ -164,7 +166,9 @@ def test_recent_activity_cache_hit(test_db):
         user_id=user_id,
         title="Morning Notes",
         content="Note body",
-        metadata_={"folder": "work"},
+        plain_text="Note body",
+        content_format="rtf",
+        folder_path="work",
         last_opened_at=now,
     )
     test_db.add(note)
@@ -178,7 +182,9 @@ def test_recent_activity_cache_hit(test_db):
         user_id=user_id,
         title="Late Add",
         content="Extra",
-        metadata_={"folder": "work"},
+        plain_text="Extra",
+        content_format="rtf",
+        folder_path="work",
         last_opened_at=now + timedelta(minutes=1),
     )
     test_db.add(new_note)
@@ -202,7 +208,9 @@ def test_recent_activity_cache_expiry(test_db):
         user_id=user_id,
         title="Morning Notes",
         content="Note body",
-        metadata_={"folder": "work"},
+        plain_text="Note body",
+        content_format="rtf",
+        folder_path="work",
         last_opened_at=now,
     )
     test_db.add(note)
@@ -214,7 +222,9 @@ def test_recent_activity_cache_expiry(test_db):
         user_id=user_id,
         title="Afternoon Notes",
         content="Extra",
-        metadata_={"folder": "work"},
+        plain_text="Extra",
+        content_format="rtf",
+        folder_path="work",
         last_opened_at=now + timedelta(minutes=10),
     )
     test_db.add(new_note)
@@ -244,7 +254,9 @@ def test_recent_activity_uses_user_timezone_for_day_boundary(test_db):
             user_id=user_id,
             title="Late Night Note",
             content="Body",
-            metadata_={"folder": "work"},
+            plain_text="Body",
+            content_format="rtf",
+            folder_path="work",
             last_opened_at=note_time,
         )
     )

@@ -9,10 +9,7 @@ from api.auth import bearer_scheme, verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError
-from api.services.notes_content_codec import (
-    canonical_note_content_from_plain_text,
-    note_plain_text_from_record,
-)
+from api.services.notes_content_codec import canonical_note_content_from_plain_text
 from api.services.notes_service import NotesService
 
 router = APIRouter(prefix="/scratchpad", tags=["scratchpad"])
@@ -75,7 +72,7 @@ def merge_content(existing: str, incoming: str, mode: str) -> str:
 
 
 def _note_plain_text(note) -> str:
-    return note_plain_text_from_record(note.content, note.metadata_)
+    return note.plain_text or ""
 
 
 @router.get("")

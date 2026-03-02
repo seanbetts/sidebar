@@ -1,10 +1,10 @@
-"""Note model for markdown notes stored in Postgres."""
+"""Note model for rich-text notes stored in Postgres."""
 
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, Computed, DateTime, Index, Text
+from sqlalchemy import Boolean, DateTime, Index, Integer, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -12,10 +12,18 @@ from api.db.base import Base
 
 
 class Note(Base):
-    """Note model with markdown content and JSONB metadata."""
+    """Note model with explicit note-state columns and optional metadata."""
 
     __tablename__ = "notes"
     __table_args__ = (
+        Index("idx_notes_user_folder", "user_id", "folder_path"),
+        Index(
+            "idx_notes_user_archived_updated",
+            "user_id",
+            "is_archived",
+            "updated_at",
+        ),
+        Index("idx_notes_user_pinned_order", "user_id", "pinned", "pinned_order"),
         Index("idx_notes_user_last_opened", "user_id", "last_opened_at"),
         Index(
             "idx_notes_user_deleted_opened", "user_id", "deleted_at", "last_opened_at"
@@ -28,18 +36,17 @@ class Note(Base):
     user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    plain_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    content_format: Mapped[str] = mapped_column(Text, nullable=False, default="rtf")
+    folder_path: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pinned_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_folder_marker: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     metadata_: Mapped[dict[str, Any]] = mapped_column(
         "metadata", JSONB, nullable=False, default=dict
-    )
-    is_archived: Mapped[bool] = mapped_column(
-        Boolean,
-        Computed(
-            "(COALESCE(metadata->>'archived','false') = 'true') "
-            "OR (COALESCE(metadata->>'folder','') = 'Archive') "
-            "OR (COALESCE(metadata->>'folder','') LIKE 'Archive/%')",
-            persisted=True,
-        ),
-        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True

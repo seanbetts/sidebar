@@ -77,12 +77,16 @@ def test_notes_get_invalid_id(test_client):
 
 def test_notes_get_success(test_client, test_db):
     note_id = uuid.uuid4()
+    canonical = _canonical_payload("# Sample Note\n\nBody")
     note = Note(
         id=note_id,
         user_id=TEST_USER_ID,
         title="Sample Note",
-        content="# Sample Note\n\nBody",
-        metadata_={"folder": "", "pinned": False},
+        content=canonical["content"],
+        plain_text=canonical["plain_text"],
+        content_format="rtf",
+        folder_path="",
+        pinned=False,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
@@ -98,17 +102,16 @@ def test_notes_get_success(test_client, test_db):
 
 def test_notes_download_handles_unicode_filename(test_client, test_db):
     note_id = uuid.uuid4()
+    canonical = _canonical_payload("# Codex Log\n\nBody")
     note = Note(
         id=note_id,
         user_id=TEST_USER_ID,
         title="Codex Log🦞",
-        content="# Codex Log\n\nBody",
-        metadata_={
-            "folder": "",
-            "pinned": False,
-            "plain_text": "# Codex Log\n\nBody",
-            "content_format": "rtf",
-        },
+        content=canonical["content"],
+        plain_text=canonical["plain_text"],
+        content_format="rtf",
+        folder_path="",
+        pinned=False,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
@@ -202,10 +205,9 @@ def test_notes_pin_move_archive(test_client, test_db):
     assert move.status_code == 200
     moved = test_db.query(Note).filter(Note.id == uuid.UUID(note_id)).first()
     assert moved is not None
-    moved_metadata = moved.metadata_ or {}
-    assert moved_metadata.get("folder") == "Inbox"
-    assert moved_metadata.get("pinned") is False
-    assert moved_metadata.get("pinned_order") is None
+    assert moved.folder_path == "Inbox"
+    assert moved.pinned is False
+    assert moved.pinned_order is None
 
     repin = test_client.patch(
         f"/api/notes/{note_id}/pin",
@@ -223,10 +225,9 @@ def test_notes_pin_move_archive(test_client, test_db):
     test_db.expire_all()
     archived = test_db.query(Note).filter(Note.id == uuid.UUID(note_id)).first()
     assert archived is not None
-    archived_metadata = archived.metadata_ or {}
-    assert archived_metadata.get("folder") == "Archive"
-    assert archived_metadata.get("pinned") is False
-    assert archived_metadata.get("pinned_order") is None
+    assert archived.folder_path == "Archive"
+    assert archived.pinned is False
+    assert archived.pinned_order is None
 
 
 def test_notes_delete_unpins_note(test_client, test_db):
@@ -252,6 +253,5 @@ def test_notes_delete_unpins_note(test_client, test_db):
     deleted = test_db.query(Note).filter(Note.id == uuid.UUID(note_id)).first()
     assert deleted is not None
     assert deleted.deleted_at is not None
-    deleted_metadata = deleted.metadata_ or {}
-    assert deleted_metadata.get("pinned") is False
-    assert deleted_metadata.get("pinned_order") is None
+    assert deleted.pinned is False
+    assert deleted.pinned_order is None

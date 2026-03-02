@@ -54,7 +54,12 @@ def _note(title="Title", content="Body", folder="", pinned=False):
         user_id="user-1",
         title=title,
         content=content,
-        metadata_={"folder": folder, "pinned": pinned},
+        plain_text=content,
+        content_format="rtf",
+        folder_path=folder,
+        pinned=pinned,
+        pinned_order=0 if pinned else None,
+        is_folder_marker=False,
         updated_at=timestamp,
         created_at=timestamp,
         deleted_at=None,
@@ -90,7 +95,7 @@ def test_rename_folder_updates_notes(monkeypatch):
 
     result = NotesWorkspaceService.rename_folder(db, "user-1", "Old", "New")
     assert result["newPath"] == "folder:New"
-    assert note.metadata_["folder"] == "New/Child"
+    assert note.folder_path == "New/Child"
     assert db.commits == 1
 
 

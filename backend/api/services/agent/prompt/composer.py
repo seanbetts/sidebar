@@ -667,7 +667,12 @@ class PromptContextService:
         notes = (
             db.query(Note)
             .options(
-                load_only(Note.id, Note.title, Note.last_opened_at, Note.metadata_)
+                load_only(
+                    Note.id,
+                    Note.title,
+                    Note.last_opened_at,
+                    Note.folder_path,
+                )
             )
             .filter(Note.last_opened_at >= start_of_day)
             .filter(Note.user_id == user_id)
@@ -735,7 +740,7 @@ class PromptContextService:
                 "last_opened_at": note.last_opened_at.isoformat()
                 if note.last_opened_at
                 else None,
-                "folder": note.metadata_.get("folder") if note.metadata_ else None,
+                "folder": note.folder_path or None,
             }
             for note in notes
         ]

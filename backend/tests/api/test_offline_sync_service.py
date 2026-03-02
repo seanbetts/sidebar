@@ -73,10 +73,9 @@ def test_notes_sync_move_unpins_note(test_db):
     assert not result.conflicts
     moved = NotesService.get_note(test_db, "user-1", note.id, mark_opened=False)
     assert moved is not None
-    metadata = moved.metadata_ or {}
-    assert metadata.get("folder") == "Inbox"
-    assert metadata.get("pinned") is False
-    assert metadata.get("pinned_order") is None
+    assert moved.folder_path == "Inbox"
+    assert moved.pinned is False
+    assert moved.pinned_order is None
 
 
 def test_notes_sync_archive_unpins_note(test_db):
@@ -108,10 +107,9 @@ def test_notes_sync_archive_unpins_note(test_db):
     assert not result.conflicts
     archived = NotesService.get_note(test_db, "user-1", note.id, mark_opened=False)
     assert archived is not None
-    metadata = archived.metadata_ or {}
-    assert metadata.get("folder") == "Archive"
-    assert metadata.get("pinned") is False
-    assert metadata.get("pinned_order") is None
+    assert archived.folder_path == "Archive"
+    assert archived.pinned is False
+    assert archived.pinned_order is None
 
 
 def test_notes_sync_delete_unpins_note(test_db):
@@ -149,9 +147,8 @@ def test_notes_sync_delete_unpins_note(test_db):
     )
     assert deleted is not None
     assert deleted.deleted_at is not None
-    metadata = deleted.metadata_ or {}
-    assert metadata.get("pinned") is False
-    assert metadata.get("pinned_order") is None
+    assert deleted.pinned is False
+    assert deleted.pinned_order is None
 
 
 def test_websites_sync_conflict(test_db):

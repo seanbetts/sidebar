@@ -10,18 +10,13 @@ from datetime import UTC, datetime
 from sqlalchemy import func
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.exceptions import NoteNotFoundError
 from api.models.note import Note
 from api.schemas.filters import NoteFilters
 from api.services.notes_helpers import ensure_note_no_conflict
-from api.services.notes_write_contract import (
-    apply_canonical_note_metadata,
-    build_canonical_note_write,
-)
-from api.utils.metadata_helpers import get_max_pinned_order
+from api.services.notes_write_contract import build_canonical_note_write
 from api.utils.pinned_order import lock_pinned_order
 
 
@@ -47,12 +42,9 @@ class NotesService:
         return fallback
 
     @staticmethod
-    def _clear_pinned_metadata(metadata: dict[str, object] | None) -> dict[str, object]:
-        """Return note metadata with pin state removed."""
-        next_metadata: dict[str, object] = {**(metadata or {})}
-        next_metadata["pinned"] = False
-        next_metadata.pop("pinned_order", None)
-        return next_metadata
+    def _is_archive_folder(folder: str) -> bool:
+        normalized = (folder or "").strip("/")
+        return normalized == "Archive" or normalized.startswith("Archive/")
 
     @staticmethod
     def create_note(
@@ -86,10 +78,8 @@ class NotesService:
         now = datetime.now(UTC)
         canonical_write = build_canonical_note_write(content, plain_text)
         resolved_title = title or "Untitled Note"
-        metadata = apply_canonical_note_metadata(
-            {"folder": folder, "pinned": pinned},
-            canonical_write.plain_text,
-        )
+        normalized_folder = (folder or "").strip("/")
+        metadata: dict[str, object] = {}
         if tags:
             metadata["tags"] = tags
         if note_id is not None:
@@ -103,8 +93,16 @@ class NotesService:
                     existing.deleted_at = None
                     existing.title = resolved_title
                     existing.content = canonical_write.content
+                    existing.plain_text = canonical_write.plain_text
+                    existing.content_format = "rtf"
+                    existing.folder_path = normalized_folder
+                    existing.pinned = bool(pinned)
+                    existing.pinned_order = None
+                    existing.is_folder_marker = False
+                    existing.is_archived = NotesService._is_archive_folder(
+                        normalized_folder
+                    )
                     existing.metadata_ = metadata
-                    flag_modified(existing, "metadata_")
                     existing.updated_at = now
                     db.commit()
                 return existing
@@ -114,6 +112,13 @@ class NotesService:
             user_id=user_id,
             title=resolved_title,
             content=canonical_write.content,
+            plain_text=canonical_write.plain_text,
+            content_format="rtf",
+            folder_path=normalized_folder,
+            pinned=bool(pinned),
+            pinned_order=None,
+            is_folder_marker=False,
+            is_archived=NotesService._is_archive_folder(normalized_folder),
             metadata_=metadata,
             created_at=now,
             updated_at=now,
@@ -187,11 +192,8 @@ class NotesService:
         if title is not None:
             note.title = title
         note.content = canonical_write.content
-        note.metadata_ = apply_canonical_note_metadata(
-            note.metadata_,
-            canonical_write.plain_text,
-        )
-        flag_modified(note, "metadata_")
+        note.plain_text = canonical_write.plain_text
+        note.content_format = "rtf"
         note.updated_at = datetime.now(UTC)
         db.commit()
         return note
@@ -281,12 +283,12 @@ class NotesService:
 
         ensure_note_no_conflict(note, client_updated_at, op=op)
 
-        metadata = {**(note.metadata_ or {}), "folder": folder}
+        normalized_folder = (folder or "").strip("/")
         if clear_pinned:
-            metadata = NotesService._clear_pinned_metadata(metadata)
-
-        note.metadata_ = metadata
-        flag_modified(note, "metadata_")
+            note.pinned = False
+            note.pinned_order = None
+        note.folder_path = normalized_folder
+        note.is_archived = NotesService._is_archive_folder(normalized_folder)
         note.updated_at = datetime.now(UTC)
         db.commit()
         return note
@@ -329,16 +331,22 @@ class NotesService:
 
         ensure_note_no_conflict(note, client_updated_at, op="pin")
 
-        metadata = note.metadata_ or {}
-        metadata["pinned"] = pinned
+        note.pinned = bool(pinned)
         if pinned:
-            if metadata.get("pinned_order") is None:
+            if note.pinned_order is None:
                 lock_pinned_order(db, user_id, "notes")
-                metadata["pinned_order"] = get_max_pinned_order(db, Note, user_id) + 1
+                max_order = (
+                    db.query(func.max(Note.pinned_order))
+                    .filter(
+                        Note.user_id == user_id,
+                        Note.deleted_at.is_(None),
+                        Note.pinned.is_(True),
+                    )
+                    .scalar()
+                )
+                note.pinned_order = int(max_order if max_order is not None else -1) + 1
         else:
-            metadata.pop("pinned_order", None)
-        note.metadata_ = metadata
-        flag_modified(note, "metadata_")
+            note.pinned_order = None
         note.updated_at = datetime.now(UTC)
         db.commit()
         db.refresh(note)
@@ -364,11 +372,8 @@ class NotesService:
             .all()
         )
         for note in notes:
-            metadata = note.metadata_ or {}
-            metadata["pinned"] = True
-            metadata["pinned_order"] = order_map.get(note.id)
-            note.metadata_ = metadata
-            flag_modified(note, "metadata_")
+            note.pinned = True
+            note.pinned_order = order_map.get(note.id)
             note.updated_at = datetime.now(UTC)
         db.commit()
 
@@ -429,8 +434,8 @@ class NotesService:
 
         ensure_note_no_conflict(note, client_updated_at, op="delete")
 
-        note.metadata_ = NotesService._clear_pinned_metadata(note.metadata_)
-        flag_modified(note, "metadata_")
+        note.pinned = False
+        note.pinned_order = None
         now = datetime.now(UTC)
         note.deleted_at = now
         note.updated_at = now
@@ -537,12 +542,10 @@ class NotesService:
         )
 
         if filters.folder is not None:
-            query = query.filter(Note.metadata_["folder"].astext == filters.folder)
+            query = query.filter(Note.folder_path == filters.folder)
 
         if filters.pinned is not None:
-            query = query.filter(
-                Note.metadata_["pinned"].astext == str(filters.pinned).lower()
-            )
+            query = query.filter(Note.pinned.is_(filters.pinned))
 
         if filters.archived is not None:
             query = query.filter(Note.is_archived.is_(filters.archived))

@@ -11,7 +11,12 @@ def _note() -> SimpleNamespace:
         user_id="user-1",
         title="Note",
         content="abc",
-        metadata_={"plain_text": "Body", "content_format": "rtf"},
+        plain_text="Body",
+        content_format="rtf",
+        folder_path="Work",
+        pinned=True,
+        pinned_order=2,
+        is_folder_marker=False,
         updated_at=timestamp,
         created_at=timestamp,
         deleted_at=None,
@@ -19,23 +24,11 @@ def _note() -> SimpleNamespace:
     )
 
 
-def test_note_sync_payload_runs_canonicality_diagnostics(monkeypatch):
-    captured: dict[str, object] = {}
-
-    def _fake_diagnose(**kwargs):
-        captured.update(kwargs)
-        return []
-
-    monkeypatch.setattr(
-        notes_helpers,
-        "diagnose_note_read_canonicality",
-        _fake_diagnose,
-    )
-
+def test_note_sync_payload_uses_explicit_note_columns():
     payload = notes_helpers.note_sync_payload(_note())
 
     assert payload["plain_text"] == "Body"
     assert payload["content_format"] == "rtf"
-    assert captured["context"] == "notes_helpers.note_sync_payload"
-    assert captured["note_id"] == "note-1"
-    assert captured["require_content"] is True
+    assert payload["folder"] == "Work"
+    assert payload["pinned"] is True
+    assert payload["pinned_order"] == 2

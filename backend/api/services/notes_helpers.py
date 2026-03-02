@@ -8,7 +8,6 @@ from typing import Any
 
 from api.exceptions import ConflictError
 from api.models.note import Note
-from api.services.notes_write_contract import diagnose_note_read_canonicality
 
 
 def is_archived_folder(folder: str) -> bool:
@@ -30,9 +29,8 @@ def build_notes_tree(notes: Iterable[Note]) -> dict[str, Any]:
     for note in notes:
         if note.title == "✏️ Scratchpad":
             continue
-        metadata = note.metadata_ or {}
-        folder = metadata.get("folder") or ""
-        is_folder_marker = bool(metadata.get("folder_marker"))
+        folder = (note.folder_path or "").strip("/")
+        is_folder_marker = bool(note.is_folder_marker)
         folder_parts = [part for part in folder.split("/") if part]
         current_path = ""
         current_node: dict[str, Any] = root
@@ -63,8 +61,8 @@ def build_notes_tree(notes: Iterable[Note]) -> dict[str, Any]:
                 "type": "file",
                 "modified": note.updated_at.timestamp() if note.updated_at else None,
                 "created": note.created_at.timestamp() if note.created_at else None,
-                "pinned": bool(metadata.get("pinned")),
-                "pinned_order": metadata.get("pinned_order"),
+                "pinned": bool(note.pinned),
+                "pinned_order": note.pinned_order,
                 "archived": is_archived,
             }
         )
@@ -87,28 +85,19 @@ def build_notes_tree(notes: Iterable[Note]) -> dict[str, Any]:
 
 def note_sync_payload(note: Note) -> dict[str, object]:
     """Build a sync payload for a note."""
-    metadata = note.metadata_ or {}
-    diagnose_note_read_canonicality(
-        note_id=note.id,
-        user_id=note.user_id,
-        context="notes_helpers.note_sync_payload",
-        content=note.content,
-        metadata=metadata,
-        require_content=True,
-    )
-    folder = metadata.get("folder") or ""
+    folder = (note.folder_path or "").strip("/")
     return {
         "id": str(note.id),
         "name": note.title,
         "content": note.content or "",
-        "plain_text": metadata.get("plain_text", ""),
-        "content_format": metadata.get("content_format", "rtf"),
+        "plain_text": note.plain_text or "",
+        "content_format": note.content_format or "rtf",
         "path": str(note.id),
         "modified": note.updated_at.timestamp() if note.updated_at else None,
         "created": note.created_at.timestamp() if note.created_at else None,
         "folder": folder,
-        "pinned": bool(metadata.get("pinned")),
-        "pinned_order": metadata.get("pinned_order"),
+        "pinned": bool(note.pinned),
+        "pinned_order": note.pinned_order,
         "archived": bool(note.is_archived),
         "deleted_at": note.deleted_at.isoformat() if note.deleted_at else None,
     }

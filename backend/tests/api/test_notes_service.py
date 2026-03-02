@@ -35,8 +35,8 @@ def test_create_and_read_note(db_session):
     assert fetched is not None
     assert fetched.title == "Test Note"
     assert is_canonical_base64_rtf(fetched.content) is True
-    assert (fetched.metadata_ or {}).get("plain_text") == content
-    assert (fetched.metadata_ or {}).get("content_format") == "rtf"
+    assert fetched.plain_text == content
+    assert fetched.content_format == "rtf"
     assert fetched.last_opened_at is not None
 
 
@@ -61,7 +61,7 @@ def test_update_note_title(db_session):
 
     assert updated.title == "New Title"
     assert is_canonical_base64_rtf(updated.content) is True
-    assert (updated.metadata_ or {}).get("plain_text") == "# New Title\n\nBody"
+    assert updated.plain_text == "# New Title\n\nBody"
 
 
 def test_update_folder_and_pinned(db_session):
@@ -77,8 +77,8 @@ def test_update_folder_and_pinned(db_session):
     )
     pinned = NotesService.update_pinned(db_session, "test_user", note.id, True)
 
-    assert (moved.metadata_ or {}).get("folder") == "Projects/Alpha"
-    assert (pinned.metadata_ or {}).get("pinned") is True
+    assert moved.folder_path == "Projects/Alpha"
+    assert pinned.pinned is True
 
 
 def test_update_pinned_assigns_next_order(db_session):
@@ -100,8 +100,8 @@ def test_update_pinned_assigns_next_order(db_session):
     pinned_a = NotesService.update_pinned(db_session, "test_user", note_a.id, True)
     pinned_b = NotesService.update_pinned(db_session, "test_user", note_b.id, True)
 
-    assert (pinned_a.metadata_ or {}).get("pinned_order") == 0
-    assert (pinned_b.metadata_ or {}).get("pinned_order") == 1
+    assert pinned_a.pinned_order == 0
+    assert pinned_b.pinned_order == 1
 
 
 def test_update_folder_can_clear_pinned_state(db_session):
@@ -122,10 +122,9 @@ def test_update_folder_can_clear_pinned_state(db_session):
         clear_pinned=True,
     )
 
-    metadata = moved.metadata_ or {}
-    assert metadata.get("folder") == "Projects/Beta"
-    assert metadata.get("pinned") is False
-    assert metadata.get("pinned_order") is None
+    assert moved.folder_path == "Projects/Beta"
+    assert moved.pinned is False
+    assert moved.pinned_order is None
 
 
 def test_list_notes_filters(db_session):
@@ -226,9 +225,8 @@ def test_soft_delete_note_clears_pinned_state(db_session):
 
     assert deleted is not None
     assert deleted.deleted_at is not None
-    metadata = deleted.metadata_ or {}
-    assert metadata.get("pinned") is False
-    assert metadata.get("pinned_order") is None
+    assert deleted.pinned is False
+    assert deleted.pinned_order is None
 
 
 def test_update_note_conflict(db_session):
