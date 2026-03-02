@@ -135,14 +135,7 @@ extension NativeNoteEditorViewModel {
     }
 
     func stripUnsupportedInlineStyles(in text: inout AttributedString) {
-        let rangesToClear = text.runs.compactMap { run -> Range<AttributedString.Index>? in
-            guard run.underlineStyle != nil else { return nil }
-            guard run.link == nil else { return nil }
-            return run.range
-        }
-        for range in rangesToClear {
-            text[range].underlineStyle = nil
-        }
+        _ = text
     }
 
     private func primarySelectedParagraphBlockKind() -> BlockKind? {

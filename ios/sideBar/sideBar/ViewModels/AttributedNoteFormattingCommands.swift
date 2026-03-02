@@ -24,6 +24,9 @@ enum AttributedNoteFormattingCommands {
         case .italic:
             viewModel.toggleInlineIntent(.emphasized)
             return true
+        case .underline:
+            viewModel.toggleUnderline()
+            return true
         case .inlineCode:
             viewModel.toggleInlineIntent(.code)
             return true

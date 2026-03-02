@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeNoteEditorViewModelInlineFormattingTests: XCTestCase {
+final class NativeNoteEditorInlineFormattingTests: XCTestCase {
     func testApplyFormattingItalicTogglesTypingAttributesAtInsertionPoint() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
@@ -12,10 +12,16 @@ final class NativeNoteEditorViewModelInlineFormattingTests: XCTestCase {
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
 
         viewModel.applyFormatting(.italic)
-        XCTAssertTrue((viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? []).contains(.emphasized))
+        XCTAssertTrue(
+            (viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? [])
+                .contains(.emphasized)
+        )
 
         viewModel.applyFormatting(.italic)
-        XCTAssertFalse((viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? []).contains(.emphasized))
+        XCTAssertFalse(
+            (viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? [])
+                .contains(.emphasized)
+        )
     }
 
     func testApplyFormattingInlineCodeTogglesTypingAttributesAtInsertionPoint() async {
@@ -25,10 +31,34 @@ final class NativeNoteEditorViewModelInlineFormattingTests: XCTestCase {
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
 
         viewModel.applyFormatting(.inlineCode)
-        XCTAssertTrue((viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? []).contains(.code))
+        XCTAssertTrue(
+            (viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? [])
+                .contains(.code)
+        )
 
         viewModel.applyFormatting(.inlineCode)
-        XCTAssertFalse((viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? []).contains(.code))
+        XCTAssertFalse(
+            (viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? [])
+                .contains(.code)
+        )
+    }
+
+    func testApplyFormattingUnderlineTogglesTypingAttributesAtInsertionPoint() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        viewModel.applyFormatting(.underline)
+        XCTAssertEqual(
+            viewModel.selection.typingAttributes(in: viewModel.attributedContent).underlineStyle,
+            .single
+        )
+
+        viewModel.applyFormatting(.underline)
+        XCTAssertNil(
+            viewModel.selection.typingAttributes(in: viewModel.attributedContent).underlineStyle
+        )
     }
 
     func testApplyFormattingDemoteHeadingDefaultsParagraphToHeadingThree() async {

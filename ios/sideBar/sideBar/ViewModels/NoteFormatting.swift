@@ -5,6 +5,7 @@ import Foundation
 public enum NoteFormatting: Equatable {
     case bold
     case italic
+    case underline
     case strikethrough
     case inlineCode
     case heading(level: Int)
@@ -25,7 +26,7 @@ public enum NoteFormatting: Equatable {
 extension NoteFormatting {
     var requiresStructuralRefresh: Bool {
         switch self {
-        case .bold, .italic, .strikethrough, .inlineCode, .link:
+        case .bold, .italic, .underline, .strikethrough, .inlineCode, .link:
             return false
         case .heading,
              .promoteHeading,

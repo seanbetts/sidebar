@@ -11,12 +11,18 @@ struct AttributedNoteEditorContainer: View {
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
 
     var body: some View {
-        AttributedNoteEditorView(
-            viewModel: nativeViewModel,
-            maxContentWidth: maxContentWidth,
-            isEditable: !editorViewModel.isReadOnly,
-            onTap: nil
-        )
+        VStack(spacing: 0) {
+            if !editorViewModel.isReadOnly {
+                AttributedNoteFormattingToolbar(viewModel: nativeViewModel)
+                Divider()
+            }
+            AttributedNoteEditorView(
+                viewModel: nativeViewModel,
+                maxContentWidth: maxContentWidth,
+                isEditable: !editorViewModel.isReadOnly,
+                onTap: nil
+            )
+        }
         .onAppear {
             nativeViewModel.setBaseFontSize(editorBaseFontSize)
             editorViewModel.attachNativeEditor(nativeViewModel)
