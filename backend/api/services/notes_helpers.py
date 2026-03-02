@@ -88,6 +88,7 @@ def note_sync_payload(note: Note) -> dict[str, object]:
     folder = (note.folder_path or "").strip("/")
     return {
         "id": str(note.id),
+        "title": note.title,
         "name": note.title,
         "content": note.content or "",
         "plain_text": note.plain_text or "",
@@ -99,6 +100,7 @@ def note_sync_payload(note: Note) -> dict[str, object]:
         "pinned": bool(note.pinned),
         "pinned_order": note.pinned_order,
         "archived": bool(note.is_archived),
+        "is_folder_marker": bool(note.is_folder_marker),
         "deleted_at": note.deleted_at.isoformat() if note.deleted_at else None,
     }
 

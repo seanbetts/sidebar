@@ -27,8 +27,10 @@ def _note() -> SimpleNamespace:
 def test_note_sync_payload_uses_explicit_note_columns():
     payload = notes_helpers.note_sync_payload(_note())
 
+    assert payload["title"] == "Note"
     assert payload["plain_text"] == "Body"
     assert payload["content_format"] == "rtf"
     assert payload["folder"] == "Work"
     assert payload["pinned"] is True
     assert payload["pinned_order"] == 2
+    assert payload["is_folder_marker"] is False

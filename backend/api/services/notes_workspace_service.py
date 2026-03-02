@@ -39,12 +39,18 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         """Build a note payload for API responses."""
         payload = {
             "id": str(note.id),
+            "title": note.title,
             "name": note.title,
             "path": str(note.id),
             "modified": note.updated_at.timestamp() if note.updated_at else None,
             "created": note.created_at.timestamp() if note.created_at else None,
             "plain_text": note.plain_text or "",
             "content_format": note.content_format or "rtf",
+            "folder": note.folder_path or "",
+            "pinned": bool(note.pinned),
+            "pinned_order": note.pinned_order,
+            "archived": bool(note.is_archived),
+            "is_folder_marker": bool(note.is_folder_marker),
         }
         if include_content:
             payload["content"] = note.content
@@ -367,12 +373,19 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             )
             return {
                 "id": str(note_id),
+                "title": fallback_title,
                 "name": fallback_title,
                 "path": str(note_id),
                 "modified": updated_at.timestamp() if updated_at else None,
+                "created": None,
                 "content": content,
                 "plain_text": plain_text,
                 "content_format": "rtf",
+                "folder": resolved_folder,
+                "pinned": False,
+                "pinned_order": None,
+                "archived": NotesWorkspaceService._is_archive_folder(resolved_folder),
+                "is_folder_marker": False,
             }
 
     @staticmethod

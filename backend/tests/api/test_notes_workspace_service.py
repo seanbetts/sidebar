@@ -82,6 +82,19 @@ def test_search_returns_items():
     assert result["items"][0]["pinned"] is True
 
 
+def test_build_note_payload_includes_explicit_state_fields():
+    note = _note(title="Alpha", content="Body", folder="Inbox", pinned=True)
+    payload = NotesWorkspaceService.build_note_payload(note, include_content=True)
+    assert payload["title"] == "Alpha"
+    assert payload["name"] == "Alpha"
+    assert payload["plain_text"] == "Body"
+    assert payload["content_format"] == "rtf"
+    assert payload["folder"] == "Inbox"
+    assert payload["pinned"] is True
+    assert payload["archived"] is False
+    assert payload["is_folder_marker"] is False
+
+
 def test_create_folder_returns_exists_when_present():
     db = FakeDB([_note(folder="Projects/2025")])
     result = NotesWorkspaceService.create_folder(db, "user-1", "Projects")

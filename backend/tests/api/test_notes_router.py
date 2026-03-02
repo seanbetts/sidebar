@@ -96,7 +96,11 @@ def test_notes_get_success(test_client, test_db):
     response = test_client.get(f"/api/notes/{note_id}", headers=_auth_headers())
     assert response.status_code == 200
     body = response.json()
+    assert body["title"] == "Sample Note"
+    assert body["name"] == "Sample Note"
     assert body["path"] == str(note_id)
+    assert body["folder"] == ""
+    assert body["pinned"] is False
     assert "content" in body
 
 
@@ -138,8 +142,11 @@ def test_notes_create_update_and_rename(test_client):
     assert create.status_code == 200
     created_payload = create.json()
     note_id = created_payload["id"]
+    assert created_payload["title"] == "Untitled Note"
     assert created_payload["plain_text"] == created_content
     assert created_payload["content_format"] == "rtf"
+    assert created_payload["folder"] == ""
+    assert created_payload["pinned"] is False
 
     updated_content = "# Title\n\nUpdated"
     update_payload = _canonical_payload(updated_content)
@@ -152,6 +159,7 @@ def test_notes_create_update_and_rename(test_client):
     updated_payload = update.json()
     assert updated_payload["plain_text"] == updated_content
     assert updated_payload["content_format"] == "rtf"
+    assert updated_payload["folder"] == ""
 
     rename = test_client.patch(
         f"/api/notes/{note_id}/rename",
