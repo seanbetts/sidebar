@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Scratchpad Get
+# ruff: noqa: D103, T201
+"""Scratchpad Get.
 
 Fetch the scratchpad note by fixed title.
 """
@@ -14,10 +15,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.notes_content_codec import (
-        canonical_note_content_from_plain_text,
-        note_plain_text_from_record,
-    )
+    from api.services.notes_content_codec import canonical_note_content_from_plain_text
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -53,7 +51,7 @@ def get_scratchpad(user_id: str) -> dict:
         return {
             "id": str(note.id),
             "title": note.title,
-            "content": note_plain_text_from_record(note.content, note.metadata_),
+            "content": note.plain_text or "",
             "created_at": note.created_at.isoformat() if note.created_at else None,
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
             "last_opened_at": note.last_opened_at.isoformat()

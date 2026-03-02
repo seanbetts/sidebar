@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Read Note
+# ruff: noqa: D103, T201
+"""Read Note.
 
 Fetch a note from the database.
 """
@@ -32,16 +33,16 @@ def read_note_database(user_id: str, note_id: str) -> dict:
         note = NotesService.get_note(db, user_id, uuid.UUID(note_id), mark_opened=True)
         if not note:
             raise ValueError("Note not found")
-        metadata = note.metadata_ or {}
-        folder = metadata.get("folder", "")
-        archived = folder == "Archive" or folder.startswith("Archive/")
         return {
             "id": str(note.id),
             "title": note.title,
             "content": note.content,
-            "folder": folder,
-            "pinned": bool(metadata.get("pinned")),
-            "archived": archived,
+            "plain_text": note.plain_text or "",
+            "content_format": note.content_format or "rtf",
+            "folder": note.folder_path or "",
+            "pinned": bool(note.pinned),
+            "pinned_order": note.pinned_order,
+            "archived": bool(note.is_archived),
             "created_at": note.created_at.isoformat() if note.created_at else None,
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
             "last_opened_at": note.last_opened_at.isoformat()

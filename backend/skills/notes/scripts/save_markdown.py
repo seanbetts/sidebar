@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Save Note
+# ruff: noqa: D103, T201
+"""Save Note.
 
 Create or update notes stored in the database.
 """
@@ -17,10 +18,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.notes_content_codec import (
-        canonical_note_content_from_plain_text,
-        note_plain_text_from_record,
-    )
+    from api.services.notes_content_codec import canonical_note_content_from_plain_text
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -60,9 +58,7 @@ def save_markdown_database(
             if not note:
                 raise ValueError("note_id is required for update mode")
 
-            existing_plain_text = note_plain_text_from_record(
-                note.content, note.metadata_
-            )
+            existing_plain_text = note.plain_text or ""
             updated_content = content
             if mode == "append":
                 updated_content = f"{existing_plain_text}{content}"
@@ -95,7 +91,7 @@ def save_markdown_database(
         return {
             "id": str(note.id),
             "title": note.title,
-            "folder": (note.metadata_ or {}).get("folder", ""),
+            "folder": note.folder_path or "",
         }
     finally:
         db.close()
@@ -104,7 +100,7 @@ def save_markdown_database(
 def main():
     """Main entry point for save_markdown script."""
     parser = argparse.ArgumentParser(
-        description="Save note with metadata",
+        description="Save note content",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

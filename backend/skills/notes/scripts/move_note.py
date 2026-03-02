@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Move Note
+# ruff: noqa: D103, T201
+"""Move Note.
 
-Update note folder metadata in the database.
+Update note folder path in the database.
 """
 
 import argparse
@@ -32,7 +33,7 @@ def move_note_database(user_id: str, note_id: str, folder: str) -> dict:
         note = NotesService.update_folder(
             db, user_id, uuid.UUID(note_id), folder.strip("/")
         )
-        return {"id": str(note.id), "folder": (note.metadata_ or {}).get("folder", "")}
+        return {"id": str(note.id), "folder": note.folder_path or ""}
     finally:
         db.close()
 

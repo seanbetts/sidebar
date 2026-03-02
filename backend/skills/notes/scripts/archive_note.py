@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: D103, T201
 """Archive Note.
 
 Archive or unarchive a note in the database.
@@ -34,12 +35,10 @@ def archive_note_database(user_id: str, note_id: str, archived: bool) -> dict:
     try:
         folder = "Archive" if archived else ""
         note = NotesService.update_folder(db, user_id, uuid.UUID(note_id), folder)
-        metadata = note.metadata_ or {}
-        current_folder = metadata.get("folder", "")
         return {
             "id": str(note.id),
-            "archived": current_folder == "Archive" or current_folder.startswith("Archive/"),
-            "folder": current_folder,
+            "archived": bool(note.is_archived),
+            "folder": note.folder_path or "",
         }
     finally:
         db.close()
@@ -61,11 +60,18 @@ def main() -> None:
         if not args.user_id:
             raise ValueError("user_id is required for database mode")
 
-        result = archive_note_database(args.user_id, args.note_id, parse_bool(args.archived))
+        result = archive_note_database(
+            args.user_id,
+            args.note_id,
+            parse_bool(args.archived),
+        )
         print(json.dumps({"success": True, "data": result}, indent=2))
         sys.exit(0)
     except Exception as e:
-        print(json.dumps({"success": False, "error": str(e)}, indent=2), file=sys.stderr)
+        print(
+            json.dumps({"success": False, "error": str(e)}, indent=2),
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 

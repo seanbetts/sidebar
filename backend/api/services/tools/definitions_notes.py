@@ -10,8 +10,8 @@ def get_notes_definitions() -> dict:
     return {
         "Create Note": {
             "description": (
-                "Create a searchable, persistent note in the database "
-                "with metadata. Notes are visible in the UI and fully searchable. "
+                "Create a searchable, persistent note in the database. "
+                "Notes are visible in the UI and fully searchable. "
                 "Preferred for remembering information across sessions."
             ),
             "input_schema": {

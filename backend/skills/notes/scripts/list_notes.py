@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""List Notes
+# ruff: noqa: D103, T201
+"""List Notes.
 
 List notes with filters from the database.
 """
@@ -61,16 +62,17 @@ def list_notes_database(args: argparse.Namespace) -> dict:
         notes = NotesService.list_notes(db, args.user_id, filters)
         items = []
         for note in notes:
-            metadata = note.metadata_ or {}
-            folder = metadata.get("folder", "")
-            archived = folder == "Archive" or folder.startswith("Archive/")
+            if note.is_folder_marker:
+                continue
+            folder = note.folder_path or ""
             items.append(
                 {
                     "id": str(note.id),
                     "title": note.title,
                     "folder": folder,
-                    "pinned": bool(metadata.get("pinned")),
-                    "archived": archived,
+                    "pinned": bool(note.pinned),
+                    "pinned_order": note.pinned_order,
+                    "archived": bool(note.is_archived),
                     "created_at": note.created_at.isoformat()
                     if note.created_at
                     else None,

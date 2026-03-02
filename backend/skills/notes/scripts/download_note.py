@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+# ruff: noqa: D103, T201
 """Download Note.
 
-Prepare note markdown content for download/export.
+Prepare note plain-text content for download/export.
 """
 
 import argparse
@@ -33,7 +34,7 @@ def download_note_database(user_id: str, note_id: str) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Export note markdown")
+    parser = argparse.ArgumentParser(description="Export note plain text")
     parser.add_argument("note_id", help="Note UUID")
     parser.add_argument("--database", action="store_true", help="Use database mode")
     parser.add_argument("--json", action="store_true", help="JSON output")
@@ -51,7 +52,10 @@ def main() -> None:
         print(json.dumps({"success": True, "data": result}, indent=2))
         sys.exit(0)
     except Exception as e:
-        print(json.dumps({"success": False, "error": str(e)}, indent=2), file=sys.stderr)
+        print(
+            json.dumps({"success": False, "error": str(e)}, indent=2),
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 
