@@ -94,16 +94,21 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
     }
 
     func testConstrainDocumentKeepsNestedBlockquoteIdentityChainStable() {
-        let markdown = """
-        > > Nested quote
-        """
-        let imported = NoteTextImporter().attributedString(from: markdown).attributedString
-        let range = imported.startIndex..<imported.endIndex
-        let originalIntent = imported[range].runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
+        var content = AttributedString("Nested quote")
+        let range = content.startIndex..<content.endIndex
+        let outerQuote = PresentationIntent(.blockQuote, identity: 1)
+        let innerQuote = PresentationIntent(.blockQuote, identity: 2, parent: outerQuote)
+        content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .paragraph,
+            identity: 3,
+            parent: innerQuote
+        )
+
+        let originalIntent = content[range].runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
         let originalBlockquoteIdentities = blockquoteIdentities(in: originalIntent)
         XCTAssertEqual(originalBlockquoteIdentities.count, 2)
 
-        var constrained = imported
+        var constrained = content
         NoteTextFormattingDefinition().constrainDocument(&constrained)
 
         let constrainedIntent = constrained[range].runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
