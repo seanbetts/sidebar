@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 
 from api.exceptions import BadRequestError, ConflictError, NoteNotFoundError
 from api.models.note import Note
-from api.services.notes_payloads import parse_content_write_payload
 from api.services.notes_service import NotesService
+from api.services.notes_write_contract import parse_note_write_payload
 from api.utils.timestamps import parse_client_timestamp
 from api.utils.validation import parse_uuid
 
@@ -89,7 +89,9 @@ class NotesSyncService:
         conflicts: list[dict[str, Any]] = []
 
         for operation in operations:
-            operation_id = str(operation.get("operation_id") or "").strip()
+            operation_id = str(
+                operation.get("operation_id") or operation.get("operationId") or ""
+            ).strip()
             if not operation_id:
                 operation_id = str(uuid.uuid4())
             op = str(operation.get("op") or "").strip()
@@ -102,14 +104,10 @@ class NotesSyncService:
 
             try:
                 if op == "create":
-                    content, plain_text = parse_content_write_payload(operation)
+                    content, plain_text = parse_note_write_payload(operation)
                     title = operation.get("title") or None
                     folder = (operation.get("folder") or "").strip("/")
-                    note_id_value = (
-                        operation.get("id")
-                        or operation.get("note_id")
-                        or operation.get("client_id")
-                    )
+                    note_id_value = operation.get("id")
                     note_id = (
                         parse_uuid(note_id_value, "note", "id")
                         if note_id_value
@@ -186,7 +184,7 @@ class NotesSyncService:
         client_updated_at: datetime | None,
     ) -> Note:
         note_id = NotesSyncService._parse_note_id(operation)
-        content, plain_text = parse_content_write_payload(operation)
+        content, plain_text = parse_note_write_payload(operation)
         return NotesService.update_note(
             db,
             user_id,
@@ -204,9 +202,9 @@ class NotesSyncService:
         client_updated_at: datetime | None,
     ) -> Note:
         note_id = NotesSyncService._parse_note_id(operation)
-        new_name = operation.get("new_name") or operation.get("newName")
+        new_name = operation.get("title")
         if not new_name:
-            raise BadRequestError("new_name required")
+            raise BadRequestError("title required")
         return NotesService.rename_note(
             db,
             user_id,
@@ -327,3 +325,23 @@ class NotesSyncService:
                 if updated_at and (latest is None or updated_at > latest):
                     latest = updated_at
         return latest or datetime.now(UTC)
+
+    @staticmethod
+    def sync_payload(note: Note) -> dict[str, object]:
+        """Build the canonical note payload for sync update streams."""
+        folder = (note.folder_path or "").strip("/")
+        return {
+            "id": str(note.id),
+            "title": note.title,
+            "content": note.content or "",
+            "plain_text": note.plain_text or "",
+            "content_format": note.content_format or "rtf",
+            "folder": folder,
+            "pinned": bool(note.pinned),
+            "pinned_order": note.pinned_order,
+            "archived": bool(note.is_archived),
+            "is_folder_marker": bool(note.is_folder_marker),
+            "created_at": note.created_at.isoformat() if note.created_at else None,
+            "updated_at": note.updated_at.isoformat() if note.updated_at else None,
+            "deleted_at": note.deleted_at.isoformat() if note.deleted_at else None,
+        }

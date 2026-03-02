@@ -122,7 +122,9 @@ def test_notes_download_handles_unicode_filename(test_client, test_db):
     test_db.add(note)
     test_db.commit()
 
-    response = test_client.get(f"/api/notes/{note_id}/download", headers=_auth_headers())
+    response = test_client.get(
+        f"/api/notes/{note_id}/download", headers=_auth_headers()
+    )
     assert response.status_code == 200
     assert response.text == "# Codex Log\n\nBody"
     header = response.headers["content-disposition"]
@@ -263,3 +265,37 @@ def test_notes_delete_unpins_note(test_client, test_db):
     assert deleted.deleted_at is not None
     assert deleted.pinned is False
     assert deleted.pinned_order is None
+
+
+def test_notes_sync_returns_updates_items_payload(test_client):
+    create_payload = _canonical_payload("# Sync\n\nBody")
+    create = test_client.post(
+        "/api/notes",
+        json=create_payload,
+        headers=_auth_headers(),
+    )
+    assert create.status_code == 200
+    note_id = create.json()["id"]
+
+    response = test_client.post(
+        "/api/notes/sync",
+        json={
+            "last_sync": None,
+            "operations": [
+                {
+                    "operationId": "op-rename-1",
+                    "op": "rename",
+                    "id": note_id,
+                    "title": "Renamed by Sync",
+                }
+            ],
+        },
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["applied"] == ["op-rename-1"]
+    assert "notes" not in payload["updates"]
+    assert "items" in payload["updates"]
+    assert any(item["id"] == note_id for item in payload["updates"]["items"])

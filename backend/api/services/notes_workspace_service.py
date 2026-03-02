@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.exc import ObjectDeletedError
@@ -105,7 +106,10 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             offset=offset,
         )
         tree = build_notes_tree(notes)
-        return {"children": tree.get("children", [])}
+        children = tree.get("children")
+        if not isinstance(children, list):
+            children = []
+        return {"children": cast(list[dict[str, object]], children)}
 
     @classmethod
     def _build_tree(cls, items: list[Note], **kwargs: object) -> dict:
@@ -463,6 +467,102 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             client_updated_at=client_updated_at,
         )
         return NotesWorkspaceService.build_note_payload(updated, include_content=True)
+
+    @staticmethod
+    def update_pinned(
+        db: Session,
+        user_id: str,
+        note_id: str,
+        pinned: bool,
+        *,
+        client_updated_at: datetime | None = None,
+    ) -> dict:
+        """Update pinned state and return canonical note payload."""
+        note_uuid = NotesWorkspaceService._parse_note_id(note_id)
+        if not note_uuid:
+            raise ValueError("Invalid note ID")
+        updated = NotesService.update_pinned(
+            db,
+            user_id,
+            note_uuid,
+            pinned,
+            client_updated_at=client_updated_at,
+        )
+        return NotesWorkspaceService.build_note_payload(updated, include_content=True)
+
+    @staticmethod
+    def move_note(
+        db: Session,
+        user_id: str,
+        note_id: str,
+        folder: str,
+        *,
+        client_updated_at: datetime | None = None,
+    ) -> dict:
+        """Move note to a new folder and return canonical note payload."""
+        note_uuid = NotesWorkspaceService._parse_note_id(note_id)
+        if not note_uuid:
+            raise ValueError("Invalid note ID")
+        updated = NotesService.update_folder(
+            db,
+            user_id,
+            note_uuid,
+            folder,
+            client_updated_at=client_updated_at,
+            op="move",
+            clear_pinned=True,
+        )
+        return NotesWorkspaceService.build_note_payload(updated, include_content=True)
+
+    @staticmethod
+    def archive_note(
+        db: Session,
+        user_id: str,
+        note_id: str,
+        archived: bool,
+        *,
+        client_updated_at: datetime | None = None,
+    ) -> dict:
+        """Archive/unarchive note and return canonical note payload."""
+        note_uuid = NotesWorkspaceService._parse_note_id(note_id)
+        if not note_uuid:
+            raise ValueError("Invalid note ID")
+        folder = "Archive" if archived else ""
+        updated = NotesService.update_folder(
+            db,
+            user_id,
+            note_uuid,
+            folder,
+            client_updated_at=client_updated_at,
+            op="archive",
+            clear_pinned=archived,
+        )
+        return NotesWorkspaceService.build_note_payload(updated, include_content=True)
+
+    @staticmethod
+    def delete_note(
+        db: Session,
+        user_id: str,
+        note_id: str,
+        *,
+        client_updated_at: datetime | None = None,
+    ) -> dict:
+        """Soft-delete note and return canonical payload."""
+        note_uuid = NotesWorkspaceService._parse_note_id(note_id)
+        if not note_uuid:
+            raise ValueError("Invalid note ID")
+        note = NotesService.get_note(db, user_id, note_uuid, mark_opened=False)
+        if not note:
+            raise NoteNotFoundError("Note not found")
+        deleted = NotesService.delete_note(
+            db,
+            user_id,
+            note_uuid,
+            client_updated_at=client_updated_at,
+        )
+        if not deleted:
+            raise NoteNotFoundError("Note not found")
+        return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
     @staticmethod
     def download_note(db: Session, user_id: str, note_id: str) -> dict:

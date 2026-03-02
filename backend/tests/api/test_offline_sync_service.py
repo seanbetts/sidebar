@@ -151,6 +151,38 @@ def test_notes_sync_delete_unpins_note(test_db):
     assert deleted.pinned_order is None
 
 
+def test_notes_sync_rename_uses_title_field(test_db):
+    content, plain_text = _canonical_pair("# Title\n\nBody")
+    note = NotesService.create_note(
+        test_db,
+        "user-1",
+        content,
+        plain_text=plain_text,
+    )
+
+    result = NotesSyncService.sync_operations(
+        test_db,
+        "user-1",
+        {
+            "last_sync": None,
+            "operations": [
+                {
+                    "operation_id": "op-rename",
+                    "op": "rename",
+                    "id": str(note.id),
+                    "title": "Renamed",
+                }
+            ],
+        },
+    )
+
+    assert result.applied_ids == ["op-rename"]
+    assert not result.conflicts
+    renamed = NotesService.get_note(test_db, "user-1", note.id, mark_opened=False)
+    assert renamed is not None
+    assert renamed.title == "Renamed"
+
+
 def test_websites_sync_conflict(test_db):
     website = WebsitesService.save_website(
         test_db,

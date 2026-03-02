@@ -24,13 +24,18 @@ def _note() -> SimpleNamespace:
     )
 
 
-def test_note_sync_payload_uses_explicit_note_columns():
-    payload = notes_helpers.note_sync_payload(_note())
+def test_note_conflict_payload_uses_explicit_note_columns():
+    payload = notes_helpers.note_conflict_payload(
+        _note(),
+        op="update",
+        client_updated_at=datetime(2025, 1, 1, tzinfo=UTC),
+    )
+    server_note = payload["serverNote"]
 
-    assert payload["title"] == "Note"
-    assert payload["plain_text"] == "Body"
-    assert payload["content_format"] == "rtf"
-    assert payload["folder"] == "Work"
-    assert payload["pinned"] is True
-    assert payload["pinned_order"] == 2
-    assert payload["is_folder_marker"] is False
+    assert server_note["title"] == "Note"
+    assert server_note["plain_text"] == "Body"
+    assert server_note["content_format"] == "rtf"
+    assert server_note["folder"] == "Work"
+    assert server_note["pinned"] is True
+    assert server_note["pinned_order"] == 2
+    assert server_note["is_folder_marker"] is False

@@ -12,7 +12,6 @@ ALLOWED_CONTENT_ASSIGNMENT_FILES = {
 NOTE_CONTENT_ASSIGNMENT_PATTERN = re.compile(r"\b[a-zA-Z_][a-zA-Z0-9_]*\.content\s*=")
 NOTES_CONTENT_ASSIGNMENT_SCAN_FILES = (
     API_ROOT / "services" / "notes_helpers.py",
-    API_ROOT / "services" / "notes_payloads.py",
     API_ROOT / "services" / "notes_service.py",
     API_ROOT / "services" / "notes_sync_service.py",
     API_ROOT / "services" / "notes_workspace_service.py",
@@ -59,7 +58,10 @@ def test_notes_service_writes_require_plain_text_keyword() -> None:
 
 def test_note_content_assignment_only_happens_in_notes_service() -> None:
     violations: list[str] = []
-    for path in [*NOTES_CONTENT_ASSIGNMENT_SCAN_FILES, *NOTES_SKILLS_ROOT.rglob("*.py")]:
+    for path in [
+        *NOTES_CONTENT_ASSIGNMENT_SCAN_FILES,
+        *NOTES_SKILLS_ROOT.rglob("*.py"),
+    ]:
         if not path.exists() or not path.is_file():
             continue
         if path in ALLOWED_CONTENT_ASSIGNMENT_FILES:

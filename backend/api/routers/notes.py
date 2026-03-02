@@ -15,11 +15,10 @@ from api.db.session import get_db
 from api.exceptions import BadRequestError, NoteNotFoundError, NotFoundError
 from api.routers.download_headers import plain_text_download_headers
 from api.routers.notes_folders import router as notes_folders_router
-from api.services.notes_helpers import note_sync_payload
-from api.services.notes_payloads import parse_content_write_payload
 from api.services.notes_service import NotesService
 from api.services.notes_sync_service import NotesSyncService
 from api.services.notes_workspace_service import NotesWorkspaceService
+from api.services.notes_write_contract import parse_note_write_payload
 from api.utils.timestamps import parse_client_timestamp
 
 router = APIRouter(prefix="/notes", tags=["notes"])
@@ -155,7 +154,7 @@ def create_note(
     Raises:
         BadRequestError: If content is missing.
     """
-    content, plain_text = parse_content_write_payload(request)
+    content, plain_text = parse_note_write_payload(request)
     title = request.get("title") or None
     path = request.get("path", "")
     folder = (request.get("folder") or "").strip("/")
@@ -243,23 +242,22 @@ def delete_note(
         BadRequestError: For invalid ID.
         NotFoundError: If not found.
     """
-    note = NotesService.get_note(db, user_id, note_id, mark_opened=False)
-    if not note:
-        raise NotFoundError("Note", str(note_id))
     payload = request or {}
     client_updated_at = parse_client_timestamp(
         payload.get("client_updated_at") or payload.get("clientUpdatedAt"),
         field_name="client_updated_at",
     )
-    deleted = NotesService.delete_note(
-        db,
-        user_id,
-        note_id,
-        client_updated_at=client_updated_at,
-    )
-    if not deleted:
-        raise NotFoundError("Note", str(note_id))
-    return NotesWorkspaceService.build_note_payload(note, include_content=True)
+    try:
+        return NotesWorkspaceService.delete_note(
+            db,
+            user_id,
+            str(note_id),
+            client_updated_at=client_updated_at,
+        )
+    except ValueError as exc:
+        raise BadRequestError(str(exc)) from exc
+    except NoteNotFoundError as exc:
+        raise NotFoundError("Note", str(note_id)) from exc
 
 
 @router.post("/sync")
@@ -279,7 +277,9 @@ def sync_notes(
         ],
         "conflicts": result.conflicts,
         "updates": {
-            "notes": [note_sync_payload(note) for note in result.updated_notes],
+            "items": [
+                NotesSyncService.sync_payload(note) for note in result.updated_notes
+            ],
         },
         "serverUpdatedSince": result.server_updated_since.isoformat()
         if result.server_updated_since
@@ -350,16 +350,17 @@ def update_pin(
         field_name="client_updated_at",
     )
     try:
-        note = NotesService.update_pinned(
+        return NotesWorkspaceService.update_pinned(
             db,
             user_id,
-            note_id,
+            str(note_id),
             pinned,
             client_updated_at=client_updated_at,
         )
+    except ValueError as exc:
+        raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError as exc:
         raise NotFoundError("Note", str(note_id)) from exc
-    return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
 @router.patch("/{note_id}")
@@ -386,7 +387,7 @@ def update_note(
         BadRequestError: For invalid request.
         NotFoundError: If not found.
     """
-    content, plain_text = parse_content_write_payload(request)
+    content, plain_text = parse_note_write_payload(request)
     client_updated_at = parse_client_timestamp(
         request.get("client_updated_at") or request.get("clientUpdatedAt"),
         field_name="client_updated_at",
@@ -437,18 +438,17 @@ def update_folder(
         field_name="client_updated_at",
     )
     try:
-        note = NotesService.update_folder(
+        return NotesWorkspaceService.move_note(
             db,
             user_id,
-            note_id,
+            str(note_id),
             folder,
             client_updated_at=client_updated_at,
-            op="move",
-            clear_pinned=True,
         )
+    except ValueError as exc:
+        raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError as exc:
         raise NotFoundError("Note", str(note_id)) from exc
-    return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
 @router.patch("/{note_id}/archive")
@@ -476,21 +476,19 @@ def update_archive(
         NotFoundError: If not found.
     """
     archived = bool(request.get("archived", False))
-    folder = "Archive" if archived else ""
     client_updated_at = parse_client_timestamp(
         request.get("client_updated_at") or request.get("clientUpdatedAt"),
         field_name="client_updated_at",
     )
     try:
-        note = NotesService.update_folder(
+        return NotesWorkspaceService.archive_note(
             db,
             user_id,
-            note_id,
-            folder,
+            str(note_id),
+            archived,
             client_updated_at=client_updated_at,
-            op="archive",
-            clear_pinned=archived,
         )
+    except ValueError as exc:
+        raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError as exc:
         raise NotFoundError("Note", str(note_id)) from exc
-    return NotesWorkspaceService.build_note_payload(note, include_content=True)

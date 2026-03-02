@@ -69,7 +69,9 @@ def _note(title="Title", content="Body", folder="", pinned=False):
 
 def test_list_tree_uses_notes_service(monkeypatch):
     db = FakeDB([_note()])
-    monkeypatch.setattr(service_module, "build_notes_tree", lambda notes: {"children": notes})
+    monkeypatch.setattr(
+        service_module, "build_notes_tree", lambda notes: {"children": notes}
+    )
 
     result = NotesWorkspaceService.list_tree(db, "user-1")
     assert result["children"]
