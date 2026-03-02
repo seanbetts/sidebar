@@ -163,9 +163,10 @@ public final class NotesEditorViewModel: ObservableObject {
         }
 
         if !networkStatus.isNetworkAvailable {
+            let normalized = NotesRichTextCodec.normalizeWriteInput(content: plainText)
             let payload = NoteUpdatePayload(
-                content: plainText,
-                plainText: plainText
+                content: normalized.content,
+                plainText: normalized.plainText
             )
             let snapshot = makeServerSnapshot(noteId: noteId)
             do {
@@ -201,9 +202,10 @@ public final class NotesEditorViewModel: ObservableObject {
             isQueuedForSync = false
         } else {
             saveErrorMessage = "Failed to save note"
+            let normalized = NotesRichTextCodec.normalizeWriteInput(content: plainText)
             let payload = NoteUpdatePayload(
-                content: plainText,
-                plainText: plainText
+                content: normalized.content,
+                plainText: normalized.plainText
             )
             let snapshot = makeServerSnapshot(noteId: noteId)
             do {

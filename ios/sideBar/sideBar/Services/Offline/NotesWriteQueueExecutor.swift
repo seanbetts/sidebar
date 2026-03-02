@@ -42,7 +42,7 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
             content: payload.content,
             plainText: payload.plainText
         )
-        let updated = try await api.updateNote(id: noteId, content: normalized.plainText)
+        let updated = try await api.updateNote(id: noteId, content: normalized.content)
         store.applyEditorUpdate(updated)
     }
 

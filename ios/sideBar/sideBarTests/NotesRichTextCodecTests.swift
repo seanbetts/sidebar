@@ -83,15 +83,13 @@ final class NotesRichTextCodecTests: XCTestCase {
         XCTAssertTrue(payload.isCorrupt)
     }
 
-    func testNotePayloadReadsLegacyContentFromMetadata() throws {
+    func testNotePayloadReadsLegacyContentFromTopLevelKey() throws {
         let json = """
         {
           "id": "n3",
           "name": "Title.md",
           "content": "not-base64",
-          "metadata": {
-            "legacy_content": "legacy body"
-          },
+          "legacy_content": "legacy body",
           "path": "n3",
           "modified": 1,
           "created": 1

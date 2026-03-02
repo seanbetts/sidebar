@@ -72,6 +72,7 @@ extension NotesStore {
 
     /// Enqueues an offline note-content update operation.
     public func enqueueUpdate(noteId: String, content: String) async throws {
+        let normalized = NotesRichTextCodec.normalizeWriteInput(content: content)
         let snapshot = makeServerSnapshot(noteId: noteId, notePath: nil)
         try await enqueueOfflineOperation(
             writeQueue: writeQueue,
@@ -79,8 +80,8 @@ extension NotesStore {
             entityType: .note,
             entityId: noteId,
             payload: NoteUpdateRequest(
-                content: content,
-                plainText: content
+                content: normalized.content,
+                plainText: normalized.plainText
             ),
             serverSnapshot: snapshot
         )

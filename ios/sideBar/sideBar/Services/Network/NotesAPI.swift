@@ -158,7 +158,6 @@ public struct NotePayload: Codable, Equatable {
         case contentFormat = "content_format"
         case contentFormatCamel = "contentFormat"
         case legacyContent = "legacy_content"
-        case metadata
         case isCorrupt = "_is_corrupt"
     }
 
@@ -192,16 +191,13 @@ public struct NotePayload: Codable, Equatable {
         modified = try container.decodeIfPresent(Double.self, forKey: .modified)
         created = try container.decodeIfPresent(Double.self, forKey: .created)
         let rawContent = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
-        let metadata = try container.decodeIfPresent([String: AnyCodable].self, forKey: .metadata)
         let plainText = try container.decodeIfPresent(String.self, forKey: .plainText)
             ?? container.decodeIfPresent(String.self, forKey: .plainTextCamel)
-            ?? NotesRichTextCodec.decodeBase64RTFToPlainText(rawContent)
         content = plainText ?? ""
         let rawContentHasData = !rawContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         isCorrupt = try container.decodeIfPresent(Bool.self, forKey: .isCorrupt)
             ?? (plainText == nil && rawContentHasData)
         legacyContent = try container.decodeIfPresent(String.self, forKey: .legacyContent)
-            ?? (metadata?["legacy_content"]?.value as? String)
         contentFormat = try container.decodeIfPresent(String.self, forKey: .contentFormat)
             ?? container.decodeIfPresent(String.self, forKey: .contentFormatCamel)
     }

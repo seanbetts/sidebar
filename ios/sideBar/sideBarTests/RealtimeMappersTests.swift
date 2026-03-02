@@ -20,7 +20,7 @@ final class RealtimeMappersTests: XCTestCase {
 
         XCTAssertEqual(mapped?.name, "Title")
         XCTAssertEqual(mapped?.path, "n1")
-        XCTAssertEqual(mapped?.content, "Body")
+        XCTAssertEqual(mapped?.content, "")
         XCTAssertNotNil(mapped?.modified)
     }
 
@@ -41,7 +41,7 @@ final class RealtimeMappersTests: XCTestCase {
         XCTAssertEqual(mapped?.content, "")
     }
 
-    func testMapNotePrefersMetadataPlainText() {
+    func testMapNoteIgnoresMetadataFallbackFields() {
         let encoded = NotesRichTextCodec.encodePlainTextToBase64RTF("Rich text body")
         let record = NoteRealtimeRecord(
             id: "n2",
@@ -59,8 +59,8 @@ final class RealtimeMappersTests: XCTestCase {
 
         let mapped = RealtimeMappers.mapNote(record)
 
-        XCTAssertEqual(mapped?.content, "Cached plain text")
-        XCTAssertEqual(mapped?.contentFormat, "rtf")
+        XCTAssertEqual(mapped?.content, "")
+        XCTAssertNil(mapped?.contentFormat)
     }
 
     func testMapNotePrefersTopLevelPlainText() {

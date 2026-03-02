@@ -25,8 +25,12 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
 
         try await executor.execute(write: write)
 
-        XCTAssertEqual(api.updatedContents, [nonCanonical])
-        XCTAssertEqual(store.appliedNotes.map(\.content), [nonCanonical])
+        XCTAssertEqual(api.updatedContents.count, 1)
+        XCTAssertEqual(
+            NotesRichTextCodec.decodeBase64RTFToPlainText(api.updatedContents[0]),
+            nonCanonical
+        )
+        XCTAssertEqual(store.appliedNotes, api.updatedNotes)
     }
 }
 
@@ -57,6 +61,7 @@ private final class NotesWriteQueueExecutorStoreSpy: NotesWriteQueueApplying {
 @MainActor
 private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
     private(set) var updatedContents: [String] = []
+    private(set) var updatedNotes: [NotePayload] = []
 
     func listTree() async throws -> FileTree {
         throw NotesWriteQueueExecutorTestError.forced
@@ -81,7 +86,7 @@ private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
 
     func updateNote(id: String, content: String) async throws -> NotePayload {
         updatedContents.append(content)
-        return NotePayload(
+        let note = NotePayload(
             id: id,
             name: "Queued",
             content: content,
@@ -89,6 +94,8 @@ private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
             modified: nil,
             created: nil
         )
+        updatedNotes.append(note)
+        return note
     }
 
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {

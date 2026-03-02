@@ -305,7 +305,10 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertEqual(writes.count, 1)
         let write = try XCTUnwrap(writes.first)
         let payload = try JSONDecoder().decode(NoteUpdateRequest.self, from: write.payload)
-        XCTAssertEqual(payload.content, nonCanonical)
+        XCTAssertEqual(
+            NotesRichTextCodec.decodeBase64RTFToPlainText(payload.content),
+            nonCanonical
+        )
         XCTAssertEqual(payload.plainText, nonCanonical)
     }
 }
