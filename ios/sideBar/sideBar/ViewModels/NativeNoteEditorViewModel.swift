@@ -54,6 +54,8 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     var autosaveTask: Task<Void, Never>?
     var isUpdatingPrefixVisibility = false
     var usesInjectedListMarkers = false
+    var prefixRefreshTask: Task<Void, Never>?
+    var pendingPrefixRefreshScope: PrefixRefreshScope?
     var lastHandledContentSourceGeneration: Int = 0
     var lastHandledSelectionSourceGeneration: Int = 0
     var lastSelectionLineSpan: ClosedRange<Int>?
@@ -145,7 +147,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         scheduleAutosave()
         let selectionSpan = selectionLineSpan(in: attributedContent)
         lastSelectionLineSpan = selectionSpan
-        refreshPrefixVisibility(scope: formatting.requiresStructuralRefresh ? .full : .lineSpan(selectionSpan))
+        requestPrefixRefresh(scope: formatting.requiresStructuralRefresh ? .full : .lineSpan(selectionSpan))
     }
 
     public func handleContentChange(previous: AttributedString) {
@@ -200,7 +202,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
             insertedCharacter: insertedCharacter,
             didApplyShortcutMutation: didApplyShortcutMutation
         )
-        refreshPrefixVisibility(scope: structuralRefresh ? .full : .lineSpan(selectionSpan))
+        requestPrefixRefresh(scope: structuralRefresh ? .full : .lineSpan(selectionSpan))
     }
 
     public func handleSelectionChange() {
@@ -217,7 +219,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         let selectionSpan = selectionLineSpan(in: attributedContent)
         guard selectionSpan != previousSpan else { return }
         lastSelectionLineSpan = selectionSpan
-        refreshPrefixVisibility(scope: .lineSpan(unionLineSpan(previousSpan, selectionSpan)))
+        requestPrefixRefresh(scope: .lineSpan(unionLineSpan(previousSpan, selectionSpan)))
     }
 
     func hasInlineIntent(_ intent: InlinePresentationIntent) -> Bool {

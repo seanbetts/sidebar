@@ -13,6 +13,19 @@ extension NativeNoteEditorViewModel {
         refreshPrefixVisibility(scope: .full)
     }
 
+    func requestPrefixRefresh(scope: PrefixRefreshScope) {
+        pendingPrefixRefreshScope = mergedPrefixScope(pendingPrefixRefreshScope, scope)
+        guard prefixRefreshTask == nil else { return }
+        prefixRefreshTask = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self else { return }
+            let nextScope = self.pendingPrefixRefreshScope ?? .full
+            self.pendingPrefixRefreshScope = nil
+            self.prefixRefreshTask = nil
+            self.refreshPrefixVisibility(scope: nextScope)
+        }
+    }
+
     func refreshPrefixVisibility(scope: PrefixRefreshScope) {
         let originalSnapshot = selectionSnapshot(in: attributedContent)
         var updated = attributedContent
@@ -104,6 +117,19 @@ extension NativeNoteEditorViewModel {
         let adjustedSelection = selection(from: adjustedSnapshot, in: updated)
         if selection != adjustedSelection { selection = adjustedSelection }
         isUpdatingPrefixVisibility = false
+    }
+
+    private func mergedPrefixScope(
+        _ lhs: PrefixRefreshScope?,
+        _ rhs: PrefixRefreshScope
+    ) -> PrefixRefreshScope {
+        guard let lhs else { return rhs }
+        switch (lhs, rhs) {
+        case (.full, _), (_, .full):
+            return .full
+        case let (.lineSpan(left), .lineSpan(right)):
+            return .lineSpan(unionLineSpan(left, right))
+        }
     }
 
     private func requestedLineIndexes(
