@@ -291,11 +291,15 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     public func setDirty(_ dirty: Bool) {
-        isDirty = dirty
+        if isDirty != dirty {
+            isDirty = dirty
+        }
     }
 
     public func setReadOnly(_ readOnly: Bool) {
-        isReadOnly = readOnly
+        if isReadOnly != readOnly {
+            isReadOnly = readOnly
+        }
     }
 
     private func syncNativeEditorContent(canonicalContent: String, plainText: String) {

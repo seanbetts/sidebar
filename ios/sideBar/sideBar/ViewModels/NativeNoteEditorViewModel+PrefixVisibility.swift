@@ -101,7 +101,8 @@ extension NativeNoteEditorViewModel {
 
         isUpdatingPrefixVisibility = true
         attributedContent = updated
-        selection = selection(from: adjustedSnapshot, in: updated)
+        let adjustedSelection = selection(from: adjustedSnapshot, in: updated)
+        if selection != adjustedSelection { selection = adjustedSelection }
         isUpdatingPrefixVisibility = false
     }
 

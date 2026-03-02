@@ -139,7 +139,9 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         AttributedNoteFormattingCommands.apply(formatting, on: self)
         guard attributedContent != previousContent || selection != previousSelection else { return }
 
-        hasUnsavedChanges = true
+        if !hasUnsavedChanges {
+            hasUnsavedChanges = true
+        }
         scheduleAutosave()
         let selectionSpan = selectionLineSpan(in: attributedContent)
         lastSelectionLineSpan = selectionSpan
@@ -171,7 +173,9 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         var didApplyShortcutMutation = false
         if let shortcutResult {
             attributedContent = updated
-            selection = shortcutResult.selection
+            if selection != shortcutResult.selection {
+                selection = shortcutResult.selection
+            }
             didApplyShortcutMutation = true
         } else if updated != attributedContent {
             attributedContent = updated
@@ -184,7 +188,9 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         normalizeTypingAfterBlockquoteNewlineIfNeeded(insertedCharacter: insertedCharacter)
 
         // Mark dirty immediately so close/switch flows can prompt even before autosave fires.
-        hasUnsavedChanges = true
+        if !hasUnsavedChanges {
+            hasUnsavedChanges = true
+        }
         scheduleAutosave()
         let selectionSpan = selectionLineSpan(in: attributedContent)
         lastSelectionLineSpan = selectionSpan

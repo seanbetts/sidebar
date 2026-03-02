@@ -62,7 +62,9 @@ extension NativeNoteEditorViewModel {
     func transformSelectionAttributes(_ update: (inout AttributeContainer) -> Void) {
         var updatedSelection = selection
         attributedContent.transformAttributes(in: &updatedSelection, body: update)
-        selection = updatedSelection
+        if selection != updatedSelection {
+            selection = updatedSelection
+        }
     }
 
 }
