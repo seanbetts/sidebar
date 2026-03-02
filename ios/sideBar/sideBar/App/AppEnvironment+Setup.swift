@@ -91,7 +91,9 @@ extension AppEnvironment {
 
         notesRuntime.objectWillChange
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
+                DispatchQueue.main.async {
+                    self?.objectWillChange.send()
+                }
             }
             .store(in: &cancellables)
 

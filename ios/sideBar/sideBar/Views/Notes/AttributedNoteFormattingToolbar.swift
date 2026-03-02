@@ -11,28 +11,28 @@ struct AttributedNoteFormattingToolbar: View {
                 systemImage: "bold",
                 isActive: viewModel.isBoldActive()
             ) {
-                viewModel.applyFormatting(.bold)
+                applyFormatting(.bold)
             }
             toolbarButton(
                 title: "Italic",
                 systemImage: "italic",
                 isActive: viewModel.isItalicActive()
             ) {
-                viewModel.applyFormatting(.italic)
+                applyFormatting(.italic)
             }
             toolbarButton(
                 title: "Underline",
                 systemImage: "underline",
                 isActive: viewModel.isUnderlineActive()
             ) {
-                viewModel.applyFormatting(.underline)
+                applyFormatting(.underline)
             }
             toolbarButton(
                 title: "Bullets",
                 systemImage: "list.bullet",
                 isActive: viewModel.isBlockKindActive(.bulletList)
             ) {
-                viewModel.applyFormatting(.bulletList)
+                applyFormatting(.bulletList)
             }
             Spacer(minLength: 0)
         }
@@ -60,5 +60,11 @@ struct AttributedNoteFormattingToolbar: View {
         )
         .accessibilityLabel(title)
         .disabled(viewModel.isReadOnly)
+    }
+
+    private func applyFormatting(_ formatting: NoteFormatting) {
+        Task { @MainActor in
+            viewModel.applyFormatting(formatting)
+        }
     }
 }

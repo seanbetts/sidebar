@@ -38,7 +38,9 @@ struct AttributedNoteEditorContainer: View {
             loadIfNeeded()
         }
         .onChange(of: nativeViewModel.hasUnsavedChanges) { _, hasChanges in
-            editorViewModel.setDirty(hasChanges)
+            Task { @MainActor in
+                editorViewModel.setDirty(hasChanges)
+            }
         }
         .onChange(of: nativeViewModel.autosaveToken) { _, _ in
             guard nativeViewModel.hasUnsavedChanges, !nativeViewModel.isReadOnly else { return }
