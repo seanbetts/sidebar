@@ -179,7 +179,7 @@ extension NotesPanelView {
         let deadline = Date().addingTimeInterval(TimeInterval(timeout) / 1_000_000_000)
         while Date() < deadline {
             if viewModel.activeNote?.path == id {
-                return viewModel.activeNote?.content
+                return viewModel.activeNote?.plainText
             }
             try? await Task.sleep(nanoseconds: 100_000_000)
         }

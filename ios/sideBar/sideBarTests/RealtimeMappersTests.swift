@@ -20,7 +20,8 @@ final class RealtimeMappersTests: XCTestCase {
 
         XCTAssertEqual(mapped?.name, "Title")
         XCTAssertEqual(mapped?.path, "n1")
-        XCTAssertEqual(mapped?.content, "")
+        XCTAssertEqual(mapped?.content, encoded)
+        XCTAssertEqual(mapped?.plainText, "")
         XCTAssertNotNil(mapped?.modified)
     }
 
@@ -38,7 +39,9 @@ final class RealtimeMappersTests: XCTestCase {
 
         let mapped = RealtimeMappers.mapNote(record)
 
-        XCTAssertEqual(mapped?.content, "")
+        XCTAssertEqual(mapped?.content, "not-base64")
+        XCTAssertEqual(mapped?.plainText, "")
+        XCTAssertEqual(mapped?.isCorrupt, true)
     }
 
     func testMapNoteIgnoresMetadataFallbackFields() {
@@ -59,7 +62,8 @@ final class RealtimeMappersTests: XCTestCase {
 
         let mapped = RealtimeMappers.mapNote(record)
 
-        XCTAssertEqual(mapped?.content, "")
+        XCTAssertEqual(mapped?.content, encoded)
+        XCTAssertEqual(mapped?.plainText, "")
         XCTAssertNil(mapped?.contentFormat)
     }
 
@@ -81,7 +85,8 @@ final class RealtimeMappersTests: XCTestCase {
 
         let mapped = RealtimeMappers.mapNote(record)
 
-        XCTAssertEqual(mapped?.content, "Top level plain text")
+        XCTAssertEqual(mapped?.content, encoded)
+        XCTAssertEqual(mapped?.plainText, "Top level plain text")
         XCTAssertEqual(mapped?.contentFormat, "rtf")
     }
 

@@ -236,6 +236,7 @@ extension NotesStore {
             id: note.id,
             name: newName ?? note.name,
             content: note.content,
+            plainText: note.plainText,
             path: newPath,
             modified: note.modified,
             created: note.created

@@ -49,12 +49,43 @@ enum NotesRichTextCodec {
         return attributed.string
     }
 
+    /// Decode canonical Base64 RTF bytes to attributed text.
+    static func decodeBase64RTFToAttributedString(_ content: String) -> AttributedString? {
+        guard let decoded = Data(base64Encoded: content) else {
+            return nil
+        }
+        guard let attributed = try? NSAttributedString(
+            data: decoded,
+            options: [.documentType: NSAttributedString.DocumentType.rtf],
+            documentAttributes: nil
+        ) else {
+            return nil
+        }
+        return AttributedString(attributed)
+    }
+
+    /// Encode attributed text to canonical Base64 RTF bytes.
+    static func encodeAttributedStringToBase64RTF(_ content: AttributedString) -> String? {
+        let attributed = NSAttributedString(content)
+        let range = NSRange(location: 0, length: attributed.length)
+        guard let rtfData = try? attributed.data(
+            from: range,
+            documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+        ) else {
+            return nil
+        }
+        return rtfData.base64EncodedString()
+    }
+
     /// Normalize mixed legacy/canonical input to canonical write payload.
     static func normalizeWriteInput(
         content: String,
         plainText: String? = nil
     ) -> (content: String, plainText: String) {
         if let plainText {
+            if decodeBase64RTFToPlainText(content) != nil {
+                return (content: content, plainText: plainText)
+            }
             let encoded = encodePlainTextToBase64RTF(plainText)
             let resolvedPlainText =
                 decodeBase64RTFToPlainText(encoded) ?? plainText

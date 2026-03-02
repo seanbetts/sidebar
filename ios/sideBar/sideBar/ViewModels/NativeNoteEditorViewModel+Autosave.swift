@@ -15,7 +15,9 @@ extension NativeNoteEditorViewModel {
             guard !Task.isCancelled else { return }
             guard let self else { return }
             let current = self.currentPlainText()
+            let currentCanonicalContent = self.currentCanonicalContent()
             let hasChanges = current != self.lastSavedContent
+                || currentCanonicalContent != self.lastSavedCanonicalContent
             self.hasUnsavedChanges = hasChanges
             if hasChanges {
                 self.autosaveToken &+= 1

@@ -101,11 +101,11 @@ extension NotesDetailView {
     }
 
     func copyCorruptPlainText(_ note: NotePayload) {
-        guard !note.content.isEmpty else {
+        guard !note.plainText.isEmpty else {
             environment.toastCenter.show(message: "No plain text is available for this note.")
             return
         }
-        copyToPasteboard(note.content)
+        copyToPasteboard(note.plainText)
         environment.toastCenter.show(message: "Plain text copied.", style: .success)
     }
 

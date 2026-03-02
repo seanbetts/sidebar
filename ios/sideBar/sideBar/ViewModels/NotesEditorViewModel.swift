@@ -8,6 +8,7 @@ import OSLog
 /// Manages note display state.
 public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var content: String = ""
+    @Published public private(set) var canonicalContent: String = ""
     @Published public private(set) var currentNoteId: String?
     @Published public private(set) var isDirty: Bool = false
     @Published public private(set) var isSaving: Bool = false
@@ -50,6 +51,7 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let note else {
             currentNoteId = nil
             content = ""
+            canonicalContent = ""
             isDirty = false
             isSaving = false
             lastSavedAt = nil
@@ -66,8 +68,9 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
         currentNoteId = note.id
-        content = note.content
-        syncNativeEditorContent(note.content)
+        content = note.plainText
+        canonicalContent = note.content
+        syncNativeEditorContent(canonicalContent: note.content, plainText: note.plainText)
         isDirty = false
         isSaving = false
         lastSavedAt = nil
@@ -90,7 +93,7 @@ public final class NotesEditorViewModel: ObservableObject {
             if shouldPresentNoteConflict(
                 localContent: draft.content,
                 localDate: draft.savedAt,
-                serverContent: note.content,
+                serverContent: note.plainText,
                 serverDate: serverDate
             ) {
                 conflict = NoteSyncConflict(
@@ -99,21 +102,23 @@ public final class NotesEditorViewModel: ObservableObject {
                     noteName: note.name,
                     notePath: note.path,
                     localContent: draft.content,
-                    serverContent: note.content,
+                    serverContent: note.plainText,
                     localDate: draft.savedAt,
                     serverDate: serverDate ?? Date()
                 )
-                content = note.content
+                content = note.plainText
                 isDirty = false
                 return
             }
-            if draft.content == note.content {
+            if draft.content == note.plainText {
                 try? draftStorage.markSynced(entityType: "note", entityId: note.id)
                 isQueuedForSync = false
                 return
             }
             content = draft.content
-            syncNativeEditorContent(draft.content)
+            let normalized = NotesRichTextCodec.normalizeWriteInput(content: draft.content)
+            canonicalContent = normalized.content
+            syncNativeEditorContent(canonicalContent: normalized.content, plainText: draft.content)
             isDirty = true
             isQueuedForSync = true
         } catch {
@@ -124,7 +129,7 @@ public final class NotesEditorViewModel: ObservableObject {
     @available(iOS 26.0, macOS 26.0, *)
     public func makeNativeEditorViewModel() -> NativeNoteEditorViewModel {
         let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText(content)
+        viewModel.loadDocument(canonicalContent: canonicalContent, plainText: content)
         return viewModel
     }
 
@@ -149,7 +154,8 @@ public final class NotesEditorViewModel: ObservableObject {
         }
 
         let plainText = nativeViewModel.currentPlainText()
-        guard plainText != content else {
+        let nextCanonicalContent = nativeViewModel.currentCanonicalContent()
+        guard nextCanonicalContent != canonicalContent else {
             syncRequestedWhileSaving = false
             return
         }
@@ -162,28 +168,24 @@ public final class NotesEditorViewModel: ObservableObject {
             saveErrorMessage = "Failed to save draft"
         }
 
+        let normalizedUpdate = normalizedNoteUpdate(
+            canonicalContent: nextCanonicalContent,
+            plainText: plainText
+        )
+        let snapshot = makeServerSnapshot(noteId: noteId)
+
         if !networkStatus.isNetworkAvailable {
-            let normalized = NotesRichTextCodec.normalizeWriteInput(content: plainText)
-            let payload = NoteUpdatePayload(
-                content: normalized.content,
-                plainText: normalized.plainText
+            await enqueueNoteUpdate(
+                noteId: noteId,
+                payload: normalizedUpdate.payload,
+                snapshot: snapshot
             )
-            let snapshot = makeServerSnapshot(noteId: noteId)
-            do {
-                try await writeQueue.enqueue(
-                    operation: .update,
-                    entityType: .note,
-                    entityId: noteId,
-                    payload: payload,
-                    serverSnapshot: snapshot
-                )
-            } catch WriteQueueError.queueFull {
-                saveErrorMessage = "Sync queue full. Review pending changes."
-            } catch {
-                saveErrorMessage = "Failed to queue changes"
-            }
-            nativeViewModel.markSaved(plainText: plainText)
-            content = plainText
+            nativeViewModel.markSaved(
+                plainText: normalizedUpdate.normalized.plainText,
+                canonicalContent: normalizedUpdate.normalized.content
+            )
+            content = normalizedUpdate.normalized.plainText
+            canonicalContent = normalizedUpdate.normalized.content
             isSaving = false
             isDirty = false
             isQueuedForSync = true
@@ -191,36 +193,26 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
 
-        let saved = await notesViewModel.updateNoteContent(id: noteId, content: plainText)
+        let saved = await notesViewModel.updateNoteContent(id: noteId, content: nextCanonicalContent)
         isSaving = false
         if saved {
             try? draftStorage.markSynced(entityType: "note", entityId: noteId)
-            nativeViewModel.markSaved(plainText: plainText)
+            nativeViewModel.markSaved(
+                plainText: plainText,
+                canonicalContent: nextCanonicalContent
+            )
             content = plainText
+            canonicalContent = nextCanonicalContent
             isDirty = false
             lastSavedAt = Date()
             isQueuedForSync = false
         } else {
             saveErrorMessage = "Failed to save note"
-            let normalized = NotesRichTextCodec.normalizeWriteInput(content: plainText)
-            let payload = NoteUpdatePayload(
-                content: normalized.content,
-                plainText: normalized.plainText
+            await enqueueNoteUpdate(
+                noteId: noteId,
+                payload: normalizedUpdate.payload,
+                snapshot: snapshot
             )
-            let snapshot = makeServerSnapshot(noteId: noteId)
-            do {
-                try await writeQueue.enqueue(
-                    operation: .update,
-                    entityType: .note,
-                    entityId: noteId,
-                    payload: payload,
-                    serverSnapshot: snapshot
-                )
-            } catch WriteQueueError.queueFull {
-                saveErrorMessage = "Sync queue full. Review pending changes."
-            } catch {
-                saveErrorMessage = "Failed to queue changes"
-            }
             isQueuedForSync = true
         }
         await syncFromNativeEditorIfRequested(nativeViewModel)
@@ -251,6 +243,9 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let conflict else { return }
         let canonicalLocalContent = canonicalPlainTextForPersistence(conflict.localContent)
         content = canonicalLocalContent
+        let normalized = NotesRichTextCodec.normalizeWriteInput(content: canonicalLocalContent)
+        canonicalContent = normalized.content
+        syncNativeEditorContent(canonicalContent: normalized.content, plainText: canonicalLocalContent)
         isDirty = true
         isQueuedForSync = true
         try? draftStorage.saveDraft(
@@ -264,6 +259,9 @@ public final class NotesEditorViewModel: ObservableObject {
     public func resolveConflictKeepServer() async {
         guard let conflict else { return }
         content = conflict.serverContent
+        let normalized = NotesRichTextCodec.normalizeWriteInput(content: conflict.serverContent)
+        canonicalContent = normalized.content
+        syncNativeEditorContent(canonicalContent: normalized.content, plainText: conflict.serverContent)
         isDirty = false
         try? draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
         isQueuedForSync = false
@@ -276,6 +274,9 @@ public final class NotesEditorViewModel: ObservableObject {
         let copyTitle = copyTitle(from: conflict.noteName)
         let localContent = canonicalPlainTextForPersistence(conflict.localContent)
         content = conflict.serverContent
+        let normalized = NotesRichTextCodec.normalizeWriteInput(content: conflict.serverContent)
+        canonicalContent = normalized.content
+        syncNativeEditorContent(canonicalContent: normalized.content, plainText: conflict.serverContent)
         isDirty = false
         try? draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
         isQueuedForSync = false
@@ -297,11 +298,45 @@ public final class NotesEditorViewModel: ObservableObject {
         isReadOnly = readOnly
     }
 
-    private func syncNativeEditorContent(_ plainText: String) {
+    private func syncNativeEditorContent(canonicalContent: String, plainText: String) {
         if #available(iOS 26.0, macOS 26.0, *) {
             guard let nativeEditorViewModel else { return }
-            guard nativeEditorViewModel.currentPlainText() != plainText else { return }
-            nativeEditorViewModel.loadText(plainText)
+            guard nativeEditorViewModel.currentCanonicalContent() != canonicalContent else { return }
+            nativeEditorViewModel.loadDocument(canonicalContent: canonicalContent, plainText: plainText)
+        }
+    }
+
+    private func normalizedNoteUpdate(
+        canonicalContent: String,
+        plainText: String
+    ) -> (normalized: (content: String, plainText: String), payload: NoteUpdatePayload) {
+        let normalized = NotesRichTextCodec.normalizeWriteInput(
+            content: canonicalContent,
+            plainText: plainText
+        )
+        return (
+            normalized,
+            NoteUpdatePayload(content: normalized.content, plainText: normalized.plainText)
+        )
+    }
+
+    private func enqueueNoteUpdate(
+        noteId: String,
+        payload: NoteUpdatePayload,
+        snapshot: ServerSnapshot?
+    ) async {
+        do {
+            try await writeQueue.enqueue(
+                operation: .update,
+                entityType: .note,
+                entityId: noteId,
+                payload: payload,
+                serverSnapshot: snapshot
+            )
+        } catch WriteQueueError.queueFull {
+            saveErrorMessage = "Sync queue full. Review pending changes."
+        } catch {
+            saveErrorMessage = "Failed to queue changes"
         }
     }
 

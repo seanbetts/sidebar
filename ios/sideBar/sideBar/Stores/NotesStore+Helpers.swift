@@ -167,7 +167,7 @@ extension NotesStore {
         let spotlightNote = SpotlightNote(
             path: note.path,
             name: note.name,
-            content: note.content,
+            content: note.plainText,
             modified: note.modified.map { Date(timeIntervalSince1970: $0) }
         )
         Task {
@@ -188,6 +188,7 @@ extension NotesStore {
         }
         return current.modified != incoming.modified ||
             current.content != incoming.content ||
+            current.plainText != incoming.plainText ||
             current.name != incoming.name ||
             current.path != incoming.path ||
             current.created != incoming.created

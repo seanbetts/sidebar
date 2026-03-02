@@ -138,7 +138,10 @@ extension NotesAPI: NotesProviding {}
 public struct NotePayload: Codable, Equatable {
     public let id: String
     public let name: String
+    /// Canonical Base64 RTF payload from backend contract.
     public let content: String
+    /// Explicit plain-text cache for list/search/prompt/export paths.
+    public let plainText: String
     public let path: String
     public let modified: Double?
     public let created: Double?
@@ -165,6 +168,7 @@ public struct NotePayload: Codable, Equatable {
         id: String,
         name: String,
         content: String,
+        plainText: String? = nil,
         path: String,
         modified: Double?,
         created: Double?,
@@ -175,6 +179,7 @@ public struct NotePayload: Codable, Equatable {
         self.id = id
         self.name = name
         self.content = content
+        self.plainText = plainText ?? content
         self.path = path
         self.modified = modified
         self.created = created
@@ -191,12 +196,13 @@ public struct NotePayload: Codable, Equatable {
         modified = try container.decodeIfPresent(Double.self, forKey: .modified)
         created = try container.decodeIfPresent(Double.self, forKey: .created)
         let rawContent = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
-        let plainText = try container.decodeIfPresent(String.self, forKey: .plainText)
+        let decodedPlainText = try container.decodeIfPresent(String.self, forKey: .plainText)
             ?? container.decodeIfPresent(String.self, forKey: .plainTextCamel)
-        content = plainText ?? ""
+        content = rawContent
+        plainText = decodedPlainText ?? ""
         let rawContentHasData = !rawContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         isCorrupt = try container.decodeIfPresent(Bool.self, forKey: .isCorrupt)
-            ?? (plainText == nil && rawContentHasData)
+            ?? (decodedPlainText == nil && rawContentHasData)
         legacyContent = try container.decodeIfPresent(String.self, forKey: .legacyContent)
         contentFormat = try container.decodeIfPresent(String.self, forKey: .contentFormat)
             ?? container.decodeIfPresent(String.self, forKey: .contentFormatCamel)
@@ -210,7 +216,7 @@ public struct NotePayload: Codable, Equatable {
         try container.encode(path, forKey: .path)
         try container.encodeIfPresent(modified, forKey: .modified)
         try container.encodeIfPresent(created, forKey: .created)
-        try container.encode(content, forKey: .plainText)
+        try container.encode(plainText, forKey: .plainText)
         try container.encodeIfPresent(contentFormat, forKey: .contentFormat)
         try container.encode(isCorrupt, forKey: .isCorrupt)
         try container.encodeIfPresent(legacyContent, forKey: .legacyContent)

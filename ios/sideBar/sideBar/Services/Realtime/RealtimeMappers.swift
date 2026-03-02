@@ -5,16 +5,20 @@ import sideBarShared
 public struct RealtimeMappers {
     public static func mapNote(_ record: NoteRealtimeRecord) -> NotePayload? {
         let id = record.id
+        let canonicalContent = record.content ?? ""
         let plainText = record.plainText ?? ""
+        let rawContentHasData = !canonicalContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         // NOTE: Align note mapping with native models and folder/archive semantics.
         return NotePayload(
             id: id,
             name: record.title ?? "Untitled",
-            content: plainText,
+            content: canonicalContent,
+            plainText: plainText,
             path: id,
             modified: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970,
             created: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970,
-            contentFormat: record.contentFormat
+            contentFormat: record.contentFormat,
+            isCorrupt: record.plainText == nil && rawContentHasData
         )
     }
 

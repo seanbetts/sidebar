@@ -21,6 +21,18 @@ final class NotesRichTextCodecTests: XCTestCase {
         XCTAssertNotNil(NotesRichTextCodec.decodeBase64RTFToPlainText(normalized.content))
     }
 
+    func testNormalizeWriteInputPreservesCanonicalContentWhenPlainTextProvided() {
+        let canonical = NotesRichTextCodec.encodePlainTextToBase64RTF("Body")
+
+        let normalized = NotesRichTextCodec.normalizeWriteInput(
+            content: canonical,
+            plainText: "Body"
+        )
+
+        XCTAssertEqual(normalized.content, canonical)
+        XCTAssertEqual(normalized.plainText, "Body")
+    }
+
     func testNormalizeWriteInputDecodesCanonicalContent() {
         let canonical = NotesRichTextCodec.encodePlainTextToBase64RTF("Stored body")
 
@@ -57,7 +69,8 @@ final class NotesRichTextCodecTests: XCTestCase {
             from: Data(json.utf8)
         )
 
-        XCTAssertEqual(payload.content, "Decoded body")
+        XCTAssertEqual(payload.content, encoded)
+        XCTAssertEqual(payload.plainText, "Decoded body")
         XCTAssertEqual(payload.contentFormat, "rtf")
         XCTAssertFalse(payload.isCorrupt)
     }
@@ -79,7 +92,8 @@ final class NotesRichTextCodecTests: XCTestCase {
             from: Data(json.utf8)
         )
 
-        XCTAssertEqual(payload.content, "")
+        XCTAssertEqual(payload.content, "not-base64")
+        XCTAssertEqual(payload.plainText, "")
         XCTAssertTrue(payload.isCorrupt)
     }
 

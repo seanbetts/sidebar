@@ -329,7 +329,11 @@ final class NotesEditorViewModelTests: XCTestCase {
             api.updateCallCount == 2
         }
 
-        XCTAssertEqual(api.updatedContents, ["First", "Second"])
+        XCTAssertEqual(api.updatedContents.count, 2)
+        XCTAssertEqual(
+            api.updatedContents.compactMap(NotesRichTextCodec.decodeBase64RTFToPlainText),
+            ["First", "Second"]
+        )
     }
 
     func testCurrentPlainTextSnapshotUsesAttachedNativeEditorContent() async throws {
@@ -776,9 +780,16 @@ extension NotesEditorViewModelTests {
         await Task.yield()
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        let expectedRoundTripPlainText = NotesRichTextCodec.decodeBase64RTFToPlainText(
+            nativeViewModel.currentCanonicalContent()
+        )
         await viewModel.syncFromNativeEditor(nativeViewModel)
 
-        XCTAssertEqual(api.updatedContents, [canonicalPlainText])
+        XCTAssertEqual(api.updatedContents.count, 1)
+        XCTAssertEqual(
+            NotesRichTextCodec.decodeBase64RTFToPlainText(api.updatedContents[0]),
+            expectedRoundTripPlainText
+        )
         XCTAssertEqual(viewModel.content, canonicalPlainText)
     }
 

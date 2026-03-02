@@ -45,7 +45,7 @@ public final class NotesRuntime: ObservableObject {
     public func openNoteContext() -> [String: Any]? {
         guard let activeNote else { return nil }
         let noteText = editorViewModel.currentPlainTextSnapshot(
-            fallback: activeNote.content
+            fallback: activeNote.plainText
         )
         return [
             "id": activeNote.id,

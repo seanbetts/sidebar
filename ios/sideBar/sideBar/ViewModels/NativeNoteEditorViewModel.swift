@@ -50,6 +50,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
     }
     var lastSavedContent: String = ""
+    var lastSavedCanonicalContent: String = ""
     var autosaveTask: Task<Void, Never>?
     var isUpdatingPrefixVisibility = false
     var usesInjectedListMarkers = false
@@ -68,6 +69,9 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         attributedContent = result.attributedString
         selection = AttributedTextSelection()
         lastSavedContent = text
+        lastSavedCanonicalContent =
+            NotesRichTextCodec.encodeAttributedStringToBase64RTF(result.attributedString)
+            ?? NotesRichTextCodec.encodePlainTextToBase64RTF(text)
         hasUnsavedChanges = false
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
         updatePrefixVisibility()
@@ -79,11 +83,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         _ = removeInjectedListMarkers(in: &exportContent, selection: selection)
         let constrained = NoteTextFormattingDefinition().constrainedDocument(exportContent)
         return String(constrained.characters)
-    }
-
-    public func markSaved(plainText: String) {
-        lastSavedContent = plainText
-        hasUnsavedChanges = false
     }
 
     public func isBoldActive() -> Bool {

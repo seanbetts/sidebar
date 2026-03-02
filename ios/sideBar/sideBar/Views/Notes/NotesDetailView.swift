@@ -249,7 +249,7 @@ extension NotesDetailView {
                     copyCorruptPlainText(note)
                 }
                 .buttonStyle(.bordered)
-                .disabled(note.content.isEmpty)
+                .disabled(note.plainText.isEmpty)
 
                 Button("Restore from legacy") {
                     Task {
