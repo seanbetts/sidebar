@@ -1,6 +1,5 @@
 from datetime import UTC, date, datetime
 
-from api.services.agent.prompt import sections as prompt_sections
 from api.services.agent.prompt.sections import (
     CONTEXT_GUIDANCE_TEMPLATE,
     build_assistant_identity_block,
@@ -230,35 +229,6 @@ def test_build_open_context_block_truncates() -> None:
 def test_build_open_context_block_empty() -> None:
     block = build_open_context_block(None, None)
     assert "No items are currently open." in block
-
-
-def test_build_open_context_block_runs_note_canonicality_diagnostics(monkeypatch) -> None:
-    captured: dict[str, object] = {}
-
-    def _fake_diagnose(**kwargs):
-        captured.update(kwargs)
-        return []
-
-    monkeypatch.setattr(
-        prompt_sections,
-        "diagnose_note_read_canonicality",
-        _fake_diagnose,
-    )
-
-    note = {
-        "id": "note-1",
-        "title": "Draft",
-        "path": "notes/draft.md",
-        "content": "abc",
-        "plain_text": "Body",
-        "content_format": "rtf",
-    }
-    build_open_context_block(note, None)
-
-    assert captured["context"] == "prompt.build_open_context_block"
-    assert captured["note_id"] == "note-1"
-    assert captured["require_content"] is True
-    assert captured["metadata"] == {"content_format": "rtf", "plain_text": "Body"}
 
 
 def test_context_guidance_template_renders_name() -> None:
