@@ -103,10 +103,6 @@ extension NativeNoteEditorViewModel {
             if let inferred = inferredBlockKind(from: lineText), isListBlockKind(inferred) {
                 return true
             }
-            if let inferredList = NoteTextShortcutProcessor.inferredListBlockKind(from: lineText),
-               isListBlockKind(inferredList) {
-                return true
-            }
             if hasLiteralListPrefix(in: lineText) {
                 return true
             }

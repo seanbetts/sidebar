@@ -89,15 +89,6 @@ extension AppEnvironment {
             }
             .store(in: &cancellables)
 
-        notesRuntime.objectWillChange
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    await Task.yield()
-                    self?.objectWillChange.send()
-                }
-            }
-            .store(in: &cancellables)
-
         websitesViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()

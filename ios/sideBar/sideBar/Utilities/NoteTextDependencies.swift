@@ -6,34 +6,6 @@ import UIKit
 import AppKit
 #endif
 
-@available(iOS 26.0, macOS 26.0, *)
-enum NoteTextShortcutProcessor {
-    struct ShortcutResult {
-        let selection: AttributedTextSelection
-    }
-
-    static func processShortcuts(
-        in text: inout AttributedString,
-        selection: AttributedTextSelection,
-        lastInsertedCharacter: Character?,
-        baseFontSize: CGFloat = 16
-    ) -> ShortcutResult? {
-        guard let result = NoteTextShortcutEngine.processShortcuts(
-            in: &text,
-            selection: selection,
-            lastInsertedCharacter: lastInsertedCharacter,
-            baseFontSize: baseFontSize
-        ) else {
-            return nil
-        }
-        return ShortcutResult(selection: result.selection)
-    }
-
-    static func inferredListBlockKind(from lineText: String) -> BlockKind? {
-        NoteTextShortcutEngine.inferredListBlockKind(from: lineText)
-    }
-}
-
 enum NoteTextTypography {
     static var defaultBodyFontSize: CGFloat {
         defaultBodyFontSize(for: AppTextSizeOption.resolved(

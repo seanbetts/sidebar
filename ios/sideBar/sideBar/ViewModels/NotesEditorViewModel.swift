@@ -293,14 +293,20 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     public func setDirty(_ dirty: Bool) {
-        if isDirty != dirty {
-            isDirty = dirty
+        guard isDirty != dirty else { return }
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, self.isDirty != dirty else { return }
+            self.isDirty = dirty
         }
     }
 
     public func setReadOnly(_ readOnly: Bool) {
-        if isReadOnly != readOnly {
-            isReadOnly = readOnly
+        guard isReadOnly != readOnly else { return }
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, self.isReadOnly != readOnly else { return }
+            self.isReadOnly = readOnly
         }
     }
 

@@ -14,7 +14,6 @@ extension NativeNoteEditorViewModel {
             lastSavedCanonicalContent = canonicalContent
             hasUnsavedChanges = false
             lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
-            updatePrefixVisibility()
             return
         }
         loadText(plainText)

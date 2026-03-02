@@ -34,6 +34,5 @@ extension NativeNoteEditorViewModel {
             ?? NotesRichTextCodec.encodePlainTextToBase64RTF(text)
         hasUnsavedChanges = false
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
-        updatePrefixVisibility()
     }
 }

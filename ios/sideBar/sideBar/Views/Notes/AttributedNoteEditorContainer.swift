@@ -57,7 +57,6 @@ struct AttributedNoteEditorContainer: View {
         .onChange(of: appTextSizeRaw) { _, newValue in
             let option = AppTextSizeOption.resolved(from: newValue)
             nativeViewModel.setBaseFontSize(NoteTextTypography.defaultBodyFontSize(for: option))
-            nativeViewModel.updatePrefixVisibility()
         }
         .onKeyPress(.escape) {
             if !editorViewModel.isReadOnly {

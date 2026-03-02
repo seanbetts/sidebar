@@ -15,12 +15,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
 
     @Published public var attributedContent: AttributedString = AttributedString()
     @Published public var selection: AttributedTextSelection = AttributedTextSelection()
-    @Published public var isReadOnly: Bool = false {
-        didSet {
-            guard isReadOnly != oldValue else { return }
-            updatePrefixVisibility()
-        }
-    }
+    @Published public var isReadOnly: Bool = false
     @Published public internal(set) var hasUnsavedChanges: Bool = false
     @Published public internal(set) var autosaveToken: Int = 0
     public var autosaveDelay: TimeInterval = 1.5
@@ -66,11 +61,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     }
 
     public func currentPlainText() -> String {
-        var exportContent = attributedContent
-        let selection = selectionSnapshot(in: exportContent)
-        _ = removeInjectedListMarkers(in: &exportContent, selection: selection)
-        let constrained = NoteTextFormattingDefinition().constrainedDocument(exportContent)
-        return String(constrained.characters)
+        String(attributedContent.characters)
     }
 
     public func isBoldActive() -> Bool {
@@ -129,9 +120,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
             hasUnsavedChanges = true
         }
         scheduleAutosave()
-        let selectionSpan = selectionLineSpan(in: attributedContent)
-        lastSelectionLineSpan = selectionSpan
-        requestPrefixRefresh(scope: formatting.requiresStructuralRefresh ? .full : .lineSpan(selectionSpan))
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
     }
 
     public func handleContentChange(previous: AttributedString) {
@@ -144,49 +133,20 @@ public final class NativeNoteEditorViewModel: ObservableObject {
             guard sourceGeneration > lastHandledContentSourceGeneration else { return }
             lastHandledContentSourceGeneration = sourceGeneration
         }
+        guard attributedContent != previous else { return }
 
-        let insertedCharacter = lastInsertedCharacter(previous: previous, current: attributedContent)
-        var updated = attributedContent
-        stripUnsupportedInlineStyles(in: &updated)
-
-        let shortcutResult = NoteTextShortcutProcessor.processShortcuts(
-            in: &updated,
-            selection: selection,
-            lastInsertedCharacter: insertedCharacter,
-            baseFontSize: baseFontSize
-        )
-
-        var didApplyShortcutMutation = false
-        if let shortcutResult {
-            attributedContent = updated
-            if selection != shortcutResult.selection {
-                selection = shortcutResult.selection
-            }
-            didApplyShortcutMutation = true
-        } else if updated != attributedContent {
-            attributedContent = updated
-            didApplyShortcutMutation = true
+        var normalizedContent = attributedContent
+        stripUnsupportedInlineStyles(in: &normalizedContent)
+        if applyDetectedLinks(in: &normalizedContent) || normalizedContent != attributedContent {
+            attributedContent = normalizedContent
         }
-        if applyDetectedLinks(in: &attributedContent) {
-            didApplyShortcutMutation = true
-        }
-
-        normalizeTypingAfterBlockquoteNewlineIfNeeded(insertedCharacter: insertedCharacter)
 
         // Mark dirty immediately so close/switch flows can prompt even before autosave fires.
         if !hasUnsavedChanges {
             hasUnsavedChanges = true
         }
         scheduleAutosave()
-        let selectionSpan = selectionLineSpan(in: attributedContent)
-        lastSelectionLineSpan = selectionSpan
-        let structuralRefresh = requiresStructuralPrefixRefresh(
-            previous: previous,
-            current: attributedContent,
-            insertedCharacter: insertedCharacter,
-            didApplyShortcutMutation: didApplyShortcutMutation
-        )
-        requestPrefixRefresh(scope: structuralRefresh ? .full : .lineSpan(selectionSpan))
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
     }
 
     public func handleSelectionChange() {
@@ -199,11 +159,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
             guard sourceGeneration > lastHandledSelectionSourceGeneration else { return }
             lastHandledSelectionSourceGeneration = sourceGeneration
         }
-        let previousSpan = lastSelectionLineSpan
-        let selectionSpan = selectionLineSpan(in: attributedContent)
-        guard selectionSpan != previousSpan else { return }
-        lastSelectionLineSpan = selectionSpan
-        requestPrefixRefresh(scope: .lineSpan(unionLineSpan(previousSpan, selectionSpan)))
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
     }
 
     func hasInlineIntent(_ intent: InlinePresentationIntent) -> Bool {
