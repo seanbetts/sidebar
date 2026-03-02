@@ -7,7 +7,6 @@ public struct RealtimeMappers {
         let id = record.id
         let canonicalContent = record.content ?? ""
         let plainText = record.plainText ?? ""
-        let rawContentHasData = !canonicalContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         // NOTE: Align note mapping with native models and folder/archive semantics.
         return NotePayload(
             id: id,
@@ -16,9 +15,7 @@ public struct RealtimeMappers {
             plainText: plainText,
             path: id,
             modified: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970,
-            created: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970,
-            contentFormat: record.contentFormat,
-            isCorrupt: record.plainText == nil && rawContentHasData
+            created: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970
         )
     }
 

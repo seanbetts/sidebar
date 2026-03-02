@@ -71,8 +71,6 @@ final class NotesRichTextCodecTests: XCTestCase {
 
         XCTAssertEqual(payload.content, encoded)
         XCTAssertEqual(payload.plainText, "Decoded body")
-        XCTAssertEqual(payload.contentFormat, "rtf")
-        XCTAssertFalse(payload.isCorrupt)
     }
 
     func testNotePayloadDropsRawFallbackWhenCanonicalDecodeFails() throws {
@@ -94,27 +92,5 @@ final class NotesRichTextCodecTests: XCTestCase {
 
         XCTAssertEqual(payload.content, "not-base64")
         XCTAssertEqual(payload.plainText, "")
-        XCTAssertTrue(payload.isCorrupt)
-    }
-
-    func testNotePayloadReadsLegacyContentFromTopLevelKey() throws {
-        let json = """
-        {
-          "id": "n3",
-          "name": "Title.md",
-          "content": "not-base64",
-          "legacy_content": "legacy body",
-          "path": "n3",
-          "modified": 1,
-          "created": 1
-        }
-        """
-
-        let payload = try JSONDecoder().decode(
-            NotePayload.self,
-            from: Data(json.utf8)
-        )
-
-        XCTAssertEqual(payload.legacyContent, "legacy body")
     }
 }

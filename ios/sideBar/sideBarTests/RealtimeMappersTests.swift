@@ -41,7 +41,6 @@ final class RealtimeMappersTests: XCTestCase {
 
         XCTAssertEqual(mapped?.content, "not-base64")
         XCTAssertEqual(mapped?.plainText, "")
-        XCTAssertEqual(mapped?.isCorrupt, true)
     }
 
     func testMapNoteIgnoresMetadataFallbackFields() {
@@ -64,7 +63,6 @@ final class RealtimeMappersTests: XCTestCase {
 
         XCTAssertEqual(mapped?.content, encoded)
         XCTAssertEqual(mapped?.plainText, "")
-        XCTAssertNil(mapped?.contentFormat)
     }
 
     func testMapNotePrefersTopLevelPlainText() {
@@ -87,7 +85,6 @@ final class RealtimeMappersTests: XCTestCase {
 
         XCTAssertEqual(mapped?.content, encoded)
         XCTAssertEqual(mapped?.plainText, "Top level plain text")
-        XCTAssertEqual(mapped?.contentFormat, "rtf")
     }
 
     func testMapWebsiteUsesMetadataFlags() {
