@@ -73,6 +73,41 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedLine), .heading3)
     }
 
+    func testApplyFormattingBoldStylesSelectedRangeImmediately() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let lineRange = firstLine(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
+
+        viewModel.applyFormatting(.bold)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        let hasBoldRun = viewModel.attributedContent[lineRange].runs.contains { run in
+            #if os(iOS)
+            guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            #elseif os(macOS)
+            guard let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.bold)
+            #endif
+        }
+        XCTAssertTrue(hasBoldRun)
+    }
+
+    func testApplyFormattingBulletListPrefixesCurrentLine() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("item")
+        let lineRange = firstLine(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
+
+        viewModel.applyFormatting(.bulletList)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertTrue(String(viewModel.attributedContent.characters).hasPrefix("• "))
+        let updatedLine = firstLine(in: viewModel.attributedContent)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedLine), .bulletList)
+    }
+
     private func firstLine(in text: AttributedString) -> Range<AttributedString.Index> {
         var cursor = text.startIndex
         while cursor < text.endIndex {

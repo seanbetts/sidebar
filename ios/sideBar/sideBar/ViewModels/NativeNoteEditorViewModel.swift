@@ -67,22 +67,42 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         String(attributedContent.characters)
     }
 
-    func defaultTypingAttributes() -> AttributeContainer {
+    func defaultTypingAttributes(
+        blockKind: BlockKind = .paragraph,
+        listDepth: Int? = nil
+    ) -> AttributeContainer {
         var attrs = AttributeContainer()
-        let blockKind: BlockKind = .paragraph
         attrs.blockKind = blockKind
-        attrs.listDepth = nil
+        attrs.listDepth = listDepth
         attrs.codeLanguage = nil
         setFont(baseFont(for: blockKind), platformFont: platformBaseFont(for: blockKind), in: &attrs)
         setForegroundColor(baseForegroundColor(for: blockKind), in: &attrs)
         setBackgroundColor(baseBackgroundColor(for: blockKind), in: &attrs)
-        attrs.paragraphStyle = paragraphStyle(for: blockKind)
-        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
-            .paragraph,
-            identity: 1
+        attrs.paragraphStyle = paragraphStyle(for: blockKind, listDepth: listDepth)
+        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = typingPresentationIntent(
+            blockKind: blockKind,
+            listDepth: listDepth
         )
-        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
+        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
+        attrs.strikethroughStyle = blockKind == .taskChecked ? .single : nil
         return attrs
+    }
+
+    func contextualTypingFallbackAttributes() -> AttributeContainer {
+        guard !attributedContent.characters.isEmpty else {
+            return defaultTypingAttributes()
+        }
+        guard let paragraphRange = selectedParagraphRanges().first, !paragraphRange.isEmpty else {
+            return defaultTypingAttributes()
+        }
+
+        let blockKind = attributedContent[paragraphRange].blockKind
+            ?? attributedContent.blockKind(in: paragraphRange)
+            ?? .paragraph
+        let listDepth: Int? = isListBlockKind(blockKind)
+            ? max(1, attributedContent[paragraphRange].listDepth ?? 1)
+            : nil
+        return defaultTypingAttributes(blockKind: blockKind, listDepth: listDepth)
     }
 
     public func isBoldActive() -> Bool {
@@ -140,8 +160,10 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         if !hasUnsavedChanges {
             hasUnsavedChanges = true
         }
+        let currentSelectionSpan = selectionLineSpan(in: attributedContent)
+        requestPrefixRefresh(scope: .lineSpan(unionLineSpan(lastSelectionLineSpan, currentSelectionSpan)))
         scheduleAutosave()
-        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
+        lastSelectionLineSpan = currentSelectionSpan
     }
 
     public func handleContentChange(previous: AttributedString) {
@@ -168,8 +190,10 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         if !hasUnsavedChanges {
             hasUnsavedChanges = true
         }
+        let currentSelectionSpan = selectionLineSpan(in: attributedContent)
+        requestPrefixRefresh(scope: .lineSpan(unionLineSpan(lastSelectionLineSpan, currentSelectionSpan)))
         scheduleAutosave()
-        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
+        lastSelectionLineSpan = currentSelectionSpan
     }
 
     public func handleSelectionChange() {

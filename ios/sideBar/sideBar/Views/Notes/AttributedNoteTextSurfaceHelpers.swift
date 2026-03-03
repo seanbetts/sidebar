@@ -88,11 +88,46 @@ func resolvedTypingAttributes(
     selectionTypingAttributes: AttributeContainer,
     fallbackTypingAttributes: AttributeContainer
 ) -> AttributeContainer {
-    guard text.characters.isEmpty else { return selectionTypingAttributes }
-    if selectionTypingAttributes.blockKind != nil || selectionTypingAttributes.paragraphStyle != nil {
-        return selectionTypingAttributes
+    var resolved = selectionTypingAttributes
+    if text.characters.isEmpty {
+        if resolved.blockKind == nil {
+            resolved.blockKind = fallbackTypingAttributes.blockKind
+        }
+        if resolved.paragraphStyle == nil {
+            resolved.paragraphStyle = fallbackTypingAttributes.paragraphStyle
+        }
+        #if os(iOS)
+        if resolved[AttributeScopes.UIKitAttributes.FontAttribute.self] == nil {
+            resolved[AttributeScopes.UIKitAttributes.FontAttribute.self] =
+                fallbackTypingAttributes[AttributeScopes.UIKitAttributes.FontAttribute.self]
+        }
+        #elseif os(macOS)
+        if resolved[AttributeScopes.AppKitAttributes.FontAttribute.self] == nil {
+            resolved[AttributeScopes.AppKitAttributes.FontAttribute.self] =
+                fallbackTypingAttributes[AttributeScopes.AppKitAttributes.FontAttribute.self]
+        }
+        #endif
+        return resolved
     }
-    return fallbackTypingAttributes
+
+    if resolved.blockKind == nil {
+        resolved.blockKind = fallbackTypingAttributes.blockKind
+    }
+    if resolved.paragraphStyle == nil {
+        resolved.paragraphStyle = fallbackTypingAttributes.paragraphStyle
+    }
+    #if os(iOS)
+    if resolved[AttributeScopes.UIKitAttributes.FontAttribute.self] == nil {
+        resolved[AttributeScopes.UIKitAttributes.FontAttribute.self] =
+            fallbackTypingAttributes[AttributeScopes.UIKitAttributes.FontAttribute.self]
+    }
+    #elseif os(macOS)
+    if resolved[AttributeScopes.AppKitAttributes.FontAttribute.self] == nil {
+        resolved[AttributeScopes.AppKitAttributes.FontAttribute.self] =
+            fallbackTypingAttributes[AttributeScopes.AppKitAttributes.FontAttribute.self]
+    }
+    #endif
+    return resolved
 }
 
 #if os(iOS)

@@ -17,7 +17,7 @@ struct AttributedNoteEditorView: View {
         AttributedNoteTextSurface(
             text: $viewModel.attributedContent,
             selection: $viewModel.selection,
-            fallbackTypingAttributes: viewModel.defaultTypingAttributes(),
+            fallbackTypingAttributes: viewModel.contextualTypingFallbackAttributes(),
             isEditable: isEditable,
             isSelectable: true,
             syncSelection: isEditable,

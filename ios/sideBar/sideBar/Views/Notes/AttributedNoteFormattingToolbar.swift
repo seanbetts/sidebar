@@ -63,8 +63,6 @@ struct AttributedNoteFormattingToolbar: View {
     }
 
     private func applyFormatting(_ formatting: NoteFormatting) {
-        DispatchQueue.main.async {
-            viewModel.applyFormatting(formatting)
-        }
+        viewModel.applyFormatting(formatting)
     }
 }
