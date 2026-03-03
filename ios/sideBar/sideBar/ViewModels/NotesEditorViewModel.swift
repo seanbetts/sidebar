@@ -216,8 +216,7 @@ public final class NotesEditorViewModel: ObservableObject {
 
     public func setDirty(_ dirty: Bool) {
         guard isDirty != dirty else { return }
-        Task { @MainActor [weak self] in
-            await Task.yield()
+        DispatchQueue.main.async { [weak self] in
             guard let self, self.isDirty != dirty else { return }
             self.isDirty = dirty
         }
@@ -225,8 +224,7 @@ public final class NotesEditorViewModel: ObservableObject {
 
     public func setReadOnly(_ readOnly: Bool) {
         guard isReadOnly != readOnly else { return }
-        Task { @MainActor [weak self] in
-            await Task.yield()
+        DispatchQueue.main.async { [weak self] in
             guard let self, self.isReadOnly != readOnly else { return }
             self.isReadOnly = readOnly
         }

@@ -205,11 +205,18 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
                 let previousText = self.parent.text
-                self.parent.text = updatedText
-                if self.parent.syncSelection {
-                    self.parent.selection = updatedSelection
+                let textDidChange = previousText != updatedText
+                let selectionDidChange = self.parent.selection != updatedSelection
+                guard textDidChange || (self.parent.syncSelection && selectionDidChange) else { return }
+                if textDidChange {
+                    self.parent.text = updatedText
                 }
-                guard let onTextDidChange = self.parent.onTextDidChange else { return }
+                if self.parent.syncSelection {
+                    if selectionDidChange {
+                        self.parent.selection = updatedSelection
+                    }
+                }
+                guard textDidChange, let onTextDidChange = self.parent.onTextDidChange else { return }
                 DispatchQueue.main.async { [weak self] in
                     guard let self, !self.isUpdating else { return }
                     onTextDidChange(previousText, generation)
@@ -229,6 +236,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
                 guard self.parent.syncSelection else { return }
+                guard self.parent.selection != updatedSelection else { return }
                 self.parent.selection = updatedSelection
                 guard let onSelectionDidChange = self.parent.onSelectionDidChange else { return }
                 DispatchQueue.main.async { [weak self] in

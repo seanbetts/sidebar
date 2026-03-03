@@ -73,51 +73,62 @@ extension AppEnvironment {
     private func forwardObjectWillChange() {
         settingsViewModel.objectWillChange
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
+                self?.scheduleForwardedObjectWillChange()
             }
             .store(in: &cancellables)
 
         navigation.objectWillChange
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
+                self?.scheduleForwardedObjectWillChange()
             }
             .store(in: &cancellables)
 
         chatViewModel.objectWillChange
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
+                self?.scheduleForwardedObjectWillChange()
             }
             .store(in: &cancellables)
 
         websitesViewModel.objectWillChange
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
+                self?.scheduleForwardedObjectWillChange()
             }
             .store(in: &cancellables)
 
         ingestionViewModel.objectWillChange
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
+                self?.scheduleForwardedObjectWillChange()
             }
             .store(in: &cancellables)
 
         weatherViewModel.objectWillChange
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
+                self?.scheduleForwardedObjectWillChange()
             }
             .store(in: &cancellables)
 
         currentLocationViewModel.objectWillChange
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
+                self?.scheduleForwardedObjectWillChange()
             }
             .store(in: &cancellables)
 
         writeQueue.objectWillChange
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
+                self?.scheduleForwardedObjectWillChange()
             }
             .store(in: &cancellables)
+    }
+
+    private func scheduleForwardedObjectWillChange() {
+        guard !hasPendingForwardedObjectWillChange else { return }
+        hasPendingForwardedObjectWillChange = true
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self else { return }
+            self.hasPendingForwardedObjectWillChange = false
+            self.objectWillChange.send()
+        }
     }
 
     private func monitorNetwork() {

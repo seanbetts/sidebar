@@ -85,6 +85,7 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var signOutEvent: UUID?
     var isConsumingPendingShares: Bool = false
     var cancellables = Set<AnyCancellable>()
+    var hasPendingForwardedObjectWillChange = false
     #if os(iOS) || os(macOS)
     var deviceToken: String?
     var lastRegisteredDeviceToken: String?

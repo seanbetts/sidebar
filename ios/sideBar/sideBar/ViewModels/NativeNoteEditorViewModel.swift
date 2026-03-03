@@ -138,7 +138,9 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         var normalizedContent = attributedContent
         stripUnsupportedInlineStyles(in: &normalizedContent)
         if applyDetectedLinks(in: &normalizedContent) || normalizedContent != attributedContent {
-            attributedContent = normalizedContent
+            if attributedContent != normalizedContent {
+                attributedContent = normalizedContent
+            }
         }
 
         // Mark dirty immediately so close/switch flows can prompt even before autosave fires.
