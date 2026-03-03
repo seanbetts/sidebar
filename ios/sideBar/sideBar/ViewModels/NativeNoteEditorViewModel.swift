@@ -18,6 +18,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     @Published public var isReadOnly: Bool = false
     @Published public internal(set) var hasUnsavedChanges: Bool = false
     @Published public internal(set) var autosaveToken: Int = 0
+    @Published public private(set) var styleSyncGeneration: Int = 0
     public var autosaveDelay: TimeInterval = 1.5
 
 #if os(iOS)
@@ -62,6 +63,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         guard abs(baseFontSize - updatedSize) > 0.1 else { return }
         baseFontSize = updatedSize
         normalizeDocumentStylingForDisplay()
+        styleSyncGeneration &+= 1
     }
 
     public func currentPlainText() -> String {

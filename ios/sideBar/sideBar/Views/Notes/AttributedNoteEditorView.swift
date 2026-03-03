@@ -19,6 +19,7 @@ struct AttributedNoteEditorView: View {
             selection: $viewModel.selection,
             fallbackTypingAttributes: viewModel.contextualTypingFallbackAttributes(),
             preferPlainTextEditingStability: viewModel.plainTextRuntimeModeEnabled,
+            styleSyncGeneration: viewModel.styleSyncGeneration,
             isEditable: isEditable,
             isSelectable: true,
             syncSelection: isEditable,
@@ -67,6 +68,7 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
     @Binding var selection: AttributedTextSelection
     let fallbackTypingAttributes: AttributeContainer
     let preferPlainTextEditingStability: Bool
+    let styleSyncGeneration: Int
     let isEditable: Bool
     let isSelectable: Bool
     let syncSelection: Bool
@@ -111,14 +113,17 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
         var textChanged = false
         let bridged = bridgeToNSAttributedString(text)
         synchronizedTextLength = bridged.length
+        let shouldForceStyleOnlySync = context.coordinator.lastAppliedStyleSyncGeneration != styleSyncGeneration
         let shouldSkipStyleOnlySync = preferPlainTextEditingStability &&
             isEditable &&
             textView.isFirstResponder &&
+            !shouldForceStyleOnlySync &&
             textView.attributedText.string == bridged.string
         if !textView.attributedText.isEqual(to: bridged) && !shouldSkipStyleOnlySync {
             textView.attributedText = bridged
             textChanged = true
         }
+        context.coordinator.lastAppliedStyleSyncGeneration = styleSyncGeneration
 
         if syncSelection {
             let desiredRange = nsRange(from: selection, in: text)
@@ -191,6 +196,7 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
         var preferNativeSelectionOnNextUpdate: Bool = false
         var contentChangeGeneration: Int = 0
         var selectionChangeGeneration: Int = 0
+        var lastAppliedStyleSyncGeneration: Int = -1
         weak var tapRecognizer: UITapGestureRecognizer?
 
         init(_ parent: AttributedNoteTextSurface) {
@@ -274,6 +280,7 @@ struct AttributedNoteTextSurface: NSViewRepresentable {
     @Binding var selection: AttributedTextSelection
     let fallbackTypingAttributes: AttributeContainer
     let preferPlainTextEditingStability: Bool
+    let styleSyncGeneration: Int
     let isEditable: Bool
     let isSelectable: Bool
     let syncSelection: Bool
@@ -320,10 +327,13 @@ struct AttributedNoteTextSurface: NSViewRepresentable {
             isEditable &&
             isFocused &&
             context.coordinator.preferNativeSelectionOnNextUpdate
+        let shouldForceStyleOnlySync = context.coordinator.lastAppliedStyleSyncGeneration != styleSyncGeneration
         let syncResult = synchronizeMacText(
             textView: textView,
-            isFocused: isFocused
+            isFocused: isFocused,
+            shouldForceStyleOnlySync: shouldForceStyleOnlySync
         )
+        context.coordinator.lastAppliedStyleSyncGeneration = styleSyncGeneration
         synchronizeMacSelection(
             textView: textView,
             coordinator: context.coordinator,
@@ -391,6 +401,7 @@ struct AttributedNoteTextSurface: NSViewRepresentable {
         var preferNativeSelectionOnNextUpdate: Bool = false
         var contentChangeGeneration: Int = 0
         var selectionChangeGeneration: Int = 0
+        var lastAppliedStyleSyncGeneration: Int = -1
         weak var tapRecognizer: NSClickGestureRecognizer?
 
         init(_ parent: AttributedNoteTextSurface) {

@@ -7,13 +7,15 @@ import AppKit
 extension AttributedNoteTextSurface {
     func synchronizeMacText(
         textView: NSTextView,
-        isFocused: Bool
+        isFocused: Bool,
+        shouldForceStyleOnlySync: Bool
     ) -> (synchronizedTextLength: Int, textChanged: Bool) {
         let bridged = bridgeToNSAttributedString(text)
         let synchronizedTextLength = bridged.length
         let shouldSkipStyleOnlySync = preferPlainTextEditingStability &&
             isEditable &&
             isFocused &&
+            !shouldForceStyleOnlySync &&
             textView.attributedString().string == bridged.string
         guard !textView.attributedString().isEqual(to: bridged), !shouldSkipStyleOnlySync else {
             return (synchronizedTextLength, false)
