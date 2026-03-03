@@ -16,7 +16,6 @@ struct NotesDetailView: View {
     @Binding var isMoveSheetPresented: Bool
     @Binding var moveSelection: String
     @Binding var isDeleteAlertPresented: Bool
-    @Binding var isCloseConfirmPresented: Bool
     @Binding var isExporting: Bool
     @Binding var exportDocument: PlainTextFileDocument?
     @Binding var exportFilename: String

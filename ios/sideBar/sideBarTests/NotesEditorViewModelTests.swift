@@ -441,6 +441,120 @@ final class NotesEditorViewModelTests: XCTestCase {
 
 @MainActor
 extension NotesEditorViewModelTests {
+    func testSaveIfNeededPersistsDirtyNativeEditorSnapshot() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let updated = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Updated",
+            path: "/note.md",
+            modified: 100,
+            created: nil
+        )
+        let api = NotesAPISpy(updateResult: .success(updated))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        nativeViewModel.attributedContent = AttributedString("Updated")
+        nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
+        viewModel.setDirty(true)
+        try await waitUntil(timeoutSeconds: 1.0) { viewModel.isDirty }
+        try await waitUntil(timeoutSeconds: 3.0) { nativeViewModel.hasUnsavedChanges }
+
+        await viewModel.saveIfNeeded()
+
+        XCTAssertEqual(api.updateCallCount, 1)
+        XCTAssertEqual(viewModel.content, "Updated")
+        XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
+    }
+
+    func testSaveIfNeededSkipsWhenEditorIsClean() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let api = NotesAPISpy(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        await viewModel.saveIfNeeded()
+
+        XCTAssertEqual(api.updateCallCount, 0)
+    }
+
     func testDetachNativeEditorStopsUsingDetachedSnapshot() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")

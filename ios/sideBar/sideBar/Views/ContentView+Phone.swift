@@ -115,7 +115,10 @@ extension ContentView {
                     get: { environment.notesRuntime.viewModel.selectedNoteId.map(PhoneDetailRoute.init) },
                     set: { route in
                         guard route == nil else { return }
-                        environment.notesRuntime.viewModel.clearSelection()
+                        Task {
+                            await environment.notesRuntime.editorViewModel.saveIfNeeded()
+                            environment.notesRuntime.viewModel.clearSelection()
+                        }
                     }
                 )
             }

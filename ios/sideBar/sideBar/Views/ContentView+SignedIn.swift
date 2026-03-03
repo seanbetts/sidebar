@@ -45,6 +45,11 @@ extension ContentView {
         })
         content = AnyView(content.animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast))
         content = AnyView(content.onChange(of: scenePhase) { _, newValue in
+            if newValue == .inactive || newValue == .background {
+                Task {
+                    await environment.notesRuntime.editorViewModel.saveIfNeeded()
+                }
+            }
             if newValue == .background {
                 // Record when we went to background for biometric grace period
                 if biometricUnlockEnabled {

@@ -93,11 +93,10 @@ extension NotesDetailView {
     }
 
     func requestCloseNote() {
-        if editorViewModel.isDirty {
-            isCloseConfirmPresented = true
-            return
+        Task {
+            await editorViewModel.saveIfNeeded()
+            viewModel.clearSelection()
         }
-        viewModel.clearSelection()
     }
 
 }

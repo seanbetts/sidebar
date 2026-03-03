@@ -18,7 +18,6 @@ public struct NotesView: View {
     @State private var isMoveSheetPresented = false
     @State private var moveSelection: String = ""
     @State private var isDeleteAlertPresented = false
-    @State private var isCloseConfirmPresented = false
     @State private var isExporting = false
     @State private var exportDocument: PlainTextFileDocument?
     @State private var exportFilename: String = "note"
@@ -35,7 +34,6 @@ public struct NotesView: View {
             isMoveSheetPresented: $isMoveSheetPresented,
             moveSelection: $moveSelection,
             isDeleteAlertPresented: $isDeleteAlertPresented,
-            isCloseConfirmPresented: $isCloseConfirmPresented,
             isExporting: $isExporting,
             exportDocument: $exportDocument,
             exportFilename: $exportFilename
@@ -114,20 +112,6 @@ public struct NotesView: View {
                 },
                 onCancel: { }
             )
-            .confirmationDialog("Save changes?", isPresented: $isCloseConfirmPresented, titleVisibility: .visible) {
-                Button("Save changes") {
-                    Task {
-                        await environment.notesRuntime.editorViewModel.saveIfNeeded()
-                        environment.notesRuntime.viewModel.clearSelection()
-                    }
-                }
-                Button("Don't save", role: .destructive) {
-                    environment.notesRuntime.viewModel.clearSelection()
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("You have unsaved changes. Save before closing the note?")
-            }
     }
 
     private var noteTitle: String {
