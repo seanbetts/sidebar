@@ -190,10 +190,8 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         if !hasUnsavedChanges {
             hasUnsavedChanges = true
         }
-        let currentSelectionSpan = selectionLineSpan(in: attributedContent)
-        requestPrefixRefresh(scope: .lineSpan(unionLineSpan(lastSelectionLineSpan, currentSelectionSpan)))
         scheduleAutosave()
-        lastSelectionLineSpan = currentSelectionSpan
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
     }
 
     public func handleSelectionChange() {

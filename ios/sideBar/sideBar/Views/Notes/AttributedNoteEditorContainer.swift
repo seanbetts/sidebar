@@ -12,8 +12,6 @@ struct AttributedNoteEditorContainer: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AttributedNoteFormattingToolbar(viewModel: nativeViewModel)
-            Divider()
             AttributedNoteEditorView(
                 viewModel: nativeViewModel,
                 maxContentWidth: maxContentWidth,
