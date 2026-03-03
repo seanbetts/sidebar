@@ -281,7 +281,6 @@ public struct NotesView: View {
     }
 
     private func prepareForDestructiveAction() {
-        environment.notesRuntime.editorViewModel.setReadOnly(true)
         #if os(iOS)
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),

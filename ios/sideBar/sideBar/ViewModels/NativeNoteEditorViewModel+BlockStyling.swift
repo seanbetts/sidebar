@@ -19,6 +19,8 @@ extension NativeNoteEditorViewModel {
             let range = run.range
             let tableInfo = tableRowInfo(from: run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
             let isTableHeader = tableInfo?.isHeader == true
+            let preservesExistingBold = runHasBoldTrait(run)
+            let preservesExistingItalic = runHasItalicTrait(run)
 
             if intents.contains(.code) {
                 setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &text, range: range)
@@ -27,8 +29,8 @@ extension NativeNoteEditorViewModel {
                 continue
             }
 
-            let isItalic = intents.contains(.emphasized)
-            let isInlineBold = intents.contains(.stronglyEmphasized)
+            let isItalic = intents.contains(.emphasized) || preservesExistingItalic
+            let isInlineBold = intents.contains(.stronglyEmphasized) || preservesExistingBold
             var font = baseFont
             if isTableHeader {
                 font = font.weight(.semibold)
@@ -62,6 +64,26 @@ extension NativeNoteEditorViewModel {
                 setForegroundColor(baseForeground, in: &text, range: range)
             }
         }
+    }
+
+    private func runHasBoldTrait(_ run: AttributedString.Runs.Run) -> Bool {
+        #if os(iOS)
+        guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
+        return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+        #elseif os(macOS)
+        guard let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] else { return false }
+        return font.fontDescriptor.symbolicTraits.contains(.bold)
+        #endif
+    }
+
+    private func runHasItalicTrait(_ run: AttributedString.Runs.Run) -> Bool {
+        #if os(iOS)
+        guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
+        return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+        #elseif os(macOS)
+        guard let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] else { return false }
+        return font.fontDescriptor.symbolicTraits.contains(.italic)
+        #endif
     }
 
     func inferredBlockKind(from lineText: String) -> BlockKind? {

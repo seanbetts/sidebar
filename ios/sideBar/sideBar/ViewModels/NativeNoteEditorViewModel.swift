@@ -57,11 +57,32 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     public init() {}
 
     public func setBaseFontSize(_ size: CGFloat) {
-        baseFontSize = max(12, size)
+        let updatedSize = max(12, size)
+        guard abs(baseFontSize - updatedSize) > 0.1 else { return }
+        baseFontSize = updatedSize
+        normalizeDocumentStylingForDisplay()
     }
 
     public func currentPlainText() -> String {
         String(attributedContent.characters)
+    }
+
+    func defaultTypingAttributes() -> AttributeContainer {
+        var attrs = AttributeContainer()
+        let blockKind: BlockKind = .paragraph
+        attrs.blockKind = blockKind
+        attrs.listDepth = nil
+        attrs.codeLanguage = nil
+        setFont(baseFont(for: blockKind), platformFont: platformBaseFont(for: blockKind), in: &attrs)
+        setForegroundColor(baseForegroundColor(for: blockKind), in: &attrs)
+        setBackgroundColor(baseBackgroundColor(for: blockKind), in: &attrs)
+        attrs.paragraphStyle = paragraphStyle(for: blockKind)
+        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .paragraph,
+            identity: 1
+        )
+        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
+        return attrs
     }
 
     public func isBoldActive() -> Bool {

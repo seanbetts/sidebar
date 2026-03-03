@@ -17,6 +17,7 @@ struct AttributedNoteEditorView: View {
         AttributedNoteTextSurface(
             text: $viewModel.attributedContent,
             selection: $viewModel.selection,
+            fallbackTypingAttributes: viewModel.defaultTypingAttributes(),
             isEditable: isEditable,
             isSelectable: true,
             syncSelection: isEditable,
@@ -63,6 +64,7 @@ extension AttributeScopes {
 private struct AttributedNoteTextSurface: UIViewRepresentable {
     @Binding var text: AttributedString
     @Binding var selection: AttributedTextSelection
+    let fallbackTypingAttributes: AttributeContainer
     let isEditable: Bool
     let isSelectable: Bool
     let syncSelection: Bool
@@ -128,9 +130,12 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             }
         }
         if syncSelection && isEditable {
-            let desiredTypingAttributes = typingAttributesDictionary(
-                from: selection.typingAttributes(in: text)
+            let resolvedTypingAttributes = resolvedTypingAttributes(
+                text: text,
+                selectionTypingAttributes: selection.typingAttributes(in: text),
+                fallbackTypingAttributes: fallbackTypingAttributes
             )
+            let desiredTypingAttributes = typingAttributesDictionary(from: resolvedTypingAttributes)
             if !NSDictionary(dictionary: textView.typingAttributes).isEqual(to: desiredTypingAttributes) {
                 textView.typingAttributes = desiredTypingAttributes
             }
@@ -256,6 +261,7 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
 private struct AttributedNoteTextSurface: NSViewRepresentable {
     @Binding var text: AttributedString
     @Binding var selection: AttributedTextSelection
+    let fallbackTypingAttributes: AttributeContainer
     let isEditable: Bool
     let isSelectable: Bool
     let syncSelection: Bool
@@ -363,9 +369,12 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
 
     private func synchronizeMacTypingAttributes(textView: NSTextView) {
         guard syncSelection && isEditable else { return }
-        let desiredTypingAttributes = typingAttributesDictionary(
-            from: selection.typingAttributes(in: text)
+        let resolvedTypingAttributes = resolvedTypingAttributes(
+            text: text,
+            selectionTypingAttributes: selection.typingAttributes(in: text),
+            fallbackTypingAttributes: fallbackTypingAttributes
         )
+        let desiredTypingAttributes = typingAttributesDictionary(from: resolvedTypingAttributes)
         if !NSDictionary(dictionary: textView.typingAttributes).isEqual(to: desiredTypingAttributes) {
             textView.typingAttributes = desiredTypingAttributes
         }

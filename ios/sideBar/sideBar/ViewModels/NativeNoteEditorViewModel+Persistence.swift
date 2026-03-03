@@ -16,6 +16,7 @@ extension NativeNoteEditorViewModel {
             _ = applyDetectedLinks(in: &detectedContent)
             attributedContent = detectedContent
             selection = AttributedTextSelection()
+            normalizeDocumentStylingForDisplay()
             lastSavedContent = plainText
             lastSavedCanonicalContent = canonicalContent
             hasUnsavedChanges = false

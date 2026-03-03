@@ -58,6 +58,35 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertTrue(snapshot.plainText.hasPrefix("• "))
         XCTAssertTrue(reloaded.currentPlainText().hasPrefix("• "))
     }
+
+    func testLoadTextEmptySeedsParagraphTypingAttributes() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("")
+
+        let attrs = viewModel.defaultTypingAttributes()
+        XCTAssertEqual(attrs.blockKind, .paragraph)
+        XCTAssertNotNil(attrs.paragraphStyle)
+        #if os(iOS)
+        XCTAssertNotNil(attrs[AttributeScopes.UIKitAttributes.FontAttribute.self])
+        #elseif os(macOS)
+        XCTAssertNotNil(attrs[AttributeScopes.AppKitAttributes.FontAttribute.self])
+        #endif
+    }
+
+    func testLoadDocumentNormalizesToCurrentBaseFontSize() async {
+        let source = NativeNoteEditorViewModel()
+        source.setBaseFontSize(14)
+        source.loadText("hello")
+        let snapshot = source.currentPersistenceSnapshot()
+
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.setBaseFontSize(22)
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        let pointSize = firstRunPointSize(in: reloaded.attributedContent)
+        XCTAssertNotNil(pointSize)
+        XCTAssertEqual(pointSize ?? 0, 22, accuracy: 1.0)
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -70,4 +99,20 @@ private func characterRange(
         index = text.index(afterCharacter: index)
     }
     return text.startIndex..<index
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func firstRunPointSize(in text: AttributedString) -> CGFloat? {
+    for run in text.runs {
+        #if os(iOS)
+        if let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] {
+            return font.pointSize
+        }
+        #elseif os(macOS)
+        if let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] {
+            return font.pointSize
+        }
+        #endif
+    }
+    return nil
 }

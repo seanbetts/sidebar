@@ -82,6 +82,19 @@ func typingAttributesDictionary(
     return bridged.attributes(at: 0, effectiveRange: nil)
 }
 
+@available(iOS 26.0, macOS 26.0, *)
+func resolvedTypingAttributes(
+    text: AttributedString,
+    selectionTypingAttributes: AttributeContainer,
+    fallbackTypingAttributes: AttributeContainer
+) -> AttributeContainer {
+    guard text.characters.isEmpty else { return selectionTypingAttributes }
+    if selectionTypingAttributes.blockKind != nil || selectionTypingAttributes.paragraphStyle != nil {
+        return selectionTypingAttributes
+    }
+    return fallbackTypingAttributes
+}
+
 #if os(iOS)
 @available(iOS 26.0, *)
 func clampedContentOffset(_ offset: CGPoint, in textView: UITextView) -> CGPoint {

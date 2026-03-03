@@ -12,14 +12,12 @@ struct AttributedNoteEditorContainer: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !editorViewModel.isReadOnly {
-                AttributedNoteFormattingToolbar(viewModel: nativeViewModel)
-                Divider()
-            }
+            AttributedNoteFormattingToolbar(viewModel: nativeViewModel)
+            Divider()
             AttributedNoteEditorView(
                 viewModel: nativeViewModel,
                 maxContentWidth: maxContentWidth,
-                isEditable: !editorViewModel.isReadOnly,
+                isEditable: true,
                 onTap: nil
             )
         }
@@ -28,7 +26,7 @@ struct AttributedNoteEditorContainer: View {
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
             applyAutosaveDelay(isOffline: environment.isOffline)
-            nativeViewModel.isReadOnly = editorViewModel.isReadOnly
+            nativeViewModel.isReadOnly = false
         }
         .onDisappear {
             editorViewModel.detachNativeEditor(nativeViewModel)
@@ -43,13 +41,10 @@ struct AttributedNoteEditorContainer: View {
             }
         }
         .onChange(of: nativeViewModel.autosaveToken) { _, _ in
-            guard nativeViewModel.hasUnsavedChanges, !nativeViewModel.isReadOnly else { return }
+            guard nativeViewModel.hasUnsavedChanges else { return }
             Task {
                 await editorViewModel.syncFromNativeEditor(nativeViewModel)
             }
-        }
-        .onChange(of: editorViewModel.isReadOnly) { _, readOnly in
-            nativeViewModel.isReadOnly = readOnly
         }
         .onChange(of: environment.isOffline) { _, isOffline in
             applyAutosaveDelay(isOffline: isOffline)
@@ -59,10 +54,6 @@ struct AttributedNoteEditorContainer: View {
             nativeViewModel.setBaseFontSize(NoteTextTypography.defaultBodyFontSize(for: option))
         }
         .onKeyPress(.escape) {
-            if !editorViewModel.isReadOnly {
-                editorViewModel.setReadOnly(true)
-                return .handled
-            }
             guard editorViewModel.currentNoteId != nil else { return .ignored }
             environment.emitShortcutAction(.closeItem)
             return .handled

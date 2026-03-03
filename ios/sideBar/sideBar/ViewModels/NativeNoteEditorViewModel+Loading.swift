@@ -11,28 +11,43 @@ extension NativeNoteEditorViewModel {
             ?? AttributedString(text)
         _ = applyDetectedLinks(in: &detectedContent)
         attributedContent = detectedContent
-        if !attributedContent.characters.isEmpty {
-            let fullRange = attributedContent.startIndex..<attributedContent.endIndex
-            attributedContent[fullRange].blockKind = .paragraph
-            attributedContent[fullRange].listDepth = nil
-            setFont(
-                baseFont(for: .paragraph),
-                platformFont: platformBaseFont(for: .paragraph),
-                in: &attributedContent,
-                range: fullRange
-            )
-            setForegroundColor(baseForegroundColor(for: .paragraph), in: &attributedContent, range: fullRange)
-            setBackgroundColor(baseBackgroundColor(for: .paragraph), in: &attributedContent, range: fullRange)
-            if let style = paragraphStyle(for: .paragraph) {
-                attributedContent[fullRange].paragraphStyle = style
-            }
-        }
         selection = AttributedTextSelection()
+        normalizeDocumentStylingForDisplay()
         lastSavedContent = text
         lastSavedCanonicalContent =
-            NotesRichTextCodec.encodeAttributedStringToBase64RTF(detectedContent)
+            NotesRichTextCodec.encodeAttributedStringToBase64RTF(attributedContent)
             ?? NotesRichTextCodec.encodePlainTextToBase64RTF(text)
         hasUnsavedChanges = false
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
+    }
+
+    func normalizeDocumentStylingForDisplay() {
+        guard !attributedContent.characters.isEmpty else { return }
+
+        var normalized = attributedContent
+        for line in lineInfos(in: normalized) {
+            let lineRange = attributedRange(for: line.range, in: normalized)
+            let resolvedBlockKind = normalized.blockKind(in: lineRange)
+                ?? (line.text.isEmpty ? .blankLine : .paragraph)
+            normalized[lineRange].blockKind = resolvedBlockKind
+            if isListBlockKind(resolvedBlockKind) {
+                normalized[lineRange].listDepth = max(1, normalized[lineRange].listDepth ?? 1)
+            } else {
+                normalized[lineRange].listDepth = nil
+            }
+            if resolvedBlockKind != .codeBlock {
+                normalized[lineRange].codeLanguage = nil
+            }
+            applyInlineIntentStyling(in: &normalized, lineRange: lineRange, blockKind: resolvedBlockKind)
+            let paragraphRange = lineRangeIncludingTrailingNewline(in: normalized, lineRange: lineRange)
+            let listDepth = normalized[lineRange].listDepth
+            if let style = paragraphStyle(for: resolvedBlockKind, listDepth: listDepth) {
+                normalized[paragraphRange].paragraphStyle = style
+            }
+        }
+
+        if normalized != attributedContent {
+            attributedContent = normalized
+        }
     }
 }
