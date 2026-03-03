@@ -97,8 +97,9 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
 }
 
 @MainActor
-private func makeViewModel(tree: FileTree, archivedTree: FileTree = FileTree(children: [])) -> NotesViewModel {
-    let api = StaticTreeNotesAPI(tree: tree, archivedTree: archivedTree)
+private func makeViewModel(tree: FileTree, archivedTree: FileTree? = nil) -> NotesViewModel {
+    let resolvedArchivedTree = archivedTree ?? FileTree(children: [])
+    let api = StaticTreeNotesAPI(tree: tree, archivedTree: resolvedArchivedTree)
     let store = NotesStore(api: api, cache: InMemoryCacheClient())
     return NotesViewModel(
         api: api,

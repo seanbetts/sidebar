@@ -1,5 +1,8 @@
 import SwiftUI
 import XCTest
+#if os(macOS)
+import AppKit
+#endif
 @testable import sideBar
 
 @MainActor
@@ -87,7 +90,7 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
             guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
             return font.fontDescriptor.symbolicTraits.contains(.traitBold)
             #elseif os(macOS)
-            guard let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] else { return false }
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
             return font.fontDescriptor.symbolicTraits.contains(.bold)
             #endif
         }
@@ -118,4 +121,14 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
         }
         return text.startIndex..<text.endIndex
     }
+
+#if os(macOS)
+    private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
+        var sample = AttributedString("x")
+        let range = sample.startIndex..<sample.endIndex
+        sample[range].mergeAttributes(run.attributes)
+        let bridged = NSAttributedString(sample)
+        return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
+    }
+#endif
 }

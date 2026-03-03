@@ -96,17 +96,9 @@ func resolvedTypingAttributes(
         if resolved.paragraphStyle == nil {
             resolved.paragraphStyle = fallbackTypingAttributes.paragraphStyle
         }
-        #if os(iOS)
-        if resolved[AttributeScopes.UIKitAttributes.FontAttribute.self] == nil {
-            resolved[AttributeScopes.UIKitAttributes.FontAttribute.self] =
-                fallbackTypingAttributes[AttributeScopes.UIKitAttributes.FontAttribute.self]
+        if resolved.font == nil {
+            resolved.font = fallbackTypingAttributes.font
         }
-        #elseif os(macOS)
-        if resolved[AttributeScopes.AppKitAttributes.FontAttribute.self] == nil {
-            resolved[AttributeScopes.AppKitAttributes.FontAttribute.self] =
-                fallbackTypingAttributes[AttributeScopes.AppKitAttributes.FontAttribute.self]
-        }
-        #endif
         return resolved
     }
 
@@ -116,17 +108,9 @@ func resolvedTypingAttributes(
     if resolved.paragraphStyle == nil {
         resolved.paragraphStyle = fallbackTypingAttributes.paragraphStyle
     }
-    #if os(iOS)
-    if resolved[AttributeScopes.UIKitAttributes.FontAttribute.self] == nil {
-        resolved[AttributeScopes.UIKitAttributes.FontAttribute.self] =
-            fallbackTypingAttributes[AttributeScopes.UIKitAttributes.FontAttribute.self]
+    if resolved.font == nil {
+        resolved.font = fallbackTypingAttributes.font
     }
-    #elseif os(macOS)
-    if resolved[AttributeScopes.AppKitAttributes.FontAttribute.self] == nil {
-        resolved[AttributeScopes.AppKitAttributes.FontAttribute.self] =
-            fallbackTypingAttributes[AttributeScopes.AppKitAttributes.FontAttribute.self]
-    }
-    #endif
     return resolved
 }
 

@@ -1,5 +1,8 @@
 @preconcurrency import Foundation
 import SwiftUI
+#if os(macOS)
+@preconcurrency import AppKit
+#endif
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
@@ -71,7 +74,7 @@ extension NativeNoteEditorViewModel {
         guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.traitBold)
         #elseif os(macOS)
-        guard let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] else { return false }
+        guard let font = macOSFont(from: run) else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.bold)
         #endif
     }
@@ -81,10 +84,22 @@ extension NativeNoteEditorViewModel {
         guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
         #elseif os(macOS)
-        guard let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] else { return false }
+        guard let font = macOSFont(from: run) else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.italic)
         #endif
     }
+
+#if os(macOS)
+    private func macOSFont(from run: AttributedString.Runs.Run) -> NSFont? {
+        var sample = AttributedString("x")
+        let range = sample.startIndex..<sample.endIndex
+        sample[range].mergeAttributes(run.attributes)
+        let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
+            ?? NSAttributedString(sample)
+        guard bridged.length > 0 else { return nil }
+        return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as? NSFont
+    }
+#endif
 
     func inferredBlockKind(from lineText: String) -> BlockKind? {
         NoteTextLineInference.inferBlockKind(from: lineText)

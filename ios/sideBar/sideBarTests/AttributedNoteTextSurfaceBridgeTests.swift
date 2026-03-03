@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class AttributedNoteTextSurfaceBridgeTests: XCTestCase {
     @available(iOS 26.0, macOS 26.0, *)
     func testScopedBridgePreservesNoteTextEditorAttributes() throws {

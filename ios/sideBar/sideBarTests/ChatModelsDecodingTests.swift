@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class ChatModelsDecodingTests: XCTestCase {
     func testConversationDecodesWhenMessageStatusMissingOrNull() throws {
         let payload = """

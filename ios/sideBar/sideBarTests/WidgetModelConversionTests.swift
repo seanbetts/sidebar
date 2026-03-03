@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class WidgetModelConversionTests: XCTestCase {
     func testWidgetTaskInitFromTaskItemMapsCompletionAndNotes() {
         let task = TaskItem(

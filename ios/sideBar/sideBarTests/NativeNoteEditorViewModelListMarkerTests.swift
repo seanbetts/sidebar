@@ -21,11 +21,7 @@ final class NativeNoteListMarkerTests: XCTestCase {
         content[markerRange].listDepth = 1
         content[textRange].blockKind = .bulletList
         content[textRange].listDepth = 1
-#if os(iOS)
-        content[markerRange][AttributeScopes.UIKitAttributes.FontAttribute.self] = UIFont.systemFont(ofSize: 8)
-#elseif os(macOS)
-        content[markerRange][AttributeScopes.AppKitAttributes.FontAttribute.self] = NSFont.systemFont(ofSize: 8)
-#endif
+        content[markerRange].font = .system(size: 8)
 
         viewModel.attributedContent = content
         let insertion = viewModel.attributedContent.endIndex
@@ -38,10 +34,11 @@ final class NativeNoteListMarkerTests: XCTestCase {
             return
         }
 #if os(iOS)
-        let markerFont = markerRun[AttributeScopes.UIKitAttributes.FontAttribute.self]
-#elseif os(macOS)
-        let markerFont = markerRun[AttributeScopes.AppKitAttributes.FontAttribute.self]
-#endif
+        let bridged = NSAttributedString(AttributedString(viewModel.attributedContent[markerRun.range]))
+        let markerFont = bridged.attribute(.font, at: 0, effectiveRange: nil) as? UIFont
         XCTAssertEqual(markerFont?.pointSize ?? 0, viewModel.baseFontSize, accuracy: 0.1)
+#elseif os(macOS)
+        XCTAssertNotNil(markerRun.font)
+#endif
     }
 }

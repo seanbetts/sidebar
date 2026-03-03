@@ -220,7 +220,8 @@ extension NativeNoteEditorViewModel {
 #if os(iOS)
         attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] = font
 #else
-        attrs[AttributeScopes.AppKitAttributes.FontAttribute.self] = font
+        // Keep macOS font state on the SwiftUI `Font` attribute to avoid Sendable warnings on NSFont.
+        _ = font
 #endif
     }
 
@@ -248,7 +249,7 @@ extension NativeNoteEditorViewModel {
 #if os(iOS)
         text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = font
 #else
-        text[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = font
+        applyMacOSFont(font, to: &text, range: range)
 #endif
     }
 
@@ -275,4 +276,30 @@ extension NativeNoteEditorViewModel {
         text[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] = color
 #endif
     }
+
+#if os(macOS)
+    private func applyMacOSFont(
+        _ font: NSFont,
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>
+    ) {
+        guard !range.isEmpty else { return }
+        let string = String(text.characters)
+        let lowerCharacterOffset = text.characters.distance(from: text.startIndex, to: range.lowerBound)
+        let upperCharacterOffset = text.characters.distance(from: text.startIndex, to: range.upperBound)
+        let lowerStringIndex = string.index(string.startIndex, offsetBy: lowerCharacterOffset)
+        let upperStringIndex = string.index(string.startIndex, offsetBy: upperCharacterOffset)
+        let nsRange = NSRange(
+            location: lowerStringIndex.utf16Offset(in: string),
+            length: upperStringIndex.utf16Offset(in: string) - lowerStringIndex.utf16Offset(in: string)
+        )
+
+        let bridged = (try? NSAttributedString(text, including: \.attributedNoteTextSurface))
+            ?? NSAttributedString(text)
+        let mutable = NSMutableAttributedString(attributedString: bridged)
+        mutable.addAttribute(.font, value: font, range: nsRange)
+        text = (try? AttributedString(mutable, including: \.attributedNoteTextSurface))
+            ?? AttributedString(mutable)
+    }
+#endif
 }

@@ -1,5 +1,8 @@
 import XCTest
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 @testable import sideBar
 
 @MainActor
@@ -35,7 +38,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
             return font.fontDescriptor.symbolicTraits.contains(.traitBold)
             #elseif os(macOS)
-            guard let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] else { return false }
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
             return font.fontDescriptor.symbolicTraits.contains(.bold)
             #endif
         }
@@ -66,11 +69,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let attrs = viewModel.defaultTypingAttributes()
         XCTAssertEqual(attrs.blockKind, .paragraph)
         XCTAssertNotNil(attrs.paragraphStyle)
-        #if os(iOS)
-        XCTAssertNotNil(attrs[AttributeScopes.UIKitAttributes.FontAttribute.self])
-        #elseif os(macOS)
-        XCTAssertNotNil(attrs[AttributeScopes.AppKitAttributes.FontAttribute.self])
-        #endif
+        XCTAssertNotNil(attrs.font)
     }
 
     func testLoadDocumentNormalizesToCurrentBaseFontSize() async {
@@ -202,16 +201,25 @@ private func characterRange(
 private func firstRunPointSize(in text: AttributedString) -> CGFloat? {
     for run in text.runs {
         #if os(iOS)
-        if let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] {
+        if let font = bridgedPlatformFont(from: run) as? UIFont {
             return font.pointSize
         }
         #elseif os(macOS)
-        if let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] {
+        if let font = bridgedPlatformFont(from: run) as? NSFont {
             return font.pointSize
         }
         #endif
     }
     return nil
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
+    var sample = AttributedString("x")
+    let range = sample.startIndex..<sample.endIndex
+    sample[range].mergeAttributes(run.attributes)
+    let bridged = NSAttributedString(sample)
+    return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
 }
 
 @available(iOS 26.0, macOS 26.0, *)

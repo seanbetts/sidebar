@@ -13,6 +13,7 @@ func serializedNoteContent(_ viewModel: NativeNoteEditorViewModel) -> String {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+@MainActor
 private func noteTextSerializedContent(from text: AttributedString) -> String {
     var lines: [String] = []
     var serializationState = NoteTextSerializationState()
@@ -45,6 +46,7 @@ private struct NoteTextSerializationState {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+@MainActor
 private func noteTextSerializedLine(
     plainLine: String,
     blockKind: BlockKind,
@@ -93,6 +95,7 @@ private func noteTextSerializedLine(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+@MainActor
 private func noteTextLineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
     var ranges: [Range<AttributedString.Index>] = []
     var start = text.startIndex
@@ -116,6 +119,7 @@ private func noteTextLineRanges(in text: AttributedString) -> [Range<AttributedS
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+@MainActor
 private func noteTextLineIsStruckThrough(
     _ text: AttributedString,
     range: Range<AttributedString.Index>

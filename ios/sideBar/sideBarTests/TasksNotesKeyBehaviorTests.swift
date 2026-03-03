@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class TasksNotesKeyBehaviorTests: XCTestCase {
     func testReturnWithoutCommandInsertsNewline() {
         XCTAssertEqual(notesEditorReturnIntent(commandPressed: false), .insertNewline)

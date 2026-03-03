@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
     func testStreamingAutoScrollAllowsFirstUpdate() {
         var controller = ChatStreamingAutoScrollController(throttleSeconds: 0.08)

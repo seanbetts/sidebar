@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class ContentViewLifecycleTests: XCTestCase {
     func testMakeMacInitialSelectionPlanDefaultsToChatWithoutPendingSelection() {
         let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: nil)

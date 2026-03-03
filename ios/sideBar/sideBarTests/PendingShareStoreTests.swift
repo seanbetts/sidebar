@@ -5,6 +5,7 @@ import XCTest
 
 private let pendingShareStoreTestSuiteName = "PendingShareStoreTests"
 
+@MainActor
 final class PendingShareStoreTests: XCTestCase {
     private let suiteName = pendingShareStoreTestSuiteName
 

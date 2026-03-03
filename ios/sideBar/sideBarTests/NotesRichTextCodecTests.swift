@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class NotesRichTextCodecTests: XCTestCase {
     func testEncodeDecodeRoundTrip() {
         let text = "Hello\nWorld"
