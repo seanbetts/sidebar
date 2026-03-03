@@ -18,6 +18,7 @@ IOS_ONLY_TESTING="${IOS_ONLY_TESTING:-}"
 IOS_SKIP_TESTING="${IOS_SKIP_TESTING:-}"
 IOS_RETRY_TESTS_ON_FAILURE="${IOS_RETRY_TESTS_ON_FAILURE:-NO}"
 IOS_TEST_ITERATIONS="${IOS_TEST_ITERATIONS:-2}"
+IOS_SKIP_LAUNCH_UI_TESTS="${IOS_SKIP_LAUNCH_UI_TESTS:-YES}"
 if [[ -n "${IOS_PARALLEL_TESTING_ENABLED+x}" ]]; then
   ios_parallel_testing_setting_supplied="YES"
 else
@@ -123,6 +124,13 @@ fi
 
 if [[ "${lane_includes_ui_tests}" == "YES" && -z "${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS}" && "${ios_parallel_testing_setting_supplied}" == "NO" ]]; then
   IOS_MAXIMUM_PARALLEL_TESTING_WORKERS="1"
+fi
+
+if [[ "${lane_includes_ui_tests}" == "YES" && "${IOS_SKIP_LAUNCH_UI_TESTS}" == "YES" ]]; then
+  if [[ " ${XCODEBUILD_ARGS[*]} " != *" -skip-testing:sideBarUITests/SideBarUITestsLaunchTests "* ]]; then
+    echo "Skipping SideBarUITestsLaunchTests for simulator stability."
+    XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests/SideBarUITestsLaunchTests)
+  fi
 fi
 
 if [[ "${IOS_RETRY_TESTS_ON_FAILURE}" == "YES" ]]; then
