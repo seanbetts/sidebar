@@ -198,26 +198,53 @@ extension NotesDetailView {
     }
 
     private struct NoteStatus: Equatable {
-        let text: String
+        let iconName: String
+        let accessibilityLabel: String
+        let helpText: String
         let color: Color
     }
 
     private var noteStatus: NoteStatus? {
         if editorViewModel.isSaving {
-            return NoteStatus(text: "Saving...", color: DesignTokens.Colors.textSecondary)
+            return NoteStatus(
+                iconName: "arrow.triangle.2.circlepath",
+                accessibilityLabel: "Saving",
+                helpText: "Saving",
+                color: DesignTokens.Colors.textSecondary
+            )
         }
         if editorViewModel.isQueuedForSync {
             let label = environment.isNetworkAvailable ? "Queued to sync" : "Saved offline"
-            return NoteStatus(text: label, color: DesignTokens.Colors.textSecondary)
+            return NoteStatus(
+                iconName: "icloud.and.arrow.up",
+                accessibilityLabel: label,
+                helpText: label,
+                color: DesignTokens.Colors.textSecondary
+            )
         }
         if let error = editorViewModel.saveErrorMessage, !error.isEmpty {
-            return NoteStatus(text: error, color: DesignTokens.Colors.error)
+            return NoteStatus(
+                iconName: "exclamationmark.triangle.fill",
+                accessibilityLabel: "Save error",
+                helpText: error,
+                color: DesignTokens.Colors.error
+            )
         }
         if editorViewModel.isDirty {
-            return NoteStatus(text: "Unsaved changes", color: DesignTokens.Colors.textSecondary)
+            return NoteStatus(
+                iconName: "pencil.circle.fill",
+                accessibilityLabel: "Unsaved changes",
+                helpText: "Unsaved changes",
+                color: DesignTokens.Colors.textSecondary
+            )
         }
         if let label = lastSavedLabel {
-            return NoteStatus(text: "Saved \(label)", color: DesignTokens.Colors.textSecondary)
+            return NoteStatus(
+                iconName: "checkmark.circle.fill",
+                accessibilityLabel: "Saved \(label)",
+                helpText: "Saved \(label)",
+                color: DesignTokens.Colors.textSecondary
+            )
         }
         return nil
     }
@@ -228,10 +255,12 @@ extension NotesDetailView {
     }
 
     private func noteStatusText(_ status: NoteStatus) -> some View {
-        Text(status.text)
+        Image(systemName: status.iconName)
             .appFont(.caption)
+            .imageScale(.medium)
             .foregroundStyle(status.color)
-            .lineLimit(1)
+            .accessibilityLabel(status.accessibilityLabel)
+            .help(status.helpText)
     }
 
     private func formatLastSaved(_ date: Date) -> String {
