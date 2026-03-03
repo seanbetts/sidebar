@@ -5,6 +5,7 @@ import sideBarShared
 @MainActor
 final class AppEnvironmentShortcutPaneTests: XCTestCase {
     private static var retainedEnvironments: [AppEnvironment] = []
+    private static var retainedNavigationCoordinators: [NavigationCoordinator] = []
 
     func testEmitShortcutActionResolvesPrimaryPaneFromWorkspaceState() {
         let environment = makeEnvironment()
@@ -68,6 +69,7 @@ final class AppEnvironmentShortcutPaneTests: XCTestCase {
 
     func testNavigationResetClearsFocusedWorkspacePane() {
         let navigation = NavigationCoordinator()
+        Self.retainedNavigationCoordinators.append(navigation)
         navigation.focusedWorkspacePane = .secondary
 
         navigation.resetForSignOut()
