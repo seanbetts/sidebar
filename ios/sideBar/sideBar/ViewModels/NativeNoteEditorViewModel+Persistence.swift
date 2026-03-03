@@ -26,8 +26,12 @@ extension NativeNoteEditorViewModel {
     }
 
     public func currentPersistenceSnapshot() -> PersistenceSnapshot {
-        let plainText = currentPlainText()
-        if let canonicalContent = NotesRichTextCodec.encodeAttributedStringToBase64RTF(attributedContent) {
+        var exportContent = attributedContent
+        materializePersistenceInlineStyling(in: &exportContent)
+        injectPersistenceListPrefixes(in: &exportContent)
+
+        let plainText = String(exportContent.characters)
+        if let canonicalContent = NotesRichTextCodec.encodeAttributedStringToBase64RTF(exportContent) {
             return PersistenceSnapshot(canonicalContent: canonicalContent, plainText: plainText)
         }
         return PersistenceSnapshot(
@@ -48,5 +52,60 @@ extension NativeNoteEditorViewModel {
         lastSavedContent = plainText
         lastSavedCanonicalContent = canonicalContent
         hasUnsavedChanges = false
+    }
+
+    private func materializePersistenceInlineStyling(in text: inout AttributedString) {
+        let lines = lineInfos(in: text)
+        for line in lines {
+            let lineRange = attributedRange(for: line.range, in: text)
+            let blockKind = text.blockKind(in: lineRange) ?? (line.text.isEmpty ? .blankLine : .paragraph)
+            applyInlineIntentStyling(in: &text, lineRange: lineRange, blockKind: blockKind)
+            let listDepth = text[lineRange].listDepth
+            if let style = paragraphStyle(for: blockKind, listDepth: listDepth) {
+                let paragraphRange = lineRangeIncludingTrailingNewline(in: text, lineRange: lineRange)
+                text[paragraphRange].paragraphStyle = style
+            }
+        }
+    }
+
+    private func injectPersistenceListPrefixes(in text: inout AttributedString) {
+        let lines = lineInfos(in: text)
+        let orderedOrdinals = orderedListOrdinals(in: text, lines: lines)
+
+        for (index, line) in lines.enumerated().reversed() {
+            let lineRange = attributedRange(for: line.range, in: text)
+            guard let blockKind = text.blockKind(in: lineRange), isListBlockKind(blockKind) else {
+                continue
+            }
+
+            let ordinal = orderedOrdinals[index] ?? 1
+            let prefix = persistenceListPrefix(blockKind: blockKind, ordinal: ordinal)
+            guard !line.text.hasPrefix(prefix) else { continue }
+
+            var marker = AttributedString(prefix)
+            let markerRange = marker.startIndex..<marker.endIndex
+            marker[markerRange].blockKind = blockKind
+            marker[markerRange].listDepth = text[lineRange].listDepth
+            setFont(baseFont(for: blockKind), platformFont: platformBaseFont(for: blockKind), in: &marker, range: markerRange)
+            setForegroundColor(baseForegroundColor(for: blockKind), in: &marker, range: markerRange)
+            setBackgroundColor(baseBackgroundColor(for: blockKind), in: &marker, range: markerRange)
+
+            text.insert(marker, at: lineRange.lowerBound)
+        }
+    }
+
+    private func persistenceListPrefix(blockKind: BlockKind, ordinal: Int) -> String {
+        switch blockKind {
+        case .orderedList:
+            return "\(ordinal). "
+        case .taskChecked:
+            return "☑ "
+        case .taskUnchecked:
+            return "☐ "
+        case .bulletList:
+            return "• "
+        default:
+            return ""
+        }
     }
 }
