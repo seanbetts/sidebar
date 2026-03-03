@@ -22,13 +22,17 @@ struct AttributedNoteEditorView: View {
             syncSelection: isEditable,
             autoFocus: isEditable,
             onTextDidChange: isEditable ? { previous, sourceGeneration in
-                viewModel.handleContentChange(
-                    previous: previous,
-                    sourceGeneration: sourceGeneration
-                )
+                DispatchQueue.main.async {
+                    viewModel.handleContentChange(
+                        previous: previous,
+                        sourceGeneration: sourceGeneration
+                    )
+                }
             } : nil,
             onSelectionDidChange: isEditable ? { sourceGeneration in
-                viewModel.handleSelectionChange(sourceGeneration: sourceGeneration)
+                DispatchQueue.main.async {
+                    viewModel.handleSelectionChange(sourceGeneration: sourceGeneration)
+                }
             } : nil,
             onTap: onTap
         )
