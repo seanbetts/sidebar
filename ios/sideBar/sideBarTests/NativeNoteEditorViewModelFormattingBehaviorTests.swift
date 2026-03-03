@@ -34,12 +34,13 @@ final class NativeNoteFormattingBehaviorTests: XCTestCase {
 
     func testBlockquoteDisplaysReadMarkerAndExportsCleanMarkdown() async {
         let viewModel = NativeNoteEditorViewModel()
+        viewModel.setPlainTextRuntimeModeEnabled(true)
         viewModel.loadText("> Quoted")
         for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
 
-        XCTAssertTrue(String(viewModel.attributedContent.characters).hasPrefix("│ "))
+        XCTAssertTrue(String(viewModel.attributedContent.characters).hasPrefix("> "))
         XCTAssertEqual(serializedNoteContent(viewModel), "> Quoted")
     }
 

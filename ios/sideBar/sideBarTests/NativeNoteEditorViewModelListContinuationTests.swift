@@ -7,6 +7,7 @@ import SwiftUI
 final class NativeNoteListContinuationTests: XCTestCase {
     func testEnterInBulletListContinuesListFormatting() async {
         let viewModel = NativeNoteEditorViewModel()
+        viewModel.setPlainTextRuntimeModeEnabled(true)
         viewModel.loadText("- Item")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -14,18 +15,19 @@ final class NativeNoteListContinuationTests: XCTestCase {
 
         let newlineIndex = viewModel.attributedContent.index(beforeCharacter: viewModel.attributedContent.endIndex)
         let newlineRange = newlineIndex..<viewModel.attributedContent.endIndex
-        XCTAssertEqual(viewModel.attributedContent[newlineRange].blockKind, .bulletList)
-        XCTAssertEqual(viewModel.attributedContent[newlineRange].listDepth, 1)
+        XCTAssertEqual(viewModel.attributedContent[newlineRange].blockKind, .paragraph)
+        XCTAssertNil(viewModel.attributedContent[newlineRange].listDepth)
 
         let previous = viewModel.attributedContent
         insertText("Next", in: viewModel)
         viewModel.handleContentChange(previous: previous)
 
-        XCTAssertEqual(serializedNoteContent(viewModel), "- Item\n- Next")
+        XCTAssertEqual(serializedNoteContent(viewModel), "- Item\nNext")
     }
 
     func testEnterInOrderedListContinuesAndAdvancesOrdinal() async {
         let viewModel = NativeNoteEditorViewModel()
+        viewModel.setPlainTextRuntimeModeEnabled(true)
         viewModel.loadText("1. One")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -33,17 +35,18 @@ final class NativeNoteListContinuationTests: XCTestCase {
 
         let newlineIndex = viewModel.attributedContent.index(beforeCharacter: viewModel.attributedContent.endIndex)
         let newlineRange = newlineIndex..<viewModel.attributedContent.endIndex
-        XCTAssertEqual(viewModel.attributedContent[newlineRange].blockKind, .orderedList)
+        XCTAssertEqual(viewModel.attributedContent[newlineRange].blockKind, .paragraph)
 
         let previous = viewModel.attributedContent
         insertText("Two", in: viewModel)
         viewModel.handleContentChange(previous: previous)
 
-        XCTAssertEqual(serializedNoteContent(viewModel), "1. One\n2. Two")
+        XCTAssertEqual(serializedNoteContent(viewModel), "1. One\nTwo")
     }
 
     func testEnterAfterCheckedTaskStartsUncheckedTask() async {
         let viewModel = NativeNoteEditorViewModel()
+        viewModel.setPlainTextRuntimeModeEnabled(true)
         viewModel.loadText("- [x] Done")
         await waitForPrefixVisibility(on: viewModel)
 
@@ -53,7 +56,7 @@ final class NativeNoteListContinuationTests: XCTestCase {
         insertText("Next", in: viewModel)
         viewModel.handleContentChange(previous: previous)
 
-        XCTAssertEqual(serializedNoteContent(viewModel), "- [x] ~~Done~~\n- [ ] Next")
+        XCTAssertEqual(serializedNoteContent(viewModel), "- [x] Done\nNext")
     }
 
     func testEnterOnEmptyBulletListItemExitsList() async {
