@@ -35,6 +35,21 @@ extension NativeNoteEditorViewModel {
     public func currentPersistenceSnapshot() -> PersistenceSnapshot {
         if plainTextRuntimeModeEnabled {
             let plainText = String(attributedContent.characters)
+            guard enabledFormattingCapabilities.isEmpty else {
+                var exportContent = attributedContent
+                materializePersistenceInlineStyling(in: &exportContent)
+                let exportPlainText = String(exportContent.characters)
+                if let canonicalContent = NotesRichTextCodec.encodeAttributedStringToBase64RTF(exportContent) {
+                    return PersistenceSnapshot(
+                        canonicalContent: canonicalContent,
+                        plainText: exportPlainText
+                    )
+                }
+                return PersistenceSnapshot(
+                    canonicalContent: NotesRichTextCodec.encodePlainTextToBase64RTF(exportPlainText),
+                    plainText: exportPlainText
+                )
+            }
             return PersistenceSnapshot(
                 canonicalContent: NotesRichTextCodec.encodePlainTextToBase64RTF(plainText),
                 plainText: plainText

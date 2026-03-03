@@ -9,9 +9,17 @@ struct AttributedNoteEditorContainer: View {
     @StateObject private var nativeViewModel = NativeNoteEditorViewModel()
     @State private var loadedNoteId: String?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
+    private let enabledFormattingCapabilities: Set<NoteFormattingCapability> = [.bold]
 
     var body: some View {
         VStack(spacing: 0) {
+            if !enabledFormattingCapabilities.isEmpty {
+                AttributedNoteFormattingToolbar(
+                    viewModel: nativeViewModel,
+                    enabledCapabilities: enabledFormattingCapabilities
+                )
+                Divider()
+            }
             AttributedNoteEditorView(
                 viewModel: nativeViewModel,
                 maxContentWidth: maxContentWidth,
@@ -21,6 +29,7 @@ struct AttributedNoteEditorContainer: View {
         }
         .onAppear {
             nativeViewModel.setBaseFontSize(editorBaseFontSize)
+            nativeViewModel.setEnabledFormattingCapabilities(enabledFormattingCapabilities)
             nativeViewModel.setPlainTextRuntimeModeEnabled(true)
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()

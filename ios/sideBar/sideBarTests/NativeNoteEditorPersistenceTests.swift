@@ -101,6 +101,23 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertFalse(viewModel.isBoldActive())
     }
 
+    func testPlainTextRuntimeModeWithBoldCapabilityAppliesBoldFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.setEnabledFormattingCapabilities([.bold])
+        viewModel.setPlainTextRuntimeModeEnabled(true)
+        viewModel.loadText("hello")
+        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: fullRange)
+
+        viewModel.applyFormatting(.bold)
+
+        let hasBoldIntent = viewModel.attributedContent.runs.contains { run in
+            (run.inlinePresentationIntent ?? []).contains(.stronglyEmphasized)
+        }
+        XCTAssertTrue(hasBoldIntent)
+        XCTAssertTrue(viewModel.isBoldActive())
+    }
+
     func testPlainTextRuntimeModeFlattensInlineFormattingWhenLoadingDocument() async {
         let source = NativeNoteEditorViewModel()
         source.loadText("hello")
@@ -132,6 +149,29 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let snapshot = viewModel.currentPersistenceSnapshot()
         XCTAssertEqual(snapshot.plainText, "hello")
         XCTAssertEqual(snapshot.canonicalContent, NotesRichTextCodec.encodePlainTextToBase64RTF("hello"))
+    }
+
+    func testPlainTextRuntimeModeWithBoldCapabilitySnapshotPreservesBoldAcrossReload() async {
+        let source = NativeNoteEditorViewModel()
+        source.setEnabledFormattingCapabilities([.bold])
+        source.setPlainTextRuntimeModeEnabled(true)
+        source.loadText("hello")
+        let fullRange = characterRange(length: 5, in: source.attributedContent)
+        source.selection = AttributedTextSelection(range: fullRange)
+        source.applyFormatting(.bold)
+
+        let snapshot = source.currentPersistenceSnapshot()
+        XCTAssertNotEqual(snapshot.canonicalContent, NotesRichTextCodec.encodePlainTextToBase64RTF("hello"))
+
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.setEnabledFormattingCapabilities([.bold])
+        reloaded.setPlainTextRuntimeModeEnabled(true)
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        let hasBoldIntent = reloaded.attributedContent.runs.contains { run in
+            (run.inlinePresentationIntent ?? []).contains(.stronglyEmphasized)
+        }
+        XCTAssertTrue(hasBoldIntent)
     }
 
     func testPlainTextRuntimeModeTypingAttributesUseZeroParagraphSpacing() async {

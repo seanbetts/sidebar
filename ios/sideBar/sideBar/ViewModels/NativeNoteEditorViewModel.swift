@@ -19,6 +19,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     @Published public internal(set) var hasUnsavedChanges: Bool = false
     @Published public internal(set) var autosaveToken: Int = 0
     @Published public private(set) var styleSyncGeneration: Int = 0
+    @Published private(set) var enabledFormattingCapabilities: Set<NoteFormattingCapability> = []
     public var autosaveDelay: TimeInterval = 1.5
 
 #if os(iOS)
@@ -155,7 +156,16 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     }
 
     public func applyFormatting(_ formatting: NoteFormatting) {
-        guard !isReadOnly, !plainTextRuntimeModeEnabled else { return }
+        guard !isReadOnly else { return }
+        if plainTextRuntimeModeEnabled,
+           let capability = formatting.runtimeCapability,
+           !enabledFormattingCapabilities.contains(capability) {
+            return
+        }
+        if plainTextRuntimeModeEnabled,
+           formatting.runtimeCapability == nil {
+            return
+        }
         let previousContent = attributedContent
         let previousSelection = selection
         AttributedNoteFormattingCommands.apply(formatting, on: self)

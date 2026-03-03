@@ -3,36 +3,45 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 struct AttributedNoteFormattingToolbar: View {
     @ObservedObject var viewModel: NativeNoteEditorViewModel
+    let enabledCapabilities: Set<NoteFormattingCapability>
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            toolbarButton(
-                title: "Bold",
-                systemImage: "bold",
-                isActive: viewModel.isBoldActive()
-            ) {
-                applyFormatting(.bold)
+            if enabledCapabilities.contains(.bold) {
+                toolbarButton(
+                    title: "Bold",
+                    systemImage: "bold",
+                    isActive: viewModel.isBoldActive()
+                ) {
+                    applyFormatting(.bold)
+                }
             }
-            toolbarButton(
-                title: "Italic",
-                systemImage: "italic",
-                isActive: viewModel.isItalicActive()
-            ) {
-                applyFormatting(.italic)
+            if enabledCapabilities.contains(.italic) {
+                toolbarButton(
+                    title: "Italic",
+                    systemImage: "italic",
+                    isActive: viewModel.isItalicActive()
+                ) {
+                    applyFormatting(.italic)
+                }
             }
-            toolbarButton(
-                title: "Underline",
-                systemImage: "underline",
-                isActive: viewModel.isUnderlineActive()
-            ) {
-                applyFormatting(.underline)
+            if enabledCapabilities.contains(.underline) {
+                toolbarButton(
+                    title: "Underline",
+                    systemImage: "underline",
+                    isActive: viewModel.isUnderlineActive()
+                ) {
+                    applyFormatting(.underline)
+                }
             }
-            toolbarButton(
-                title: "Bullets",
-                systemImage: "list.bullet",
-                isActive: viewModel.isBlockKindActive(.bulletList)
-            ) {
-                applyFormatting(.bulletList)
+            if enabledCapabilities.contains(.bulletList) {
+                toolbarButton(
+                    title: "Bullets",
+                    systemImage: "list.bullet",
+                    isActive: viewModel.isBlockKindActive(.bulletList)
+                ) {
+                    applyFormatting(.bulletList)
+                }
             }
             Spacer(minLength: 0)
         }
