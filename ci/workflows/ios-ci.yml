@@ -73,6 +73,8 @@ jobs:
             runner_label: ios
             skip_testing: sideBarUITests
             retry_tests_on_failure: "YES"
+            parallel_testing_enabled: "NO"
+            max_parallel_test_workers: "1"
             destination_timeout: "180"
             enable_coverage: "YES"
           - id: mac
