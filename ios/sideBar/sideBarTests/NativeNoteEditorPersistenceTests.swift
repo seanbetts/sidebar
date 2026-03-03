@@ -134,6 +134,19 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertEqual(snapshot.plainText, "hello")
         XCTAssertEqual(snapshot.canonicalContent, NotesRichTextCodec.encodePlainTextToBase64RTF("hello"))
     }
+
+    func testPlainTextRuntimeModeTypingAttributesUseZeroParagraphSpacing() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("line 1\n\nline 3")
+        viewModel.setPlainTextRuntimeModeEnabled(true)
+
+        let attrs = viewModel.defaultTypingAttributes()
+        let style = attrs.paragraphStyle
+
+        XCTAssertNotNil(style)
+        XCTAssertEqual(style?.paragraphSpacingBefore ?? -1, 0, accuracy: 0.001)
+        XCTAssertEqual(style?.paragraphSpacing ?? -1, 0, accuracy: 0.001)
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)

@@ -32,11 +32,23 @@ extension NativeNoteEditorViewModel {
         setFont(bodyFont, platformFont: platformBaseFont(for: .paragraph), in: &normalized, range: fullRange)
         setForegroundColor(baseForegroundColor(for: .paragraph), in: &normalized, range: fullRange)
         setBackgroundColor(nil, in: &normalized, range: fullRange)
-        if let style = paragraphStyle(for: .paragraph, listDepth: nil) {
+        if let style = plainTextRuntimeParagraphStyle() {
             normalized[fullRange].paragraphStyle = style
         }
         _ = applyDetectedLinks(in: &normalized)
         return normalized
+    }
+
+    func plainTextRuntimeParagraphStyle() -> NSParagraphStyle? {
+        guard let baseStyle = paragraphStyle(for: .paragraph, listDepth: nil) else {
+            return nil
+        }
+        guard let mutable = baseStyle.mutableCopy() as? NSMutableParagraphStyle else {
+            return baseStyle
+        }
+        mutable.paragraphSpacingBefore = 0
+        mutable.paragraphSpacing = 0
+        return mutable
     }
 
     func normalizeCurrentContentForPlainTextRuntime() {

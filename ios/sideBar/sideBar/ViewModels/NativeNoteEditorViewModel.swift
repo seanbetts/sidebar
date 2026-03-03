@@ -72,6 +72,24 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         blockKind: BlockKind = .paragraph,
         listDepth: Int? = nil
     ) -> AttributeContainer {
+        if plainTextRuntimeModeEnabled {
+            var plainAttrs = AttributeContainer()
+            plainAttrs.blockKind = .paragraph
+            plainAttrs.listDepth = nil
+            plainAttrs.codeLanguage = nil
+            setFont(baseFont(for: .paragraph), platformFont: platformBaseFont(for: .paragraph), in: &plainAttrs)
+            setForegroundColor(baseForegroundColor(for: .paragraph), in: &plainAttrs)
+            setBackgroundColor(nil, in: &plainAttrs)
+            plainAttrs.paragraphStyle = plainTextRuntimeParagraphStyle()
+            plainAttrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+                .paragraph,
+                identity: 1
+            )
+            plainAttrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
+            plainAttrs.strikethroughStyle = nil
+            return plainAttrs
+        }
+
         var attrs = AttributeContainer()
         attrs.blockKind = blockKind
         attrs.listDepth = listDepth
@@ -87,23 +105,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
         attrs.strikethroughStyle = blockKind == .taskChecked ? .single : nil
         return attrs
-    }
-
-    func contextualTypingFallbackAttributes() -> AttributeContainer {
-        guard !attributedContent.characters.isEmpty else {
-            return defaultTypingAttributes()
-        }
-        guard let paragraphRange = selectedParagraphRanges().first, !paragraphRange.isEmpty else {
-            return defaultTypingAttributes()
-        }
-
-        let blockKind = attributedContent[paragraphRange].blockKind
-            ?? attributedContent.blockKind(in: paragraphRange)
-            ?? .paragraph
-        let listDepth: Int? = isListBlockKind(blockKind)
-            ? max(1, attributedContent[paragraphRange].listDepth ?? 1)
-            : nil
-        return defaultTypingAttributes(blockKind: blockKind, listDepth: listDepth)
     }
 
     public func isBoldActive() -> Bool {

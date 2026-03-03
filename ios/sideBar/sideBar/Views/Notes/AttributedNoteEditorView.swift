@@ -18,6 +18,7 @@ struct AttributedNoteEditorView: View {
             text: $viewModel.attributedContent,
             selection: $viewModel.selection,
             fallbackTypingAttributes: viewModel.contextualTypingFallbackAttributes(),
+            preferPlainTextEditingStability: viewModel.plainTextRuntimeModeEnabled,
             isEditable: isEditable,
             isSelectable: true,
             syncSelection: isEditable,
@@ -61,10 +62,11 @@ extension AttributeScopes {
 }
 #if os(iOS)
 @available(iOS 26.0, *)
-private struct AttributedNoteTextSurface: UIViewRepresentable {
+struct AttributedNoteTextSurface: UIViewRepresentable {
     @Binding var text: AttributedString
     @Binding var selection: AttributedTextSelection
     let fallbackTypingAttributes: AttributeContainer
+    let preferPlainTextEditingStability: Bool
     let isEditable: Bool
     let isSelectable: Bool
     let syncSelection: Bool
@@ -109,7 +111,11 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
         var textChanged = false
         let bridged = bridgeToNSAttributedString(text)
         synchronizedTextLength = bridged.length
-        if !textView.attributedText.isEqual(to: bridged) {
+        let shouldSkipStyleOnlySync = preferPlainTextEditingStability &&
+            isEditable &&
+            textView.isFirstResponder &&
+            textView.attributedText.string == bridged.string
+        if !textView.attributedText.isEqual(to: bridged) && !shouldSkipStyleOnlySync {
             textView.attributedText = bridged
             textChanged = true
         }
@@ -214,7 +220,12 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
                 let previousText = self.parent.text
-                let textDidChange = previousText != updatedText
+                let textDidChange: Bool
+                if self.parent.preferPlainTextEditingStability {
+                    textDidChange = String(previousText.characters) != String(updatedText.characters)
+                } else {
+                    textDidChange = previousText != updatedText
+                }
                 let selectionDidChange = self.parent.selection != updatedSelection
                 guard textDidChange || (self.parent.syncSelection && selectionDidChange) else { return }
                 if textDidChange {
@@ -258,10 +269,11 @@ private struct AttributedNoteTextSurface: UIViewRepresentable {
 }
 #elseif os(macOS)
 @available(macOS 26.0, *)
-private struct AttributedNoteTextSurface: NSViewRepresentable {
+struct AttributedNoteTextSurface: NSViewRepresentable {
     @Binding var text: AttributedString
     @Binding var selection: AttributedTextSelection
     let fallbackTypingAttributes: AttributeContainer
+    let preferPlainTextEditingStability: Bool
     let isEditable: Bool
     let isSelectable: Bool
     let syncSelection: Bool
@@ -309,7 +321,8 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             isFocused &&
             context.coordinator.preferNativeSelectionOnNextUpdate
         let syncResult = synchronizeMacText(
-            textView: textView
+            textView: textView,
+            isFocused: isFocused
         )
         synchronizeMacSelection(
             textView: textView,
@@ -329,55 +342,6 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             }
         }
         context.coordinator.isUpdating = false
-    }
-
-    private func synchronizeMacText(
-        textView: NSTextView
-    ) -> (synchronizedTextLength: Int, textChanged: Bool) {
-        let bridged = bridgeToNSAttributedString(text)
-        let synchronizedTextLength = bridged.length
-        guard !textView.attributedString().isEqual(to: bridged) else {
-            return (synchronizedTextLength, false)
-        }
-        textView.textStorage?.setAttributedString(bridged)
-        return (synchronizedTextLength, true)
-    }
-
-    private func synchronizeMacSelection(
-        textView: NSTextView,
-        coordinator: Coordinator,
-        synchronizedTextLength: Int,
-        textChanged: Bool,
-        preserveNativeSelection: Bool,
-        isFocused: Bool
-    ) {
-        guard syncSelection else { return }
-        let desiredRange = nsRange(from: selection, in: text)
-        if preserveNativeSelection {
-            let clamped = clampedRange(textView.selectedRange(), maxLength: synchronizedTextLength)
-            if textView.selectedRange() != clamped {
-                textView.setSelectedRange(clamped)
-            }
-            coordinator.preferNativeSelectionOnNextUpdate = false
-            return
-        }
-        let shouldSyncSelection = !isEditable || !isFocused || textChanged
-        if shouldSyncSelection && textView.selectedRange() != desiredRange {
-            textView.setSelectedRange(desiredRange)
-        }
-    }
-
-    private func synchronizeMacTypingAttributes(textView: NSTextView) {
-        guard syncSelection && isEditable else { return }
-        let resolvedTypingAttributes = resolvedTypingAttributes(
-            text: text,
-            selectionTypingAttributes: selection.typingAttributes(in: text),
-            fallbackTypingAttributes: fallbackTypingAttributes
-        )
-        let desiredTypingAttributes = typingAttributesDictionary(from: resolvedTypingAttributes)
-        if !NSDictionary(dictionary: textView.typingAttributes).isEqual(to: desiredTypingAttributes) {
-            textView.typingAttributes = desiredTypingAttributes
-        }
     }
 
     private func configure(
@@ -459,10 +423,19 @@ private struct AttributedNoteTextSurface: NSViewRepresentable {
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isUpdating else { return }
                 let previousText = self.parent.text
-                self.parent.text = updatedText
+                let textDidChange: Bool
+                if self.parent.preferPlainTextEditingStability {
+                    textDidChange = String(previousText.characters) != String(updatedText.characters)
+                } else {
+                    textDidChange = previousText != updatedText
+                }
+                if textDidChange {
+                    self.parent.text = updatedText
+                }
                 if self.parent.syncSelection {
                     self.parent.selection = updatedSelection
                 }
+                guard textDidChange else { return }
                 guard let onTextDidChange = self.parent.onTextDidChange else { return }
                 DispatchQueue.main.async { [weak self] in
                     guard let self, !self.isUpdating else { return }
