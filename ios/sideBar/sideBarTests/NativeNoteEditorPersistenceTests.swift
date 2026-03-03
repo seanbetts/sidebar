@@ -144,6 +144,10 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let style = attrs.paragraphStyle
 
         XCTAssertNotNil(style)
+        XCTAssertEqual(style?.lineSpacing ?? -1, 0, accuracy: 0.001)
+        XCTAssertEqual(style?.lineHeightMultiple ?? -1, 0, accuracy: 0.001)
+        XCTAssertEqual(style?.minimumLineHeight ?? -1, 0, accuracy: 0.001)
+        XCTAssertEqual(style?.maximumLineHeight ?? -1, 0, accuracy: 0.001)
         XCTAssertEqual(style?.paragraphSpacingBefore ?? -1, 0, accuracy: 0.001)
         XCTAssertEqual(style?.paragraphSpacing ?? -1, 0, accuracy: 0.001)
     }

@@ -46,6 +46,11 @@ extension NativeNoteEditorViewModel {
         guard let mutable = baseStyle.mutableCopy() as? NSMutableParagraphStyle else {
             return baseStyle
         }
+        // Keep blank lines visually identical to content lines in plain-text mode.
+        mutable.lineSpacing = 0
+        mutable.lineHeightMultiple = 0
+        mutable.minimumLineHeight = 0
+        mutable.maximumLineHeight = 0
         mutable.paragraphSpacingBefore = 0
         mutable.paragraphSpacing = 0
         return mutable
