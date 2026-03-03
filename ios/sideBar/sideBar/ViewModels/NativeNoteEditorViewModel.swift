@@ -53,6 +53,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     var lastHandledContentSourceGeneration: Int = 0
     var lastHandledSelectionSourceGeneration: Int = 0
     var lastSelectionLineSpan: ClosedRange<Int>?
+    var plainTextRuntimeModeEnabled: Bool = false
 
     public init() {}
 
@@ -151,7 +152,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     }
 
     public func applyFormatting(_ formatting: NoteFormatting) {
-        guard !isReadOnly else { return }
+        guard !isReadOnly, !plainTextRuntimeModeEnabled else { return }
         let previousContent = attributedContent
         let previousSelection = selection
         AttributedNoteFormattingCommands.apply(formatting, on: self)
@@ -178,11 +179,15 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         }
         guard attributedContent != previous else { return }
 
-        var normalizedContent = attributedContent
-        stripUnsupportedInlineStyles(in: &normalizedContent)
-        if applyDetectedLinks(in: &normalizedContent) || normalizedContent != attributedContent {
-            if attributedContent != normalizedContent {
-                attributedContent = normalizedContent
+        if plainTextRuntimeModeEnabled {
+            normalizeCurrentContentForPlainTextRuntime()
+        } else {
+            var normalizedContent = attributedContent
+            stripUnsupportedInlineStyles(in: &normalizedContent)
+            if applyDetectedLinks(in: &normalizedContent) || normalizedContent != attributedContent {
+                if attributedContent != normalizedContent {
+                    attributedContent = normalizedContent
+                }
             }
         }
 

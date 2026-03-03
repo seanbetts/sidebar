@@ -87,6 +87,53 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertNotNil(pointSize)
         XCTAssertEqual(pointSize ?? 0, 22, accuracy: 1.0)
     }
+
+    func testPlainTextRuntimeModeIgnoresFormattingCommands() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: fullRange)
+        viewModel.setPlainTextRuntimeModeEnabled(true)
+
+        let before = viewModel.attributedContent
+        viewModel.applyFormatting(.bold)
+
+        XCTAssertEqual(viewModel.attributedContent, before)
+        XCTAssertFalse(viewModel.isBoldActive())
+    }
+
+    func testPlainTextRuntimeModeFlattensInlineFormattingWhenLoadingDocument() async {
+        let source = NativeNoteEditorViewModel()
+        source.loadText("hello")
+        let fullRange = characterRange(length: 5, in: source.attributedContent)
+        source.selection = AttributedTextSelection(range: fullRange)
+        source.applyFormatting(.bold)
+        let snapshot = source.currentPersistenceSnapshot()
+
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.setPlainTextRuntimeModeEnabled(true)
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        let hasBoldIntent = reloaded.attributedContent.runs.contains { run in
+            (run.inlinePresentationIntent ?? []).contains(.stronglyEmphasized)
+        }
+        XCTAssertFalse(hasBoldIntent)
+        let reloadedRange = characterRange(length: 5, in: reloaded.attributedContent)
+        XCTAssertEqual(reloaded.attributedContent.blockKind(in: reloadedRange), .paragraph)
+    }
+
+    func testPlainTextRuntimeModeSnapshotEncodesPlainTextCanonical() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: fullRange)
+        viewModel.applyFormatting(.bold)
+        viewModel.setPlainTextRuntimeModeEnabled(true)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.plainText, "hello")
+        XCTAssertEqual(snapshot.canonicalContent, NotesRichTextCodec.encodePlainTextToBase64RTF("hello"))
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)

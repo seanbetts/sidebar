@@ -13,10 +13,16 @@ extension NativeNoteEditorViewModel {
     public func loadDocument(canonicalContent: String, plainText: String) {
         if let attributed = NotesRichTextCodec.decodeBase64RTFToAttributedString(canonicalContent) {
             var detectedContent = attributed
-            _ = applyDetectedLinks(in: &detectedContent)
+            if plainTextRuntimeModeEnabled {
+                detectedContent = plainTextRuntimeNormalizedContent(from: detectedContent)
+            } else {
+                _ = applyDetectedLinks(in: &detectedContent)
+            }
             attributedContent = detectedContent
             selection = AttributedTextSelection()
-            normalizeDocumentStylingForDisplay()
+            if !plainTextRuntimeModeEnabled {
+                normalizeDocumentStylingForDisplay()
+            }
             lastSavedContent = plainText
             lastSavedCanonicalContent = canonicalContent
             hasUnsavedChanges = false
@@ -27,6 +33,14 @@ extension NativeNoteEditorViewModel {
     }
 
     public func currentPersistenceSnapshot() -> PersistenceSnapshot {
+        if plainTextRuntimeModeEnabled {
+            let plainText = String(attributedContent.characters)
+            return PersistenceSnapshot(
+                canonicalContent: NotesRichTextCodec.encodePlainTextToBase64RTF(plainText),
+                plainText: plainText
+            )
+        }
+
         var exportContent = attributedContent
         materializePersistenceInlineStyling(in: &exportContent)
         injectPersistenceListPrefixes(in: &exportContent)

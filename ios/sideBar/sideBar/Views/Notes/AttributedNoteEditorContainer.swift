@@ -21,6 +21,7 @@ struct AttributedNoteEditorContainer: View {
         }
         .onAppear {
             nativeViewModel.setBaseFontSize(editorBaseFontSize)
+            nativeViewModel.setPlainTextRuntimeModeEnabled(true)
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
             applyAutosaveDelay(isOffline: environment.isOffline)

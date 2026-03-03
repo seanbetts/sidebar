@@ -9,10 +9,16 @@ extension NativeNoteEditorViewModel {
         var detectedContent =
             NotesRichTextCodec.decodeBase64RTFToAttributedString(canonical)
             ?? AttributedString(text)
-        _ = applyDetectedLinks(in: &detectedContent)
+        if plainTextRuntimeModeEnabled {
+            detectedContent = plainTextRuntimeNormalizedContent(from: detectedContent)
+        } else {
+            _ = applyDetectedLinks(in: &detectedContent)
+        }
         attributedContent = detectedContent
         selection = AttributedTextSelection()
-        normalizeDocumentStylingForDisplay()
+        if !plainTextRuntimeModeEnabled {
+            normalizeDocumentStylingForDisplay()
+        }
         lastSavedContent = text
         lastSavedCanonicalContent =
             NotesRichTextCodec.encodeAttributedStringToBase64RTF(attributedContent)
@@ -22,6 +28,10 @@ extension NativeNoteEditorViewModel {
     }
 
     func normalizeDocumentStylingForDisplay() {
+        if plainTextRuntimeModeEnabled {
+            normalizeCurrentContentForPlainTextRuntime()
+            return
+        }
         guard !attributedContent.characters.isEmpty else { return }
 
         var normalized = attributedContent
