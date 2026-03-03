@@ -1,5 +1,4 @@
 import SwiftUI
-import MarkdownUI
 
 public struct ScratchpadPopoverView: View {
     @StateObject private var viewModel: ScratchpadViewModel
@@ -45,11 +44,11 @@ public struct ScratchpadPopoverView: View {
                             .accessibilityHint("Enter notes for your scratchpad.")
                     } else {
                         ScrollView {
-                            SideBarMarkdown(
-                                text: draft.isEmpty ? ScratchpadConstants.placeholder : draft
-                            )
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
+                            Text(draft.isEmpty ? ScratchpadConstants.placeholder : draft)
+                                .appFont(.body)
+                                .foregroundStyle(DesignTokens.Colors.textPrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
                         }
                         .onTapGesture {
                             isEditing = true

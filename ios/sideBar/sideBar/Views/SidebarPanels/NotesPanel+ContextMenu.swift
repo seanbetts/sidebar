@@ -11,7 +11,7 @@ extension NotesPanelView {
         case pin
         case rename
         case move
-        case copyMarkdown
+        case copyText
         case shareText
         case download
         case archive
@@ -42,8 +42,8 @@ extension NotesPanelView {
                 return .move {
                     beginMove(for: item)
                 }
-            case .copyMarkdown:
-                return .copyMarkdown {
+            case .copyText:
+                return .copyText {
                     Task { await copyNoteContent(for: item) }
                 }
             case .shareText:
@@ -72,7 +72,7 @@ extension NotesPanelView {
                 .pin,
                 .rename,
                 .move,
-                .copyMarkdown,
+                .copyText,
                 .shareText,
                 .download,
                 .archive,

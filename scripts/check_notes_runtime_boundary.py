@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Enforce NotesRuntime and notes shell boundaries against legacy editor dependencies."""
+"""Enforce notes runtime and shell boundaries against legacy editor dependencies."""
+
 from __future__ import annotations
 
 import argparse
@@ -8,18 +9,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-
 RUNTIME_ROOT = Path("ios/sideBar/sideBar")
-SWIFT_GLOB = "*.swift"
-FORBIDDEN_PATTERNS = (
-    r"\bNativeMarkdownEditorViewModel\b",
-    r"\bMarkdownEditorView\b",
-    r"\bMarkdownCanonicalizer\b",
-    r"\bMarkdownImporter\b",
-    r"\bMarkdownExporter\b",
-    r"\bMarkdownShortcutProcessor\b",
-    r"\bMarkdownRendering\b",
-)
 NOTES_SHELL_RELATIVE_PATHS = (
     Path("ViewModels/NotesEditorViewModel.swift"),
     Path("ViewModels/AttributedNoteFormattingCommands.swift"),
@@ -31,11 +21,11 @@ NOTES_SHELL_RELATIVE_PATHS = (
     Path("Views/Notes/AttributedNoteEditorContainer.swift"),
     Path("Views/Notes/AttributedNoteEditorView.swift"),
     Path("Views/Notes/AttributedNoteKeyboardShortcuts.swift"),
+    Path("Views/Notes/ScratchpadPopoverView.swift"),
+    Path("Views/SidebarPanels/NotesPanel+ContextMenu.swift"),
 )
 NOTES_EDITOR_GLOB = "ViewModels/NativeNoteEditorViewModel*.swift"
-NOTES_DEPENDENCY_RELATIVE_PATHS = (
-    Path("Utilities/NoteTextDependencies.swift"),
-)
+NOTES_DEPENDENCY_RELATIVE_PATHS = (Path("Utilities/NoteTextDependencies.swift"),)
 FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bNativeMarkdownEditorViewModel\b",
     r"\bMarkdownFormatting\b",
@@ -56,6 +46,8 @@ FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bSideBarMarkdownStyle\b",
     r"\bMarkdownEditorAttributes\b",
     r"\bSideBarMarkdownLayout\b",
+    r"\bcopyMarkdown\b",
+    r"^\s*import\s+MarkdownUI\b",
 )
 FORBIDDEN_NOTES_DEPENDENCY_PATTERNS = (
     r"\bMarkdownImporter\b",
@@ -69,27 +61,55 @@ FORBIDDEN_NOTES_DEPENDENCY_PATTERNS = (
 
 
 @dataclass(frozen=True)
+class ContractRequirement:
+    """Required contract assertions for core notes runtime files."""
+
+    file_path: Path
+    required_patterns: tuple[str, ...]
+
+
+REQUIRED_NOTES_CONTRACTS = (
+    ContractRequirement(
+        file_path=Path("ViewModels/NotesEditorViewModel.swift"),
+        required_patterns=(
+            r"\bcurrentPersistenceSnapshot\s*\(",
+            r"\bsyncFromNativeEditor\s*\(",
+        ),
+    ),
+    ContractRequirement(
+        file_path=Path("ViewModels/NativeNoteEditorViewModel+Persistence.swift"),
+        required_patterns=(
+            r"\bstruct\s+PersistenceSnapshot\b",
+            r"\bcanonicalContent\s*:\s*String\b",
+            r"\bplainText\s*:\s*String\b",
+        ),
+    ),
+    ContractRequirement(
+        file_path=Path("Views/Notes/AttributedNoteEditorContainer.swift"),
+        required_patterns=(
+            r"@StateObject\s+private\s+var\s+nativeViewModel\s*=\s*NativeNoteEditorViewModel\s*\(\)",
+            r"\battachNativeEditor\s*\(\s*nativeViewModel\s*\)",
+            r"\bsyncFromNativeEditor\s*\(\s*nativeViewModel\s*\)",
+        ),
+    ),
+    ContractRequirement(
+        file_path=Path("Views/Notes/AttributedNoteEditorView.swift"),
+        required_patterns=(
+            r"@Binding\s+var\s+text\s*:\s*AttributedString\b",
+            r"@Binding\s+var\s+selection\s*:\s*AttributedTextSelection\b",
+            r"\bfunc\s+textViewDidChange\s*\(",
+        ),
+    ),
+)
+
+
+@dataclass(frozen=True)
 class Violation:
     """One forbidden reference in a runtime boundary file."""
 
     file_path: Path
     line: int
     token: str
-
-
-def _runtime_boundary_files(repo_root: Path) -> list[Path]:
-    """Return NotesRuntime boundary files that must avoid legacy dependencies."""
-    root = repo_root / RUNTIME_ROOT
-    if not root.exists():
-        return []
-    files: list[Path] = []
-    for path in sorted(root.rglob(SWIFT_GLOB)):
-        if not path.is_file():
-            continue
-        source = path.read_text(encoding="utf-8")
-        if "NotesRuntime" in source or "notesRuntime" in source:
-            files.append(path)
-    return files
 
 
 def _scan_file(path: Path, patterns: tuple[re.Pattern[str], ...]) -> list[Violation]:
@@ -123,7 +143,7 @@ def _notes_shell_files(repo_root: Path) -> list[Path]:
 
 
 def _notes_dependency_files(repo_root: Path) -> list[Path]:
-    """Return notes dependency files that should avoid markdown-named layout/style/attribute symbols."""
+    """Return notes dependency files that should avoid markdown-named symbols."""
     root = repo_root / RUNTIME_ROOT
     files: list[Path] = []
     for relative_path in NOTES_DEPENDENCY_RELATIVE_PATHS:
@@ -133,10 +153,38 @@ def _notes_dependency_files(repo_root: Path) -> list[Path]:
     return files
 
 
+def _check_contract_requirements(repo_root: Path) -> list[Violation]:
+    """Return missing required notes runtime contract patterns."""
+    root = repo_root / RUNTIME_ROOT
+    violations: list[Violation] = []
+    for requirement in REQUIRED_NOTES_CONTRACTS:
+        candidate = root / requirement.file_path
+        if not candidate.exists() or not candidate.is_file():
+            violations.append(
+                Violation(
+                    file_path=candidate,
+                    line=1,
+                    token=f"missing required contract file {requirement.file_path}",
+                )
+            )
+            continue
+        source = candidate.read_text(encoding="utf-8")
+        for required_pattern in requirement.required_patterns:
+            compiled = re.compile(required_pattern, flags=re.MULTILINE)
+            if compiled.search(source):
+                continue
+            violations.append(
+                Violation(
+                    file_path=candidate,
+                    line=1,
+                    token=f"missing required contract pattern {required_pattern}",
+                )
+            )
+    return violations
+
+
 def check(repo_root: Path) -> list[Violation]:
-    """Run NotesRuntime boundary checks and return violations."""
-    runtime_files = _runtime_boundary_files(repo_root)
-    runtime_compiled = tuple(re.compile(pattern) for pattern in FORBIDDEN_PATTERNS)
+    """Run notes runtime boundary and contract checks and return violations."""
     notes_shell_files = _notes_shell_files(repo_root)
     notes_shell_compiled = tuple(
         re.compile(pattern) for pattern in FORBIDDEN_NOTES_SHELL_PATTERNS
@@ -145,9 +193,7 @@ def check(repo_root: Path) -> list[Violation]:
     notes_dependency_compiled = tuple(
         re.compile(pattern) for pattern in FORBIDDEN_NOTES_DEPENDENCY_PATTERNS
     )
-    violations: list[Violation] = []
-    for file_path in runtime_files:
-        violations.extend(_scan_file(file_path, runtime_compiled))
+    violations: list[Violation] = _check_contract_requirements(repo_root)
     for file_path in notes_shell_files:
         violations.extend(_scan_file(file_path, notes_shell_compiled))
     for file_path in notes_dependency_files:
@@ -170,13 +216,16 @@ def main() -> int:
     repo_root = args.repo_root.resolve()
     violations = check(repo_root)
     if not violations:
-        print("Notes runtime boundary check passed.")
+        sys.stdout.write("Notes runtime boundary check passed.\n")
         return 0
 
-    print("Notes runtime boundary violations found:")
+    sys.stdout.write("Notes runtime boundary violations found:\n")
     for violation in violations:
         relative_path = violation.file_path.relative_to(repo_root)
-        print(f"  {relative_path}:{violation.line}: forbidden reference {violation.token}")
+        sys.stdout.write(
+            f"  {relative_path}:{violation.line}: "
+            f"forbidden reference {violation.token}\n"
+        )
     return 1
 
 
