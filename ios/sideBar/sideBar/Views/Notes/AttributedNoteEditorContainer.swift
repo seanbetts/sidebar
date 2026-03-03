@@ -20,11 +20,10 @@ struct AttributedNoteEditorContainer: View {
                 )
                 Divider()
             }
-            AttributedNoteEditorView(
+            SwiftUINoteTextEditorSurface(
                 viewModel: nativeViewModel,
                 maxContentWidth: maxContentWidth,
-                isEditable: true,
-                onTap: nil
+                isEditable: true
             )
         }
         .onAppear {

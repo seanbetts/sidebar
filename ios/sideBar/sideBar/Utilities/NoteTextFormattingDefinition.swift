@@ -21,15 +21,11 @@ public struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
     }
 
     public func constrainedDocument(_ text: AttributedString) -> AttributedString {
-        var constrained = text
-        constrainDocument(&constrained)
-        return constrained
+        text
     }
 
     public func constrainDocument(_ text: inout AttributedString) {
-        for range in paragraphRanges(in: text) where !range.isEmpty {
-            constrainParagraph(in: &text, range: range)
-        }
+        _ = text
     }
 
     private func constrainParagraph(

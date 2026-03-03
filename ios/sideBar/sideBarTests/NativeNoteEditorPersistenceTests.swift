@@ -1,5 +1,8 @@
 import XCTest
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 #if os(macOS)
 import AppKit
 #endif
@@ -115,6 +118,16 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             (run.inlinePresentationIntent ?? []).contains(.stronglyEmphasized)
         }
         XCTAssertTrue(hasBoldIntent)
+        let hasBoldFont = viewModel.attributedContent.runs.contains { run in
+            #if os(iOS)
+            guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            #elseif os(macOS)
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.bold)
+            #endif
+        }
+        XCTAssertTrue(hasBoldFont)
         XCTAssertTrue(viewModel.isBoldActive())
     }
 
