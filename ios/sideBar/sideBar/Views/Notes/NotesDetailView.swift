@@ -99,25 +99,21 @@ extension NotesDetailView {
             ContentHeaderRow(
                 iconName: "text.document",
                 title: displayTitle,
+                titleAccessory: noteStatusTitleAccessory,
                 subtitle: createdDateSubtitle,
                 titleStyle: .subheadline,
                 titleWeight: .semibold,
                 titleSubtitleAxis: .vertical
             , trailing: {
                 if viewModel.activeNote != nil {
-                    HStack(spacing: DesignTokens.Spacing.md) {
-                        if let status = noteStatus {
-                            noteStatusText(status)
+                    HeaderActionRow {
+                        #if os(iOS)
+                        if shouldShowExpandButton {
+                            expandButton
                         }
-                        HeaderActionRow {
-                            #if os(iOS)
-                            if shouldShowExpandButton {
-                                expandButton
-                            }
-                            #endif
-                            noteActionsMenu
-                            closeButton
-                        }
+                        #endif
+                        noteActionsMenu
+                        closeButton
                     }
                 }
             })
@@ -210,7 +206,7 @@ extension NotesDetailView {
                 iconName: "arrow.triangle.2.circlepath",
                 accessibilityLabel: "Saving",
                 helpText: "Saving",
-                color: DesignTokens.Colors.textSecondary
+                color: .primary
             )
         }
         if editorViewModel.isQueuedForSync {
@@ -219,7 +215,7 @@ extension NotesDetailView {
                 iconName: "icloud.and.arrow.up",
                 accessibilityLabel: label,
                 helpText: label,
-                color: DesignTokens.Colors.textSecondary
+                color: .primary
             )
         }
         if let error = editorViewModel.saveErrorMessage, !error.isEmpty {
@@ -235,7 +231,7 @@ extension NotesDetailView {
                 iconName: "pencil.circle.fill",
                 accessibilityLabel: "Unsaved changes",
                 helpText: "Unsaved changes",
-                color: DesignTokens.Colors.textSecondary
+                color: .primary
             )
         }
         if let label = lastSavedLabel {
@@ -243,7 +239,7 @@ extension NotesDetailView {
                 iconName: "checkmark.circle.fill",
                 accessibilityLabel: "Saved \(label)",
                 helpText: "Saved \(label)",
-                color: DesignTokens.Colors.textSecondary
+                color: .primary
             )
         }
         return nil
@@ -256,11 +252,20 @@ extension NotesDetailView {
 
     private func noteStatusText(_ status: NoteStatus) -> some View {
         Image(systemName: status.iconName)
-            .appFont(.caption)
+            .appFont(.size16Semibold)
+            .frame(width: 32, height: 22)
             .imageScale(.medium)
             .foregroundStyle(status.color)
             .accessibilityLabel(status.accessibilityLabel)
             .help(status.helpText)
+    }
+
+    private var noteStatusTitleAccessory: AnyView? {
+        guard let status = noteStatus else { return nil }
+        return AnyView(
+            noteStatusText(status)
+                .padding(.leading, 8)
+        )
     }
 
     private func formatLastSaved(_ date: Date) -> String {

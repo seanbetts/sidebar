@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentHeaderRow<Trailing: View>: View {
     let icon: AnyView
     let title: String
+    let titleAccessory: AnyView?
     let subtitle: String?
     let titleStyle: AppFontStyle
     let titleWeight: Font.Weight
@@ -23,6 +24,7 @@ struct ContentHeaderRow<Trailing: View>: View {
     init(
         iconName: String,
         title: String,
+        titleAccessory: AnyView? = nil,
         subtitle: String? = nil,
         titleStyle: AppFontStyle = .headline,
         titleWeight: Font.Weight = .regular,
@@ -46,6 +48,7 @@ struct ContentHeaderRow<Trailing: View>: View {
                 .foregroundStyle(.primary)
         )
         self.title = title
+        self.titleAccessory = titleAccessory
         self.subtitle = subtitle
         self.titleStyle = titleStyle
         self.titleWeight = titleWeight
@@ -67,6 +70,7 @@ struct ContentHeaderRow<Trailing: View>: View {
     init(
         iconView: AnyView,
         title: String,
+        titleAccessory: AnyView? = nil,
         subtitle: String? = nil,
         titleStyle: AppFontStyle = .headline,
         titleWeight: Font.Weight = .regular,
@@ -86,6 +90,7 @@ struct ContentHeaderRow<Trailing: View>: View {
     ) {
         self.icon = iconView
         self.title = title
+        self.titleAccessory = titleAccessory
         self.subtitle = subtitle
         self.titleStyle = titleStyle
         self.titleWeight = titleWeight
@@ -116,13 +121,28 @@ struct ContentHeaderRow<Trailing: View>: View {
     @ViewBuilder
     private var titleSubtitleContent: some View {
         if titleSubtitleAxis == .vertical {
-            VStack(alignment: .leading, spacing: 2) {
-                titleView
-                subtitleView
+            if let titleAccessory {
+                HStack(alignment: .center, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        titleView
+                        subtitleView
+                    }
+                    titleAccessory
+                        .fixedSize()
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    titleView
+                    subtitleView
+                }
             }
         } else {
             HStack(alignment: titleSubtitleAlignment, spacing: 12) {
                 titleView
+                if let titleAccessory {
+                    titleAccessory
+                        .fixedSize()
+                }
                 if let subtitle, !subtitle.isEmpty, subtitleShowsDivider {
                     Rectangle()
                         .fill(DesignTokens.Colors.border)
@@ -138,24 +158,22 @@ struct ContentHeaderRow<Trailing: View>: View {
     private var titleView: some View {
         if let onTitleTap {
             Button(action: onTitleTap) {
-                Text(title)
-                    .appFont(titleStyle)
-                    .fontWeight(titleWeight)
-                    .lineLimit(titleLineLimit)
-                    .multilineTextAlignment(.leading)
-                    .layoutPriority(titleLayoutPriority)
-                    .truncationMode(.tail)
+                titleLabel
             }
             .buttonStyle(.plain)
         } else {
-            Text(title)
-                .appFont(titleStyle)
-                .fontWeight(titleWeight)
-                .lineLimit(titleLineLimit)
-                .multilineTextAlignment(.leading)
-                .layoutPriority(titleLayoutPriority)
-                .truncationMode(.tail)
+            titleLabel
         }
+    }
+
+    private var titleLabel: some View {
+        Text(title)
+            .appFont(titleStyle)
+            .fontWeight(titleWeight)
+            .lineLimit(titleLineLimit)
+            .multilineTextAlignment(.leading)
+            .layoutPriority(titleLayoutPriority)
+            .truncationMode(.tail)
     }
 
     @ViewBuilder
