@@ -8,6 +8,10 @@ extension NativeNoteEditorViewModel {
         guard plainTextRuntimeModeEnabled != enabled else { return }
         plainTextRuntimeModeEnabled = enabled
         guard enabled else { return }
+        prefixRefreshTask?.cancel()
+        prefixRefreshTask = nil
+        pendingPrefixRefreshScope = nil
+        usesInjectedListMarkers = false
         normalizeCurrentContentForPlainTextRuntime()
     }
 

@@ -10,10 +10,17 @@ extension NativeNoteEditorViewModel {
     }
 
     func updatePrefixVisibility() {
+        guard !plainTextRuntimeModeEnabled else { return }
         refreshPrefixVisibility(scope: .full)
     }
 
     func requestPrefixRefresh(scope: PrefixRefreshScope) {
+        guard !plainTextRuntimeModeEnabled else {
+            pendingPrefixRefreshScope = nil
+            prefixRefreshTask?.cancel()
+            prefixRefreshTask = nil
+            return
+        }
         pendingPrefixRefreshScope = mergedPrefixScope(pendingPrefixRefreshScope, scope)
         guard prefixRefreshTask == nil else { return }
         prefixRefreshTask = Task { @MainActor [weak self] in
@@ -27,6 +34,7 @@ extension NativeNoteEditorViewModel {
     }
 
     func refreshPrefixVisibility(scope: PrefixRefreshScope) {
+        guard !plainTextRuntimeModeEnabled else { return }
         let originalSnapshot = selectionSnapshot(in: attributedContent)
         var updated = attributedContent
         let useLegacyMarkerHeuristics = usesInjectedListMarkers

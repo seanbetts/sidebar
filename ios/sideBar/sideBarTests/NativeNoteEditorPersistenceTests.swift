@@ -151,6 +151,39 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertEqual(style?.paragraphSpacingBefore ?? -1, 0, accuracy: 0.001)
         XCTAssertEqual(style?.paragraphSpacing ?? -1, 0, accuracy: 0.001)
     }
+
+    func testPlainTextRuntimeModeRoundTripKeepsZeroParagraphSpacingAcrossBlankLines() async {
+        let source = NativeNoteEditorViewModel()
+        source.loadText("line 1\n\nline 3")
+        source.setPlainTextRuntimeModeEnabled(true)
+
+        let snapshot = source.currentPersistenceSnapshot()
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.setPlainTextRuntimeModeEnabled(true)
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        XCTAssertEqual(reloaded.currentPlainText(), "line 1\n\nline 3")
+        assertZeroParagraphSpacing(in: reloaded.attributedContent)
+    }
+
+    func testPlainTextRuntimeModeSkipsListMarkerPrefixRefreshPath() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("Item")
+        viewModel.setPlainTextRuntimeModeEnabled(true)
+
+        let fullRange = characterRange(length: 4, in: viewModel.attributedContent)
+        viewModel.attributedContent[fullRange].blockKind = .bulletList
+        viewModel.attributedContent[fullRange].listDepth = 1
+        let before = viewModel.attributedContent
+
+        viewModel.requestPrefixRefresh(scope: .full)
+        await Task.yield()
+        viewModel.updatePrefixVisibility()
+
+        XCTAssertEqual(String(viewModel.attributedContent.characters), "Item")
+        XCTAssertEqual(viewModel.attributedContent, before)
+        XCTAssertFalse(viewModel.attributedContent.runs.contains { $0.listMarker == true })
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -179,4 +212,21 @@ private func firstRunPointSize(in text: AttributedString) -> CGFloat? {
         #endif
     }
     return nil
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func assertZeroParagraphSpacing(
+    in text: AttributedString,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    for run in text.runs {
+        guard let style = run.paragraphStyle else { continue }
+        XCTAssertEqual(style.lineSpacing, 0, accuracy: 0.001, file: file, line: line)
+        XCTAssertEqual(style.lineHeightMultiple, 0, accuracy: 0.001, file: file, line: line)
+        XCTAssertEqual(style.minimumLineHeight, 0, accuracy: 0.001, file: file, line: line)
+        XCTAssertEqual(style.maximumLineHeight, 0, accuracy: 0.001, file: file, line: line)
+        XCTAssertEqual(style.paragraphSpacingBefore, 0, accuracy: 0.001, file: file, line: line)
+        XCTAssertEqual(style.paragraphSpacing, 0, accuracy: 0.001, file: file, line: line)
+    }
 }
