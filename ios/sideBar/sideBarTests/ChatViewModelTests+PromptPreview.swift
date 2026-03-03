@@ -130,8 +130,8 @@ extension ChatViewModelTests {
         XCTAssertEqual(surface.title, "System Prompt")
         XCTAssertFalse(surface.capabilities.canRefresh)
         XCTAssertTrue(surface.capabilities.canClose)
-        XCTAssertTrue(surface.capabilities.canPin)
-        XCTAssertTrue(surface.capabilities.canInspectData)
+        XCTAssertFalse(surface.capabilities.canPin)
+        XCTAssertFalse(surface.capabilities.canInspectData)
         XCTAssertEqual(
             surface.payload["summary"],
             "Generated from current system and first-message prompts."
