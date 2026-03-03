@@ -127,10 +127,22 @@ enum WorkspaceReducer {
         }
     }
 
+    // Workaround for a Swift optimizer ownership-verifier crash seen in archive builds.
+    @_optimize(none)
     private static func applySectionSelection(
         _ section: AppSection,
         state: inout WorkspaceState
     ) {
+        // Snapshot descriptors up-front to avoid borrow/mutation overlap on `state`.
+        let primaryDescriptor = state.primaryPane.descriptor
+        let secondaryDescriptor = state.secondaryPane?.descriptor
+        let currentPrimarySection = WorkspaceLegacySectionAdapter.section(
+            from: primaryDescriptor
+        )
+        let currentSecondarySection = WorkspaceLegacySectionAdapter.section(
+            from: secondaryDescriptor
+        )
+
         state.mode = .core
         state.sidebarSelection = section
         state.activeSection = section
@@ -144,13 +156,6 @@ enum WorkspaceReducer {
             }
             return
         }
-
-        let currentPrimarySection = WorkspaceLegacySectionAdapter.section(
-            from: state.primaryPane.descriptor
-        )
-        let currentSecondarySection = WorkspaceLegacySectionAdapter.section(
-            from: state.secondaryPane?.descriptor
-        )
 
         if section == .chat {
             state.primaryPane.descriptor = .empty

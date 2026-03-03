@@ -25,8 +25,19 @@ else
 fi
 IOS_PARALLEL_TESTING_ENABLED="${IOS_PARALLEL_TESTING_ENABLED:-}"
 IOS_MAXIMUM_PARALLEL_TESTING_WORKERS="${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS:-}"
+IOS_PACKAGE_RESOLVE_RETRIES="${IOS_PACKAGE_RESOLVE_RETRIES:-4}"
+IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS="${IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS:-15}"
+IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY="${IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY:-YES}"
 
 echo "Running iOS tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
+
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  # CI runners occasionally inherit an http://github.com rewrite which breaks SwiftPM fetches.
+  git config --global --unset-all url.http://github.com/.insteadOf || true
+  git config --global url."https://github.com/".insteadOf "http://github.com/"
+  # HTTP/1.1 is generally more reliable for SwiftPM clone traffic in CI.
+  git config --global http.version HTTP/1.1
+fi
 
 XCODEBUILD_ARGS=(
   -project "${IOS_PROJECT}"
@@ -146,6 +157,50 @@ if [[ "${IOS_DESTINATION}" == *"platform=macOS"* ]]; then
     fi
   fi
 fi
+
+resolve_package_dependencies() {
+  local attempt=1
+  while [[ ${attempt} -le ${IOS_PACKAGE_RESOLVE_RETRIES} ]]; do
+    local package_args=(
+      -resolvePackageDependencies
+      -project "${IOS_PROJECT}"
+      -scheme "${IOS_SCHEME}"
+    )
+
+    if [[ -n "${IOS_DERIVED_DATA_PATH}" ]]; then
+      package_args+=(-derivedDataPath "${IOS_DERIVED_DATA_PATH}")
+    fi
+
+    echo "Resolve package dependencies (attempt ${attempt}/${IOS_PACKAGE_RESOLVE_RETRIES})..."
+    set +e
+    xcodebuild "${package_args[@]}"
+    local resolve_status=$?
+    set -e
+
+    if [[ ${resolve_status} -eq 0 ]]; then
+      return 0
+    fi
+
+    if [[ ${attempt} -eq ${IOS_PACKAGE_RESOLVE_RETRIES} ]]; then
+      echo "Package resolution failed after ${IOS_PACKAGE_RESOLVE_RETRIES} attempts."
+      return "${resolve_status}"
+    fi
+
+    echo "Package resolution failed (exit ${resolve_status}). Clearing SwiftPM caches before retry..."
+    if [[ -n "${IOS_DERIVED_DATA_PATH}" ]]; then
+      rm -rf "${IOS_DERIVED_DATA_PATH}/SourcePackages"
+    fi
+    if [[ "${IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY}" == "YES" ]]; then
+      rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/repositories"
+      rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/manifests"
+    fi
+
+    sleep $((IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS * attempt))
+    attempt=$((attempt + 1))
+  done
+}
+
+resolve_package_dependencies
 
 set +e
 xcodebuild "${XCODEBUILD_ARGS[@]}" test
