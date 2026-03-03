@@ -228,7 +228,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isDirty)
     }
 
-    func testDetectsConflictWhenServerIsNewer() async throws {
+    func testLocalDraftWinsAutomaticallyWhenServerIsNewer() async throws {
         let api = MockNotesAPI(updateResult: .failure(MockError.forced))
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
@@ -269,8 +269,9 @@ final class NotesEditorViewModelTests: XCTestCase {
         store.applyEditorUpdate(note)
         try? await Task.sleep(nanoseconds: 100_000_000)
 
-        XCTAssertEqual(viewModel.content, "Server")
-        XCTAssertNotNil(viewModel.conflict)
+        XCTAssertEqual(viewModel.content, "Draft")
+        XCTAssertTrue(viewModel.isDirty)
+        XCTAssertTrue(viewModel.isQueuedForSync)
     }
 
     func testSyncFromNativeEditorCoalescesRequestDuringInFlightSave() async throws {
@@ -543,7 +544,7 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
     }
 
-    func testResolveConflictKeepLocalCanonicalizesDraftContent() async throws {
+    func testAppliesUnsyncedDraftWithoutConflictResolution() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -589,11 +590,8 @@ extension NotesEditorViewModelTests {
 
         try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: nonCanonical)
         store.applyEditorUpdate(note)
-        try await waitUntil(timeoutSeconds: 2.0) { viewModel.conflict != nil }
 
-        await viewModel.resolveConflictKeepLocal()
-
-        XCTAssertNil(viewModel.conflict)
+        try await waitUntil(timeoutSeconds: 2.0) { viewModel.content == canonical }
         XCTAssertEqual(viewModel.content, canonical)
         XCTAssertTrue(viewModel.isDirty)
         XCTAssertTrue(viewModel.isQueuedForSync)
@@ -653,33 +651,15 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), snapshot)
     }
 
-    func testResolveConflictKeepBothCanonicalizesCopiedContent() async throws {
+    func testDoesNotCreateServerCopyWhenApplyingUnsyncedDraft() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
         let nonCanonical = "- [x] Done"
         let canonical = canonicalSnapshotOutput(nonCanonical)
         XCTAssertEqual(canonical, nonCanonical)
-
-        let created = NotePayload(
-            id: "copy-id",
-            name: "Note.md (Offline Copy)",
-            content: "",
-            path: "/Note.md (Offline Copy)",
-            modified: nil,
-            created: nil
-        )
-        let updated = NotePayload(
-            id: "copy-id",
-            name: "Note.md (Offline Copy)",
-            content: canonical,
-            path: "/Note.md (Offline Copy)",
-            modified: 100,
-            created: nil
-        )
         let api = NotesAPISpy(
-            updateResult: .success(updated),
-            createResult: .success(created)
+            updateResult: .failure(MockError.forced)
         )
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
@@ -718,22 +698,19 @@ extension NotesEditorViewModelTests {
 
         try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: nonCanonical)
         store.applyEditorUpdate(note)
-        try await waitUntil(timeoutSeconds: 2.0) { viewModel.conflict != nil }
 
-        await viewModel.resolveConflictKeepBoth()
-        try await waitUntil(timeoutSeconds: 2.0) { api.updateCallCount == 1 }
+        try await waitUntil(timeoutSeconds: 2.0) { viewModel.content == canonical }
 
-        XCTAssertNil(viewModel.conflict)
         XCTAssertEqual(viewModel.currentNoteId, "n1")
-        XCTAssertEqual(viewModel.content, "Server content")
-        XCTAssertFalse(viewModel.isDirty)
-        XCTAssertFalse(viewModel.isQueuedForSync)
+        XCTAssertEqual(viewModel.content, canonical)
+        XCTAssertTrue(viewModel.isDirty)
+        XCTAssertTrue(viewModel.isQueuedForSync)
         XCTAssertEqual(notesViewModel.activeNote?.id, "n1")
-        XCTAssertEqual(notesViewModel.selectedNoteId, "/folder/Note.md")
-        XCTAssertEqual(api.createdTitles, ["Note.md (Offline Copy)"])
-        XCTAssertEqual(api.updatedContents, [canonical])
+        XCTAssertNil(notesViewModel.selectedNoteId)
+        XCTAssertTrue(api.createdTitles.isEmpty)
+        XCTAssertTrue(api.updatedContents.isEmpty)
         let draft = try draftStorage.getDraft(entityType: "note", entityId: "n1")
-        XCTAssertNil(draft)
+        XCTAssertEqual(draft?.content, canonical)
     }
 
     func testSyncFromNativeEditorSendsConstrainedPlainText() async throws {

@@ -60,14 +60,6 @@ struct NotesDetailView: View {
         .onDisappear {
             savedIndicatorTask?.cancel()
         }
-        .sheet(item: conflictBinding) { conflict in
-            ConflictResolutionSheet(conflict: conflict) { choice in
-                Task {
-                    await handleConflictChoice(choice)
-                }
-            }
-            .interactiveDismissDisabled(true)
-        }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event,
                   event.matches(
@@ -281,24 +273,6 @@ extension NotesDetailView {
     private func resetSavedIndicator() {
         hideSavedIndicator()
         lastSavedTimestamp = 0
-    }
-
-    private var conflictBinding: Binding<NoteSyncConflict?> {
-        Binding(
-            get: { editorViewModel.conflict },
-            set: { _ in }
-        )
-    }
-
-    private func handleConflictChoice(_ choice: NoteConflictChoice) async {
-        switch choice {
-        case .keepLocal:
-            await editorViewModel.resolveConflictKeepLocal()
-        case .keepServer:
-            await editorViewModel.resolveConflictKeepServer()
-        case .keepBoth:
-            await editorViewModel.resolveConflictKeepBoth()
-        }
     }
 
     var displayTitle: String {

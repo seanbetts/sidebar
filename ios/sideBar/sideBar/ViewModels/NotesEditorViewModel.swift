@@ -16,7 +16,6 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var isReadOnly: Bool = true
     @Published public private(set) var isQueuedForSync: Bool = false
-    @Published private(set) var conflict: NoteSyncConflict?
 
     private let notesViewModel: NotesViewModel
     private let draftStorage: DraftStorage
@@ -58,7 +57,6 @@ public final class NotesEditorViewModel: ObservableObject {
             saveErrorMessage = nil
             isReadOnly = true
             isQueuedForSync = false
-            conflict = nil
             syncRequestedWhileSaving = false
             return
         }
@@ -78,7 +76,6 @@ public final class NotesEditorViewModel: ObservableObject {
         saveErrorMessage = nil
         isReadOnly = false
         isQueuedForSync = false
-        conflict = nil
         if !isSameNote {
             syncRequestedWhileSaving = false
         }
@@ -91,27 +88,6 @@ public final class NotesEditorViewModel: ObservableObject {
         do {
             guard let draft = try draftStorage.getDraft(entityType: "note", entityId: note.id) else { return }
             guard draft.syncedAt == nil else { return }
-            let serverDate = note.modified.map { Date(timeIntervalSince1970: $0) }
-            if shouldPresentNoteConflict(
-                localContent: draft.content,
-                localDate: draft.savedAt,
-                serverContent: note.plainText,
-                serverDate: serverDate
-            ) {
-                conflict = NoteSyncConflict(
-                    id: UUID(),
-                    noteId: note.id,
-                    noteName: note.name,
-                    notePath: note.path,
-                    localContent: draft.content,
-                    serverContent: note.plainText,
-                    localDate: draft.savedAt,
-                    serverDate: serverDate ?? Date()
-                )
-                content = note.plainText
-                isDirty = false
-                return
-            }
             if draft.content == note.plainText {
                 try? draftStorage.markSynced(entityType: "note", entityId: note.id)
                 isQueuedForSync = false
@@ -238,56 +214,6 @@ public final class NotesEditorViewModel: ObservableObject {
         return content.isEmpty ? fallback : content
     }
 
-    public func resolveConflictKeepLocal() async {
-        guard let conflict else { return }
-        content = conflict.localContent
-        let normalized = NotesRichTextCodec.normalizeWriteInput(content: conflict.localContent)
-        canonicalContent = normalized.content
-        syncNativeEditorContent(canonicalContent: normalized.content, plainText: conflict.localContent)
-        isDirty = true
-        isQueuedForSync = true
-        try? draftStorage.saveDraft(
-            entityType: "note",
-            entityId: conflict.noteId,
-            content: conflict.localContent
-        )
-        self.conflict = nil
-    }
-
-    public func resolveConflictKeepServer() async {
-        guard let conflict else { return }
-        content = conflict.serverContent
-        let normalized = NotesRichTextCodec.normalizeWriteInput(content: conflict.serverContent)
-        canonicalContent = normalized.content
-        syncNativeEditorContent(canonicalContent: normalized.content, plainText: conflict.serverContent)
-        isDirty = false
-        try? draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
-        isQueuedForSync = false
-        self.conflict = nil
-    }
-
-    public func resolveConflictKeepBoth() async {
-        guard let conflict else { return }
-        let folder = folderPath(from: conflict.notePath)
-        let copyTitle = copyTitle(from: conflict.noteName)
-        let localContent = conflict.localContent
-        content = conflict.serverContent
-        let normalized = NotesRichTextCodec.normalizeWriteInput(content: conflict.serverContent)
-        canonicalContent = normalized.content
-        syncNativeEditorContent(canonicalContent: normalized.content, plainText: conflict.serverContent)
-        isDirty = false
-        try? draftStorage.deleteDraft(entityType: "note", entityId: conflict.noteId)
-        isQueuedForSync = false
-        self.conflict = nil
-
-        guard let created = await notesViewModel.createNote(title: copyTitle, folder: folder) else {
-            saveErrorMessage = "Failed to create copy"
-            return
-        }
-        _ = await notesViewModel.updateNoteContent(id: created.id, content: localContent)
-        await notesViewModel.selectNote(id: conflict.notePath)
-    }
-
     public func setDirty(_ dirty: Bool) {
         guard isDirty != dirty else { return }
         Task { @MainActor [weak self] in
@@ -371,15 +297,4 @@ private struct NoteUpdatePayload: Codable {
         case content
         case plainText = "plain_text"
     }
-}
-
-private func folderPath(from notePath: String) -> String? {
-    let trimmed = notePath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-    let parts = trimmed.split(separator: "/")
-    guard parts.count > 1 else { return nil }
-    return parts.dropLast().joined(separator: "/")
-}
-
-private func copyTitle(from noteName: String) -> String {
-    return "\(noteName) (Offline Copy)"
 }
