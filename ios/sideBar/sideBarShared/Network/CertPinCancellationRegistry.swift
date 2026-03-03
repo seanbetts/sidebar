@@ -11,7 +11,8 @@ public final class CertPinCancellationRegistry {
     /// Shared singleton used by the pinning delegate and error classifier.
     public static let shared = CertPinCancellationRegistry()
 
-    private let cache = NSCache<NSString, NSDate>()
+    private let lock = NSLock()
+    private var records: [String: Date] = [:]
     let ttl: TimeInterval  // internal for testing
 
     init(ttl: TimeInterval = 5) {
@@ -20,14 +21,31 @@ public final class CertPinCancellationRegistry {
 
     /// Records that certificate pinning rejected the given host.
     public func record(host: String) {
-        cache.setObject(NSDate(), forKey: host as NSString)
+        let normalizedHost = normalize(host)
+        lock.lock()
+        records[normalizedHost] = Date()
+        lock.unlock()
     }
 
     /// Returns true if a pinning cancellation was recorded for `host` within the TTL window.
     public func wasCancelled(host: String) -> Bool {
-        guard let recorded = cache.object(forKey: host as NSString) else {
+        let normalizedHost = normalize(host)
+        let now = Date()
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard let recordedAt = records[normalizedHost] else {
             return false
         }
-        return Date().timeIntervalSince(recorded as Date) <= ttl
+        let isWithinTTL = now.timeIntervalSince(recordedAt) <= ttl
+        if !isWithinTTL {
+            records.removeValue(forKey: normalizedHost)
+        }
+        return isWithinTTL
+    }
+
+    private func normalize(_ host: String) -> String {
+        host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
