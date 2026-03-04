@@ -13,23 +13,28 @@ struct AttributedNoteEditorContainer: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !enabledFormattingCapabilities.isEmpty {
+            if showInlineToolbar {
                 AttributedNoteFormattingToolbar(
                     viewModel: nativeViewModel,
                     enabledCapabilities: enabledFormattingCapabilities
                 )
                 Divider()
             }
-            SwiftUINoteTextEditorSurface(
+            AttributedNoteEditorView(
                 viewModel: nativeViewModel,
                 maxContentWidth: maxContentWidth,
-                isEditable: true
+                isEditable: true,
+                enabledFormattingCapabilities: enabledFormattingCapabilities,
+                onFormattingAction: { formatting in
+                    nativeViewModel.applyFormatting(formatting)
+                },
+                onTap: nil
             )
         }
         .onAppear {
             nativeViewModel.setBaseFontSize(editorBaseFontSize)
             nativeViewModel.setEnabledFormattingCapabilities(enabledFormattingCapabilities)
-            nativeViewModel.setPlainTextRuntimeModeEnabled(true)
+            nativeViewModel.setPlainTextRuntimeModeEnabled(false)
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
             applyAutosaveDelay(isOffline: environment.isOffline)
@@ -70,6 +75,14 @@ struct AttributedNoteEditorContainer: View {
     private var editorBaseFontSize: CGFloat {
         let option = AppTextSizeOption.resolved(from: appTextSizeRaw)
         return NoteTextTypography.defaultBodyFontSize(for: option)
+    }
+
+    private var showInlineToolbar: Bool {
+        #if os(iOS)
+        return false
+        #else
+        return !enabledFormattingCapabilities.isEmpty
+        #endif
     }
 
     private func loadIfNeeded() {

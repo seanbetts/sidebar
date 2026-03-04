@@ -11,6 +11,8 @@ struct AttributedNoteEditorView: View {
     @ObservedObject var viewModel: NativeNoteEditorViewModel
     let maxContentWidth: CGFloat
     let isEditable: Bool
+    let enabledFormattingCapabilities: Set<NoteFormattingCapability>
+    let onFormattingAction: ((NoteFormatting) -> Void)?
     let onTap: ((AttributedTextSelection) -> Void)?
 
     var body: some View {
@@ -24,6 +26,8 @@ struct AttributedNoteEditorView: View {
             isSelectable: true,
             syncSelection: isEditable,
             autoFocus: isEditable,
+            enabledFormattingCapabilities: enabledFormattingCapabilities,
+            onFormattingAction: onFormattingAction,
             onTextDidChange: isEditable ? { previous, sourceGeneration in
                 DispatchQueue.main.async {
                     viewModel.handleContentChange(
@@ -73,6 +77,8 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
     let isSelectable: Bool
     let syncSelection: Bool
     let autoFocus: Bool
+    let enabledFormattingCapabilities: Set<NoteFormattingCapability>
+    var onFormattingAction: ((NoteFormatting) -> Void)?
     var onTextDidChange: ((AttributedString, Int) -> Void)?
     var onSelectionDidChange: ((Int) -> Void)?
     var onTap: ((AttributedTextSelection) -> Void)?
@@ -82,10 +88,9 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+        let textView = EditorTextView()
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
-        suppressSystemFormattingControls(in: textView)
         let tapRecognizer = UITapGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleTap(_:))
@@ -94,7 +99,9 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
         textView.addGestureRecognizer(tapRecognizer)
         context.coordinator.tapRecognizer = tapRecognizer
         configure(textView, coordinator: context.coordinator)
+        context.coordinator.configureAccessoryToolbar(for: textView)
         textView.attributedText = bridgeToNSAttributedString(text)
+        context.coordinator.refreshToolbarState(in: textView)
         return textView
     }
 
@@ -158,6 +165,8 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
                 textView.setContentOffset(clampedOffset, animated: false)
             }
         }
+        context.coordinator.configureAccessoryToolbar(for: textView)
+        context.coordinator.refreshToolbarState(in: textView)
         context.coordinator.isUpdating = false
     }
 
@@ -165,7 +174,7 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
         textView.isEditable = isEditable
         textView.isSelectable = isSelectable
         textView.isScrollEnabled = true
-        textView.allowsEditingTextAttributes = false
+        textView.allowsEditingTextAttributes = true
         coordinator.tapRecognizer?.isEnabled = onTap != nil
 
         guard autoFocus, isEditable else {
@@ -183,12 +192,6 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
         }
     }
 
-    private func suppressSystemFormattingControls(in textView: UITextView) {
-        textView.inputAssistantItem.leadingBarButtonGroups = []
-        textView.inputAssistantItem.trailingBarButtonGroups = []
-        textView.textFormattingConfiguration = UITextFormattingViewController.Configuration(groups: [])
-    }
-
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: AttributedNoteTextSurface
         var isUpdating: Bool = false
@@ -198,6 +201,7 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
         var selectionChangeGeneration: Int = 0
         var lastAppliedStyleSyncGeneration: Int = -1
         weak var tapRecognizer: UITapGestureRecognizer?
+        let accessoryToolbarController = NoteInputAccessoryToolbarController()
 
         init(_ parent: AttributedNoteTextSurface) {
             self.parent = parent
@@ -248,6 +252,7 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
                     onTextDidChange(previousText, generation)
                 }
             }
+            refreshToolbarState(in: textView)
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
@@ -270,7 +275,9 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
                     onSelectionDidChange(generation)
                 }
             }
+            refreshToolbarState(in: textView)
         }
+
     }
 }
 #elseif os(macOS)
@@ -285,6 +292,8 @@ struct AttributedNoteTextSurface: NSViewRepresentable {
     let isSelectable: Bool
     let syncSelection: Bool
     let autoFocus: Bool
+    let enabledFormattingCapabilities: Set<NoteFormattingCapability>
+    var onFormattingAction: ((NoteFormatting) -> Void)?
     var onTextDidChange: ((AttributedString, Int) -> Void)?
     var onSelectionDidChange: ((Int) -> Void)?
     var onTap: ((AttributedTextSelection) -> Void)?
