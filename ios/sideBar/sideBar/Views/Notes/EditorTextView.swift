@@ -3,11 +3,11 @@ import UIKit
 
 @available(iOS 26.0, *)
 final class EditorTextView: UITextView {
-    override var inputAssistantItem: UITextInputAssistantItem {
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
         let item = super.inputAssistantItem
         item.leadingBarButtonGroups = []
         item.trailingBarButtonGroups = []
-        return item
     }
 
     override func buildMenu(with builder: UIMenuBuilder) {

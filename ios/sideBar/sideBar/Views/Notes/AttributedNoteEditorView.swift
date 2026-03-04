@@ -99,9 +99,7 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
         textView.addGestureRecognizer(tapRecognizer)
         context.coordinator.tapRecognizer = tapRecognizer
         configure(textView, coordinator: context.coordinator)
-        context.coordinator.configureAccessoryToolbar(for: textView)
         textView.attributedText = bridgeToNSAttributedString(text)
-        context.coordinator.refreshToolbarState(in: textView)
         return textView
     }
 
@@ -165,8 +163,6 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
                 textView.setContentOffset(clampedOffset, animated: false)
             }
         }
-        context.coordinator.configureAccessoryToolbar(for: textView)
-        context.coordinator.refreshToolbarState(in: textView)
         context.coordinator.isUpdating = false
     }
 
@@ -201,7 +197,6 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
         var selectionChangeGeneration: Int = 0
         var lastAppliedStyleSyncGeneration: Int = -1
         weak var tapRecognizer: UITapGestureRecognizer?
-        let accessoryToolbarController = NoteInputAccessoryToolbarController()
 
         init(_ parent: AttributedNoteTextSurface) {
             self.parent = parent
@@ -252,7 +247,6 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
                     onTextDidChange(previousText, generation)
                 }
             }
-            refreshToolbarState(in: textView)
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
@@ -275,7 +269,6 @@ struct AttributedNoteTextSurface: UIViewRepresentable {
                     onSelectionDidChange(generation)
                 }
             }
-            refreshToolbarState(in: textView)
         }
 
     }

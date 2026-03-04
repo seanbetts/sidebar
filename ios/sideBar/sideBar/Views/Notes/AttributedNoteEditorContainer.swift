@@ -65,6 +65,13 @@ struct AttributedNoteEditorContainer: View {
             let option = AppTextSizeOption.resolved(from: newValue)
             nativeViewModel.setBaseFontSize(NoteTextTypography.defaultBodyFontSize(for: option))
         }
+        #if os(iOS)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                keyboardFormattingToolbar
+            }
+        }
+        #endif
         .onKeyPress(.escape) {
             guard editorViewModel.currentNoteId != nil else { return .ignored }
             environment.emitShortcutAction(.closeItem)
@@ -84,6 +91,66 @@ struct AttributedNoteEditorContainer: View {
         return !enabledFormattingCapabilities.isEmpty
         #endif
     }
+
+    #if os(iOS)
+    @ViewBuilder
+    private var keyboardFormattingToolbar: some View {
+        if enabledFormattingCapabilities.contains(.bold) {
+            keyboardToolbarButton(
+                systemImage: "bold",
+                title: "Bold",
+                isActive: nativeViewModel.isBoldActive()
+            ) {
+                nativeViewModel.applyFormatting(.bold)
+            }
+        }
+        if enabledFormattingCapabilities.contains(.italic) {
+            keyboardToolbarButton(
+                systemImage: "italic",
+                title: "Italic",
+                isActive: nativeViewModel.isItalicActive()
+            ) {
+                nativeViewModel.applyFormatting(.italic)
+            }
+        }
+        if enabledFormattingCapabilities.contains(.underline) {
+            keyboardToolbarButton(
+                systemImage: "underline",
+                title: "Underline",
+                isActive: nativeViewModel.isUnderlineActive()
+            ) {
+                nativeViewModel.applyFormatting(.underline)
+            }
+        }
+        if enabledFormattingCapabilities.contains(.bulletList) {
+            keyboardToolbarButton(
+                systemImage: "list.bullet",
+                title: "Bullets",
+                isActive: nativeViewModel.isBlockKindActive(.bulletList)
+            ) {
+                nativeViewModel.applyFormatting(.bulletList)
+            }
+        }
+    }
+
+    private func keyboardToolbarButton(
+        systemImage: String,
+        title: String,
+        isActive: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: isActive ? .semibold : .regular))
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(isActive ? Color.accentColor : DesignTokens.Colors.textPrimary)
+        .accessibilityLabel(title)
+        .disabled(nativeViewModel.isReadOnly)
+    }
+    #endif
 
     private func loadIfNeeded() {
         guard let noteId = editorViewModel.currentNoteId else { return }
