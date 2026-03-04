@@ -97,6 +97,78 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
         XCTAssertTrue(hasBoldRun)
     }
 
+    func testBoldActiveFallsBackToFontTraitsWhenIntentMissing() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.setEnabledFormattingCapabilities([.bold])
+        viewModel.setPlainTextRuntimeModeEnabled(true)
+        viewModel.loadText("hello")
+        let lineRange = firstLine(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
+        let platformBold = viewModel.platformFontApplyingTraits(
+            viewModel.platformBaseFont(for: .paragraph),
+            bold: true,
+            italic: false
+        )
+        viewModel.setFont(
+            .system(size: viewModel.baseFontSize, weight: .bold),
+            platformFont: platformBold,
+            in: &viewModel.attributedContent,
+            range: lineRange
+        )
+        viewModel.attributedContent[lineRange].inlinePresentationIntent = []
+
+        XCTAssertTrue(viewModel.isBoldActive())
+    }
+
+    func testApplyFormattingBoldTogglesOffTraitOnlyBoldSelection() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.setEnabledFormattingCapabilities([.bold])
+        viewModel.setPlainTextRuntimeModeEnabled(true)
+        viewModel.loadText("hello")
+        let lineRange = firstLine(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
+        let platformBold = viewModel.platformFontApplyingTraits(
+            viewModel.platformBaseFont(for: .paragraph),
+            bold: true,
+            italic: false
+        )
+        viewModel.setFont(
+            .system(size: viewModel.baseFontSize, weight: .bold),
+            platformFont: platformBold,
+            in: &viewModel.attributedContent,
+            range: lineRange
+        )
+        viewModel.attributedContent[lineRange].inlinePresentationIntent = []
+        let refreshedSelectionRange = firstLine(in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(
+            range: refreshedSelectionRange.lowerBound..<refreshedSelectionRange.upperBound
+        )
+
+        XCTAssertTrue(viewModel.isBoldActive())
+        XCTAssertTrue(hasBoldTrait(in: viewModel.attributedContent, range: lineRange))
+
+        viewModel.applyFormatting(.bold)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        let updatedRange = firstLine(in: viewModel.attributedContent)
+        let remainingIntents = viewModel.attributedContent[updatedRange].runs.compactMap { run in
+            run.inlinePresentationIntent
+        }
+        let hasRemainingBoldIntent = remainingIntents.contains { intents in
+            intents.contains(.stronglyEmphasized)
+        }
+        let hasRemainingBoldTrait = hasBoldTrait(in: viewModel.attributedContent, range: updatedRange)
+        XCTAssertFalse(
+            viewModel.isBoldActive(),
+            "Expected custom toolbar state to report inactive after toggling trait-only bold off. " +
+                "remainingBoldIntent=\(hasRemainingBoldIntent) remainingBoldTrait=\(hasRemainingBoldTrait)"
+        )
+        XCTAssertFalse(
+            hasRemainingBoldTrait,
+            "Expected font trait to be removed after toggling trait-only bold off."
+        )
+    }
+
     func testApplyFormattingBulletListPrefixesCurrentLine() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("item")
@@ -120,6 +192,21 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
             cursor = text.index(afterCharacter: cursor)
         }
         return text.startIndex..<text.endIndex
+    }
+
+    private func hasBoldTrait(
+        in text: AttributedString,
+        range: Range<AttributedString.Index>
+    ) -> Bool {
+        text[range].runs.contains { run in
+            #if os(iOS)
+            guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            #elseif os(macOS)
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.bold)
+            #endif
+        }
     }
 
 #if os(macOS)

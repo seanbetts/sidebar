@@ -7,15 +7,16 @@ extension NativeNoteEditorViewModel {
     func toggleInlineIntent(_ intent: InlinePresentationIntent) {
         let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
         guard !nonEmptyRanges.isEmpty else {
-            let current = selection.typingAttributes(in: attributedContent).inlinePresentationIntent ?? []
-            let enabled = !current.contains(intent)
+            let enabled = !typingAttributesHaveInlineIntentOrTrait(
+                selection.typingAttributes(in: attributedContent),
+                intent: intent
+            )
             applyInlineIntent(intent, enabled: enabled)
             return
         }
 
         let shouldEnable = nonEmptyRanges.contains { range in
-            let current = attributedContent[range].inlinePresentationIntent ?? []
-            return !current.contains(intent)
+            !rangeHasInlineIntentOrTrait(range, intent: intent)
         }
 
         for range in nonEmptyRanges {

@@ -1,5 +1,10 @@
 @preconcurrency import Foundation
 import SwiftUI
+#if os(iOS)
+@preconcurrency import UIKit
+#elseif os(macOS)
+@preconcurrency import AppKit
+#endif
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
@@ -8,16 +13,18 @@ extension NativeNoteEditorViewModel {
         let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
         if !nonEmptyRanges.isEmpty {
             return nonEmptyRanges.allSatisfy { range in
-                let runs = attributedContent[range].runs
+                let runs = attributedContent[range].runs.filter { run in
+                    run.inlineMarker != true && run.listMarker != true
+                }
                 guard !runs.isEmpty else { return false }
                 return runs.allSatisfy { run in
-                    (run.inlinePresentationIntent ?? []).contains(intent)
+                    runHasInlineIntentOrTrait(run, intent: intent)
                 }
             }
         }
 
         let attrs = selection.typingAttributes(in: attributedContent)
-        if (attrs.inlinePresentationIntent ?? []).contains(intent) {
+        if typingAttributesHaveInlineIntentOrTrait(attrs, intent: intent) {
             return true
         }
 
@@ -26,13 +33,13 @@ extension NativeNoteEditorViewModel {
             guard index > attributedContent.startIndex else { return false }
             let previous = attributedContent.index(beforeCharacter: index)
             let previousRange = previous..<index
-            return (attributedContent[previousRange].inlinePresentationIntent ?? []).contains(intent)
+            return rangeHasInlineIntentOrTrait(previousRange, intent: intent)
         case .ranges(let ranges):
             for range in ranges.ranges where range.isEmpty {
                 guard range.lowerBound > attributedContent.startIndex else { return false }
                 let previous = attributedContent.index(beforeCharacter: range.lowerBound)
                 let previousRange = previous..<range.lowerBound
-                return (attributedContent[previousRange].inlinePresentationIntent ?? []).contains(intent)
+                return rangeHasInlineIntentOrTrait(previousRange, intent: intent)
             }
             return false
         }
@@ -258,6 +265,91 @@ extension NativeNoteEditorViewModel {
             return "☐"
         default:
             return nil
+        }
+    }
+
+    func rangeHasInlineIntentOrTrait(
+        _ range: Range<AttributedString.Index>,
+        intent: InlinePresentationIntent
+    ) -> Bool {
+        let runs = attributedContent[range].runs.filter { run in
+            run.inlineMarker != true && run.listMarker != true
+        }
+        guard !runs.isEmpty else { return false }
+        return runs.allSatisfy { run in
+            runHasInlineIntentOrTrait(run, intent: intent)
+        }
+    }
+
+    func typingAttributesHaveInlineIntentOrTrait(
+        _ attrs: AttributeContainer,
+        intent: InlinePresentationIntent
+    ) -> Bool {
+        if (attrs.inlinePresentationIntent ?? []).contains(intent) {
+            return true
+        }
+        return fontFromAttributes(attrs).map { font in
+            fontHasTrait(font, for: intent)
+        } ?? false
+    }
+
+    private func runHasInlineIntentOrTrait(
+        _ run: AttributedString.Runs.Run,
+        intent: InlinePresentationIntent
+    ) -> Bool {
+        if (run.inlinePresentationIntent ?? []).contains(intent) {
+            return true
+        }
+        return fontFromRun(run).map { font in
+            fontHasTrait(font, for: intent)
+        } ?? false
+    }
+
+    private func fontFromRun(_ run: AttributedString.Runs.Run) -> PlatformFont? {
+        var sample = AttributedString("x")
+        let range = sample.startIndex..<sample.endIndex
+        sample[range].mergeAttributes(run.attributes)
+        return platformFont(from: sample)
+    }
+
+    private func fontFromAttributes(_ attrs: AttributeContainer) -> PlatformFont? {
+        var sample = AttributedString("x")
+        let range = sample.startIndex..<sample.endIndex
+        sample[range].mergeAttributes(attrs)
+        return platformFont(from: sample)
+    }
+
+    private func platformFont(from text: AttributedString) -> PlatformFont? {
+        let bridged: NSAttributedString
+        #if os(macOS)
+        bridged = (try? NSAttributedString(text, including: \.attributedNoteTextSurface))
+            ?? NSAttributedString(text)
+        #else
+        bridged = NSAttributedString(text)
+        #endif
+        guard bridged.length > 0 else { return nil }
+        return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as? PlatformFont
+    }
+
+    private func fontHasTrait(
+        _ font: PlatformFont,
+        for intent: InlinePresentationIntent
+    ) -> Bool {
+        switch intent {
+        case .stronglyEmphasized:
+            #if os(iOS)
+            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            #elseif os(macOS)
+            return font.fontDescriptor.symbolicTraits.contains(.bold)
+            #endif
+        case .emphasized:
+            #if os(iOS)
+            return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            #elseif os(macOS)
+            return font.fontDescriptor.symbolicTraits.contains(.italic)
+            #endif
+        default:
+            return false
         }
     }
 }
