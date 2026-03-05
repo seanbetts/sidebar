@@ -115,7 +115,7 @@ private extension NoteTextFormattingDefinition {
     }
 
     func inlineTraits(from run: AttributedString.Runs.Run) -> NoteInlineFormattingTraits {
-        noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
+        noteInlineFormattingTraits(from: run.attributes)
     }
 
     func attributedRange(
