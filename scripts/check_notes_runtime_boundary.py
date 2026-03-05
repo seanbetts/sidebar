@@ -75,7 +75,7 @@ BACKEND_NOTES_RUNTIME_RELATIVE_PATHS = (
     Path("api/services/notes_service.py"),
     Path("api/services/notes_write_contract.py"),
     Path("api/services/notes_workspace_service.py"),
-    Path("skills/notes/scripts/save_markdown.py"),
+    Path("skills/notes/scripts/save_note_document.py"),
     Path("skills/notes/scripts/read_note.py"),
 )
 FORBIDDEN_BACKEND_NOTES_RUNTIME_PATTERNS = (
@@ -100,8 +100,8 @@ REQUIRED_NOTES_CONTRACTS = (
     ContractRequirement(
         file_path=Path("ViewModels/NotesEditorViewModel.swift"),
         required_patterns=(
-            r"\bcurrentPersistenceSnapshot\s*\(",
             r"\bsyncFromNativeEditor\s*\(",
+            r"\bsharedNativeEditor\s*\(",
         ),
     ),
     ContractRequirement(
@@ -115,7 +115,8 @@ REQUIRED_NOTES_CONTRACTS = (
     ContractRequirement(
         file_path=Path("Views/Notes/AttributedNoteEditorContainer.swift"),
         required_patterns=(
-            r"@StateObject\s+private\s+var\s+nativeViewModel\s*=\s*NativeNoteEditorViewModel\s*\(\)",
+            r"@StateObject\s+private\s+var\s+nativeViewModel\s*:\s*NativeNoteEditorViewModel",
+            r"StateObject\s*\(\s*wrappedValue:\s*editorViewModel\.sharedNativeEditor\s*\(\s*\)\s*\)",
             r"\battachNativeEditor\s*\(\s*nativeViewModel\s*\)",
             r"\bsyncFromNativeEditor\s*\(\s*nativeViewModel\s*\)",
         ),

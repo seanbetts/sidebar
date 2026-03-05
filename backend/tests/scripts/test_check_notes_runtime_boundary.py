@@ -254,6 +254,27 @@ def test_check_reports_backend_notes_runtime_legacy_references(
     assert any("content_format" in violation.token for violation in violations)
 
 
+def test_check_reports_backend_notes_runtime_legacy_references_in_document_writer(
+    tmp_path: Path,
+) -> None:
+    """Document-native note writer should also be scanned for legacy storage references."""
+    _write(
+        tmp_path / "backend/skills/notes/scripts/save_note_document.py",
+        """
+        from api.services.notes_content_codec import canonical_note_content_from_plain_text
+
+        def save(document):
+            content_format = "markdown"
+            return canonical_note_content_from_plain_text(document), content_format
+        """,
+    )
+
+    violations = check(tmp_path)
+
+    assert any("notes_content_codec" in violation.token for violation in violations)
+    assert any("content_format" in violation.token for violation in violations)
+
+
 def test_check_reports_ios_notes_runtime_cleanup_leftovers(
     tmp_path: Path,
 ) -> None:
@@ -341,13 +362,13 @@ def test_check_passes_without_backend_legacy_note_storage_references(
         """,
     )
     _write(
-        tmp_path / "backend/skills/notes/scripts/save_markdown.py",
+        tmp_path / "backend/skills/notes/scripts/save_note_document.py",
         """
         from api.services.notes_document_types import note_document_from_plain_text
 
-        def save(title, content):
-            document = note_document_from_plain_text(content)
-            return title, document
+        def save(document):
+            plain_document = note_document_from_plain_text("plain")
+            return document, plain_document
         """,
     )
     _write(
@@ -378,6 +399,9 @@ def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
         """
         import Foundation
         public final class NotesEditorViewModel {
+            func sharedNativeEditor() -> NativeNoteEditorViewModel {
+                NativeNoteEditorViewModel()
+            }
             func currentPersistenceSnapshot() {}
             func syncFromNativeEditor() {}
         }
@@ -400,7 +424,14 @@ def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
         """
         import SwiftUI
         struct AttributedNoteEditorContainer: View {
-            @StateObject private var nativeViewModel = NativeNoteEditorViewModel()
+            let editorViewModel = NotesEditorViewModel()
+            @StateObject private var nativeViewModel: NativeNoteEditorViewModel
+
+            init() {
+                _nativeViewModel = StateObject(
+                    wrappedValue: editorViewModel.sharedNativeEditor()
+                )
+            }
 
             var body: some View {
                 Text("Notes")

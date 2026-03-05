@@ -20,6 +20,50 @@ extension NativeNoteEditorViewModel {
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
     }
 
+    func replacePlainTextContent(
+        _ text: String,
+        selectedUTF16Range: NSRange
+    ) {
+        let previousContent = attributedContent
+        let previousSelection = selection
+        let document = NotesSemanticDocumentProjection.document(fromPlainText: text)
+        var updatedContent = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        constrainEditorDocument(&updatedContent)
+        let updatedSelection = selection(fromUTF16Range: selectedUTF16Range, in: updatedContent)
+
+        guard updatedContent != previousContent || updatedSelection != previousSelection else { return }
+
+        attributedContent = updatedContent
+        selection = updatedSelection
+        handleContentChange(previous: previousContent)
+        if updatedSelection != previousSelection {
+            handleSelectionChange()
+        }
+    }
+
+    func replaceAttributedContent(
+        _ text: NSAttributedString,
+        selectedUTF16Range: NSRange
+    ) {
+        let previousContent = attributedContent
+        let previousSelection = selection
+        var updatedContent = AttributedString(text)
+        constrainEditorDocument(&updatedContent)
+        let updatedSelection = selection(fromUTF16Range: selectedUTF16Range, in: updatedContent)
+
+        guard updatedContent != previousContent || updatedSelection != previousSelection else { return }
+
+        attributedContent = updatedContent
+        selection = updatedSelection
+        handleContentChange(previous: previousContent)
+        if updatedSelection != previousSelection {
+            handleSelectionChange()
+        }
+    }
+
     func normalizeDocumentStylingForDisplay() {
         let snapshot = selectionSnapshot(in: attributedContent)
         let normalized = constrainedEditorDocument(from: attributedContent)

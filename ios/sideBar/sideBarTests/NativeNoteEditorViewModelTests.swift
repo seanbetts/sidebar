@@ -80,6 +80,154 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertFalse(noteTypingTraits(from: viewModel.selection.typingAttributes(in: viewModel.attributedContent)).bold)
     }
 
+    func testPersistenceSnapshotRoundTripsAllowedInlineFormattingWithoutLoss() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("Hello")
+        let boldRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: boldRange)
+
+        viewModel.applyFormatting(.bold)
+
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+        viewModel.applyFormatting(.underline)
+        noteAppendTypedText("!", to: viewModel)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.loadDocument(
+            canonicalContent: snapshot.canonicalContent,
+            plainText: snapshot.plainText
+        )
+
+        let reloadedBoldRange = noteCharacterRange(length: 5, in: reloaded.attributedContent)
+        let punctuationStart = reloaded.attributedContent.index(
+            reloaded.attributedContent.startIndex,
+            offsetByCharacters: 5
+        )
+        let punctuationEnd = reloaded.attributedContent.index(afterCharacter: punctuationStart)
+
+        XCTAssertEqual(snapshot.plainText, "Hello!")
+        XCTAssertTrue(noteRangeHasBoldTrait(reloaded.attributedContent, range: reloadedBoldRange))
+        XCTAssertTrue(
+            noteRangeIsUnderlined(
+                reloaded.attributedContent,
+                range: punctuationStart..<punctuationEnd
+            )
+        )
+    }
+
+    func testInsertionPointFormattingStatePersistsAcrossTypedTextEdits() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("Hi")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        viewModel.applyFormatting(.italic)
+        noteAppendTypedText("!", to: viewModel)
+
+        let punctuationStart = viewModel.attributedContent.index(
+            viewModel.attributedContent.startIndex,
+            offsetByCharacters: 2
+        )
+        let punctuationEnd = viewModel.attributedContent.index(afterCharacter: punctuationStart)
+
+        XCTAssertTrue(viewModel.isItalicActive())
+        XCTAssertTrue(
+            noteRangeHasItalicTrait(
+                viewModel.attributedContent,
+                range: punctuationStart..<punctuationEnd
+            )
+        )
+    }
+
+    func testFormattingCommandsUpdateCanonicalSnapshotWithoutWrapperOwnedState() async throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("Hello")
+
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+        viewModel.applyFormatting(.bold)
+
+        viewModel.selection = AttributedTextSelection(
+            range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        )
+        viewModel.applyFormatting(.italic)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let paragraph = try XCTUnwrap(snapshot.document.blocks.first)
+        let segment = try XCTUnwrap(paragraph.content.first)
+
+        XCTAssertEqual(segment.text, "Hello")
+        XCTAssertTrue(segment.marks.contains(.bold))
+        XCTAssertTrue(segment.marks.contains(.italic))
+        XCTAssertEqual(snapshot.plainText, "Hello")
+    }
+
+    func testSelectedRangeFormattingStateUpdatesIndividuallyPerControl() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+
+        XCTAssertFalse(viewModel.isFormattingActive(.bold))
+        viewModel.applyFormatting(.bold)
+        XCTAssertTrue(viewModel.isFormattingActive(.bold))
+        XCTAssertFalse(viewModel.isFormattingActive(.italic))
+        XCTAssertFalse(viewModel.isFormattingActive(.underline))
+
+        viewModel.selection = AttributedTextSelection(
+            range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        )
+        viewModel.applyFormatting(.italic)
+        XCTAssertTrue(viewModel.isFormattingActive(.bold))
+        XCTAssertTrue(viewModel.isFormattingActive(.italic))
+        XCTAssertFalse(viewModel.isFormattingActive(.underline))
+
+        viewModel.selection = AttributedTextSelection(
+            range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        )
+        viewModel.applyFormatting(.underline)
+        XCTAssertTrue(viewModel.isFormattingActive(.bold))
+        XCTAssertTrue(viewModel.isFormattingActive(.italic))
+        XCTAssertTrue(viewModel.isFormattingActive(.underline))
+    }
+
+    func testInsertionPointFormattingStateUpdatesIndividuallyPerControlAndTypedText() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("Hi")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertFalse(viewModel.isFormattingActive(.bold))
+        viewModel.applyFormatting(.bold)
+        XCTAssertTrue(viewModel.isFormattingActive(.bold))
+        XCTAssertFalse(viewModel.isFormattingActive(.italic))
+        XCTAssertFalse(viewModel.isFormattingActive(.underline))
+
+        viewModel.applyFormatting(.italic)
+        XCTAssertTrue(viewModel.isFormattingActive(.bold))
+        XCTAssertTrue(viewModel.isFormattingActive(.italic))
+        XCTAssertFalse(viewModel.isFormattingActive(.underline))
+
+        viewModel.applyFormatting(.underline)
+        XCTAssertTrue(viewModel.isFormattingActive(.bold))
+        XCTAssertTrue(viewModel.isFormattingActive(.italic))
+        XCTAssertTrue(viewModel.isFormattingActive(.underline))
+
+        noteAppendTypedText("!", to: viewModel)
+
+        let punctuationStart = viewModel.attributedContent.index(
+            viewModel.attributedContent.startIndex,
+            offsetByCharacters: 2
+        )
+        let punctuationEnd = viewModel.attributedContent.index(afterCharacter: punctuationStart)
+
+        XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: punctuationStart..<punctuationEnd))
+        XCTAssertTrue(noteRangeHasItalicTrait(viewModel.attributedContent, range: punctuationStart..<punctuationEnd))
+        XCTAssertTrue(noteRangeIsUnderlined(viewModel.attributedContent, range: punctuationStart..<punctuationEnd))
+    }
+
     func testHandleContentChangeSetsUnsavedStateAndMarkSavedClearsIt() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.autosaveDelay = 0.3
