@@ -5,35 +5,6 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeNoteEditorRegressionTests: XCTestCase {
-    func testApplyFormattingPromoteAndDemoteHeadingAdjustLevel() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("hello")
-        var lineRange = firstLine(in: viewModel.attributedContent)
-        viewModel.attributedContent[lineRange].blockKind = .heading3
-        viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
-
-        viewModel.applyFormatting(.promoteHeading)
-        lineRange = firstLine(in: viewModel.attributedContent)
-        XCTAssertEqual(viewModel.attributedContent.blockKind(in: lineRange), .heading2)
-
-        viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
-        viewModel.applyFormatting(.demoteHeading)
-        lineRange = firstLine(in: viewModel.attributedContent)
-        XCTAssertEqual(viewModel.attributedContent.blockKind(in: lineRange), .heading3)
-    }
-
-    func testApplyFormattingPromoteHeadingDefaultsParagraphToHeadingTwo() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("hello")
-        let lineRange = firstLine(in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
-
-        viewModel.applyFormatting(.promoteHeading)
-
-        let updatedLine = firstLine(in: viewModel.attributedContent)
-        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedLine), .heading2)
-    }
-
     func testHandleContentChangePreservesUnderlineStyling() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("plain text")

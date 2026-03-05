@@ -54,11 +54,7 @@ extension NativeNoteEditorViewModel {
             )
             setFont(font, platformFont: platformFont, in: &text, range: range)
             let tableBackground = tableRowBackground(from: tableInfo)
-            if let baseBackground {
-                setBackgroundColor(baseBackground, in: &text, range: range)
-            } else if let tableBackground {
-                setBackgroundColor(tableBackground, in: &text, range: range)
-            }
+            setBackgroundColor(baseBackground ?? tableBackground, in: &text, range: range)
             if run.link != nil {
                 setForegroundColor(.accentColor, in: &text, range: range)
             } else if run.imageInfo != nil {

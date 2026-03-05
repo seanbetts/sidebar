@@ -25,25 +25,22 @@ extension NativeNoteEditorViewModel {
         guard !attributedContent.characters.isEmpty else { return }
 
         var normalized = attributedContent
+        stripUnsupportedInlineStyles(in: &normalized)
         for line in lineInfos(in: normalized) {
             let lineRange = attributedRange(for: line.range, in: normalized)
-            let resolvedBlockKind = normalized.blockKind(in: lineRange)
-                ?? (line.text.isEmpty ? .blankLine : .paragraph)
+            let resolvedBlockKind: BlockKind = .paragraph
             normalized[lineRange].blockKind = resolvedBlockKind
-            if isListBlockKind(resolvedBlockKind) {
-                normalized[lineRange].listDepth = max(1, normalized[lineRange].listDepth ?? 1)
-            } else {
-                normalized[lineRange].listDepth = nil
-            }
-            if resolvedBlockKind != .codeBlock {
-                normalized[lineRange].codeLanguage = nil
-            }
+            normalized[lineRange].listDepth = nil
+            normalized[lineRange].codeLanguage = nil
+            normalized[lineRange].inlineMarker = nil
+            normalized[lineRange].listMarker = nil
+            normalized[lineRange][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
+            normalized[lineRange][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
             applyInlineIntentStyling(in: &normalized, lineRange: lineRange, blockKind: resolvedBlockKind)
             let paragraphRange = lineRangeIncludingTrailingNewline(in: normalized, lineRange: lineRange)
-            let listDepth = normalized[lineRange].listDepth
-            if let style = paragraphStyle(for: resolvedBlockKind, listDepth: listDepth) {
-                normalized[paragraphRange].paragraphStyle = style
-            }
+            normalized[paragraphRange].paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize
+            )
         }
 
         if normalized != attributedContent {

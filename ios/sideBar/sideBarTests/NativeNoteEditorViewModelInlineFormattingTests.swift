@@ -45,18 +45,6 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
         )
     }
 
-    func testApplyFormattingDemoteHeadingDefaultsParagraphToHeadingThree() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("hello")
-        let lineRange = firstLine(in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
-
-        viewModel.applyFormatting(.demoteHeading)
-
-        let updatedLine = firstLine(in: viewModel.attributedContent)
-        XCTAssertEqual(viewModel.attributedContent.blockKind(in: updatedLine), .heading3)
-    }
-
     func testApplyFormattingBoldStylesSelectedRangeImmediately() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")

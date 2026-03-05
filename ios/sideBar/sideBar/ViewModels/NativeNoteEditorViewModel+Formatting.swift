@@ -132,7 +132,13 @@ extension NativeNoteEditorViewModel {
     }
 
     func stripUnsupportedInlineStyles(in text: inout AttributedString) {
-        _ = text
+        for run in text.runs {
+            let range = run.range
+            var intents = text[range].inlinePresentationIntent ?? []
+            intents.remove(.code)
+            text[range].inlinePresentationIntent = intents.isEmpty ? nil : intents
+            text[range].strikethroughStyle = nil
+        }
     }
 
     private func primarySelectedParagraphBlockKind() -> BlockKind? {

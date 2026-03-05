@@ -63,24 +63,18 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         NotePlainTextProjection.plainText(from: attributedContent)
     }
 
-    func defaultTypingAttributes(
-        blockKind: BlockKind = .paragraph,
-        listDepth: Int? = nil
-    ) -> AttributeContainer {
+    func defaultTypingAttributes() -> AttributeContainer {
         var attrs = AttributeContainer()
-        attrs.blockKind = blockKind
-        attrs.listDepth = listDepth
+        attrs.blockKind = .paragraph
+        attrs.listDepth = nil
         attrs.codeLanguage = nil
-        setFont(baseFont(for: blockKind), platformFont: platformBaseFont(for: blockKind), in: &attrs)
-        setForegroundColor(baseForegroundColor(for: blockKind), in: &attrs)
-        setBackgroundColor(baseBackgroundColor(for: blockKind), in: &attrs)
-        attrs.paragraphStyle = paragraphStyle(for: blockKind, listDepth: listDepth)
-        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = typingPresentationIntent(
-            blockKind: blockKind,
-            listDepth: listDepth
-        )
-        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = listDelimiter(for: blockKind)
-        attrs.strikethroughStyle = blockKind == .taskChecked ? .single : nil
+        setFont(baseFont(for: .paragraph), platformFont: platformBaseFont(for: .paragraph), in: &attrs)
+        setForegroundColor(baseForegroundColor(for: .paragraph), in: &attrs)
+        setBackgroundColor(baseBackgroundColor(for: .paragraph), in: &attrs)
+        attrs.paragraphStyle = paragraphStyle(for: .paragraph)
+        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
+        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
+        attrs.strikethroughStyle = nil
         return attrs
     }
 
@@ -100,33 +94,12 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         applyInlineIntent(.emphasized, enabled: enabled)
     }
 
-    public func toggleInlineCode() {
-        let enabled = !hasInlineIntent(.code)
-        applyInlineIntent(.code, enabled: enabled)
-    }
-
     public func applyLink(_ url: URL) {
         transformSelectionAttributes { attrs in
             attrs.link = url
             setForegroundColor(.accentColor, in: &attrs)
             attrs.underlineStyle = .single
         }
-    }
-
-    public func applyHeading(level: Int) {
-        setBlockKind(headingKind(for: level))
-    }
-
-    public func applyList(ordered: Bool) {
-        setBlockKind(ordered ? .orderedList : .bulletList, listDepth: 1)
-    }
-
-    public func applyTask() {
-        setBlockKind(.taskUnchecked, listDepth: 1)
-    }
-
-    public func applyQuote() {
-        setBlockKind(.blockquote)
     }
 
     public func applyFormatting(_ formatting: NoteFormatting) {

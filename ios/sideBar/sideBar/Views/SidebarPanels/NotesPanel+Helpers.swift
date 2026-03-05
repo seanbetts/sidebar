@@ -75,7 +75,7 @@ extension NotesPanelView {
         guard !isCreatingNote else { return }
         isCreatingNote = true
         Task {
-            await viewModel.createBlankNote()
+            _ = await viewModel.createBlankNote()
             await MainActor.run {
                 isCreatingNote = false
             }
@@ -86,7 +86,7 @@ extension NotesPanelView {
         guard !isCreatingNote else { return }
         isCreatingNote = true
         Task {
-            await viewModel.createBlankNote()
+            _ = await viewModel.createBlankNote()
             await MainActor.run {
                 isCreatingNote = false
             }

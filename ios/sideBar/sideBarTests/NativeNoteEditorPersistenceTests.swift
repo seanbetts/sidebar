@@ -106,6 +106,20 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertNotNil(pointSize)
         XCTAssertEqual(pointSize ?? 0, 22, accuracy: 1.0)
     }
+
+    func testLoadTextDoesNotInferMarkdownStructureFromLiteralPrefixes() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("# Heading\n- bullet\n> quote")
+
+        let ranges = lineRanges(in: viewModel.attributedContent)
+        XCTAssertEqual(ranges.count, 3)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: ranges[0]), .paragraph)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: ranges[1]), .paragraph)
+        XCTAssertEqual(viewModel.attributedContent.blockKind(in: ranges[2]), .paragraph)
+        XCTAssertNil(viewModel.attributedContent[ranges[0]].listDepth)
+        XCTAssertNil(viewModel.attributedContent[ranges[1]].listDepth)
+        XCTAssertNil(viewModel.attributedContent[ranges[2]][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -134,6 +148,29 @@ private func firstRunPointSize(in text: AttributedString) -> CGFloat? {
         #endif
     }
     return nil
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
+    var ranges: [Range<AttributedString.Index>] = []
+    var start = text.startIndex
+    var cursor = text.startIndex
+
+    while cursor < text.endIndex {
+        if text.characters[cursor].isNewline {
+            ranges.append(start..<cursor)
+            start = text.index(afterCharacter: cursor)
+            cursor = start
+        } else {
+            cursor = text.index(afterCharacter: cursor)
+        }
+    }
+
+    if start <= text.endIndex {
+        ranges.append(start..<text.endIndex)
+    }
+
+    return ranges
 }
 
 @available(iOS 26.0, macOS 26.0, *)
