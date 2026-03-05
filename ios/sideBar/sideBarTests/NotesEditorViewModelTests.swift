@@ -555,6 +555,77 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(api.updateCallCount, 0)
     }
 
+    func testSaveIfNeededPersistsNativeFormattingBeforeDirtyFlagPropagates() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let initialCanonical = canonicalPlainTextPass("Hello")
+        let updated = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: initialCanonical,
+            path: "/note.md",
+            modified: 100,
+            created: nil
+        )
+        let api = NotesAPISpy(updateResult: .success(updated))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: initialCanonical,
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        let fullRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: fullRange)
+        nativeViewModel.applyFormatting(.bold)
+
+        // Simulate quick close/switch before async dirty propagation reaches NotesEditorViewModel.
+        viewModel.setDirty(false)
+
+        await viewModel.saveIfNeeded()
+
+        XCTAssertEqual(api.updateCallCount, 1)
+        XCTAssertEqual(viewModel.content, "Hello")
+        XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
+        XCTAssertEqual(api.updatedContents.count, 1)
+        XCTAssertNotEqual(api.updatedContents[0], initialCanonical)
+    }
+
     func testDetachNativeEditorStopsUsingDetachedSnapshot() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
@@ -949,6 +1020,18 @@ private func canonicalPlainTextPass(_ plainText: String) -> String {
 @MainActor
 private func canonicalSnapshotOutput(_ markdown: String) -> String {
     canonicalPlainTextPass(markdown)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func characterRange(
+    length: Int,
+    in text: AttributedString
+) -> Range<AttributedString.Index> {
+    var index = text.startIndex
+    for _ in 0..<length {
+        index = text.index(afterCharacter: index)
+    }
+    return text.startIndex..<index
 }
 
 private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {

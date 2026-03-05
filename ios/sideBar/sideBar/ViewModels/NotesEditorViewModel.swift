@@ -196,11 +196,21 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     public func saveIfNeeded() async {
-        guard isDirty, !isSaving else { return }
+        guard !isSaving else { return }
         if #available(iOS 26.0, macOS 26.0, *) {
-            guard let nativeViewModel = nativeEditorViewModel else { return }
+            guard let nativeViewModel = nativeEditorViewModel else {
+                guard isDirty else { return }
+                return
+            }
+            let snapshot = nativeViewModel.currentPersistenceSnapshot()
+            let hasNativeDelta = nativeViewModel.hasUnsavedChanges ||
+                snapshot.canonicalContent != canonicalContent ||
+                snapshot.plainText != content
+            guard hasNativeDelta || isDirty else { return }
             await syncFromNativeEditor(nativeViewModel)
+            return
         }
+        guard isDirty else { return }
     }
 
     public func currentPlainTextSnapshot(fallback: String = "") -> String {

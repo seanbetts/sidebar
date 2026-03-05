@@ -71,35 +71,38 @@ extension NativeNoteEditorViewModel {
 
     private func runHasBoldTrait(_ run: AttributedString.Runs.Run) -> Bool {
         #if os(iOS)
-        guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
+        guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.traitBold)
         #elseif os(macOS)
-        guard let font = macOSFont(from: run) else { return false }
+        guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.bold)
         #endif
     }
 
     private func runHasItalicTrait(_ run: AttributedString.Runs.Run) -> Bool {
         #if os(iOS)
-        guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
+        guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
         #elseif os(macOS)
-        guard let font = macOSFont(from: run) else { return false }
+        guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
         return font.fontDescriptor.symbolicTraits.contains(.italic)
         #endif
     }
 
-#if os(macOS)
-    private func macOSFont(from run: AttributedString.Runs.Run) -> NSFont? {
+    private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
         var sample = AttributedString("x")
         let range = sample.startIndex..<sample.endIndex
         sample[range].mergeAttributes(run.attributes)
+#if os(macOS)
         let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
             ?? NSAttributedString(sample)
-        guard bridged.length > 0 else { return nil }
-        return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as? NSFont
-    }
 #endif
+#if !os(macOS)
+        let bridged = NSAttributedString(sample)
+#endif
+        guard bridged.length > 0 else { return nil }
+        return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
+    }
 
     func inferredBlockKind(from lineText: String) -> BlockKind? {
         NoteTextLineInference.inferBlockKind(from: lineText)

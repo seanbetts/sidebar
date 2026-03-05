@@ -48,6 +48,31 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertTrue(hasBoldFont)
     }
 
+    func testPersistenceSnapshotRoundTripPreservesTraitOnlyBoldFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+
+        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: fullRange)
+        viewModel.applyFormatting(.bold)
+        viewModel.attributedContent[fullRange].inlinePresentationIntent = []
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        let hasBoldFont = reloaded.attributedContent.runs.contains { run in
+            #if os(iOS)
+            guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            #elseif os(macOS)
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.bold)
+            #endif
+        }
+        XCTAssertTrue(hasBoldFont)
+    }
+
     func testPersistenceSnapshotRoundTripPreservesBulletListFormatting() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("item")

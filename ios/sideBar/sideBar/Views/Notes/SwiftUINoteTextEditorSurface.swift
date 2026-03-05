@@ -33,7 +33,7 @@ struct SwiftUINoteTextEditorSurface: View {
             }
             .onChange(of: viewModel.attributedContent) { previous, current in
                 guard isEditable, isFocused else { return }
-                guard String(previous.characters) != String(current.characters) else { return }
+                guard previous != current else { return }
                 DispatchQueue.main.async {
                     viewModel.handleContentChange(previous: previous)
                 }
