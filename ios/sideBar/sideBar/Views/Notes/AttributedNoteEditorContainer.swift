@@ -18,8 +18,6 @@ struct AttributedNoteEditorContainer: View {
         )
         .onAppear {
             nativeViewModel.setBaseFontSize(editorBaseFontSize)
-            nativeViewModel.setEnabledFormattingCapabilities([.bold, .italic, .underline, .bulletList])
-            nativeViewModel.setPlainTextRuntimeModeEnabled(false)
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
             applyAutosaveDelay(isOffline: environment.isOffline)

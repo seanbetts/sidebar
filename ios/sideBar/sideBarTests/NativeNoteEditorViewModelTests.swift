@@ -249,41 +249,6 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent[line].listDepth, 1)
     }
 
-    func testUpdatePrefixVisibilityShowsReadMarkersWhenInjectedMarkersDisabled() async {
-        let viewModel = NativeNoteEditorViewModel()
-        var content = AttributedString("• Item")
-        let markerEnd = content.index(content.startIndex, offsetByCharacters: 2)
-        let markerRange = content.startIndex..<markerEnd
-        let textRange = markerEnd..<content.endIndex
-        content[markerRange].listMarker = true
-        content[markerRange].blockKind = .bulletList
-        content[markerRange].listDepth = 1
-        content[textRange].blockKind = .bulletList
-        content[textRange].listDepth = 1
-
-        viewModel.attributedContent = content
-        let insertion = viewModel.attributedContent.endIndex
-        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
-
-        viewModel.updatePrefixVisibility()
-
-        XCTAssertEqual(String(viewModel.attributedContent.characters), "• Item")
-        XCTAssertTrue(viewModel.attributedContent.runs.contains { $0.listMarker == true })
-    }
-
-    func testUpdatePrefixVisibilityDoesNotInferHorizontalRuleWhenInjectedMarkersDisabled() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.attributedContent = AttributedString("---")
-        let insertion = viewModel.attributedContent.endIndex
-        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
-
-        viewModel.updatePrefixVisibility()
-
-        XCTAssertEqual(String(viewModel.attributedContent.characters), "---")
-        let line = firstLine(in: viewModel.attributedContent)
-        XCTAssertNil(viewModel.attributedContent.blockKind(in: line))
-    }
-
     func testApplyFormattingStrikethroughTogglesTypingAttributesAtInsertionPoint() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
@@ -320,9 +285,6 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.autosaveDelay = 0.3
         viewModel.loadText("hello")
-        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
         let previous = viewModel.attributedContent
 
         viewModel.attributedContent = AttributedString("hello world")
@@ -359,9 +321,6 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
     func testHandleSelectionChangeTracksSpanTransitions() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.attributedContent = AttributedString("line1\nline2")
-        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
 
         let line1Start = viewModel.attributedContent.startIndex
         viewModel.selection = AttributedTextSelection(range: line1Start..<line1Start)
@@ -383,9 +342,6 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.autosaveDelay = 2.0
         viewModel.loadText("hello")
-        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
 
         let previous = viewModel.attributedContent
         viewModel.attributedContent = AttributedString("hello world")
@@ -400,9 +356,6 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.autosaveDelay = 0.5
         viewModel.loadText("hello")
-        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
 
         let initial = viewModel.attributedContent
         viewModel.attributedContent = AttributedString("hello1")
@@ -425,9 +378,6 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
     func testPlainPunctuationDoesNotBecomeInlineMarker() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("line one\nliteral * punctuation")
-        for _ in 0..<20 where viewModel.isUpdatingPrefixVisibility {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
 
         let text = String(viewModel.attributedContent.characters)
         guard let markerIndex = text.firstIndex(of: "*") else {

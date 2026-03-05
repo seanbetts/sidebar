@@ -66,10 +66,17 @@ public final class NotesEditorViewModel: ObservableObject {
             // the same note back through NotesStore.
             return
         }
+        let normalized = NotesRichTextCodec.normalizeWriteInput(
+            content: note.content,
+            plainText: note.plainText.isEmpty ? nil : note.plainText
+        )
         currentNoteId = note.id
-        content = note.plainText
-        canonicalContent = note.content
-        syncNativeEditorContent(canonicalContent: note.content, plainText: note.plainText)
+        content = normalized.plainText
+        canonicalContent = normalized.content
+        syncNativeEditorContent(
+            canonicalContent: normalized.content,
+            plainText: normalized.plainText
+        )
         isDirty = false
         isSaving = false
         lastSavedAt = nil
@@ -88,15 +95,22 @@ public final class NotesEditorViewModel: ObservableObject {
         do {
             guard let draft = try draftStorage.getDraft(entityType: "note", entityId: note.id) else { return }
             guard draft.syncedAt == nil else { return }
-            if draft.content == note.plainText {
+            let normalized = NotesRichTextCodec.normalizeWriteInput(
+                content: note.content,
+                plainText: note.plainText.isEmpty ? nil : note.plainText
+            )
+            if draft.content == normalized.plainText {
                 try? draftStorage.markSynced(entityType: "note", entityId: note.id)
                 isQueuedForSync = false
                 return
             }
             content = draft.content
-            let normalized = NotesRichTextCodec.normalizeWriteInput(content: draft.content)
-            canonicalContent = normalized.content
-            syncNativeEditorContent(canonicalContent: normalized.content, plainText: draft.content)
+            let draftBaseline = NotesRichTextCodec.normalizeWriteInput(content: draft.content)
+            canonicalContent = draftBaseline.content
+            syncNativeEditorContent(
+                canonicalContent: draftBaseline.content,
+                plainText: draft.content
+            )
             isDirty = true
             isQueuedForSync = true
         } catch {
@@ -108,12 +122,14 @@ public final class NotesEditorViewModel: ObservableObject {
     public func makeNativeEditorViewModel() -> NativeNoteEditorViewModel {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(canonicalContent: canonicalContent, plainText: content)
+        alignPersistenceBaseline(with: viewModel)
         return viewModel
     }
 
     @available(iOS 26.0, macOS 26.0, *)
     public func attachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
         nativeEditorViewModel = nativeViewModel
+        alignPersistenceBaseline(with: nativeViewModel)
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -245,7 +261,15 @@ public final class NotesEditorViewModel: ObservableObject {
             guard let nativeEditorViewModel else { return }
             guard nativeEditorViewModel.currentCanonicalContent() != canonicalContent else { return }
             nativeEditorViewModel.loadDocument(canonicalContent: canonicalContent, plainText: plainText)
+            alignPersistenceBaseline(with: nativeEditorViewModel)
         }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func alignPersistenceBaseline(with nativeViewModel: NativeNoteEditorViewModel) {
+        let snapshot = nativeViewModel.currentPersistenceSnapshot()
+        content = snapshot.plainText
+        canonicalContent = snapshot.canonicalContent
     }
 
     private func enqueueNoteUpdate(

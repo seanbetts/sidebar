@@ -53,7 +53,7 @@ public final class NotesRuntime: ObservableObject {
             "path": activeNote.path,
             "content": noteText,
             "plain_text": noteText,
-            "content_format": "rtf"
+            "content_format": "plain_text"
         ]
     }
 }

@@ -27,7 +27,6 @@ enum NoteFormattingCapability: Hashable {
     case bold
     case italic
     case underline
-    case bulletList
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -59,8 +58,6 @@ extension NoteFormatting {
             return .italic
         case .underline:
             return .underline
-        case .bulletList:
-            return .bulletList
         default:
             return nil
         }

@@ -36,6 +36,5 @@ extension NativeNoteEditorViewModel {
         scheduleAutosave()
         let selectionSpan = selectionLineSpan(in: attributedContent)
         lastSelectionLineSpan = selectionSpan
-        refreshPrefixVisibility(scope: .full)
     }
 }

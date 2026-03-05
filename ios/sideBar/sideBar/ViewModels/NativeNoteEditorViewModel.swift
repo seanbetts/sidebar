@@ -18,8 +18,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     @Published public var isReadOnly: Bool = false
     @Published public internal(set) var hasUnsavedChanges: Bool = false
     @Published public internal(set) var autosaveToken: Int = 0
-    @Published public private(set) var styleSyncGeneration: Int = 0
-    @Published var enabledFormattingCapabilities: Set<NoteFormattingCapability> = []
     public var autosaveDelay: TimeInterval = 1.5
 
 #if os(iOS)
@@ -48,14 +46,9 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     var lastSavedContent: String = ""
     var lastSavedCanonicalContent: String = ""
     var autosaveTask: Task<Void, Never>?
-    var isUpdatingPrefixVisibility = false
-    var usesInjectedListMarkers = false
-    var prefixRefreshTask: Task<Void, Never>?
-    var pendingPrefixRefreshScope: PrefixRefreshScope?
     var lastHandledContentSourceGeneration: Int = 0
     var lastHandledSelectionSourceGeneration: Int = 0
     var lastSelectionLineSpan: ClosedRange<Int>?
-    var plainTextRuntimeModeEnabled: Bool = false
 
     public init() {}
 
@@ -64,35 +57,16 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         guard abs(baseFontSize - updatedSize) > 0.1 else { return }
         baseFontSize = updatedSize
         normalizeDocumentStylingForDisplay()
-        styleSyncGeneration &+= 1
     }
 
     public func currentPlainText() -> String {
-        String(attributedContent.characters)
+        NotePlainTextProjection.plainText(from: attributedContent)
     }
 
     func defaultTypingAttributes(
         blockKind: BlockKind = .paragraph,
         listDepth: Int? = nil
     ) -> AttributeContainer {
-        if plainTextRuntimeModeEnabled {
-            var plainAttrs = AttributeContainer()
-            plainAttrs.blockKind = .paragraph
-            plainAttrs.listDepth = nil
-            plainAttrs.codeLanguage = nil
-            setFont(baseFont(for: .paragraph), platformFont: platformBaseFont(for: .paragraph), in: &plainAttrs)
-            setForegroundColor(baseForegroundColor(for: .paragraph), in: &plainAttrs)
-            setBackgroundColor(nil, in: &plainAttrs)
-            plainAttrs.paragraphStyle = plainTextRuntimeParagraphStyle()
-            plainAttrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
-                .paragraph,
-                identity: 1
-            )
-            plainAttrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
-            plainAttrs.strikethroughStyle = nil
-            return plainAttrs
-        }
-
         var attrs = AttributeContainer()
         attrs.blockKind = blockKind
         attrs.listDepth = listDepth
@@ -157,15 +131,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
 
     public func applyFormatting(_ formatting: NoteFormatting) {
         guard !isReadOnly else { return }
-        if plainTextRuntimeModeEnabled,
-           let capability = formatting.runtimeCapability,
-           !enabledFormattingCapabilities.contains(capability) {
-            return
-        }
-        if plainTextRuntimeModeEnabled,
-           formatting.runtimeCapability == nil {
-            return
-        }
         let previousContent = attributedContent
         let previousSelection = selection
         AttributedNoteFormattingCommands.apply(formatting, on: self)
@@ -174,10 +139,8 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         if !hasUnsavedChanges {
             hasUnsavedChanges = true
         }
-        let currentSelectionSpan = selectionLineSpan(in: attributedContent)
-        requestPrefixRefresh(scope: .lineSpan(unionLineSpan(lastSelectionLineSpan, currentSelectionSpan)))
         scheduleAutosave()
-        lastSelectionLineSpan = currentSelectionSpan
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
     }
 
     public func handleContentChange(previous: AttributedString) {
@@ -192,15 +155,11 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         }
         guard attributedContent != previous else { return }
 
-        if plainTextRuntimeModeEnabled {
-            normalizeCurrentContentForPlainTextRuntime()
-        } else {
-            var normalizedContent = attributedContent
-            stripUnsupportedInlineStyles(in: &normalizedContent)
-            if applyDetectedLinks(in: &normalizedContent) || normalizedContent != attributedContent {
-                if attributedContent != normalizedContent {
-                    attributedContent = normalizedContent
-                }
+        var normalizedContent = attributedContent
+        stripUnsupportedInlineStyles(in: &normalizedContent)
+        if applyDetectedLinks(in: &normalizedContent) || normalizedContent != attributedContent {
+            if attributedContent != normalizedContent {
+                attributedContent = normalizedContent
             }
         }
 

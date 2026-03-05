@@ -42,6 +42,10 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.currentNoteId, "n1")
         XCTAssertEqual(viewModel.content, "Hello")
+        XCTAssertEqual(
+            NotesRichTextCodec.decodeBase64RTFToPlainText(viewModel.canonicalContent),
+            "Hello"
+        )
     }
 
     func testHandleNoteUpdateClearsContentWhenNoteNil() async {
@@ -121,7 +125,6 @@ final class NotesEditorViewModelTests: XCTestCase {
         await Task.yield()
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
-        try await waitUntil(timeoutSeconds: 1.0) { !nativeViewModel.isUpdatingPrefixVisibility }
         nativeViewModel.attributedContent = AttributedString("Updated")
         nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
         try await waitUntil(timeoutSeconds: 3.0) { nativeViewModel.hasUnsavedChanges }
@@ -729,6 +732,60 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
     }
 
+    func testNotesRuntimeOpenNoteContextUsesProjectedPlainText() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let editorViewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Server body",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = editorViewModel.makeNativeEditorViewModel()
+        editorViewModel.attachNativeEditor(nativeViewModel)
+        nativeViewModel.attributedContent = AttributedString("Local unsaved body")
+
+        let runtime = NotesRuntime(viewModel: notesViewModel, editorViewModel: editorViewModel)
+        let context = runtime.openNoteContext()
+
+        XCTAssertEqual(context?["content"] as? String, "Local unsaved body")
+        XCTAssertEqual(context?["plain_text"] as? String, "Local unsaved body")
+        XCTAssertEqual(context?["content_format"] as? String, "plain_text")
+    }
+
     func testAppliesUnsyncedDraftWithoutConflictResolution() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
@@ -898,7 +955,7 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(draft?.content, canonical)
     }
 
-    func testSyncFromNativeEditorSendsConstrainedPlainText() async throws {
+    func testSyncFromNativeEditorSkipsWhenBaselineAlreadyAligned() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -947,15 +1004,17 @@ extension NotesEditorViewModelTests {
         )
         await viewModel.syncFromNativeEditor(nativeViewModel)
 
-        XCTAssertEqual(api.updatedContents.count, 1)
+        XCTAssertEqual(api.updatedContents.count, 0)
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertFalse(viewModel.isSaving)
+        XCTAssertEqual(viewModel.content, canonicalPlainText)
         XCTAssertEqual(
-            NotesRichTextCodec.decodeBase64RTFToPlainText(api.updatedContents[0]),
+            NotesRichTextCodec.decodeBase64RTFToPlainText(viewModel.canonicalContent),
             expectedRoundTripPlainText
         )
-        XCTAssertEqual(viewModel.content, canonicalPlainText)
     }
 
-    func testOfflineSaveQueuesDraftWithoutApiCall() async throws {
+    func testOfflineSyncSkipsQueueWhenEditorIsClean() async throws {
         let api = NotesAPISpy(updateResult: .failure(MockError.forced))
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
@@ -997,14 +1056,15 @@ extension NotesEditorViewModelTests {
 
         await viewModel.syncFromNativeEditor(nativeViewModel)
 
-        XCTAssertTrue(viewModel.isQueuedForSync)
-        XCTAssertFalse(viewModel.isSaving)
         XCTAssertEqual(api.updateCallCount, 0)
+        let pending = try await writeQueue.fetchPendingWrites()
+        XCTAssertEqual(canonicalPlainText, note.content)
+        XCTAssertFalse(viewModel.isQueuedForSync)
+        XCTAssertFalse(viewModel.isSaving)
         XCTAssertEqual(viewModel.content, canonicalPlainText)
         let draft = try draftStorage.getDraft(entityType: "note", entityId: "n1")
-        XCTAssertEqual(draft?.content, canonicalPlainText)
-        let pending = try await writeQueue.fetchPendingWrites()
-        XCTAssertEqual(pending.count, 1)
+        XCTAssertNil(draft)
+        XCTAssertEqual(pending.count, 0)
     }
 }
 

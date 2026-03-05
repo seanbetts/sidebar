@@ -19,9 +19,9 @@ NOTES_SHELL_RELATIVE_PATHS = (
     Path("Views/Notes/NotesDetailView+MenuActions.swift"),
     Path("Views/Notes/NotesDetailView+FileOperations.swift"),
     Path("Views/Notes/AttributedNoteEditorContainer.swift"),
-    Path("Views/Notes/AttributedNoteEditorView.swift"),
     Path("Views/Notes/AttributedNoteKeyboardShortcuts.swift"),
     Path("Views/Notes/ScratchpadPopoverView.swift"),
+    Path("Views/Notes/SwiftUINoteTextEditorSurface.swift"),
     Path("Views/SidebarPanels/NotesPanel+ContextMenu.swift"),
 )
 NOTES_EDITOR_GLOB = "ViewModels/NativeNoteEditorViewModel*.swift"
@@ -93,11 +93,11 @@ REQUIRED_NOTES_CONTRACTS = (
         ),
     ),
     ContractRequirement(
-        file_path=Path("Views/Notes/AttributedNoteEditorView.swift"),
+        file_path=Path("Views/Notes/SwiftUINoteTextEditorSurface.swift"),
         required_patterns=(
-            r"@Binding\s+var\s+text\s*:\s*AttributedString\b",
-            r"@Binding\s+var\s+selection\s*:\s*AttributedTextSelection\b",
-            r"\bfunc\s+textViewDidChange\s*\(",
+            r"\bTextEditor\s*\(\s*text:\s*\$viewModel\.attributedContent\s*,\s*selection:\s*\$viewModel\.selection\s*\)",
+            r"\.attributedTextFormattingDefinition\s*\(\s*NoteTextFormattingDefinition\s*\(\s*\)\s*\)",
+            r"\bviewModel\.handleContentChange\s*\(",
         ),
     ),
 )

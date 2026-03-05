@@ -27,15 +27,16 @@ def _write(path: Path, content: str) -> None:
 def test_check_reports_runtime_boundary_forbidden_references(tmp_path: Path) -> None:
     """Runtime boundary files should fail when legacy editor symbols appear."""
     runtime_file = (
-        tmp_path / "ios/sideBar/sideBar/App/NotesRuntime.swift"
+        tmp_path / "ios/sideBar/sideBar/ViewModels/NotesEditorViewModel.swift"
     )
     _write(
         runtime_file,
         """
         import Foundation
-        public final class NotesRuntime {
-            let notesRuntime = "ready"
+        public final class NotesEditorViewModel {
             let legacy = NativeMarkdownEditorViewModel()
+            func currentPersistenceSnapshot() {}
+            func syncFromNativeEditor() {}
         }
         """,
     )
@@ -72,20 +73,25 @@ def test_check_reports_notes_shell_markdown_layout_and_attribute_references(
 ) -> None:
     """Notes shell files should fail if markdown layout/attribute symbols are referenced directly."""
     editor_shell_file = (
-        tmp_path / "ios/sideBar/sideBar/Views/Notes/AttributedNoteEditorView.swift"
+        tmp_path / "ios/sideBar/sideBar/Views/Notes/SwiftUINoteTextEditorSurface.swift"
     )
     _write(
         editor_shell_file,
         """
         import SwiftUI
         extension AttributeScopes {
-            struct AttributedNoteTextSurfaceAttributes: AttributeScope {
+            struct NotesShellAttributes: AttributeScope {
                 let markdownEditor: MarkdownEditorAttributes
             }
         }
-        struct AttributedNoteEditorView: View {
+        struct SwiftUINoteTextEditorSurface: View {
+            @ObservedObject var viewModel: NativeNoteEditorViewModel
             var body: some View {
-                Text("x")
+                TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
+                    .attributedTextFormattingDefinition(NoteTextFormattingDefinition())
+                    .onChange(of: viewModel.attributedContent) { previous, _ in
+                        viewModel.handleContentChange(previous: previous)
+                    }
                     .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             }
         }
@@ -208,12 +214,6 @@ def test_check_reports_markdown_layout_style_attribute_references_in_note_depend
                 _ = MarkdownShortcutProcessor.processShortcuts
             }
         }
-        """,
-    )
-    _write(
-        tmp_path / "ios/sideBar/sideBar/Utilities/NoteTextImporter.swift",
-        """
-        import Foundation
         struct NoteTextImporter {
             let importer = MarkdownImporter()
             let resultType: MarkdownImportResult.Type? = nil
@@ -235,20 +235,61 @@ def test_check_reports_markdown_layout_style_attribute_references_in_note_depend
 def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
     """No violations should be reported for clean runtime and shell files."""
     _write(
-        tmp_path / "ios/sideBar/sideBar/App/NotesRuntime.swift",
+        tmp_path / "ios/sideBar/sideBar/ViewModels/NotesEditorViewModel.swift",
         """
         import Foundation
-        public final class NotesRuntime {
-            let notesRuntime = "ready"
+        public final class NotesEditorViewModel {
+            func currentPersistenceSnapshot() {}
+            func syncFromNativeEditor() {}
         }
         """,
     )
     _write(
-        tmp_path / "ios/sideBar/sideBar/Views/Notes/NotesView.swift",
+        tmp_path / "ios/sideBar/sideBar/ViewModels/NativeNoteEditorViewModel+Persistence.swift",
+        """
+        import Foundation
+        extension NativeNoteEditorViewModel {
+            struct PersistenceSnapshot {
+                let canonicalContent: String
+                let plainText: String
+            }
+        }
+        """,
+    )
+    _write(
+        tmp_path / "ios/sideBar/sideBar/Views/Notes/AttributedNoteEditorContainer.swift",
         """
         import SwiftUI
-        struct NotesView: View {
-            var body: some View { Text("Notes") }
+        struct AttributedNoteEditorContainer: View {
+            @StateObject private var nativeViewModel = NativeNoteEditorViewModel()
+
+            var body: some View {
+                Text("Notes")
+                    .onAppear {
+                        attachNativeEditor(nativeViewModel)
+                        syncFromNativeEditor(nativeViewModel)
+                    }
+            }
+
+            func attachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {}
+            func syncFromNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {}
+        }
+        """,
+    )
+    _write(
+        tmp_path / "ios/sideBar/sideBar/Views/Notes/SwiftUINoteTextEditorSurface.swift",
+        """
+        import SwiftUI
+        struct SwiftUINoteTextEditorSurface: View {
+            @ObservedObject var viewModel: NativeNoteEditorViewModel
+
+            var body: some View {
+                TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
+                    .attributedTextFormattingDefinition(NoteTextFormattingDefinition())
+                    .onChange(of: viewModel.attributedContent) { previous, _ in
+                        viewModel.handleContentChange(previous: previous)
+                    }
+            }
         }
         """,
     )
@@ -257,7 +298,9 @@ def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
         """
         import Foundation
         final class NativeNoteEditorViewModel {
-            let importer = NoteTextImporter()
+            let attributedContent = ""
+            let selection = ""
+            func handleContentChange(previous: String) {}
         }
         """,
     )

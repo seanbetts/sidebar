@@ -24,6 +24,15 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         )
     }
 
+    func testCurrentPersistenceSnapshotPreservesProjectedPlainTextLineBreaks() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("line 1\n\nline 3")
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+
+        XCTAssertEqual(snapshot.plainText, "line 1\n\nline 3")
+    }
+
     func testPersistenceSnapshotRoundTripPreservesBoldFormatting() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
@@ -73,23 +82,6 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertTrue(hasBoldFont)
     }
 
-    func testPersistenceSnapshotRoundTripPreservesBulletListFormatting() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("item")
-
-        let first = viewModel.attributedContent.startIndex
-        let next = viewModel.attributedContent.index(afterCharacter: first)
-        viewModel.selection = AttributedTextSelection(range: first..<next)
-        viewModel.applyFormatting(.bulletList)
-
-        let snapshot = viewModel.currentPersistenceSnapshot()
-        let reloaded = NativeNoteEditorViewModel()
-        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
-
-        XCTAssertTrue(snapshot.plainText.hasPrefix("• "))
-        XCTAssertTrue(reloaded.currentPlainText().hasPrefix("• "))
-    }
-
     func testLoadTextEmptySeedsParagraphTypingAttributes() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("")
@@ -113,153 +105,6 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let pointSize = firstRunPointSize(in: reloaded.attributedContent)
         XCTAssertNotNil(pointSize)
         XCTAssertEqual(pointSize ?? 0, 22, accuracy: 1.0)
-    }
-
-    func testPlainTextRuntimeModeIgnoresFormattingCommands() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("hello")
-        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: fullRange)
-        viewModel.setPlainTextRuntimeModeEnabled(true)
-
-        let before = viewModel.attributedContent
-        viewModel.applyFormatting(.bold)
-
-        XCTAssertEqual(viewModel.attributedContent, before)
-        XCTAssertFalse(viewModel.isBoldActive())
-    }
-
-    func testPlainTextRuntimeModeWithBoldCapabilityAppliesBoldFormatting() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.setEnabledFormattingCapabilities([.bold])
-        viewModel.setPlainTextRuntimeModeEnabled(true)
-        viewModel.loadText("hello")
-        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: fullRange)
-
-        viewModel.applyFormatting(.bold)
-
-        let hasBoldIntent = viewModel.attributedContent.runs.contains { run in
-            (run.inlinePresentationIntent ?? []).contains(.stronglyEmphasized)
-        }
-        XCTAssertTrue(hasBoldIntent)
-        let hasBoldFont = viewModel.attributedContent.runs.contains { run in
-            #if os(iOS)
-            guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
-            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
-            #elseif os(macOS)
-            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
-            return font.fontDescriptor.symbolicTraits.contains(.bold)
-            #endif
-        }
-        XCTAssertTrue(hasBoldFont)
-        XCTAssertTrue(viewModel.isBoldActive())
-    }
-
-    func testPlainTextRuntimeModeFlattensInlineFormattingWhenLoadingDocument() async {
-        let source = NativeNoteEditorViewModel()
-        source.loadText("hello")
-        let fullRange = characterRange(length: 5, in: source.attributedContent)
-        source.selection = AttributedTextSelection(range: fullRange)
-        source.applyFormatting(.bold)
-        let snapshot = source.currentPersistenceSnapshot()
-
-        let reloaded = NativeNoteEditorViewModel()
-        reloaded.setPlainTextRuntimeModeEnabled(true)
-        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
-
-        let hasBoldIntent = reloaded.attributedContent.runs.contains { run in
-            (run.inlinePresentationIntent ?? []).contains(.stronglyEmphasized)
-        }
-        XCTAssertFalse(hasBoldIntent)
-        let reloadedRange = characterRange(length: 5, in: reloaded.attributedContent)
-        XCTAssertEqual(reloaded.attributedContent.blockKind(in: reloadedRange), .paragraph)
-    }
-
-    func testPlainTextRuntimeModeSnapshotEncodesPlainTextCanonical() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("hello")
-        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: fullRange)
-        viewModel.applyFormatting(.bold)
-        viewModel.setPlainTextRuntimeModeEnabled(true)
-
-        let snapshot = viewModel.currentPersistenceSnapshot()
-        XCTAssertEqual(snapshot.plainText, "hello")
-        XCTAssertEqual(snapshot.canonicalContent, NotesRichTextCodec.encodePlainTextToBase64RTF("hello"))
-    }
-
-    func testPlainTextRuntimeModeWithBoldCapabilitySnapshotPreservesBoldAcrossReload() async {
-        let source = NativeNoteEditorViewModel()
-        source.setEnabledFormattingCapabilities([.bold])
-        source.setPlainTextRuntimeModeEnabled(true)
-        source.loadText("hello")
-        let fullRange = characterRange(length: 5, in: source.attributedContent)
-        source.selection = AttributedTextSelection(range: fullRange)
-        source.applyFormatting(.bold)
-
-        let snapshot = source.currentPersistenceSnapshot()
-        XCTAssertNotEqual(snapshot.canonicalContent, NotesRichTextCodec.encodePlainTextToBase64RTF("hello"))
-
-        let reloaded = NativeNoteEditorViewModel()
-        reloaded.setEnabledFormattingCapabilities([.bold])
-        reloaded.setPlainTextRuntimeModeEnabled(true)
-        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
-
-        let hasBoldIntent = reloaded.attributedContent.runs.contains { run in
-            (run.inlinePresentationIntent ?? []).contains(.stronglyEmphasized)
-        }
-        XCTAssertTrue(hasBoldIntent)
-    }
-
-    func testPlainTextRuntimeModeTypingAttributesUseZeroParagraphSpacing() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("line 1\n\nline 3")
-        viewModel.setPlainTextRuntimeModeEnabled(true)
-
-        let attrs = viewModel.defaultTypingAttributes()
-        let style = attrs.paragraphStyle
-
-        XCTAssertNotNil(style)
-        XCTAssertEqual(style?.lineSpacing ?? -1, 0, accuracy: 0.001)
-        XCTAssertEqual(style?.lineHeightMultiple ?? -1, 0, accuracy: 0.001)
-        XCTAssertEqual(style?.minimumLineHeight ?? -1, 0, accuracy: 0.001)
-        XCTAssertEqual(style?.maximumLineHeight ?? -1, 0, accuracy: 0.001)
-        XCTAssertEqual(style?.paragraphSpacingBefore ?? -1, 0, accuracy: 0.001)
-        XCTAssertEqual(style?.paragraphSpacing ?? -1, 0, accuracy: 0.001)
-    }
-
-    func testPlainTextRuntimeModeRoundTripKeepsZeroParagraphSpacingAcrossBlankLines() async {
-        let source = NativeNoteEditorViewModel()
-        source.loadText("line 1\n\nline 3")
-        source.setPlainTextRuntimeModeEnabled(true)
-
-        let snapshot = source.currentPersistenceSnapshot()
-        let reloaded = NativeNoteEditorViewModel()
-        reloaded.setPlainTextRuntimeModeEnabled(true)
-        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
-
-        XCTAssertEqual(reloaded.currentPlainText(), "line 1\n\nline 3")
-        assertZeroParagraphSpacing(in: reloaded.attributedContent)
-    }
-
-    func testPlainTextRuntimeModeSkipsListMarkerPrefixRefreshPath() async {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("Item")
-        viewModel.setPlainTextRuntimeModeEnabled(true)
-
-        let fullRange = characterRange(length: 4, in: viewModel.attributedContent)
-        viewModel.attributedContent[fullRange].blockKind = .bulletList
-        viewModel.attributedContent[fullRange].listDepth = 1
-        let before = viewModel.attributedContent
-
-        viewModel.requestPrefixRefresh(scope: .full)
-        await Task.yield()
-        viewModel.updatePrefixVisibility()
-
-        XCTAssertEqual(String(viewModel.attributedContent.characters), "Item")
-        XCTAssertEqual(viewModel.attributedContent, before)
-        XCTAssertFalse(viewModel.attributedContent.runs.contains { $0.listMarker == true })
     }
 }
 
@@ -298,21 +143,4 @@ private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObje
     sample[range].mergeAttributes(run.attributes)
     let bridged = NSAttributedString(sample)
     return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func assertZeroParagraphSpacing(
-    in text: AttributedString,
-    file: StaticString = #filePath,
-    line: UInt = #line
-) {
-    for run in text.runs {
-        guard let style = run.paragraphStyle else { continue }
-        XCTAssertEqual(style.lineSpacing, 0, accuracy: 0.001, file: file, line: line)
-        XCTAssertEqual(style.lineHeightMultiple, 0, accuracy: 0.001, file: file, line: line)
-        XCTAssertEqual(style.minimumLineHeight, 0, accuracy: 0.001, file: file, line: line)
-        XCTAssertEqual(style.maximumLineHeight, 0, accuracy: 0.001, file: file, line: line)
-        XCTAssertEqual(style.paragraphSpacingBefore, 0, accuracy: 0.001, file: file, line: line)
-        XCTAssertEqual(style.paragraphSpacing, 0, accuracy: 0.001, file: file, line: line)
-    }
 }

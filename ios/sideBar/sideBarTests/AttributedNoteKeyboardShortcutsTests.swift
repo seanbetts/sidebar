@@ -21,16 +21,11 @@ final class AttributedNoteKeyboardShortcutsTests: XCTestCase {
             modifiers: [.command],
             expected: .formatting(.underline)
         )
-        assertShortcut(
-            key: .bulletList,
-            modifiers: [.command, .shift],
-            expected: .formatting(.bulletList)
-        )
     }
 
     func testShortcutsRequireExpectedModifierCombination() {
         assertNoShortcut(key: .bold, modifiers: [])
-        assertNoShortcut(key: .bulletList, modifiers: [.command])
+        assertNoShortcut(key: .italic, modifiers: [.command, .shift])
         assertNoShortcut(key: .underline, modifiers: [.command, .control])
     }
 

@@ -34,15 +34,6 @@ struct AttributedNoteFormattingToolbar: View {
                     applyFormatting(.underline)
                 }
             }
-            if enabledCapabilities.contains(.bulletList) {
-                toolbarButton(
-                    title: "Bullets",
-                    systemImage: "list.bullet",
-                    isActive: viewModel.isBlockKindActive(.bulletList)
-                ) {
-                    applyFormatting(.bulletList)
-                }
-            }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, DesignTokens.Spacing.md)

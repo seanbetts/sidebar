@@ -5,7 +5,6 @@ enum AttributedNoteKeyboardShortcutKey {
     case bold
     case italic
     case underline
-    case bulletList
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -32,10 +31,6 @@ enum AttributedNoteKeyboardShortcuts {
         .underline: ShortcutBinding(
             modifiers: [.command],
             action: .formatting(.underline)
-        ),
-        .bulletList: ShortcutBinding(
-            modifiers: [.command, .shift],
-            action: .formatting(.bulletList)
         )
     ]
 

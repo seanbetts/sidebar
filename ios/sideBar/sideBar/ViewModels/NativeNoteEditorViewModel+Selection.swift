@@ -67,4 +67,65 @@ extension NativeNoteEditorViewModel {
         }
     }
 
+    func attributedRange(
+        for offsets: Range<Int>,
+        in text: AttributedString
+    ) -> Range<AttributedString.Index> {
+        let lower = text.index(text.startIndex, offsetByCharacters: offsets.lowerBound)
+        let upper = text.index(text.startIndex, offsetByCharacters: offsets.upperBound)
+        return lower..<upper
+    }
+
+    func lineRangeIncludingTrailingNewline(
+        in text: AttributedString,
+        lineRange: Range<AttributedString.Index>
+    ) -> Range<AttributedString.Index> {
+        var upper = lineRange.upperBound
+        if upper < text.endIndex, text.characters[upper].isNewline {
+            upper = text.index(afterCharacter: upper)
+        }
+        return lineRange.lowerBound..<upper
+    }
+
+    func selectionLineSpan(in text: AttributedString) -> ClosedRange<Int>? {
+        func lineNumber(for index: AttributedString.Index) -> Int {
+            var line = 0
+            var cursor = text.startIndex
+            while cursor < index {
+                if text.characters[cursor].isNewline {
+                    line += 1
+                }
+                cursor = text.index(afterCharacter: cursor)
+            }
+            return line
+        }
+
+        switch selection.indices(in: text) {
+        case .insertionPoint(let index):
+            let line = lineNumber(for: index)
+            return line...line
+        case .ranges(let ranges):
+            let concreteRanges = ranges.ranges
+            guard !concreteRanges.isEmpty else { return nil }
+
+            var minLine: Int?
+            var maxLine: Int?
+            for range in concreteRanges {
+                let lowerLine = lineNumber(for: range.lowerBound)
+                let upperLine: Int
+                if range.isEmpty {
+                    upperLine = lowerLine
+                } else {
+                    let lastIndex = text.index(beforeCharacter: range.upperBound)
+                    upperLine = lineNumber(for: lastIndex)
+                }
+                minLine = min(minLine ?? lowerLine, lowerLine)
+                maxLine = max(maxLine ?? upperLine, upperLine)
+            }
+
+            guard let minLine, let maxLine else { return nil }
+            return minLine...maxLine
+        }
+    }
+
 }

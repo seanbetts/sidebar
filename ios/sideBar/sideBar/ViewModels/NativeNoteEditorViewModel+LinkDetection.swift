@@ -37,7 +37,7 @@ extension NativeNoteEditorViewModel {
         return didChange
     }
 
-    private func attributedRange(
+    func attributedRange(
         for stringRange: Range<String.Index>,
         in text: String,
         text attributedText: AttributedString
