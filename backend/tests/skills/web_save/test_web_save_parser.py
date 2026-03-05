@@ -446,6 +446,23 @@ def test_extract_metadata_ignores_undefined_canonical():
     assert metadata["canonical"] == "https://example.com/article"
 
 
+def test_extract_metadata_falls_back_to_semantic_time_datetime():
+    html = """
+    <html>
+      <body>
+        <article>
+          <header>
+            <time class="post-header-date" datetime="2025-10-09">09 October 2025</time>
+            <h1>Article</h1>
+          </header>
+        </article>
+      </body>
+    </html>
+    """
+    metadata = web_save_parser.extract_metadata(html, "https://example.com/article")
+    assert metadata["published"] == "2025-10-09"
+
+
 def test_extract_apple_news_publisher_url_prefers_redirect_script():
     html = """
     <html>
@@ -2348,6 +2365,45 @@ def test_dedupe_markdown_blocks_removes_repeated_sections():
         )
         == 1
     )
+
+
+def test_dedupe_markdown_blocks_preserves_fenced_blocks_and_repeated_commands():
+    markdown = "\n\n".join(
+        [
+            "### Scenario 1",
+            "```",
+            "IMPORTANT: This is a real scenario. Choose and act.",
+            "",
+            "Do the thing.",
+            "```",
+            "### Scenario 2",
+            "```",
+            "IMPORTANT: This is a real scenario. Choose and act.",
+            "",
+            "Do the thing.",
+            "```",
+            "# How you can help",
+            "You'll need Claude Code 2.0.13 or so. Fire it up and then run:",
+            "```",
+            "/plugin marketplace add obra/superpowers-marketplace",
+            "/plugin install superpowers@superpowers-marketplace",
+            "```",
+            "Quit and restart claude and you should be good to go.",
+            "You'll need Claude Code 2.0.13 or so. Fire it up and then run:",
+            "```",
+            "/plugin marketplace add obra/superpowers-marketplace",
+            "/plugin install superpowers@superpowers-marketplace",
+            "```",
+        ]
+    )
+
+    deduped = web_save_parser.dedupe_markdown_blocks(markdown)
+
+    assert deduped.count("### Scenario 1") == 1
+    assert deduped.count("### Scenario 2") == 1
+    assert deduped.count("IMPORTANT: This is a real scenario. Choose and act.") == 2
+    assert deduped.count("```") == 8
+    assert deduped.count("/plugin marketplace add obra/superpowers-marketplace") == 2
 
 
 def test_normalize_image_captions_moves_figcaption():

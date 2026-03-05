@@ -89,13 +89,36 @@ def dedupe_markdown_blocks(markdown: str) -> str:
     """Remove duplicate markdown blocks while preserving first occurrence order."""
     if not markdown:
         return markdown
-    blocks = re.split(r"\n{2,}", markdown.strip())
+    fence_pattern = re.compile(r"^(```|~~~)")
+    blocks: list[str] = []
+    current: list[str] = []
+    in_fence = False
+
+    for line in markdown.strip().splitlines():
+        stripped = line.strip()
+        if fence_pattern.match(stripped):
+            current.append(line)
+            in_fence = not in_fence
+            continue
+        if not in_fence and not stripped:
+            if current:
+                blocks.append("\n".join(current).strip())
+                current = []
+            continue
+        current.append(line)
+
+    if current:
+        blocks.append("\n".join(current).strip())
+
     seen: set[str] = set()
     output: list[str] = []
     heading_pattern = re.compile(r"^#{1,6}\s+\S")
     for block in blocks:
         trimmed = block.strip()
         if not trimmed:
+            continue
+        if fence_pattern.match(trimmed):
+            output.append(trimmed)
             continue
         normalized = " ".join(trimmed.split())
         is_heading = bool(heading_pattern.match(trimmed))

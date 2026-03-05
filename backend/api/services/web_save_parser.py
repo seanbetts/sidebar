@@ -254,6 +254,21 @@ def extract_metadata(html: str, url: str) -> dict:
             ("property", "name"),
         )
     )
+    if not published:
+        semantic_published = (
+            soup.select_one("article time[datetime]")
+            or soup.select_one("main time[datetime]")
+            or soup.select_one("header time[datetime]")
+            or soup.select_one("time[datetime]")
+            or soup.select_one("[itemprop='datePublished'][datetime]")
+            or soup.select_one("[itemprop='datePublished'][content]")
+        )
+        if semantic_published is not None:
+            published = clean_metadata_value(
+                semantic_published.get("datetime")
+                or semantic_published.get("content")
+                or semantic_published.get_text(" ", strip=True)
+            )
     image = clean_metadata_value(
         find_meta(["og:image", "twitter:image"], ("property", "name"))
     )
