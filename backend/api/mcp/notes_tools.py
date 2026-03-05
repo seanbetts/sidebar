@@ -6,8 +6,6 @@ import json
 import time
 
 from api.security.audit_logger import AuditLogger
-from api.services.notes_document_types import note_document_from_plain_text
-from api.services.notes_title import derive_note_title_from_document
 
 
 def register_notes_tools(mcp, executor, default_user_id: str) -> None:
@@ -21,28 +19,22 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
 
     @mcp.tool()
     async def notes_create(
-        content: str,
-        title: str | None = None,
+        document: dict,
         folder: str | None = None,
         tags: list[str] | None = None,
     ) -> str:
         """Create a new note.
 
         Args:
-            content: Note body text.
-            title: Deprecated explicit title. Title is derived from content.
+            document: Semantic note document with version and blocks.
             folder: Optional folder path.
             tags: Optional list of tags.
         """
         start_time = time.time()
-        resolved_title = derive_note_title_from_document(
-            note_document_from_plain_text(content)
-        )
 
         args = [
-            resolved_title,
-            "--content",
-            content,
+            "--document",
+            json.dumps(document),
             "--mode",
             "create",
             "--database",
@@ -54,11 +46,11 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         if tags:
             args.extend(["--tags", ",".join(tags)])
 
-        result = await executor.execute("notes", "save_markdown.py", args)
+        result = await executor.execute("notes", "save_note_document.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="notes_create",
-            parameters={"title": resolved_title, "folder": folder, "tags": tags},
+            parameters={"document": document, "folder": folder, "tags": tags},
             duration_ms=(time.time() - start_time) * 1000,
             success=result.get("success", False),
         )
@@ -67,37 +59,29 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
 
     @mcp.tool()
     async def notes_update(
-        content: str,
-        title: str | None = None,
-        folder: str | None = None,
-        note_id: str | None = None,
+        document: dict,
+        note_id: str,
     ) -> str:
         """Update existing note (replace content)."""
         start_time = time.time()
-        resolved_title = derive_note_title_from_document(
-            note_document_from_plain_text(content)
-        )
 
         args = [
-            resolved_title,
-            "--content",
-            content,
+            "--document",
+            json.dumps(document),
             "--mode",
             "update",
+            "--note-id",
+            note_id,
             "--database",
             "--user-id",
             default_user_id,
         ]
-        if folder:
-            args.extend(["--folder", folder])
-        if note_id:
-            args.extend(["--note-id", note_id])
 
-        result = await executor.execute("notes", "save_markdown.py", args)
+        result = await executor.execute("notes", "save_note_document.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="notes_update",
-            parameters={"title": resolved_title, "folder": folder},
+            parameters={"document": document, "note_id": note_id},
             duration_ms=(time.time() - start_time) * 1000,
             success=result.get("success", False),
         )
@@ -106,34 +90,29 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
 
     @mcp.tool()
     async def notes_append(
-        title: str,
-        content: str,
-        folder: str | None = None,
-        note_id: str | None = None,
+        document: dict,
+        note_id: str,
     ) -> str:
-        """Append content to existing note."""
+        """Append semantic blocks to an existing note."""
         start_time = time.time()
 
         args = [
-            title,
-            "--content",
-            content,
+            "--document",
+            json.dumps(document),
             "--mode",
             "append",
+            "--note-id",
+            note_id,
             "--database",
             "--user-id",
             default_user_id,
         ]
-        if folder:
-            args.extend(["--folder", folder])
-        if note_id:
-            args.extend(["--note-id", note_id])
 
-        result = await executor.execute("notes", "save_markdown.py", args)
+        result = await executor.execute("notes", "save_note_document.py", args)
 
         AuditLogger.log_tool_call(
             tool_name="notes_append",
-            parameters={"title": title, "folder": folder},
+            parameters={"document": document, "note_id": note_id},
             duration_ms=(time.time() - start_time) * 1000,
             success=result.get("success", False),
         )

@@ -43,7 +43,7 @@ def test_notes_search_matches_plain_text_cache(test_client):
     )
     assert response.status_code == 200
     payload = response.json()
-    assert any(item["name"] == "Searchable" for item in payload.get("items", []))
+    assert any(item["name"] == "# Searchable" for item in payload.get("items", []))
 
 
 def test_notes_create_folder_requires_path(test_client):
@@ -139,7 +139,7 @@ def test_notes_create_and_update_derive_title_from_plain_text(test_client):
     assert create.status_code == 200
     created_payload = create.json()
     note_id = created_payload["id"]
-    assert created_payload["title"] == "Title"
+    assert created_payload["title"] == "# Title"
     assert created_payload["plain_text"] == created_content
     assert created_payload["document"] == note_document_from_plain_text(created_content)
     assert created_payload["folder"] == ""
@@ -190,6 +190,19 @@ def test_notes_create_rejects_explicit_title(test_client):
     )
     assert response.status_code == 400
     assert error_message(response) == "Note titles are derived from note content"
+
+
+def test_notes_create_rejects_legacy_content_field(test_client):
+    response = test_client.post(
+        "/api/notes",
+        json={
+            "document": note_document_from_plain_text("Semantic Title\nBody"),
+            "content": "# Legacy markdown body",
+        },
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 400
+    assert error_message(response) == "Legacy note content payloads are unsupported"
 
 
 def test_notes_update_requires_document(test_client):

@@ -239,6 +239,39 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoadingArchived)
     }
 
+    func testStoreActiveNoteMirrorsOnNextMainRunLoopTurn() async {
+        let api = NotesAPISpy()
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "note-id",
+            name: "Note.md",
+            content: "Hello",
+            path: "note-id",
+            modified: nil,
+            created: nil
+        )
+
+        store.applyEditorUpdate(note)
+
+        XCTAssertNil(viewModel.activeNote)
+
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async {
+                continuation.resume()
+            }
+        }
+
+        XCTAssertEqual(viewModel.activeNote?.id, "note-id")
+    }
+
     func testCreateBlankNoteSendsNoExplicitTitleOrPathAndSelectsIt() async throws {
         let api = NotesAPISpy()
         api.createNoteResult = .success(

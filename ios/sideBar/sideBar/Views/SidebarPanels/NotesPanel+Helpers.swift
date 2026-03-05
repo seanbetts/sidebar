@@ -9,7 +9,12 @@ import UIKit
 
 extension NotesPanelView {
     var header: some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
+        let showsInlineSearch = ContentView.shouldShowCompactPhoneInlineSearch(
+            isCompact: isCompact,
+            isPhoneIdiom: isPhone
+        )
+
+        return VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Notes") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
@@ -39,11 +44,13 @@ extension NotesPanelView {
                     }
                 }
             }
-            SearchField(text: $viewModel.searchQuery, placeholder: "Search notes", isFocused: $isSearchFocused)
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.bottom, DesignTokens.Spacing.sm)
+            if showsInlineSearch {
+                SearchField(text: $viewModel.searchQuery, placeholder: "Search notes", isFocused: $isSearchFocused)
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
+            }
         }
-        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
         .background(panelHeaderBackground())
     }
 

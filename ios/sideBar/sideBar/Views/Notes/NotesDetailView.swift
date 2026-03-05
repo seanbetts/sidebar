@@ -5,7 +5,6 @@ import UIKit
 #elseif os(macOS)
 import AppKit
 #endif
-
 struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     @ObservedObject var editorViewModel: NotesEditorViewModel
@@ -17,9 +16,15 @@ struct NotesDetailView: View {
     @Binding var isExporting: Bool
     @Binding var exportDocument: PlainTextFileDocument?
     @Binding var exportFilename: String
+    #if os(iOS)
+    var formattingBarPresentationOverride: NoteFormattingBarPresentation?
+    #endif
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0
     @State private var savedIndicatorTask: Task<Void, Never>?
+    #if os(iOS)
+    @State private var activeFormattingBarPresentation: NoteFormattingBarPresentation?
+    #endif
     @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
     #if os(iOS)
@@ -28,7 +33,49 @@ struct NotesDetailView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-
+    #if os(iOS)
+    init(
+        viewModel: NotesViewModel,
+        editorViewModel: NotesEditorViewModel,
+        isMoveSheetPresented: Binding<Bool>,
+        moveSelection: Binding<String>,
+        isDeleteAlertPresented: Binding<Bool>,
+        isExporting: Binding<Bool>,
+        exportDocument: Binding<PlainTextFileDocument?>,
+        exportFilename: Binding<String>,
+        formattingBarPresentationOverride: NoteFormattingBarPresentation? = nil
+    ) {
+        self.viewModel = viewModel
+        self.editorViewModel = editorViewModel
+        self._isMoveSheetPresented = isMoveSheetPresented
+        self._moveSelection = moveSelection
+        self._isDeleteAlertPresented = isDeleteAlertPresented
+        self._isExporting = isExporting
+        self._exportDocument = exportDocument
+        self._exportFilename = exportFilename
+        self.formattingBarPresentationOverride = formattingBarPresentationOverride
+    }
+    #else
+    init(
+        viewModel: NotesViewModel,
+        editorViewModel: NotesEditorViewModel,
+        isMoveSheetPresented: Binding<Bool>,
+        moveSelection: Binding<String>,
+        isDeleteAlertPresented: Binding<Bool>,
+        isExporting: Binding<Bool>,
+        exportDocument: Binding<PlainTextFileDocument?>,
+        exportFilename: Binding<String>
+    ) {
+        self.viewModel = viewModel
+        self.editorViewModel = editorViewModel
+        self._isMoveSheetPresented = isMoveSheetPresented
+        self._moveSelection = moveSelection
+        self._isDeleteAlertPresented = isDeleteAlertPresented
+        self._isExporting = isExporting
+        self._exportDocument = exportDocument
+        self._exportFilename = exportFilename
+    }
+    #endif
     var body: some View {
         VStack(spacing: 0) {
             if !isCompact, !isShowingWelcomeHome {
@@ -53,7 +100,17 @@ struct NotesDetailView: View {
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
             resetSavedIndicator()
+            #if os(iOS)
+            activeFormattingBarPresentation = nil
+            #endif
         }
+        #if os(iOS)
+        .onChange(of: editorViewModel.presentationMode) { _, newMode in
+            if newMode != .edit {
+                activeFormattingBarPresentation = nil
+            }
+        }
+        #endif
         .onDisappear {
             savedIndicatorTask?.cancel()
         }
@@ -142,11 +199,20 @@ extension NotesDetailView {
                     iconName: "exclamationmark.triangle"
                 )
             } else if isShowingEditorSurface {
+                #if os(iOS)
+                AttributedNoteEditorContainer(
+                    editorViewModel: editorViewModel,
+                    maxContentWidth: contentMaxWidth,
+                    onFormattingBarPresentationChange: handleFormattingBarPresentationChange,
+                    onEscape: handleEscapeKey
+                )
+                #else
                 AttributedNoteEditorContainer(
                     editorViewModel: editorViewModel,
                     maxContentWidth: contentMaxWidth,
                     onEscape: handleEscapeKey
                 )
+                #endif
             } else {
                 SelectableNoteReadView(
                     document: currentReadDocument,
@@ -198,9 +264,45 @@ extension NotesDetailView {
                 .padding(.vertical, DesignTokens.Spacing.xs)
                 Divider()
             }
-            content
+            contentOverlayRegion
         }
     }
+
+    @ViewBuilder
+    private var contentOverlayRegion: some View {
+        #if os(iOS)
+        content
+            .overlay(alignment: .topTrailing) {
+                if isCustomFormattingBarVisible {
+                    noteFormattingBar
+                        .fixedSize()
+                        .padding(.top, DesignTokens.Spacing.sm)
+                        .padding(.trailing, DesignTokens.Spacing.md)
+                }
+            }
+        #else
+        content
+        #endif
+    }
+
+    #if os(iOS)
+    private var noteFormattingBar: some View {
+        let configuration = noteFormattingBarConfiguration
+
+        return UIKitNoteFormattingBarRepresentable(
+            configuration: configuration
+        )
+        .disabled(!configuration.isEnabled)
+    }
+
+    var noteFormattingBarConfiguration: NoteFormattingBarConfiguration {
+        if #available(iOS 26.0, *) {
+            return editorViewModel.noteFormattingBarConfiguration
+        }
+        return .disabled
+    }
+
+    #endif
 
     private struct NoteStatus: Equatable {
         let iconName: String
@@ -333,8 +435,28 @@ extension NotesDetailView {
             && viewModel.tree != nil
     }
 
+    var formattingBarPresentation: NoteFormattingBarPresentation {
+        #if os(iOS)
+        guard isShowingEditorSurface else { return .hidden }
+        if let formattingBarPresentationOverride {
+            return formattingBarPresentationOverride
+        }
+        return activeFormattingBarPresentation ?? defaultEditingFormattingBarPresentation
+        #else
+        .hidden
+        #endif
+    }
+
     #if os(iOS)
     var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
+
+    private var defaultEditingFormattingBarPresentation: NoteFormattingBarPresentation {
+        isPhone ? .keyboardAccessory : .floatingTopTrailing
+    }
+
+    private func handleFormattingBarPresentationChange(_ presentation: NoteFormattingBarPresentation) {
+        activeFormattingBarPresentation = presentation
+    }
 
     private var shouldShowExpandButton: Bool {
         WorkspaceBehaviorPolicy.shouldShowExpandButton(

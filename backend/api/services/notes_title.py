@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from api.services.notes_document_types import project_plain_text_from_document
 
 DEFAULT_NOTE_TITLE = "New Note"
 MAX_NOTE_TITLE_LENGTH = 120
-MARKDOWN_HEADING_PREFIX = re.compile(r"^#{1,6}\s+")
 
 
 def derive_note_title(plain_text: str | None) -> str:
@@ -21,9 +19,7 @@ def derive_note_title(plain_text: str | None) -> str:
         stripped = line.strip()
         if not stripped:
             continue
-        normalized = MARKDOWN_HEADING_PREFIX.sub("", stripped, count=1).strip()
-        if normalized:
-            return normalized[:MAX_NOTE_TITLE_LENGTH]
+        return stripped[:MAX_NOTE_TITLE_LENGTH]
     return DEFAULT_NOTE_TITLE
 
 

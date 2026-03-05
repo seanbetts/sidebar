@@ -77,7 +77,9 @@ public final class NotesViewModel: ObservableObject {
 
         store.$activeNote
             .sink { [weak self] note in
-                self?.activeNote = note
+                DispatchQueue.main.async { [weak self] in
+                    self?.activeNote = note
+                }
             }
             .store(in: &cancellables)
     }
