@@ -19,8 +19,8 @@ def test_derive_title_from_content_truncates_long_line():
 
 
 def test_derive_title_from_content_fallbacks():
-    assert parameter_mapper.derive_title_from_content("") == "Untitled Note"
-    assert parameter_mapper.derive_title_from_content(None) == "Untitled Note"
+    assert parameter_mapper.derive_title_from_content("") == "New Note"
+    assert parameter_mapper.derive_title_from_content(None) == "New Note"
 
 
 def test_build_fs_list_args_includes_recursive_and_user():

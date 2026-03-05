@@ -244,7 +244,7 @@ final class NotesViewModelTests: XCTestCase {
         api.createNoteResult = .success(
             NotePayload(
                 id: "note-blank",
-                name: "Untitled Note",
+                name: "New Note",
                 content: "",
                 path: "note-blank",
                 modified: nil,

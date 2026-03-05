@@ -188,6 +188,45 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertNotNil(offlineCached)
     }
 
+    func testApplyEditorUpdateSyncsDerivedTitleIntoSidebarTree() async {
+        let tree = FileTree(children: [
+            FileNode(
+                name: "New Note",
+                path: "note-1",
+                type: .file,
+                size: nil,
+                modified: 1,
+                created: nil,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+        let cache = TestCacheClient()
+        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let store = NotesStore(api: api, cache: cache)
+        store.applyTreeUpdate(tree, persist: false)
+
+        let updatedNote = NotePayload(
+            id: "note-1",
+            name: "First line",
+            content: "canonical",
+            plainText: "First line",
+            path: "note-1",
+            modified: 2,
+            created: nil
+        )
+
+        store.applyEditorUpdate(updatedNote)
+
+        XCTAssertEqual(store.activeNote?.name, "First line")
+        XCTAssertEqual(store.tree?.children.first?.name, "First line")
+        XCTAssertEqual(store.tree?.children.first?.modified, 2)
+    }
+
     func testEnqueueArchiveClearsPinnedStateOptimistically() async throws {
         let pinnedNode = FileNode(
             name: "Pinned.md",

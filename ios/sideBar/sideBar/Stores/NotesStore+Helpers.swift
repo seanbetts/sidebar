@@ -148,10 +148,10 @@ extension NotesStore {
     }
 
     func applyNoteUpdate(_ incoming: NotePayload, persist: Bool) {
-        guard shouldUpdateActiveNote(incoming) else {
-            return
+        syncNoteMetadataIntoTrees(incoming, persist: persist)
+        if shouldUpdateActiveNote(incoming) {
+            activeNote = incoming
         }
-        activeNote = incoming
         if persist {
             if shouldPersistNote(incoming) {
                 persistNote(incoming)
@@ -160,6 +160,61 @@ extension NotesStore {
                 clearCachedNote(incoming)
             }
         }
+    }
+
+    private func syncNoteMetadataIntoTrees(_ note: NotePayload, persist: Bool) {
+        syncNoteMetadata(
+            into: tree,
+            cacheKey: CacheKeys.notesTree,
+            entityType: "notesTree",
+            note: note,
+            persist: persist
+        ) { [weak self] updated in
+            self?.tree = updated
+            self?.updateWidgetData(from: updated)
+        }
+
+        syncNoteMetadata(
+            into: archivedTree,
+            cacheKey: CacheKeys.notesArchivedTree,
+            entityType: "notesArchivedTree",
+            note: note,
+            persist: persist
+        ) { [weak self] updated in
+            self?.archivedTree = updated
+        }
+    }
+
+    private func syncNoteMetadata(
+        into sourceTree: FileTree?,
+        cacheKey: String,
+        entityType: String,
+        note: NotePayload,
+        persist: Bool,
+        apply: (FileTree) -> Void
+    ) {
+        guard let sourceTree else { return }
+        guard let updated = updatedTree(in: sourceTree, notePath: note.path, transform: { node in
+            guard node.name != note.name || node.modified != note.modified else {
+                return node
+            }
+            return copyNode(node, name: note.name, modified: note.modified)
+        }) else {
+            return
+        }
+        guard FileTreeSignature.make(sourceTree) != FileTreeSignature.make(updated) else {
+            return
+        }
+        apply(updated)
+        guard persist else { return }
+        cache.set(key: cacheKey, value: updated, ttlSeconds: cacheTTL)
+        let lastSyncAt = offlineStore?.lastSyncAt(for: cacheKey) ?? Date()
+        offlineStore?.set(
+            key: cacheKey,
+            entityType: entityType,
+            value: updated,
+            lastSyncAt: lastSyncAt
+        )
     }
 
     func indexNoteInSpotlight(_ note: NotePayload) {

@@ -10,7 +10,7 @@ public struct RealtimeMappers {
         // NOTE: Align note mapping with native models and folder/archive semantics.
         return NotePayload(
             id: id,
-            name: record.title ?? "Untitled",
+            name: record.title ?? "New Note",
             content: canonicalContent,
             plainText: plainText,
             path: id,

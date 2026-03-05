@@ -320,7 +320,7 @@ def build_open_context_block(
 
     if note:
         lines.append(CURRENT_OPEN_NOTE_HEADER)
-        title = note.get("title") or "Untitled"
+        title = note.get("title") or "New Note"
         note_id = note.get("id") or "unknown"
         path = note.get("path") or note.get("folder")
         path_text = f", path: {path}" if path else ""

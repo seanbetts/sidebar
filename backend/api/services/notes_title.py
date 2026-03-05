@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-UNTITLED_NOTE = "Untitled Note"
+DEFAULT_NOTE_TITLE = "New Note"
 MAX_NOTE_TITLE_LENGTH = 120
 MARKDOWN_HEADING_PREFIX = re.compile(r"^#{1,6}\s+")
 
@@ -12,7 +12,7 @@ MARKDOWN_HEADING_PREFIX = re.compile(r"^#{1,6}\s+")
 def derive_note_title(plain_text: str | None) -> str:
     """Return a note title derived from the first non-empty content line."""
     if not isinstance(plain_text, str):
-        return UNTITLED_NOTE
+        return DEFAULT_NOTE_TITLE
 
     for line in plain_text.splitlines():
         stripped = line.strip()
@@ -21,4 +21,4 @@ def derive_note_title(plain_text: str | None) -> str:
         normalized = MARKDOWN_HEADING_PREFIX.sub("", stripped, count=1).strip()
         if normalized:
             return normalized[:MAX_NOTE_TITLE_LENGTH]
-    return UNTITLED_NOTE
+    return DEFAULT_NOTE_TITLE

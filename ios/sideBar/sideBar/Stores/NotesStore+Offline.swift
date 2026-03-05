@@ -164,7 +164,7 @@ extension NotesStore {
 
     private func applyLocalMove(notePath: String, folder: String) {
         let newPath = movingPath(notePath, to: folder)
-        guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
+        guard let updatedTree = updatedTree(in: tree, notePath: notePath, transform: { node in
             copyNode(node, path: newPath, pinned: false, pinnedOrder: nil)
         }) else { return }
         persistLocalTree(updatedTree)
@@ -172,14 +172,14 @@ extension NotesStore {
     }
 
     private func applyLocalPin(notePath: String, pinned: Bool) {
-        guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
+        guard let updatedTree = updatedTree(in: tree, notePath: notePath, transform: { node in
             copyNode(node, pinned: pinned)
         }) else { return }
         persistLocalTree(updatedTree)
     }
 
     private func applyLocalArchive(notePath: String, archived: Bool) {
-        guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
+        guard let updatedTree = updatedTree(in: tree, notePath: notePath, transform: { node in
             copyNode(node, pinned: archived ? false : nil, archived: archived)
         }) else { return }
         persistLocalTree(updatedTree)
@@ -230,9 +230,13 @@ extension NotesStore {
         }
     }
 
-    private func updatedTree(notePath: String, transform: (FileNode) -> FileNode?) -> FileTree? {
-        guard let tree else { return nil }
-        let updatedChildren = updatingNodes(in: tree.children, notePath: notePath, transform: transform)
+    func updatedTree(
+        in sourceTree: FileTree?,
+        notePath: String,
+        transform: (FileNode) -> FileNode?
+    ) -> FileTree? {
+        guard let sourceTree else { return nil }
+        let updatedChildren = updatingNodes(in: sourceTree.children, notePath: notePath, transform: transform)
         return makeTree(children: updatedChildren)
     }
 
@@ -267,10 +271,11 @@ extension NotesStore {
         }
     }
 
-    private func copyNode(
+    func copyNode(
         _ node: FileNode,
         name: String? = nil,
         path: String? = nil,
+        modified: Double? = nil,
         pinned: Bool? = nil,
         pinnedOrder: Int? = nil,
         archived: Bool? = nil,
@@ -290,7 +295,7 @@ extension NotesStore {
             path: path ?? node.path,
             type: node.type,
             size: node.size,
-            modified: node.modified,
+            modified: modified ?? node.modified,
             created: node.created,
             children: children ?? node.children,
             expanded: node.expanded,
