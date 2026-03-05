@@ -11,8 +11,6 @@ struct NotesDetailView: View {
     @ObservedObject var editorViewModel: NotesEditorViewModel
     private let contentMaxWidth: CGFloat = NoteTextLayout.maxContentWidth
     @EnvironmentObject var environment: AppEnvironment
-    @Binding var isRenameDialogPresented: Bool
-    @Binding var renameValue: String
     @Binding var isMoveSheetPresented: Bool
     @Binding var moveSelection: String
     @Binding var isDeleteAlertPresented: Bool
@@ -68,10 +66,6 @@ struct NotesDetailView: View {
             switch event.action {
             case .closeItem:
                 requestCloseNote()
-            case .renameItem:
-                guard viewModel.activeNote != nil else { return }
-                renameValue = displayTitle
-                isRenameDialogPresented = true
             case .deleteItem:
                 guard viewModel.activeNote != nil else { return }
                 isDeleteAlertPresented = true

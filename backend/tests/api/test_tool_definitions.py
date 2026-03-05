@@ -112,7 +112,6 @@ def test_fs_definitions_include_file_context_menu_parity_tools():
 
 def test_notes_definitions_include_context_menu_parity_tools():
     definitions = get_notes_definitions()
-    assert "Rename Note" in definitions
     assert "Archive Note" in definitions
     assert "Download Note" in definitions
     assert "Create Note Folder" in definitions

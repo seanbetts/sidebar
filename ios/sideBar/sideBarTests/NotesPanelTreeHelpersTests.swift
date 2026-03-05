@@ -79,6 +79,7 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         let actions = NotesPanelView.noteContextMenuActions(for: item)
 
         XCTAssertTrue(actions.contains(.shareText))
+        XCTAssertFalse(actions.contains(.rename))
     }
 
     func testFileNodeDisplayNamePreservesMarkdownLikeSuffixes() {
@@ -93,6 +94,7 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         let actions = NotesPanelView.noteContextMenuActions(for: item)
 
         XCTAssertFalse(actions.contains(.shareText))
+        XCTAssertTrue(actions.contains(.rename))
     }
 }
 

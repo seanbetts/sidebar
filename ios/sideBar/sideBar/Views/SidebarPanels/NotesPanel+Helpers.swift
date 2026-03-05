@@ -25,8 +25,7 @@ extension NotesPanelView {
                         .buttonStyle(.plain)
                         .accessibilityLabel("Add folder")
                         Button {
-                            newNoteName = ""
-                            isNewNotePresented = true
+                            createBlankNote()
                         } label: {
                             Image(systemName: "plus")
                                 .appFont(.labelMd)
@@ -72,17 +71,13 @@ extension NotesPanelView {
         NotesFolderOption.build(from: viewModel.tree?.children ?? [])
     }
 
-    func createNote() {
-        let trimmed = newNoteName.trimmed
-        guard !trimmed.isEmpty, !isCreatingNote else { return }
+    func createBlankNote() {
+        guard !isCreatingNote else { return }
         isCreatingNote = true
         Task {
-            let created = await viewModel.createNote(title: trimmed, folder: nil)
+            await viewModel.createBlankNote()
             await MainActor.run {
                 isCreatingNote = false
-                if created != nil {
-                    isNewNotePresented = false
-                }
             }
         }
     }
@@ -91,13 +86,9 @@ extension NotesPanelView {
         guard !isCreatingNote else { return }
         isCreatingNote = true
         Task {
-            let created = await viewModel.createBlankNote()
+            await viewModel.createBlankNote()
             await MainActor.run {
                 isCreatingNote = false
-                guard created == nil else { return }
-                // Fall back to manual naming if auto-creation fails.
-                newNoteName = ""
-                isNewNotePresented = true
             }
         }
     }
@@ -142,11 +133,11 @@ extension NotesPanelView {
     }
 
     var renameDialogTitle: String {
-        renameTarget?.isFile == true ? "Rename note" : "Rename folder"
+        "Rename folder"
     }
 
     var renameDialogPlaceholder: String {
-        renameTarget?.isFile == true ? "Note name" : "Folder name"
+        "Folder name"
     }
 
     var deleteDialogTitle: String {
@@ -179,9 +170,7 @@ extension NotesPanelView {
         renameValue = ""
         guard let target else { return }
         Task {
-            if target.isFile {
-                await viewModel.renameNote(id: target.id, newName: updated)
-            } else {
+            if !target.isFile {
                 await viewModel.renameFolder(path: target.id, newName: updated)
             }
         }
@@ -260,14 +249,15 @@ extension NotesPanelView {
         )
         NotesTreeRow(
             item: item,
-            isSelected: viewModel.selectedNoteId == node.path
-        ) {
-            requestNoteSelection(id: node.path)
-        } onRename: {
-            beginRename(for: item)
-        } onDelete: {
-            confirmDelete(for: item)
-        }
+            isSelected: viewModel.selectedNoteId == node.path,
+            onSelect: {
+                requestNoteSelection(id: node.path)
+            },
+            onRename: nil,
+            onDelete: {
+                confirmDelete(for: item)
+            }
+        )
         .platformContextMenu(items: noteContextMenuItemsList(for: item))
     }
 

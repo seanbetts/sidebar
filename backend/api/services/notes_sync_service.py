@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -202,16 +201,20 @@ class NotesSyncService:
         client_updated_at: datetime | None,
     ) -> Note:
         note_id = NotesSyncService._parse_note_id(operation)
-        new_name = operation.get("title")
-        if not new_name:
-            raise BadRequestError("title required")
-        return NotesService.rename_note(
-            db,
-            user_id,
-            note_id,
-            Path(str(new_name)).stem,
-            client_updated_at=client_updated_at,
+        note = (
+            db.query(Note)
+            .filter(
+                Note.user_id == user_id,
+                Note.id == note_id,
+                Note.deleted_at.is_(None),
+            )
+            .first()
         )
+        if not note:
+            raise NoteNotFoundError(f"Note not found: {note_id}")
+        _ = operation
+        _ = client_updated_at
+        return note
 
     @staticmethod
     def _apply_move(

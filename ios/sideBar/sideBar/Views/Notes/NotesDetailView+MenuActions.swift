@@ -14,7 +14,6 @@ struct NoteActionsMenuButton: UIViewRepresentable {
     let archiveIcon: String
     let isEnabled: Bool
     let onPin: () -> Void
-    let onRename: () -> Void
     let onMove: () -> Void
     let onCopy: () -> Void
     let onShare: () -> Void
@@ -43,9 +42,6 @@ struct NoteActionsMenuButton: UIViewRepresentable {
         let pinAction = UIAction(title: pinTitle, image: UIImage(systemName: pinIcon)) { _ in
             onPin()
         }
-        let renameAction = UIAction(title: "Rename", image: UIImage(systemName: "pencil")) { _ in
-            onRename()
-        }
         let moveAction = UIAction(title: "Move", image: UIImage(systemName: "arrow.forward.folder")) { _ in
             onMove()
         }
@@ -66,7 +62,6 @@ struct NoteActionsMenuButton: UIViewRepresentable {
         }
         return UIMenu(children: [
             pinAction,
-            renameAction,
             moveAction,
             copyAction,
             shareAction,
@@ -125,10 +120,6 @@ extension NotesDetailView {
                         await viewModel.setPinned(id: noteId, pinned: !isPinned)
                     }
                 },
-                onRename: {
-                    renameValue = displayTitle
-                    isRenameDialogPresented = true
-                },
                 onMove: {
                     moveSelection = currentFolderPath
                     isMoveSheetPresented = true
@@ -163,10 +154,6 @@ extension NotesDetailView {
                     await viewModel.setPinned(id: noteId, pinned: !isPinned)
                 }
             },
-            .rename {
-                renameValue = displayTitle
-                isRenameDialogPresented = true
-            },
             .move {
                 moveSelection = currentFolderPath
                 isMoveSheetPresented = true
@@ -198,12 +185,6 @@ extension NotesDetailView {
             }
         } label: {
             Label(pinActionTitle, systemImage: pinIconName)
-        }
-        Button {
-            renameValue = displayTitle
-            isRenameDialogPresented = true
-        } label: {
-            Label("Rename", systemImage: "pencil")
         }
         Button {
             moveSelection = currentFolderPath

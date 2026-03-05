@@ -10,7 +10,6 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
     private let logger = Logger(subsystem: "sideBar", category: "NotesWriteQueueExecutor")
     private lazy var noteHandlers: [WriteOperation: (PendingWriteRecord) async throws -> Void] = [
         .update: handleUpdate,
-        .rename: handleRename,
         .move: handleMove,
         .archive: handleArchive,
         .pin: handlePin,
@@ -44,15 +43,6 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         )
         let updated = try await api.updateNote(id: noteId, content: normalized.content)
         store.applyEditorUpdate(updated)
-    }
-
-    private func handleRename(_ write: PendingWriteRecord) async throws {
-        guard let noteId = write.entityId else { return }
-        try await checkForConflictIfNeeded(noteId: noteId, write: write)
-        let payload = try decoder.decode(RenameRequest.self, from: write.payload)
-        let updated = try await api.renameNote(id: noteId, newName: payload.newName)
-        store.applyEditorUpdate(updated)
-        await refreshTreeAfterMutation()
     }
 
     private func handleMove(_ write: PendingWriteRecord) async throws {

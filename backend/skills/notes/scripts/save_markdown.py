@@ -71,7 +71,6 @@ def save_markdown_database(
                 uuid.UUID(resolved_id),
                 canonical.content,
                 plain_text=canonical.plain_text,
-                title=title,
             )
             return {"id": str(note.id), "title": note.title}
 

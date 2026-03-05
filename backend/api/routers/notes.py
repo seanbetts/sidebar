@@ -180,7 +180,7 @@ def rename_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """Rename a note.
+    """Reject explicit note-title updates.
 
     Args:
         note_id: Note UUID.
@@ -190,7 +190,7 @@ def rename_note(
         db: Database session.
 
     Returns:
-        Rename result.
+        Error payload indicating note titles are derived.
 
     Raises:
         BadRequestError: For invalid request.

@@ -33,14 +33,15 @@ extension NotesPanelView {
                         let isSelected = viewModel.selectedNoteId == item.id
                         NotesTreeRow(
                             item: item,
-                            isSelected: isSelected
-                        ) {
-                            requestNoteSelection(id: item.id)
-                        } onRename: {
-                            beginRename(for: item)
-                        } onDelete: {
-                            confirmDelete(for: item)
-                        }
+                            isSelected: isSelected,
+                            onSelect: {
+                                requestNoteSelection(id: item.id)
+                            },
+                            onRename: nil,
+                            onDelete: {
+                                confirmDelete(for: item)
+                            }
+                        )
                         .platformContextMenu(items: noteContextMenuItemsList(for: item))
                         .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
                     }
@@ -96,16 +97,17 @@ extension NotesPanelView {
                         OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
                             NotesTreeRow(
                                 item: item,
-                                isSelected: viewModel.selectedNoteId == item.id
-                            ) {
-                                if item.isFile {
-                                    requestNoteSelection(id: item.id)
+                                isSelected: viewModel.selectedNoteId == item.id,
+                                onSelect: {
+                                    if item.isFile {
+                                        requestNoteSelection(id: item.id)
+                                    }
+                                },
+                                onRename: item.isFile ? nil : { beginRename(for: item) },
+                                onDelete: {
+                                    confirmDelete(for: item)
                                 }
-                            } onRename: {
-                                beginRename(for: item)
-                            } onDelete: {
-                                confirmDelete(for: item)
-                            }
+                            )
                             .platformContextMenu(items: noteContextMenuItemsList(for: item))
                         }
                         .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
@@ -133,16 +135,17 @@ extension NotesPanelView {
         OutlineGroup(buildItems(from: mainNodes), children: \.children) { item in
             NotesTreeRow(
                 item: item,
-                isSelected: viewModel.selectedNoteId == item.id
-            ) {
-                if item.isFile {
-                    requestNoteSelection(id: item.id)
+                isSelected: viewModel.selectedNoteId == item.id,
+                onSelect: {
+                    if item.isFile {
+                        requestNoteSelection(id: item.id)
+                    }
+                },
+                onRename: item.isFile ? nil : { beginRename(for: item) },
+                onDelete: {
+                    confirmDelete(for: item)
                 }
-            } onRename: {
-                beginRename(for: item)
-            } onDelete: {
-                confirmDelete(for: item)
-            }
+            )
             .platformContextMenu(items: noteContextMenuItemsList(for: item))
         }
         .listRowBackground(DesignTokens.Colors.sidebarRowBackground)

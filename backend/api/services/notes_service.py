@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
@@ -16,6 +15,7 @@ from api.exceptions import NoteNotFoundError
 from api.models.note import Note
 from api.schemas.filters import NoteFilters
 from api.services.notes_helpers import ensure_note_no_conflict
+from api.services.notes_title import derive_note_title
 from api.services.notes_write_contract import build_canonical_note_write
 from api.utils.pinned_order import lock_pinned_order
 
@@ -23,23 +23,11 @@ from api.utils.pinned_order import lock_pinned_order
 class NotesService:
     """Service layer for notes operations."""
 
-    H1_PATTERN = re.compile(r"^#\s+(.+)$", re.MULTILINE)
-
     @staticmethod
     def extract_title(content: str, fallback: str) -> str:
-        """Extract the first H1 title from content.
-
-        Args:
-            content: Markdown content to scan.
-            fallback: Fallback title if no H1 is present.
-
-        Returns:
-            Extracted title or fallback.
-        """
-        match = NotesService.H1_PATTERN.search(content or "")
-        if match:
-            return match.group(1).strip()
-        return fallback
+        """Extract a note title from plain text, falling back when empty."""
+        title = derive_note_title(content)
+        return title if title else fallback
 
     @staticmethod
     def _is_archive_folder(folder: str) -> bool:
@@ -66,7 +54,7 @@ class NotesService:
             user_id: Current user ID.
             content: Canonical Base64 RTF content.
             plain_text: Canonical plain-text cache.
-            title: Note title. Defaults to "Untitled Note" if not provided.
+            title: Deprecated explicit note title. Title is derived from plain_text.
             folder: Folder path. Defaults to "".
             pinned: Whether the note is pinned. Defaults to False.
             tags: Optional list of tags.
@@ -77,7 +65,7 @@ class NotesService:
         """
         now = datetime.now(UTC)
         canonical_write = build_canonical_note_write(content, plain_text)
-        resolved_title = title or "Untitled Note"
+        resolved_title = derive_note_title(canonical_write.plain_text)
         normalized_folder = (folder or "").strip("/")
         metadata: dict[str, object] = {}
         if tags:
@@ -153,10 +141,9 @@ class NotesService:
         content: str,
         *,
         plain_text: str,
-        title: str | None = None,
         client_updated_at: datetime | None = None,
     ) -> Note:
-        """Update a note's content and title.
+        """Update a note's content and derived title.
 
         Args:
             db: Database session.
@@ -164,8 +151,6 @@ class NotesService:
             note_id: Note UUID.
             content: Canonical Base64 RTF content.
             plain_text: Canonical plain-text cache.
-            title: Optional explicit title. If not provided, existing title
-                is preserved.
             client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
@@ -189,8 +174,7 @@ class NotesService:
         ensure_note_no_conflict(note, client_updated_at, op="update")
 
         canonical_write = build_canonical_note_write(content, plain_text)
-        if title is not None:
-            note.title = title
+        note.title = derive_note_title(canonical_write.plain_text)
         note.content = canonical_write.content
         note.plain_text = canonical_write.plain_text
         note.content_format = "rtf"
@@ -207,39 +191,28 @@ class NotesService:
         *,
         client_updated_at: datetime | None = None,
     ) -> Note:
-        """Rename a note by updating its title.
+        """Reject note rename requests because note titles are derived.
 
         Args:
             db: Database session.
             user_id: Current user ID.
             note_id: Note UUID.
-            title: New note title.
+            title: Ignored explicit title value.
             client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
             Updated Note.
 
         Raises:
+            ValueError: Always, because note titles are derived from content.
             NoteNotFoundError: If the note does not exist.
         """
-        note = (
-            db.query(Note)
-            .filter(
-                Note.user_id == user_id,
-                Note.id == note_id,
-                Note.deleted_at.is_(None),
-            )
-            .first()
-        )
-        if not note:
-            raise NoteNotFoundError(f"Note not found: {note_id}")
-
-        ensure_note_no_conflict(note, client_updated_at, op="rename")
-
-        note.title = title
-        note.updated_at = datetime.now(UTC)
-        db.commit()
-        return note
+        _ = db
+        _ = user_id
+        _ = note_id
+        _ = title
+        _ = client_updated_at
+        raise ValueError("Note titles are derived from note content")
 
     @staticmethod
     def update_folder(

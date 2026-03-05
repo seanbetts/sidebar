@@ -6,6 +6,7 @@ import json
 import time
 
 from api.security.audit_logger import AuditLogger
+from api.services.notes_title import derive_note_title
 
 
 def register_notes_tools(mcp, executor, default_user_id: str) -> None:
@@ -19,23 +20,24 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
 
     @mcp.tool()
     async def notes_create(
-        title: str,
         content: str,
+        title: str | None = None,
         folder: str | None = None,
         tags: list[str] | None = None,
     ) -> str:
         """Create a new note.
 
         Args:
-            title: Note title (required).
             content: Note body text.
+            title: Deprecated explicit title. Title is derived from content.
             folder: Optional folder path.
             tags: Optional list of tags.
         """
         start_time = time.time()
+        resolved_title = derive_note_title(content)
 
         args = [
-            title,
+            resolved_title,
             "--content",
             content,
             "--mode",
@@ -53,7 +55,7 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
 
         AuditLogger.log_tool_call(
             tool_name="notes_create",
-            parameters={"title": title, "folder": folder, "tags": tags},
+            parameters={"title": resolved_title, "folder": folder, "tags": tags},
             duration_ms=(time.time() - start_time) * 1000,
             success=result.get("success", False),
         )
@@ -62,16 +64,17 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
 
     @mcp.tool()
     async def notes_update(
-        title: str,
         content: str,
+        title: str | None = None,
         folder: str | None = None,
         note_id: str | None = None,
     ) -> str:
         """Update existing note (replace content)."""
         start_time = time.time()
+        resolved_title = derive_note_title(content)
 
         args = [
-            title,
+            resolved_title,
             "--content",
             content,
             "--mode",
@@ -89,7 +92,7 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
 
         AuditLogger.log_tool_call(
             tool_name="notes_update",
-            parameters={"title": title, "folder": folder},
+            parameters={"title": resolved_title, "folder": folder},
             duration_ms=(time.time() - start_time) * 1000,
             success=result.get("success", False),
         )

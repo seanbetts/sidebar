@@ -13,8 +13,6 @@ public struct NotesView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-    @State private var isRenameDialogPresented = false
-    @State private var renameValue: String = ""
     @State private var isMoveSheetPresented = false
     @State private var moveSelection: String = ""
     @State private var isDeleteAlertPresented = false
@@ -29,8 +27,6 @@ public struct NotesView: View {
         NotesDetailView(
             viewModel: environment.notesRuntime.viewModel,
             editorViewModel: environment.notesRuntime.editorViewModel,
-            isRenameDialogPresented: $isRenameDialogPresented,
-            renameValue: $renameValue,
             isMoveSheetPresented: $isMoveSheetPresented,
             moveSelection: $moveSelection,
             isDeleteAlertPresented: $isDeleteAlertPresented,
@@ -72,32 +68,6 @@ public struct NotesView: View {
                     }
                 )
                 .phoneSheetGrabBarVisible()
-            }
-            .alert("Rename note", isPresented: $isRenameDialogPresented) {
-                TextField("Note name", text: $renameValue)
-                    .submitLabel(.done)
-                    .onSubmit {
-                        guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
-                        let updatedName = renameValue
-                        isRenameDialogPresented = false
-                        renameValue = ""
-                        Task {
-                            await environment.notesRuntime.viewModel.renameNote(id: noteId, newName: updatedName)
-                        }
-                    }
-                Button("Rename") {
-                    guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
-                    let updatedName = renameValue
-                    isRenameDialogPresented = false
-                    renameValue = ""
-                    Task {
-                        await environment.notesRuntime.viewModel.renameNote(id: noteId, newName: updatedName)
-                    }
-                }
-                .keyboardShortcut(.defaultAction)
-                Button("Cancel", role: .cancel) {
-                    renameValue = ""
-                }
             }
             .deleteConfirmationAlert(
                 title: "Delete note",
@@ -147,10 +117,6 @@ public struct NotesView: View {
                     Task {
                         await environment.notesRuntime.viewModel.setPinned(id: noteId, pinned: !isPinned)
                     }
-                },
-                .rename {
-                    renameValue = displayTitle
-                    isRenameDialogPresented = true
                 },
                 .move {
                     moveSelection = currentFolderPath

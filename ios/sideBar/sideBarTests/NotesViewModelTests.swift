@@ -239,14 +239,14 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoadingArchived)
     }
 
-    func testCreateBlankNoteCreatesUntitledNoteAndSelectsIt() async throws {
+    func testCreateBlankNoteSendsNoExplicitTitleOrPathAndSelectsIt() async throws {
         let api = NotesAPISpy()
         api.createNoteResult = .success(
             NotePayload(
                 id: "note-blank",
-                name: "Untitled 2026-02-12 101500",
+                name: "Untitled Note",
                 content: "",
-                path: "Untitled 2026-02-12 101500",
+                path: "note-blank",
                 modified: nil,
                 created: nil
             )
@@ -264,72 +264,30 @@ final class NotesViewModelTests: XCTestCase {
         let created = await viewModel.createBlankNote()
 
         let request = try XCTUnwrap(api.createRequests.first)
-        let title = try XCTUnwrap(request.title)
-        let path = try XCTUnwrap(request.path)
-        XCTAssertTrue(title.hasPrefix("Untitled "))
-        XCTAssertTrue(path.hasPrefix("Untitled "))
-        XCTAssertFalse(path.hasSuffix(".md"))
+        XCTAssertNil(request.title)
+        XCTAssertNil(request.path)
+        XCTAssertEqual(request.plainText, "")
         XCTAssertEqual(created?.id, "note-blank")
         XCTAssertEqual(viewModel.selectedNoteId, created?.path)
     }
 
-    func testRenameNoteAllowsCaseOnlyTitleChanges() async throws {
+    func testCreateBlankNoteShowsFailureToastWhenCreateFails() async throws {
         let api = NotesAPISpy()
-        api.listTreeResult = .success(
-            FileTree(children: [
-                FileNode(
-                    name: "Test note for editing",
-                    path: "note-id",
-                    type: .file,
-                    size: nil,
-                    modified: nil,
-                    created: nil,
-                    children: nil,
-                    expanded: nil,
-                    pinned: nil,
-                    pinnedOrder: nil,
-                    archived: nil,
-                    folderMarker: nil
-                )
-            ])
-        )
-        api.getNoteResult = .success(
-            NotePayload(
-                id: "uuid-note-1",
-                name: "Test note for editing",
-                content: "",
-                path: "note-id",
-                modified: nil,
-                created: nil
-            )
-        )
-        api.renameNoteResult = .success(
-            NotePayload(
-                id: "uuid-note-1",
-                name: "Test Note for Editing",
-                content: "",
-                path: "note-id",
-                modified: nil,
-                created: nil
-            )
-        )
-
+        api.createNoteResult = .failure(MockError.forced)
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
         let viewModel = NotesViewModel(
             api: api,
             store: store,
-            toastCenter: ToastCenter(),
+            toastCenter: toastCenter,
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
-        await viewModel.loadTree()
-        await viewModel.renameNote(id: "note-id", newName: "Test Note for Editing")
+        let created = await viewModel.createBlankNote()
 
-        XCTAssertEqual(api.renameRequests.count, 1)
-        let request = try XCTUnwrap(api.renameRequests.first)
-        XCTAssertEqual(request.id, "uuid-note-1")
-        XCTAssertEqual(request.newName, "Test Note for Editing")
+        XCTAssertNil(created)
+        XCTAssertEqual(toastCenter.toast?.message, "Failed to create note")
     }
 
     func testSearchSuccessClearsPreviousSearchError() async throws {

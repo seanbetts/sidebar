@@ -373,8 +373,7 @@ class TestNotesOperations:
         result = mcp_client.call_tool(
             "notes_create",
             {
-                "title": "Integration Test Note",
-                "content": "This is a test note created during integration testing.",
+                "content": "Integration Test Note\n\nThis is a test note created during integration testing.",
                 "tags": ["test", "integration"],
             },
         )
@@ -390,15 +389,16 @@ class TestNotesOperations:
         """Test updating an existing note."""
         # Create a note first
         create_result = mcp_client.call_tool(
-            "notes_create", {"title": "Update Test Note", "content": "Original content"}
+            "notes_create", {"content": "Update Test Note\n\nOriginal content"}
         )
         create_content = create_result["result"]["content"][0]["text"]
         create_data = json.loads(create_content)
         _assert_success(create_data)
+        note_id = create_data["data"]["id"]
 
         # Update it
         result = mcp_client.call_tool(
-            "notes_update", {"title": "Update Test Note", "content": "Updated content"}
+            "notes_update", {"content": "Updated content", "note_id": note_id}
         )
 
         content = result["result"]["content"][0]["text"]
@@ -409,16 +409,21 @@ class TestNotesOperations:
         """Test appending to an existing note."""
         # Create a note
         create_result = mcp_client.call_tool(
-            "notes_create", {"title": "Append Test Note", "content": "Initial content"}
+            "notes_create", {"content": "Append Test Note\n\nInitial content"}
         )
         create_content = create_result["result"]["content"][0]["text"]
         create_data = json.loads(create_content)
         _assert_success(create_data)
+        note_id = create_data["data"]["id"]
 
         # Append to it
         result = mcp_client.call_tool(
             "notes_append",
-            {"title": "Append Test Note", "content": "\n\nAppended content"},
+            {
+                "title": "Append Test Note",
+                "content": "\n\nAppended content",
+                "note_id": note_id,
+            },
         )
 
         content = result["result"]["content"][0]["text"]

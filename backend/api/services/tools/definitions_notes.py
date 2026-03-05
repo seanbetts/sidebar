@@ -17,15 +17,11 @@ def get_notes_definitions() -> dict:
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "title": {
-                        "type": "string",
-                        "description": "Note title",
-                    },
                     "content": {"type": "string", "description": "Note content text"},
                     "folder": {"type": "string", "description": "Optional folder path"},
                     "tags": {"type": "array", "items": {"type": "string"}},
                 },
-                "required": ["title", "content"],
+                "required": ["content"],
             },
             "skill": "notes",
             "script": "save_markdown.py",
@@ -37,7 +33,6 @@ def get_notes_definitions() -> dict:
                 "type": "object",
                 "properties": {
                     "note_id": {"type": "string", "description": "Note UUID"},
-                    "title": {"type": "string", "description": "Optional note title"},
                     "content": {"type": "string", "description": "Note content text"},
                 },
                 "required": ["note_id", "content"],
@@ -72,20 +67,6 @@ def get_notes_definitions() -> dict:
             "skill": "notes",
             "script": "pin_note.py",
             "build_args": pm.build_notes_pin_args,
-        },
-        "Rename Note": {
-            "description": "Rename a note title by ID.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "note_id": {"type": "string", "description": "Note UUID"},
-                    "new_name": {"type": "string", "description": "New note title"},
-                },
-                "required": ["note_id", "new_name"],
-            },
-            "skill": "notes",
-            "script": "rename_note.py",
-            "build_args": pm.build_notes_rename_args,
         },
         "Archive Note": {
             "description": "Archive or unarchive a note by ID.",

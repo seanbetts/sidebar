@@ -14,6 +14,7 @@ from api.models.note import Note
 from api.schemas.filters import NoteFilters
 from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
+from api.services.notes_title import derive_note_title
 from api.services.notes_write_contract import plain_text_to_rtf_base64
 from api.services.workspace_service import WorkspaceService
 from api.utils.search import build_text_search_filter
@@ -372,9 +373,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         except ObjectDeletedError:
             note_id = getattr(created, "_snapshot_id", None)
             updated_at = getattr(created, "_snapshot_updated_at", None)
-            fallback_title = title or NotesService.extract_title(
-                plain_text, "Untitled Note"
-            )
+            fallback_title = derive_note_title(plain_text)
             return {
                 "id": str(note_id),
                 "title": fallback_title,
@@ -438,7 +437,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         *,
         client_updated_at: datetime | None = None,
     ) -> dict:
-        """Rename a note (updates title only, content unchanged).
+        """Reject note rename requests because titles are derived from content.
 
         Args:
             db: Database session.
@@ -458,15 +457,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         if not note_uuid:
             raise ValueError("Invalid note ID")
 
-        title = Path(new_name).name
-        updated = NotesService.rename_note(
-            db,
-            user_id,
-            note_uuid,
-            title,
-            client_updated_at=client_updated_at,
-        )
-        return NotesWorkspaceService.build_note_payload(updated, include_content=True)
+        _ = Path(new_name).name
+        raise ValueError("Note titles are derived from note content")
 
     @staticmethod
     def update_pinned(

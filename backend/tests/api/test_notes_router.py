@@ -133,7 +133,7 @@ def test_notes_download_handles_unicode_filename(test_client, test_db):
     assert "🦞" not in header
 
 
-def test_notes_create_update_and_rename(test_client):
+def test_notes_create_and_update_derive_title_from_plain_text(test_client):
     created_content = "# Title\n\nBody"
     create_payload = _canonical_payload(created_content)
     create = test_client.post(
@@ -144,13 +144,13 @@ def test_notes_create_update_and_rename(test_client):
     assert create.status_code == 200
     created_payload = create.json()
     note_id = created_payload["id"]
-    assert created_payload["title"] == "Untitled Note"
+    assert created_payload["title"] == "Title"
     assert created_payload["plain_text"] == created_content
     assert created_payload["content_format"] == "rtf"
     assert created_payload["folder"] == ""
     assert created_payload["pinned"] is False
 
-    updated_content = "# Title\n\nUpdated"
+    updated_content = "\n\nUpdated Title\nUpdated body"
     update_payload = _canonical_payload(updated_content)
     update = test_client.patch(
         f"/api/notes/{note_id}",
@@ -159,16 +159,29 @@ def test_notes_create_update_and_rename(test_client):
     )
     assert update.status_code == 200
     updated_payload = update.json()
+    assert updated_payload["title"] == "Updated Title"
     assert updated_payload["plain_text"] == updated_content
     assert updated_payload["content_format"] == "rtf"
     assert updated_payload["folder"] == ""
+
+
+def test_notes_rename_is_rejected(test_client):
+    create_payload = _canonical_payload("# Title\n\nBody")
+    create = test_client.post(
+        "/api/notes",
+        json=create_payload,
+        headers=_auth_headers(),
+    )
+    assert create.status_code == 200
+    note_id = create.json()["id"]
 
     rename = test_client.patch(
         f"/api/notes/{note_id}/rename",
         json={"newName": "Renamed Note"},
         headers=_auth_headers(),
     )
-    assert rename.status_code == 200
+    assert rename.status_code == 400
+    assert error_message(rename) == "Note titles are derived from note content"
 
 
 def test_notes_update_requires_plain_text(test_client):

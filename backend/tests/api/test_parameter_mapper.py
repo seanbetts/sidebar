@@ -6,6 +6,11 @@ def test_derive_title_from_content_prefers_first_non_empty_line():
     assert parameter_mapper.derive_title_from_content(content) == "First line"
 
 
+def test_derive_title_from_content_strips_markdown_heading_prefix():
+    content = "\n# Heading Title\nBody"
+    assert parameter_mapper.derive_title_from_content(content) == "Heading Title"
+
+
 def test_derive_title_from_content_truncates_long_line():
     content = "a" * 200
     title = parameter_mapper.derive_title_from_content(content)
@@ -96,16 +101,16 @@ def test_build_notes_create_args_derives_title_and_tags():
     ]
 
 
-def test_build_notes_update_args_uses_explicit_title():
+def test_build_notes_update_args_derives_title_from_content():
     args = parameter_mapper.build_notes_update_args(
         {
-            "title": "Custom",
+            "title": "Ignored",
             "content": "Body",
             "note_id": "note-1",
         }
     )
     assert args == [
-        "Custom",
+        "Body",
         "--content",
         "Body",
         "--mode",
@@ -129,21 +134,6 @@ def test_build_notes_list_args_includes_false_values():
         "--archived",
         "False",
     ]
-
-
-def test_build_notes_rename_args():
-    args = parameter_mapper.build_notes_rename_args(
-        {"note_id": "note-1", "new_name": "Renamed", "user_id": "user-1"}
-    )
-    assert args == [
-        "note-1",
-        "--new-name",
-        "Renamed",
-        "--database",
-        "--user-id",
-        "user-1",
-    ]
-
 
 def test_build_notes_archive_args_false():
     args = parameter_mapper.build_notes_archive_args(

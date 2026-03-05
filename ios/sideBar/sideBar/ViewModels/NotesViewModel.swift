@@ -1,4 +1,3 @@
-// swiftlint:disable type_body_length
 import Foundation
 import sideBarShared
 import Combine
@@ -10,7 +9,7 @@ import Combine
 ///
 /// This ViewModel acts as a coordinator between the UI and the `NotesStore`, providing:
 /// - File tree loading and navigation
-/// - Note CRUD operations (create, rename, move, delete)
+/// - Note creation, move, archive, and delete operations
 /// - Folder management (create, rename, delete)
 /// - Debounced search with `ManagedTask`
 /// - Real-time event handling for live updates
@@ -31,8 +30,8 @@ import Combine
 ///     networkStatus: connectivityMonitor
 /// )
 /// await viewModel.loadTree()
-/// await viewModel.selectNote(id: "path/to/note")
-/// await viewModel.createNote(title: "New Note", folder: "subfolder")
+/// await viewModel.selectNote(id: "note-id")
+/// await viewModel.createBlankNote()
 /// ```
 public final class NotesViewModel: ObservableObject {
     @Published public private(set) var tree: FileTree?
@@ -163,16 +162,13 @@ public final class NotesViewModel: ObservableObject {
         await store.applyRealtimeEvent(payload)
     }
 
-    public func createNote(title: String, folder: String?) async -> NotePayload? {
-        guard let trimmed = title.trimmedOrNil else {
-            return nil
-        }
-        let filename = trimmed
-        let pathPrefix = folder?.trimmed ?? ""
-        let fullPath = pathPrefix.isEmpty ? filename : "\(pathPrefix)/\(filename)"
+    public func createBlankNote() async -> NotePayload? {
         do {
             let created = try await api.createNote(
-                request: NoteCreateRequest(content: "", title: trimmed, path: fullPath, folder: pathPrefix.isEmpty ? nil : pathPrefix)
+                request: NoteCreateRequest(
+                    content: "",
+                    plainText: ""
+                )
             )
             store.applyEditorUpdate(created)
             selectedNoteId = created.path
@@ -197,37 +193,6 @@ public final class NotesViewModel: ObservableObject {
         } catch {
             toastCenter.show(message: "Failed to create folder")
             return false
-        }
-    }
-
-    public func renameNote(id: String, newName: String) async {
-        guard let trimmed = newName.trimmedOrNil else {
-            return
-        }
-        let filename = trimmed
-        let currentName = noteNode(id: id)?.name ?? activeNote?.name
-        guard filename != currentName else {
-            return
-        }
-        if !networkStatus.isNetworkAvailable {
-            await queueOfflineRename(notePath: id, newName: filename)
-            return
-        }
-        // The server expects the note's UUID, not the path
-        // If renaming the active note, use its UUID; otherwise load the note first
-        guard let noteUuid = await resolveNoteUuid(for: id) else {
-            toastCenter.show(message: "Failed to rename note")
-            return
-        }
-        do {
-            let updated = try await api.renameNote(id: noteUuid, newName: filename)
-            store.applyEditorUpdate(updated)
-            if selectedNoteId != updated.path {
-                selectedNoteId = updated.path
-            }
-            await refreshTree(force: true)
-        } catch {
-            toastCenter.show(message: "Failed to rename note")
         }
     }
 
@@ -447,43 +412,6 @@ public final class NotesViewModel: ObservableObject {
         return path.hasPrefix("/") ? "/\(newPath)" : newPath
     }
 
-    private func replacingFilename(in path: String, with newName: String) -> String {
-        let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let parts = trimmed.split(separator: "/")
-        let folder = parts.dropLast().joined(separator: "/")
-        let newPath = folder.isEmpty ? newName : "\(folder)/\(newName)"
-        return path.hasPrefix("/") ? "/\(newPath)" : newPath
-    }
-
-    private func resolveNoteUuid(for notePath: String) async -> String? {
-        if activeNote?.path == notePath, let uuid = activeNote?.id {
-            return uuid
-        }
-        do {
-            let note = try await api.getNote(id: notePath)
-            return note.id
-        } catch {
-            return nil
-        }
-    }
-
-    private func queueOfflineRename(notePath: String, newName: String) async {
-        guard let note = store.cachedNotePayload(path: notePath) else {
-            toastCenter.show(message: "This note isn't available offline yet.")
-            return
-        }
-        do {
-            try await store.enqueueRename(noteId: note.id, notePath: notePath, newName: newName)
-            if selectedNoteId == notePath {
-                selectedNoteId = replacingFilename(in: notePath, with: newName)
-            }
-        } catch WriteQueueError.queueFull {
-            toastCenter.show(message: "Sync queue full. Review pending changes.")
-        } catch {
-            toastCenter.show(message: "Failed to queue rename")
-        }
-    }
-
     /// Refreshes widget data by fetching the latest notes tree
     /// Called by background refresh task to keep widgets up-to-date
     func refreshWidgetData() async {
@@ -494,5 +422,3 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 }
-
-// swiftlint:enable type_body_length

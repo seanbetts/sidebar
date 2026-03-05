@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from api.services.notes_title import derive_note_title
 from api.services.tools.parameter_builders.base import BaseParameterBuilder
 
 
@@ -10,26 +11,13 @@ class NotesParameterBuilder(BaseParameterBuilder):
 
     @staticmethod
     def derive_title_from_content(content: str) -> str:
-        """Derive a note title from content.
-
-        Args:
-            content: Note content text.
-
-        Returns:
-            A non-empty title capped at 120 characters.
-        """
-        if not isinstance(content, str):
-            return "Untitled Note"
-        for line in content.splitlines():
-            stripped = line.strip()
-            if stripped:
-                return stripped[:120]
-        return "Untitled Note"
+        """Derive a note title from content."""
+        return derive_note_title(content)
 
     @staticmethod
     def build_create_args(params: dict) -> list:
         """Build CLI arguments for notes create."""
-        title = params.get("title") or NotesParameterBuilder.derive_title_from_content(
+        title = NotesParameterBuilder.derive_title_from_content(
             params.get("content", "")
         )
         args = [
@@ -50,7 +38,7 @@ class NotesParameterBuilder(BaseParameterBuilder):
     @staticmethod
     def build_update_args(params: dict) -> list:
         """Build CLI arguments for notes update."""
-        title = params.get("title") or NotesParameterBuilder.derive_title_from_content(
+        title = NotesParameterBuilder.derive_title_from_content(
             params.get("content", "")
         )
         args = [
@@ -78,18 +66,6 @@ class NotesParameterBuilder(BaseParameterBuilder):
             params["note_id"],
             "--pinned",
             str(params["pinned"]).lower(),
-            "--database",
-            "--user-id",
-            params["user_id"],
-        ]
-
-    @staticmethod
-    def build_rename_args(params: dict) -> list:
-        """Build CLI arguments for notes rename."""
-        return [
-            params["note_id"],
-            "--new-name",
-            params["new_name"],
             "--database",
             "--user-id",
             params["user_id"],

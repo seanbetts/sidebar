@@ -73,11 +73,6 @@ def build_notes_pin_args(params: dict) -> list:
     return NotesParameterBuilder.build_pin_args(params)
 
 
-def build_notes_rename_args(params: dict) -> list:
-    """Build CLI arguments for notes rename."""
-    return NotesParameterBuilder.build_rename_args(params)
-
-
 def build_notes_archive_args(params: dict) -> list:
     """Build CLI arguments for notes archive/unarchive."""
     return NotesParameterBuilder.build_archive_args(params)

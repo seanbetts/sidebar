@@ -26,9 +26,7 @@ struct NotesPanelView: View {
     @Environment(\.colorScheme) var colorScheme
     @State var hasLoaded = false
     @State var isArchiveExpanded = false
-    @State var isNewNotePresented = false
     @State var isNewFolderPresented = false
-    @State var newNoteName: String = ""
     @State var newFolderName: String = ""
     @State var newFolderParent: String = ""
     @State var isCreatingNote = false
@@ -67,21 +65,6 @@ struct NotesPanelView: View {
         .onChange(of: isArchiveExpanded) { _, expanded in
             if expanded {
                 Task { await viewModel.loadArchivedTree() }
-            }
-        }
-        .alert("New Note", isPresented: $isNewNotePresented) {
-            TextField("Note title", text: $newNoteName)
-                .submitLabel(.done)
-                .onSubmit {
-                    createNote()
-                }
-            Button("Create") {
-                createNote()
-            }
-            .disabled(isCreatingNote || newNoteName.trimmed.isEmpty)
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) {
-                newNoteName = ""
             }
         }
         .sheet(isPresented: $isNewFolderPresented) {
@@ -163,8 +146,7 @@ struct NotesPanelView: View {
             case .focusSearch:
                 isSearchFocused = true
             case .newItem:
-                newNoteName = ""
-                isNewNotePresented = true
+                createBlankNote()
             case .createFolder:
                 newFolderName = ""
                 newFolderParent = ""

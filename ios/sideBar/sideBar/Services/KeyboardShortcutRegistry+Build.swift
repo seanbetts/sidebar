@@ -165,14 +165,6 @@ extension KeyboardShortcutRegistry {
                 contexts: [.notes]
             ),
             KeyboardShortcut(
-                input: "r",
-                modifiers: [.command, .alternate],
-                title: "Rename Note",
-                description: "Rename the current note",
-                action: .renameItem,
-                contexts: [.notes]
-            ),
-            KeyboardShortcut(
                 input: UIKeyCommand.inputDelete,
                 modifiers: [.command, .shift],
                 title: "Delete Note",

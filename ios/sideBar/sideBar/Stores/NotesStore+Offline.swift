@@ -87,20 +87,6 @@ extension NotesStore {
         )
     }
 
-    /// Enqueues an offline rename operation and applies the rename optimistically.
-    public func enqueueRename(noteId: String, notePath: String, newName: String) async throws {
-        let snapshot = makeServerSnapshot(noteId: noteId, notePath: notePath)
-        try await enqueueOfflineOperation(
-            writeQueue: writeQueue,
-            operation: .rename,
-            entityType: .note,
-            entityId: noteId,
-            payload: RenameRequest(newName: newName),
-            serverSnapshot: snapshot
-        )
-        applyLocalRename(notePath: notePath, newName: newName)
-    }
-
     /// Enqueues an offline move operation and applies the move optimistically.
     public func enqueueMove(notePath: String, folder: String) async throws {
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)
@@ -174,15 +160,6 @@ extension NotesStore {
             applyEditorUpdate(conflict.server)
         }
         writeQueue.resumeProcessing()
-    }
-
-    private func applyLocalRename(notePath: String, newName: String) {
-        guard let updatedTree = updatedTree(notePath: notePath, transform: { node in
-            let newPath = replacingFilename(in: notePath, with: newName)
-            return copyNode(node, name: newName, path: newPath)
-        }) else { return }
-        persistLocalTree(updatedTree)
-        updateCachedNotePath(from: notePath, to: replacingFilename(in: notePath, with: newName), newName: newName)
     }
 
     private func applyLocalMove(notePath: String, folder: String) {
@@ -329,14 +306,6 @@ extension NotesStore {
         let filename = trimmed.split(separator: "/").last.map(String.init) ?? trimmed
         let normalizedFolder = folder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let newPath = normalizedFolder.isEmpty ? filename : "\(normalizedFolder)/\(filename)"
-        return path.hasPrefix("/") ? "/\(newPath)" : newPath
-    }
-
-    private func replacingFilename(in path: String, with newName: String) -> String {
-        let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let parts = trimmed.split(separator: "/")
-        let folder = parts.dropLast().joined(separator: "/")
-        let newPath = folder.isEmpty ? newName : "\(folder)/\(newName)"
         return path.hasPrefix("/") ? "/\(newPath)" : newPath
     }
 
