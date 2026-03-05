@@ -54,17 +54,43 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         var content = AttributedString("hello")
         let range = content.startIndex..<content.endIndex
 #if os(iOS)
-        content[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = UIFont.boldSystemFont(ofSize: 14)
+        let font = UIFont.boldSystemFont(ofSize: 14)
 #elseif os(macOS)
-        content[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = NSFont.systemFont(
-            ofSize: 14,
-            weight: .bold
-        )
+        let font = NSFont.systemFont(ofSize: 14, weight: .bold)
 #endif
+        applyBridgedPlatformFont(
+            font,
+            to: &content,
+            range: range
+        )
         content[range].font = nil
 
         NoteTextFormattingDefinition(baseFontSize: 20).constrainDocument(&content)
 
         XCTAssertFalse(noteRangeHasBoldTrait(content, range: range))
     }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func applyBridgedPlatformFont(
+    _ font: NotePlatformFont,
+    to attributed: inout AttributedString,
+    range: Range<AttributedString.Index>
+) {
+    let plainText = String(attributed.characters)
+    let lowerCharacterOffset = attributed.characters.distance(from: attributed.startIndex, to: range.lowerBound)
+    let upperCharacterOffset = attributed.characters.distance(from: attributed.startIndex, to: range.upperBound)
+    let lower = plainText.index(plainText.startIndex, offsetBy: lowerCharacterOffset)
+    let upper = plainText.index(plainText.startIndex, offsetBy: upperCharacterOffset)
+    let nsRange = NSRange(
+        location: lower.utf16Offset(in: plainText),
+        length: upper.utf16Offset(in: plainText) - lower.utf16Offset(in: plainText)
+    )
+    let bridged = NSMutableAttributedString(attributedString: NSAttributedString(attributed))
+    bridged.addAttribute(.font, value: font, range: nsRange)
+    guard let bridgedAttributed = try? AttributedString(bridged, including: \.noteTextEditor) else {
+        XCTFail("Expected bridged attributed string to remain convertible")
+        return
+    }
+    attributed = bridgedAttributed
 }

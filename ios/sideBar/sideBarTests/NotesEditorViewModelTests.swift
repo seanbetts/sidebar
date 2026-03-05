@@ -32,7 +32,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         let note = makeUnsupportedTestNote()
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        try? await waitUntilUnsupportedNoteHydrated(context.viewModel)
 
         XCTAssertEqual(context.viewModel.currentNoteId, "n1")
         XCTAssertEqual(context.viewModel.presentationMode, .read)
@@ -55,7 +55,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         let note = makeUnsupportedTestNote()
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        try? await waitUntilUnsupportedNoteHydrated(context.viewModel)
         context.viewModel.enterEditMode(at: .characterOffset(4))
 
         XCTAssertEqual(context.viewModel.presentationMode, .read)
@@ -94,7 +94,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         XCTAssertEqual(viewModel.currentNoteId, "n1")
         XCTAssertEqual(viewModel.content, "Hello")
@@ -135,9 +135,9 @@ final class NotesEditorViewModelTests: XCTestCase {
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
         store.clearActiveNote()
-        await Task.yield()
+        await waitUntilNoActiveNote(viewModel)
 
         XCTAssertNil(viewModel.currentNoteId)
         XCTAssertEqual(viewModel.content, "")
@@ -157,7 +157,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
 
         XCTAssertEqual(context.viewModel.presentationMode, .read)
         XCTAssertFalse(context.viewModel.isEditingNote)
@@ -177,7 +177,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
         context.viewModel.enterEditMode()
 
         XCTAssertEqual(context.viewModel.presentationMode, .edit)
@@ -199,7 +199,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
 
         context.viewModel.enterEditMode(at: .characterOffset(7))
 
@@ -223,7 +223,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
 
         context.viewModel.enterEditMode(at: .characterOffset(7))
 
@@ -248,7 +248,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
         context.viewModel.enterEditMode()
 
         XCTAssertEqual(context.viewModel.presentationMode, .edit)
@@ -274,7 +274,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
         context.viewModel.enterEditMode(at: .characterOffset(7))
 
         context.viewModel.exitEditModeToRead()
@@ -304,12 +304,12 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
 
         context.store.applyEditorUpdate(firstNote)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: firstNote)
         context.viewModel.enterEditMode()
         XCTAssertEqual(context.viewModel.presentationMode, .edit)
 
         context.store.applyEditorUpdate(secondNote)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: secondNote)
 
         XCTAssertEqual(context.viewModel.currentNoteId, "n2")
         XCTAssertEqual(context.viewModel.presentationMode, .read)
@@ -330,12 +330,12 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
         context.viewModel.enterEditMode()
         XCTAssertEqual(context.viewModel.presentationMode, .edit)
 
         context.store.clearActiveNote()
-        await Task.yield()
+        await waitUntilNoActiveNote(context.viewModel)
 
         XCTAssertNil(context.viewModel.currentNoteId)
         XCTAssertEqual(context.viewModel.presentationMode, .read)
@@ -364,11 +364,11 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
 
         context.store.applyEditorUpdate(firstNote)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: firstNote)
         context.viewModel.enterEditMode(at: .characterOffset(7))
 
         context.store.applyEditorUpdate(secondNote)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: secondNote)
 
         XCTAssertNil(context.viewModel.consumePendingEditSelectionTarget())
     }
@@ -408,7 +408,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         nativeViewModel.attributedContent = AttributedString("Updated")
@@ -457,7 +457,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
@@ -511,7 +511,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
@@ -585,7 +585,7 @@ final class NotesEditorViewModelTests: XCTestCase {
             created: nil
         )
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
@@ -642,7 +642,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: 100, created: nil)
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
@@ -652,7 +652,7 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         let refreshed = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: 200, created: nil)
         store.applyEditorUpdate(refreshed)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: refreshed)
         let after = nsRange(from: nativeViewModel.selection, in: nativeViewModel.attributedContent)
 
         XCTAssertEqual(after, before)
@@ -785,7 +785,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
 
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
@@ -852,7 +852,7 @@ final class NotesEditorViewModelTests: XCTestCase {
             created: nil
         )
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
@@ -905,7 +905,7 @@ final class NotesEditorViewModelTests: XCTestCase {
             created: nil
         )
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let canonical = canonicalSnapshotOutput(nonCanonical)
 
@@ -964,7 +964,7 @@ extension NotesEditorViewModelTests {
             created: nil
         )
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
@@ -1022,7 +1022,7 @@ extension NotesEditorViewModelTests {
             created: nil
         )
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
@@ -1083,7 +1083,7 @@ extension NotesEditorViewModelTests {
             created: nil
         )
         store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(viewModel, note: note)
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
@@ -1123,7 +1123,7 @@ extension NotesEditorViewModelTests {
             created: nil
         )
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
 
         let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
         context.viewModel.attachNativeEditor(nativeViewModel)
@@ -1147,7 +1147,7 @@ extension NotesEditorViewModelTests {
             created: nil
         )
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
 
         let attachedEditor = context.viewModel.makeNativeEditorViewModel()
         context.viewModel.attachNativeEditor(attachedEditor)
@@ -1156,6 +1156,33 @@ extension NotesEditorViewModelTests {
 
         context.viewModel.detachNativeEditor(NativeNoteEditorViewModel())
         XCTAssertEqual(context.viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
+    }
+
+    func testSharedNativeEditorSurvivesDetachForEditorSurfaceReuse() async throws {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Server body",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+
+        let sharedEditor = context.viewModel.sharedNativeEditor()
+        context.viewModel.attachNativeEditor(sharedEditor)
+        sharedEditor.attributedContent = AttributedString("Local unsaved body")
+
+        context.viewModel.detachNativeEditor(sharedEditor)
+
+        let reusedEditor = context.viewModel.sharedNativeEditor()
+        XCTAssertTrue(reusedEditor === sharedEditor)
+        XCTAssertEqual(reusedEditor.currentPlainText(), "Local unsaved body")
+        XCTAssertEqual(context.viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Server body")
     }
 
     func testNotesRuntimeOpenNoteContextUsesProjectedPlainText() async throws {
@@ -1171,7 +1198,7 @@ extension NotesEditorViewModelTests {
             created: nil
         )
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
 
         let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
         context.viewModel.attachNativeEditor(nativeViewModel)
@@ -1231,7 +1258,7 @@ extension NotesEditorViewModelTests {
             created: nil
         )
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
 
         let snapshot = context.viewModel.currentPlainTextSnapshot(fallback: "fallback")
         XCTAssertEqual(snapshot, driftInput)
@@ -1298,7 +1325,7 @@ extension NotesEditorViewModelTests {
         )
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
 
         let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
         let expectedRoundTripPlainText = nativeViewModel.currentPersistenceSnapshot().plainText
@@ -1330,7 +1357,7 @@ extension NotesEditorViewModelTests {
         )
 
         context.store.applyEditorUpdate(note)
-        await Task.yield()
+        await waitUntilNoteHydrated(context.viewModel, note: note)
 
         let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
         let canonicalPlainText = nativeViewModel.currentPlainText()
@@ -1434,6 +1461,70 @@ private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> 
         try await Task.sleep(nanoseconds: 30_000_000)
     }
     XCTFail("Timed out waiting for condition")
+}
+
+@MainActor
+private func waitUntilUnsupportedNoteHydrated(_ viewModel: NotesEditorViewModel) async throws {
+    await waitUntilNoteHydrated(viewModel, note: makeUnsupportedTestNote())
+}
+
+@MainActor
+private func waitUntilNoteHydrated(
+    _ viewModel: NotesEditorViewModel,
+    note: NotePayload
+) async {
+    let unsupported = NotesUnsupportedContent.detect(in: note.document)
+    let didHydrate = await waitUntil(
+        timeoutSeconds: 5.0,
+        failOnTimeout: false
+    ) {
+        viewModel.currentNoteId == note.id
+            && viewModel.content == note.plainText
+            && NotesSemanticDocumentCodec.decode(viewModel.canonicalContent) == note.document
+            && viewModel.isReadOnly == (unsupported != nil)
+            && viewModel.unsupportedContent?.blockTypes == unsupported?.blockTypes
+    }
+    guard !didHydrate else { return }
+
+    XCTFail(
+        """
+        Timed out waiting for note hydration. \
+        currentNoteId=\(String(describing: viewModel.currentNoteId)) \
+        content=\(String(reflecting: viewModel.content)) \
+        decodedCanonical=\(String(describing: NotesSemanticDocumentCodec.decode(viewModel.canonicalContent))) \
+        isReadOnly=\(viewModel.isReadOnly) \
+        unsupported=\(String(describing: viewModel.unsupportedContent?.blockTypes)) \
+        expectedUnsupported=\(String(describing: unsupported?.blockTypes))
+        """
+    )
+}
+
+@MainActor
+private func waitUntilNoActiveNote(_ viewModel: NotesEditorViewModel) async {
+    _ = await waitUntil(timeoutSeconds: 2.0, failOnTimeout: false) {
+        viewModel.currentNoteId == nil
+            && viewModel.content.isEmpty
+            && viewModel.canonicalContent.isEmpty
+            && viewModel.presentationMode == .read
+    }
+}
+
+private func waitUntil(
+    timeoutSeconds: TimeInterval,
+    failOnTimeout: Bool,
+    condition: @escaping () -> Bool
+) async -> Bool {
+    let timeout = Date().addingTimeInterval(timeoutSeconds)
+    while Date() < timeout {
+        if condition() {
+            return true
+        }
+        try? await Task.sleep(nanoseconds: 30_000_000)
+    }
+    if failOnTimeout {
+        XCTFail("Timed out waiting for condition")
+    }
+    return false
 }
 
 @MainActor
@@ -1581,7 +1672,7 @@ private func makeSelectionSaveReloadContext(
         created: nil
     )
     store.applyEditorUpdate(note)
-    await Task.yield()
+    await waitUntilNoteHydrated(viewModel, note: note)
     return (api: api, viewModel: viewModel)
 }
 

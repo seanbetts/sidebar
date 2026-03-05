@@ -1,28 +1,56 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 @available(iOS 26.0, macOS 26.0, *)
 struct AttributedNoteEditorContainer: View {
+    enum EditorSurfaceKind: Equatable {
+        case swiftUI
+        case uiKit
+    }
+
     @ObservedObject var editorViewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
+    let hardwareKeyboardInputExpectedProvider: (() -> Bool)?
+    let onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)?
     let onEscape: ((NotesSemanticDocument) -> Void)?
     @EnvironmentObject var environment: AppEnvironment
 
-    @StateObject private var nativeViewModel = NativeNoteEditorViewModel()
+    @StateObject private var nativeViewModel: NativeNoteEditorViewModel
     @State private var loadedNoteId: String?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
+    #if os(iOS)
+    @State private var isSoftwareKeyboardVisible = false
+    @State private var inputModeChangeRevision = 0
+    #endif
+
+    init(
+        editorViewModel: NotesEditorViewModel,
+        maxContentWidth: CGFloat,
+        hardwareKeyboardInputExpectedProvider: (() -> Bool)? = nil,
+        onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)? = nil,
+        onEscape: ((NotesSemanticDocument) -> Void)?
+    ) {
+        self.editorViewModel = editorViewModel
+        self.maxContentWidth = maxContentWidth
+        self.hardwareKeyboardInputExpectedProvider = hardwareKeyboardInputExpectedProvider
+        self.onFormattingBarPresentationChange = onFormattingBarPresentationChange
+        self.onEscape = onEscape
+        _nativeViewModel = StateObject(wrappedValue: editorViewModel.sharedNativeEditor())
+    }
 
     var body: some View {
-        SwiftUINoteTextEditorSurface(
-            viewModel: nativeViewModel,
-            maxContentWidth: maxContentWidth,
-            isEditable: true
-        )
+        editorSurface
         .onAppear {
             nativeViewModel.setBaseFontSize(editorBaseFontSize)
             editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
             applyAutosaveDelay(isOffline: environment.isOffline)
             nativeViewModel.isReadOnly = false
+            #if os(iOS)
+            onFormattingBarPresentationChange?(resolvedFormattingBarPresentation)
+            #endif
         }
         .onDisappear {
             editorViewModel.detachNativeEditor(nativeViewModel)
@@ -49,9 +77,36 @@ struct AttributedNoteEditorContainer: View {
             let option = AppTextSizeOption.resolved(from: newValue)
             nativeViewModel.setBaseFontSize(NoteTextTypography.defaultBodyFontSize(for: option))
         }
+        #if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isSoftwareKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isSoftwareKeyboardVisible = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
+            inputModeChangeRevision += 1
+        }
+        .onChange(of: resolvedFormattingBarPresentation) { _, newValue in
+            onFormattingBarPresentationChange?(newValue)
+        }
+        #endif
         .onKeyPress(.escape) {
             handleEscapeKey(document: nativeViewModel.currentPersistenceSnapshot().document)
         }
+    }
+
+    @ViewBuilder
+    private var editorSurface: some View {
+        platformEditorSurface
+    }
+
+    static var preferredEditorSurfaceKind: EditorSurfaceKind {
+        #if os(iOS)
+        .uiKit
+        #else
+        .swiftUI
+        #endif
     }
 
     private var editorBaseFontSize: CGFloat {
@@ -97,4 +152,48 @@ struct AttributedNoteEditorContainer: View {
         onEscape?(document ?? nativeViewModel.currentPersistenceSnapshot().document)
         return .handled
     }
+
+    @ViewBuilder
+    private var platformEditorSurface: some View {
+        #if os(iOS)
+        UIKitNoteTextEditorSurface(
+            viewModel: nativeViewModel,
+            maxContentWidth: maxContentWidth,
+            isEditable: true,
+            formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
+            formattingBarPresentation: resolvedFormattingBarPresentation
+        )
+        .frame(maxWidth: maxContentWidth)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DesignTokens.Colors.background)
+        #else
+        SwiftUINoteTextEditorSurface(
+            viewModel: nativeViewModel,
+            maxContentWidth: maxContentWidth,
+            isEditable: true
+        )
+        #endif
+    }
+
+    #if os(iOS)
+    private var resolvedFormattingBarPresentation: NoteFormattingBarPresentation {
+        _ = inputModeChangeRevision
+        return NoteFormattingBarPresentation.resolve(
+            isEditing: true,
+            isPhone: UIDevice.current.userInterfaceIdiom == .phone,
+            isSoftwareKeyboardVisible: isSoftwareKeyboardVisible,
+            isHardwareKeyboardInputExpected: isHardwareKeyboardInputExpected
+        )
+    }
+
+    private var isHardwareKeyboardInputExpected: Bool {
+        if let hardwareKeyboardInputExpectedProvider {
+            return hardwareKeyboardInputExpectedProvider()
+        }
+        if #available(iOS 16.4, *) {
+            return UITextInputContext.current()?.isHardwareKeyboardInputExpected ?? false
+        }
+        return false
+    }
+    #endif
 }

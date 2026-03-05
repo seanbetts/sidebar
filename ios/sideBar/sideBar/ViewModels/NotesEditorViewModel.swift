@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import Combine
 import OSLog
@@ -39,6 +40,10 @@ public final class NotesEditorViewModel: ObservableObject {
     private let logger = Logger(subsystem: "sideBar", category: "AttributedEditorMigration")
     @available(iOS 26.0, macOS 26.0, *)
     private weak var nativeEditorViewModel: NativeNoteEditorViewModel?
+    @available(iOS 26.0, macOS 26.0, *)
+    private var sharedNativeEditorViewModel: NativeNoteEditorViewModel?
+    @available(iOS 26.0, macOS 26.0, *)
+    private var nativeEditorObservation: AnyCancellable?
     private var pendingEditSelectionTarget: PendingEditSelectionTarget?
     private var syncRequestedWhileSaving = false
     private var cancellables = Set<AnyCancellable>()
@@ -64,19 +69,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private func handleNoteUpdate(_ note: NotePayload?) {
         let previousNoteId = currentNoteId
         guard let note else {
-            currentNoteId = nil
-            presentationMode = .read
-            pendingEditSelectionTarget = nil
-            content = ""
-            canonicalContent = ""
-            isDirty = false
-            isSaving = false
-            lastSavedAt = nil
-            saveErrorMessage = nil
-            isReadOnly = true
-            isQueuedForSync = false
-            unsupportedContent = nil
-            syncRequestedWhileSaving = false
+            resetStateForNoActiveNote()
             return
         }
         let isSameNote = previousNoteId == note.id
@@ -105,7 +98,6 @@ public final class NotesEditorViewModel: ObservableObject {
             }
             if !isSaving {
                 saveErrorMessage = nil
-                isQueuedForSync = false
             }
             return
         }
@@ -166,22 +158,27 @@ public final class NotesEditorViewModel: ObservableObject {
 
     @available(iOS 26.0, macOS 26.0, *)
     public func makeNativeEditorViewModel() -> NativeNoteEditorViewModel {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadDocument(canonicalContent: canonicalContent, plainText: content)
+        let viewModel = buildNativeEditorViewModel()
         alignPersistenceBaseline(with: viewModel)
         return viewModel
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    public func attachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
-        nativeEditorViewModel = nativeViewModel
+    public func sharedNativeEditor() -> NativeNoteEditorViewModel {
+        if let sharedNativeEditorViewModel {
+            return sharedNativeEditorViewModel
+        }
+
+        let viewModel = buildNativeEditorViewModel()
+        sharedNativeEditorViewModel = viewModel
+        return viewModel
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    public func detachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
-        if nativeEditorViewModel === nativeViewModel {
-            nativeEditorViewModel = nil
-        }
+    private func buildNativeEditorViewModel() -> NativeNoteEditorViewModel {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(canonicalContent: canonicalContent, plainText: content)
+        return viewModel
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -297,10 +294,24 @@ public final class NotesEditorViewModel: ObservableObject {
 
     @available(iOS 26.0, macOS 26.0, *)
     public func toggleFormatting(_ formatting: NoteFormatting) {
-        guard let nativeEditorViewModel, canApplyFormattingCommands() else { return }
-        nativeEditorViewModel.applyFormatting(formatting)
-        isDirty = nativeEditorViewModel.hasUnsavedChanges || isDirty
+        guard canApplyFormattingCommands() else { return }
+        setFormatting(formatting, enabled: !isFormattingActive(formatting))
     }
+
+#if os(iOS)
+    @available(iOS 26.0, *)
+    var noteFormattingBarConfiguration: NoteFormattingBarConfiguration {
+        .init(
+            isBoldActive: isFormattingActive(.bold),
+            isItalicActive: isFormattingActive(.italic),
+            isUnderlineActive: isFormattingActive(.underline),
+            isEnabled: canApplyFormattingCommands(),
+            onBoldTap: { [weak self] in self?.toggleFormatting(.bold) },
+            onItalicTap: { [weak self] in self?.toggleFormatting(.italic) },
+            onUnderlineTap: { [weak self] in self?.toggleFormatting(.underline) }
+        )
+    }
+#endif
 
     public func saveIfNeeded() async {
         guard !isSaving else { return }
@@ -321,12 +332,9 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     public func currentPlainTextSnapshot(fallback: String = "") -> String {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            if let nativeEditorViewModel {
-                let plainText = nativeEditorViewModel.currentPersistenceSnapshot().plainText
-                return plainText.isEmpty ? fallback : plainText
-            }
-            return content.isEmpty ? fallback : content
+        if #available(iOS 26.0, macOS 26.0, *), let nativeEditorViewModel {
+            let plainText = nativeEditorViewModel.currentPersistenceSnapshot().plainText
+            return plainText.isEmpty ? fallback : plainText
         }
         return content.isEmpty ? fallback : content
     }
@@ -337,19 +345,12 @@ public final class NotesEditorViewModel: ObservableObject {
                 return nativeEditorViewModel.currentPersistenceSnapshot().document
             }
         }
-        if let document = NotesSemanticDocumentCodec.decode(canonicalContent) {
-            return document
-        }
+        if let document = NotesSemanticDocumentCodec.decode(canonicalContent) { return document }
         return NotesSemanticDocumentProjection.document(fromPlainText: content)
     }
 
-    public var isEditingNote: Bool {
-        presentationMode == .edit
-    }
-
-    public func enterEditMode() {
-        enterEditMode(at: .start)
-    }
+    public var isEditingNote: Bool { presentationMode == .edit }
+    public func enterEditMode() { enterEditMode(at: .start) }
 
     public func enterEditMode(at target: PendingEditSelectionTarget) {
         guard currentNoteId != nil, unsupportedContent == nil else { return }
@@ -358,15 +359,11 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     public func consumePendingEditSelectionTarget() -> PendingEditSelectionTarget? {
-        let target = pendingEditSelectionTarget
-        pendingEditSelectionTarget = nil
-        return target
+        defer { pendingEditSelectionTarget = nil }
+        return pendingEditSelectionTarget
     }
 
-    public func exitEditModeToRead() {
-        pendingEditSelectionTarget = nil
-        presentationMode = .read
-    }
+    public func exitEditModeToRead() { pendingEditSelectionTarget = nil; presentationMode = .read }
 
     private func syncNativeEditorContent(canonicalContent: String, plainText: String) {
         if #available(iOS 26.0, macOS 26.0, *) {
@@ -435,9 +432,65 @@ public final class NotesEditorViewModel: ObservableObject {
             payload: .note(snapshot)
         )
     }
+
 }
 
 extension NotesEditorViewModel {
+    private func resetStateForNoActiveNote() {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            resetNativeEditorObservation()
+            sharedNativeEditorViewModel = nil
+        }
+        currentNoteId = nil
+        presentationMode = .read
+        pendingEditSelectionTarget = nil
+        content = ""
+        canonicalContent = ""
+        isDirty = false
+        isSaving = false
+        lastSavedAt = nil
+        saveErrorMessage = nil
+        isReadOnly = true
+        isQueuedForSync = false
+        unsupportedContent = nil
+        syncRequestedWhileSaving = false
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    public func attachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
+        nativeEditorViewModel = nativeViewModel
+        sharedNativeEditorViewModel = nativeViewModel
+        observeNativeEditor(nativeViewModel)
+        DispatchQueue.main.async { [weak self] in
+            self?.objectWillChange.send()
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    public func detachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
+        if nativeEditorViewModel === nativeViewModel {
+            resetNativeEditorObservation()
+            nativeEditorViewModel = nil
+            DispatchQueue.main.async { [weak self] in
+                self?.objectWillChange.send()
+            }
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func observeNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
+        resetNativeEditorObservation()
+        nativeEditorObservation = nativeViewModel.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func resetNativeEditorObservation() {
+        nativeEditorObservation?.cancel()
+        nativeEditorObservation = nil
+    }
+
     public func setDirty(_ dirty: Bool) {
         guard isDirty != dirty else { return }
         DispatchQueue.main.async { [weak self] in
@@ -468,3 +521,4 @@ extension NotesEditorViewModel {
         )
     }
 }
+// swiftlint:enable file_length
