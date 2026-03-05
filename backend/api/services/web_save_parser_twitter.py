@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from urllib.parse import quote_plus, urlparse
 
@@ -10,6 +11,8 @@ from bs4 import BeautifulSoup
 from markdownify import MarkdownConverter
 
 from api.services.web_save_constants import USER_AGENT
+
+INVISIBLE_CHARS_RE = re.compile(r"[\u200b-\u200f\u2060\ufeff]")
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,58 @@ class _TwitterMarkdownConverter(MarkdownConverter):
 def _html_to_markdown(html: str) -> str:
     converter = _TwitterMarkdownConverter(heading_style="ATX")
     return converter.convert(html).strip()
+
+
+def _normalize_text(value: str | None) -> str:
+    if not value:
+        return ""
+    return INVISIBLE_CHARS_RE.sub("", value).strip()
+
+
+def _normalize_x_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().strip(".")
+    if host.startswith("www."):
+        host = host[4:]
+    if host in {"twitter.com", "mobile.twitter.com"}:
+        parsed = parsed._replace(netloc="x.com")
+    return parsed.geturl()
+
+
+def _format_tweet_markdown(markdown: str) -> str:
+    lines = [_normalize_text(line.rstrip()) for line in markdown.splitlines()]
+    output: list[str] = []
+    index = 0
+
+    while index < len(lines):
+        line = lines[index]
+        stripped = line.strip()
+        if stripped.startswith("$ "):
+            commands: list[str] = []
+            while index < len(lines) and lines[index].strip().startswith("$ "):
+                commands.append(lines[index].strip())
+                index += 1
+            output.append("```bash")
+            output.extend(commands)
+            output.append("```")
+            continue
+        output.append(stripped)
+        index += 1
+
+    collapsed: list[str] = []
+    blank_count = 0
+    for line in output:
+        if not line:
+            blank_count += 1
+            if blank_count > 1:
+                continue
+        else:
+            blank_count = 0
+        collapsed.append(line)
+
+    return "\n".join(collapsed).strip()
 
 
 def extract_twitter_status_id(url: str) -> str | None:
@@ -118,10 +173,11 @@ def fetch_twitter_status_snapshot(
     text_markdown = _html_to_markdown(str(content_tag)).strip()
     if not text_markdown:
         return None
-    title_text = content_tag.get_text(" ", strip=True)
+    text_markdown = _format_tweet_markdown(text_markdown)
+    title_text = _normalize_text(content_tag.get_text(" ", strip=True))
 
-    author_name = payload.get("author_name") or None
-    author_url = payload.get("author_url") or None
+    author_name = _normalize_text(payload.get("author_name")) or None
+    author_url = _normalize_x_url(payload.get("author_url"))
     handle = _extract_handle_from_url(author_url) or _extract_handle_from_url(url)
     source_url = build_canonical_twitter_status_url(url, handle=handle) or canonical_url
 
@@ -129,27 +185,26 @@ def fetch_twitter_status_snapshot(
     for anchor in blockquote.find_all("a"):
         href = anchor.get("href") or ""
         if "/status/" in href:
-            published_label = anchor.get_text(" ", strip=True) or None
+            published_label = _normalize_text(anchor.get_text(" ", strip=True)) or None
 
-    author_bits: list[str] = []
+    actor_bits: list[str] = []
     if author_name:
-        if author_url:
-            author_bits.append(f"[{author_name}]({author_url})")
-        else:
-            author_bits.append(author_name)
+        actor_bits.append(f"**{author_name}**")
     if handle:
-        author_bits.append(f"@{handle}")
+        profile_url = author_url or f"https://x.com/{handle}"
+        actor_bits.append(f"[@{handle}]({profile_url})")
+    elif author_url:
+        actor_bits.append(f"[Profile]({author_url})")
+
+    header = " ".join(actor_bits).strip()
+    if published_label:
+        header = f"{header} · {published_label}" if header else published_label
 
     blocks: list[str] = []
-    if author_bits or published_label:
-        header_lines: list[str] = []
-        if author_bits:
-            header_lines.append(" ".join(author_bits))
-        if published_label:
-            header_lines.append(published_label)
-        blocks.append("\n".join(header_lines))
+    if header:
+        blocks.append(header)
     blocks.append(text_markdown)
-    blocks.append(f"[View on X]({source_url})")
+    blocks.append(f"[Original post on X]({source_url})")
 
     return TwitterStatusSnapshot(
         title=_build_snapshot_title(title_text, handle=handle),

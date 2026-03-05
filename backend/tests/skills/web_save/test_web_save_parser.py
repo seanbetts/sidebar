@@ -285,9 +285,9 @@ def test_parse_url_local_uses_x_status_snapshot(monkeypatch):
         lambda _url: TwitterStatusSnapshot(
             title="Hello from X",
             markdown=(
-                "[Sean](https://x.com/sean) @sean\n\n"
+                "**Sean** [@sean](https://x.com/sean) · March 5, 2026\n\n"
                 "Hello from X.\n\n"
-                "[View on X](https://x.com/sean/status/1234567890)"
+                "[Original post on X](https://x.com/sean/status/1234567890)"
             ),
             source_url="https://x.com/sean/status/1234567890",
             author="Sean",
@@ -370,8 +370,54 @@ def test_fetch_twitter_status_snapshot_parses_oembed_markup(monkeypatch):
     assert snapshot is not None
     assert snapshot.title == "Hello world"
     assert snapshot.source_url == "https://x.com/sean/status/1234567890"
-    assert "March 5, 2026" in snapshot.markdown
-    assert "[View on X](https://x.com/sean/status/1234567890)" in snapshot.markdown
+    assert (
+        "**Sean** [@sean](https://x.com/sean) · March 5, 2026"
+        in snapshot.markdown
+    )
+    assert "[Original post on X](https://x.com/sean/status/1234567890)" in snapshot.markdown
+
+
+def test_fetch_twitter_status_snapshot_formats_command_lines(monkeypatch):
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "author_name": "Guillermo Rauch",
+                "author_url": "https://twitter.com/rauchg",
+                "html": """
+                <blockquote class="twitter-tweet">
+                  <p lang="en" dir="ltr">
+                    Google has shipped a CLI for Google Workspace Huge!<br><br>
+                    $ npm i -g @&#8288;googleworkspace/cli<br>
+                    $ npx skills add github:googleworkspace/cli<br><br>
+                    2026 is the year of Skills &amp; CLIs…
+                  </p>
+                  <a href="https://twitter.com/rauchg/status/2029356560494018956">
+                    March 5, 2026
+                  </a>
+                </blockquote>
+                """,
+            }
+
+    monkeypatch.setattr(
+        web_save_parser_twitter.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse(),
+    )
+
+    snapshot = web_save_parser_twitter.fetch_twitter_status_snapshot(
+        "https://x.com/rauchg/status/2029356560494018956"
+    )
+
+    assert snapshot is not None
+    assert "[@rauchg](https://x.com/rauchg)" in snapshot.markdown
+    assert "@googleworkspace/cli" in snapshot.markdown
+    assert "@⁠googleworkspace/cli" not in snapshot.markdown
+    assert "```bash" in snapshot.markdown
+    assert "$ npm i -g @googleworkspace/cli" in snapshot.markdown
+    assert "$ npx skills add github:googleworkspace/cli" in snapshot.markdown
 
 
 def test_extract_metadata_finds_favicon():
