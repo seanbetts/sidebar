@@ -64,6 +64,7 @@ from api.services.web_save_parser_substack_helpers import (
     merge_rules,
     should_apply_substack_cleanup,
 )
+from api.services.web_save_parser_twitter import fetch_twitter_status_snapshot
 from api.services.web_save_parser_utils import (
     clean_metadata_value,
     ensure_url,
@@ -472,6 +473,45 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             content=content,
             source=metadata.get("canonical") or final_url,
             published_at=None,
+        )
+
+    twitter_snapshot = fetch_twitter_status_snapshot(final_url)
+    if twitter_snapshot:
+        source_url = twitter_snapshot.source_url
+        title = twitter_snapshot.title
+        domain = urlparse(source_url).netloc
+        markdown = twitter_snapshot.markdown
+        word_count = compute_word_count(markdown)
+        image_count = count_images(markdown)
+        tags = extract_tags(markdown, domain, title)
+        content = build_frontmatter(
+            markdown,
+            meta={
+                "source": source_url,
+                "title": title,
+                "author": twitter_snapshot.author,
+                "domain": domain,
+                "word_count": word_count,
+                "reading_time": page_reading_time(
+                    word_count, image_count, domain, raw_html_original
+                ),
+                "tags": tags,
+                "used_js_rendering": used_js_rendering,
+                "saved_at": datetime.now(UTC).isoformat(),
+            },
+        )
+        logger.info(
+            "web-save x snapshot url=%s source=%s markdown_len=%s",
+            final_url,
+            source_url,
+            len(markdown),
+        )
+        return ParsedPage(
+            title=title,
+            content=content,
+            source=source_url,
+            published_at=None,
+            favicon_url=favicon_url,
         )
 
     html, pre_youtube_ids = replace_youtube_iframes_with_placeholders(

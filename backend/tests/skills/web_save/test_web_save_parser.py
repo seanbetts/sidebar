@@ -2,11 +2,17 @@
 
 from datetime import UTC, datetime
 
-from api.services import web_save_includes, web_save_parser, web_save_parser_wsj
+from api.services import (
+    web_save_includes,
+    web_save_parser,
+    web_save_parser_twitter,
+    web_save_parser_wsj,
+)
 from api.services.web_save_parser_apple_news import (
     extract_apple_news_publisher_url,
     resolve_apple_news_source_url,
 )
+from api.services.web_save_parser_twitter import TwitterStatusSnapshot
 from api.services.web_save_tagger import calculate_reading_time
 from bs4 import BeautifulSoup
 from lxml import html as lxml_html
@@ -256,6 +262,116 @@ def test_parse_url_local_wsj_noisy_preview_marks_truncated(monkeypatch):
     assert data["truncated"] is True
     assert "Warning: This article appears truncated." in parsed.content
     assert "Corporate Subscriptions" not in parsed.content
+
+
+def test_parse_url_local_uses_x_status_snapshot(monkeypatch):
+    html = """
+    <html>
+      <head><title>X</title></head>
+      <body><div id="react-root">app shell</div></body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://x.com/sean/status/1234567890", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "fetch_twitter_status_snapshot",
+        lambda _url: TwitterStatusSnapshot(
+            title="Hello from X",
+            markdown=(
+                "[Sean](https://x.com/sean) @sean\n\n"
+                "Hello from X.\n\n"
+                "[View on X](https://x.com/sean/status/1234567890)"
+            ),
+            source_url="https://x.com/sean/status/1234567890",
+            author="Sean",
+        ),
+    )
+
+    parsed = web_save_parser.parse_url_local("https://x.com/sean/status/1234567890")
+
+    assert parsed.title == "Hello from X"
+    assert parsed.source == "https://x.com/sean/status/1234567890"
+    assert "Hello from X." in parsed.content
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["title"] == "Hello from X"
+    assert data["author"] == "Sean"
+    assert data["domain"] == "x.com"
+
+
+def test_parse_url_local_falls_back_when_x_status_snapshot_missing(monkeypatch):
+    html = """
+    <html>
+      <head><title>Fallback Post</title></head>
+      <body>
+        <article>
+          <p>This falls back to generic parsing when the snapshot is unavailable.</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://x.com/sean/status/1234567890", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+    monkeypatch.setattr(
+        web_save_parser, "fetch_twitter_status_snapshot", lambda _url: None
+    )
+
+    parsed = web_save_parser.parse_url_local("https://x.com/sean/status/1234567890")
+
+    assert parsed.title == "Fallback Post"
+    assert "falls back to generic parsing" in parsed.content.lower()
+
+
+def test_fetch_twitter_status_snapshot_parses_oembed_markup(monkeypatch):
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "author_name": "Sean",
+                "author_url": "https://twitter.com/sean",
+                "html": """
+                <blockquote class="twitter-tweet">
+                  <p lang="en" dir="ltr">
+                    Hello <a href="https://example.com">world</a>
+                  </p>
+                  &mdash; Sean (@sean)
+                  <a href="https://twitter.com/sean/status/1234567890?ref_src=twsrc%5Etfw">
+                    March 5, 2026
+                  </a>
+                </blockquote>
+                """,
+            }
+
+    monkeypatch.setattr(
+        web_save_parser_twitter.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse(),
+    )
+
+    snapshot = web_save_parser_twitter.fetch_twitter_status_snapshot(
+        "https://twitter.com/sean/status/1234567890"
+    )
+
+    assert snapshot is not None
+    assert snapshot.title == "Hello world"
+    assert snapshot.source_url == "https://x.com/sean/status/1234567890"
+    assert "March 5, 2026" in snapshot.markdown
+    assert "[View on X](https://x.com/sean/status/1234567890)" in snapshot.markdown
 
 
 def test_extract_metadata_finds_favicon():
