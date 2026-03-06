@@ -28,7 +28,7 @@ def _iter_contract_files() -> list[Path]:
     return sorted(set(files))
 
 
-def test_notes_service_writes_require_plain_text_keyword() -> None:
+def test_notes_service_writes_require_document_keyword() -> None:
     violations: list[str] = []
     for path in _iter_contract_files():
         source = path.read_text(encoding="utf-8")
@@ -43,15 +43,15 @@ def test_notes_service_writes_require_plain_text_keyword() -> None:
                 continue
             if func.attr not in {"create_note", "update_note"}:
                 continue
-            has_plain_text_kwarg = any(
-                keyword.arg == "plain_text" for keyword in node.keywords
+            has_document_kwarg = any(
+                keyword.arg == "document" for keyword in node.keywords
             )
-            if has_plain_text_kwarg:
+            if has_document_kwarg or len(node.args) >= 3:
                 continue
             relative = path.relative_to(BACKEND_ROOT)
             violations.append(f"{relative}:{node.lineno}")
     assert not violations, (
-        "NotesService write call sites missing plain_text keyword:\n"
+        "NotesService write call sites missing document keyword:\n"
         + "\n".join(violations)
     )
 

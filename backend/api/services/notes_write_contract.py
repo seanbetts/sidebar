@@ -14,6 +14,12 @@ from api.services.notes_content_codec import (
 from api.services.notes_content_codec import (
     validate_plain_text,
 )
+from api.services.notes_document_types import (
+    document_version,
+    project_plain_text_from_document,
+    validate_note_document,
+)
+from api.services.notes_title import derive_note_title_from_document
 
 MAX_NOTE_RTF_BYTES = 2_097_152
 JSON_HEADROOM = 512
@@ -24,29 +30,24 @@ MAX_NOTE_CONTENT_B64_CHARS = ((MAX_NOTE_RTF_BYTES + 2) // 3) * 4 + JSON_HEADROOM
 class CanonicalNoteWrite:
     """Canonical note write payload."""
 
-    content: str
+    document: dict[str, Any]
+    document_version: int
     plain_text: str
+    title: str
+    legacy_content: str
+    legacy_content_format: str = "rtf"
 
 
-def read_plain_text_field(payload: dict[str, Any]) -> str | None:
-    """Return plain_text from snake_case/camelCase payload keys."""
-    plain_text = payload.get("plain_text")
-    if plain_text is None:
-        plain_text = payload.get("plainText")
-    if plain_text is None:
-        return None
-    return str(plain_text)
+def parse_note_write_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Parse and validate the required semantic note write payload."""
+    title = payload.get("title")
+    if isinstance(title, str) and title.strip():
+        raise BadRequestError("Note titles are derived from note content")
 
-
-def parse_note_write_payload(payload: dict[str, Any]) -> tuple[str, str]:
-    """Parse required note write payload fields."""
-    content = payload.get("content")
-    if content is None:
-        raise BadRequestError("content required")
-    plain_text = read_plain_text_field(payload)
-    if plain_text is None:
-        raise BadRequestError("plain_text required")
-    return str(content), plain_text
+    document = payload.get("document")
+    if document is None:
+        raise BadRequestError("document required")
+    return validate_note_document(document)
 
 
 def plain_text_to_rtf_base64(plain_text: str) -> str:
@@ -106,13 +107,18 @@ def validate_canonical_base64_rtf(content: Any) -> str:
 
 
 def build_canonical_note_write(
-    content: Any,
-    plain_text: Any,
+    document: Any,
 ) -> CanonicalNoteWrite:
-    """Build canonical content/plain-text payload for note writes."""
-    canonical_content = validate_canonical_base64_rtf(content)
-    resolved_plain_text = validate_plain_text(plain_text)
+    """Build canonical semantic and derived payloads for note writes."""
+    validated_document = validate_note_document(document)
+    resolved_plain_text = validate_plain_text(
+        project_plain_text_from_document(validated_document)
+    )
+    resolved_title = derive_note_title_from_document(validated_document)
     return CanonicalNoteWrite(
-        content=canonical_content,
+        document=validated_document,
+        document_version=document_version(validated_document),
         plain_text=resolved_plain_text,
+        title=resolved_title,
+        legacy_content=plain_text_to_rtf_base64(resolved_plain_text),
     )

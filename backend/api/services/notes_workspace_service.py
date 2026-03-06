@@ -12,6 +12,10 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 from api.exceptions import BadRequestError, NoteNotFoundError
 from api.models.note import Note
 from api.schemas.filters import NoteFilters
+from api.services.notes_document_types import (
+    note_document_from_plain_text,
+    project_plain_text_from_document,
+)
 from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
 from api.services.notes_title import derive_note_title
@@ -39,6 +43,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
     @staticmethod
     def build_note_payload(note: Note, *, include_content: bool = True) -> dict:
         """Build a note payload for API responses."""
+        document = note.document or note_document_from_plain_text(note.plain_text or "")
         payload = {
             "id": str(note.id),
             "title": note.title,
@@ -46,16 +51,18 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             "path": str(note.id),
             "modified": note.updated_at.timestamp() if note.updated_at else None,
             "created": note.created_at.timestamp() if note.created_at else None,
+            "document": document,
+            "document_version": note.document_version,
             "plain_text": note.plain_text or "",
-            "content_format": note.content_format or "rtf",
             "folder": note.folder_path or "",
             "pinned": bool(note.pinned),
             "pinned_order": note.pinned_order,
             "archived": bool(note.is_archived),
             "is_folder_marker": bool(note.is_folder_marker),
         }
-        if include_content:
+        if include_content and note.document is None:
             payload["content"] = note.content
+            payload["content_format"] = note.content_format or "rtf"
         return payload
 
     @classmethod
@@ -72,6 +79,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             load_only(
                 Note.id,
                 Note.title,
+                Note.document,
+                Note.document_version,
                 Note.plain_text,
                 Note.content_format,
                 Note.folder_path,
@@ -182,6 +191,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             user_id=user_id,
             title="__folder__",
             content=plain_text_to_rtf_base64(""),
+            document=note_document_from_plain_text(""),
+            document_version=1,
             plain_text="",
             content_format="rtf",
             folder_path=path,
@@ -328,10 +339,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
     def create_note(
         db: Session,
         user_id: str,
-        content: str,
+        document: dict[str, object],
         *,
-        plain_text: str,
-        title: str | None = None,
         path: str = "",
         folder: str = "",
         client_id: str | None = None,
@@ -341,9 +350,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         Args:
             db: Database session.
             user_id: Current user ID.
-            content: Canonical Base64 RTF content.
-            plain_text: Canonical plain-text cache.
-            title: Optional note title.
+            document: Canonical semantic note document.
             path: Optional file path hint.
             folder: Optional folder override.
             client_id: Optional client-generated note ID.
@@ -360,9 +367,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         created = NotesService.create_note(
             db,
             user_id,
-            content,
-            plain_text=plain_text,
-            title=title,
+            document,
             folder=resolved_folder,
             note_id=note_uuid,
         )
@@ -373,7 +378,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         except ObjectDeletedError:
             note_id = getattr(created, "_snapshot_id", None)
             updated_at = getattr(created, "_snapshot_updated_at", None)
-            fallback_title = derive_note_title(plain_text)
+            fallback_document = document
+            fallback_plain_text = project_plain_text_from_document(document)
+            fallback_title = derive_note_title(fallback_plain_text)
             return {
                 "id": str(note_id),
                 "title": fallback_title,
@@ -381,9 +388,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
                 "path": str(note_id),
                 "modified": updated_at.timestamp() if updated_at else None,
                 "created": None,
-                "content": content,
-                "plain_text": plain_text,
-                "content_format": "rtf",
+                "document": fallback_document,
+                "document_version": 1,
+                "plain_text": fallback_plain_text,
                 "folder": resolved_folder,
                 "pinned": False,
                 "pinned_order": None,
@@ -396,9 +403,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         db: Session,
         user_id: str,
         note_id: str,
-        content: str,
+        document: dict[str, object],
         *,
-        plain_text: str,
         client_updated_at: datetime | None = None,
     ) -> dict:
         """Update note content using workspace request data.
@@ -407,8 +413,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             db: Database session.
             user_id: Current user ID.
             note_id: Note ID (UUID string).
-            content: Canonical Base64 RTF content.
-            plain_text: Canonical plain-text cache.
+            document: Canonical semantic note document.
             client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
@@ -422,8 +427,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             db,
             user_id,
             note_uuid,
-            content,
-            plain_text=plain_text,
+            document,
             client_updated_at=client_updated_at,
         )
         return NotesWorkspaceService.build_note_payload(updated, include_content=True)

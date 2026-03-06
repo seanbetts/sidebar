@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from api.exceptions import BadRequestError, ConflictError, NoteNotFoundError
 from api.models.note import Note
+from api.services.notes_document_types import note_document_from_plain_text
 from api.services.notes_service import NotesService
 from api.services.notes_write_contract import parse_note_write_payload
 from api.utils.timestamps import parse_client_timestamp
@@ -103,8 +104,7 @@ class NotesSyncService:
 
             try:
                 if op == "create":
-                    content, plain_text = parse_note_write_payload(operation)
-                    title = operation.get("title") or None
+                    document = parse_note_write_payload(operation)
                     folder = (operation.get("folder") or "").strip("/")
                     note_id_value = operation.get("id")
                     note_id = (
@@ -115,9 +115,7 @@ class NotesSyncService:
                     note = NotesService.create_note(
                         db,
                         user_id,
-                        content,
-                        plain_text=plain_text,
-                        title=title,
+                        document,
                         folder=folder,
                         note_id=note_id,
                     )
@@ -183,13 +181,12 @@ class NotesSyncService:
         client_updated_at: datetime | None,
     ) -> Note:
         note_id = NotesSyncService._parse_note_id(operation)
-        content, plain_text = parse_note_write_payload(operation)
+        document = parse_note_write_payload(operation)
         return NotesService.update_note(
             db,
             user_id,
             note_id,
-            content,
-            plain_text=plain_text,
+            document,
             client_updated_at=client_updated_at,
         )
 
@@ -333,12 +330,13 @@ class NotesSyncService:
     def sync_payload(note: Note) -> dict[str, object]:
         """Build the canonical note payload for sync update streams."""
         folder = (note.folder_path or "").strip("/")
+        document = note.document or note_document_from_plain_text(note.plain_text or "")
         return {
             "id": str(note.id),
             "title": note.title,
-            "content": note.content or "",
+            "document": document,
+            "document_version": note.document_version,
             "plain_text": note.plain_text or "",
-            "content_format": note.content_format or "rtf",
             "folder": folder,
             "pinned": bool(note.pinned),
             "pinned_order": note.pinned_order,

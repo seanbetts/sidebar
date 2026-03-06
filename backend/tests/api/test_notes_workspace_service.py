@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 from api.services import notes_workspace_service as service_module
+from api.services.notes_document_types import note_document_from_plain_text
 from api.services.notes_workspace_service import NotesWorkspaceService
 
 
@@ -53,7 +54,9 @@ def _note(title="Title", content="Body", folder="", pinned=False):
         id="note-1",
         user_id="user-1",
         title=title,
-        content=content,
+        content="",
+        document=note_document_from_plain_text(content),
+        document_version=1,
         plain_text=content,
         content_format="rtf",
         folder_path=folder,
@@ -89,8 +92,9 @@ def test_build_note_payload_includes_explicit_state_fields():
     payload = NotesWorkspaceService.build_note_payload(note, include_content=True)
     assert payload["title"] == "Alpha"
     assert payload["name"] == "Alpha"
+    assert payload["document"] == note_document_from_plain_text("Body")
+    assert payload["document_version"] == 1
     assert payload["plain_text"] == "Body"
-    assert payload["content_format"] == "rtf"
     assert payload["folder"] == "Inbox"
     assert payload["pinned"] is True
     assert payload["archived"] is False

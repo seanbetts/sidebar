@@ -154,8 +154,7 @@ def create_note(
     Raises:
         BadRequestError: If content is missing.
     """
-    content, plain_text = parse_note_write_payload(request)
-    title = request.get("title") or None
+    document = parse_note_write_payload(request)
     path = request.get("path", "")
     folder = (request.get("folder") or "").strip("/")
     client_id = request.get("client_id") or request.get("clientId")
@@ -163,9 +162,7 @@ def create_note(
     return NotesWorkspaceService.create_note(
         db,
         user_id,
-        content,
-        plain_text=plain_text,
-        title=title,
+        document,
         path=path,
         folder=folder,
         client_id=client_id,
@@ -387,7 +384,7 @@ def update_note(
         BadRequestError: For invalid request.
         NotFoundError: If not found.
     """
-    content, plain_text = parse_note_write_payload(request)
+    document = parse_note_write_payload(request)
     client_updated_at = parse_client_timestamp(
         request.get("client_updated_at") or request.get("clientUpdatedAt"),
         field_name="client_updated_at",
@@ -398,8 +395,7 @@ def update_note(
             db,
             user_id,
             str(note_id),
-            content,
-            plain_text=plain_text,
+            document,
             client_updated_at=client_updated_at,
         )
     except ValueError as exc:

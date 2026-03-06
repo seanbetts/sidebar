@@ -20,7 +20,7 @@ from api.models.user_memory import UserMemory
 from api.models.user_settings import UserSettings
 from api.services.conversation_service import ConversationService
 from api.services.memory_service import MemoryService
-from api.services.notes_content_codec import canonical_note_content_from_plain_text
+from api.services.notes_document_types import note_document_from_plain_text
 from api.services.notes_service import NotesService
 from api.services.notes_workspace_service import NotesWorkspaceService
 from api.services.task_service import TaskService
@@ -72,13 +72,10 @@ class TestDataService:
 
         note_ids: list[uuid.UUID] = []
         for note in plan.notes:
-            canonical_note = canonical_note_content_from_plain_text(note.content)
             created_note = NotesService.create_note(
                 db,
                 user_id,
-                content=canonical_note.content,
-                plain_text=canonical_note.plain_text,
-                title=note.title,
+                note_document_from_plain_text(note.content),
                 folder=note.folder,
                 pinned=note.pinned,
                 tags=note.tags,
@@ -90,22 +87,18 @@ class TestDataService:
         scratchpad_note = NotesService.get_note_by_title(
             db, user_id, SCRATCHPAD_TITLE, mark_opened=False
         )
-        canonical_scratchpad = canonical_note_content_from_plain_text(plan.scratchpad)
         if scratchpad_note:
             NotesService.update_note(
                 db,
                 user_id,
                 scratchpad_note.id,
-                canonical_scratchpad.content,
-                plain_text=canonical_scratchpad.plain_text,
+                note_document_from_plain_text(plan.scratchpad),
             )
         else:
             NotesService.create_note(
                 db,
                 user_id,
-                content=canonical_scratchpad.content,
-                plain_text=canonical_scratchpad.plain_text,
-                title=SCRATCHPAD_TITLE,
+                note_document_from_plain_text(plan.scratchpad),
                 folder="",
                 tags=["scratchpad"],
             )
@@ -269,16 +262,11 @@ class TestDataService:
 
         if targets["scratchpad"]:
             scratchpad_note = targets["scratchpad"]
-            canonical_reset = canonical_note_content_from_plain_text(
-                f"# {SCRATCHPAD_TITLE}\n\n"
-            )
             NotesService.update_note(
                 db,
                 user_id,
                 scratchpad_note.id,
-                canonical_reset.content,
-                plain_text=canonical_reset.plain_text,
-                title=SCRATCHPAD_TITLE,
+                note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
             )
 
         for website in targets["websites"]:

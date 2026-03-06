@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
+from api.services.notes_document_types import note_document_from_plain_text
 from api.services import notes_helpers
 
 
@@ -11,6 +12,8 @@ def _note() -> SimpleNamespace:
         user_id="user-1",
         title="Note",
         content="abc",
+        document=note_document_from_plain_text("Body"),
+        document_version=1,
         plain_text="Body",
         content_format="rtf",
         folder_path="Work",
@@ -33,8 +36,9 @@ def test_note_conflict_payload_uses_explicit_note_columns():
     server_note = payload["serverNote"]
 
     assert server_note["title"] == "Note"
+    assert server_note["document"] == note_document_from_plain_text("Body")
+    assert server_note["document_version"] == 1
     assert server_note["plain_text"] == "Body"
-    assert server_note["content_format"] == "rtf"
     assert server_note["folder"] == "Work"
     assert server_note["pinned"] is True
     assert server_note["pinned_order"] == 2

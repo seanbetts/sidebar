@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Scratchpad Clear
+# ruff: noqa: D103, D415, T201
+"""Scratchpad Clear.
 
 Clear the scratchpad content while keeping the title.
 """
@@ -14,7 +15,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.notes_content_codec import canonical_note_content_from_plain_text
+    from api.services.notes_document_types import note_document_from_plain_text
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -28,7 +29,7 @@ def clear_scratchpad(user_id: str) -> dict:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
-    canonical = canonical_note_content_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n")
+    document = note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n")
 
     set_session_user_id(db, user_id)
     try:
@@ -39,9 +40,7 @@ def clear_scratchpad(user_id: str) -> dict:
             note = NotesService.create_note(
                 db,
                 user_id,
-                content=canonical.content,
-                plain_text=canonical.plain_text,
-                title=SCRATCHPAD_TITLE,
+                document=document,
                 folder="",
             )
         else:
@@ -49,9 +48,7 @@ def clear_scratchpad(user_id: str) -> dict:
                 db,
                 user_id,
                 note.id,
-                canonical.content,
-                plain_text=canonical.plain_text,
-                title=SCRATCHPAD_TITLE,
+                document=document,
             )
 
         return {"id": str(note.id), "title": note.title}

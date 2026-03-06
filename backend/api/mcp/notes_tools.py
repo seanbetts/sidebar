@@ -6,7 +6,8 @@ import json
 import time
 
 from api.security.audit_logger import AuditLogger
-from api.services.notes_title import derive_note_title
+from api.services.notes_document_types import note_document_from_plain_text
+from api.services.notes_title import derive_note_title_from_document
 
 
 def register_notes_tools(mcp, executor, default_user_id: str) -> None:
@@ -34,7 +35,9 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
             tags: Optional list of tags.
         """
         start_time = time.time()
-        resolved_title = derive_note_title(content)
+        resolved_title = derive_note_title_from_document(
+            note_document_from_plain_text(content)
+        )
 
         args = [
             resolved_title,
@@ -71,7 +74,9 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
     ) -> str:
         """Update existing note (replace content)."""
         start_time = time.time()
-        resolved_title = derive_note_title(content)
+        resolved_title = derive_note_title_from_document(
+            note_document_from_plain_text(content)
+        )
 
         args = [
             resolved_title,

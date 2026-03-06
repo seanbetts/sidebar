@@ -9,7 +9,7 @@ from api.auth import bearer_scheme, verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError
-from api.services.notes_content_codec import canonical_note_content_from_plain_text
+from api.services.notes_document_types import note_document_from_plain_text
 from api.services.notes_service import NotesService
 
 router = APIRouter(prefix="/scratchpad", tags=["scratchpad"])
@@ -95,13 +95,10 @@ def get_scratchpad(
         db, user_id, SCRATCHPAD_TITLE, mark_opened=True
     )
     if not note:
-        canonical = canonical_note_content_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n")
         note = NotesService.create_note(
             db,
             user_id,
-            content=canonical.content,
-            plain_text=canonical.plain_text,
-            title=SCRATCHPAD_TITLE,
+            note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
             folder="",
         )
 
@@ -148,27 +145,21 @@ def update_scratchpad(
         db, user_id, SCRATCHPAD_TITLE, mark_opened=False
     )
     if not note:
-        canonical = canonical_note_content_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n")
         note = NotesService.create_note(
             db,
             user_id,
-            content=canonical.content,
-            plain_text=canonical.plain_text,
-            title=SCRATCHPAD_TITLE,
+            note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
             folder="",
         )
 
     if mode_raw is None and not strip_heading(content):
         mode = "replace"
     merged_content = merge_content(_note_plain_text(note), content, mode)
-    canonical = canonical_note_content_from_plain_text(merged_content)
     updated = NotesService.update_note(
         db,
         user_id,
         note.id,
-        canonical.content,
-        plain_text=canonical.plain_text,
-        title=SCRATCHPAD_TITLE,
+        note_document_from_plain_text(merged_content),
     )
 
     return {"success": True, "id": str(updated.id)}
@@ -193,14 +184,11 @@ def clear_scratchpad(
     note = NotesService.get_note_by_title(
         db, user_id, SCRATCHPAD_TITLE, mark_opened=False
     )
-    canonical = canonical_note_content_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n")
     if not note:
         note = NotesService.create_note(
             db,
             user_id,
-            content=canonical.content,
-            plain_text=canonical.plain_text,
-            title=SCRATCHPAD_TITLE,
+            note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
             folder="",
         )
     else:
@@ -208,9 +196,7 @@ def clear_scratchpad(
             db,
             user_id,
             note.id,
-            canonical.content,
-            plain_text=canonical.plain_text,
-            title=SCRATCHPAD_TITLE,
+            note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
         )
 
     return {"success": True, "id": str(note.id)}

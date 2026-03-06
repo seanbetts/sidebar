@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from api.config import settings
 from api.models.note import Note
-from api.services.notes_content_codec import canonical_note_content_from_plain_text
+from api.services.notes_document_types import note_document_from_plain_text
 
 from tests.helpers import error_message
 
@@ -15,12 +15,8 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
 
 
-def _canonical_payload(plain_text: str) -> dict[str, str]:
-    canonical = canonical_note_content_from_plain_text(plain_text)
-    return {
-        "content": canonical.content,
-        "plain_text": canonical.plain_text,
-    }
+def _document_payload(plain_text: str) -> dict[str, object]:
+    return {"document": note_document_from_plain_text(plain_text)}
 
 
 def test_notes_search_requires_query(test_client):
@@ -32,8 +28,7 @@ def test_notes_search_requires_query(test_client):
 
 
 def test_notes_search_matches_plain_text_cache(test_client):
-    create_payload = _canonical_payload("# Searchable\n\nAlpha Needle Body")
-    create_payload["title"] = "Searchable"
+    create_payload = _document_payload("# Searchable\n\nAlpha Needle Body")
     create = test_client.post(
         "/api/notes",
         json=create_payload,
@@ -57,14 +52,14 @@ def test_notes_create_folder_requires_path(test_client):
     assert error_message(response) == "path required"
 
 
-def test_notes_create_requires_plain_text(test_client):
+def test_notes_create_requires_document(test_client):
     response = test_client.post(
         "/api/notes",
-        json={"content": "not-canonical"},
+        json={"plain_text": "missing document"},
         headers=_auth_headers(),
     )
     assert response.status_code == 400
-    assert error_message(response) == "plain_text required"
+    assert error_message(response) == "document required"
 
 
 def test_notes_get_invalid_id(test_client):
@@ -77,13 +72,15 @@ def test_notes_get_invalid_id(test_client):
 
 def test_notes_get_success(test_client, test_db):
     note_id = uuid.uuid4()
-    canonical = _canonical_payload("# Sample Note\n\nBody")
+    document = note_document_from_plain_text("# Sample Note\n\nBody")
     note = Note(
         id=note_id,
         user_id=TEST_USER_ID,
         title="Sample Note",
-        content=canonical["content"],
-        plain_text=canonical["plain_text"],
+        content="",
+        document=document,
+        document_version=1,
+        plain_text="# Sample Note\n\nBody",
         content_format="rtf",
         folder_path="",
         pinned=False,
@@ -101,18 +98,20 @@ def test_notes_get_success(test_client, test_db):
     assert body["path"] == str(note_id)
     assert body["folder"] == ""
     assert body["pinned"] is False
-    assert "content" in body
+    assert body["document"] == document
+    assert body["document_version"] == 1
 
 
 def test_notes_download_handles_unicode_filename(test_client, test_db):
     note_id = uuid.uuid4()
-    canonical = _canonical_payload("# Codex Log\n\nBody")
     note = Note(
         id=note_id,
         user_id=TEST_USER_ID,
         title="Codex Log🦞",
-        content=canonical["content"],
-        plain_text=canonical["plain_text"],
+        content="",
+        document=note_document_from_plain_text("# Codex Log\n\nBody"),
+        document_version=1,
+        plain_text="# Codex Log\n\nBody",
         content_format="rtf",
         folder_path="",
         pinned=False,
@@ -135,7 +134,7 @@ def test_notes_download_handles_unicode_filename(test_client, test_db):
 
 def test_notes_create_and_update_derive_title_from_plain_text(test_client):
     created_content = "# Title\n\nBody"
-    create_payload = _canonical_payload(created_content)
+    create_payload = _document_payload(created_content)
     create = test_client.post(
         "/api/notes",
         json=create_payload,
@@ -146,12 +145,12 @@ def test_notes_create_and_update_derive_title_from_plain_text(test_client):
     note_id = created_payload["id"]
     assert created_payload["title"] == "Title"
     assert created_payload["plain_text"] == created_content
-    assert created_payload["content_format"] == "rtf"
+    assert created_payload["document"] == note_document_from_plain_text(created_content)
     assert created_payload["folder"] == ""
     assert created_payload["pinned"] is False
 
     updated_content = "\n\nUpdated Title\nUpdated body"
-    update_payload = _canonical_payload(updated_content)
+    update_payload = _document_payload(updated_content)
     update = test_client.patch(
         f"/api/notes/{note_id}",
         json=update_payload,
@@ -161,12 +160,12 @@ def test_notes_create_and_update_derive_title_from_plain_text(test_client):
     updated_payload = update.json()
     assert updated_payload["title"] == "Updated Title"
     assert updated_payload["plain_text"] == updated_content
-    assert updated_payload["content_format"] == "rtf"
+    assert updated_payload["document"] == note_document_from_plain_text(updated_content)
     assert updated_payload["folder"] == ""
 
 
 def test_notes_rename_is_rejected(test_client):
-    create_payload = _canonical_payload("# Title\n\nBody")
+    create_payload = _document_payload("# Title\n\nBody")
     create = test_client.post(
         "/api/notes",
         json=create_payload,
@@ -184,8 +183,21 @@ def test_notes_rename_is_rejected(test_client):
     assert error_message(rename) == "Note titles are derived from note content"
 
 
-def test_notes_update_requires_plain_text(test_client):
-    create_payload = _canonical_payload("# Title\n\nBody")
+def test_notes_create_rejects_explicit_title(test_client):
+    response = test_client.post(
+        "/api/notes",
+        json={
+            "document": note_document_from_plain_text("# Title\n\nBody"),
+            "title": "Manual Title",
+        },
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 400
+    assert error_message(response) == "Note titles are derived from note content"
+
+
+def test_notes_update_requires_document(test_client):
+    create_payload = _document_payload("# Title\n\nBody")
     create = test_client.post(
         "/api/notes",
         json=create_payload,
@@ -194,18 +206,17 @@ def test_notes_update_requires_plain_text(test_client):
     assert create.status_code == 200
     note_id = create.json()["id"]
 
-    canonical_update = _canonical_payload("# Title\n\nUpdated")
     response = test_client.patch(
         f"/api/notes/{note_id}",
-        json={"content": canonical_update["content"]},
+        json={"plain_text": "# Title\n\nUpdated"},
         headers=_auth_headers(),
     )
     assert response.status_code == 400
-    assert error_message(response) == "plain_text required"
+    assert error_message(response) == "document required"
 
 
 def test_notes_pin_move_archive(test_client, test_db):
-    create_payload = _canonical_payload("# Title\n\nBody")
+    create_payload = _document_payload("# Title\n\nBody")
     create = test_client.post(
         "/api/notes",
         json=create_payload,
@@ -254,7 +265,7 @@ def test_notes_pin_move_archive(test_client, test_db):
 
 
 def test_notes_delete_unpins_note(test_client, test_db):
-    create_payload = _canonical_payload("# Delete Me\n\nBody")
+    create_payload = _document_payload("# Delete Me\n\nBody")
     create = test_client.post(
         "/api/notes",
         json=create_payload,
@@ -281,7 +292,7 @@ def test_notes_delete_unpins_note(test_client, test_db):
 
 
 def test_notes_sync_returns_updates_items_payload(test_client):
-    create_payload = _canonical_payload("# Sync\n\nBody")
+    create_payload = _document_payload("# Sync\n\nBody")
     create = test_client.post(
         "/api/notes",
         json=create_payload,

@@ -38,10 +38,8 @@ class NotesService:
     def create_note(
         db: Session,
         user_id: str,
-        content: str,
+        document: dict[str, object],
         *,
-        plain_text: str,
-        title: str | None = None,
         folder: str = "",
         pinned: bool = False,
         tags: list[str] | None = None,
@@ -52,9 +50,7 @@ class NotesService:
         Args:
             db: Database session.
             user_id: Current user ID.
-            content: Canonical Base64 RTF content.
-            plain_text: Canonical plain-text cache.
-            title: Deprecated explicit note title. Title is derived from plain_text.
+            document: Canonical semantic note document.
             folder: Folder path. Defaults to "".
             pinned: Whether the note is pinned. Defaults to False.
             tags: Optional list of tags.
@@ -64,8 +60,7 @@ class NotesService:
             Newly created Note.
         """
         now = datetime.now(UTC)
-        canonical_write = build_canonical_note_write(content, plain_text)
-        resolved_title = derive_note_title(canonical_write.plain_text)
+        canonical_write = build_canonical_note_write(document)
         normalized_folder = (folder or "").strip("/")
         metadata: dict[str, object] = {}
         if tags:
@@ -79,10 +74,12 @@ class NotesService:
             if existing:
                 if existing.deleted_at is not None:
                     existing.deleted_at = None
-                    existing.title = resolved_title
-                    existing.content = canonical_write.content
+                    existing.title = canonical_write.title
+                    existing.content = canonical_write.legacy_content
+                    existing.document = canonical_write.document
+                    existing.document_version = canonical_write.document_version
                     existing.plain_text = canonical_write.plain_text
-                    existing.content_format = "rtf"
+                    existing.content_format = canonical_write.legacy_content_format
                     existing.folder_path = normalized_folder
                     existing.pinned = bool(pinned)
                     existing.pinned_order = None
@@ -98,10 +95,12 @@ class NotesService:
         note = Note(
             id=note_id or uuid.uuid4(),
             user_id=user_id,
-            title=resolved_title,
-            content=canonical_write.content,
+            title=canonical_write.title,
+            content=canonical_write.legacy_content,
+            document=canonical_write.document,
+            document_version=canonical_write.document_version,
             plain_text=canonical_write.plain_text,
-            content_format="rtf",
+            content_format=canonical_write.legacy_content_format,
             folder_path=normalized_folder,
             pinned=bool(pinned),
             pinned_order=None,
@@ -138,9 +137,8 @@ class NotesService:
         db: Session,
         user_id: str,
         note_id: uuid.UUID,
-        content: str,
+        document: dict[str, object],
         *,
-        plain_text: str,
         client_updated_at: datetime | None = None,
     ) -> Note:
         """Update a note's content and derived title.
@@ -149,8 +147,7 @@ class NotesService:
             db: Database session.
             user_id: Current user ID.
             note_id: Note UUID.
-            content: Canonical Base64 RTF content.
-            plain_text: Canonical plain-text cache.
+            document: Canonical semantic note document.
             client_updated_at: Optional client timestamp for conflict checks.
 
         Returns:
@@ -173,11 +170,13 @@ class NotesService:
 
         ensure_note_no_conflict(note, client_updated_at, op="update")
 
-        canonical_write = build_canonical_note_write(content, plain_text)
-        note.title = derive_note_title(canonical_write.plain_text)
-        note.content = canonical_write.content
+        canonical_write = build_canonical_note_write(document)
+        note.title = canonical_write.title
+        note.content = canonical_write.legacy_content
+        note.document = canonical_write.document
+        note.document_version = canonical_write.document_version
         note.plain_text = canonical_write.plain_text
-        note.content_format = "rtf"
+        note.content_format = canonical_write.legacy_content_format
         note.updated_at = datetime.now(UTC)
         db.commit()
         return note

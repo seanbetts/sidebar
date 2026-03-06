@@ -7,6 +7,7 @@ from datetime import datetime
 
 from api.exceptions import ConflictError
 from api.models.note import Note
+from api.services.notes_document_types import note_document_from_plain_text
 
 
 def build_notes_tree(notes: Iterable[Note]) -> dict[str, object]:
@@ -88,9 +89,10 @@ def _conflict_server_note_payload(note: Note) -> dict[str, object]:
     return {
         "id": str(note.id),
         "title": note.title,
-        "content": note.content or "",
+        "document": note.document
+        or note_document_from_plain_text(note.plain_text or ""),
+        "document_version": note.document_version,
         "plain_text": note.plain_text or "",
-        "content_format": note.content_format or "rtf",
         "folder": (note.folder_path or "").strip("/"),
         "pinned": bool(note.pinned),
         "pinned_order": note.pinned_order,

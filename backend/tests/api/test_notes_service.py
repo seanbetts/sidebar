@@ -2,8 +2,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from api.exceptions import ConflictError
+from api.services.notes_document_types import note_document_from_plain_text
 from api.schemas.filters import NoteFilters
-from api.services.notes_content_codec import canonical_note_content_from_plain_text
 from api.services.notes_service import NotesService
 from api.services.notes_write_contract import is_canonical_base64_rtf
 
@@ -13,20 +13,16 @@ def db_session(test_db):
     return test_db
 
 
-def _canonical_pair(plain_text: str) -> tuple[str, str]:
-    canonical = canonical_note_content_from_plain_text(plain_text)
-    return canonical.content, canonical.plain_text
+def _document(plain_text: str) -> dict[str, object]:
+    return note_document_from_plain_text(plain_text)
 
 
 def test_create_and_read_note(db_session):
     content = "# Test Note\n\nBody"
-    canonical_content, canonical_plain_text = _canonical_pair(content)
     note = NotesService.create_note(
         db_session,
         "test_user",
-        canonical_content,
-        plain_text=canonical_plain_text,
-        title="Test Note",
+        _document(content),
         folder="Work",
     )
 
@@ -34,6 +30,8 @@ def test_create_and_read_note(db_session):
     fetched = NotesService.get_note(db_session, "test_user", note.id, mark_opened=True)
     assert fetched is not None
     assert fetched.title == "Test Note"
+    assert fetched.document == _document(content)
+    assert fetched.document_version == 1
     assert is_canonical_base64_rtf(fetched.content) is True
     assert fetched.plain_text == content
     assert fetched.content_format == "rtf"
@@ -41,36 +39,30 @@ def test_create_and_read_note(db_session):
 
 
 def test_update_note_title(db_session):
-    original_content, original_plain_text = _canonical_pair("# Old Title\n\nBody")
     note = NotesService.create_note(
         db_session,
         "test_user",
-        original_content,
-        plain_text=original_plain_text,
-        title="Old Title",
+        _document("# Old Title\n\nBody"),
     )
-    updated_content, updated_plain_text = _canonical_pair("# New Title\n\nBody")
     updated = NotesService.update_note(
         db_session,
         "test_user",
         note.id,
-        updated_content,
-        plain_text=updated_plain_text,
-        title="New Title",
+        _document("# New Title\n\nBody"),
     )
 
     assert updated.title == "New Title"
+    assert updated.document == _document("# New Title\n\nBody")
+    assert updated.document_version == 1
     assert is_canonical_base64_rtf(updated.content) is True
     assert updated.plain_text == "# New Title\n\nBody"
 
 
 def test_update_folder_and_pinned(db_session):
-    content, plain_text = _canonical_pair("# Folder Note\n\nBody")
     note = NotesService.create_note(
         db_session,
         "test_user",
-        content,
-        plain_text=plain_text,
+        _document("# Folder Note\n\nBody"),
     )
     moved = NotesService.update_folder(
         db_session, "test_user", note.id, "Projects/Alpha"
@@ -82,19 +74,15 @@ def test_update_folder_and_pinned(db_session):
 
 
 def test_update_pinned_assigns_next_order(db_session):
-    content_a, plain_text_a = _canonical_pair("# Alpha\n\nBody")
-    content_b, plain_text_b = _canonical_pair("# Beta\n\nBody")
     note_a = NotesService.create_note(
         db_session,
         "test_user",
-        content_a,
-        plain_text=plain_text_a,
+        _document("# Alpha\n\nBody"),
     )
     note_b = NotesService.create_note(
         db_session,
         "test_user",
-        content_b,
-        plain_text=plain_text_b,
+        _document("# Beta\n\nBody"),
     )
 
     pinned_a = NotesService.update_pinned(db_session, "test_user", note_a.id, True)
@@ -105,12 +93,10 @@ def test_update_pinned_assigns_next_order(db_session):
 
 
 def test_update_folder_can_clear_pinned_state(db_session):
-    content, plain_text = _canonical_pair("# Move Me\n\nBody")
     note = NotesService.create_note(
         db_session,
         "test_user",
-        content,
-        plain_text=plain_text,
+        _document("# Move Me\n\nBody"),
     )
     NotesService.update_pinned(db_session, "test_user", note.id, True)
 
@@ -131,22 +117,16 @@ def test_list_notes_filters(db_session):
     now = datetime.now(UTC)
     earlier = now - timedelta(days=2)
 
-    content_a, plain_text_a = _canonical_pair("# Alpha\n\nBody")
-    content_b, plain_text_b = _canonical_pair("# Beta\n\nBody")
     note_a = NotesService.create_note(
         db_session,
         "test_user",
-        content_a,
-        plain_text=plain_text_a,
-        title="Alpha",
+        _document("# Alpha\n\nBody"),
         folder="Work",
     )
     note_b = NotesService.create_note(
         db_session,
         "test_user",
-        content_b,
-        plain_text=plain_text_b,
-        title="Beta",
+        _document("# Beta\n\nBody"),
         folder="Archive/Old",
     )
     NotesService.update_pinned(db_session, "test_user", note_a.id, True)
@@ -183,20 +163,16 @@ def test_archived_summary(db_session):
     now = datetime.now(UTC)
     archived_at = now - timedelta(hours=2)
 
-    archived_content, archived_plain_text = _canonical_pair("# Archived\n\nBody")
     archived_note = NotesService.create_note(
         db_session,
         "test_user",
-        archived_content,
-        plain_text=archived_plain_text,
+        _document("# Archived\n\nBody"),
         folder="Archive/Old",
     )
-    active_content, active_plain_text = _canonical_pair("# Active\n\nBody")
     NotesService.create_note(
         db_session,
         "test_user",
-        active_content,
-        plain_text=active_plain_text,
+        _document("# Active\n\nBody"),
         folder="Work",
     )
 
@@ -212,12 +188,10 @@ def test_archived_summary(db_session):
 
 
 def test_soft_delete_note_clears_pinned_state(db_session):
-    content, plain_text = _canonical_pair("# Delete Me\n\nBody")
     note = NotesService.create_note(
         db_session,
         "test_user",
-        content,
-        plain_text=plain_text,
+        _document("# Delete Me\n\nBody"),
     )
     NotesService.update_pinned(db_session, "test_user", note.id, True)
 
@@ -230,22 +204,18 @@ def test_soft_delete_note_clears_pinned_state(db_session):
 
 
 def test_update_note_conflict(db_session):
-    original_content, original_plain_text = _canonical_pair("# Title\n\nBody")
     note = NotesService.create_note(
         db_session,
         "test_user",
-        original_content,
-        plain_text=original_plain_text,
+        _document("# Title\n\nBody"),
     )
     stale = note.updated_at - timedelta(seconds=10)
-    updated_content, updated_plain_text = _canonical_pair("# Title\n\nUpdated")
 
     with pytest.raises(ConflictError):
         NotesService.update_note(
             db_session,
             "test_user",
             note.id,
-            updated_content,
-            plain_text=updated_plain_text,
+            _document("# Title\n\nUpdated"),
             client_updated_at=stale,
         )
