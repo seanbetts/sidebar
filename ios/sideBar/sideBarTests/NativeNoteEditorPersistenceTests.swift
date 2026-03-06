@@ -39,9 +39,6 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let reloadedRange = noteCharacterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertTrue(noteRangeHasBoldTrait(reloaded.attributedContent, range: reloadedRange))
-#if os(macOS)
-        XCTAssertTrue(noteRangeHasBridgedBoldPlatformFont(reloaded.attributedContent, range: reloadedRange))
-#endif
     }
 
     func testPersistenceSnapshotRoundTripPreservesItalicFormatting() async {
@@ -56,9 +53,6 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let reloadedRange = noteCharacterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertTrue(noteRangeHasItalicTrait(reloaded.attributedContent, range: reloadedRange))
-#if os(macOS)
-        XCTAssertTrue(noteRangeHasBridgedItalicPlatformFont(reloaded.attributedContent, range: reloadedRange))
-#endif
     }
 
     func testPersistenceSnapshotRoundTripPreservesUnderlineFormatting() async {
@@ -89,9 +83,6 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let range = noteCharacterRange(length: 4, in: viewModel.attributedContent)
 
         XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: range))
-#if os(macOS)
-        XCTAssertTrue(noteRangeHasBridgedBoldPlatformFont(viewModel.attributedContent, range: range))
-#endif
     }
 
     func testLoadDocumentPreservesExternallyEncodedItalicFormatting() async throws {
@@ -108,9 +99,6 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let range = noteCharacterRange(length: 6, in: viewModel.attributedContent)
 
         XCTAssertTrue(noteRangeHasItalicTrait(viewModel.attributedContent, range: range))
-#if os(macOS)
-        XCTAssertTrue(noteRangeHasBridgedItalicPlatformFont(viewModel.attributedContent, range: range))
-#endif
     }
 
     func testPersistenceSnapshotRoundTripPreservesSwiftUIFontOnlyBoldFormatting() async {
@@ -170,9 +158,6 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let range = noteCharacterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertFalse(noteRangeHasBoldTrait(reloaded.attributedContent, range: range))
-#if os(macOS)
-        XCTAssertFalse(noteRangeHasBridgedBoldPlatformFont(reloaded.attributedContent, range: range))
-#endif
     }
 
     func testPersistenceSnapshotRoundTripRemovesItalicFormattingWhenToggledOff() async {
@@ -180,9 +165,6 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let range = noteCharacterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertFalse(noteRangeHasItalicTrait(reloaded.attributedContent, range: range))
-#if os(macOS)
-        XCTAssertFalse(noteRangeHasBridgedItalicPlatformFont(reloaded.attributedContent, range: range))
-#endif
     }
 
     func testPersistenceSnapshotRoundTripRemovesUnderlineFormattingWhenToggledOff() async {
@@ -231,6 +213,36 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] != nil
         })
     }
+
+    func testCurrentPersistenceSnapshotIsIdempotentAcrossRepeatedCalls() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+        viewModel.applyFormatting(.bold)
+        viewModel.applyFormatting(.underline)
+
+        let first = viewModel.currentPersistenceSnapshot()
+        let second = viewModel.currentPersistenceSnapshot()
+
+        XCTAssertEqual(first.plainText, second.plainText)
+        XCTAssertEqual(first.canonicalContent, second.canonicalContent)
+    }
+
+#if os(macOS)
+    func testPersistenceRoundTripDoesNotMirrorPlatformFontTraitsIntoLiveDocument() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+        viewModel.applyFormatting(.bold)
+
+        let reloaded = reloadedViewModel(from: viewModel.currentPersistenceSnapshot())
+        let reloadedRange = noteCharacterRange(length: 5, in: reloaded.attributedContent)
+
+        XCTAssertFalse(noteRangeHasBridgedBoldPlatformFont(reloaded.attributedContent, range: reloadedRange))
+    }
+#endif
 
     private func roundTripAfterToggleOff(_ formatting: NoteFormatting) -> NativeNoteEditorViewModel {
         let viewModel = NativeNoteEditorViewModel()

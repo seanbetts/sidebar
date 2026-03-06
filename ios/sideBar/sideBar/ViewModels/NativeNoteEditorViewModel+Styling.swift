@@ -79,7 +79,7 @@ extension NativeNoteEditorViewModel {
     }
 
     func inlineFormattingState(from attrs: AttributeContainer) -> InlineFormattingState {
-        let swiftUIFontTraits = inlineTraits(from: attrs.font, fallbackAttributes: attrs)
+        let swiftUIFontTraits = noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: attrs))
         return InlineFormattingState(
             bold: swiftUIFontTraits.bold,
             italic: swiftUIFontTraits.italic,
@@ -88,7 +88,7 @@ extension NativeNoteEditorViewModel {
     }
 
     func inlineFormattingState(from run: AttributedString.Runs.Run) -> InlineFormattingState {
-        let swiftUIFontTraits = inlineTraits(from: run.font, fallbackAttributes: run.attributes)
+        let swiftUIFontTraits = noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
         return InlineFormattingState(
             bold: swiftUIFontTraits.bold,
             italic: swiftUIFontTraits.italic,
@@ -102,21 +102,6 @@ extension NativeNoteEditorViewModel {
     ) {
         let font = inlineStyledFont(bold: state.bold, italic: state.italic)
         setFont(font, in: &attrs)
-#if os(macOS)
-        var sample = AttributedString("x")
-        let sampleRange = sample.startIndex..<sample.endIndex
-        sample[sampleRange].mergeAttributes(attrs)
-        sample[sampleRange].mergeAttributes(
-            notePlatformFontMirrorAttributes(
-                baseFontSize: baseFontSize,
-                bold: state.bold,
-                italic: state.italic
-            )
-        )
-        if let merged = sample.runs.first?.attributes {
-            attrs = merged
-        }
-#endif
         attrs.underlineStyle = state.underline ? .single : nil
         attrs.strikethroughStyle = nil
         attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
@@ -130,39 +115,9 @@ extension NativeNoteEditorViewModel {
     ) {
         let font = inlineStyledFont(bold: state.bold, italic: state.italic)
         setFont(font, in: &text, range: range)
-#if os(macOS)
-        text[range].mergeAttributes(
-            notePlatformFontMirrorAttributes(
-                baseFontSize: baseFontSize,
-                bold: state.bold,
-                italic: state.italic
-            )
-        )
-#endif
         text[range].underlineStyle = state.underline ? .single : nil
         text[range].strikethroughStyle = nil
         text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
         text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
-    }
-
-    private func inlineTraits(
-        from font: Font?,
-        fallbackAttributes: AttributeContainer
-    ) -> InlineFormattingTraits {
-        let traits = noteSwiftUIFontTraits(from: font)
-        let fallbackTraits = noteBridgedPlatformFont(from: fallbackAttributes)
-            .map(notePlatformFontTraits(from:))
-            ?? .plain
-        return InlineFormattingTraits(
-            bold: traits.bold || fallbackTraits.bold,
-            italic: traits.italic || fallbackTraits.italic
-        )
-    }
-
-    private struct InlineFormattingTraits {
-        let bold: Bool
-        let italic: Bool
-
-        static let plain = InlineFormattingTraits(bold: false, italic: false)
     }
 }

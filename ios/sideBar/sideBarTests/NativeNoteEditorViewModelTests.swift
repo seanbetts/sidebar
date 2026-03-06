@@ -13,17 +13,11 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
 
         viewModel.applyFormatting(.bold)
         XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: range))
-#if os(macOS)
-        XCTAssertTrue(noteRangeHasBridgedBoldPlatformFont(viewModel.attributedContent, range: range))
-#endif
 
         viewModel.selection = AttributedTextSelection(range: noteCharacterRange(length: 5, in: viewModel.attributedContent))
         viewModel.applyFormatting(.bold)
         let updatedRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
         XCTAssertFalse(noteRangeHasBoldTrait(viewModel.attributedContent, range: updatedRange))
-#if os(macOS)
-        XCTAssertFalse(noteRangeHasBridgedBoldPlatformFont(viewModel.attributedContent, range: updatedRange))
-#endif
     }
 
     func testApplyFormattingItalicTogglesSelectedRangeFontTraits() async {
@@ -34,18 +28,44 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
 
         viewModel.applyFormatting(.italic)
         XCTAssertTrue(noteRangeHasItalicTrait(viewModel.attributedContent, range: range))
-#if os(macOS)
-        XCTAssertTrue(noteRangeHasBridgedItalicPlatformFont(viewModel.attributedContent, range: range))
-#endif
 
         viewModel.selection = AttributedTextSelection(range: noteCharacterRange(length: 5, in: viewModel.attributedContent))
         viewModel.applyFormatting(.italic)
         let updatedRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
         XCTAssertFalse(noteRangeHasItalicTrait(viewModel.attributedContent, range: updatedRange))
-#if os(macOS)
-        XCTAssertFalse(noteRangeHasBridgedItalicPlatformFont(viewModel.attributedContent, range: updatedRange))
-#endif
     }
+
+    func testApplyFormattingPreservesSelectionAfterSelectedRangeMutation() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello world")
+        let start = viewModel.attributedContent.index(viewModel.attributedContent.startIndex, offsetByCharacters: 6)
+        let end = viewModel.attributedContent.index(start, offsetByCharacters: 5)
+        let selectedRange = start..<end
+        viewModel.selection = AttributedTextSelection(range: selectedRange)
+
+        viewModel.applyFormatting(.underline)
+
+        guard case .ranges(let ranges) = viewModel.selection.indices(in: viewModel.attributedContent) else {
+            return XCTFail("Expected a selected range")
+        }
+        XCTAssertEqual(ranges.ranges.first, selectedRange)
+        XCTAssertTrue(noteRangeIsUnderlined(viewModel.attributedContent, range: selectedRange))
+    }
+
+#if os(macOS)
+    func testApplyFormattingDoesNotMirrorPlatformFontTraitsIntoLiveDocument() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+
+        viewModel.applyFormatting(.bold)
+        viewModel.selection = AttributedTextSelection(range: noteCharacterRange(length: 5, in: viewModel.attributedContent))
+        let updatedRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+
+        XCTAssertFalse(noteRangeHasBridgedBoldPlatformFont(viewModel.attributedContent, range: updatedRange))
+    }
+#endif
 
     func testApplyFormattingBoldTogglesTypingAttributesAtInsertionPoint() async {
         let viewModel = NativeNoteEditorViewModel()

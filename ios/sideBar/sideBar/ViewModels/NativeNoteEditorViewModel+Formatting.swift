@@ -34,23 +34,14 @@ extension NativeNoteEditorViewModel {
         }
     }
 
-    func normalizeDocumentForRuntime(from source: AttributedString) -> AttributedString {
+    func constrainedEditorDocument(from source: AttributedString) -> AttributedString {
         var normalized = source
-        normalizeDocumentForRuntime(&normalized)
+        constrainEditorDocument(&normalized)
         return normalized
     }
 
-    func normalizeDocumentForRuntime(_ text: inout AttributedString) {
+    func constrainEditorDocument(_ text: inout AttributedString) {
         NoteTextFormattingDefinition(baseFontSize: baseFontSize).constrainDocument(&text)
-        let runs = formattingRunSnapshots(in: text)
-        for snapshot in runs {
-            let range = attributedRange(for: snapshot.range, in: text)
-            applyInlineFormattingState(snapshot.state, to: &text, range: range)
-        }
-        guard !text.characters.isEmpty else { return }
-        text[text.startIndex..<text.endIndex].paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
-            baseFontSize: baseFontSize
-        )
     }
 
     func isFormattingActive(_ formatting: NoteFormatting) -> Bool {
@@ -108,15 +99,17 @@ extension NativeNoteEditorViewModel {
             return
         }
 
-        let runSnapshots = nonEmptyRanges.flatMap { range in
-            formattingRunSnapshots(in: attributedContent, within: range)
-        }
-        for snapshot in runSnapshots {
-            let range = attributedRange(for: snapshot.range, in: attributedContent)
-            var state = snapshot.state
+        let selectionSnapshot = selectionSnapshot(in: attributedContent)
+        var updatedSelection = selection
+        attributedContent.transformAttributes(in: &updatedSelection) { attrs in
+            var state = inlineFormattingState(from: attrs)
             state.set(formatting, enabled: enabled)
-            applyInlineFormattingState(state, to: &attributedContent, range: range)
+            applyInlineFormattingState(state, to: &attrs)
+            attrs.paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize
+            )
         }
+        selection = selection(from: selectionSnapshot, in: attributedContent)
     }
 
     private func rangeHasFormatting(

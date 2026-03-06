@@ -1,5 +1,10 @@
 import XCTest
 import SwiftUI
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 @testable import sideBar
 
 @MainActor
@@ -40,5 +45,20 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
             baseFontSize: 24
         )
         XCTAssertEqual(noteFirstRunPointSize(inCanonicalRTF: exported ?? "") ?? 0, 24, accuracy: 1.0)
+    }
+
+    func testConstrainDocumentDoesNotPromoteBridgedPlatformFontTraitsWithoutSwiftUIFont() {
+        var content = AttributedString("hello")
+        let range = content.startIndex..<content.endIndex
+#if os(iOS)
+        content[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = UIFont.boldSystemFont(ofSize: 14)
+#elseif os(macOS)
+        content[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = NSFont.systemFont(ofSize: 14, weight: .bold)
+#endif
+        content[range].font = nil
+
+        NoteTextFormattingDefinition(baseFontSize: 20).constrainDocument(&content)
+
+        XCTAssertFalse(noteRangeHasBoldTrait(content, range: range))
     }
 }

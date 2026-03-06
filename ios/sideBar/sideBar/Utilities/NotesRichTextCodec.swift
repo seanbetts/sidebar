@@ -63,6 +63,7 @@ enum NotesRichTextCodec {
             return nil
         }
         var normalized = AttributedString(attributed)
+        syncSwiftUIFonts(from: attributed, into: &normalized)
         syncUnderlineStyles(from: attributed, into: &normalized)
         return normalized
     }
@@ -200,6 +201,29 @@ enum NotesRichTextCodec {
             let lower = text.index(text.startIndex, offsetByCharacters: lowerOffset)
             let upper = text.index(text.startIndex, offsetByCharacters: upperOffset)
             text[lower..<upper].underlineStyle = .single
+        }
+    }
+
+    private static func syncSwiftUIFonts(
+        from source: NSAttributedString,
+        into text: inout AttributedString
+    ) {
+        let plainText = source.string
+        guard !plainText.isEmpty else { return }
+
+        source.enumerateAttribute(.font, in: NSRange(location: 0, length: source.length)) { value, range, _ in
+            guard let font = value as? NotePlatformFont else { return }
+            guard let stringRange = Range(range, in: plainText) else { return }
+            let lowerOffset = plainText.distance(from: plainText.startIndex, to: stringRange.lowerBound)
+            let upperOffset = plainText.distance(from: plainText.startIndex, to: stringRange.upperBound)
+            let lower = text.index(text.startIndex, offsetByCharacters: lowerOffset)
+            let upper = text.index(text.startIndex, offsetByCharacters: upperOffset)
+            let traits = notePlatformFontTraits(from: font)
+            text[lower..<upper].font = noteInlineFont(
+                baseFontSize: font.pointSize,
+                bold: traits.bold,
+                italic: traits.italic
+            )
         }
     }
 

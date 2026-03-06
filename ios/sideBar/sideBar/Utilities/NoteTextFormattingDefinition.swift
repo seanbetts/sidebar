@@ -34,19 +34,21 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
             )
         }
 
-        var normalized = AttributedString(String(text.characters))
         for snapshot in snapshots {
-            let range = attributedRange(for: snapshot.range, in: normalized)
-            normalized[range].font = noteInlineFont(
+            let range = attributedRange(for: snapshot.range, in: text)
+            text[range].font = noteInlineFont(
                 baseFontSize: baseFontSize,
                 bold: snapshot.traits.bold,
                 italic: snapshot.traits.italic
             )
-            normalized[range].underlineStyle = snapshot.underline ? .single : nil
-            clearUnsupportedEditorAttributes(in: &normalized, range: range)
+            text[range].underlineStyle = snapshot.underline ? .single : nil
+            clearUnsupportedEditorAttributes(in: &text, range: range)
         }
-
-        text = normalized
+        if !text.characters.isEmpty {
+            text[text.startIndex..<text.endIndex].paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize
+            )
+        }
     }
 
     private func clearUnsupportedEditorAttributes(
@@ -55,6 +57,11 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
     ) {
         text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
         text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
+#if os(iOS)
+        text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
+#elseif os(macOS)
+        text[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = nil
+#endif
         text[range].strikethroughStyle = nil
         if text[range].underlineStyle != nil {
             text[range].underlineStyle = .single
@@ -108,13 +115,7 @@ private extension NoteTextFormattingDefinition {
     }
 
     func inlineTraits(from run: AttributedString.Runs.Run) -> NoteInlineFormattingTraits {
-        let swiftUIFontTraits = noteSwiftUIFontTraits(from: run.font)
-        let platformTraits = noteBridgedPlatformFont(from: run.attributes).map(notePlatformFontTraits(from:)) ??
-            .plain
-        return NoteInlineFormattingTraits(
-            bold: swiftUIFontTraits.bold || platformTraits.bold,
-            italic: swiftUIFontTraits.italic || platformTraits.italic
-        )
+        noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
     }
 
     func attributedRange(

@@ -12,12 +12,17 @@ extension NativeNoteEditorViewModel {
 
     public func loadDocument(canonicalContent: String, plainText: String) {
         if let attributed = NotesRichTextCodec.decodeBase64RTFToAttributedString(canonicalContent) {
-            var normalized = attributed
-            normalizeDocumentForRuntime(&normalized)
-            attributedContent = normalized
+            let document = NotesAttributedDocumentCodec.document(from: attributed)
+            var loadedContent = NotesAttributedDocumentCodec.attributedString(
+                from: document,
+                baseFontSize: baseFontSize
+            )
+            constrainEditorDocument(&loadedContent)
+            attributedContent = loadedContent
             selection = AttributedTextSelection()
-            lastSavedContent = plainText
-            lastSavedCanonicalContent = canonicalContent
+            let snapshot = currentPersistenceSnapshot()
+            lastSavedContent = snapshot.plainText
+            lastSavedCanonicalContent = snapshot.canonicalContent
             hasUnsavedChanges = false
             lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
             return
@@ -26,8 +31,14 @@ extension NativeNoteEditorViewModel {
     }
 
     public func currentPersistenceSnapshot() -> PersistenceSnapshot {
-        let exportContent = normalizeDocumentForRuntime(from: attributedContent)
-        let plainText = NotePlainTextProjection.plainText(from: exportContent)
+        let document = NotesAttributedDocumentCodec.document(
+            from: constrainedEditorDocument(from: attributedContent)
+        )
+        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
+        let exportContent = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: baseFontSize
+        )
         if let canonicalContent = NotesRichTextCodec.encodeAttributedStringToBase64RTF(
             exportContent,
             baseFontSize: baseFontSize

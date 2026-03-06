@@ -107,6 +107,11 @@ func noteSwiftUIFontTraits(from font: Font?) -> NoteInlineFormattingTraits {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteExplicitSwiftUIFont(from attributes: AttributeContainer) -> Font? {
+    attributes[AttributeScopes.SwiftUIAttributes.FontAttribute.self]
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func notePlatformFontTraits(from font: NotePlatformFont) -> NoteInlineFormattingTraits {
 #if os(iOS)
     return NoteInlineFormattingTraits(
@@ -122,6 +127,7 @@ func notePlatformFontTraits(from font: NotePlatformFont) -> NoteInlineFormatting
 #endif
 }
 
+/// Legacy RTF bridge helper. Active editor code should not read bridged platform fonts.
 @available(iOS 26.0, macOS 26.0, *)
 func noteBridgedPlatformFont(from attributes: AttributeContainer) -> NotePlatformFont? {
     var sample = AttributedString("x")
@@ -131,24 +137,4 @@ func noteBridgedPlatformFont(from attributes: AttributeContainer) -> NotePlatfor
         ?? NSAttributedString(sample)
     guard bridged.length > 0 else { return nil }
     return bridged.attribute(.font, at: 0, effectiveRange: nil) as? NotePlatformFont
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-func notePlatformFontMirrorAttributes(
-    baseFontSize: CGFloat,
-    bold: Bool,
-    italic: Bool
-) -> AttributeContainer {
-#if os(iOS)
-    return AttributeContainer()
-#else
-    let mutable = NSMutableAttributedString(string: "x")
-    mutable.addAttribute(
-        .font,
-        value: notePlatformFont(baseFontSize: baseFontSize, bold: bold, italic: italic),
-        range: NSRange(location: 0, length: mutable.length)
-    )
-    let bridged = AttributedString(mutable)
-    return bridged.runs.first?.attributes ?? AttributeContainer()
-#endif
 }
