@@ -82,6 +82,119 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertTrue(hasBoldFont)
     }
 
+    func testPersistenceSnapshotMaterializesSemanticOnlyBoldFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+
+        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.attributedContent[fullRange].inlinePresentationIntent = [.stronglyEmphasized]
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        XCTAssertTrue(reloaded.attributedContent.runs.contains { run in
+            #if os(iOS)
+            guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            #elseif os(macOS)
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.bold)
+            #endif
+        })
+    }
+
+    func testPersistenceSnapshotMaterializesSemanticOnlyItalicFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+
+        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.attributedContent[fullRange].inlinePresentationIntent = [.emphasized]
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        XCTAssertTrue(reloaded.attributedContent.runs.contains { run in
+            #if os(iOS)
+            guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            #elseif os(macOS)
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.italic)
+            #endif
+        })
+    }
+
+    func testPersistenceSnapshotRoundTripPreservesItalicFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+
+        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: fullRange)
+        viewModel.applyFormatting(.italic)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        XCTAssertTrue(reloaded.attributedContent.runs.contains { run in
+            #if os(iOS)
+            guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            #elseif os(macOS)
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.italic)
+            #endif
+        })
+    }
+
+    func testPersistenceSnapshotRoundTripPreservesUnderlineFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+
+        let fullRange = characterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: fullRange)
+        viewModel.applyFormatting(.underline)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        XCTAssertTrue(reloaded.attributedContent.runs.contains { run in
+            run.underlineStyle == .single
+        })
+    }
+
+    func testPersistenceSnapshotRoundTripPreservesInsertionPointTypingFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("")
+
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+        viewModel.applyFormatting(.bold)
+        viewModel.applyFormatting(.italic)
+        viewModel.applyFormatting(.underline)
+        appendTypedText("A", to: viewModel)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let reloaded = NativeNoteEditorViewModel()
+        reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+
+        let firstRun = reloaded.attributedContent.runs.first
+        XCTAssertNotNil(firstRun)
+        XCTAssertEqual(firstRun?.underlineStyle, .single)
+        #if os(iOS)
+        let font = firstRun?[AttributeScopes.UIKitAttributes.FontAttribute.self]
+        XCTAssertTrue(font?.fontDescriptor.symbolicTraits.contains(.traitBold) == true)
+        XCTAssertTrue(font?.fontDescriptor.symbolicTraits.contains(.traitItalic) == true)
+        #elseif os(macOS)
+        let font = firstRun.flatMap { bridgedPlatformFont(from: $0) as? NSFont }
+        XCTAssertTrue(font?.fontDescriptor.symbolicTraits.contains(.bold) == true)
+        XCTAssertTrue(font?.fontDescriptor.symbolicTraits.contains(.italic) == true)
+        #endif
+    }
+
     func testLoadTextEmptySeedsParagraphTypingAttributes() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("")
@@ -171,6 +284,20 @@ private func lineRanges(in text: AttributedString) -> [Range<AttributedString.In
     }
 
     return ranges
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func appendTypedText(_ string: String, to viewModel: NativeNoteEditorViewModel) {
+    var inserted = AttributedString(string)
+    let range = inserted.startIndex..<inserted.endIndex
+    inserted[range].mergeAttributes(
+        viewModel.selection.typingAttributes(in: viewModel.attributedContent)
+    )
+    let insertion = viewModel.attributedContent.endIndex
+    viewModel.attributedContent.insert(inserted, at: insertion)
+    let cursor = viewModel.attributedContent.endIndex
+    viewModel.selection = AttributedTextSelection(range: cursor..<cursor)
 }
 
 @available(iOS 26.0, macOS 26.0, *)

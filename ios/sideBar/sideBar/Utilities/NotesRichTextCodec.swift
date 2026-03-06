@@ -63,13 +63,14 @@ enum NotesRichTextCodec {
             return nil
         }
         var normalized = AttributedString(attributed)
+        syncUnderlineStyles(from: attributed, into: &normalized)
         normalizeDecodedEditorText(&normalized)
         return normalized
     }
 
     /// Encode attributed text to canonical Base64 RTF bytes.
     static func encodeAttributedStringToBase64RTF(_ content: AttributedString) -> String? {
-        let attributed = NSAttributedString(content)
+        let attributed = bridgedAttributedStringForRTFExport(from: content)
         let range = NSRange(location: 0, length: attributed.length)
         guard let rtfData = try? attributed.data(
             from: range,
@@ -119,6 +120,48 @@ enum NotesRichTextCodec {
         return Data("{\\rtf1\\ansi\n\(escaped)\n}".utf8)
     }
 
+    private static func bridgedAttributedStringForRTFExport(from content: AttributedString) -> NSAttributedString {
+        let base = NSAttributedString(content)
+        guard base.length > 0 else { return base }
+
+        let mutable = NSMutableAttributedString(attributedString: base)
+        let plainText = String(content.characters)
+
+        for run in content.runs {
+            guard run.underlineStyle != nil else { continue }
+            let nsRange = nsRange(for: run.range, in: content, plainText: plainText)
+            guard nsRange.length > 0 else { continue }
+            mutable.addAttribute(
+                .underlineStyle,
+                value: NSUnderlineStyle.single.rawValue,
+                range: nsRange
+            )
+        }
+
+        return mutable
+    }
+
+    private static func nsRange(
+        for range: Range<AttributedString.Index>,
+        in content: AttributedString,
+        plainText: String
+    ) -> NSRange {
+        let lowerCharacterOffset = content.characters.distance(
+            from: content.startIndex,
+            to: range.lowerBound
+        )
+        let upperCharacterOffset = content.characters.distance(
+            from: content.startIndex,
+            to: range.upperBound
+        )
+        let lower = plainText.index(plainText.startIndex, offsetBy: lowerCharacterOffset)
+        let upper = plainText.index(plainText.startIndex, offsetBy: upperCharacterOffset)
+        return NSRange(
+            location: lower.utf16Offset(in: plainText),
+            length: upper.utf16Offset(in: plainText) - lower.utf16Offset(in: plainText)
+        )
+    }
+
     private static func normalizeDecodedEditorText(_ text: inout AttributedString) {
         for run in text.runs {
             let range = run.range
@@ -145,6 +188,24 @@ enum NotesRichTextCodec {
 #if os(iOS)
             text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
 #endif
+        }
+    }
+
+    private static func syncUnderlineStyles(
+        from source: NSAttributedString,
+        into text: inout AttributedString
+    ) {
+        let plainText = source.string
+        guard !plainText.isEmpty else { return }
+
+        source.enumerateAttribute(.underlineStyle, in: NSRange(location: 0, length: source.length)) { value, range, _ in
+            guard let rawValue = value as? Int, rawValue != 0 else { return }
+            guard let stringRange = Range(range, in: plainText) else { return }
+            let lowerOffset = plainText.distance(from: plainText.startIndex, to: stringRange.lowerBound)
+            let upperOffset = plainText.distance(from: plainText.startIndex, to: stringRange.upperBound)
+            let lower = text.index(text.startIndex, offsetByCharacters: lowerOffset)
+            let upper = text.index(text.startIndex, offsetByCharacters: upperOffset)
+            text[lower..<upper].underlineStyle = .single
         }
     }
 

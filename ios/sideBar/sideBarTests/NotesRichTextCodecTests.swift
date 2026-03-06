@@ -133,6 +133,16 @@ final class NotesRichTextCodecTests: XCTestCase {
         XCTAssertNil(decoded[range].strikethroughStyle)
     }
 
+    func testEncodeAttributedStringToBase64RTFPreservesUnderlineFormatting() throws {
+        var text = AttributedString("Underlined")
+        text[text.startIndex..<text.endIndex].underlineStyle = .single
+
+        let encoded = try XCTUnwrap(NotesRichTextCodec.encodeAttributedStringToBase64RTF(text))
+        let decoded = try XCTUnwrap(NotesRichTextCodec.decodeBase64RTFToAttributedString(encoded))
+        let decodedRange = decoded.startIndex..<decoded.endIndex
+
+        XCTAssertEqual(decoded[decodedRange].underlineStyle, .single)
+    }
 }
 
 private func makeEncodedRTF(string: String, attributes: [NSAttributedString.Key: Any]) throws -> String {
