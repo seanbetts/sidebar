@@ -25,7 +25,7 @@ final class NotesDetailViewTests: XCTestCase {
         XCTAssertFalse(view.isFormattingToolbarVisible)
     }
 
-    func testActivateReadSurfaceEditingSwitchesToEditorSurface() async {
+    func testActivateReadSurfaceEditingKeepsFormattingToolbarVisibleDuringTransition() async {
         let context = await makeNotesDetailViewTestContext()
 
         context.makeView().activateReadSurfaceEditing(at: .start)
@@ -350,7 +350,53 @@ final class NotesDetailViewTests: XCTestCase {
         )
     }
 
-    func testSameNoteReloadPreservesUnicodeCaretAfterPendingTargetIsConsumed() async throws {
+    func testAttributedNoteEditorContainerAppliesUTF16PendingCaretTargetForComposedCharacters() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "A👍🏽B"))
+        let nativeViewModel = NativeNoteEditorViewModel()
+        context.editorViewModel.enterEditMode(at: .characterOffset(5))
+
+        _ = AttributedNoteEditorContainer.loadNoteIfNeeded(
+            editorViewModel: context.editorViewModel,
+            nativeViewModel: nativeViewModel,
+            loadedNoteId: nil
+        )
+
+        assertInsertionPointUTF16Offset(
+            nativeViewModel.selection,
+            in: nativeViewModel.attributedContent,
+            equals: 5
+        )
+    }
+
+    func testFormattingCommandsUpdateCanonicalSemanticSnapshotWithoutWrapperOnlyState() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+
+        let range = noteCharacterRange(length: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: range)
+
+        context.editorViewModel.setFormatting(.bold, enabled: true)
+
+        let document = context.editorViewModel.currentSemanticDocumentSnapshot()
+        let paragraph = try XCTUnwrap(document.blocks.first)
+        let segment = try XCTUnwrap(paragraph.content.first)
+
+        XCTAssertEqual(segment.text, "Hello")
+        XCTAssertTrue(segment.marks.contains(.bold))
+        XCTAssertTrue(noteRangeHasBoldTrait(nativeViewModel.attributedContent, range: range))
+    }
+
+    func testReadSurfaceEditingRestoresUTF16CaretForComposedCharactersAfterSameNoteReload() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -360,7 +406,7 @@ final class NotesDetailViewTests: XCTestCase {
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: initialText))
         let nativeViewModel = NativeNoteEditorViewModel()
         context.editorViewModel.attachNativeEditor(nativeViewModel)
-        context.editorViewModel.enterEditMode(at: .characterOffset(5))
+        context.makeView().activateReadSurfaceEditing(at: .characterOffset(5))
         var loadedNoteId: String?
 
         loadedNoteId = AttributedNoteEditorContainer.loadNoteIfNeeded(
@@ -369,6 +415,7 @@ final class NotesDetailViewTests: XCTestCase {
             loadedNoteId: loadedNoteId
         )
 
+        XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
         assertInsertionPointUTF16Offset(
             nativeViewModel.selection,
             in: nativeViewModel.attributedContent,
@@ -380,6 +427,7 @@ final class NotesDetailViewTests: XCTestCase {
         await Task.yield()
         await Task.yield()
 
+        XCTAssertEqual(String(nativeViewModel.attributedContent.characters), refreshedText)
         assertInsertionPointUTF16Offset(
             nativeViewModel.selection,
             in: nativeViewModel.attributedContent,

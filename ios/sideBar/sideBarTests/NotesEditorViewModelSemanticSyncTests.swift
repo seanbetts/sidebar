@@ -49,6 +49,7 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         try await waitUntilSemantic(timeoutSeconds: 3.0) { nativeViewModel.hasUnsavedChanges }
 
         await harness.viewModel.syncFromNativeEditor(nativeViewModel)
+        await waitForNotesViewModelMirror()
 
         XCTAssertEqual(harness.api.updatedDocuments, [savedDocument])
         XCTAssertEqual(harness.notesViewModel.activeNote?.name, "Saved title")
@@ -145,6 +146,7 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         try await waitUntilSemantic(timeoutSeconds: 3.0) { nativeViewModel.hasUnsavedChanges }
 
         await harness.viewModel.syncFromNativeEditor(nativeViewModel)
+        await waitForNotesViewModelMirror()
 
         let payload = try queuedNoteUpdatePayload(
             in: harness.persistence.container.viewContext,
@@ -250,6 +252,15 @@ private func waitUntilSemantic(timeoutSeconds: TimeInterval, condition: @escapin
         try await Task.sleep(nanoseconds: 30_000_000)
     }
     XCTFail("Timed out waiting for condition")
+}
+
+@MainActor
+private func waitForNotesViewModelMirror() async {
+    await withCheckedContinuation { continuation in
+        DispatchQueue.main.async {
+            continuation.resume()
+        }
+    }
 }
 
 private func skipUnlessNativeEditorAvailable() throws {
