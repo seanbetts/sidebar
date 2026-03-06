@@ -17,19 +17,18 @@ extension NativeNoteEditorViewModel {
     }
 
     func inlineFormattingState(from attrs: AttributeContainer) -> InlineFormattingState {
-        let swiftUIFontTraits = noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: attrs))
         return InlineFormattingState(
-            bold: swiftUIFontTraits.bold,
-            italic: swiftUIFontTraits.italic,
+            bold: noteInlineFormattingTraits(from: attrs).bold,
+            italic: noteInlineFormattingTraits(from: attrs).italic,
             underline: attrs.underlineStyle != nil
         )
     }
 
     func inlineFormattingState(from run: AttributedString.Runs.Run) -> InlineFormattingState {
-        let swiftUIFontTraits = noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
+        let traits = noteInlineFormattingTraits(from: run.attributes)
         return InlineFormattingState(
-            bold: swiftUIFontTraits.bold,
-            italic: swiftUIFontTraits.italic,
+            bold: traits.bold,
+            italic: traits.italic,
             underline: run.underlineStyle != nil
         )
     }
