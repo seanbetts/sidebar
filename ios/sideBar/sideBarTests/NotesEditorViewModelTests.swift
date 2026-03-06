@@ -137,6 +137,183 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
     }
 
+    func testToggleFormattingUsesAttachedNativeEditor() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
+
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        let range = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: range)
+
+        XCTAssertTrue(viewModel.canApplyFormattingCommands())
+
+        viewModel.toggleFormatting(.bold)
+
+        XCTAssertTrue(noteRangeHasBoldTrait(nativeViewModel.attributedContent, range: range))
+        XCTAssertTrue(viewModel.isFormattingActive(.bold))
+        XCTAssertTrue(viewModel.isDirty)
+    }
+
+    func testSetFormattingClearsAttachedNativeEditorFormatting() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
+
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        let initialRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: initialRange)
+
+        viewModel.setFormatting(.underline, enabled: true)
+        let enabledRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        XCTAssertTrue(noteRangeIsUnderlined(nativeViewModel.attributedContent, range: enabledRange))
+
+        nativeViewModel.selection = AttributedTextSelection(range: enabledRange)
+        viewModel.setFormatting(.underline, enabled: false)
+
+        let disabledRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        XCTAssertFalse(noteRangeIsUnderlined(nativeViewModel.attributedContent, range: disabledRange))
+        XCTAssertFalse(viewModel.isFormattingActive(.underline))
+    }
+
+    func testSaveIfNeededPersistsFormattingOnlyNativeEditorChange() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let initialContent = canonicalPlainTextPass("Hello")
+        let updated = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: initialContent,
+            path: "/note.md",
+            modified: 100,
+            created: nil
+        )
+        let api = NotesAPISpy(updateResult: .success(updated))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: initialContent,
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        let range = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: range)
+
+        let previous = nativeViewModel.attributedContent
+        nativeViewModel.applyFormatting(.bold)
+        nativeViewModel.handleContentChange(previous: previous)
+        let updatedRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
+
+        XCTAssertTrue(noteRangeHasBoldTrait(nativeViewModel.attributedContent, range: updatedRange))
+        XCTAssertTrue(nativeViewModel.hasUnsavedChanges)
+
+        await viewModel.saveIfNeeded()
+
+        XCTAssertEqual(api.updateCallCount, 1)
+        XCTAssertEqual(api.updatedContents.count, 1)
+        XCTAssertNotEqual(api.updatedContents[0], initialContent)
+        XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
+    }
+
     func testHandleNoteUpdateWithSameContentPreservesNativeSelection() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")

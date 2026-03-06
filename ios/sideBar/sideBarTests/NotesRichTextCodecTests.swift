@@ -149,7 +149,8 @@ private func hasBoldTrait(_ run: AttributedString.Runs.Run) -> Bool {
     return font.fontDescriptor.symbolicTraits.contains(.traitBold)
     #elseif os(macOS)
     guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
-    return font.fontDescriptor.symbolicTraits.contains(.bold)
+    let traitMask = NSFontManager.shared.traits(of: font)
+    return font.fontDescriptor.symbolicTraits.contains(.bold) || traitMask.contains(.boldFontMask)
     #endif
 }
 
@@ -159,7 +160,8 @@ private func hasItalicTrait(_ run: AttributedString.Runs.Run) -> Bool {
     return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
     #elseif os(macOS)
     guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
-    return font.fontDescriptor.symbolicTraits.contains(.italic)
+    let traitMask = NSFontManager.shared.traits(of: font)
+    return font.fontDescriptor.symbolicTraits.contains(.italic) || traitMask.contains(.italicFontMask)
     #endif
 }
 

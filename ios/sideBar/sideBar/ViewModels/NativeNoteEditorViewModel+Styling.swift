@@ -163,10 +163,6 @@ extension NativeNoteEditorViewModel {
         if let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] {
             return font
         }
-        #elseif os(macOS)
-        if let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] {
-            return font
-        }
         #endif
         return bridgedPlatformFont(from: run.attributes)
     }
@@ -174,10 +170,6 @@ extension NativeNoteEditorViewModel {
     private func platformFont(from attrs: AttributeContainer) -> PlatformFont? {
         #if os(iOS)
         if let font = attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] {
-            return font
-        }
-        #elseif os(macOS)
-        if let font = attrs[AttributeScopes.AppKitAttributes.FontAttribute.self] {
             return font
         }
         #endif

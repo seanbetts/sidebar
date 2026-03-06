@@ -35,6 +35,10 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         let resolved = content[range].font?.resolve(in: EnvironmentValues().fontResolutionContext)
         XCTAssertEqual(resolved?.isBold, true)
         XCTAssertEqual(resolved?.isItalic, true)
-        XCTAssertEqual(noteFirstRunPointSize(in: content) ?? 0, 24, accuracy: 1.0)
+        let exported = NotesRichTextCodec.encodeAttributedStringToBase64RTF(
+            content,
+            baseFontSize: 24
+        )
+        XCTAssertEqual(noteFirstRunPointSize(inCanonicalRTF: exported ?? "") ?? 0, 24, accuracy: 1.0)
     }
 }

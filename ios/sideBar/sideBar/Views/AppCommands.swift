@@ -2,10 +2,10 @@
 import SwiftUI
 
 struct SidebarCommands: Commands {
-    private let environment: AppEnvironment
+    @ObservedObject private var environment: AppEnvironment
 
     init(environment: AppEnvironment) {
-        self.environment = environment
+        _environment = ObservedObject(wrappedValue: environment)
     }
 
     var body: some Commands {
@@ -61,6 +61,9 @@ struct SidebarCommands: Commands {
                 environment.emitShortcutAction(.deleteItem)
             }
             .keyboardShortcut(.delete, modifiers: [.command, .shift])
+        }
+        if #available(macOS 26.0, *) {
+            TextFormattingCommands()
         }
     }
 

@@ -22,7 +22,8 @@ typealias NotePlatformFont = NSFont
 
 @available(iOS 26.0, macOS 26.0, *)
 func noteInlineFont(baseFontSize: CGFloat, bold: Bool, italic: Bool) -> Font {
-    var font = Font.system(size: baseFontSize)
+    _ = baseFontSize
+    var font = Font.default
     if bold {
         font = font.weight(.bold)
     }
@@ -117,20 +118,23 @@ func notePlatformFontTraits(from font: NotePlatformFont) -> NoteInlineFormatting
         italic: font.fontDescriptor.symbolicTraits.contains(.traitItalic)
     )
 #else
+    let traitMask = NSFontManager.shared.traits(of: font)
     return NoteInlineFormattingTraits(
-        bold: font.fontDescriptor.symbolicTraits.contains(.bold),
-        italic: font.fontDescriptor.symbolicTraits.contains(.italic)
+        bold: font.fontDescriptor.symbolicTraits.contains(.bold) || traitMask.contains(.boldFontMask),
+        italic: font.fontDescriptor.symbolicTraits.contains(.italic) || traitMask.contains(.italicFontMask)
     )
 #endif
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 func noteApplyPlatformFont(_ font: NotePlatformFont, to attrs: inout AttributeContainer) {
-#if os(iOS)
-    attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] = font
-#else
-    attrs[AttributeScopes.AppKitAttributes.FontAttribute.self] = font
-#endif
+    var sample = AttributedString("x")
+    let range = sample.startIndex..<sample.endIndex
+    sample[range].mergeAttributes(attrs)
+    sample[range].mergeAttributes(notePlatformFontAttributes(font))
+    if let merged = sample.runs.first?.attributes {
+        attrs = merged
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -139,11 +143,7 @@ func noteApplyPlatformFont(
     to text: inout AttributedString,
     range: Range<AttributedString.Index>
 ) {
-#if os(iOS)
-    text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = font
-#else
-    text[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = font
-#endif
+    text[range].mergeAttributes(notePlatformFontAttributes(font))
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -155,4 +155,12 @@ func noteBridgedPlatformFont(from attributes: AttributeContainer) -> NotePlatfor
         ?? NSAttributedString(sample)
     guard bridged.length > 0 else { return nil }
     return bridged.attribute(.font, at: 0, effectiveRange: nil) as? NotePlatformFont
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func notePlatformFontAttributes(_ font: NotePlatformFont) -> AttributeContainer {
+    let mutable = NSMutableAttributedString(string: "x")
+    mutable.addAttribute(.font, value: font, range: NSRange(location: 0, length: mutable.length))
+    let bridged = AttributedString(mutable)
+    return bridged.runs.first?.attributes ?? AttributeContainer()
 }

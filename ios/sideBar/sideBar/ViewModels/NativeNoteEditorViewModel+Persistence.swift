@@ -28,7 +28,10 @@ extension NativeNoteEditorViewModel {
     public func currentPersistenceSnapshot() -> PersistenceSnapshot {
         let exportContent = normalizeDocumentForRuntime(from: attributedContent)
         let plainText = NotePlainTextProjection.plainText(from: exportContent)
-        if let canonicalContent = NotesRichTextCodec.encodeAttributedStringToBase64RTF(exportContent) {
+        if let canonicalContent = NotesRichTextCodec.encodeAttributedStringToBase64RTF(
+            exportContent,
+            baseFontSize: baseFontSize
+        ) {
             return PersistenceSnapshot(canonicalContent: canonicalContent, plainText: plainText)
         }
         return PersistenceSnapshot(

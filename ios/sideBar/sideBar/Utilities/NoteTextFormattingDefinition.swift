@@ -72,7 +72,6 @@ private struct NormalizeInlineFonts: AttributedTextValueConstraint {
     func constrain(_ container: inout Attributes) {
         guard let font = container.font else { return }
         let traits = noteSwiftUIFontTraits(from: font)
-
         container.font = noteInlineFont(
             baseFontSize: baseFontSize,
             bold: traits.bold,
@@ -107,8 +106,8 @@ private extension NoteTextFormattingDefinition {
         let swiftUIFontTraits = noteSwiftUIFontTraits(from: run.font)
         #if os(iOS)
         let platformFont = run[AttributeScopes.UIKitAttributes.FontAttribute.self]
-        #elseif os(macOS)
-        let platformFont = run[AttributeScopes.AppKitAttributes.FontAttribute.self]
+        #else
+        let platformFont: NotePlatformFont? = nil
         #endif
         let platformTraits = platformFont.map(notePlatformFontTraits(from:)) ??
             noteBridgedPlatformFont(from: run.attributes).map(notePlatformFontTraits(from:)) ??

@@ -21,18 +21,32 @@ func noteCharacterRange(
 
 @available(iOS 26.0, macOS 26.0, *)
 func noteFirstRunPointSize(in text: AttributedString) -> CGFloat? {
-    for run in text.runs {
-        #if os(iOS)
-        if let font = noteBridgedPlatformFont(from: run) as? UIFont {
-            return font.pointSize
-        }
-        #elseif os(macOS)
-        if let font = noteBridgedPlatformFont(from: run) as? NSFont {
-            return font.pointSize
-        }
-        #endif
+    let bridged = (try? NSAttributedString(text, including: \.attributedNoteTextSurface))
+        ?? NSAttributedString(text)
+    guard bridged.length > 0 else { return nil }
+    #if os(iOS)
+    return (bridged.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)?.pointSize
+    #elseif os(macOS)
+    return (bridged.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize
+    #endif
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteFirstRunPointSize(inCanonicalRTF content: String) -> CGFloat? {
+    guard let data = Data(base64Encoded: content),
+          let attributed = try? NSAttributedString(
+              data: data,
+              options: [.documentType: NSAttributedString.DocumentType.rtf],
+              documentAttributes: nil
+          ),
+          attributed.length > 0 else {
+        return nil
     }
-    return nil
+    #if os(iOS)
+    return (attributed.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)?.pointSize
+    #elseif os(macOS)
+    return (attributed.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize
+    #endif
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -46,7 +60,8 @@ func noteRunHasBoldTrait(_ run: AttributedString.Runs.Run) -> Bool {
     return font.fontDescriptor.symbolicTraits.contains(.traitBold)
     #elseif os(macOS)
     guard let font = noteBridgedPlatformFont(from: run) as? NSFont else { return false }
-    return font.fontDescriptor.symbolicTraits.contains(.bold)
+    let traitMask = NSFontManager.shared.traits(of: font)
+    return font.fontDescriptor.symbolicTraits.contains(.bold) || traitMask.contains(.boldFontMask)
     #endif
 }
 
@@ -61,7 +76,8 @@ func noteRunHasItalicTrait(_ run: AttributedString.Runs.Run) -> Bool {
     return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
     #elseif os(macOS)
     guard let font = noteBridgedPlatformFont(from: run) as? NSFont else { return false }
-    return font.fontDescriptor.symbolicTraits.contains(.italic)
+    let traitMask = NSFontManager.shared.traits(of: font)
+    return font.fontDescriptor.symbolicTraits.contains(.italic) || traitMask.contains(.italicFontMask)
     #endif
 }
 
@@ -83,6 +99,70 @@ func noteRangeHasItalicTrait(
     let runs = text[range].runs
     guard !runs.isEmpty else { return false }
     return runs.allSatisfy(noteRunHasItalicTrait)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteRangeHasBridgedBoldPlatformFont(
+    _ text: AttributedString,
+    range: Range<AttributedString.Index>
+) -> Bool {
+    let plainText = String(text.characters)
+    let nsRange = noteNSRange(for: range, in: text, plainText: plainText)
+    let bridged = NSAttributedString(text)
+    guard bridged.length > 0, nsRange.length > 0 else { return false }
+
+    var result = true
+    bridged.enumerateAttribute(.font, in: nsRange) { value, _, stop in
+        #if os(iOS)
+        guard let font = value as? UIFont,
+              font.fontDescriptor.symbolicTraits.contains(.traitBold) else {
+            result = false
+            stop.pointee = true
+            return
+        }
+        #elseif os(macOS)
+        guard let font = value as? NSFont,
+              (font.fontDescriptor.symbolicTraits.contains(.bold)
+                || NSFontManager.shared.traits(of: font).contains(.boldFontMask)) else {
+            result = false
+            stop.pointee = true
+            return
+        }
+        #endif
+    }
+    return result
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteRangeHasBridgedItalicPlatformFont(
+    _ text: AttributedString,
+    range: Range<AttributedString.Index>
+) -> Bool {
+    let plainText = String(text.characters)
+    let nsRange = noteNSRange(for: range, in: text, plainText: plainText)
+    let bridged = NSAttributedString(text)
+    guard bridged.length > 0, nsRange.length > 0 else { return false }
+
+    var result = true
+    bridged.enumerateAttribute(.font, in: nsRange) { value, _, stop in
+        #if os(iOS)
+        guard let font = value as? UIFont,
+              font.fontDescriptor.symbolicTraits.contains(.traitItalic) else {
+            result = false
+            stop.pointee = true
+            return
+        }
+        #elseif os(macOS)
+        guard let font = value as? NSFont,
+              (font.fontDescriptor.symbolicTraits.contains(.italic)
+                || NSFontManager.shared.traits(of: font).contains(.italicFontMask)) else {
+            result = false
+            stop.pointee = true
+            return
+        }
+        #endif
+    }
+    return result
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -109,6 +189,22 @@ func noteBridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? 
     let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
         ?? NSAttributedString(sample)
     return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func noteNSRange(
+    for range: Range<AttributedString.Index>,
+    in text: AttributedString,
+    plainText: String
+) -> NSRange {
+    let lowerCharacterOffset = text.characters.distance(from: text.startIndex, to: range.lowerBound)
+    let upperCharacterOffset = text.characters.distance(from: text.startIndex, to: range.upperBound)
+    let lower = plainText.index(plainText.startIndex, offsetBy: lowerCharacterOffset)
+    let upper = plainText.index(plainText.startIndex, offsetBy: upperCharacterOffset)
+    return NSRange(
+        location: lower.utf16Offset(in: plainText),
+        length: upper.utf16Offset(in: plainText) - lower.utf16Offset(in: plainText)
+    )
 }
 
 @MainActor

@@ -68,8 +68,14 @@ enum NotesRichTextCodec {
     }
 
     /// Encode attributed text to canonical Base64 RTF bytes.
-    static func encodeAttributedStringToBase64RTF(_ content: AttributedString) -> String? {
-        let attributed = bridgedAttributedStringForRTFExport(from: content)
+    static func encodeAttributedStringToBase64RTF(
+        _ content: AttributedString,
+        baseFontSize: CGFloat? = nil
+    ) -> String? {
+        let attributed = bridgedAttributedStringForRTFExport(
+            from: content,
+            baseFontSize: baseFontSize
+        )
         let range = NSRange(location: 0, length: attributed.length)
         guard let rtfData = try? attributed.data(
             from: range,
@@ -119,7 +125,10 @@ enum NotesRichTextCodec {
         return Data("{\\rtf1\\ansi\n\(escaped)\n}".utf8)
     }
 
-    private static func bridgedAttributedStringForRTFExport(from content: AttributedString) -> NSAttributedString {
+    private static func bridgedAttributedStringForRTFExport(
+        from content: AttributedString,
+        baseFontSize: CGFloat?
+    ) -> NSAttributedString {
         let base = (try? NSAttributedString(content, including: \.attributedNoteTextSurface))
             ?? NSAttributedString(content)
         guard base.length > 0 else { return base }
@@ -128,9 +137,23 @@ enum NotesRichTextCodec {
         let plainText = String(content.characters)
 
         for run in content.runs {
-            guard run.underlineStyle != nil else { continue }
             let nsRange = nsRange(for: run.range, in: content, plainText: plainText)
             guard nsRange.length > 0 else { continue }
+
+            let pointSize = baseFontSize
+                ?? (mutable.attribute(.font, at: nsRange.location, effectiveRange: nil) as? NotePlatformFont)?
+                .pointSize
+                ?? noteBridgedPlatformFont(from: run.attributes)?.pointSize
+                ?? 16
+            let traits = noteInlineTraits(for: run)
+            let font = notePlatformFont(
+                baseFontSize: pointSize,
+                bold: traits.bold,
+                italic: traits.italic
+            )
+            mutable.addAttribute(.font, value: font, range: nsRange)
+
+            guard run.underlineStyle != nil else { continue }
             mutable.addAttribute(
                 .underlineStyle,
                 value: NSUnderlineStyle.single.rawValue,
@@ -178,5 +201,23 @@ enum NotesRichTextCodec {
             let upper = text.index(text.startIndex, offsetByCharacters: upperOffset)
             text[lower..<upper].underlineStyle = .single
         }
+    }
+
+    private static func noteInlineTraits(
+        for run: AttributedString.Runs.Run
+    ) -> NoteInlineFormattingTraits {
+        let swiftUIFontTraits = noteSwiftUIFontTraits(from: run.font)
+        #if os(iOS)
+        let platformFont = run[AttributeScopes.UIKitAttributes.FontAttribute.self]
+        #else
+        let platformFont: NotePlatformFont? = nil
+        #endif
+        let platformTraits = platformFont.map(notePlatformFontTraits(from:)) ??
+            noteBridgedPlatformFont(from: run.attributes).map(notePlatformFontTraits(from:)) ??
+            .plain
+        return NoteInlineFormattingTraits(
+            bold: swiftUIFontTraits.bold || platformTraits.bold,
+            italic: swiftUIFontTraits.italic || platformTraits.italic
+        )
     }
 }

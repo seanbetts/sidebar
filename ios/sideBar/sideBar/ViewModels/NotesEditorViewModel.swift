@@ -220,6 +220,44 @@ public final class NotesEditorViewModel: ObservableObject {
         await syncFromNativeEditorIfRequested(nativeViewModel)
     }
 
+    @available(iOS 26.0, macOS 26.0, *)
+    public func canApplyFormattingCommands() -> Bool {
+        currentNoteId != nil && nativeEditorViewModel != nil && !isReadOnly
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    public func isFormattingActive(_ formatting: NoteFormatting) -> Bool {
+        guard let nativeEditorViewModel, canApplyFormattingCommands() else { return false }
+        return nativeEditorViewModel.isFormattingActive(formatting)
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    public func setFormatting(_ formatting: NoteFormatting, enabled: Bool) {
+        guard let nativeEditorViewModel, canApplyFormattingCommands() else { return }
+        let previousContent = nativeEditorViewModel.attributedContent
+        let previousSelection = nativeEditorViewModel.selection
+        nativeEditorViewModel.setFormatting(formatting, enabled: enabled)
+        guard nativeEditorViewModel.attributedContent != previousContent
+            || nativeEditorViewModel.selection != previousSelection else {
+            return
+        }
+        if !nativeEditorViewModel.hasUnsavedChanges {
+            nativeEditorViewModel.hasUnsavedChanges = true
+        }
+        nativeEditorViewModel.scheduleAutosave()
+        nativeEditorViewModel.lastSelectionLineSpan = nativeEditorViewModel.selectionLineSpan(
+            in: nativeEditorViewModel.attributedContent
+        )
+        isDirty = true
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    public func toggleFormatting(_ formatting: NoteFormatting) {
+        guard let nativeEditorViewModel, canApplyFormattingCommands() else { return }
+        nativeEditorViewModel.applyFormatting(formatting)
+        isDirty = nativeEditorViewModel.hasUnsavedChanges || isDirty
+    }
+
     public func saveIfNeeded() async {
         guard !isSaving else { return }
         if #available(iOS 26.0, macOS 26.0, *) {
