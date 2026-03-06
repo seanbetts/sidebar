@@ -49,6 +49,11 @@ public struct YouTubePlayerView: NSViewRepresentable {
         }
     }
 
+    public static func dismantleNSView(_ nsView: WKWebView, coordinator: Coordinator) {
+        coordinator.notifyLoadState(false)
+        YouTubePlayerWebViewLifecycle.prepareForTeardown(nsView)
+    }
+
     public func makeCoordinator() -> Coordinator {
         Coordinator(url: url, onLoadStateChange: onLoadStateChange)
     }
@@ -259,6 +264,11 @@ public struct YouTubePlayerView: UIViewRepresentable {
         }
     }
 
+    public static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
+        coordinator.notifyLoadState(false)
+        YouTubePlayerWebViewLifecycle.prepareForTeardown(uiView)
+    }
+
     public func makeCoordinator() -> Coordinator {
         Coordinator(url: url, onLoadStateChange: onLoadStateChange)
     }
@@ -423,3 +433,47 @@ public struct YouTubePlayerView: UIViewRepresentable {
     private static let embedBaseURL = URL(string: "https://www.youtube-nocookie.com")
 }
 #endif
+
+enum YouTubePlayerWebViewLifecycle {
+    static let teardownJavaScript = """
+    (function() {
+      try {
+        document.querySelectorAll('video, audio').forEach(function(media) {
+          if (typeof media.pause === 'function') {
+            media.pause();
+          }
+          media.removeAttribute('src');
+          if (typeof media.load === 'function') {
+            media.load();
+          }
+        });
+        document.querySelectorAll('iframe').forEach(function(frame) {
+          frame.src = 'about:blank';
+        });
+      } catch (e) {}
+    })();
+    """
+
+    static let teardownHTML = """
+    <!doctype html>
+    <html>
+      <head>
+        <meta name=\"viewport\" content=\"initial-scale=1.0, maximum-scale=1.0\">
+        <style>
+          html, body { margin: 0; padding: 0; background: transparent; height: 100%; }
+        </style>
+      </head>
+      <body></body>
+    </html>
+    """
+
+    static func prepareForTeardown(_ webView: WKWebView) {
+        webView.stopLoading()
+        webView.evaluateJavaScript(teardownJavaScript, completionHandler: nil)
+        webView.navigationDelegate = nil
+        webView.uiDelegate = nil
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "consoleLog")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "playerState")
+        webView.loadHTMLString(teardownHTML, baseURL: nil)
+    }
+}
