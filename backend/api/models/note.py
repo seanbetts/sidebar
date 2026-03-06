@@ -36,6 +36,8 @@ class Note(Base):
     user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    document: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    document_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     plain_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     content_format: Mapped[str] = mapped_column(Text, nullable=False, default="rtf")
     folder_path: Mapped[str] = mapped_column(Text, nullable=False, default="")
