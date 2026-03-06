@@ -218,6 +218,7 @@ enum NotesRichTextCodec {
                 italic: traits.contains(.traitItalic)
             )
         }
+        return (false, false)
 #elseif os(macOS)
         if let font = bridgedPlatformFont(from: run) as? NSFont {
             let traits = font.fontDescriptor.symbolicTraits

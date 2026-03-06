@@ -129,7 +129,6 @@ public final class NotesEditorViewModel: ObservableObject {
     @available(iOS 26.0, macOS 26.0, *)
     public func attachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
         nativeEditorViewModel = nativeViewModel
-        alignPersistenceBaseline(with: nativeViewModel)
     }
 
     @available(iOS 26.0, macOS 26.0, *)
