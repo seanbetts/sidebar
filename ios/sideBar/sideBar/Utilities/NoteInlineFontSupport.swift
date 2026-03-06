@@ -125,6 +125,12 @@ func noteExplicitSwiftUIFont(from attributes: AttributeContainer) -> Font? {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteInlineFormattingTraits(from attributes: AttributeContainer) -> NoteInlineFormattingTraits {
+    let swiftUIFontTraits = noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: attributes))
+    return swiftUIFontTraits
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func notePlatformFontTraits(from font: NotePlatformFont) -> NoteInlineFormattingTraits {
 #if os(iOS)
     return NoteInlineFormattingTraits(

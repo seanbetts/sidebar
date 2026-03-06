@@ -10,11 +10,6 @@ import AppKit
 extension AttributeScopes {
     struct AttributedNoteTextSurfaceAttributes: AttributeScope {
         let noteTextEditor: NoteTextEditorAttributes
-        #if os(iOS)
-        let uiKit: UIKitAttributes
-        #elseif os(macOS)
-        let appKit: AppKitAttributes
-        #endif
     }
 
     var attributedNoteTextSurface: AttributedNoteTextSurfaceAttributes.Type {
