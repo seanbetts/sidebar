@@ -40,6 +40,8 @@ def parse_note_write_payload(payload: dict[str, Any]) -> dict[str, Any]:
     title = payload.get("title")
     if isinstance(title, str) and title.strip():
         raise BadRequestError("Note titles are derived from note content")
+    if "content" in payload:
+        raise BadRequestError("Legacy note content payloads are unsupported")
 
     document = payload.get("document")
     if document is None:
