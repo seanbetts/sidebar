@@ -39,8 +39,12 @@ from api.services.agent.request_budget_feedback_service import (
     RequestBudgetFeedbackService,
 )
 from api.services.agent.request_budget_service import PreparedChatRequest
+from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
+from api.services.capabilities.loader import CapabilityLoaderService
+from api.services.capabilities.resolver import CapabilityResolverService
+from api.services.capabilities.runtime_state import RuntimeCapabilityService
 from api.services.conversation_service import ConversationService
 from api.services.settings_service import SettingsService
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
@@ -135,11 +139,18 @@ def _assemble_prepared_request(
     now: datetime,
     provider: AIProvider,
     model: str,
-    enabled_skills: list[str] | None,
+    selected_skill_ids: list[str] | None,
+    executable_skill_ids: list[str] | None,
+    blocked_skill_summaries: list[dict[str, object]] | None,
     ai_gateway: AIProviderGateway,
     compaction_applied: bool = False,
 ) -> tuple[AssembledChatInputs, PreparedChatRequest]:
     """Assemble inputs and attach the prepared-request budget contract."""
+    capability_loader_result = CapabilityLoaderService.load_for_turn(
+        selected_skill_ids=selected_skill_ids,
+        executable_skill_ids=executable_skill_ids,
+        tool_definition_resolver=getattr(ai_gateway, "get_chat_tool_definitions", None),
+    )
     assembled_inputs = RequestAssemblyService.build_assembled_inputs(
         db=db,
         user_id=user_id,
@@ -156,13 +167,16 @@ def _assemble_prepared_request(
         current_weather=current_weather,
         current_timezone=current_timezone,
         now=now,
+        blocked_skill_summaries=blocked_skill_summaries,
+        capability_loader_result=capability_loader_result,
         prompt_context_service=PromptContextService,
     )
     prepared_request = RequestAssemblyService.build_prepared_request(
         provider=provider,
         model=model,
         assembled_inputs=assembled_inputs,
-        allowed_skills=enabled_skills,
+        executable_skill_ids=executable_skill_ids,
+        capability_loader_result=capability_loader_result,
         tool_definition_resolver=getattr(
             ai_gateway,
             "get_chat_tool_definitions",
@@ -252,6 +266,62 @@ async def stream_chat(
     if conversation_id:
         conversation_messages = conversation.messages
 
+    enabled_skills = SettingsService.resolve_enabled_skills(
+        settings_record,
+        db=db,
+        user_id=user_id,
+    )
+    skill_catalog = SkillCatalogService.list_skills(settings.skills_dir)
+    skill_catalog_by_id = {
+        str(skill["id"]): skill for skill in skill_catalog if isinstance(skill, dict)
+    }
+    runtime_states = RuntimeCapabilityService.list_runtime_states(
+        db,
+        user_id=user_id,
+        settings_record=settings_record,
+    )
+    runtime_capabilities: list[dict[str, object]] = []
+    for runtime_state in runtime_states:
+        if runtime_state.skill_id not in enabled_skills:
+            continue
+        catalog_entry = skill_catalog_by_id.get(runtime_state.skill_id, {})
+        runtime_capabilities.append(
+            {
+                "skill_id": runtime_state.skill_id,
+                "name": str(catalog_entry.get("name", runtime_state.skill_id)),
+                "description": str(catalog_entry.get("description", "")),
+                "tags": list(catalog_entry.get("tags", [])),
+                "triggers": list(catalog_entry.get("triggers", [])),
+                "required_toolsets": list(catalog_entry.get("required_toolsets", [])),
+                "enabled": runtime_state.enabled,
+                "installed": runtime_state.installed,
+                "availability_status": runtime_state.availability_status,
+                "availability_reason": runtime_state.availability_reason,
+                "availability_remediation": runtime_state.availability_remediation,
+            }
+        )
+    resolver_result = CapabilityResolverService.resolve_for_turn(
+        user_message=message,
+        enabled_skill_ids=enabled_skills,
+        runtime_capabilities=runtime_capabilities,
+        open_context=open_context,
+        attachments=attachments,
+    )
+    blocked_skill_summaries = list(
+        resolver_result.get(
+            "blocked_skill_summaries",
+            resolver_result.get("blocked_skills", []),
+        )
+    )
+    selected_skill_ids = list(resolver_result.get("selected_skill_ids", []))
+    executable_skill_ids = list(resolver_result.get("executable_skill_ids", []))
+    ai_gateway = AIProviderGateway(settings)
+    capability_loader_result = CapabilityLoaderService.load_for_turn(
+        selected_skill_ids=selected_skill_ids,
+        executable_skill_ids=executable_skill_ids,
+        tool_definition_resolver=getattr(ai_gateway, "get_chat_tool_definitions", None),
+    )
+
     assembled_inputs = RequestAssemblyService.build_assembled_inputs(
         db=db,
         user_id=user_id,
@@ -268,11 +338,10 @@ async def stream_chat(
         current_weather=current_weather,
         current_timezone=current_timezone,
         now=now,
+        blocked_skill_summaries=blocked_skill_summaries,
+        capability_loader_result=capability_loader_result,
         prompt_context_service=PromptContextService,
     )
-    enabled_skills = SettingsService.resolve_enabled_skills(settings_record)
-
-    ai_gateway = AIProviderGateway(settings)
     tool_context = ToolExecutionContext(
         db=db,
         user_id=user_id,
@@ -286,6 +355,9 @@ async def stream_chat(
         current_location_levels=current_location_levels,
         current_weather=current_weather,
         current_timezone=current_timezone,
+        selected_skill_ids=selected_skill_ids,
+        executable_skill_ids=executable_skill_ids,
+        blocked_skill_summaries=blocked_skill_summaries,
     )
 
     stream_started_at = time.perf_counter()
@@ -328,7 +400,8 @@ async def stream_chat(
         provider=chat_resolution.provider,
         model=chat_resolution.model,
         assembled_inputs=assembled_inputs,
-        allowed_skills=enabled_skills,
+        executable_skill_ids=executable_skill_ids,
+        capability_loader_result=capability_loader_result,
         tool_definition_resolver=getattr(
             ai_gateway,
             "get_chat_tool_definitions",
@@ -373,7 +446,9 @@ async def stream_chat(
             now=now,
             provider=chat_resolution.provider,
             model=chat_resolution.model,
-            enabled_skills=enabled_skills,
+            selected_skill_ids=selected_skill_ids,
+            executable_skill_ids=executable_skill_ids,
+            blocked_skill_summaries=blocked_skill_summaries,
             ai_gateway=ai_gateway,
             compaction_applied=True,
         )
@@ -419,7 +494,8 @@ async def stream_chat(
                     + prepared_request.conversation_history
                 ),
                 system_prompt=prepared_request.system_prompt,
-                allowed_skills=enabled_skills,
+                allowed_skills=executable_skill_ids,
+                tool_definitions=prepared_request.tool_definitions,
                 tool_context=tool_context,
                 settings_record=settings_record,
                 provider_key_lookup=provider_key_lookup,

@@ -198,7 +198,7 @@ def test_stream_chat_forwards_workspace_patch_events(test_client, monkeypatch):
 def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypatch):
     captured: dict[str, object] = {}
 
-    def fake_resolve_enabled_skills(settings_record):
+    def fake_resolve_enabled_skills(settings_record, *args, **kwargs):
         captured["settings_record"] = settings_record
         return ["notes", "assistant-identity"]
 
@@ -237,6 +237,249 @@ def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypa
     assert response.status_code == 200
     assert captured["settings_record"] is not None
     assert captured["allowed_skills"] == ["notes", "assistant-identity"]
+
+
+def test_stream_chat_keeps_blocked_skills_visible_but_only_executes_executable_subset(
+    test_client, monkeypatch
+):
+    captured: dict[str, object] = {}
+
+    class FakeResolverService:
+        @staticmethod
+        def resolve_for_turn(**kwargs):
+            captured["resolver_enabled_skill_ids"] = kwargs.get("enabled_skill_ids")
+            return {
+                "selected_skill_ids": ["notes", "google-drive"],
+                "executable_skill_ids": ["notes"],
+                "blocked_skill_summaries": [
+                    {
+                        "skill_id": "google-drive",
+                        "availability_status": "needs_connection",
+                        "availability_reason": "missing_connection",
+                        "availability_remediation": {
+                            "action": "connect",
+                            "provider": "google-workspace",
+                        },
+                    }
+                ],
+            }
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **kwargs):
+            captured["allowed_skills"] = kwargs.get("allowed_skills")
+            yield {"type": "token", "content": "Hello"}
+
+    def _build_assembled_inputs(**kwargs):
+        captured["blocked_skill_summaries"] = kwargs.get("blocked_skill_summaries")
+        return AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Help me connect Google Drive",
+            prompt_bundle={},
+        )
+
+    def _build_prepared_request(**kwargs):
+        captured["executable_skill_ids"] = kwargs.get("executable_skill_ids")
+        return PreparedChatRequest(
+            provider="anthropic",
+            model="claude-sonnet-4-6",
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Help me connect Google Drive",
+            tool_definitions=[],
+            budget_report=RequestBudgetReport(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                context_window_chars=40000,
+                reserved_output_chars=4000,
+                available_input_chars=35000,
+                provider_framing_chars=100,
+                system_prompt_chars=6,
+                bootstrap_history_chars=0,
+                conversation_history_chars=0,
+                current_message_chars=28,
+                tool_schema_chars=0,
+                total_input_chars=34,
+                overflow_chars=0,
+                within_budget=True,
+                failure_reason=None,
+                trimming_applied=False,
+                compaction_applied=False,
+            ),
+        )
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda *_args, **_kwargs: ["notes", "google-drive"]),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_assembled_inputs",
+        staticmethod(_build_assembled_inputs),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_prepared_request",
+        staticmethod(_build_prepared_request),
+    )
+    monkeypatch.setattr(
+        chat_router,
+        "CapabilityResolverService",
+        FakeResolverService,
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Help me connect Google Drive"},
+    )
+    assert response.status_code == 200
+    assert captured["resolver_enabled_skill_ids"] == ["notes", "google-drive"]
+    assert captured["blocked_skill_summaries"] == [
+        {
+            "skill_id": "google-drive",
+            "availability_status": "needs_connection",
+            "availability_reason": "missing_connection",
+            "availability_remediation": {
+                "action": "connect",
+                "provider": "google-workspace",
+            },
+        }
+    ]
+    assert captured["executable_skill_ids"] == ["notes"]
+    assert captured["allowed_skills"] == ["notes"]
+
+
+def test_stream_chat_passes_prepared_tool_definitions_to_gateway_execution(
+    test_client, monkeypatch
+):
+    captured: dict[str, object] = {}
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **kwargs):
+            captured["tool_definitions"] = kwargs.get("tool_definitions")
+            captured["allowed_skills"] = kwargs.get("allowed_skills")
+            yield {"type": "token", "content": "Hello"}
+
+    def _build_assembled_inputs(**_kwargs):
+        return AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Summarize my notes",
+            prompt_bundle={},
+        )
+
+    def _build_prepared_request(**_kwargs):
+        return PreparedChatRequest(
+            provider="anthropic",
+            model="claude-sonnet-4-6",
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Summarize my notes",
+            tool_definitions=[
+                {
+                    "name": "lookup_note",
+                    "description": "Open a note by ID.",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {"note_id": {"type": "string"}},
+                        "required": ["note_id"],
+                    },
+                }
+            ],
+            budget_report=RequestBudgetReport(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                context_window_chars=40000,
+                reserved_output_chars=4000,
+                available_input_chars=35000,
+                provider_framing_chars=100,
+                system_prompt_chars=6,
+                bootstrap_history_chars=0,
+                conversation_history_chars=0,
+                current_message_chars=18,
+                tool_schema_chars=120,
+                total_input_chars=144,
+                overflow_chars=0,
+                within_budget=True,
+                failure_reason=None,
+                trimming_applied=False,
+                compaction_applied=False,
+            ),
+        )
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda *_args, **_kwargs: ["notes"]),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_assembled_inputs",
+        staticmethod(_build_assembled_inputs),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_prepared_request",
+        staticmethod(_build_prepared_request),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Summarize my notes"},
+    )
+
+    assert response.status_code == 200
+    assert captured["allowed_skills"] == ["notes"]
+    assert captured["tool_definitions"] == [
+        {
+            "name": "lookup_note",
+            "description": "Open a note by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"note_id": {"type": "string"}},
+                "required": ["note_id"],
+            },
+        }
+    ]
 
 
 def test_stream_chat_passes_app_version_to_tool_context(test_client, monkeypatch):
@@ -500,7 +743,7 @@ def test_stream_chat_persists_conversation_provider_model(
     monkeypatch.setattr(
         chat_router.SettingsService,
         "resolve_enabled_skills",
-        staticmethod(lambda _settings_record: []),
+        staticmethod(lambda *_args, **_kwargs: []),
     )
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id
@@ -565,7 +808,7 @@ def test_stream_chat_persists_turn_pair_atomically(test_client, test_db, monkeyp
     monkeypatch.setattr(
         chat_router.SettingsService,
         "resolve_enabled_skills",
-        staticmethod(lambda _settings_record: []),
+        staticmethod(lambda *_args, **_kwargs: []),
     )
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id
