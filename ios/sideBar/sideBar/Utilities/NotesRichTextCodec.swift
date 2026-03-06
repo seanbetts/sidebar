@@ -64,7 +64,6 @@ enum NotesRichTextCodec {
         }
         var normalized = AttributedString(attributed)
         syncUnderlineStyles(from: attributed, into: &normalized)
-        normalizeDecodedEditorText(&normalized)
         return normalized
     }
 
@@ -162,31 +161,6 @@ enum NotesRichTextCodec {
         )
     }
 
-    private static func normalizeDecodedEditorText(_ text: inout AttributedString) {
-        for run in text.runs {
-            let range = run.range
-            let traits = inlineTraits(from: run)
-
-            var intents = text[range].inlinePresentationIntent ?? []
-            if traits.bold {
-                intents.insert(.stronglyEmphasized)
-            } else {
-                intents.remove(.stronglyEmphasized)
-            }
-            if traits.italic {
-                intents.insert(.emphasized)
-            } else {
-                intents.remove(.emphasized)
-            }
-            text[range].inlinePresentationIntent = intents.isEmpty ? nil : intents
-
-            if text[range].underlineStyle != nil {
-                text[range].underlineStyle = .single
-            }
-            text[range].strikethroughStyle = nil
-        }
-    }
-
     private static func syncUnderlineStyles(
         from source: NSAttributedString,
         into text: inout AttributedString
@@ -203,42 +177,5 @@ enum NotesRichTextCodec {
             let upper = text.index(text.startIndex, offsetByCharacters: upperOffset)
             text[lower..<upper].underlineStyle = .single
         }
-    }
-
-    private static func inlineTraits(from run: AttributedString.Runs.Run) -> (bold: Bool, italic: Bool) {
-#if os(iOS)
-        if let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] {
-            let traits = font.fontDescriptor.symbolicTraits
-            return (
-                bold: traits.contains(.traitBold),
-                italic: traits.contains(.traitItalic)
-            )
-        }
-        if let font = bridgedPlatformFont(from: run) as? UIFont {
-            let traits = font.fontDescriptor.symbolicTraits
-            return (
-                bold: traits.contains(.traitBold),
-                italic: traits.contains(.traitItalic)
-            )
-        }
-#elseif os(macOS)
-        if let font = bridgedPlatformFont(from: run) as? NSFont {
-            let traits = font.fontDescriptor.symbolicTraits
-            return (
-                bold: traits.contains(.bold),
-                italic: traits.contains(.italic)
-            )
-        }
-#endif
-        return (false, false)
-    }
-
-    private static func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
-        var sample = AttributedString("x")
-        let range = sample.startIndex..<sample.endIndex
-        sample[range].mergeAttributes(run.attributes)
-        let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
-            ?? NSAttributedString(sample)
-        return bridged.attribute(.font, at: 0, effectiveRange: nil) as AnyObject?
     }
 }

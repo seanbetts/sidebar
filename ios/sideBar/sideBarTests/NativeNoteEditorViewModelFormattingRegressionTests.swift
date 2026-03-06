@@ -1,5 +1,11 @@
 import XCTest
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
+#if os(macOS)
+import AppKit
+#endif
 @testable import sideBar
 
 @MainActor
@@ -54,6 +60,30 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent[linkRange].link, URL(string: urlString))
     }
 
+    func testHandleContentChangeCanonicalizesSwiftUIFontOnlyBoldFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let lineRange = firstLine(in: viewModel.attributedContent)
+        let previous = viewModel.attributedContent
+
+        viewModel.attributedContent[lineRange].font = .system(size: 16, weight: .bold)
+        #if os(iOS)
+        viewModel.attributedContent[lineRange][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
+        #endif
+        viewModel.handleContentChange(previous: previous)
+
+        XCTAssertTrue((viewModel.attributedContent[lineRange].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
+        XCTAssertTrue(viewModel.attributedContent.runs.contains { run in
+            #if os(iOS)
+            guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            #elseif os(macOS)
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.bold)
+            #endif
+        })
+    }
+
     private func firstLine(in text: AttributedString) -> Range<AttributedString.Index> {
         var cursor = text.startIndex
         while cursor < text.endIndex {
@@ -99,4 +129,15 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
         let upper = text.index(text.startIndex, offsetByCharacters: upperOffset)
         return lower..<upper
     }
+
+#if os(macOS)
+    private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
+        var sample = AttributedString("x")
+        let range = sample.startIndex..<sample.endIndex
+        sample[range].mergeAttributes(run.attributes)
+        let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
+            ?? NSAttributedString(sample)
+        return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
+    }
+#endif
 }

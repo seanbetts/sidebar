@@ -101,7 +101,7 @@ final class NotesRichTextCodecTests: XCTestCase {
         XCTAssertEqual(payload.plainText, "")
     }
 
-    func testDecodeBase64RTFToAttributedStringMapsBoldFontToInlineIntent() throws {
+    func testDecodeBase64RTFToAttributedStringPreservesBoldFontTraits() throws {
         let encoded = try makeEncodedRTF(
             string: "Bold",
             attributes: platformAttributes(
@@ -111,15 +111,12 @@ final class NotesRichTextCodecTests: XCTestCase {
         )
 
         let decoded = try XCTUnwrap(NotesRichTextCodec.decodeBase64RTFToAttributedString(encoded))
-        let range = decoded.startIndex..<decoded.endIndex
-
-        XCTAssertTrue((decoded[range].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
         XCTAssertTrue(decoded.runs.contains { run in
             hasBoldTrait(run)
         })
     }
 
-    func testDecodeBase64RTFToAttributedStringMapsItalicFontToInlineIntent() throws {
+    func testDecodeBase64RTFToAttributedStringPreservesItalicFontTraits() throws {
         let encoded = try makeEncodedRTF(
             string: "Styled",
             attributes: platformAttributes(
@@ -129,13 +126,9 @@ final class NotesRichTextCodecTests: XCTestCase {
         )
 
         let decoded = try XCTUnwrap(NotesRichTextCodec.decodeBase64RTFToAttributedString(encoded))
-        let range = decoded.startIndex..<decoded.endIndex
-
-        XCTAssertTrue((decoded[range].inlinePresentationIntent ?? []).contains(.emphasized))
         XCTAssertTrue(decoded.runs.contains { run in
             hasItalicTrait(run)
         })
-        XCTAssertNil(decoded[range].strikethroughStyle)
     }
 
     func testEncodeAttributedStringToBase64RTFPreservesUnderlineFormatting() throws {

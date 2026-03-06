@@ -44,6 +44,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let snapshot = viewModel.currentPersistenceSnapshot()
         let reloaded = NativeNoteEditorViewModel()
         reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+        let reloadedRange = characterRange(length: 5, in: reloaded.attributedContent)
 
         let hasBoldFont = reloaded.attributedContent.runs.contains { run in
             #if os(iOS)
@@ -55,6 +56,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             #endif
         }
         XCTAssertTrue(hasBoldFont)
+        XCTAssertTrue((reloaded.attributedContent[reloadedRange].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
     }
 
     func testPersistenceSnapshotRoundTripPreservesTraitOnlyBoldFormatting() async {
@@ -69,6 +71,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let snapshot = viewModel.currentPersistenceSnapshot()
         let reloaded = NativeNoteEditorViewModel()
         reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+        let reloadedRange = characterRange(length: 5, in: reloaded.attributedContent)
 
         let hasBoldFont = reloaded.attributedContent.runs.contains { run in
             #if os(iOS)
@@ -80,6 +83,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             #endif
         }
         XCTAssertTrue(hasBoldFont)
+        XCTAssertTrue((reloaded.attributedContent[reloadedRange].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
     }
 
     func testPersistenceSnapshotMaterializesSemanticOnlyBoldFormatting() async {
@@ -92,6 +96,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let snapshot = viewModel.currentPersistenceSnapshot()
         let reloaded = NativeNoteEditorViewModel()
         reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+        let reloadedRange = characterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertTrue(reloaded.attributedContent.runs.contains { run in
             #if os(iOS)
@@ -102,6 +107,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             return font.fontDescriptor.symbolicTraits.contains(.bold)
             #endif
         })
+        XCTAssertTrue((reloaded.attributedContent[reloadedRange].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
     }
 
     func testPersistenceSnapshotMaterializesSemanticOnlyItalicFormatting() async {
@@ -114,6 +120,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let snapshot = viewModel.currentPersistenceSnapshot()
         let reloaded = NativeNoteEditorViewModel()
         reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+        let reloadedRange = characterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertTrue(reloaded.attributedContent.runs.contains { run in
             #if os(iOS)
@@ -124,6 +131,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             return font.fontDescriptor.symbolicTraits.contains(.italic)
             #endif
         })
+        XCTAssertTrue((reloaded.attributedContent[reloadedRange].inlinePresentationIntent ?? []).contains(.emphasized))
     }
 
     func testPersistenceSnapshotRoundTripPreservesSwiftUIFontOnlyBoldFormatting() async {
@@ -139,6 +147,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let snapshot = viewModel.currentPersistenceSnapshot()
         let reloaded = NativeNoteEditorViewModel()
         reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+        let reloadedRange = characterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertTrue(reloaded.attributedContent.runs.contains { run in
             #if os(iOS)
@@ -149,6 +158,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             return font.fontDescriptor.symbolicTraits.contains(.bold)
             #endif
         })
+        XCTAssertTrue((reloaded.attributedContent[reloadedRange].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
     }
 
     func testPersistenceSnapshotRoundTripPreservesSwiftUIFontOnlyItalicFormatting() async {
@@ -164,6 +174,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let snapshot = viewModel.currentPersistenceSnapshot()
         let reloaded = NativeNoteEditorViewModel()
         reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+        let reloadedRange = characterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertTrue(reloaded.attributedContent.runs.contains { run in
             #if os(iOS)
@@ -174,6 +185,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             return font.fontDescriptor.symbolicTraits.contains(.italic)
             #endif
         })
+        XCTAssertTrue((reloaded.attributedContent[reloadedRange].inlinePresentationIntent ?? []).contains(.emphasized))
     }
 
     func testPersistenceSnapshotRoundTripPreservesItalicFormatting() async {
@@ -187,6 +199,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let snapshot = viewModel.currentPersistenceSnapshot()
         let reloaded = NativeNoteEditorViewModel()
         reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
+        let reloadedRange = characterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertTrue(reloaded.attributedContent.runs.contains { run in
             #if os(iOS)
@@ -197,6 +210,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
             return font.fontDescriptor.symbolicTraits.contains(.italic)
             #endif
         })
+        XCTAssertTrue((reloaded.attributedContent[reloadedRange].inlinePresentationIntent ?? []).contains(.emphasized))
     }
 
     func testPersistenceSnapshotRoundTripPreservesUnderlineFormatting() async {

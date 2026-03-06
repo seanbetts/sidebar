@@ -22,8 +22,6 @@ extension NativeNoteEditorViewModel {
             let range = run.range
             let tableInfo = tableRowInfo(from: run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
             let isTableHeader = tableInfo?.isHeader == true
-            let preservesExistingBold = runHasBoldTrait(run)
-            let preservesExistingItalic = runHasItalicTrait(run)
 
             if intents.contains(.code) {
                 setFont(inlineCodeFont, platformFont: platformInlineCodeFont(), in: &text, range: range)
@@ -32,8 +30,8 @@ extension NativeNoteEditorViewModel {
                 continue
             }
 
-            let isItalic = intents.contains(.emphasized) || preservesExistingItalic
-            let isInlineBold = intents.contains(.stronglyEmphasized) || preservesExistingBold
+            let isItalic = intents.contains(.emphasized)
+            let isInlineBold = intents.contains(.stronglyEmphasized)
             var font = baseFont
             if isTableHeader {
                 font = font.weight(.semibold)
@@ -63,41 +61,6 @@ extension NativeNoteEditorViewModel {
                 setForegroundColor(baseForeground, in: &text, range: range)
             }
         }
-    }
-
-    private func runHasBoldTrait(_ run: AttributedString.Runs.Run) -> Bool {
-        #if os(iOS)
-        guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
-        return font.fontDescriptor.symbolicTraits.contains(.traitBold)
-        #elseif os(macOS)
-        guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
-        return font.fontDescriptor.symbolicTraits.contains(.bold)
-        #endif
-    }
-
-    private func runHasItalicTrait(_ run: AttributedString.Runs.Run) -> Bool {
-        #if os(iOS)
-        guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
-        return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
-        #elseif os(macOS)
-        guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
-        return font.fontDescriptor.symbolicTraits.contains(.italic)
-        #endif
-    }
-
-    private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
-        var sample = AttributedString("x")
-        let range = sample.startIndex..<sample.endIndex
-        sample[range].mergeAttributes(run.attributes)
-#if os(macOS)
-        let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
-            ?? NSAttributedString(sample)
-#endif
-#if !os(macOS)
-        let bridged = NSAttributedString(sample)
-#endif
-        guard bridged.length > 0 else { return nil }
-        return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
     }
 
     func inferredBlockKind(from lineText: String) -> BlockKind? {

@@ -107,6 +107,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         let previousContent = attributedContent
         let previousSelection = selection
         AttributedNoteFormattingCommands.apply(formatting, on: self)
+        normalizeDocumentStylingForDisplay()
         guard attributedContent != previousContent || selection != previousSelection else { return }
 
         if !hasUnsavedChanges {
@@ -129,11 +130,10 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         guard attributedContent != previous else { return }
 
         var normalizedContent = attributedContent
-        stripUnsupportedInlineStyles(in: &normalizedContent)
-        if applyDetectedLinks(in: &normalizedContent) || normalizedContent != attributedContent {
-            if attributedContent != normalizedContent {
-                attributedContent = normalizedContent
-            }
+        _ = applyDetectedLinks(in: &normalizedContent)
+        normalizedContent = normalizedEditorDocumentForRuntime(from: normalizedContent)
+        if attributedContent != normalizedContent {
+            attributedContent = normalizedContent
         }
 
         // Mark dirty immediately so close/switch flows can prompt even before autosave fires.

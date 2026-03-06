@@ -10,9 +10,8 @@ extension NativeNoteEditorViewModel {
             NotesRichTextCodec.decodeBase64RTFToAttributedString(canonical)
             ?? AttributedString(text)
         _ = applyDetectedLinks(in: &detectedContent)
-        attributedContent = detectedContent
+        attributedContent = normalizedEditorDocumentForRuntime(from: detectedContent)
         selection = AttributedTextSelection()
-        normalizeDocumentStylingForDisplay()
         lastSavedContent = text
         lastSavedCanonicalContent =
             NotesRichTextCodec.encodeAttributedStringToBase64RTF(attributedContent)
@@ -22,27 +21,7 @@ extension NativeNoteEditorViewModel {
     }
 
     func normalizeDocumentStylingForDisplay() {
-        guard !attributedContent.characters.isEmpty else { return }
-
-        var normalized = attributedContent
-        stripUnsupportedInlineStyles(in: &normalized)
-        for line in lineInfos(in: normalized) {
-            let lineRange = attributedRange(for: line.range, in: normalized)
-            let resolvedBlockKind: BlockKind = .paragraph
-            normalized[lineRange].blockKind = resolvedBlockKind
-            normalized[lineRange].listDepth = nil
-            normalized[lineRange].codeLanguage = nil
-            normalized[lineRange].inlineMarker = nil
-            normalized[lineRange].listMarker = nil
-            normalized[lineRange][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
-            normalized[lineRange][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
-            applyInlineIntentStyling(in: &normalized, lineRange: lineRange, blockKind: resolvedBlockKind)
-            let paragraphRange = lineRangeIncludingTrailingNewline(in: normalized, lineRange: lineRange)
-            normalized[paragraphRange].paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
-                baseFontSize: baseFontSize
-            )
-        }
-
+        let normalized = normalizedEditorDocumentForRuntime(from: attributedContent)
         if normalized != attributedContent {
             attributedContent = normalized
         }

@@ -14,9 +14,8 @@ extension NativeNoteEditorViewModel {
         if let attributed = NotesRichTextCodec.decodeBase64RTFToAttributedString(canonicalContent) {
             var detectedContent = attributed
             _ = applyDetectedLinks(in: &detectedContent)
-            attributedContent = detectedContent
+            attributedContent = normalizedEditorDocumentForRuntime(from: detectedContent)
             selection = AttributedTextSelection()
-            normalizeDocumentStylingForDisplay()
             lastSavedContent = plainText
             lastSavedCanonicalContent = canonicalContent
             hasUnsavedChanges = false
@@ -27,7 +26,7 @@ extension NativeNoteEditorViewModel {
     }
 
     public func currentPersistenceSnapshot() -> PersistenceSnapshot {
-        var exportContent = attributedContent
+        var exportContent = normalizedEditorDocumentForRuntime(from: attributedContent)
         // Materialize inline styling before export so semantic editor state survives the RTF bridge.
         materializeExportFormatting(in: &exportContent)
         NoteTextFormattingDefinition().constrainDocument(&exportContent)
@@ -91,54 +90,14 @@ extension NativeNoteEditorViewModel {
             guard !run.range.isEmpty else { return nil }
             let lower = text.characters.distance(from: text.startIndex, to: run.range.lowerBound)
             let upper = text.characters.distance(from: text.startIndex, to: run.range.upperBound)
-            let intents = run.inlinePresentationIntent ?? []
-            let bold = intents.contains(.stronglyEmphasized)
-                || swiftUIFontHasTrait(run.font, for: .stronglyEmphasized)
-                || exportFontHasTrait(run, intent: .stronglyEmphasized)
-            let italic = intents.contains(.emphasized)
-                || swiftUIFontHasTrait(run.font, for: .emphasized)
-                || exportFontHasTrait(run, intent: .emphasized)
-            let underline = run.underlineStyle != nil
+            let state = canonicalInlineFormattingState(from: run)
             return ExportInlineRun(
                 range: lower..<upper,
                 blockKind: text.blockKind(in: run.range),
-                bold: bold,
-                italic: italic,
-                underline: underline
+                bold: state.bold,
+                italic: state.italic,
+                underline: state.underline
             )
         }
-    }
-
-    private func exportFontHasTrait(
-        _ run: AttributedString.Runs.Run,
-        intent: InlinePresentationIntent
-    ) -> Bool {
-        guard let font = exportPlatformFont(from: run) else { return false }
-        switch intent {
-        case .stronglyEmphasized:
-            #if os(iOS)
-            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
-            #elseif os(macOS)
-            return font.fontDescriptor.symbolicTraits.contains(.bold)
-            #endif
-        case .emphasized:
-            #if os(iOS)
-            return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
-            #elseif os(macOS)
-            return font.fontDescriptor.symbolicTraits.contains(.italic)
-            #endif
-        default:
-            return false
-        }
-    }
-
-    private func exportPlatformFont(from run: AttributedString.Runs.Run) -> PlatformFont? {
-        var sample = AttributedString("x")
-        let sampleRange = sample.startIndex..<sample.endIndex
-        sample[sampleRange].mergeAttributes(run.attributes)
-        let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
-            ?? NSAttributedString(sample)
-        guard bridged.length > 0 else { return nil }
-        return bridged.attribute(.font, at: 0, effectiveRange: nil) as? PlatformFont
     }
 }
