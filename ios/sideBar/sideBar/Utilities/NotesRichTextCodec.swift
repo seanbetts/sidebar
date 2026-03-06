@@ -207,14 +207,9 @@ enum NotesRichTextCodec {
         for run: AttributedString.Runs.Run
     ) -> NoteInlineFormattingTraits {
         let swiftUIFontTraits = noteSwiftUIFontTraits(from: run.font)
-        #if os(iOS)
-        let platformFont = run[AttributeScopes.UIKitAttributes.FontAttribute.self]
-        #else
-        let platformFont: NotePlatformFont? = nil
-        #endif
-        let platformTraits = platformFont.map(notePlatformFontTraits(from:)) ??
-            noteBridgedPlatformFont(from: run.attributes).map(notePlatformFontTraits(from:)) ??
-            .plain
+        let platformTraits = noteBridgedPlatformFont(from: run.attributes)
+            .map(notePlatformFontTraits(from:))
+            ?? .plain
         return NoteInlineFormattingTraits(
             bold: swiftUIFontTraits.bold || platformTraits.bold,
             italic: swiftUIFontTraits.italic || platformTraits.italic

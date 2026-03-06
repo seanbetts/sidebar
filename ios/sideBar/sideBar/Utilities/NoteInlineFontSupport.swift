@@ -22,11 +22,7 @@ typealias NotePlatformFont = NSFont
 
 @available(iOS 26.0, macOS 26.0, *)
 func noteInlineFont(baseFontSize: CGFloat, bold: Bool, italic: Bool) -> Font {
-    _ = baseFontSize
-    var font = Font.default
-    if bold {
-        font = font.weight(.bold)
-    }
+    var font = Font.system(size: baseFontSize, weight: bold ? .bold : .regular)
     if italic {
         font = font.italic()
     }
@@ -127,26 +123,6 @@ func notePlatformFontTraits(from font: NotePlatformFont) -> NoteInlineFormatting
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-func noteApplyPlatformFont(_ font: NotePlatformFont, to attrs: inout AttributeContainer) {
-    var sample = AttributedString("x")
-    let range = sample.startIndex..<sample.endIndex
-    sample[range].mergeAttributes(attrs)
-    sample[range].mergeAttributes(notePlatformFontAttributes(font))
-    if let merged = sample.runs.first?.attributes {
-        attrs = merged
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-func noteApplyPlatformFont(
-    _ font: NotePlatformFont,
-    to text: inout AttributedString,
-    range: Range<AttributedString.Index>
-) {
-    text[range].mergeAttributes(notePlatformFontAttributes(font))
-}
-
-@available(iOS 26.0, macOS 26.0, *)
 func noteBridgedPlatformFont(from attributes: AttributeContainer) -> NotePlatformFont? {
     var sample = AttributedString("x")
     let range = sample.startIndex..<sample.endIndex
@@ -158,9 +134,21 @@ func noteBridgedPlatformFont(from attributes: AttributeContainer) -> NotePlatfor
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func notePlatformFontAttributes(_ font: NotePlatformFont) -> AttributeContainer {
+func notePlatformFontMirrorAttributes(
+    baseFontSize: CGFloat,
+    bold: Bool,
+    italic: Bool
+) -> AttributeContainer {
+#if os(iOS)
+    return AttributeContainer()
+#else
     let mutable = NSMutableAttributedString(string: "x")
-    mutable.addAttribute(.font, value: font, range: NSRange(location: 0, length: mutable.length))
+    mutable.addAttribute(
+        .font,
+        value: notePlatformFont(baseFontSize: baseFontSize, bold: bold, italic: italic),
+        range: NSRange(location: 0, length: mutable.length)
+    )
     let bridged = AttributedString(mutable)
     return bridged.runs.first?.attributes ?? AttributeContainer()
+#endif
 }

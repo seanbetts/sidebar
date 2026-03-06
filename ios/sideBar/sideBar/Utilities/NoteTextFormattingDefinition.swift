@@ -23,31 +23,30 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
     }
 
     func constrainDocument(_ text: inout AttributedString) {
-        let snapshots = text.runs.compactMap { run -> (Range<Int>, NoteInlineFormattingTraits)? in
+        let snapshots = text.runs.compactMap { run -> SupportedRunSnapshot? in
             guard !run.range.isEmpty else { return nil }
             let lower = text.characters.distance(from: text.startIndex, to: run.range.lowerBound)
             let upper = text.characters.distance(from: text.startIndex, to: run.range.upperBound)
-            return (lower..<upper, inlineTraits(from: run))
+            return SupportedRunSnapshot(
+                range: lower..<upper,
+                traits: inlineTraits(from: run),
+                underline: run.underlineStyle != nil
+            )
         }
 
+        var normalized = AttributedString(String(text.characters))
         for snapshot in snapshots {
-            let range = attributedRange(for: snapshot.0, in: text)
-            clearUnsupportedEditorAttributes(in: &text, range: range)
-            text[range].font = noteInlineFont(
+            let range = attributedRange(for: snapshot.range, in: normalized)
+            normalized[range].font = noteInlineFont(
                 baseFontSize: baseFontSize,
-                bold: snapshot.1.bold,
-                italic: snapshot.1.italic
+                bold: snapshot.traits.bold,
+                italic: snapshot.traits.italic
             )
-            noteApplyPlatformFont(
-                notePlatformFont(
-                    baseFontSize: baseFontSize,
-                    bold: snapshot.1.bold,
-                    italic: snapshot.1.italic
-                ),
-                to: &text,
-                range: range
-            )
+            normalized[range].underlineStyle = snapshot.underline ? .single : nil
+            clearUnsupportedEditorAttributes(in: &normalized, range: range)
         }
+
+        text = normalized
     }
 
     private func clearUnsupportedEditorAttributes(
@@ -102,15 +101,15 @@ private struct ListItemDelimiterConstraint: AttributedTextValueConstraint {
 
 @available(iOS 26.0, macOS 26.0, *)
 private extension NoteTextFormattingDefinition {
+    struct SupportedRunSnapshot {
+        let range: Range<Int>
+        let traits: NoteInlineFormattingTraits
+        let underline: Bool
+    }
+
     func inlineTraits(from run: AttributedString.Runs.Run) -> NoteInlineFormattingTraits {
         let swiftUIFontTraits = noteSwiftUIFontTraits(from: run.font)
-        #if os(iOS)
-        let platformFont = run[AttributeScopes.UIKitAttributes.FontAttribute.self]
-        #else
-        let platformFont: NotePlatformFont? = nil
-        #endif
-        let platformTraits = platformFont.map(notePlatformFontTraits(from:)) ??
-            noteBridgedPlatformFont(from: run.attributes).map(notePlatformFontTraits(from:)) ??
+        let platformTraits = noteBridgedPlatformFont(from: run.attributes).map(notePlatformFontTraits(from:)) ??
             .plain
         return NoteInlineFormattingTraits(
             bold: swiftUIFontTraits.bold || platformTraits.bold,

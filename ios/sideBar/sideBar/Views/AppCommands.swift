@@ -63,7 +63,19 @@ struct SidebarCommands: Commands {
             .keyboardShortcut(.delete, modifiers: [.command, .shift])
         }
         if #available(macOS 26.0, *) {
-            TextFormattingCommands()
+            CommandMenu("Format") {
+                Toggle("Bold", isOn: formattingBinding(.bold))
+                    .keyboardShortcut("b", modifiers: [.command])
+                    .disabled(!canFormatNotes)
+
+                Toggle("Italic", isOn: formattingBinding(.italic))
+                    .keyboardShortcut("i", modifiers: [.command])
+                    .disabled(!canFormatNotes)
+
+                Toggle("Underline", isOn: formattingBinding(.underline))
+                    .keyboardShortcut("u", modifiers: [.command])
+                    .disabled(!canFormatNotes)
+            }
         }
     }
 
@@ -92,6 +104,25 @@ struct SidebarCommands: Commands {
             return true
         }
         return false
+    }
+
+    @available(macOS 26.0, *)
+    private var canFormatNotes: Bool {
+        environment.notesRuntime.editorViewModel.canApplyFormattingCommands()
+    }
+
+    @available(macOS 26.0, *)
+    private func formattingBinding(_ formatting: NoteFormatting) -> Binding<Bool> {
+        Binding(
+            get: {
+                guard canFormatNotes else { return false }
+                return environment.notesRuntime.editorViewModel.isFormattingActive(formatting)
+            },
+            set: { enabled in
+                guard canFormatNotes else { return }
+                environment.notesRuntime.editorViewModel.setFormatting(formatting, enabled: enabled)
+            }
+        )
     }
 }
 #endif

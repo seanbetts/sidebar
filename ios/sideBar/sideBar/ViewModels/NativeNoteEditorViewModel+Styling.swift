@@ -66,49 +66,32 @@ extension NativeNoteEditorViewModel {
         return platformColor(color)
     }
 
-    func setFont(_ font: Font, platformFont: PlatformFont, in attrs: inout AttributeContainer) {
+    func setFont(_ font: Font, in attrs: inout AttributeContainer) {
         attrs.font = font
-        setPlatformFont(platformFont, in: &attrs)
     }
 
     func setFont(
         _ font: Font,
-        platformFont: PlatformFont,
         in text: inout AttributedString,
         range: Range<AttributedString.Index>
     ) {
         text[range].font = font
-        setPlatformFont(platformFont, in: &text, range: range)
-    }
-
-    func setPlatformFont(_ font: PlatformFont, in attrs: inout AttributeContainer) {
-        noteApplyPlatformFont(font, to: &attrs)
-    }
-
-    func setPlatformFont(
-        _ font: PlatformFont,
-        in text: inout AttributedString,
-        range: Range<AttributedString.Index>
-    ) {
-        noteApplyPlatformFont(font, to: &text, range: range)
     }
 
     func inlineFormattingState(from attrs: AttributeContainer) -> InlineFormattingState {
-        let swiftUIFontTraits = inlineTraits(from: attrs.font)
-        let platformFontTraits = platformFont(from: attrs).map(inlineTraits(from:)) ?? .plain
+        let swiftUIFontTraits = inlineTraits(from: attrs.font, fallbackAttributes: attrs)
         return InlineFormattingState(
-            bold: swiftUIFontTraits.bold || platformFontTraits.bold,
-            italic: swiftUIFontTraits.italic || platformFontTraits.italic,
+            bold: swiftUIFontTraits.bold,
+            italic: swiftUIFontTraits.italic,
             underline: attrs.underlineStyle != nil
         )
     }
 
     func inlineFormattingState(from run: AttributedString.Runs.Run) -> InlineFormattingState {
-        let swiftUIFontTraits = inlineTraits(from: run.font)
-        let platformFontTraits = platformFont(from: run).map(inlineTraits(from:)) ?? .plain
+        let swiftUIFontTraits = inlineTraits(from: run.font, fallbackAttributes: run.attributes)
         return InlineFormattingState(
-            bold: swiftUIFontTraits.bold || platformFontTraits.bold,
-            italic: swiftUIFontTraits.italic || platformFontTraits.italic,
+            bold: swiftUIFontTraits.bold,
+            italic: swiftUIFontTraits.italic,
             underline: run.underlineStyle != nil
         )
     }
@@ -118,12 +101,22 @@ extension NativeNoteEditorViewModel {
         to attrs: inout AttributeContainer
     ) {
         let font = inlineStyledFont(bold: state.bold, italic: state.italic)
-        let platformFont = notePlatformFont(
-            baseFontSize: baseFontSize,
-            bold: state.bold,
-            italic: state.italic
+        setFont(font, in: &attrs)
+#if os(macOS)
+        var sample = AttributedString("x")
+        let sampleRange = sample.startIndex..<sample.endIndex
+        sample[sampleRange].mergeAttributes(attrs)
+        sample[sampleRange].mergeAttributes(
+            notePlatformFontMirrorAttributes(
+                baseFontSize: baseFontSize,
+                bold: state.bold,
+                italic: state.italic
+            )
         )
-        setFont(font, platformFont: platformFont, in: &attrs)
+        if let merged = sample.runs.first?.attributes {
+            attrs = merged
+        }
+#endif
         attrs.underlineStyle = state.underline ? .single : nil
         attrs.strikethroughStyle = nil
         attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
@@ -136,50 +129,34 @@ extension NativeNoteEditorViewModel {
         range: Range<AttributedString.Index>
     ) {
         let font = inlineStyledFont(bold: state.bold, italic: state.italic)
-        let platformFont = notePlatformFont(
-            baseFontSize: baseFontSize,
-            bold: state.bold,
-            italic: state.italic
+        setFont(font, in: &text, range: range)
+#if os(macOS)
+        text[range].mergeAttributes(
+            notePlatformFontMirrorAttributes(
+                baseFontSize: baseFontSize,
+                bold: state.bold,
+                italic: state.italic
+            )
         )
-        setFont(font, platformFont: platformFont, in: &text, range: range)
+#endif
         text[range].underlineStyle = state.underline ? .single : nil
         text[range].strikethroughStyle = nil
         text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
         text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
     }
 
-    private func inlineTraits(from font: Font?) -> InlineFormattingTraits {
+    private func inlineTraits(
+        from font: Font?,
+        fallbackAttributes: AttributeContainer
+    ) -> InlineFormattingTraits {
         let traits = noteSwiftUIFontTraits(from: font)
-        return InlineFormattingTraits(bold: traits.bold, italic: traits.italic)
-    }
-
-    private func inlineTraits(from font: PlatformFont) -> InlineFormattingTraits {
-        let traits = notePlatformFontTraits(from: font)
-        return InlineFormattingTraits(bold: traits.bold, italic: traits.italic)
-    }
-
-    private func platformFont(from run: AttributedString.Runs.Run) -> PlatformFont? {
-        #if os(iOS)
-        if let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] {
-            return font
-        }
-        #endif
-        return bridgedPlatformFont(from: run.attributes)
-    }
-
-    private func platformFont(from attrs: AttributeContainer) -> PlatformFont? {
-        #if os(iOS)
-        if let font = attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] {
-            return font
-        }
-        #endif
-        return bridgedPlatformFont(from: attrs)
-    }
-
-    private func bridgedPlatformFont(
-        from attributes: AttributeContainer
-    ) -> PlatformFont? {
-        noteBridgedPlatformFont(from: attributes)
+        let fallbackTraits = noteBridgedPlatformFont(from: fallbackAttributes)
+            .map(notePlatformFontTraits(from:))
+            ?? .plain
+        return InlineFormattingTraits(
+            bold: traits.bold || fallbackTraits.bold,
+            italic: traits.italic || fallbackTraits.italic
+        )
     }
 
     private struct InlineFormattingTraits {
