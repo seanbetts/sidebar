@@ -8,6 +8,7 @@ public protocol NotesProviding {
     func getNote(id: String) async throws -> NotePayload
     func search(query: String, limit: Int) async throws -> [FileNode]
     func updateNote(id: String, content: String) async throws -> NotePayload
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload
     func createNote(request: NoteCreateRequest) async throws -> NotePayload
     func moveNote(id: String, folder: String) async throws -> NotePayload
     func archiveNote(id: String, archived: Bool) async throws -> NotePayload
@@ -18,6 +19,18 @@ public protocol NotesProviding {
     func renameFolder(oldPath: String, newName: String) async throws
     func moveFolder(oldPath: String, newParent: String) async throws
     func deleteFolder(path: String) async throws
+}
+
+public extension NotesProviding {
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: noteLegacyTransportContent(
+                from: document,
+                plainText: NotesSemanticDocumentProjection.plainText(from: document)
+            )
+        )
+    }
 }
 
 /// API client for note endpoints.
@@ -73,14 +86,15 @@ public struct NotesAPI {
     }
 
     public func updateNote(id: String, content: String) async throws -> NotePayload {
-        let normalized = NotesRichTextCodec.normalizeWriteInput(content: content)
-        return try await client.request(
+        let request = NoteUpdateRequest(content: content)
+        return try await updateNote(id: id, document: request.document)
+    }
+
+    public func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await client.request(
             "notes/\(id)",
             method: "PATCH",
-            body: NoteUpdateRequest(
-                content: normalized.content,
-                plainText: normalized.plainText
-            )
+            body: NoteUpdateRequest(document: document)
         )
     }
 
@@ -132,8 +146,10 @@ extension NotesAPI: NotesProviding {}
 public struct NotePayload: Codable, Equatable {
     public let id: String
     public let name: String
-    /// Canonical Base64 RTF payload from backend contract.
+    /// Temporary legacy RTF boundary retained for local compatibility.
     public let content: String
+    public let document: NotesSemanticDocument
+    public let documentVersion: Int
     /// Explicit plain-text cache for list/search/prompt/export paths.
     public let plainText: String
     public let path: String
@@ -144,6 +160,8 @@ public struct NotePayload: Codable, Equatable {
         case id
         case name
         case content
+        case document
+        case documentVersion = "document_version"
         case path
         case modified
         case created
@@ -154,16 +172,25 @@ public struct NotePayload: Codable, Equatable {
     public init(
         id: String,
         name: String,
-        content: String,
+        content: String = "",
+        document: NotesSemanticDocument? = nil,
         plainText: String? = nil,
         path: String,
         modified: Double?,
-        created: Double?
+        created: Double?,
+        documentVersion: Int? = nil
     ) {
+        let resolvedDocument = document
+            ?? noteDocumentFromLegacyTransportContent(content, plainText: plainText)
+        let resolvedPlainText = plainText ?? NotesSemanticDocumentProjection.plainText(from: resolvedDocument)
         self.id = id
         self.name = name
-        self.content = content
-        self.plainText = plainText ?? content
+        self.document = resolvedDocument
+        self.documentVersion = documentVersion ?? resolvedDocument.version
+        self.content = content.isEmpty
+            ? noteLegacyTransportContent(from: resolvedDocument, plainText: resolvedPlainText)
+            : content
+        self.plainText = resolvedPlainText
         self.path = path
         self.modified = modified
         self.created = created
@@ -177,10 +204,20 @@ public struct NotePayload: Codable, Equatable {
         modified = try container.decodeIfPresent(Double.self, forKey: .modified)
         created = try container.decodeIfPresent(Double.self, forKey: .created)
         let rawContent = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
+        let decodedDocument = try container.decodeIfPresent(NotesSemanticDocument.self, forKey: .document)
+        let decodedDocumentVersion = try container.decodeIfPresent(Int.self, forKey: .documentVersion)
         let decodedPlainText = try container.decodeIfPresent(String.self, forKey: .plainText)
             ?? container.decodeIfPresent(String.self, forKey: .plainTextCamel)
-        content = rawContent
-        plainText = decodedPlainText ?? ""
+        let resolvedDocument = decodedDocument
+            ?? noteDocumentFromLegacyTransportContent(rawContent, plainText: decodedPlainText)
+        let resolvedPlainText = decodedPlainText
+            ?? NotesSemanticDocumentProjection.plainText(from: resolvedDocument)
+        document = resolvedDocument
+        documentVersion = decodedDocumentVersion ?? resolvedDocument.version
+        content = rawContent.isEmpty
+            ? noteLegacyTransportContent(from: resolvedDocument, plainText: resolvedPlainText)
+            : rawContent
+        plainText = resolvedPlainText
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -188,6 +225,8 @@ public struct NotePayload: Codable, Equatable {
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
         try container.encode(content, forKey: .content)
+        try container.encode(document, forKey: .document)
+        try container.encode(documentVersion, forKey: .documentVersion)
         try container.encode(path, forKey: .path)
         try container.encodeIfPresent(modified, forKey: .modified)
         try container.encodeIfPresent(created, forKey: .created)
@@ -197,14 +236,14 @@ public struct NotePayload: Codable, Equatable {
 
 /// Request body for creating a note.
 public struct NoteCreateRequest: Codable {
-    public let content: String
+    public let document: NotesSemanticDocument
     public let title: String?
     public let path: String?
     public let folder: String?
     public let plainText: String?
 
     enum CodingKeys: String, CodingKey {
-        case content
+        case document
         case title
         case path
         case folder
@@ -218,47 +257,92 @@ public struct NoteCreateRequest: Codable {
         folder: String? = nil,
         plainText: String? = nil
     ) {
-        self.content = content
+        let resolvedDocument = noteDocumentFromLegacyTransportContent(content, plainText: plainText)
+        self.document = resolvedDocument
         self.title = title
         self.path = path
         self.folder = folder
-        self.plainText = plainText
+        self.plainText = plainText ?? NotesSemanticDocumentProjection.plainText(from: resolvedDocument)
+    }
+
+    public init(
+        document: NotesSemanticDocument,
+        title: String? = nil,
+        path: String? = nil,
+        folder: String? = nil,
+        plainText: String? = nil
+    ) {
+        self.document = document
+        self.title = title
+        self.path = path
+        self.folder = folder
+        self.plainText = plainText ?? NotesSemanticDocumentProjection.plainText(from: document)
     }
 
     func canonicalized() -> NoteCreateRequest {
-        let normalized = NotesRichTextCodec.normalizeWriteInput(
-            content: content,
-            plainText: plainText
-        )
         return NoteCreateRequest(
-            content: normalized.content,
+            document: document,
             title: title,
             path: path,
             folder: folder,
-            plainText: normalized.plainText
+            plainText: plainText ?? NotesSemanticDocumentProjection.plainText(from: document)
         )
     }
 }
 
 /// Request body for updating note content.
 public struct NoteUpdateRequest: Codable {
-    public let content: String
+    public let document: NotesSemanticDocument
     public let plainText: String?
 
     enum CodingKeys: String, CodingKey {
-        case content
+        case document
         case plainText = "plain_text"
     }
 
     public init(content: String, plainText: String? = nil) {
-        self.content = content
-        self.plainText = plainText
+        let resolvedDocument = noteDocumentFromLegacyTransportContent(content, plainText: plainText)
+        self.document = resolvedDocument
+        self.plainText = plainText ?? NotesSemanticDocumentProjection.plainText(from: resolvedDocument)
+    }
+
+    public init(document: NotesSemanticDocument, plainText: String? = nil) {
+        self.document = document
+        self.plainText = plainText ?? NotesSemanticDocumentProjection.plainText(from: document)
     }
 }
 
 /// Request body for moving a note to a folder.
 public struct MoveRequest: Codable {
     public let folder: String
+}
+
+private func noteDocumentFromLegacyTransportContent(
+    _ content: String,
+    plainText: String?
+) -> NotesSemanticDocument {
+    let resolvedPlainText: String
+    if let plainText {
+        resolvedPlainText = plainText
+    } else if let decodedPlainText = NotesRichTextCodec.decodeBase64RTFToPlainText(content) {
+        resolvedPlainText = decodedPlainText
+    } else {
+        resolvedPlainText = content
+    }
+    return NotesSemanticDocumentProjection.document(fromPlainText: resolvedPlainText)
+}
+
+private func noteLegacyTransportContent(
+    from document: NotesSemanticDocument,
+    plainText: String
+) -> String {
+    if #available(iOS 26.0, macOS 26.0, *) {
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document)
+        if let encoded = NotesRichTextCodec.encodeAttributedStringToBase64RTF(attributed) {
+            return encoded
+        }
+    }
+    return NotesRichTextCodec.encodePlainTextToBase64RTF(plainText)
 }
 
 /// Request body for archiving or unarchiving a note.

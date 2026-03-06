@@ -1,33 +1,33 @@
 import Foundation
 
-struct NotesSemanticDocument: Codable, Equatable {
-    let version: Int
-    let blocks: [Block]
+public struct NotesSemanticDocument: Codable, Equatable {
+    public let version: Int
+    public let blocks: [Block]
 
-    static let currentVersion = 1
+    public static let currentVersion = 1
 
-    init(version: Int = currentVersion, blocks: [Block]) {
+    public init(version: Int = currentVersion, blocks: [Block]) {
         self.version = version
         self.blocks = blocks
     }
 }
 
 extension NotesSemanticDocument {
-    struct Block: Codable, Equatable {
-        let type: BlockType
-        let content: [InlineSegment]
+    public struct Block: Codable, Equatable {
+        public let type: BlockType
+        public let content: [InlineSegment]
 
-        init(type: BlockType, content: [InlineSegment]) {
+        public init(type: BlockType, content: [InlineSegment]) {
             self.type = type
             self.content = content
         }
 
-        static func paragraph(_ content: [InlineSegment]) -> Block {
+        public static func paragraph(_ content: [InlineSegment]) -> Block {
             Block(type: .paragraph, content: content)
         }
     }
 
-    enum BlockType: String, Codable, CaseIterable {
+    public enum BlockType: String, Codable, CaseIterable {
         case paragraph
         case heading
         case unorderedList = "unordered_list"
@@ -44,21 +44,21 @@ extension NotesSemanticDocument {
         case htmlBlock = "html_block"
     }
 
-    struct InlineSegment: Codable, Equatable {
-        let text: String
-        let marks: [InlineMark]
+    public struct InlineSegment: Codable, Equatable {
+        public let text: String
+        public let marks: [InlineMark]
 
-        init(text: String, marks: [InlineMark]) {
+        public init(text: String, marks: [InlineMark]) {
             self.text = text
             self.marks = marks
         }
     }
 
-    enum InlineMark: String, Codable, CaseIterable {
+    public enum InlineMark: String, Codable, CaseIterable {
         case bold
         case italic
         case underline
 
-        static let storageOrder: [InlineMark] = [.bold, .italic, .underline]
+        public static let storageOrder: [InlineMark] = [.bold, .italic, .underline]
     }
 }

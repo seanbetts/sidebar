@@ -5,14 +5,21 @@ import XCTest
 
 @MainActor
 final class NotesWriteQueueExecutorTests: XCTestCase {
-    func testExecuteUpdateForwardsQueuedNotePlainTextBeforeApiCall() async throws {
-        let nonCanonical = "- [x] Done"
+    func testExecuteUpdateForwardsQueuedSemanticDocumentBeforeApiCall() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([
+                    .init(text: "Queued", marks: [.bold]),
+                    .init(text: " body", marks: [])
+                ])
+            ]
+        )
 
         let api = NotesWriteQueueExecutorAPISpy()
         let store = NotesWriteQueueExecutorStoreSpy()
         let executor = NotesWriteQueueExecutor(api: api, store: store)
 
-        let payload = try JSONEncoder().encode(NoteUpdateRequest(content: nonCanonical))
+        let payload = try JSONEncoder().encode(NoteUpdateRequest(document: document))
         let write = PendingWriteRecord(
             id: UUID(),
             operationType: WriteOperation.update.rawValue,
@@ -25,11 +32,7 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
 
         try await executor.execute(write: write)
 
-        XCTAssertEqual(api.updatedContents.count, 1)
-        XCTAssertEqual(
-            NotesRichTextCodec.decodeBase64RTFToPlainText(api.updatedContents[0]),
-            nonCanonical
-        )
+        XCTAssertEqual(api.updatedDocuments, [document])
         XCTAssertEqual(store.appliedNotes, api.updatedNotes)
     }
 }
@@ -60,7 +63,7 @@ private final class NotesWriteQueueExecutorStoreSpy: NotesWriteQueueApplying {
 
 @MainActor
 private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
-    private(set) var updatedContents: [String] = []
+    private(set) var updatedDocuments: [NotesSemanticDocument] = []
     private(set) var updatedNotes: [NotePayload] = []
 
     func listTree() async throws -> FileTree {
@@ -85,11 +88,26 @@ private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
     }
 
     func updateNote(id: String, content: String) async throws -> NotePayload {
-        updatedContents.append(content)
         let note = NotePayload(
             id: id,
             name: "Queued",
             content: content,
+            path: "/\(id).md",
+            modified: nil,
+            created: nil
+        )
+        updatedNotes.append(note)
+        return note
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        updatedDocuments.append(document)
+        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
+        let note = NotePayload(
+            id: id,
+            name: NotesSemanticDocumentProjection.title(from: document),
+            document: document,
+            plainText: plainText,
             path: "/\(id).md",
             modified: nil,
             created: nil

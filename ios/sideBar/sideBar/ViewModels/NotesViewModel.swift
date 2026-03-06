@@ -166,7 +166,7 @@ public final class NotesViewModel: ObservableObject {
         do {
             let created = try await api.createNote(
                 request: NoteCreateRequest(
-                    content: "",
+                    document: NotesSemanticDocumentProjection.document(fromPlainText: ""),
                     plainText: ""
                 )
             )
@@ -292,9 +292,9 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 
-    public func updateNoteContent(id: String, content: String) async -> Bool {
+    public func updateNoteContent(id: String, document: NotesSemanticDocument) async -> Bool {
         do {
-            let updated = try await api.updateNote(id: id, content: content)
+            let updated = try await api.updateNote(id: id, document: document)
             store.applyEditorUpdate(updated)
             return true
         } catch {
@@ -305,6 +305,22 @@ public final class NotesViewModel: ObservableObject {
             toastCenter.show(message: "Failed to update note")
             return false
         }
+    }
+
+    public func applyLocalNoteSnapshot(id: String, document: NotesSemanticDocument) {
+        guard let note = activeNote, note.id == id else { return }
+        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
+        let updated = NotePayload(
+            id: note.id,
+            name: NotesSemanticDocumentProjection.title(from: document),
+            document: document,
+            plainText: plainText,
+            path: note.path,
+            modified: note.modified,
+            created: note.created,
+            documentVersion: document.version
+        )
+        store.applyEditorUpdate(updated)
     }
 
     public func renameFolder(path: String, newName: String) async {

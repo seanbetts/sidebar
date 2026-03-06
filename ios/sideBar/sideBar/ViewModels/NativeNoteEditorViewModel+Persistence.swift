@@ -6,6 +6,7 @@ import SwiftUI
 extension NativeNoteEditorViewModel {
     /// Canonical rich text and plain-text values captured from one editor state snapshot.
     public struct PersistenceSnapshot {
+        public let document: NotesSemanticDocument
         public let canonicalContent: String
         public let plainText: String
     }
@@ -43,9 +44,14 @@ extension NativeNoteEditorViewModel {
             exportContent,
             baseFontSize: baseFontSize
         ) {
-            return PersistenceSnapshot(canonicalContent: canonicalContent, plainText: plainText)
+            return PersistenceSnapshot(
+                document: document,
+                canonicalContent: canonicalContent,
+                plainText: plainText
+            )
         }
         return PersistenceSnapshot(
+            document: document,
             canonicalContent: NotesRichTextCodec.encodePlainTextToBase64RTF(plainText),
             plainText: plainText
         )

@@ -72,17 +72,19 @@ extension NotesStore {
 
     /// Enqueues an offline note-content update operation.
     public func enqueueUpdate(noteId: String, content: String) async throws {
-        let normalized = NotesRichTextCodec.normalizeWriteInput(content: content)
+        let request = NoteUpdateRequest(content: content)
+        try await enqueueUpdate(noteId: noteId, document: request.document)
+    }
+
+    /// Enqueues an offline semantic note update operation.
+    public func enqueueUpdate(noteId: String, document: NotesSemanticDocument) async throws {
         let snapshot = makeServerSnapshot(noteId: noteId, notePath: nil)
         try await enqueueOfflineOperation(
             writeQueue: writeQueue,
             operation: .update,
             entityType: .note,
             entityId: noteId,
-            payload: NoteUpdateRequest(
-                content: normalized.content,
-                plainText: normalized.plainText
-            ),
+            payload: NoteUpdateRequest(document: document),
             serverSnapshot: snapshot
         )
     }
@@ -150,7 +152,7 @@ extension NotesStore {
         if keepLocal {
             applyEditorUpdate(conflict.local)
             do {
-                try await enqueueUpdate(noteId: conflict.entityId, content: conflict.local.content)
+                try await enqueueUpdate(noteId: conflict.entityId, document: conflict.local.document)
             } catch {
                 offlineLogger.error(
                     "Failed to re-enqueue local note conflict resolution write: \(error.localizedDescription, privacy: .public)"

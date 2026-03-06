@@ -189,6 +189,12 @@ final class NotesStoreTests: XCTestCase {
     }
 
     func testApplyEditorUpdateSyncsDerivedTitleIntoSidebarTree() async {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([.init(text: "First line", marks: [.bold])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
         let tree = FileTree(children: [
             FileNode(
                 name: "New Note",
@@ -213,8 +219,8 @@ final class NotesStoreTests: XCTestCase {
         let updatedNote = NotePayload(
             id: "note-1",
             name: "First line",
-            content: "canonical",
-            plainText: "First line",
+            document: document,
+            plainText: "First line\nBody",
             path: "note-1",
             modified: 2,
             created: nil
@@ -297,7 +303,16 @@ final class NotesStoreTests: XCTestCase {
     }
 
     func testResolveConflictKeepLocalEnqueuesOfflineUpdateWithLocalPlainText() async throws {
-        let nonCanonical = "- [x] Done"
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([
+                    .init(text: "Queued", marks: [.underline]),
+                    .init(text: " title", marks: [])
+                ]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
 
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
@@ -316,7 +331,8 @@ final class NotesStoreTests: XCTestCase {
         let local = NotePayload(
             id: "n1",
             name: "Local",
-            content: nonCanonical,
+            document: document,
+            plainText: plainText,
             path: "/note.md",
             modified: nil,
             created: nil
@@ -344,11 +360,8 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertEqual(writes.count, 1)
         let write = try XCTUnwrap(writes.first)
         let payload = try JSONDecoder().decode(NoteUpdateRequest.self, from: write.payload)
-        XCTAssertEqual(
-            NotesRichTextCodec.decodeBase64RTFToPlainText(payload.content),
-            nonCanonical
-        )
-        XCTAssertEqual(payload.plainText, nonCanonical)
+        XCTAssertEqual(payload.document, document)
+        XCTAssertEqual(payload.plainText, plainText)
     }
 }
 

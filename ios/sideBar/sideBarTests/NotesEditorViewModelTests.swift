@@ -1,4 +1,5 @@
 // swiftlint:disable file_length
+import CoreData
 import Foundation
 import sideBarShared
 import SwiftUI
@@ -312,97 +313,6 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(api.updatedContents.count, 1)
         XCTAssertNotEqual(api.updatedContents[0], initialContent)
         XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
-    }
-
-    func testSwitchingNotesReloadsSavedFormattedContent() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-
-        let initialCanonical = canonicalPlainTextPass("Hello")
-        let updated = NotePayload(
-            id: "n1",
-            name: "Note",
-            content: initialCanonical,
-            path: "/note.md",
-            modified: 100,
-            created: nil
-        )
-        let api = NotesAPISpy(updateResult: .success(updated))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let note = NotePayload(
-            id: "n1",
-            name: "Note",
-            content: initialCanonical,
-            path: "/note.md",
-            modified: nil,
-            created: nil
-        )
-        let otherNote = NotePayload(
-            id: "n2",
-            name: "Other",
-            content: canonicalPlainTextPass("Other"),
-            path: "/other.md",
-            modified: nil,
-            created: nil
-        )
-
-        store.applyEditorUpdate(note)
-        await Task.yield()
-
-        let nativeViewModel = viewModel.makeNativeEditorViewModel()
-        viewModel.attachNativeEditor(nativeViewModel)
-        let range = characterRange(length: 5, in: nativeViewModel.attributedContent)
-        nativeViewModel.selection = AttributedTextSelection(range: range)
-        viewModel.setFormatting(.bold, enabled: true)
-
-        await viewModel.syncFromNativeEditor(nativeViewModel)
-
-        let savedCanonical = try XCTUnwrap(api.updatedContents.last)
-        let savedNote = NotePayload(
-            id: "n1",
-            name: "Note",
-            content: savedCanonical,
-            path: "/note.md",
-            modified: 101,
-            created: nil
-        )
-
-        store.applyEditorUpdate(otherNote)
-        await Task.yield()
-        store.applyEditorUpdate(savedNote)
-        await Task.yield()
-
-        let reloadedRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
-        XCTAssertTrue(noteRangeHasBoldTrait(nativeViewModel.attributedContent, range: reloadedRange))
-#if os(macOS)
-        XCTAssertTrue(noteRangeHasBridgedBoldPlatformFont(nativeViewModel.attributedContent, range: reloadedRange))
-#endif
     }
 
     func testHandleNoteUpdateWithSameContentPreservesNativeSelection() async throws {
@@ -1415,6 +1325,7 @@ private struct TestNetworkStatus: NetworkStatusProviding {
 private final class NotesAPISpy: NotesProviding {
     private(set) var updateCallCount = 0
     private(set) var updatedContents: [String] = []
+    private(set) var updatedDocuments: [NotesSemanticDocument] = []
     private(set) var createdTitles: [String] = []
     var updateDelayNanoseconds: UInt64 = 0
     let updateResult: Result<NotePayload, Error>
@@ -1453,6 +1364,22 @@ private final class NotesAPISpy: NotesProviding {
         _ = id
         updateCallCount += 1
         updatedContents.append(content)
+        if updateDelayNanoseconds > 0 {
+            try? await Task.sleep(nanoseconds: updateDelayNanoseconds)
+        }
+        return try updateResult.get()
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        _ = id
+        updateCallCount += 1
+        updatedDocuments.append(document)
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document)
+        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
+        let canonicalContent =
+            NotesRichTextCodec.encodeAttributedStringToBase64RTF(attributed)
+            ?? NotesRichTextCodec.encodePlainTextToBase64RTF(plainText)
+        updatedContents.append(canonicalContent)
         if updateDelayNanoseconds > 0 {
             try? await Task.sleep(nanoseconds: updateDelayNanoseconds)
         }

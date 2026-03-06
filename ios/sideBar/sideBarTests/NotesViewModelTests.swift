@@ -266,6 +266,10 @@ final class NotesViewModelTests: XCTestCase {
         let request = try XCTUnwrap(api.createRequests.first)
         XCTAssertNil(request.title)
         XCTAssertNil(request.path)
+        XCTAssertEqual(
+            request.document,
+            NotesSemanticDocument(blocks: [.paragraph([.init(text: "", marks: [])])])
+        )
         XCTAssertEqual(request.plainText, "")
         XCTAssertEqual(created?.id, "note-blank")
         XCTAssertEqual(viewModel.selectedNoteId, created?.path)

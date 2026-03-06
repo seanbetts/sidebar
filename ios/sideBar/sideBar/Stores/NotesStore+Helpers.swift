@@ -243,6 +243,8 @@ extension NotesStore {
         }
         return current.modified != incoming.modified ||
             current.content != incoming.content ||
+            current.document != incoming.document ||
+            current.documentVersion != incoming.documentVersion ||
             current.plainText != incoming.plainText ||
             current.name != incoming.name ||
             current.path != incoming.path ||

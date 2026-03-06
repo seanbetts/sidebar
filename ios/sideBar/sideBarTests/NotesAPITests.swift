@@ -47,6 +47,65 @@ final class NotesAPITests: XCTestCase {
         XCTAssertEqual(items.first?.name, "Doc")
     }
 
+    func testUpdateNoteSendsSemanticDocumentBody() async throws {
+        let api = NotesAPI(client: makeClient())
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([
+                    .init(text: "Hello", marks: [.bold]),
+                    .init(text: " world", marks: [])
+                ])
+            ]
+        )
+        NotesURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PATCH")
+            XCTAssertTrue(request.url?.absoluteString.contains("notes/note-1") == true)
+            let body = try XCTUnwrap(request.httpBodyData())
+            let payload = try JSONDecoder().decode(NoteUpdateRequest.self, from: body)
+            XCTAssertEqual(payload.document, document)
+            XCTAssertEqual(payload.plainText, "Hello world")
+            let rawPayload = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: body) as? [String: Any]
+            )
+            XCTAssertNil(rawPayload["content"])
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let responseBody = """
+            {
+              "id": "note-1",
+              "name": "Hello world",
+              "path": "note-1",
+              "document": {
+                "version": 1,
+                "blocks": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      { "text": "Hello", "marks": ["bold"] },
+                      { "text": " world", "marks": [] }
+                    ]
+                  }
+                ]
+              },
+              "document_version": 1,
+              "plain_text": "Hello world",
+              "modified": 1,
+              "created": 1
+            }
+            """
+            return (response, Data(responseBody.utf8))
+        }
+
+        let note = try await api.updateNote(id: "note-1", document: document)
+
+        XCTAssertEqual(note.document, document)
+        XCTAssertEqual(note.plainText, "Hello world")
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

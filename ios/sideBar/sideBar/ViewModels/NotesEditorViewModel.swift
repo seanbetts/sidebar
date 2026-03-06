@@ -157,7 +157,9 @@ public final class NotesEditorViewModel: ObservableObject {
         }
 
         let snapshot = nativeViewModel.currentPersistenceSnapshot()
-        guard snapshot.canonicalContent != canonicalContent || snapshot.plainText != content else {
+        let hasSnapshotDelta =
+            snapshot.canonicalContent != canonicalContent || snapshot.plainText != content
+        guard hasSnapshotDelta || nativeViewModel.hasUnsavedChanges else {
             syncRequestedWhileSaving = false
             return
         }
@@ -170,52 +172,58 @@ public final class NotesEditorViewModel: ObservableObject {
             saveErrorMessage = "Failed to save draft"
         }
 
-        let payload = NoteUpdatePayload(
-            content: snapshot.canonicalContent,
+        let payload = NoteUpdateRequest(
+            document: snapshot.document,
             plainText: snapshot.plainText
         )
         let serverSnapshot = makeServerSnapshot(noteId: noteId)
 
         if !networkStatus.isNetworkAvailable {
-            await enqueueNoteUpdate(
+            let queued = await enqueueNoteUpdate(
                 noteId: noteId,
                 payload: payload,
                 snapshot: serverSnapshot
             )
+            if queued {
+                notesViewModel.applyLocalNoteSnapshot(id: noteId, document: snapshot.document)
+            }
             nativeViewModel.markSaved(
-                plainText: payload.plainText ?? "",
-                canonicalContent: payload.content
+                plainText: snapshot.plainText,
+                canonicalContent: snapshot.canonicalContent
             )
-            content = payload.plainText ?? ""
-            canonicalContent = payload.content
+            content = snapshot.plainText
+            canonicalContent = snapshot.canonicalContent
             isSaving = false
             isDirty = false
-            isQueuedForSync = true
+            isQueuedForSync = queued
             await syncFromNativeEditorIfRequested(nativeViewModel)
             return
         }
 
-        let saved = await notesViewModel.updateNoteContent(id: noteId, content: payload.content)
+        let saved = await notesViewModel.updateNoteContent(id: noteId, document: snapshot.document)
         isSaving = false
         if saved {
             try? draftStorage.markSynced(entityType: "note", entityId: noteId)
             nativeViewModel.markSaved(
-                plainText: payload.plainText ?? "",
-                canonicalContent: payload.content
+                plainText: snapshot.plainText,
+                canonicalContent: snapshot.canonicalContent
             )
-            content = payload.plainText ?? ""
-            canonicalContent = payload.content
+            content = snapshot.plainText
+            canonicalContent = snapshot.canonicalContent
             isDirty = false
             lastSavedAt = Date()
             isQueuedForSync = false
         } else {
             saveErrorMessage = "Failed to save note"
-            await enqueueNoteUpdate(
+            let queued = await enqueueNoteUpdate(
                 noteId: noteId,
                 payload: payload,
                 snapshot: serverSnapshot
             )
-            isQueuedForSync = true
+            if queued {
+                notesViewModel.applyLocalNoteSnapshot(id: noteId, document: snapshot.document)
+            }
+            isQueuedForSync = queued
         }
         await syncFromNativeEditorIfRequested(nativeViewModel)
     }
@@ -321,9 +329,9 @@ public final class NotesEditorViewModel: ObservableObject {
 
     private func enqueueNoteUpdate(
         noteId: String,
-        payload: NoteUpdatePayload,
+        payload: NoteUpdateRequest,
         snapshot: ServerSnapshot?
-    ) async {
+    ) async -> Bool {
         do {
             try await writeQueue.enqueue(
                 operation: .update,
@@ -332,11 +340,13 @@ public final class NotesEditorViewModel: ObservableObject {
                 payload: payload,
                 serverSnapshot: snapshot
             )
+            return true
         } catch WriteQueueError.queueFull {
             saveErrorMessage = "Sync queue full. Review pending changes."
         } catch {
             saveErrorMessage = "Failed to queue changes"
         }
+        return false
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -365,15 +375,5 @@ public final class NotesEditorViewModel: ObservableObject {
             capturedAt: Date(),
             payload: .note(snapshot)
         )
-    }
-}
-
-private struct NoteUpdatePayload: Codable {
-    let content: String
-    let plainText: String?
-
-    enum CodingKeys: String, CodingKey {
-        case content
-        case plainText = "plain_text"
     }
 }
