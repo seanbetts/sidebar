@@ -12,14 +12,11 @@ from pathlib import Path
 RUNTIME_ROOT = Path("ios/sideBar/sideBar")
 NOTES_SHELL_RELATIVE_PATHS = (
     Path("ViewModels/NotesEditorViewModel.swift"),
-    Path("ViewModels/AttributedNoteFormattingCommands.swift"),
-    Path("ViewModels/AttributedNoteListCommands.swift"),
     Path("Views/Notes/NotesView.swift"),
     Path("Views/Notes/NotesDetailView.swift"),
     Path("Views/Notes/NotesDetailView+MenuActions.swift"),
     Path("Views/Notes/NotesDetailView+FileOperations.swift"),
     Path("Views/Notes/AttributedNoteEditorContainer.swift"),
-    Path("Views/Notes/AttributedNoteKeyboardShortcuts.swift"),
     Path("Views/Notes/ScratchpadPopoverView.swift"),
     Path("Views/Notes/SwiftUINoteTextEditorSurface.swift"),
     Path("Views/SidebarPanels/NotesPanel+ContextMenu.swift"),
@@ -96,7 +93,7 @@ REQUIRED_NOTES_CONTRACTS = (
         file_path=Path("Views/Notes/SwiftUINoteTextEditorSurface.swift"),
         required_patterns=(
             r"\bTextEditor\s*\(\s*text:\s*\$viewModel\.attributedContent\s*,\s*selection:\s*\$viewModel\.selection\s*\)",
-            r"\.attributedTextFormattingDefinition\s*\(\s*NoteTextFormattingDefinition\s*\(\s*\)\s*\)",
+            r"\.attributedTextFormattingDefinition\s*\(\s*NoteTextFormattingDefinition\s*\(\s*baseFontSize:\s*viewModel\.baseFontSize\s*\)\s*\)",
             r"\bviewModel\.handleContentChange\s*\(",
         ),
     ),

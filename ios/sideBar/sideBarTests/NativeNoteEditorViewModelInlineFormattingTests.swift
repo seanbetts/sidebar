@@ -1,8 +1,5 @@
 import SwiftUI
 import XCTest
-#if os(macOS)
-import AppKit
-#endif
 @testable import sideBar
 
 @MainActor
@@ -15,16 +12,10 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
 
         viewModel.applyFormatting(.italic)
-        XCTAssertTrue(
-            (viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? [])
-                .contains(.emphasized)
-        )
+        XCTAssertTrue(noteTypingTraits(from: viewModel.selection.typingAttributes(in: viewModel.attributedContent)).italic)
 
         viewModel.applyFormatting(.italic)
-        XCTAssertFalse(
-            (viewModel.selection.typingAttributes(in: viewModel.attributedContent).inlinePresentationIntent ?? [])
-                .contains(.emphasized)
-        )
+        XCTAssertFalse(noteTypingTraits(from: viewModel.selection.typingAttributes(in: viewModel.attributedContent)).italic)
     }
 
     func testApplyFormattingUnderlineTogglesTypingAttributesAtInsertionPoint() async {
@@ -48,42 +39,37 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
     func testApplyFormattingBoldStylesSelectedRangeImmediately() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
-        let lineRange = firstLine(in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: lineRange.lowerBound..<lineRange.upperBound)
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
 
         viewModel.applyFormatting(.bold)
-        try? await Task.sleep(nanoseconds: 50_000_000)
 
-        let hasBoldRun = viewModel.attributedContent[lineRange].runs.contains { run in
-            #if os(iOS)
-            guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
-            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
-            #elseif os(macOS)
-            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
-            return font.fontDescriptor.symbolicTraits.contains(.bold)
-            #endif
-        }
-        XCTAssertTrue(hasBoldRun)
+        XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: range))
     }
 
-    private func firstLine(in text: AttributedString) -> Range<AttributedString.Index> {
-        var cursor = text.startIndex
-        while cursor < text.endIndex {
-            if text.characters[cursor].isNewline {
-                return text.startIndex..<cursor
-            }
-            cursor = text.index(afterCharacter: cursor)
-        }
-        return text.startIndex..<text.endIndex
+    func testApplyFormattingItalicStylesSelectedRangeImmediately() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+
+        viewModel.applyFormatting(.italic)
+
+        XCTAssertTrue(noteRangeHasItalicTrait(viewModel.attributedContent, range: range))
     }
 
-#if os(macOS)
-    private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
-        var sample = AttributedString("x")
-        let range = sample.startIndex..<sample.endIndex
-        sample[range].mergeAttributes(run.attributes)
-        let bridged = NSAttributedString(sample)
-        return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
+    func testApplyFormattingPreservesExistingTraitsWhenAddingSecondStyle() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+
+        viewModel.applyFormatting(.bold)
+        viewModel.selection = AttributedTextSelection(range: noteCharacterRange(length: 5, in: viewModel.attributedContent))
+        viewModel.applyFormatting(.italic)
+
+        let updatedRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: updatedRange))
+        XCTAssertTrue(noteRangeHasItalicTrait(viewModel.attributedContent, range: updatedRange))
     }
-#endif
 }

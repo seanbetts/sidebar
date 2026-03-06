@@ -10,7 +10,9 @@ struct SwiftUINoteTextEditorSurface: View {
 
     var body: some View {
         TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
-            .attributedTextFormattingDefinition(NoteTextFormattingDefinition())
+            .attributedTextFormattingDefinition(
+                NoteTextFormattingDefinition(baseFontSize: viewModel.baseFontSize)
+            )
             .scrollContentBackground(.hidden)
             .focused($isFocused)
             .disabled(!isEditable)

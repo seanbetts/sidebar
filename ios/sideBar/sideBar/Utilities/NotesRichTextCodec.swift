@@ -120,7 +120,8 @@ enum NotesRichTextCodec {
     }
 
     private static func bridgedAttributedStringForRTFExport(from content: AttributedString) -> NSAttributedString {
-        let base = NSAttributedString(content)
+        let base = (try? NSAttributedString(content, including: \.attributedNoteTextSurface))
+            ?? NSAttributedString(content)
         guard base.length > 0 else { return base }
 
         let mutable = NSMutableAttributedString(attributedString: base)

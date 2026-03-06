@@ -11,8 +11,6 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 /// View model for editing and styling native note content.
 public final class NativeNoteEditorViewModel: ObservableObject {
-    static let noteStyle = NoteTextStyle.default
-
     @Published public var attributedContent: AttributedString = AttributedString()
     @Published public var selection: AttributedTextSelection = AttributedTextSelection()
     @Published public var isReadOnly: Bool = false
@@ -31,17 +29,8 @@ public final class NativeNoteEditorViewModel: ObservableObject {
 #endif
 
     var baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
-    var inlineCodeFontSize: CGFloat {
-        NoteTextTypography.inlineCodeFontSize(baseFontSize: baseFontSize)
-    }
     var bodyFont: Font {
         Font.system(size: baseFontSize)
-    }
-    var inlineCodeFont: Font {
-        Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
-    }
-    var blockCodeFont: Font {
-        Font.system(size: inlineCodeFontSize, weight: .regular, design: .monospaced)
     }
     var lastSavedContent: String = ""
     var lastSavedCanonicalContent: String = ""
@@ -65,49 +54,32 @@ public final class NativeNoteEditorViewModel: ObservableObject {
 
     func defaultTypingAttributes() -> AttributeContainer {
         var attrs = AttributeContainer()
-        attrs.blockKind = .paragraph
-        attrs.listDepth = nil
-        attrs.codeLanguage = nil
-        setFont(baseFont(for: .paragraph), platformFont: platformBaseFont(for: .paragraph), in: &attrs)
-        setForegroundColor(baseForegroundColor(for: .paragraph), in: &attrs)
-        setBackgroundColor(baseBackgroundColor(for: .paragraph), in: &attrs)
-        attrs.paragraphStyle = paragraphStyle(for: .paragraph)
-        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
-        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
-        attrs.strikethroughStyle = nil
+        applyInlineFormattingState(.plain, to: &attrs)
+        attrs.paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
         return attrs
     }
 
     public func isBoldActive() -> Bool {
-        hasInlineIntent(.stronglyEmphasized)
+        isFormattingActive(.bold)
     }
 
     public func setBold(_ enabled: Bool) {
-        applyInlineIntent(.stronglyEmphasized, enabled: enabled)
+        setFormatting(.bold, enabled: enabled)
     }
 
     public func isItalicActive() -> Bool {
-        hasInlineIntent(.emphasized)
+        isFormattingActive(.italic)
     }
 
     public func setItalic(_ enabled: Bool) {
-        applyInlineIntent(.emphasized, enabled: enabled)
-    }
-
-    public func applyLink(_ url: URL) {
-        transformSelectionAttributes { attrs in
-            attrs.link = url
-            setForegroundColor(.accentColor, in: &attrs)
-            attrs.underlineStyle = .single
-        }
+        setFormatting(.italic, enabled: enabled)
     }
 
     public func applyFormatting(_ formatting: NoteFormatting) {
         guard !isReadOnly else { return }
         let previousContent = attributedContent
         let previousSelection = selection
-        AttributedNoteFormattingCommands.apply(formatting, on: self)
-        normalizeDocumentStylingForDisplay()
+        toggleFormatting(formatting)
         guard attributedContent != previousContent || selection != previousSelection else { return }
 
         if !hasUnsavedChanges {

@@ -1,11 +1,5 @@
 import XCTest
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
-#if os(macOS)
-import AppKit
-#endif
 @testable import sideBar
 
 @MainActor
@@ -14,7 +8,7 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
     func testHandleContentChangePreservesUnderlineStyling() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("plain text")
-        let lineRange = firstLine(in: viewModel.attributedContent)
+        let lineRange = noteCharacterRange(length: 10, in: viewModel.attributedContent)
         viewModel.attributedContent[lineRange].underlineStyle = .single
 
         let previous = viewModel.attributedContent
@@ -23,100 +17,46 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
 
         viewModel.handleContentChange(previous: previous)
 
-        let updatedLine = firstLine(in: viewModel.attributedContent)
-        XCTAssertEqual(viewModel.attributedContent[updatedLine].underlineStyle, .single)
-    }
-
-    func testLoadTextDetectsLinksUsingDataDetector() async {
-        let viewModel = NativeNoteEditorViewModel()
-        let urlString = "https://example.com"
-        viewModel.loadText("Open \(urlString) for details")
-
-        guard let linkRange = attributedRange(matching: urlString, in: viewModel.attributedContent) else {
-            XCTFail("Expected detected link range")
-            return
-        }
-
-        XCTAssertEqual(viewModel.attributedContent[linkRange].link, URL(string: urlString))
-        XCTAssertEqual(viewModel.attributedContent[linkRange].underlineStyle, .single)
+        XCTAssertTrue(noteRangeIsUnderlined(viewModel.attributedContent, range: lineRange))
     }
 
     func testHandleContentChangeLeavesSelectedBoldFormattingIntact() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
-        let lineRange = firstLine(in: viewModel.attributedContent)
+        let lineRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
         let previous = viewModel.attributedContent
 
         viewModel.selection = AttributedTextSelection(range: lineRange)
         viewModel.applyFormatting(.bold)
         viewModel.handleContentChange(previous: previous)
 
-        XCTAssertTrue((viewModel.attributedContent[lineRange].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
-        XCTAssertTrue(viewModel.attributedContent.runs.contains { run in
-            #if os(iOS)
-            guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
-            return font.fontDescriptor.symbolicTraits.contains(.traitBold)
-            #elseif os(macOS)
-            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
-            return font.fontDescriptor.symbolicTraits.contains(.bold)
-            #endif
-        })
+        XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: lineRange))
     }
 
     func testHandleContentChangeLeavesSelectedItalicFormattingIntact() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
-        let lineRange = firstLine(in: viewModel.attributedContent)
+        let lineRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
         let previous = viewModel.attributedContent
 
         viewModel.selection = AttributedTextSelection(range: lineRange)
         viewModel.applyFormatting(.italic)
         viewModel.handleContentChange(previous: previous)
 
-        XCTAssertTrue((viewModel.attributedContent[lineRange].inlinePresentationIntent ?? []).contains(.emphasized))
-        XCTAssertTrue(viewModel.attributedContent.runs.contains { run in
-            #if os(iOS)
-            guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
-            return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
-            #elseif os(macOS)
-            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
-            return font.fontDescriptor.symbolicTraits.contains(.italic)
-            #endif
-        })
+        XCTAssertTrue(noteRangeHasItalicTrait(viewModel.attributedContent, range: lineRange))
     }
 
-    private func firstLine(in text: AttributedString) -> Range<AttributedString.Index> {
-        var cursor = text.startIndex
-        while cursor < text.endIndex {
-            if text.characters[cursor].isNewline {
-                return text.startIndex..<cursor
-            }
-            cursor = text.index(afterCharacter: cursor)
-        }
-        return text.startIndex..<text.endIndex
-    }
+    func testSelectedFormattingToggleOffClearsLiveDocumentState() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let lineRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
 
-    private func attributedRange(
-        matching substring: String,
-        in text: AttributedString
-    ) -> Range<AttributedString.Index>? {
-        let plain = String(text.characters)
-        guard let stringRange = plain.range(of: substring) else { return nil }
-        let lowerOffset = plain.distance(from: plain.startIndex, to: stringRange.lowerBound)
-        let upperOffset = plain.distance(from: plain.startIndex, to: stringRange.upperBound)
-        let lower = text.index(text.startIndex, offsetByCharacters: lowerOffset)
-        let upper = text.index(text.startIndex, offsetByCharacters: upperOffset)
-        return lower..<upper
-    }
+        viewModel.selection = AttributedTextSelection(range: lineRange)
+        viewModel.applyFormatting(.bold)
+        viewModel.selection = AttributedTextSelection(range: noteCharacterRange(length: 5, in: viewModel.attributedContent))
+        viewModel.applyFormatting(.bold)
 
-#if os(macOS)
-    private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
-        var sample = AttributedString("x")
-        let range = sample.startIndex..<sample.endIndex
-        sample[range].mergeAttributes(run.attributes)
-        let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
-            ?? NSAttributedString(sample)
-        return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
+        let updatedRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        XCTAssertFalse(noteRangeHasBoldTrait(viewModel.attributedContent, range: updatedRange))
     }
-#endif
 }

@@ -9,8 +9,8 @@ extension NativeNoteEditorViewModel {
         var detectedContent =
             NotesRichTextCodec.decodeBase64RTFToAttributedString(canonical)
             ?? AttributedString(text)
-        _ = applyDetectedLinks(in: &detectedContent)
-        attributedContent = normalizedEditorDocumentForRuntime(from: detectedContent)
+        normalizeDocumentForRuntime(&detectedContent)
+        attributedContent = detectedContent
         selection = AttributedTextSelection()
         lastSavedContent = text
         lastSavedCanonicalContent =
@@ -21,9 +21,11 @@ extension NativeNoteEditorViewModel {
     }
 
     func normalizeDocumentStylingForDisplay() {
-        let normalized = normalizedEditorDocumentForRuntime(from: attributedContent)
+        let snapshot = selectionSnapshot(in: attributedContent)
+        let normalized = normalizeDocumentForRuntime(from: attributedContent)
         if normalized != attributedContent {
             attributedContent = normalized
+            selection = selection(from: snapshot, in: normalized)
         }
     }
 }

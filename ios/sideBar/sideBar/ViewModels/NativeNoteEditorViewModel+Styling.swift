@@ -9,58 +9,8 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeNoteEditorViewModel {
-    func headingKind(for level: Int) -> BlockKind {
-        switch level {
-        case 1: return .heading1
-        case 2: return .heading2
-        case 3: return .heading3
-        case 4: return .heading4
-        case 5: return .heading5
-        default: return .heading6
-        }
-    }
-
-    func baseFont(for blockKind: BlockKind?) -> Font {
-        if let blockKind, let level = headingLevel(for: blockKind) {
-            let size = NoteTextHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
-            let weight: Font.Weight = NoteTextHeadingMetrics.isBold(level: level) ? .bold : .semibold
-            return .system(size: size, weight: weight)
-        }
-        switch blockKind {
-        case .codeBlock:
-            return blockCodeFont
-        case .imageCaption:
-            return .system(size: NoteTextTypography.footnoteFontSize(baseFontSize: baseFontSize))
-        default:
-            return bodyFont
-        }
-    }
-
-    func platformBaseFont(for blockKind: BlockKind?) -> PlatformFont {
-        if let blockKind, let level = headingLevel(for: blockKind) {
-            let size = NoteTextHeadingMetrics.fontSize(for: level, baseFontSize: baseFontSize)
-            let weight: PlatformFontWeight = NoteTextHeadingMetrics.isBold(level: level) ? .bold : .semibold
-            return platformSystemFont(size: size, weight: weight)
-        }
-        switch blockKind {
-        case .codeBlock:
-            return platformSystemFont(size: inlineCodeFontSize, weight: .regular, monospaced: true)
-        case .imageCaption:
-            return platformFootnoteFont()
-        default:
-            return platformSystemFont(size: baseFontSize, weight: .regular)
-        }
-    }
-
-    func platformInlineCodeFont() -> PlatformFont {
-        platformSystemFont(size: inlineCodeFontSize, weight: .regular, monospaced: true)
-    }
-
-    func platformFootnoteFont() -> PlatformFont {
-        platformSystemFont(
-            size: NoteTextTypography.footnoteFontSize(baseFontSize: baseFontSize),
-            weight: .regular
-        )
+    func platformBodyFont() -> PlatformFont {
+        notePlatformBodyFont(baseFontSize: baseFontSize)
     }
 
     func platformSystemFont(
@@ -68,15 +18,15 @@ extension NativeNoteEditorViewModel {
         weight: PlatformFontWeight,
         monospaced: Bool = false
     ) -> PlatformFont {
-#if os(iOS)
+        #if os(iOS)
         return monospaced
             ? UIFont.monospacedSystemFont(ofSize: size, weight: weight)
             : UIFont.systemFont(ofSize: size, weight: weight)
-#else
+        #else
         return monospaced
             ? NSFont.monospacedSystemFont(ofSize: size, weight: weight)
             : NSFont.systemFont(ofSize: size, weight: weight)
-#endif
+        #endif
     }
 
     func platformFontApplyingTraits(
@@ -84,38 +34,7 @@ extension NativeNoteEditorViewModel {
         bold: Bool,
         italic: Bool
     ) -> PlatformFont {
-#if os(iOS)
-        guard bold || italic else { return font }
-        var traits = font.fontDescriptor.symbolicTraits
-        if bold { traits.insert(.traitBold) } else { traits.remove(.traitBold) }
-        if italic { traits.insert(.traitItalic) } else { traits.remove(.traitItalic) }
-        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-            return UIFont(descriptor: descriptor, size: font.pointSize)
-        }
-        if bold {
-            let boldFont = UIFont.systemFont(ofSize: font.pointSize, weight: .bold)
-            if italic,
-               let descriptor = boldFont.fontDescriptor.withSymbolicTraits([.traitBold, .traitItalic]) {
-                return UIFont(descriptor: descriptor, size: font.pointSize)
-            }
-            return boldFont
-        }
-        if italic, let descriptor = font.fontDescriptor.withSymbolicTraits([.traitItalic]) {
-            return UIFont(descriptor: descriptor, size: font.pointSize)
-        }
-        return font
-#else
-        guard bold || italic else { return font }
-        let manager = NSFontManager.shared
-        var result = font
-        if bold {
-            result = manager.convert(result, toHaveTrait: .boldFontMask)
-        }
-        if italic {
-            result = manager.convert(result, toHaveTrait: .italicFontMask)
-        }
-        return result
-#endif
+        notePlatformFont(baseFontSize: font.pointSize, bold: bold, italic: italic)
     }
 
     func swiftUIFontHasTrait(
@@ -123,36 +42,14 @@ extension NativeNoteEditorViewModel {
         for intent: InlinePresentationIntent
     ) -> Bool {
         guard let font else { return false }
-        let resolved = font.resolve(in: EnvironmentValues().fontResolutionContext)
+        let resolved = noteSwiftUIFontTraits(from: font)
         switch intent {
         case .stronglyEmphasized:
-            return resolved.isBold
+            return resolved.bold
         case .emphasized:
-            return resolved.isItalic
+            return resolved.italic
         default:
             return false
-        }
-    }
-
-    func baseForegroundColor(for blockKind: BlockKind?) -> Color {
-        switch blockKind {
-        case .blockquote, .taskChecked, .htmlBlock, .gallery:
-            return DesignTokens.Colors.textSecondary
-        case .imageCaption:
-            return DesignTokens.Colors.textTertiary
-        default:
-            return DesignTokens.Colors.textPrimary
-        }
-    }
-
-    func baseBackgroundColor(for blockKind: BlockKind?) -> Color? {
-        switch blockKind {
-        case .blockquote:
-            return DesignTokens.Colors.muted.opacity(0.45)
-        case .codeBlock:
-            return Self.noteStyle.codeBlockBackground
-        default:
-            return nil
         }
     }
 
@@ -174,28 +71,6 @@ extension NativeNoteEditorViewModel {
         setPlatformFont(platformFont, in: &attrs)
     }
 
-    func setForegroundColor(_ color: Color, in attrs: inout AttributeContainer) {
-        attrs.foregroundColor = color
-        setPlatformForegroundColor(platformColor(color), in: &attrs)
-    }
-
-    func setBackgroundColor(_ color: Color?, in attrs: inout AttributeContainer) {
-        attrs.backgroundColor = color
-        setPlatformBackgroundColor(platformColor(color), in: &attrs)
-    }
-
-    func setStrikethrough(
-        _ enabled: Bool,
-        in text: inout AttributedString,
-        range: Range<AttributedString.Index>
-    ) {
-        if enabled {
-            text[range].strikethroughStyle = .single
-        } else {
-            text[range].strikethroughStyle = nil
-        }
-    }
-
     func setFont(
         _ font: Font,
         platformFont: PlatformFont,
@@ -206,55 +81,8 @@ extension NativeNoteEditorViewModel {
         setPlatformFont(platformFont, in: &text, range: range)
     }
 
-    func setForegroundColor(
-        _ color: Color,
-        in text: inout AttributedString,
-        range: Range<AttributedString.Index>
-    ) {
-        text[range].foregroundColor = color
-        setPlatformForegroundColor(platformColor(color), in: &text, range: range)
-    }
-
-    func setForegroundColor(_ color: Color, range: Range<AttributedString.Index>) {
-        setForegroundColor(color, in: &attributedContent, range: range)
-    }
-
-    func setBackgroundColor(
-        _ color: Color?,
-        in text: inout AttributedString,
-        range: Range<AttributedString.Index>
-    ) {
-        text[range].backgroundColor = color
-        setPlatformBackgroundColor(platformColor(color), in: &text, range: range)
-    }
-
-    func setBackgroundColor(_ color: Color?, range: Range<AttributedString.Index>) {
-        setBackgroundColor(color, in: &attributedContent, range: range)
-    }
-
     func setPlatformFont(_ font: PlatformFont, in attrs: inout AttributeContainer) {
-#if os(iOS)
-        attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] = font
-#else
-        // Keep macOS font state on the SwiftUI `Font` attribute to avoid Sendable warnings on NSFont.
-        _ = font
-#endif
-    }
-
-    func setPlatformForegroundColor(_ color: PlatformColor, in attrs: inout AttributeContainer) {
-#if os(iOS)
-        attrs[AttributeScopes.UIKitAttributes.ForegroundColorAttribute.self] = color
-#else
-        attrs[AttributeScopes.AppKitAttributes.ForegroundColorAttribute.self] = color
-#endif
-    }
-
-    func setPlatformBackgroundColor(_ color: PlatformColor?, in attrs: inout AttributeContainer) {
-#if os(iOS)
-        attrs[AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] = color
-#else
-        attrs[AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] = color
-#endif
+        noteApplyPlatformFont(font, to: &attrs)
     }
 
     func setPlatformFont(
@@ -262,60 +90,110 @@ extension NativeNoteEditorViewModel {
         in text: inout AttributedString,
         range: Range<AttributedString.Index>
     ) {
-#if os(iOS)
-        text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = font
-#else
-        applyMacOSFont(font, to: &text, range: range)
-#endif
+        noteApplyPlatformFont(font, to: &text, range: range)
     }
 
-    func setPlatformForegroundColor(
-        _ color: PlatformColor,
-        in text: inout AttributedString,
-        range: Range<AttributedString.Index>
+    func inlineFormattingState(from attrs: AttributeContainer) -> InlineFormattingState {
+        let swiftUIFontTraits = inlineTraits(from: attrs.font)
+        let platformFontTraits = platformFont(from: attrs).map(inlineTraits(from:)) ?? .plain
+        return InlineFormattingState(
+            bold: swiftUIFontTraits.bold || platformFontTraits.bold,
+            italic: swiftUIFontTraits.italic || platformFontTraits.italic,
+            underline: attrs.underlineStyle != nil
+        )
+    }
+
+    func inlineFormattingState(from run: AttributedString.Runs.Run) -> InlineFormattingState {
+        let swiftUIFontTraits = inlineTraits(from: run.font)
+        let platformFontTraits = platformFont(from: run).map(inlineTraits(from:)) ?? .plain
+        return InlineFormattingState(
+            bold: swiftUIFontTraits.bold || platformFontTraits.bold,
+            italic: swiftUIFontTraits.italic || platformFontTraits.italic,
+            underline: run.underlineStyle != nil
+        )
+    }
+
+    func applyInlineFormattingState(
+        _ state: InlineFormattingState,
+        to attrs: inout AttributeContainer
     ) {
-#if os(iOS)
-        text[range][AttributeScopes.UIKitAttributes.ForegroundColorAttribute.self] = color
-#else
-        text[range][AttributeScopes.AppKitAttributes.ForegroundColorAttribute.self] = color
-#endif
+        let font = inlineStyledFont(bold: state.bold, italic: state.italic)
+        let platformFont = notePlatformFont(
+            baseFontSize: baseFontSize,
+            bold: state.bold,
+            italic: state.italic
+        )
+        setFont(font, platformFont: platformFont, in: &attrs)
+        attrs.underlineStyle = state.underline ? .single : nil
+        attrs.strikethroughStyle = nil
+        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
+        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
     }
 
-    func setPlatformBackgroundColor(
-        _ color: PlatformColor?,
-        in text: inout AttributedString,
-        range: Range<AttributedString.Index>
-    ) {
-#if os(iOS)
-        text[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] = color
-#else
-        text[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] = color
-#endif
-    }
-
-#if os(macOS)
-    private func applyMacOSFont(
-        _ font: NSFont,
+    func applyInlineFormattingState(
+        _ state: InlineFormattingState,
         to text: inout AttributedString,
         range: Range<AttributedString.Index>
     ) {
-        guard !range.isEmpty else { return }
-        let string = String(text.characters)
-        let lowerCharacterOffset = text.characters.distance(from: text.startIndex, to: range.lowerBound)
-        let upperCharacterOffset = text.characters.distance(from: text.startIndex, to: range.upperBound)
-        let lowerStringIndex = string.index(string.startIndex, offsetBy: lowerCharacterOffset)
-        let upperStringIndex = string.index(string.startIndex, offsetBy: upperCharacterOffset)
-        let nsRange = NSRange(
-            location: lowerStringIndex.utf16Offset(in: string),
-            length: upperStringIndex.utf16Offset(in: string) - lowerStringIndex.utf16Offset(in: string)
+        let font = inlineStyledFont(bold: state.bold, italic: state.italic)
+        let platformFont = notePlatformFont(
+            baseFontSize: baseFontSize,
+            bold: state.bold,
+            italic: state.italic
         )
-
-        let bridged = (try? NSAttributedString(text, including: \.attributedNoteTextSurface))
-            ?? NSAttributedString(text)
-        let mutable = NSMutableAttributedString(attributedString: bridged)
-        mutable.addAttribute(.font, value: font, range: nsRange)
-        text = (try? AttributedString(mutable, including: \.attributedNoteTextSurface))
-            ?? AttributedString(mutable)
+        setFont(font, platformFont: platformFont, in: &text, range: range)
+        text[range].underlineStyle = state.underline ? .single : nil
+        text[range].strikethroughStyle = nil
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
+        text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
     }
-#endif
+
+    private func inlineTraits(from font: Font?) -> InlineFormattingTraits {
+        let traits = noteSwiftUIFontTraits(from: font)
+        return InlineFormattingTraits(bold: traits.bold, italic: traits.italic)
+    }
+
+    private func inlineTraits(from font: PlatformFont) -> InlineFormattingTraits {
+        let traits = notePlatformFontTraits(from: font)
+        return InlineFormattingTraits(bold: traits.bold, italic: traits.italic)
+    }
+
+    private func platformFont(from run: AttributedString.Runs.Run) -> PlatformFont? {
+        #if os(iOS)
+        if let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] {
+            return font
+        }
+        #elseif os(macOS)
+        if let font = run[AttributeScopes.AppKitAttributes.FontAttribute.self] {
+            return font
+        }
+        #endif
+        return bridgedPlatformFont(from: run.attributes)
+    }
+
+    private func platformFont(from attrs: AttributeContainer) -> PlatformFont? {
+        #if os(iOS)
+        if let font = attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] {
+            return font
+        }
+        #elseif os(macOS)
+        if let font = attrs[AttributeScopes.AppKitAttributes.FontAttribute.self] {
+            return font
+        }
+        #endif
+        return bridgedPlatformFont(from: attrs)
+    }
+
+    private func bridgedPlatformFont(
+        from attributes: AttributeContainer
+    ) -> PlatformFont? {
+        noteBridgedPlatformFont(from: attributes)
+    }
+
+    private struct InlineFormattingTraits {
+        let bold: Bool
+        let italic: Bool
+
+        static let plain = InlineFormattingTraits(bold: false, italic: false)
+    }
 }
