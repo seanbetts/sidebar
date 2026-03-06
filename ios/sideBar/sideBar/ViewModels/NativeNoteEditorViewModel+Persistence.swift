@@ -92,8 +92,12 @@ extension NativeNoteEditorViewModel {
             let lower = text.characters.distance(from: text.startIndex, to: run.range.lowerBound)
             let upper = text.characters.distance(from: text.startIndex, to: run.range.upperBound)
             let intents = run.inlinePresentationIntent ?? []
-            let bold = intents.contains(.stronglyEmphasized) || exportFontHasTrait(run, intent: .stronglyEmphasized)
-            let italic = intents.contains(.emphasized) || exportFontHasTrait(run, intent: .emphasized)
+            let bold = intents.contains(.stronglyEmphasized)
+                || swiftUIFontHasTrait(run.font, for: .stronglyEmphasized)
+                || exportFontHasTrait(run, intent: .stronglyEmphasized)
+            let italic = intents.contains(.emphasized)
+                || swiftUIFontHasTrait(run.font, for: .emphasized)
+                || exportFontHasTrait(run, intent: .emphasized)
             let underline = run.underlineStyle != nil
             return ExportInlineRun(
                 range: lower..<upper,
@@ -132,13 +136,8 @@ extension NativeNoteEditorViewModel {
         var sample = AttributedString("x")
         let sampleRange = sample.startIndex..<sample.endIndex
         sample[sampleRange].mergeAttributes(run.attributes)
-        let bridged: NSAttributedString
-        #if os(macOS)
-        bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
+        let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
             ?? NSAttributedString(sample)
-        #else
-        bridged = NSAttributedString(sample)
-        #endif
         guard bridged.length > 0 else { return nil }
         return bridged.attribute(.font, at: 0, effectiveRange: nil) as? PlatformFont
     }

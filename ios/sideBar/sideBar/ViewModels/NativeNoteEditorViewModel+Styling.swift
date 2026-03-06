@@ -118,6 +118,73 @@ extension NativeNoteEditorViewModel {
 #endif
     }
 
+    func swiftUIFontHasTrait(
+        _ font: Font?,
+        for intent: InlinePresentationIntent
+    ) -> Bool {
+        guard let font else { return false }
+        switch intent {
+        case .stronglyEmphasized:
+            guard let weight = swiftUIFontWeight(from: font) else { return false }
+            return weight >= 0.35
+        case .emphasized:
+            return swiftUIFontContainsType(named: "ItalicModifier", in: font)
+        default:
+            return false
+        }
+    }
+
+    private func swiftUIFontWeight(from font: Font) -> Double? {
+        swiftUIFontWeight(in: Mirror(reflecting: font))
+    }
+
+    private func swiftUIFontWeight(in mirror: Mirror) -> Double? {
+        for child in mirror.children {
+            if child.label == "weight",
+               let value = swiftUIFontWeightValue(from: child.value) {
+                return value
+            }
+            if let value = swiftUIFontWeight(in: Mirror(reflecting: child.value)) {
+                return value
+            }
+        }
+        return nil
+    }
+
+    private func swiftUIFontWeightValue(from value: Any) -> Double? {
+        if let direct = value as? Double {
+            return direct
+        }
+        if let direct = value as? CGFloat {
+            return Double(direct)
+        }
+
+        let mirror = Mirror(reflecting: value)
+        for child in mirror.children {
+            if child.label == "some" || child.label == "value" {
+                if let nested = swiftUIFontWeightValue(from: child.value) {
+                    return nested
+                }
+            }
+        }
+        return nil
+    }
+
+    private func swiftUIFontContainsType(named needle: String, in font: Font) -> Bool {
+        swiftUIFontContainsType(named: needle, in: Mirror(reflecting: font))
+    }
+
+    private func swiftUIFontContainsType(named needle: String, in mirror: Mirror) -> Bool {
+        if String(describing: mirror.subjectType).contains(needle) {
+            return true
+        }
+        for child in mirror.children
+        where swiftUIFontContainsType(named: needle, in: Mirror(reflecting: child.value)) {
+            return true
+        }
+        return false
+    }
+
     func baseForegroundColor(for blockKind: BlockKind?) -> Color {
         switch blockKind {
         case .blockquote, .taskChecked, .htmlBlock, .gallery:

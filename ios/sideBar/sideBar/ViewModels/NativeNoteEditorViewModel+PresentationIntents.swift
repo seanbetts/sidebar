@@ -172,6 +172,9 @@ extension NativeNoteEditorViewModel {
         if (attrs.inlinePresentationIntent ?? []).contains(intent) {
             return true
         }
+        if swiftUIFontHasTrait(attrs.font, for: intent) {
+            return true
+        }
         return fontFromAttributes(attrs).map { font in
             fontHasTrait(font, for: intent)
         } ?? false
@@ -182,6 +185,9 @@ extension NativeNoteEditorViewModel {
         intent: InlinePresentationIntent
     ) -> Bool {
         if (run.inlinePresentationIntent ?? []).contains(intent) {
+            return true
+        }
+        if swiftUIFontHasTrait(run.font, for: intent) {
             return true
         }
         return fontFromRun(run).map { font in
@@ -204,13 +210,8 @@ extension NativeNoteEditorViewModel {
     }
 
     private func platformFont(from text: AttributedString) -> PlatformFont? {
-        let bridged: NSAttributedString
-        #if os(macOS)
-        bridged = (try? NSAttributedString(text, including: \.attributedNoteTextSurface))
+        let bridged = (try? NSAttributedString(text, including: \.attributedNoteTextSurface))
             ?? NSAttributedString(text)
-        #else
-        bridged = NSAttributedString(text)
-        #endif
         guard bridged.length > 0 else { return nil }
         return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as? PlatformFont
     }
