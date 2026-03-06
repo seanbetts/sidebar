@@ -154,7 +154,7 @@ def test_parse_url_local_steamcommunity_announcement_uses_domain_extractor(monke
         "https://steamcommunity.com/groups/steamworks/announcements/detail/528746884222682053"
     )
 
-    assert parsed.title == "Steam :: Steamworks Development :: Steam Year In Review 2025"
+    assert parsed.title == "Steam Year In Review 2025"
     assert (
         parsed.source
         == "https://store.steampowered.com/news/group/4145017/view/528746884222682052"
@@ -174,6 +174,9 @@ def test_parse_url_local_steamcommunity_announcement_uses_domain_extractor(monke
     assert "[img src=" not in parsed.content
     assert '[p align="center"]' not in parsed.content
     assert "* Steam Deck" in parsed.content
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["title"] == "Steam Year In Review 2025"
 
 
 def test_parse_url_local_apple_news_fetches_publisher_article(monkeypatch):

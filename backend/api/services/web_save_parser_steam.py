@@ -42,6 +42,7 @@ STEAM_TAG_RE = re.compile(
     re.IGNORECASE,
 )
 STEAM_LEFTOVER_TAG_RE = re.compile(r"\[/?[a-z0-9*]+(?:=[^\]]+)?\]", re.IGNORECASE)
+STEAM_CHROME_TITLE_RE = re.compile(r"^Steam\s*::.*?::\s*", re.IGNORECASE)
 
 
 def _extract_requested_gid(url: str) -> str | None:
@@ -85,6 +86,13 @@ def _select_event(events: list[dict], requested_gid: str | None) -> dict | None:
         if _event_matches_gid(event, requested_gid):
             return event
     return events[0] if len(events) == 1 else None
+
+
+def _normalize_steam_title(value: str | None) -> str | None:
+    title = (value or "").strip()
+    if not title:
+        return None
+    return STEAM_CHROME_TITLE_RE.sub("", title).strip() or None
 
 
 def _render_steam_list(match: re.Match[str]) -> str:
@@ -178,8 +186,10 @@ def _cleanup_steam_html(html_fragment: str) -> str:
     return cleaned.strip()
 
 
-def extract_steamcommunity_body_html(raw_html: str, url: str) -> str | None:
-    """Extract Steam announcement body HTML from embedded event-store data."""
+def extract_steamcommunity_payload(
+    raw_html: str, url: str
+) -> tuple[str, dict[str, str]] | None:
+    """Extract Steam announcement HTML plus metadata overrides."""
     if not raw_html:
         return None
     events = _load_event_store(raw_html)
@@ -197,4 +207,29 @@ def extract_steamcommunity_body_html(raw_html: str, url: str) -> str | None:
     if not cleaned_body:
         return None
 
-    return f"<html><body>{cleaned_body}</body></html>"
+    title = _normalize_steam_title(
+        announcement.get("headline") or event.get("event_name")
+    )
+    return f"<html><body>{cleaned_body}</body></html>", {
+        "title": title or "",
+    }
+
+
+def extract_steamcommunity_payload_for_url(
+    raw_html: str, url: str
+) -> tuple[str, dict[str, str]] | None:
+    """Return Steam payload when the URL belongs to a supported Steam announcement."""
+    host = urlparse(url).netloc
+    if not (host.endswith("steamcommunity.com") or host == "store.steampowered.com"):
+        return None
+    payload = extract_steamcommunity_payload(raw_html, url)
+    if not payload:
+        return None
+    article_html, metadata = payload
+    return article_html, {key: value for key, value in metadata.items() if value}
+
+
+def extract_steamcommunity_body_html(raw_html: str, url: str) -> str | None:
+    """Extract Steam announcement body HTML from embedded event-store data."""
+    payload = extract_steamcommunity_payload(raw_html, url)
+    return payload[0] if payload else None

@@ -57,7 +57,7 @@ from api.services.web_save_parser_paywall import (
     extract_paywall_preview_markdown,
     is_anti_bot_challenge_page,
 )
-from api.services.web_save_parser_steam import extract_steamcommunity_body_html
+from api.services.web_save_parser_steam import extract_steamcommunity_payload_for_url
 from api.services.web_save_parser_substack import cleanup_substack_markdown
 from api.services.web_save_parser_substack_helpers import (
     is_substack_host,
@@ -575,14 +575,12 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             verge_html = extract_verge_body_html(raw_html_original)
             if verge_html:
                 article_html = verge_html
-        elif (
-            urlparse(final_url).netloc.endswith("steamcommunity.com")
-            or urlparse(final_url).netloc == "store.steampowered.com"
+        elif steam_payload := extract_steamcommunity_payload_for_url(
+            raw_html_original, final_url
         ):
-            if steam_html := extract_steamcommunity_body_html(
-                raw_html_original, final_url
-            ):
-                article_html = steam_html
+            steam_html, steam_meta = steam_payload
+            article_html = steam_html
+            metadata.update(steam_meta)
         elif urlparse(final_url).netloc.endswith("blog.google"):
             blog_google_html = extract_blog_google_body_html(raw_html_original)
             if blog_google_html:
