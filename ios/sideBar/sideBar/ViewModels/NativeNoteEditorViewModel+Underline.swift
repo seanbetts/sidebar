@@ -14,7 +14,7 @@ extension NativeNoteEditorViewModel {
         }
 
         let shouldEnable = nonEmptyRanges.contains { range in
-            attributedContent[range].underlineStyle == nil
+                attributedContent[range].underlineStyle == nil
         }
         for range in nonEmptyRanges {
             attributedContent[range].underlineStyle = shouldEnable ? .single : nil
