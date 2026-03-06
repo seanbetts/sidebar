@@ -5,6 +5,22 @@ import XCTest
 
 @MainActor
 final class NotesEditorViewModelHydrationTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        NotesDetailViewTestRetainer.reset()
+    }
+
+    override func tearDown() {
+        NotesDetailViewTestRetainer.reset()
+        super.tearDown()
+    }
+
+    func testHydrationStartsWithoutRetainedMountedNotesDetailViews() {
+        XCTAssertTrue(NotesDetailViewTestRetainer.environments.isEmpty)
+        XCTAssertTrue(NotesDetailViewTestRetainer.hostingControllers.isEmpty)
+        XCTAssertTrue(NotesDetailViewTestRetainer.hostingWindows.isEmpty)
+    }
+
     func testAttachNativeEditorDoesNotOverwriteLoadedNoteState() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
@@ -46,7 +62,12 @@ final class NotesEditorViewModelHydrationTests: XCTestCase {
         )
 
         store.applyEditorUpdate(note)
-        await Task.yield()
+        try await waitUntilHydrated(timeoutSeconds: 2.0) {
+            viewModel.currentNoteId == "n1"
+                && viewModel.content == "Hello"
+                && NotesSemanticDocumentCodec.decode(viewModel.canonicalContent)
+                .map(NotesSemanticDocumentProjection.plainText(from:)) == "Hello"
+        }
 
         let beforeCanonical = viewModel.canonicalContent
         let nativeViewModel = NativeNoteEditorViewModel()
@@ -61,6 +82,21 @@ final class NotesEditorViewModelHydrationTests: XCTestCase {
             "Hello"
         )
     }
+}
+
+@MainActor
+private func waitUntilHydrated(
+    timeoutSeconds: TimeInterval,
+    condition: @escaping () -> Bool
+) async throws {
+    let timeout = Date().addingTimeInterval(timeoutSeconds)
+    while Date() < timeout {
+        if condition() {
+            return
+        }
+        try await Task.sleep(nanoseconds: 30_000_000)
+    }
+    XCTFail("Timed out waiting for hydrated note state")
 }
 
 private enum HydrationMockError: Error {
