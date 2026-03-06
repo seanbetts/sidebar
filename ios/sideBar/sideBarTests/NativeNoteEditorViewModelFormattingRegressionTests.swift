@@ -66,7 +66,7 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
         let lineRange = firstLine(in: viewModel.attributedContent)
         let previous = viewModel.attributedContent
 
-        viewModel.attributedContent[lineRange].font = .system(size: 16, weight: .bold)
+        viewModel.attributedContent[lineRange].font = .default.bold()
         #if os(iOS)
         viewModel.attributedContent[lineRange][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
         #endif
@@ -80,6 +80,30 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
             #elseif os(macOS)
             guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
             return font.fontDescriptor.symbolicTraits.contains(.bold)
+            #endif
+        })
+    }
+
+    func testHandleContentChangeCanonicalizesSwiftUIFontOnlyItalicFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let lineRange = firstLine(in: viewModel.attributedContent)
+        let previous = viewModel.attributedContent
+
+        viewModel.attributedContent[lineRange].font = .default.italic()
+        #if os(iOS)
+        viewModel.attributedContent[lineRange][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
+        #endif
+        viewModel.handleContentChange(previous: previous)
+
+        XCTAssertTrue((viewModel.attributedContent[lineRange].inlinePresentationIntent ?? []).contains(.emphasized))
+        XCTAssertTrue(viewModel.attributedContent.runs.contains { run in
+            #if os(iOS)
+            guard let font = run[AttributeScopes.UIKitAttributes.FontAttribute.self] else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            #elseif os(macOS)
+            guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+            return font.fontDescriptor.symbolicTraits.contains(.italic)
             #endif
         })
     }

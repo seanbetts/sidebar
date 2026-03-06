@@ -8,6 +8,7 @@ public struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
     public init() {}
 
     public var body: some AttributedTextFormattingDefinition<Scope> {
+        NormalizeInlineFonts()
         PresentationIntentConstraint()
         ListItemDelimiterConstraint()
     }
@@ -51,6 +52,28 @@ public struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         text[range].listMarker = nil
         text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
         text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private struct NormalizeInlineFonts: AttributedTextValueConstraint {
+    typealias Scope = AttributeScopes.NoteTextEditorAttributes
+    typealias AttributeKey = AttributeScopes.SwiftUIAttributes.FontAttribute
+
+    func constrain(_ container: inout Attributes) {
+        guard let font = container.font else { return }
+        let resolved = font.resolve(in: EnvironmentValues().fontResolutionContext)
+
+        switch (resolved.isBold, resolved.isItalic) {
+        case (false, false):
+            container.font = nil
+        case (true, false):
+            container.font = .default.bold()
+        case (false, true):
+            container.font = .default.italic()
+        case (true, true):
+            container.font = .default.bold().italic()
+        }
     }
 }
 

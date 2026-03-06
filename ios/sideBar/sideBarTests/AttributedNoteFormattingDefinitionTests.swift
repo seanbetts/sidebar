@@ -44,4 +44,16 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         XCTAssertNil(content[range].strikethroughStyle)
         XCTAssertEqual(content[range].underlineStyle, .single)
     }
+
+    func testConstrainDocumentNormalizesSupportedInlineFonts() {
+        var content = AttributedString("hello")
+        let range = content.startIndex..<content.endIndex
+        content[range].font = .system(size: 18, weight: .bold).italic()
+
+        NoteTextFormattingDefinition().constrainDocument(&content)
+
+        let resolved = content[range].font?.resolve(in: EnvironmentValues().fontResolutionContext)
+        XCTAssertEqual(resolved?.isBold, true)
+        XCTAssertEqual(resolved?.isItalic, true)
+    }
 }

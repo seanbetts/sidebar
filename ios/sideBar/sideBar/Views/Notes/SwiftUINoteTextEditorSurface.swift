@@ -32,14 +32,14 @@ struct SwiftUINoteTextEditorSurface: View {
                 }
             }
             .onChange(of: viewModel.attributedContent) { previous, current in
-                guard isEditable, isFocused else { return }
+                guard isEditable else { return }
                 guard previous != current else { return }
                 DispatchQueue.main.async {
                     viewModel.handleContentChange(previous: previous)
                 }
             }
             .onChange(of: viewModel.selection) { _, _ in
-                guard isEditable, isFocused else { return }
+                guard isEditable else { return }
                 DispatchQueue.main.async {
                     viewModel.handleSelectionChange()
                 }
