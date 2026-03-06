@@ -129,13 +129,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         }
         guard attributedContent != previous else { return }
 
-        var normalizedContent = attributedContent
-        _ = applyDetectedLinks(in: &normalizedContent)
-        normalizedContent = normalizedEditorDocumentForRuntime(from: normalizedContent)
-        if attributedContent != normalizedContent {
-            attributedContent = normalizedContent
-        }
-
         // Mark dirty immediately so close/switch flows can prompt even before autosave fires.
         if !hasUnsavedChanges {
             hasUnsavedChanges = true

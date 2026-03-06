@@ -71,6 +71,16 @@ public final class NotesEditorViewModel: ObservableObject {
             plainText: note.plainText.isEmpty ? nil : note.plainText
         )
         currentNoteId = note.id
+        if isSameNote,
+           normalized.plainText == content,
+           normalized.content == canonicalContent {
+            isReadOnly = false
+            if !isSaving {
+                saveErrorMessage = nil
+                isQueuedForSync = false
+            }
+            return
+        }
         content = normalized.plainText
         canonicalContent = normalized.content
         syncNativeEditorContent(

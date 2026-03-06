@@ -41,35 +41,14 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
         XCTAssertEqual(viewModel.attributedContent[linkRange].underlineStyle, .single)
     }
 
-    func testHandleContentChangeDetectsNewLinkText() async {
-        let viewModel = NativeNoteEditorViewModel()
-        let urlString = "https://example.com"
-        viewModel.loadText("hello")
-        let previous = viewModel.attributedContent
-
-        viewModel.attributedContent = AttributedString("hello \(urlString)")
-        let insertion = viewModel.attributedContent.endIndex
-        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
-        viewModel.handleContentChange(previous: previous)
-
-        guard let linkRange = attributedRange(matching: urlString, in: viewModel.attributedContent) else {
-            XCTFail("Expected detected link range")
-            return
-        }
-
-        XCTAssertEqual(viewModel.attributedContent[linkRange].link, URL(string: urlString))
-    }
-
-    func testHandleContentChangeCanonicalizesSwiftUIFontOnlyBoldFormatting() async {
+    func testHandleContentChangeLeavesSelectedBoldFormattingIntact() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let lineRange = firstLine(in: viewModel.attributedContent)
         let previous = viewModel.attributedContent
 
-        viewModel.attributedContent[lineRange].font = .default.bold()
-        #if os(iOS)
-        viewModel.attributedContent[lineRange][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
-        #endif
+        viewModel.selection = AttributedTextSelection(range: lineRange)
+        viewModel.applyFormatting(.bold)
         viewModel.handleContentChange(previous: previous)
 
         XCTAssertTrue((viewModel.attributedContent[lineRange].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
@@ -84,16 +63,14 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
         })
     }
 
-    func testHandleContentChangeCanonicalizesSwiftUIFontOnlyItalicFormatting() async {
+    func testHandleContentChangeLeavesSelectedItalicFormattingIntact() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
         let lineRange = firstLine(in: viewModel.attributedContent)
         let previous = viewModel.attributedContent
 
-        viewModel.attributedContent[lineRange].font = .default.italic()
-        #if os(iOS)
-        viewModel.attributedContent[lineRange][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
-        #endif
+        viewModel.selection = AttributedTextSelection(range: lineRange)
+        viewModel.applyFormatting(.italic)
         viewModel.handleContentChange(previous: previous)
 
         XCTAssertTrue((viewModel.attributedContent[lineRange].inlinePresentationIntent ?? []).contains(.emphasized))
@@ -117,28 +94,6 @@ final class NativeNoteEditorRegressionTests: XCTestCase {
             cursor = text.index(afterCharacter: cursor)
         }
         return text.startIndex..<text.endIndex
-    }
-
-    private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
-        var ranges: [Range<AttributedString.Index>] = []
-        var start = text.startIndex
-        var cursor = text.startIndex
-
-        while cursor < text.endIndex {
-            if text.characters[cursor].isNewline {
-                ranges.append(start..<cursor)
-                start = text.index(afterCharacter: cursor)
-                cursor = start
-            } else {
-                cursor = text.index(afterCharacter: cursor)
-            }
-        }
-
-        if start <= text.endIndex {
-            ranges.append(start..<text.endIndex)
-        }
-
-        return ranges
     }
 
     private func attributedRange(
