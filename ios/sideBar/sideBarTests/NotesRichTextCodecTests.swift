@@ -1,5 +1,11 @@
 import Foundation
+import SwiftUI
 import XCTest
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 @testable import sideBar
 
 @MainActor
@@ -94,4 +100,76 @@ final class NotesRichTextCodecTests: XCTestCase {
         XCTAssertEqual(payload.content, "not-base64")
         XCTAssertEqual(payload.plainText, "")
     }
+
+    func testDecodeBase64RTFToAttributedStringMapsBoldFontToInlineIntent() throws {
+        let encoded = try makeEncodedRTF(
+            string: "Bold",
+            attributes: platformAttributes(
+                font: boldSystemFont(size: 16),
+                underline: nil
+            )
+        )
+
+        let decoded = try XCTUnwrap(NotesRichTextCodec.decodeBase64RTFToAttributedString(encoded))
+        let range = decoded.startIndex..<decoded.endIndex
+
+        XCTAssertTrue((decoded[range].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
+        XCTAssertNil(decoded[range].font)
+    }
+
+    func testDecodeBase64RTFToAttributedStringMapsItalicFontToInlineIntent() throws {
+        let encoded = try makeEncodedRTF(
+            string: "Styled",
+            attributes: platformAttributes(
+                font: italicSystemFont(size: 16),
+                underline: NSUnderlineStyle.single.rawValue
+            )
+        )
+
+        let decoded = try XCTUnwrap(NotesRichTextCodec.decodeBase64RTFToAttributedString(encoded))
+        let range = decoded.startIndex..<decoded.endIndex
+
+        XCTAssertTrue((decoded[range].inlinePresentationIntent ?? []).contains(.emphasized))
+        XCTAssertNil(decoded[range].strikethroughStyle)
+    }
+
 }
+
+private func makeEncodedRTF(string: String, attributes: [NSAttributedString.Key: Any]) throws -> String {
+    let attributed = NSAttributedString(string: string, attributes: attributes)
+    let data = try attributed.data(
+        from: NSRange(location: 0, length: attributed.length),
+        documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+    )
+    return data.base64EncodedString()
+}
+
+private func platformAttributes(
+    font: AnyObject,
+    underline: Int?
+) -> [NSAttributedString.Key: Any] {
+    var attributes: [NSAttributedString.Key: Any] = [.font: font]
+    if let underline {
+        attributes[.underlineStyle] = underline
+    }
+    return attributes
+}
+
+#if os(iOS)
+private func boldSystemFont(size: CGFloat) -> UIFont {
+    UIFont.boldSystemFont(ofSize: size)
+}
+
+private func italicSystemFont(size: CGFloat) -> UIFont {
+    UIFont.italicSystemFont(ofSize: size)
+}
+#elseif os(macOS)
+private func boldSystemFont(size: CGFloat) -> NSFont {
+    NSFont.systemFont(ofSize: size, weight: .bold)
+}
+
+private func italicSystemFont(size: CGFloat) -> NSFont {
+    let base = NSFont.systemFont(ofSize: size)
+    return NSFontManager.shared.convert(base, toHaveTrait: .italicFontMask)
+}
+#endif
