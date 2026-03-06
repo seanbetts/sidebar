@@ -1,6 +1,8 @@
 """Tests for the web-save local parser."""
 
 from datetime import UTC, datetime
+import html
+import json
 
 from api.services import (
     web_save_includes,
@@ -12,11 +14,59 @@ from api.services.web_save_parser_apple_news import (
     extract_apple_news_publisher_url,
     resolve_apple_news_source_url,
 )
+from api.services import web_save_parser_steam
 from api.services.web_save_parser_twitter import TwitterStatusSnapshot
 from api.services.web_save_tagger import calculate_reading_time
 from bs4 import BeautifulSoup
 from lxml import html as lxml_html
 import pytest
+
+
+def _build_steamcommunity_announcement_html() -> str:
+    payload = [
+        {
+            "gid": "528746884222682052",
+            "event_name": "Steam Year In Review 2025",
+            "announcement_body": {
+                "gid": "528746884222682053",
+                "event_gid": "528746884222682052",
+                "headline": "Steam Year In Review 2025",
+                "body": (
+                    "[p]Every year our team publishes the Steam Year in Review.[/p]"
+                    "[h2][b][u]Section 1: Hardware[/u][/b][/h2]"
+                    '[p]Read more at [url="https://partner.steamgames.com/doc"]'
+                    "Steamworks docs[/url].[/p]"
+                    "[list][*]Steam Deck[*]SteamVR[/list]"
+                ),
+            },
+            "jsondata": json.dumps(
+                {
+                    "localized_subtitle": [
+                        "Our annual platform summary for developers"
+                    ]
+                }
+            ),
+            "published": 1,
+            "news_post_gid": "0",
+        }
+    ]
+    store = html.escape(json.dumps(payload), quote=True)
+    return f"""
+    <html>
+      <head>
+        <title>Steam :: Steamworks Development :: Steam Year In Review 2025</title>
+        <meta property="article:published_time" content="2026-03-06T12:38:08-08:00"/>
+        <meta property="og:image" content="https://cdn.example.com/hero.jpg"/>
+        <link rel="canonical" href="https://store.steampowered.com/news/group/4145017/view/528746884222682052"/>
+      </head>
+      <body>
+        <div
+          data-partnereventadjacents='[{{"announcementGID":"528746884222682053","adjacents":["528746884222682053"]}}]'
+          data-partnereventstore="{store}"
+        ></div>
+      </body>
+    </html>
+    """
 
 
 def test_parse_url_local_builds_frontmatter(monkeypatch):
@@ -61,6 +111,54 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
     assert data["domain"] == "example.com"
     assert data["reading_time"]
     assert "svelte" in data["tags"]
+
+
+def test_extract_steamcommunity_body_html_parses_event_store():
+    html_doc = _build_steamcommunity_announcement_html()
+
+    extracted = web_save_parser_steam.extract_steamcommunity_body_html(
+        html_doc,
+        "https://steamcommunity.com/groups/steamworks/announcements/detail/528746884222682053",
+    )
+
+    assert extracted is not None
+    assert "Every year our team publishes the Steam Year in Review." in extracted
+    assert "Section 1: Hardware" in extracted
+    assert 'href="https://partner.steamgames.com/doc"' in extracted
+    assert "<li>Steam Deck</li>" in extracted
+
+
+def test_parse_url_local_steamcommunity_announcement_uses_domain_extractor(monkeypatch):
+    html_doc = _build_steamcommunity_announcement_html()
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html_doc,
+            "https://steamcommunity.com/groups/steamworks/announcements/detail/528746884222682053",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://steamcommunity.com/groups/steamworks/announcements/detail/528746884222682053"
+    )
+
+    assert parsed.title == "Steam :: Steamworks Development :: Steam Year In Review 2025"
+    assert (
+        parsed.source
+        == "https://store.steampowered.com/news/group/4145017/view/528746884222682052"
+    )
+    assert parsed.published_at == datetime(
+        2026, 3, 6, 20, 38, 8, tzinfo=UTC
+    )
+    assert "Every year our team publishes the Steam Year in Review." in parsed.content
+    assert "## **Section 1: Hardware**" in parsed.content
+    assert "[Steamworks docs](https://partner.steamgames.com/doc)" in parsed.content
+    assert "* Steam Deck" in parsed.content
 
 
 def test_parse_url_local_apple_news_fetches_publisher_article(monkeypatch):

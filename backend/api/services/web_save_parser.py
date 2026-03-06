@@ -57,6 +57,7 @@ from api.services.web_save_parser_paywall import (
     extract_paywall_preview_markdown,
     is_anti_bot_challenge_page,
 )
+from api.services.web_save_parser_steam import extract_steamcommunity_body_html
 from api.services.web_save_parser_substack import cleanup_substack_markdown
 from api.services.web_save_parser_substack_helpers import (
     is_substack_host,
@@ -574,6 +575,14 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             verge_html = extract_verge_body_html(raw_html_original)
             if verge_html:
                 article_html = verge_html
+        elif (
+            urlparse(final_url).netloc.endswith("steamcommunity.com")
+            or urlparse(final_url).netloc == "store.steampowered.com"
+        ):
+            if steam_html := extract_steamcommunity_body_html(
+                raw_html_original, final_url
+            ):
+                article_html = steam_html
         elif urlparse(final_url).netloc.endswith("blog.google"):
             blog_google_html = extract_blog_google_body_html(raw_html_original)
             if blog_google_html:
@@ -740,7 +749,6 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             len(anchored_ids),
         )
     if not markdown:
-        domain = urlparse(final_url).netloc
         if is_paywalled(html, domain) or is_paywalled(article_html, domain):
             preview_markdown = extract_paywall_preview_markdown(
                 article_html=article_html,
@@ -834,8 +842,6 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         gallery_blocks,
         int((time.monotonic() - start_time) * 1000),
     )
-
-    source_url = metadata.get("canonical") or final_url
     wsj_result = maybe_enrich_wsj_preview(
         domain=domain,
         final_url=final_url,
