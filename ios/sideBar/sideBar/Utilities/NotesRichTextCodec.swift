@@ -184,10 +184,6 @@ enum NotesRichTextCodec {
                 text[range].underlineStyle = .single
             }
             text[range].strikethroughStyle = nil
-            text[range].font = nil
-#if os(iOS)
-            text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
-#endif
         }
     }
 
@@ -218,7 +214,13 @@ enum NotesRichTextCodec {
                 italic: traits.contains(.traitItalic)
             )
         }
-        return (false, false)
+        if let font = bridgedPlatformFont(from: run) as? UIFont {
+            let traits = font.fontDescriptor.symbolicTraits
+            return (
+                bold: traits.contains(.traitBold),
+                italic: traits.contains(.traitItalic)
+            )
+        }
 #elseif os(macOS)
         if let font = bridgedPlatformFont(from: run) as? NSFont {
             let traits = font.fontDescriptor.symbolicTraits
@@ -231,13 +233,12 @@ enum NotesRichTextCodec {
         return (false, false)
     }
 
-#if os(macOS)
     private static func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
         var sample = AttributedString("x")
         let range = sample.startIndex..<sample.endIndex
         sample[range].mergeAttributes(run.attributes)
-        let bridged = NSAttributedString(sample)
+        let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
+            ?? NSAttributedString(sample)
         return bridged.attribute(.font, at: 0, effectiveRange: nil) as AnyObject?
     }
-#endif
 }

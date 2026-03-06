@@ -114,7 +114,9 @@ final class NotesRichTextCodecTests: XCTestCase {
         let range = decoded.startIndex..<decoded.endIndex
 
         XCTAssertTrue((decoded[range].inlinePresentationIntent ?? []).contains(.stronglyEmphasized))
-        XCTAssertNil(decoded[range].font)
+        XCTAssertTrue(decoded.runs.contains { run in
+            hasBoldTrait(run)
+        })
     }
 
     func testDecodeBase64RTFToAttributedStringMapsItalicFontToInlineIntent() throws {
@@ -130,6 +132,9 @@ final class NotesRichTextCodecTests: XCTestCase {
         let range = decoded.startIndex..<decoded.endIndex
 
         XCTAssertTrue((decoded[range].inlinePresentationIntent ?? []).contains(.emphasized))
+        XCTAssertTrue(decoded.runs.contains { run in
+            hasItalicTrait(run)
+        })
         XCTAssertNil(decoded[range].strikethroughStyle)
     }
 
@@ -143,6 +148,35 @@ final class NotesRichTextCodecTests: XCTestCase {
 
         XCTAssertEqual(decoded[decodedRange].underlineStyle, .single)
     }
+}
+
+private func hasBoldTrait(_ run: AttributedString.Runs.Run) -> Bool {
+    #if os(iOS)
+    guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
+    return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+    #elseif os(macOS)
+    guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+    return font.fontDescriptor.symbolicTraits.contains(.bold)
+    #endif
+}
+
+private func hasItalicTrait(_ run: AttributedString.Runs.Run) -> Bool {
+    #if os(iOS)
+    guard let font = bridgedPlatformFont(from: run) as? UIFont else { return false }
+    return font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+    #elseif os(macOS)
+    guard let font = bridgedPlatformFont(from: run) as? NSFont else { return false }
+    return font.fontDescriptor.symbolicTraits.contains(.italic)
+    #endif
+}
+
+private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? {
+    var sample = AttributedString("x")
+    let range = sample.startIndex..<sample.endIndex
+    sample[range].mergeAttributes(run.attributes)
+    let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
+        ?? NSAttributedString(sample)
+    return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
 }
 
 private func makeEncodedRTF(string: String, attributes: [NSAttributedString.Key: Any]) throws -> String {
