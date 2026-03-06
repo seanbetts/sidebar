@@ -5,11 +5,12 @@ from __future__ import annotations
 import html
 import json
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
 STEAM_STORE_SELECTOR = "[data-partnereventstore]"
+STEAM_CLAN_IMAGE_BASE = "https://clan.akamai.steamstatic.com/images/"
 STEAM_INLINE_TAGS = {
     "b": ("<strong>", "</strong>"),
     "i": ("<em>", "</em>"),
@@ -23,6 +24,10 @@ STEAM_URL_RE = re.compile(
     r"""\[url=(?:"(?P<quoted>[^"]+)"|(?P<bare>[^\]]+))\](?P<label>.*?)\[/url\]""",
     re.IGNORECASE | re.DOTALL,
 )
+STEAM_IMG_ATTR_RE = re.compile(
+    r"""\[img\s+src=(?:"(?P<quoted>[^"]+)"|(?P<bare>[^\]]+))\]""",
+    re.IGNORECASE | re.DOTALL,
+)
 STEAM_IMG_RE = re.compile(r"\[img\](?P<url>.*?)\[/img\]", re.IGNORECASE | re.DOTALL)
 STEAM_LIST_RE = re.compile(r"\[list\](?P<body>.*?)\[/list\]", re.IGNORECASE | re.DOTALL)
 STEAM_YOUTUBE_RE = re.compile(
@@ -32,7 +37,10 @@ STEAM_YOUTUBE_RE = re.compile(
 STEAM_REMINDME_RE = re.compile(
     r"\[remindme\].*?\[/remindme\]", re.IGNORECASE | re.DOTALL
 )
-STEAM_TAG_RE = re.compile(r"\[(?P<closing>/)?(?P<tag>b|i|u|p|h1|h2|h3)\]")
+STEAM_TAG_RE = re.compile(
+    r"\[(?P<closing>/)?(?P<tag>b|i|u|p|h1|h2|h3)(?:\s+[^\]]+)?\]",
+    re.IGNORECASE,
+)
 STEAM_LEFTOVER_TAG_RE = re.compile(r"\[/?[a-z0-9*]+(?:=[^\]]+)?\]", re.IGNORECASE)
 
 
@@ -97,11 +105,30 @@ def _render_steam_url(match: re.Match[str]) -> str:
     return f'<a href="{href}">{label}</a>'
 
 
-def _render_steam_image(match: re.Match[str]) -> str:
-    src = html.escape((match.group("url") or "").strip(), quote=True)
+def _normalize_steam_image_url(raw_src: str | None) -> str:
+    src = (raw_src or "").strip()
+    if not src:
+        return ""
+    src = src.replace("{STEAM_CLAN_IMAGE}/", STEAM_CLAN_IMAGE_BASE)
+    src = src.replace("{STEAM_CLAN_LOC_IMAGE}/", STEAM_CLAN_IMAGE_BASE)
+    if src.startswith("/"):
+        src = urljoin(STEAM_CLAN_IMAGE_BASE, src.lstrip("/"))
+    return src
+
+
+def _render_steam_image_url(raw_src: str | None) -> str:
+    src = html.escape(_normalize_steam_image_url(raw_src), quote=True)
     if not src:
         return ""
     return f'<img src="{src}" alt="Steam announcement image"/>'
+
+
+def _render_steam_image_attr(match: re.Match[str]) -> str:
+    return _render_steam_image_url(match.group("quoted") or match.group("bare"))
+
+
+def _render_steam_image(match: re.Match[str]) -> str:
+    return _render_steam_image_url(match.group("url"))
 
 
 def _render_steam_youtube(match: re.Match[str]) -> str:
@@ -128,6 +155,7 @@ def _normalize_steam_markup(raw_text: str) -> str:
     text = STEAM_YOUTUBE_RE.sub(_render_steam_youtube, text)
     text = STEAM_LIST_RE.sub(_render_steam_list, text)
     text = STEAM_URL_RE.sub(_render_steam_url, text)
+    text = STEAM_IMG_ATTR_RE.sub(_render_steam_image_attr, text)
     text = STEAM_IMG_RE.sub(_render_steam_image, text)
     text = _render_inline_tags(text)
     text = STEAM_LEFTOVER_TAG_RE.sub("", text)

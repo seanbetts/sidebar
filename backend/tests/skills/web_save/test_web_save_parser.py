@@ -34,8 +34,10 @@ def _build_steamcommunity_announcement_html() -> str:
                 "body": (
                     "[p]Every year our team publishes the Steam Year in Review.[/p]"
                     "[h2][b][u]Section 1: Hardware[/u][/b][/h2]"
+                    '[p align="center"][b]FINDING GAMES[/b][/p]'
                     '[p]Read more at [url="https://partner.steamgames.com/doc"]'
                     "Steamworks docs[/url].[/p]"
+                    '[img src="{STEAM_CLAN_IMAGE}/4145017/example-image.png"]'
                     "[list][*]Steam Deck[*]SteamVR[/list]"
                 ),
             },
@@ -124,7 +126,12 @@ def test_extract_steamcommunity_body_html_parses_event_store():
     assert extracted is not None
     assert "Every year our team publishes the Steam Year in Review." in extracted
     assert "Section 1: Hardware" in extracted
+    assert "FINDING GAMES" in extracted
     assert 'href="https://partner.steamgames.com/doc"' in extracted
+    assert (
+        'src="https://clan.akamai.steamstatic.com/images/4145017/example-image.png"'
+        in extracted
+    )
     assert "<li>Steam Deck</li>" in extracted
 
 
@@ -157,7 +164,15 @@ def test_parse_url_local_steamcommunity_announcement_uses_domain_extractor(monke
     )
     assert "Every year our team publishes the Steam Year in Review." in parsed.content
     assert "## **Section 1: Hardware**" in parsed.content
+    assert "**FINDING GAMES**" in parsed.content
     assert "[Steamworks docs](https://partner.steamgames.com/doc)" in parsed.content
+    assert (
+        "![Steam announcement image]"
+        "(https://clan.akamai.steamstatic.com/images/4145017/example-image.png)"
+        in parsed.content
+    )
+    assert "[img src=" not in parsed.content
+    assert '[p align="center"]' not in parsed.content
     assert "* Steam Deck" in parsed.content
 
 
