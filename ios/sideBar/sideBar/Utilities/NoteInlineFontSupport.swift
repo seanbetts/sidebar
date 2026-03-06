@@ -130,11 +130,9 @@ func notePlatformFontTraits(from font: NotePlatformFont) -> NoteInlineFormatting
 /// Legacy RTF bridge helper. Active editor code should not read bridged platform fonts.
 @available(iOS 26.0, macOS 26.0, *)
 func noteBridgedPlatformFont(from attributes: AttributeContainer) -> NotePlatformFont? {
-    var sample = AttributedString("x")
-    let range = sample.startIndex..<sample.endIndex
-    sample[range].mergeAttributes(attributes)
-    let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
-        ?? NSAttributedString(sample)
-    guard bridged.length > 0 else { return nil }
-    return bridged.attribute(.font, at: 0, effectiveRange: nil) as? NotePlatformFont
+#if os(iOS)
+    attributes[AttributeScopes.UIKitAttributes.FontAttribute.self]
+#elseif os(macOS)
+    attributes[AttributeScopes.AppKitAttributes.FontAttribute.self]
+#endif
 }

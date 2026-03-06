@@ -68,6 +68,11 @@ enum NotesRichTextCodec {
         return normalized
     }
 
+    /// Decode legacy Base64 RTF bytes for explicit migration and import flows only.
+    static func decodeLegacyBase64RTFToAttributedString(_ content: String) -> AttributedString? {
+        decodeBase64RTFToAttributedString(content)
+    }
+
     /// Encode attributed text to canonical Base64 RTF bytes.
     static func encodeAttributedStringToBase64RTF(
         _ content: AttributedString,
