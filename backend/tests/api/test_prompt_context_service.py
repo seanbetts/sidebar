@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from sqlalchemy import text
 
 from api.db.base import Base
@@ -7,11 +8,11 @@ from api.models.conversation import Conversation
 from api.models.note import Note
 from api.models.user_settings import UserSettings
 from api.models.website import Website
+from api.services.agent.prompt import composer as prompt_composer
 from api.services.agent.prompt.composer import PromptContextService
 
 
-def test_prompt_context_service_order_and_truncation(test_db):
-    Base.metadata.create_all(bind=test_db.connection())
+def _ensure_user_settings_prompt_columns(test_db):
     test_db.execute(
         text(
             "ALTER TABLE user_settings "
@@ -25,6 +26,11 @@ def test_prompt_context_service_order_and_truncation(test_db):
         )
     )
     test_db.commit()
+
+
+def test_prompt_context_service_order_and_truncation(test_db):
+    Base.metadata.create_all(bind=test_db.connection())
+    _ensure_user_settings_prompt_columns(test_db)
     now = datetime(2025, 1, 2, 12, 0, tzinfo=UTC)
     user_id = "user-1"
 
@@ -109,6 +115,12 @@ def test_prompt_context_service_order_and_truncation(test_db):
     assert "</current_open>" in system_prompt
     assert "</recent_activity>" in system_prompt
     assert prompt_bundle["system_prompt"]["truncated"] is True
+    assert prompt_bundle["system_prompt"]["truncated_by_section_limits"] is True
+    assert prompt_bundle["system_prompt"]["truncated_by_budget"] is False
+    assert (
+        prompt_bundle["system_prompt"]["raw_total_chars"]
+        > prompt_bundle["system_prompt"]["constrained_total_chars"]
+    )
     assert "I use macOS." in first_message
     assert prompt_bundle["report"]["system_prompt"]["sections"] == [
         {
@@ -154,6 +166,83 @@ def test_prompt_context_service_order_and_truncation(test_db):
             "chars": len(prompt_bundle["system_prompt"]["sections"][6]["content"]),
         },
     ]
+
+    assert prompt_bundle["report"]["system_prompt"]["truncated_by_section_limits"] is True
+    assert prompt_bundle["report"]["system_prompt"]["truncated_by_budget"] is False
+
+
+def test_prompt_context_service_strict_mode_allows_section_capped_prompt(test_db):
+    Base.metadata.create_all(bind=test_db.connection())
+    _ensure_user_settings_prompt_columns(test_db)
+    now = datetime(2025, 1, 2, 12, 0, tzinfo=UTC)
+    user_id = "user-strict-sections"
+
+    test_db.add(UserSettings(user_id=user_id, name="Sam"))
+    test_db.commit()
+
+    open_context = {
+        "note": {
+            "id": "note-1",
+            "title": "Large Note",
+            "path": "notes/large-note.md",
+            "content": "ignored content",
+            "plain_text": "x" * (PromptContextService.MAX_SYSTEM_PROMPT_CHARS + 1000),
+        }
+    }
+
+    prompt_bundle = PromptContextService.build_prompts(
+        db=test_db,
+        user_id=user_id,
+        open_context=open_context,
+        attachments=None,
+        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        now=now,
+        strict_system_prompt=True,
+    )
+
+    assert prompt_bundle["system_prompt"]["truncated"] is True
+    assert prompt_bundle["system_prompt"]["truncated_by_section_limits"] is True
+    assert prompt_bundle["system_prompt"]["truncated_by_budget"] is False
+    assert (
+        prompt_bundle["report"]["system_prompt"]["constrained_total_chars"]
+        <= PromptContextService.MAX_SYSTEM_PROMPT_CHARS
+    )
+
+
+def test_prompt_context_service_strict_mode_rejects_budget_overflow(
+    test_db, monkeypatch
+):
+    Base.metadata.create_all(bind=test_db.connection())
+    _ensure_user_settings_prompt_columns(test_db)
+    now = datetime(2025, 1, 2, 12, 0, tzinfo=UTC)
+    user_id = "user-strict-budget"
+
+    test_db.add(UserSettings(user_id=user_id, name="Sam"))
+    test_db.commit()
+
+    monkeypatch.setattr(
+        prompt_composer,
+        "build_system_prompt",
+        lambda *_args, **_kwargs: "x"
+        * (PromptContextService.MAX_SYSTEM_PROMPT_CHARS + 500),
+    )
+
+    with pytest.raises(ValueError) as error:
+        PromptContextService.build_prompts(
+            db=test_db,
+            user_id=user_id,
+            open_context=None,
+            attachments=None,
+            user_agent=None,
+            now=now,
+            strict_system_prompt=True,
+        )
+
+    message = str(error.value)
+    assert message.startswith("System prompt exceeds maximum size (")
+    assert message.endswith(" > 40000)")
+    overflow_chars = int(message.split("(")[1].split(" >")[0])
+    assert overflow_chars > PromptContextService.MAX_SYSTEM_PROMPT_CHARS
 
 
 def test_recent_activity_cache_hit(test_db):

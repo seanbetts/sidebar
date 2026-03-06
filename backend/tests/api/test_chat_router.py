@@ -521,6 +521,77 @@ def test_stream_chat_rejects_oversized_system_prompt(test_client, monkeypatch):
     assert response.status_code == 400
 
 
+def test_stream_chat_allows_section_capped_prompt_report(test_client, monkeypatch):
+    def _build_prompts(**_kwargs):
+        return {
+            "system_prompt": {
+                "text": "system",
+                "max_chars": 40000,
+                "total_chars": 14288,
+                "raw_total_chars": 45500,
+                "constrained_total_chars": 14288,
+                "truncated": True,
+                "truncated_by_section_limits": True,
+                "truncated_by_budget": False,
+                "sections": [],
+            },
+            "first_message_prompt": {
+                "text": "first",
+                "max_chars": 8000,
+                "total_chars": 5,
+                "raw_total_chars": 5,
+                "constrained_total_chars": 5,
+                "truncated": False,
+                "truncated_by_section_limits": False,
+                "truncated_by_budget": False,
+                "sections": [],
+            },
+            "report": {
+                "system_prompt": {
+                    "total_chars": 14288,
+                    "max_chars": 40000,
+                    "raw_total_chars": 45500,
+                    "constrained_total_chars": 14288,
+                    "truncated": True,
+                    "truncated_by_section_limits": True,
+                    "truncated_by_budget": False,
+                    "sections": [],
+                },
+                "first_message_prompt": {
+                    "total_chars": 5,
+                    "max_chars": 8000,
+                    "raw_total_chars": 5,
+                    "constrained_total_chars": 5,
+                    "truncated": False,
+                    "truncated_by_section_limits": False,
+                    "truncated_by_budget": False,
+                    "sections": [],
+                },
+            },
+        }
+
+    _patch_stream_gateway(monkeypatch, [{"type": "token", "content": "Hello"}])
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.PromptContextService,
+        "build_prompts",
+        staticmethod(_build_prompts),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+
+    assert response.status_code == 200
+    assert "event: token" in response.text
+
+
 def test_stream_chat_retries_without_attachment_content_on_prompt_overflow(
     test_client, monkeypatch
 ):
@@ -550,13 +621,21 @@ def test_stream_chat_retries_without_attachment_content_on_prompt_overflow(
                 "system_prompt": {
                     "total_chars": 6,
                     "max_chars": 40000,
+                    "raw_total_chars": 6,
+                    "constrained_total_chars": 6,
                     "truncated": False,
+                    "truncated_by_section_limits": False,
+                    "truncated_by_budget": False,
                     "sections": [],
                 },
                 "first_message_prompt": {
                     "total_chars": 5,
                     "max_chars": 8000,
+                    "raw_total_chars": 5,
+                    "constrained_total_chars": 5,
                     "truncated": False,
+                    "truncated_by_section_limits": False,
+                    "truncated_by_budget": False,
                     "sections": [],
                 },
             },

@@ -59,7 +59,11 @@ class PromptDocument(TypedDict):
     text: str
     max_chars: int
     total_chars: int
+    raw_total_chars: int
+    constrained_total_chars: int
     truncated: bool
+    truncated_by_section_limits: bool
+    truncated_by_budget: bool
     sections: list[PromptSection]
 
 
@@ -68,7 +72,11 @@ class PromptDocumentReport(TypedDict):
 
     total_chars: int
     max_chars: int
+    raw_total_chars: int
+    constrained_total_chars: int
     truncated: bool
+    truncated_by_section_limits: bool
+    truncated_by_budget: bool
     sections: list[PromptSectionReport]
 
 
@@ -126,8 +134,9 @@ class PromptContextService:
             current_weather: Weather payload.
             current_timezone: User timezone identifier.
             now: Optional timestamp override.
-            strict_system_prompt: When True, reject requests that would require
-                truncating the system prompt.
+            strict_system_prompt: When True, reject requests that still exceed
+                the overall system prompt budget after per-section caps are
+                applied.
             include_attachment_content: When False, include attachment metadata
                 but skip loading derivative content in the prompt context.
 
@@ -275,10 +284,10 @@ class PromptContextService:
                 first_message_document
             ),
         }
-        if strict_system_prompt and report["system_prompt"]["truncated"]:
+        if strict_system_prompt and report["system_prompt"]["truncated_by_budget"]:
             raise ValueError(
                 "System prompt exceeds maximum size "
-                f"({report['system_prompt']['total_chars']} > "
+                f"({report['system_prompt']['constrained_total_chars']} > "
                 f"{report['system_prompt']['max_chars']})"
             )
 
@@ -322,21 +331,30 @@ class PromptContextService:
             )
         joined = PromptContextService._join_sections(normalized_sections)
         original_joined = PromptContextService._join_sections(original_sections)
+        raw_total_chars = len(original_joined)
+        constrained_total_chars = len(joined)
+        truncated_by_section_limits = joined != original_joined
+        truncated_by_budget = False
 
         if len(joined) > max_chars:
+            truncated_by_budget = True
             normalized_sections = PromptContextService._fit_sections_to_budget(
                 normalized_sections,
                 max_chars=max_chars,
             )
             joined = PromptContextService._join_sections(normalized_sections)
 
-        truncated = joined != original_joined or len(joined) > max_chars
+        truncated = truncated_by_section_limits or truncated_by_budget
         text = PromptContextService._truncate_text(joined, max_chars)
         return {
             "text": text,
             "max_chars": max_chars,
             "total_chars": len(text),
+            "raw_total_chars": raw_total_chars,
+            "constrained_total_chars": constrained_total_chars,
             "truncated": truncated,
+            "truncated_by_section_limits": truncated_by_section_limits,
+            "truncated_by_budget": truncated_by_budget,
             "sections": normalized_sections,
         }
 
@@ -355,7 +373,11 @@ class PromptContextService:
         return {
             "total_chars": document["total_chars"],
             "max_chars": document["max_chars"],
+            "raw_total_chars": document["raw_total_chars"],
+            "constrained_total_chars": document["constrained_total_chars"],
             "truncated": document["truncated"],
+            "truncated_by_section_limits": document["truncated_by_section_limits"],
+            "truncated_by_budget": document["truncated_by_budget"],
             "sections": section_reports,
         }
 

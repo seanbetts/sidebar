@@ -240,7 +240,7 @@ async def stream_chat(
             raise BadRequestError(str(error)) from error
 
     prompt_report = prompt_bundle["report"]
-    if prompt_report["system_prompt"]["truncated"]:
+    if prompt_report["system_prompt"]["truncated_by_budget"]:
         logger.warning(
             (
                 "System prompt exceeded configured maximum size "
