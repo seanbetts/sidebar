@@ -358,7 +358,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         cache: CacheClient,
         streamClient: ChatStreamClient
     ) -> ChatViewModel {
-        let chatAPI = ChatAPI(client: Self.sharedAPIClient)
+        let resolvedChatAPI = ChatAPI(client: Self.sharedAPIClient)
         let themeDefaults = UserDefaults(suiteName: "ChatViewModelStreamingFailureTheme") ?? .standard
         themeDefaults.removePersistentDomain(forName: "ChatViewModelStreamingFailureTheme")
         let themeManager = ThemeManager(userDefaults: themeDefaults)
@@ -369,7 +369,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
 
         return ChatViewModel(
             network: ChatNetworkCoordinator(
-                chatAPI: chatAPI,
+                chatAPI: resolvedChatAPI,
                 conversationsAPI: api,
                 ingestionAPI: ingestionAPI,
                 streamClient: streamClient,

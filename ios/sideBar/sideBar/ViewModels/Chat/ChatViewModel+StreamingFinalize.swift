@@ -49,11 +49,11 @@ extension ChatViewModel {
         )
         if let conversationId = streamingConversationId ?? selectedConversationId {
             Task { [weak self] in
-                await self?.refreshConversations(silent: true)
-                await self?.refreshActiveConversation(silent: true)
                 if status == .complete {
                     await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
                 }
+                await self?.refreshConversations(silent: true)
+                await self?.refreshActiveConversation(silent: true)
             }
         }
         isStreaming = false
