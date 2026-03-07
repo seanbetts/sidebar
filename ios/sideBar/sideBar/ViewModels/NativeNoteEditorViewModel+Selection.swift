@@ -36,6 +36,45 @@ extension NativeNoteEditorViewModel {
         return AttributedTextSelection(range: index..<index)
     }
 
+    func utf16Offset(
+        for index: AttributedString.Index,
+        in text: AttributedString
+    ) -> Int {
+        let string = String(text.characters)
+        let characterOffset = text.characters.distance(from: text.startIndex, to: index)
+        let stringIndex = string.index(string.startIndex, offsetBy: characterOffset)
+        return stringIndex.utf16Offset(in: string)
+    }
+
+    func utf16SelectedRange(in text: AttributedString) -> NSRange {
+        switch selection.indices(in: text) {
+        case .insertionPoint(let index):
+            let offset = utf16Offset(for: index, in: text)
+            return NSRange(location: offset, length: 0)
+        case .ranges(let ranges):
+            guard let primaryRange = ranges.ranges.first else {
+                return NSRange(location: 0, length: 0)
+            }
+
+            let lower = utf16Offset(for: primaryRange.lowerBound, in: text)
+            let upper = utf16Offset(for: primaryRange.upperBound, in: text)
+            return NSRange(location: lower, length: upper - lower)
+        }
+    }
+
+    func selection(
+        fromUTF16Range utf16Range: NSRange,
+        in text: AttributedString
+    ) -> AttributedTextSelection {
+        let string = String(text.characters)
+        let contentLength = string.utf16.count
+        let location = max(0, min(utf16Range.location, contentLength))
+        let upperBound = max(location, min(location + utf16Range.length, contentLength))
+        let lowerIndex = index(forUTF16Offset: location, in: text)
+        let upperIndex = index(forUTF16Offset: upperBound, in: text)
+        return AttributedTextSelection(range: lowerIndex..<upperIndex)
+    }
+
     func index(
         forCharacterOffset characterOffset: Int,
         in text: AttributedString
