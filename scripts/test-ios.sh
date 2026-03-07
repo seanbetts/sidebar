@@ -38,10 +38,16 @@ echo "Running iOS tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
   # CI runners occasionally inherit an http://github.com rewrite which breaks SwiftPM fetches.
-  git config --global --unset-all url.http://github.com/.insteadOf || true
-  git config --global url."https://github.com/".insteadOf "http://github.com/"
+  # Use an ephemeral per-job git config rather than mutating ~/.gitconfig on a shared runner.
+  ios_ci_git_config="$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/sidebar-ci-gitconfig.XXXXXX")"
+  if [[ -f "${HOME}/.gitconfig" ]]; then
+    cp "${HOME}/.gitconfig" "${ios_ci_git_config}"
+  fi
+  git config --file "${ios_ci_git_config}" --unset-all url.http://github.com/.insteadOf || true
+  git config --file "${ios_ci_git_config}" url."https://github.com/".insteadOf "http://github.com/"
   # HTTP/1.1 is generally more reliable for SwiftPM clone traffic in CI.
-  git config --global http.version HTTP/1.1
+  git config --file "${ios_ci_git_config}" http.version HTTP/1.1
+  export GIT_CONFIG_GLOBAL="${ios_ci_git_config}"
 fi
 
 XCODEBUILD_ARGS=(
