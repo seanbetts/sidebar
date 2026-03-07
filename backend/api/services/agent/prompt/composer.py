@@ -118,6 +118,7 @@ class PromptContextService:
         current_weather: dict[str, Any] | str | None = None,
         current_timezone: str | None = None,
         now: datetime | None = None,
+        blocked_skill_summaries: list[dict[str, Any]] | None = None,
         strict_system_prompt: bool = False,
         include_attachment_content: bool = True,
     ) -> PromptBuildResult:
@@ -134,6 +135,8 @@ class PromptContextService:
             current_weather: Weather payload.
             current_timezone: User timezone identifier.
             now: Optional timestamp override.
+            blocked_skill_summaries: Compact blocked capability metadata for
+                reconnect or remediation guidance.
             strict_system_prompt: When True, reject requests that still exceed
                 the overall system prompt budget after per-section caps are
                 applied.
@@ -143,6 +146,7 @@ class PromptContextService:
         Returns:
             Structured prompt bundle with flattened text and diagnostics.
         """
+        _ = blocked_skill_summaries
         timestamp = PromptContextService._resolve_timestamp(
             now=now,
             current_timezone=current_timezone,

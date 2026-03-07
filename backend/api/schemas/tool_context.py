@@ -27,6 +27,9 @@ class ToolExecutionContext:
     current_location_levels: dict[str, Any] | str | None = None
     current_weather: dict[str, Any] | str | None = None
     current_timezone: str | None = None
+    selected_skill_ids: list[str] = field(default_factory=list)
+    executable_skill_ids: list[str] = field(default_factory=list)
+    blocked_skill_summaries: list[dict[str, Any]] = field(default_factory=list)
     prompt_preview_payload: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -52,5 +55,8 @@ class ToolExecutionContext:
             "current_location_levels": self.current_location_levels,
             "current_weather": self.current_weather,
             "current_timezone": self.current_timezone,
+            "selected_skill_ids": self.selected_skill_ids,
+            "executable_skill_ids": self.executable_skill_ids,
+            "blocked_skill_summaries": self.blocked_skill_summaries,
             "prompt_preview_payload": self.prompt_preview_payload,
         }

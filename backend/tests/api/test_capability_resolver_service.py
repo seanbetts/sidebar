@@ -22,16 +22,24 @@ def _resolver_service():
 def _runtime_capability(
     skill_id: str,
     *,
+    name: str | None = None,
+    description: str | None = None,
+    tags: list[str] | None = None,
+    triggers: list[str] | None = None,
     availability_status: str = "ready",
     availability_reason: str | None = None,
     availability_remediation: dict[str, str] | None = None,
 ) -> dict[str, object]:
     return {
         "skill_id": skill_id,
+        "name": name or skill_id.replace("-", " ").title(),
+        "description": description or "",
         "enabled": True,
         "availability_status": availability_status,
         "availability_reason": availability_reason,
         "availability_remediation": availability_remediation,
+        "tags": tags or [],
+        "triggers": triggers or [],
         "required_toolsets": [f"{skill_id}-tools"],
     }
 
@@ -114,3 +122,51 @@ def test_executable_skills_are_strict_subset_of_selected_skills():
     )
     assert result["selected_skill_ids"] == ["notes", "google-drive"]
     assert result["executable_skill_ids"] == ["notes"]
+
+
+def test_resolver_prefers_open_context_fast_path_for_note_requests():
+    result = _resolver_service().resolve_for_turn(
+        user_message="Summarize this note",
+        enabled_skill_ids=["notes", "files"],
+        open_context={"note": {"id": "note-1", "title": "Draft"}},
+        runtime_capabilities=[
+            _runtime_capability(
+                "notes",
+                tags=["notes"],
+                triggers=["note", "summarize"],
+            ),
+            _runtime_capability(
+                "files",
+                tags=["files"],
+                triggers=["file", "folder"],
+            ),
+        ],
+    )
+
+    assert result["selected_skill_ids"] == ["notes"]
+    assert result["executable_skill_ids"] == ["notes"]
+
+
+def test_resolver_falls_back_to_search_when_fast_paths_are_weak():
+    result = _resolver_service().resolve_for_turn(
+        user_message="Find the config file in my project",
+        enabled_skill_ids=["notes", "files"],
+        runtime_capabilities=[
+            _runtime_capability(
+                "notes",
+                description="Summarize and organize notes.",
+                tags=["notes"],
+                triggers=["note", "journal"],
+            ),
+            _runtime_capability(
+                "files",
+                description="Search and inspect files in the workspace.",
+                tags=["files", "workspace"],
+                triggers=["file", "project", "config"],
+            ),
+        ],
+    )
+
+    assert result["selected_skill_ids"] == ["files"]
+    assert result["executable_skill_ids"] == ["files"]
+    assert "tool_definitions" not in result
