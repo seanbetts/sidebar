@@ -500,6 +500,11 @@ async def stream_with_tools(
                                                 "prompt_report": result_data.get(
                                                     "prompt_report"
                                                 ),
+                                                "request_budget_report": (
+                                                    result_data.get(
+                                                        "request_budget_report"
+                                                    )
+                                                ),
                                             },
                                         }
                                     elif display_name == "Memory Tool":

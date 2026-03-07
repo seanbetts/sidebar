@@ -83,6 +83,7 @@ def test_tool_side_effect_events_maps_prompt_preview_workspace_actions() -> None
             "data": {
                 "system_prompt": "system",
                 "first_message_prompt": "first",
+                "request_budget_report": {"provider": "anthropic"},
                 "workspace_context_menu_actions": [
                     "copy_markdown",
                     "share_text",
@@ -101,6 +102,7 @@ def test_tool_side_effect_events_maps_prompt_preview_workspace_actions() -> None
                 "system_prompt_sections": None,
                 "first_message_prompt_sections": None,
                 "prompt_report": None,
+                "request_budget_report": {"provider": "anthropic"},
                 "workspace_context_menu_actions": [
                     "copy_markdown",
                     "share_text",
