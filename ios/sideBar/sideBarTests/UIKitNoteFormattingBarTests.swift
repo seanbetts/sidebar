@@ -57,6 +57,9 @@ final class UIKitNoteFormattingBarTests: XCTestCase {
         let segment = try XCTUnwrap(paragraph.content.first)
 
         XCTAssertTrue(segment.marks.contains(.bold))
+        XCTAssertTrue(context.editorViewModel.isDirty)
+        XCTAssertTrue(context.nativeViewModel.hasUnsavedChanges)
+        XCTAssertNotNil(context.nativeViewModel.autosaveTask)
         XCTAssertTrue(
             noteRangeHasBoldTrait(
                 context.nativeViewModel.attributedContent,
