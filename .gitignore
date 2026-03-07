@@ -58,6 +58,7 @@ ios/sideBar/.ui-test-secrets.local
 
 # Docker volumes and workspaces
 /workspace/
+/.worktrees/
 
 # iOS/Xcode
 ios/**/*.xcodeproj/*
