@@ -228,9 +228,10 @@ final class NotesDetailViewTests: XCTestCase {
         environment.activeSection = .notes
         environment.focusedSection = .notes
         environment.focusedWorkspacePane = .primary
+        await Task.yield()
 
         environment.emitShortcutAction(.closeItem)
-        await waitUntil {
+        await waitUntil(timeout: .seconds(2)) {
             context.editorViewModel.currentNoteId == nil
         }
 
