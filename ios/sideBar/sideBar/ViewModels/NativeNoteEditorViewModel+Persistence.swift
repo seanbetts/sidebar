@@ -4,7 +4,7 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeNoteEditorViewModel {
-    /// Canonical rich text and plain-text values captured from one editor state snapshot.
+    /// Canonical semantic document and plain-text values captured from one editor state snapshot.
     public struct PersistenceSnapshot {
         public let document: NotesSemanticDocument
         public let canonicalContent: String
@@ -12,23 +12,20 @@ extension NativeNoteEditorViewModel {
     }
 
     public func loadDocument(canonicalContent: String, plainText: String) {
-        if let attributed = NotesRichTextCodec.decodeBase64RTFToAttributedString(canonicalContent) {
-            let document = NotesAttributedDocumentCodec.document(from: attributed)
-            var loadedContent = NotesAttributedDocumentCodec.attributedString(
-                from: document,
-                baseFontSize: baseFontSize
-            )
-            constrainEditorDocument(&loadedContent)
-            attributedContent = loadedContent
-            selection = AttributedTextSelection()
-            let snapshot = currentPersistenceSnapshot()
-            lastSavedContent = snapshot.plainText
-            lastSavedCanonicalContent = snapshot.canonicalContent
-            hasUnsavedChanges = false
-            lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
-            return
-        }
-        loadText(plainText)
+        let document = NotesSemanticDocumentCodec.decode(canonicalContent)
+            ?? NotesSemanticDocumentProjection.document(fromPlainText: plainText)
+        var loadedContent = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        constrainEditorDocument(&loadedContent)
+        attributedContent = loadedContent
+        selection = AttributedTextSelection()
+        let snapshot = currentPersistenceSnapshot()
+        lastSavedContent = snapshot.plainText
+        lastSavedCanonicalContent = snapshot.canonicalContent
+        hasUnsavedChanges = false
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
     }
 
     public func currentPersistenceSnapshot() -> PersistenceSnapshot {
@@ -36,23 +33,9 @@ extension NativeNoteEditorViewModel {
             from: constrainedEditorDocument(from: attributedContent)
         )
         let plainText = NotesSemanticDocumentProjection.plainText(from: document)
-        let exportContent = NotesAttributedDocumentCodec.attributedString(
-            from: document,
-            baseFontSize: baseFontSize
-        )
-        if let canonicalContent = NotesRichTextCodec.encodeAttributedStringToBase64RTF(
-            exportContent,
-            baseFontSize: baseFontSize
-        ) {
-            return PersistenceSnapshot(
-                document: document,
-                canonicalContent: canonicalContent,
-                plainText: plainText
-            )
-        }
         return PersistenceSnapshot(
             document: document,
-            canonicalContent: NotesRichTextCodec.encodePlainTextToBase64RTF(plainText),
+            canonicalContent: NotesSemanticDocumentCodec.encode(document) ?? "",
             plainText: plainText
         )
     }

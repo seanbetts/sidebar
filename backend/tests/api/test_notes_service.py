@@ -1,15 +1,19 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import text
 from api.exceptions import ConflictError
 from api.services.notes_document_types import note_document_from_plain_text
 from api.schemas.filters import NoteFilters
 from api.services.notes_service import NotesService
-from api.services.notes_write_contract import is_canonical_base64_rtf
 
 
 @pytest.fixture
 def db_session(test_db):
+    test_db.execute(text("ALTER TABLE notes DROP COLUMN IF EXISTS content"))
+    test_db.execute(text("ALTER TABLE notes DROP COLUMN IF EXISTS content_format"))
+    test_db.execute(text("ALTER TABLE notes ALTER COLUMN document SET NOT NULL"))
+    test_db.commit()
     return test_db
 
 
@@ -32,9 +36,7 @@ def test_create_and_read_note(db_session):
     assert fetched.title == "Test Note"
     assert fetched.document == _document(content)
     assert fetched.document_version == 1
-    assert is_canonical_base64_rtf(fetched.content) is True
     assert fetched.plain_text == content
-    assert fetched.content_format == "rtf"
     assert fetched.last_opened_at is not None
 
 
@@ -54,8 +56,82 @@ def test_update_note_title(db_session):
     assert updated.title == "New Title"
     assert updated.document == _document("# New Title\n\nBody")
     assert updated.document_version == 1
-    assert is_canonical_base64_rtf(updated.content) is True
     assert updated.plain_text == "# New Title\n\nBody"
+
+
+def test_create_note_derives_title_from_first_non_empty_plain_text_line(db_session):
+    note = NotesService.create_note(
+        db_session,
+        "test_user",
+        _document("\n\n  ## Derived Title  \nBody"),
+    )
+
+    assert note.title == "Derived Title"
+    assert note.plain_text == "\n\n  ## Derived Title  \nBody"
+
+
+def test_create_note_falls_back_to_new_note_for_blank_plain_text(db_session):
+    note = NotesService.create_note(
+        db_session,
+        "test_user",
+        _document("\n \n\t"),
+    )
+
+    assert note.title == "New Note"
+    assert note.plain_text == "\n \n\t"
+
+
+def test_create_note_derives_title_and_plain_text_from_semantic_document_projection(
+    db_session,
+):
+    document = {
+        "version": 1,
+        "blocks": [
+            {
+                "type": "paragraph",
+                "content": [{"text": "# Semantic Title", "marks": ["bold"]}],
+            },
+            {
+                "type": "paragraph",
+                "content": [{"text": "Body line", "marks": ["italic"]}],
+            },
+        ],
+    }
+
+    note = NotesService.create_note(db_session, "test_user", document)
+
+    assert note.title == "Semantic Title"
+    assert note.plain_text == "# Semantic Title\nBody line"
+    assert note.document == document
+
+
+def test_update_note_derives_title_and_plain_text_from_semantic_document_projection(
+    db_session,
+):
+    note = NotesService.create_note(
+        db_session,
+        "test_user",
+        _document("# Before\nOld body"),
+    )
+    document = {
+        "version": 1,
+        "blocks": [
+            {
+                "type": "paragraph",
+                "content": [{"text": "# After Title", "marks": ["underline"]}],
+            },
+            {
+                "type": "paragraph",
+                "content": [{"text": "Updated body", "marks": []}],
+            },
+        ],
+    }
+
+    updated = NotesService.update_note(db_session, "test_user", note.id, document)
+
+    assert updated.title == "After Title"
+    assert updated.plain_text == "# After Title\nUpdated body"
+    assert updated.document == document
 
 
 def test_update_folder_and_pinned(db_session):

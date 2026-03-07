@@ -18,42 +18,10 @@ final class NotesRichTextCodecTests: XCTestCase {
         XCTAssertEqual(decoded, text)
     }
 
-    func testNormalizeWriteInputUsesExplicitPlainText() {
-        let normalized = NotesRichTextCodec.normalizeWriteInput(
-            content: "ignored",
-            plainText: "Body"
-        )
+    func testEncodePlainTextProducesDecodableLegacyRTF() {
+        let encoded = NotesRichTextCodec.encodePlainTextToBase64RTF("Body")
 
-        XCTAssertEqual(normalized.plainText, "Body")
-        XCTAssertNotNil(NotesRichTextCodec.decodeBase64RTFToPlainText(normalized.content))
-    }
-
-    func testNormalizeWriteInputPreservesCanonicalContentWhenPlainTextProvided() {
-        let canonical = NotesRichTextCodec.encodePlainTextToBase64RTF("Body")
-
-        let normalized = NotesRichTextCodec.normalizeWriteInput(
-            content: canonical,
-            plainText: "Body"
-        )
-
-        XCTAssertEqual(normalized.content, canonical)
-        XCTAssertEqual(normalized.plainText, "Body")
-    }
-
-    func testNormalizeWriteInputDecodesCanonicalContent() {
-        let canonical = NotesRichTextCodec.encodePlainTextToBase64RTF("Stored body")
-
-        let normalized = NotesRichTextCodec.normalizeWriteInput(content: canonical)
-
-        XCTAssertEqual(normalized.content, canonical)
-        XCTAssertEqual(normalized.plainText, "Stored body")
-    }
-
-    func testNormalizeWriteInputDerivesPlainTextFromEncodedSnapshot() {
-        let normalized = NotesRichTextCodec.normalizeWriteInput(content: "Derived body")
-        let decoded = NotesRichTextCodec.decodeBase64RTFToPlainText(normalized.content)
-
-        XCTAssertEqual(normalized.plainText, decoded)
+        XCTAssertEqual(NotesRichTextCodec.decodeBase64RTFToPlainText(encoded), "Body")
     }
 
     func testNotePayloadDecodesPlainTextFromResponse() throws {
@@ -108,7 +76,7 @@ final class NotesRichTextCodecTests: XCTestCase {
         )
     }
 
-    func testDecodeBase64RTFToAttributedStringPreservesBoldFontTraits() throws {
+    func testDecodeLegacyBase64RTFToAttributedStringPreservesBoldFontTraits() throws {
         let encoded = try makeEncodedRTF(
             string: "Bold",
             attributes: platformAttributes(
@@ -117,13 +85,13 @@ final class NotesRichTextCodecTests: XCTestCase {
             )
         )
 
-        let decoded = try XCTUnwrap(NotesRichTextCodec.decodeBase64RTFToAttributedString(encoded))
+        let decoded = try XCTUnwrap(NotesRichTextCodec.decodeLegacyBase64RTFToAttributedString(encoded))
         XCTAssertTrue(decoded.runs.contains { run in
             hasBoldTrait(run)
         })
     }
 
-    func testDecodeBase64RTFToAttributedStringPreservesItalicFontTraits() throws {
+    func testDecodeLegacyBase64RTFToAttributedStringPreservesItalicFontTraits() throws {
         let encoded = try makeEncodedRTF(
             string: "Styled",
             attributes: platformAttributes(
@@ -132,7 +100,7 @@ final class NotesRichTextCodecTests: XCTestCase {
             )
         )
 
-        let decoded = try XCTUnwrap(NotesRichTextCodec.decodeBase64RTFToAttributedString(encoded))
+        let decoded = try XCTUnwrap(NotesRichTextCodec.decodeLegacyBase64RTFToAttributedString(encoded))
         XCTAssertTrue(decoded.runs.contains { run in
             hasItalicTrait(run)
         })
@@ -143,7 +111,7 @@ final class NotesRichTextCodecTests: XCTestCase {
         text[text.startIndex..<text.endIndex].underlineStyle = .single
 
         let encoded = try XCTUnwrap(NotesRichTextCodec.encodeAttributedStringToBase64RTF(text))
-        let decoded = try XCTUnwrap(NotesRichTextCodec.decodeBase64RTFToAttributedString(encoded))
+        let decoded = try XCTUnwrap(NotesRichTextCodec.decodeLegacyBase64RTFToAttributedString(encoded))
         let decodedRange = decoded.startIndex..<decoded.endIndex
 
         XCTAssertEqual(decoded[decodedRange].underlineStyle, .single)
@@ -176,7 +144,7 @@ private func bridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObje
     var sample = AttributedString("x")
     let range = sample.startIndex..<sample.endIndex
     sample[range].mergeAttributes(run.attributes)
-    let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
+    let bridged = (try? NSAttributedString(sample, including: \.noteTextEditor))
         ?? NSAttributedString(sample)
     return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
 }

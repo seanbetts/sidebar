@@ -18,11 +18,25 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.notes_content_codec import canonical_note_content_from_plain_text
+    from api.services.notes_document_types import note_document_from_plain_text
     from api.services.notes_service import NotesService
+    from api.services.notes_title import derive_note_title
 except Exception:
     SessionLocal = None
     NotesService = None
+
+
+def _build_document(title: str, content: str, *, mode: str) -> dict[str, Any]:
+    normalized_title = title.strip()
+    if (
+        mode == "create"
+        and normalized_title
+        and derive_note_title(content) != normalized_title
+        and not content.lstrip().startswith("#")
+    ):
+        title_heading = f"# {normalized_title}\n\n"
+        content = f"{title_heading}{content}" if content else title_heading
+    return note_document_from_plain_text(content)
 
 
 def save_markdown_database(
@@ -63,27 +77,21 @@ def save_markdown_database(
             if mode == "append":
                 updated_content = f"{existing_plain_text}{content}"
 
-            canonical = canonical_note_content_from_plain_text(updated_content)
-
             note = NotesService.update_note(
                 db,
                 user_id,
                 uuid.UUID(resolved_id),
-                canonical.content,
-                plain_text=canonical.plain_text,
+                document=note_document_from_plain_text(updated_content),
             )
             return {"id": str(note.id), "title": note.title}
 
         if mode != "create":
             raise ValueError("Database mode supports create, update, or append only")
 
-        canonical = canonical_note_content_from_plain_text(content)
         note = NotesService.create_note(
             db,
             user_id,
-            canonical.content,
-            plain_text=canonical.plain_text,
-            title=title,
+            document=_build_document(title, content, mode=mode),
             folder=folder or "",
             tags=tags,
         )

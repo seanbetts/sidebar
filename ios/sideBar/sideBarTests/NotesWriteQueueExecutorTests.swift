@@ -35,6 +35,64 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
         XCTAssertEqual(api.updatedDocuments, [document])
         XCTAssertEqual(store.appliedNotes, api.updatedNotes)
     }
+
+    func testExecuteUpdateRoundTripsQueuedSemanticDocumentToStore() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([
+                    .init(text: "Round-trip", marks: [.bold]),
+                    .init(text: " body", marks: [])
+                ])
+            ]
+        )
+
+        let api = NotesWriteQueueExecutorAPISpy()
+        let store = NotesWriteQueueExecutorStoreSpy()
+        let executor = NotesWriteQueueExecutor(api: api, store: store)
+
+        try await executor.execute(write: queuedUpdateWrite(document: document, noteId: "note-2"))
+
+        XCTAssertEqual(store.appliedNotes.count, 1)
+        XCTAssertEqual(store.appliedNotes[0].document, document)
+        XCTAssertEqual(store.appliedNotes[0].plainText, "Round-trip body")
+        XCTAssertEqual(store.appliedNotes[0].name, "Round-trip body")
+    }
+
+    func testExecuteUpdateDerivesProjectedTitleAndPlainTextFromQueuedSemanticDocument() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([.init(text: "# Queued Title", marks: [])]),
+                .paragraph([.init(text: "Body line", marks: [.italic])])
+            ]
+        )
+
+        let api = NotesWriteQueueExecutorAPISpy()
+        let store = NotesWriteQueueExecutorStoreSpy()
+        let executor = NotesWriteQueueExecutor(api: api, store: store)
+
+        try await executor.execute(write: queuedUpdateWrite(document: document, noteId: "note-3"))
+
+        XCTAssertEqual(api.updatedDocuments, [document])
+        XCTAssertEqual(store.appliedNotes.count, 1)
+        XCTAssertEqual(store.appliedNotes[0].name, "Queued Title")
+        XCTAssertEqual(store.appliedNotes[0].plainText, "# Queued Title\nBody line")
+    }
+}
+
+private func queuedUpdateWrite(
+    document: NotesSemanticDocument,
+    noteId: String
+) throws -> PendingWriteRecord {
+    let payload = try JSONEncoder().encode(NoteUpdateRequest(document: document))
+    return PendingWriteRecord(
+        id: UUID(),
+        operationType: WriteOperation.update.rawValue,
+        entityType: WriteEntityType.note.rawValue,
+        entityId: noteId,
+        payload: payload,
+        serverSnapshot: nil,
+        attempts: 0
+    )
 }
 
 private enum NotesWriteQueueExecutorTestError: Error {

@@ -6,7 +6,7 @@ import UIKit
 import AppKit
 #endif
 
-/// Helpers for Notes canonical rich-text transport.
+/// Explicit legacy RTF import/export helpers for notes migration boundaries.
 enum NotesRichTextCodec {
     /// Encode plain text as Base64 RTF bytes.
     static func encodePlainTextToBase64RTF(_ plainText: String) -> String {
@@ -50,8 +50,8 @@ enum NotesRichTextCodec {
         return attributed.string
     }
 
-    /// Decode canonical Base64 RTF bytes to attributed text.
-    static func decodeBase64RTFToAttributedString(_ content: String) -> AttributedString? {
+    /// Decode legacy Base64 RTF bytes for explicit migration and import flows only.
+    static func decodeLegacyBase64RTFToAttributedString(_ content: String) -> AttributedString? {
         guard let decoded = Data(base64Encoded: content) else {
             return nil
         }
@@ -66,11 +66,6 @@ enum NotesRichTextCodec {
         syncSwiftUIFonts(from: attributed, into: &normalized)
         syncUnderlineStyles(from: attributed, into: &normalized)
         return normalized
-    }
-
-    /// Decode legacy Base64 RTF bytes for explicit migration and import flows only.
-    static func decodeLegacyBase64RTFToAttributedString(_ content: String) -> AttributedString? {
-        decodeBase64RTFToAttributedString(content)
     }
 
     /// Encode attributed text to canonical Base64 RTF bytes.
@@ -92,34 +87,6 @@ enum NotesRichTextCodec {
         return rtfData.base64EncodedString()
     }
 
-    /// Normalize mixed legacy/canonical input to canonical write payload.
-    static func normalizeWriteInput(
-        content: String,
-        plainText: String? = nil
-    ) -> (content: String, plainText: String) {
-        if let plainText {
-            if decodeBase64RTFToPlainText(content) != nil {
-                return (content: content, plainText: plainText)
-            }
-            let encoded = encodePlainTextToBase64RTF(plainText)
-            let resolvedPlainText =
-                decodeBase64RTFToPlainText(encoded) ?? plainText
-            return (
-                content: encoded,
-                plainText: resolvedPlainText
-            )
-        }
-        if let decoded = decodeBase64RTFToPlainText(content) {
-            return (content: content, plainText: decoded)
-        }
-        let encoded = encodePlainTextToBase64RTF(content)
-        let resolvedPlainText = decodeBase64RTFToPlainText(encoded) ?? content
-        return (
-            content: encoded,
-            plainText: resolvedPlainText
-        )
-    }
-
     private static func fallbackRTFData(from plainText: String) -> Data {
         let normalized = plainText.replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")
@@ -135,7 +102,7 @@ enum NotesRichTextCodec {
         from content: AttributedString,
         baseFontSize: CGFloat?
     ) -> NSAttributedString {
-        let base = (try? NSAttributedString(content, including: \.attributedNoteTextSurface))
+        let base = (try? NSAttributedString(content, including: \.noteTextEditor))
             ?? NSAttributedString(content)
         guard base.length > 0 else { return base }
 

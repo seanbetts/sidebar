@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 RUNTIME_ROOT = Path("ios/sideBar/sideBar")
+BACKEND_NOTES_ROOT = Path("backend")
 NOTES_SHELL_RELATIVE_PATHS = (
     Path("ViewModels/NotesEditorViewModel.swift"),
     Path("Views/Notes/NotesView.swift"),
@@ -23,6 +24,12 @@ NOTES_SHELL_RELATIVE_PATHS = (
 )
 NOTES_EDITOR_GLOB = "ViewModels/NativeNoteEditorViewModel*.swift"
 NOTES_DEPENDENCY_RELATIVE_PATHS = (Path("Utilities/NoteTextDependencies.swift"),)
+NOTES_RUNTIME_CLEANUP_RELATIVE_PATHS = (
+    Path("Utilities/NotesRichTextCodec.swift"),
+    Path("Utilities/NoteTextBridging.swift"),
+    Path("ViewModels/NativeNoteEditorViewModel+Styling.swift"),
+    Path("ViewModels/NoteFormatting.swift"),
+)
 FORBIDDEN_NOTES_SHELL_PATTERNS = (
     r"\bNativeMarkdownEditorViewModel\b",
     r"\bMarkdownFormatting\b",
@@ -54,6 +61,30 @@ FORBIDDEN_NOTES_DEPENDENCY_PATTERNS = (
     r"\bSideBarMarkdownStyle\b",
     r"\bMarkdownFormattingDefinition\b",
     r"\bMarkdownShortcutProcessor\b",
+)
+FORBIDDEN_NOTES_RUNTIME_CLEANUP_PATTERNS = (
+    r"\bNoteFormattingCapability\b",
+    r"\bruntimeCapability\b",
+    r"\bplatformSystemFont\s*\(",
+    r"\bplatformFontApplyingTraits\s*\(",
+    r"\bswiftUIFontHasTrait\s*\(",
+    r"\battributedNoteTextSurface\b",
+)
+BACKEND_NOTES_RUNTIME_RELATIVE_PATHS = (
+    Path("api/models/note.py"),
+    Path("api/services/notes_service.py"),
+    Path("api/services/notes_write_contract.py"),
+    Path("api/services/notes_workspace_service.py"),
+    Path("skills/notes/scripts/save_markdown.py"),
+    Path("skills/notes/scripts/read_note.py"),
+)
+FORBIDDEN_BACKEND_NOTES_RUNTIME_PATTERNS = (
+    r"\bnotes_content_codec\b",
+    r"\blegacy_content\b",
+    r"\blegacy_content_format\b",
+    r"\bcontent_format\b",
+    r"\b(?:note|existing|created|updated|restored)\.content\b",
+    r"\bcanonical\.content\b",
 )
 
 
@@ -150,6 +181,28 @@ def _notes_dependency_files(repo_root: Path) -> list[Path]:
     return files
 
 
+def _backend_notes_runtime_files(repo_root: Path) -> list[Path]:
+    """Return backend notes runtime files that should avoid legacy note storage."""
+    root = repo_root / BACKEND_NOTES_ROOT
+    files: list[Path] = []
+    for relative_path in BACKEND_NOTES_RUNTIME_RELATIVE_PATHS:
+        candidate = root / relative_path
+        if candidate.exists() and candidate.is_file():
+            files.append(candidate)
+    return files
+
+
+def _notes_runtime_cleanup_files(repo_root: Path) -> list[Path]:
+    """Return files that should no longer contain dead phase-5 cleanup leftovers."""
+    root = repo_root / RUNTIME_ROOT
+    files: list[Path] = []
+    for relative_path in NOTES_RUNTIME_CLEANUP_RELATIVE_PATHS:
+        candidate = root / relative_path
+        if candidate.exists() and candidate.is_file():
+            files.append(candidate)
+    return files
+
+
 def _check_contract_requirements(repo_root: Path) -> list[Violation]:
     """Return missing required notes runtime contract patterns."""
     root = repo_root / RUNTIME_ROOT
@@ -190,11 +243,23 @@ def check(repo_root: Path) -> list[Violation]:
     notes_dependency_compiled = tuple(
         re.compile(pattern) for pattern in FORBIDDEN_NOTES_DEPENDENCY_PATTERNS
     )
+    notes_runtime_cleanup_files = _notes_runtime_cleanup_files(repo_root)
+    notes_runtime_cleanup_compiled = tuple(
+        re.compile(pattern) for pattern in FORBIDDEN_NOTES_RUNTIME_CLEANUP_PATTERNS
+    )
+    backend_notes_runtime_files = _backend_notes_runtime_files(repo_root)
+    backend_notes_runtime_compiled = tuple(
+        re.compile(pattern) for pattern in FORBIDDEN_BACKEND_NOTES_RUNTIME_PATTERNS
+    )
     violations: list[Violation] = _check_contract_requirements(repo_root)
     for file_path in notes_shell_files:
         violations.extend(_scan_file(file_path, notes_shell_compiled))
     for file_path in notes_dependency_files:
         violations.extend(_scan_file(file_path, notes_dependency_compiled))
+    for file_path in notes_runtime_cleanup_files:
+        violations.extend(_scan_file(file_path, notes_runtime_cleanup_compiled))
+    for file_path in backend_notes_runtime_files:
+        violations.extend(_scan_file(file_path, backend_notes_runtime_compiled))
     return violations
 
 

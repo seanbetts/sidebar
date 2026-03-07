@@ -1,33 +1,30 @@
 import pytest
 
 from api.exceptions import BadRequestError
-from api.services.notes_content_codec import (
-    canonical_note_content_from_plain_text,
-    note_plain_text_from_record,
+from api.services.notes_document_types import note_document_from_plain_text
+from api.services.notes_write_contract import (
+    MAX_NOTE_PLAIN_TEXT_CHARS,
+    build_canonical_note_write,
+    validate_plain_text,
 )
-from api.services.notes_write_contract import is_canonical_base64_rtf
 
 
-def test_canonical_note_content_from_plain_text_returns_canonical_pair():
-    result = canonical_note_content_from_plain_text("Hello\nWorld")
+def test_build_canonical_note_write_projects_plain_text_and_title():
+    document = note_document_from_plain_text("\n# Hello\nWorld")
 
-    assert result.plain_text == "Hello\nWorld"
-    assert is_canonical_base64_rtf(result.content) is True
+    result = build_canonical_note_write(document)
+
+    assert result.document == document
+    assert result.document_version == 1
+    assert result.plain_text == "\n# Hello\nWorld"
+    assert result.title == "Hello"
 
 
-def test_canonical_note_content_from_plain_text_requires_string():
+def test_validate_plain_text_requires_string():
     with pytest.raises(BadRequestError, match="plain_text required"):
-        canonical_note_content_from_plain_text(None)
+        validate_plain_text(None)
 
 
-def test_note_plain_text_from_record_prefers_metadata():
-    resolved = note_plain_text_from_record(
-        "raw-content",
-        {"plain_text": "metadata text"},
-    )
-    assert resolved == "metadata text"
-
-
-def test_note_plain_text_from_record_missing_metadata_returns_empty_string():
-    resolved = note_plain_text_from_record("raw-content", {})
-    assert resolved == ""
+def test_validate_plain_text_rejects_oversize_payload():
+    with pytest.raises(BadRequestError, match="plain_text exceeds max length"):
+        validate_plain_text("x" * (MAX_NOTE_PLAIN_TEXT_CHARS + 1))

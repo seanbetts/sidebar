@@ -18,14 +18,6 @@ enum NoteTextTypography {
         baseBodyFontSize * option.scaleMultiplier
     }
 
-    static func inlineCodeFontSize(baseFontSize: CGFloat) -> CGFloat {
-        baseFontSize * inlineCodeScale
-    }
-
-    static func footnoteFontSize(baseFontSize: CGFloat) -> CGFloat {
-        baseFontSize * footnoteScale
-    }
-
     private static var baseBodyFontSize: CGFloat {
 #if canImport(UIKit)
         UIFont.preferredFont(forTextStyle: .body).pointSize
@@ -35,26 +27,6 @@ enum NoteTextTypography {
         16
 #endif
     }
-
-    private static let inlineCodeScale: CGFloat = 0.875
-    private static let fallbackFootnoteScale: CGFloat = 13.0 / 16.0
-
-    private static var footnoteScale: CGFloat {
-#if canImport(UIKit)
-        let bodySize = UIFont.preferredFont(forTextStyle: .body).pointSize
-        let footnoteSize = UIFont.preferredFont(forTextStyle: .footnote).pointSize
-#elseif canImport(AppKit)
-        let bodySize = NSFont.preferredFont(forTextStyle: .body).pointSize
-        let footnoteSize = NSFont.preferredFont(forTextStyle: .footnote).pointSize
-#else
-        let bodySize = CGFloat.zero
-        let footnoteSize = CGFloat.zero
-#endif
-        guard bodySize > 0, footnoteSize > 0 else {
-            return fallbackFootnoteScale
-        }
-        return footnoteSize / bodySize
-    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -62,38 +34,44 @@ enum NoteTextParagraphMetrics {
     private static let bodyLineHeightMultiple: CGFloat = 1.7
     static let bodySpacingRem: CGFloat = 0.5
 
+    private struct ParagraphStyleConfiguration {
+        let fontSize: CGFloat
+        let lineHeightMultiple: CGFloat
+        let spacingBefore: CGFloat
+        let spacingAfter: CGFloat
+        let headIndent: CGFloat
+        let tailIndent: CGFloat
+    }
+
     static func bodyParagraphStyle(
         baseFontSize: CGFloat,
         headIndent: CGFloat = 0,
         tailIndent: CGFloat = 0
     ) -> NSParagraphStyle {
         paragraphStyle(
-            fontSize: baseFontSize,
-            lineHeightMultiple: bodyLineHeightMultiple,
-            spacingBefore: bodySpacingRem * baseFontSize,
-            spacingAfter: bodySpacingRem * baseFontSize,
-            headIndent: headIndent,
-            tailIndent: tailIndent
+            configuration: ParagraphStyleConfiguration(
+                fontSize: baseFontSize,
+                lineHeightMultiple: bodyLineHeightMultiple,
+                spacingBefore: bodySpacingRem * baseFontSize,
+                spacingAfter: bodySpacingRem * baseFontSize,
+                headIndent: headIndent,
+                tailIndent: tailIndent
+            )
         )
     }
 
     private static func paragraphStyle(
-        fontSize: CGFloat,
-        lineHeightMultiple: CGFloat,
-        spacingBefore: CGFloat,
-        spacingAfter: CGFloat,
-        headIndent: CGFloat,
-        tailIndent: CGFloat
+        configuration: ParagraphStyleConfiguration
     ) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
-        let desiredLineHeight = lineHeightMultiple * fontSize
-        style.lineSpacing = max(0, desiredLineHeight - naturalLineHeight(for: fontSize))
-        style.paragraphSpacingBefore = spacingBefore
-        style.paragraphSpacing = spacingAfter
-        style.headIndent = headIndent
-        style.firstLineHeadIndent = headIndent
-        if tailIndent != 0 {
-            style.tailIndent = -tailIndent
+        let desiredLineHeight = configuration.lineHeightMultiple * configuration.fontSize
+        style.lineSpacing = max(0, desiredLineHeight - naturalLineHeight(for: configuration.fontSize))
+        style.paragraphSpacingBefore = configuration.spacingBefore
+        style.paragraphSpacing = configuration.spacingAfter
+        style.headIndent = configuration.headIndent
+        style.firstLineHeadIndent = configuration.headIndent
+        if configuration.tailIndent != 0 {
+            style.tailIndent = -configuration.tailIndent
         }
         return style
     }
@@ -108,16 +86,6 @@ enum NoteTextParagraphMetrics {
         return fontSize
 #endif
     }
-}
-
-struct NoteTextStyle: Equatable {
-    let codeBackground: Color
-    let codeBlockBackground: Color
-
-    static let `default` = NoteTextStyle(
-        codeBackground: DesignTokens.Colors.muted,
-        codeBlockBackground: DesignTokens.Colors.muted
-    )
 }
 
 enum NoteTextLayout {

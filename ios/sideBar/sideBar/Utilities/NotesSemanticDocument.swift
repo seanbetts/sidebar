@@ -12,6 +12,30 @@ public struct NotesSemanticDocument: Codable, Equatable {
     }
 }
 
+enum NotesSemanticDocumentCodec {
+    private static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return encoder
+    }()
+
+    private static let decoder = JSONDecoder()
+
+    static func encode(_ document: NotesSemanticDocument) -> String? {
+        guard let data = try? encoder.encode(document) else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+
+    static func decode(_ content: String) -> NotesSemanticDocument? {
+        guard let data = content.data(using: .utf8) else {
+            return nil
+        }
+        return try? decoder.decode(NotesSemanticDocument.self, from: data)
+    }
+}
+
 extension NotesSemanticDocument {
     public struct Block: Codable, Equatable {
         public let type: BlockType

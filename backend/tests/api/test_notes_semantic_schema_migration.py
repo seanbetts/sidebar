@@ -14,10 +14,10 @@ def _load_migration_module():
         / "api"
         / "alembic"
         / "versions"
-        / "20260306_1200-057_add_semantic_note_document.py"
+        / "20260306_1800-058_drop_legacy_note_rtf_columns.py"
     )
     spec = importlib.util.spec_from_file_location(
-        "migration_057_add_semantic_note_document",
+        "migration_058_drop_legacy_note_rtf_columns",
         migration_path,
     )
     assert spec is not None
@@ -32,14 +32,14 @@ def test_note_model_includes_semantic_document_columns() -> None:
 
     assert "document" in columns
     assert "document_version" in columns
-    assert columns["document"].nullable is True
-    assert columns["content"].nullable is False
-    assert columns["content_format"].nullable is False
+    assert columns["document"].nullable is False
+    assert "content" not in columns
+    assert "content_format" not in columns
     assert columns["plain_text"].nullable is False
     assert columns["title"].nullable is False
 
 
-def test_semantic_note_document_migration_adds_transitional_columns() -> None:
+def test_semantic_note_document_cleanup_migration_drops_legacy_columns() -> None:
     migration = _load_migration_module()
     executed_sql: list[str] = []
 
@@ -53,15 +53,17 @@ def test_semantic_note_document_migration_adds_transitional_columns() -> None:
     migration.upgrade()
 
     assert any(
-        "ADD COLUMN IF NOT EXISTS document jsonb" in statement
+        "UPDATE notes" in statement and "jsonb_build_object" in statement
         for statement in executed_sql
     )
     assert any(
-        "ADD COLUMN IF NOT EXISTS document_version integer NOT NULL DEFAULT 1"
-        in statement
+        "ALTER TABLE notes ALTER COLUMN document SET NOT NULL" in statement
         for statement in executed_sql
     )
-    assert not any("DROP COLUMN IF EXISTS content" in statement for statement in executed_sql)
-    assert not any(
-        "DROP COLUMN IF EXISTS content_format" in statement for statement in executed_sql
+    assert any(
+        "DROP COLUMN IF EXISTS content" in statement for statement in executed_sql
+    )
+    assert any(
+        "DROP COLUMN IF EXISTS content_format" in statement
+        for statement in executed_sql
     )

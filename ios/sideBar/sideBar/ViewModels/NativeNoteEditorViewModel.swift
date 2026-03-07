@@ -1,11 +1,6 @@
 @preconcurrency import Foundation
 import Combine
 import SwiftUI
-#if os(iOS)
-@preconcurrency import UIKit
-#elseif os(macOS)
-@preconcurrency import AppKit
-#endif
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
@@ -17,16 +12,6 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     @Published public internal(set) var hasUnsavedChanges: Bool = false
     @Published public internal(set) var autosaveToken: Int = 0
     public var autosaveDelay: TimeInterval = 1.5
-
-#if os(iOS)
-    typealias PlatformFont = UIFont
-    typealias PlatformFontWeight = UIFont.Weight
-    typealias PlatformColor = UIColor
-#elseif os(macOS)
-    typealias PlatformFont = NSFont
-    typealias PlatformFontWeight = NSFont.Weight
-    typealias PlatformColor = NSColor
-#endif
 
     var baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
     var bodyFont: Font {

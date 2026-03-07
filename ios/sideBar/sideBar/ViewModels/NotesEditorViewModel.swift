@@ -66,10 +66,7 @@ public final class NotesEditorViewModel: ObservableObject {
             // the same note back through NotesStore.
             return
         }
-        let normalized = NotesRichTextCodec.normalizeWriteInput(
-            content: note.content,
-            plainText: note.plainText.isEmpty ? nil : note.plainText
-        )
+        let normalized = normalizedEditorSnapshot(for: note)
         currentNoteId = note.id
         if isSameNote,
            normalized.plainText == content,
@@ -105,17 +102,18 @@ public final class NotesEditorViewModel: ObservableObject {
         do {
             guard let draft = try draftStorage.getDraft(entityType: "note", entityId: note.id) else { return }
             guard draft.syncedAt == nil else { return }
-            let normalized = NotesRichTextCodec.normalizeWriteInput(
-                content: note.content,
-                plainText: note.plainText.isEmpty ? nil : note.plainText
-            )
+            let normalized = normalizedEditorSnapshot(for: note)
             if draft.content == normalized.plainText {
                 try? draftStorage.markSynced(entityType: "note", entityId: note.id)
                 isQueuedForSync = false
                 return
             }
             content = draft.content
-            let draftBaseline = NotesRichTextCodec.normalizeWriteInput(content: draft.content)
+            let draftDocument = NotesSemanticDocumentProjection.document(fromPlainText: draft.content)
+            let draftBaseline = (
+                content: NotesSemanticDocumentCodec.encode(draftDocument) ?? "",
+                plainText: draft.content
+            )
             canonicalContent = draftBaseline.content
             syncNativeEditorContent(
                 canonicalContent: draftBaseline.content,
@@ -325,6 +323,13 @@ public final class NotesEditorViewModel: ObservableObject {
         let snapshot = nativeViewModel.currentPersistenceSnapshot()
         content = snapshot.plainText
         canonicalContent = snapshot.canonicalContent
+    }
+
+    private func normalizedEditorSnapshot(for note: NotePayload) -> (content: String, plainText: String) {
+        (
+            content: NotesSemanticDocumentCodec.encode(note.document) ?? "",
+            plainText: note.plainText
+        )
     }
 
     private func enqueueNoteUpdate(

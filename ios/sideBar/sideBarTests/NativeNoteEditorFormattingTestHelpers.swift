@@ -20,36 +20,6 @@ func noteCharacterRange(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-func noteFirstRunPointSize(in text: AttributedString) -> CGFloat? {
-    let bridged = (try? NSAttributedString(text, including: \.attributedNoteTextSurface))
-        ?? NSAttributedString(text)
-    guard bridged.length > 0 else { return nil }
-    #if os(iOS)
-    return (bridged.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)?.pointSize
-    #elseif os(macOS)
-    return (bridged.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize
-    #endif
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-func noteFirstRunPointSize(inCanonicalRTF content: String) -> CGFloat? {
-    guard let data = Data(base64Encoded: content),
-          let attributed = try? NSAttributedString(
-              data: data,
-              options: [.documentType: NSAttributedString.DocumentType.rtf],
-              documentAttributes: nil
-          ),
-          attributed.length > 0 else {
-        return nil
-    }
-    #if os(iOS)
-    return (attributed.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)?.pointSize
-    #elseif os(macOS)
-    return (attributed.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize
-    #endif
-}
-
-@available(iOS 26.0, macOS 26.0, *)
 func noteRunHasBoldTrait(_ run: AttributedString.Runs.Run) -> Bool {
     let resolved = run.font?.resolve(in: EnvironmentValues().fontResolutionContext)
     if resolved?.isBold == true {
@@ -122,8 +92,8 @@ func noteRangeHasBridgedBoldPlatformFont(
         }
         #elseif os(macOS)
         guard let font = value as? NSFont,
-              (font.fontDescriptor.symbolicTraits.contains(.bold)
-                || NSFontManager.shared.traits(of: font).contains(.boldFontMask)) else {
+              font.fontDescriptor.symbolicTraits.contains(.bold)
+                || NSFontManager.shared.traits(of: font).contains(.boldFontMask) else {
             result = false
             stop.pointee = true
             return
@@ -154,8 +124,8 @@ func noteRangeHasBridgedItalicPlatformFont(
         }
         #elseif os(macOS)
         guard let font = value as? NSFont,
-              (font.fontDescriptor.symbolicTraits.contains(.italic)
-                || NSFontManager.shared.traits(of: font).contains(.italicFontMask)) else {
+              font.fontDescriptor.symbolicTraits.contains(.italic)
+                || NSFontManager.shared.traits(of: font).contains(.italicFontMask) else {
             result = false
             stop.pointee = true
             return
@@ -186,7 +156,7 @@ func noteBridgedPlatformFont(from run: AttributedString.Runs.Run) -> AnyObject? 
     var sample = AttributedString("x")
     let range = sample.startIndex..<sample.endIndex
     sample[range].mergeAttributes(run.attributes)
-    let bridged = (try? NSAttributedString(sample, including: \.attributedNoteTextSurface))
+    let bridged = (try? NSAttributedString(sample, including: \.noteTextEditor))
         ?? NSAttributedString(sample)
     return bridged.attribute(NSAttributedString.Key.font, at: 0, effectiveRange: nil) as AnyObject?
 }

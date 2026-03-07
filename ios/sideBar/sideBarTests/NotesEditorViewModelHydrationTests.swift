@@ -56,7 +56,8 @@ final class NotesEditorViewModelHydrationTests: XCTestCase {
         XCTAssertEqual(viewModel.content, "Hello")
         XCTAssertEqual(viewModel.canonicalContent, beforeCanonical)
         XCTAssertEqual(
-            NotesRichTextCodec.decodeBase64RTFToPlainText(viewModel.canonicalContent),
+            NotesSemanticDocumentCodec.decode(viewModel.canonicalContent)
+                .map(NotesSemanticDocumentProjection.plainText(from:)),
             "Hello"
         )
     }

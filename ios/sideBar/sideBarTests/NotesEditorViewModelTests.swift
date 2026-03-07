@@ -6,6 +6,7 @@ import SwiftUI
 import XCTest
 @testable import sideBar
 
+// swiftlint:disable type_body_length
 @MainActor
 final class NotesEditorViewModelTests: XCTestCase {
     func testHandleNoteUpdateSetsContentAndBaseline() async {
@@ -44,7 +45,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentNoteId, "n1")
         XCTAssertEqual(viewModel.content, "Hello")
         XCTAssertEqual(
-            NotesRichTextCodec.decodeBase64RTFToPlainText(viewModel.canonicalContent),
+            decodedCanonicalPlainText(viewModel.canonicalContent),
             "Hello"
         )
     }
@@ -513,7 +514,7 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         XCTAssertEqual(api.updatedContents.count, 2)
         XCTAssertEqual(
-            api.updatedContents.compactMap(NotesRichTextCodec.decodeBase64RTFToPlainText),
+            api.updatedContents.compactMap(decodedCanonicalPlainText),
             ["First", "Second"]
         )
     }
@@ -807,36 +808,15 @@ extension NotesEditorViewModelTests {
         XCTAssertNotEqual(api.updatedContents[0], initialCanonical)
     }
 
+}
+// swiftlint:enable type_body_length
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+extension NotesEditorViewModelTests {
     func testDetachNativeEditorStopsUsingDetachedSnapshot() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
         )
         let note = NotePayload(
             id: "n1",
@@ -846,48 +826,21 @@ extension NotesEditorViewModelTests {
             modified: nil,
             created: nil
         )
-        store.applyEditorUpdate(note)
+        context.store.applyEditorUpdate(note)
         await Task.yield()
 
-        let nativeViewModel = viewModel.makeNativeEditorViewModel()
-        viewModel.attachNativeEditor(nativeViewModel)
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+        context.viewModel.attachNativeEditor(nativeViewModel)
         nativeViewModel.attributedContent = AttributedString("Local unsaved body")
-        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
+        XCTAssertEqual(context.viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
 
-        viewModel.detachNativeEditor(nativeViewModel)
-        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Server body")
+        context.viewModel.detachNativeEditor(nativeViewModel)
+        XCTAssertEqual(context.viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Server body")
     }
 
     func testDetachNativeEditorIgnoresDifferentEditorInstance() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
         )
         let note = NotePayload(
             id: "n1",
@@ -897,49 +850,21 @@ extension NotesEditorViewModelTests {
             modified: nil,
             created: nil
         )
-        store.applyEditorUpdate(note)
+        context.store.applyEditorUpdate(note)
         await Task.yield()
 
-        let attachedEditor = viewModel.makeNativeEditorViewModel()
-        viewModel.attachNativeEditor(attachedEditor)
+        let attachedEditor = context.viewModel.makeNativeEditorViewModel()
+        context.viewModel.attachNativeEditor(attachedEditor)
         attachedEditor.attributedContent = AttributedString("Local unsaved body")
-        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
+        XCTAssertEqual(context.viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
 
-        let differentEditor = NativeNoteEditorViewModel()
-        viewModel.detachNativeEditor(differentEditor)
-        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
+        context.viewModel.detachNativeEditor(NativeNoteEditorViewModel())
+        XCTAssertEqual(context.viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Local unsaved body")
     }
 
     func testNotesRuntimeOpenNoteContextUsesProjectedPlainText() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let editorViewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
         )
         let note = NotePayload(
             id: "n1",
@@ -949,55 +874,28 @@ extension NotesEditorViewModelTests {
             modified: nil,
             created: nil
         )
-        store.applyEditorUpdate(note)
+        context.store.applyEditorUpdate(note)
         await Task.yield()
 
-        let nativeViewModel = editorViewModel.makeNativeEditorViewModel()
-        editorViewModel.attachNativeEditor(nativeViewModel)
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+        context.viewModel.attachNativeEditor(nativeViewModel)
         nativeViewModel.attributedContent = AttributedString("Local unsaved body")
 
-        let runtime = NotesRuntime(viewModel: notesViewModel, editorViewModel: editorViewModel)
-        let context = runtime.openNoteContext()
+        let runtime = NotesRuntime(viewModel: context.notesViewModel, editorViewModel: context.viewModel)
+        let contextPayload = runtime.openNoteContext()
 
-        XCTAssertEqual(context?["content"] as? String, "Local unsaved body")
-        XCTAssertEqual(context?["plain_text"] as? String, "Local unsaved body")
-        XCTAssertEqual(context?["content_format"] as? String, "plain_text")
+        XCTAssertEqual(contextPayload?["content"] as? String, "Local unsaved body")
+        XCTAssertEqual(contextPayload?["plain_text"] as? String, "Local unsaved body")
+        XCTAssertEqual(contextPayload?["content_format"] as? String, "plain_text")
     }
 
     func testAppliesUnsyncedDraftWithoutConflictResolution() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
         let nonCanonical = "- [x] Done"
         let canonical = canonicalSnapshotOutput(nonCanonical)
         XCTAssertEqual(canonical, nonCanonical)
 
-        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
         )
         let note = NotePayload(
             id: "n1",
@@ -1008,52 +906,25 @@ extension NotesEditorViewModelTests {
             created: nil
         )
 
-        try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: nonCanonical)
-        store.applyEditorUpdate(note)
+        try context.draftStorage.saveDraft(entityType: "note", entityId: "n1", content: nonCanonical)
+        context.store.applyEditorUpdate(note)
 
-        try await waitUntil(timeoutSeconds: 2.0) { viewModel.content == canonical }
-        XCTAssertEqual(viewModel.content, canonical)
-        XCTAssertTrue(viewModel.isDirty)
-        XCTAssertTrue(viewModel.isQueuedForSync)
-        let draft = try draftStorage.getDraft(entityType: "note", entityId: "n1")
+        try await waitUntil(timeoutSeconds: 2.0) { context.viewModel.content == canonical }
+        XCTAssertEqual(context.viewModel.content, canonical)
+        XCTAssertTrue(context.viewModel.isDirty)
+        XCTAssertTrue(context.viewModel.isQueuedForSync)
+        let draft = try context.draftStorage.getDraft(entityType: "note", entityId: "n1")
         XCTAssertEqual(draft?.content, canonical)
     }
 
     func testCurrentPlainTextSnapshotCanonicalizationDriftReturnsStableOutput() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
         let driftInput = """
         > 1. Parent
         >    - [ ] Open **bold**
         >    - [x] Done *italic* `code`
         """
-        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
         )
         let note = NotePayload(
             id: "n1",
@@ -1063,50 +934,21 @@ extension NotesEditorViewModelTests {
             modified: nil,
             created: nil
         )
-        store.applyEditorUpdate(note)
+        context.store.applyEditorUpdate(note)
         await Task.yield()
 
-        let snapshot = viewModel.currentPlainTextSnapshot(fallback: "fallback")
+        let snapshot = context.viewModel.currentPlainTextSnapshot(fallback: "fallback")
         XCTAssertEqual(snapshot, driftInput)
-        XCTAssertEqual(viewModel.currentPlainTextSnapshot(fallback: "fallback"), snapshot)
+        XCTAssertEqual(context.viewModel.currentPlainTextSnapshot(fallback: "fallback"), snapshot)
     }
 
     func testDoesNotCreateServerCopyWhenApplyingUnsyncedDraft() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
         let nonCanonical = "- [x] Done"
         let canonical = canonicalSnapshotOutput(nonCanonical)
         XCTAssertEqual(canonical, nonCanonical)
-        let api = NotesAPISpy(
-            updateResult: .failure(MockError.forced)
-        )
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
+
+        let api = NotesAPISpy(updateResult: .failure(MockError.forced))
+        let context = makeNotesEditorViewModelTestContext(api: api)
         let note = NotePayload(
             id: "n1",
             name: "Note.md",
@@ -1116,131 +958,97 @@ extension NotesEditorViewModelTests {
             created: nil
         )
 
-        try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: nonCanonical)
-        store.applyEditorUpdate(note)
+        try context.draftStorage.saveDraft(entityType: "note", entityId: "n1", content: nonCanonical)
+        context.store.applyEditorUpdate(note)
 
-        try await waitUntil(timeoutSeconds: 2.0) { viewModel.content == canonical }
+        try await waitUntil(timeoutSeconds: 2.0) { context.viewModel.content == canonical }
 
-        XCTAssertEqual(viewModel.currentNoteId, "n1")
-        XCTAssertEqual(viewModel.content, canonical)
-        XCTAssertTrue(viewModel.isDirty)
-        XCTAssertTrue(viewModel.isQueuedForSync)
-        XCTAssertEqual(notesViewModel.activeNote?.id, "n1")
-        XCTAssertNil(notesViewModel.selectedNoteId)
+        XCTAssertEqual(context.viewModel.currentNoteId, "n1")
+        XCTAssertEqual(context.viewModel.content, canonical)
+        XCTAssertTrue(context.viewModel.isDirty)
+        XCTAssertTrue(context.viewModel.isQueuedForSync)
+        XCTAssertEqual(context.notesViewModel.activeNote?.id, "n1")
+        XCTAssertNil(context.notesViewModel.selectedNoteId)
         XCTAssertTrue(api.createdTitles.isEmpty)
         XCTAssertTrue(api.updatedContents.isEmpty)
-        let draft = try draftStorage.getDraft(entityType: "note", entityId: "n1")
+        let draft = try context.draftStorage.getDraft(entityType: "note", entityId: "n1")
         XCTAssertEqual(draft?.content, canonical)
     }
 
     func testSyncFromNativeEditorSkipsWhenBaselineAlreadyAligned() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
         let nonCanonical = "- [x] Done"
         let canonicalProbe = NativeNoteEditorViewModel()
         canonicalProbe.loadText(nonCanonical)
         let canonicalPlainText = canonicalProbe.currentPlainText()
         XCTAssertEqual(canonicalPlainText, nonCanonical)
 
-        let updated = NotePayload(id: "n1", name: "Note", content: canonicalPlainText, path: "/note.md", modified: 100, created: nil)
+        let updated = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: canonicalPlainText,
+            path: "/note.md",
+            modified: 100,
+            created: nil
+        )
         let api = NotesAPISpy(updateResult: .success(updated))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        let context = makeNotesEditorViewModelTestContext(api: api)
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: nonCanonical,
+            path: "/note.md",
+            modified: nil,
+            created: nil
         )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let note = NotePayload(id: "n1", name: "Note", content: nonCanonical, path: "/note.md", modified: nil, created: nil)
 
-        store.applyEditorUpdate(note)
+        context.store.applyEditorUpdate(note)
         await Task.yield()
 
-        let nativeViewModel = viewModel.makeNativeEditorViewModel()
-        let expectedRoundTripPlainText = NotesRichTextCodec.decodeBase64RTFToPlainText(
-            nativeViewModel.currentCanonicalContent()
-        )
-        await viewModel.syncFromNativeEditor(nativeViewModel)
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+        let expectedRoundTripPlainText = nativeViewModel.currentPersistenceSnapshot().plainText
+        await context.viewModel.syncFromNativeEditor(nativeViewModel)
 
         XCTAssertEqual(api.updatedContents.count, 0)
         XCTAssertEqual(api.updateCallCount, 0)
-        XCTAssertFalse(viewModel.isSaving)
-        XCTAssertEqual(viewModel.content, canonicalPlainText)
+        XCTAssertFalse(context.viewModel.isSaving)
+        XCTAssertEqual(context.viewModel.content, canonicalPlainText)
         XCTAssertEqual(
-            NotesRichTextCodec.decodeBase64RTFToPlainText(viewModel.canonicalContent),
+            decodedCanonicalPlainText(context.viewModel.canonicalContent),
             expectedRoundTripPlainText
         )
     }
 
     func testOfflineSyncSkipsQueueWhenEditorIsClean() async throws {
         let api = NotesAPISpy(updateResult: .failure(MockError.forced))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
+        let context = makeNotesEditorViewModelTestContext(
             api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+            networkAvailable: false
         )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "- [x] Done",
+            path: "/note.md",
+            modified: nil,
+            created: nil
         )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: false)
-        )
-        let note = NotePayload(id: "n1", name: "Note", content: "- [x] Done", path: "/note.md", modified: nil, created: nil)
 
-        store.applyEditorUpdate(note)
+        context.store.applyEditorUpdate(note)
         await Task.yield()
 
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
         let canonicalPlainText = nativeViewModel.currentPlainText()
         XCTAssertEqual(canonicalPlainText, note.content)
 
-        await viewModel.syncFromNativeEditor(nativeViewModel)
+        await context.viewModel.syncFromNativeEditor(nativeViewModel)
 
         XCTAssertEqual(api.updateCallCount, 0)
-        let pending = try await writeQueue.fetchPendingWrites()
+        let pending = try await context.writeQueue.fetchPendingWrites()
         XCTAssertEqual(canonicalPlainText, note.content)
-        XCTAssertFalse(viewModel.isQueuedForSync)
-        XCTAssertFalse(viewModel.isSaving)
-        XCTAssertEqual(viewModel.content, canonicalPlainText)
-        let draft = try draftStorage.getDraft(entityType: "note", entityId: "n1")
+        XCTAssertFalse(context.viewModel.isQueuedForSync)
+        XCTAssertFalse(context.viewModel.isSaving)
+        XCTAssertEqual(context.viewModel.content, canonicalPlainText)
+        let draft = try context.draftStorage.getDraft(entityType: "note", entityId: "n1")
         XCTAssertNil(draft)
         XCTAssertEqual(pending.count, 0)
     }
@@ -1258,6 +1066,55 @@ private func canonicalPlainTextPass(_ plainText: String) -> String {
 @MainActor
 private func canonicalSnapshotOutput(_ markdown: String) -> String {
     canonicalPlainTextPass(markdown)
+}
+
+@MainActor
+private struct NotesEditorViewModelTestContext {
+    let store: NotesStore
+    let notesViewModel: NotesViewModel
+    let draftStorage: DraftStorage
+    let writeQueue: WriteQueue
+    let viewModel: NotesEditorViewModel
+}
+
+@MainActor
+private func makeNotesEditorViewModelTestContext(
+    api: any NotesProviding,
+    networkAvailable: Bool = true
+) -> NotesEditorViewModelTestContext {
+    let cache = TestCacheClient()
+    let store = NotesStore(api: api, cache: cache)
+    let toast = ToastCenter()
+    let notesViewModel = NotesViewModel(
+        api: api,
+        store: store,
+        toastCenter: toast,
+        networkStatus: TestNetworkStatus(isNetworkAvailable: networkAvailable)
+    )
+    let persistence = PersistenceController(inMemory: true)
+    let draftStorage = DraftStorage(container: persistence.container)
+    let connectivityMonitor = ConnectivityMonitor(
+        baseUrl: URL(string: "http://localhost")!,
+        startMonitoring: false
+    )
+    let writeQueue = WriteQueue(
+        container: persistence.container,
+        connectivityMonitor: connectivityMonitor,
+        autoProcessEnabled: false
+    )
+    let viewModel = NotesEditorViewModel(
+        notesViewModel: notesViewModel,
+        draftStorage: draftStorage,
+        writeQueue: writeQueue,
+        networkStatus: TestNetworkStatus(isNetworkAvailable: networkAvailable)
+    )
+    return NotesEditorViewModelTestContext(
+        store: store,
+        notesViewModel: notesViewModel,
+        draftStorage: draftStorage,
+        writeQueue: writeQueue,
+        viewModel: viewModel
+    )
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -1283,6 +1140,10 @@ private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> 
     XCTFail("Timed out waiting for condition")
 }
 
+private func decodedCanonicalPlainText(_ content: String) -> String? {
+    NotesSemanticDocumentCodec.decode(content).map(NotesSemanticDocumentProjection.plainText(from:))
+}
+
 @available(iOS 26.0, macOS 26.0, *)
 private func nsRange(from selection: AttributedTextSelection, in text: AttributedString) -> NSRange {
     let string = String(text.characters)
@@ -1304,6 +1165,112 @@ private func nsRange(from selection: AttributedTextSelection, in text: Attribute
         let length = upperIndex.utf16Offset(in: string) - location
         return NSRange(location: location, length: max(0, length))
     }
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+extension NotesEditorViewModelTests {
+    func testSaveIfNeededPreservesNativeSelectionAcrossFormattingSaveReload() async throws {
+        let savedDocument = NotesSemanticDocument(
+            blocks: [
+                .paragraph([
+                    .init(text: "Hello ", marks: []),
+                    .init(text: "world", marks: [.bold])
+                ])
+            ]
+        )
+        let savedNote = NotePayload(
+            id: "n1",
+            name: "Hello world",
+            document: savedDocument,
+            plainText: "Hello world",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeSelectionSaveReloadContext(savedNote: savedNote)
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+        context.viewModel.attachNativeEditor(nativeViewModel)
+
+        let selectionRange = selectionRangeForWorld(in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: selectionRange)
+        let before = nsRange(from: nativeViewModel.selection, in: nativeViewModel.attributedContent)
+        nativeViewModel.applyFormatting(.bold)
+        let formattedSelection = nsRange(from: nativeViewModel.selection, in: nativeViewModel.attributedContent)
+
+        await context.viewModel.saveIfNeeded()
+
+        XCTAssertEqual(context.api.updateCallCount, 1)
+        XCTAssertEqual(
+            NotesSemanticDocumentProjection.plainText(from: context.api.updatedDocuments[0]),
+            "Hello world"
+        )
+        XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
+        XCTAssertEqual(formattedSelection, before)
+        XCTAssertEqual(
+            nsRange(from: nativeViewModel.selection, in: nativeViewModel.attributedContent),
+            before
+        )
+        XCTAssertTrue(
+            noteRangeHasBoldTrait(
+                nativeViewModel.attributedContent,
+                range: selectionRangeForWorld(in: nativeViewModel.attributedContent)
+            )
+        )
+    }
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func makeSelectionSaveReloadContext(
+    savedNote: NotePayload
+) async -> (api: NotesAPISpy, viewModel: NotesEditorViewModel) {
+    let api = NotesAPISpy(updateResult: .success(savedNote))
+    let cache = TestCacheClient()
+    let store = NotesStore(api: api, cache: cache)
+    let toast = ToastCenter()
+    let notesViewModel = NotesViewModel(
+        api: api,
+        store: store,
+        toastCenter: toast,
+        networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+    )
+    let persistence = PersistenceController(inMemory: true)
+    let draftStorage = DraftStorage(container: persistence.container)
+    let connectivityMonitor = ConnectivityMonitor(
+        baseUrl: URL(string: "http://localhost")!,
+        startMonitoring: false
+    )
+    let writeQueue = WriteQueue(
+        container: persistence.container,
+        connectivityMonitor: connectivityMonitor,
+        autoProcessEnabled: false
+    )
+    let viewModel = NotesEditorViewModel(
+        notesViewModel: notesViewModel,
+        draftStorage: draftStorage,
+        writeQueue: writeQueue,
+        networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+    )
+    let note = NotePayload(
+        id: "n1",
+        name: "Hello world",
+        content: "Hello world",
+        path: "/note.md",
+        modified: nil,
+        created: nil
+    )
+    store.applyEditorUpdate(note)
+    await Task.yield()
+    return (api: api, viewModel: viewModel)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func selectionRangeForWorld(
+    in content: AttributedString
+) -> Range<AttributedString.Index> {
+    let fullRange = characterRange(length: 11, in: content)
+    return content.index(fullRange.lowerBound, offsetByCharacters: 6)..<fullRange.upperBound
 }
 
 private enum MockError: Error {
@@ -1374,11 +1341,7 @@ private final class NotesAPISpy: NotesProviding {
         _ = id
         updateCallCount += 1
         updatedDocuments.append(document)
-        let attributed = NotesAttributedDocumentCodec.attributedString(from: document)
-        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
-        let canonicalContent =
-            NotesRichTextCodec.encodeAttributedStringToBase64RTF(attributed)
-            ?? NotesRichTextCodec.encodePlainTextToBase64RTF(plainText)
+        let canonicalContent = NotesSemanticDocumentCodec.encode(document) ?? ""
         updatedContents.append(canonicalContent)
         if updateDelayNanoseconds > 0 {
             try? await Task.sleep(nanoseconds: updateDelayNanoseconds)

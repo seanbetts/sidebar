@@ -36,9 +36,8 @@ def read_note_database(user_id: str, note_id: str) -> dict:
         return {
             "id": str(note.id),
             "title": note.title,
-            "content": note.content,
+            "document": note.document,
             "plain_text": note.plain_text or "",
-            "content_format": note.content_format or "rtf",
             "folder": note.folder_path or "",
             "pinned": bool(note.pinned),
             "pinned_order": note.pinned_order,

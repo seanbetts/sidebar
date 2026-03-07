@@ -232,6 +232,145 @@ def test_check_reports_markdown_layout_style_attribute_references_in_note_depend
     assert any("MarkdownShortcutProcessor" in violation.token for violation in violations)
 
 
+def test_check_reports_backend_notes_runtime_legacy_references(
+    tmp_path: Path,
+) -> None:
+    """Backend notes runtime files should fail on legacy note storage references."""
+    _write(
+        tmp_path / "backend/api/services/notes_service.py",
+        """
+        from api.services.notes_content_codec import canonical_note_content_from_plain_text
+
+        def update(note, canonical):
+            note.content = canonical.content
+            note.content_format = "rtf"
+        """,
+    )
+
+    violations = check(tmp_path)
+
+    assert any("notes_content_codec" in violation.token for violation in violations)
+    assert any(".content" in violation.token for violation in violations)
+    assert any("content_format" in violation.token for violation in violations)
+
+
+def test_check_reports_ios_notes_runtime_cleanup_leftovers(
+    tmp_path: Path,
+) -> None:
+    """Phase 5 cleanup files should fail if dead formatting wrappers or bridge-only helpers remain."""
+    _write(
+        tmp_path / "ios/sideBar/sideBar/ViewModels/NoteFormatting.swift",
+        """
+        import Foundation
+        enum NoteFormattingCapability: Hashable {
+            case bold
+        }
+        extension NoteFormatting {
+            var runtimeCapability: NoteFormattingCapability? { .bold }
+        }
+        """,
+    )
+    _write(
+        tmp_path / "ios/sideBar/sideBar/ViewModels/NativeNoteEditorViewModel+Styling.swift",
+        """
+        import SwiftUI
+        extension NativeNoteEditorViewModel {
+            func platformSystemFont() {}
+            func platformFontApplyingTraits() {}
+            func swiftUIFontHasTrait() -> Bool { false }
+        }
+        """,
+    )
+    _write(
+        tmp_path / "ios/sideBar/sideBar/Utilities/NotesRichTextCodec.swift",
+        """
+        import Foundation
+        enum NotesRichTextCodec {
+            static func export(_ content: AttributedString) {
+                _ = try? NSAttributedString(content, including: \\.attributedNoteTextSurface)
+            }
+        }
+        """,
+    )
+    _write(
+        tmp_path / "ios/sideBar/sideBar/Utilities/NoteTextBridging.swift",
+        """
+        import SwiftUI
+        extension AttributeScopes {
+            var attributedNoteTextSurface: String { "legacy" }
+        }
+        """,
+    )
+
+    violations = check(tmp_path)
+
+    assert any("NoteFormattingCapability" in violation.token for violation in violations)
+    assert any("runtimeCapability" in violation.token for violation in violations)
+    assert any("platformSystemFont" in violation.token for violation in violations)
+    assert any("platformFontApplyingTraits" in violation.token for violation in violations)
+    assert any("swiftUIFontHasTrait" in violation.token for violation in violations)
+    assert any("attributedNoteTextSurface" in violation.token for violation in violations)
+
+
+def test_check_passes_without_backend_legacy_note_storage_references(
+    tmp_path: Path,
+) -> None:
+    """Clean backend notes runtime files should not trigger legacy storage violations."""
+    _write(
+        tmp_path / "backend/api/services/notes_service.py",
+        """
+        from api.services.notes_write_contract import build_canonical_note_write
+
+        def update(note, document):
+            canonical = build_canonical_note_write(document)
+            note.document = canonical.document
+            note.document_version = canonical.document_version
+            note.plain_text = canonical.plain_text
+            note.title = canonical.title
+        """,
+    )
+    _write(
+        tmp_path / "backend/api/services/notes_workspace_service.py",
+        """
+        def build_note_payload(note):
+            return {
+                "document": note.document,
+                "plain_text": note.plain_text,
+                "title": note.title,
+            }
+        """,
+    )
+    _write(
+        tmp_path / "backend/skills/notes/scripts/save_markdown.py",
+        """
+        from api.services.notes_document_types import note_document_from_plain_text
+
+        def save(title, content):
+            document = note_document_from_plain_text(content)
+            return title, document
+        """,
+    )
+    _write(
+        tmp_path / "backend/skills/notes/scripts/read_note.py",
+        """
+        def read(note):
+            return {
+                "document": note.document,
+                "plain_text": note.plain_text,
+                "title": note.title,
+            }
+        """,
+    )
+
+    violations = [
+        violation
+        for violation in check(tmp_path)
+        if str(violation.file_path).startswith(str(tmp_path / "backend"))
+    ]
+
+    assert violations == []
+
+
 def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
     """No violations should be reported for clean runtime and shell files."""
     _write(
@@ -285,7 +424,7 @@ def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
 
             var body: some View {
                 TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
-                    .attributedTextFormattingDefinition(NoteTextFormattingDefinition())
+                    .attributedTextFormattingDefinition(NoteTextFormattingDefinition(baseFontSize: viewModel.baseFontSize))
                     .onChange(of: viewModel.attributedContent) { previous, _ in
                         viewModel.handleContentChange(previous: previous)
                     }
@@ -300,6 +439,7 @@ def test_check_passes_without_forbidden_references(tmp_path: Path) -> None:
         final class NativeNoteEditorViewModel {
             let attributedContent = ""
             let selection = ""
+            let baseFontSize = 17.0
             func handleContentChange(previous: String) {}
         }
         """,

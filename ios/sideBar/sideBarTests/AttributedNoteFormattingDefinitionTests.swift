@@ -30,7 +30,7 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         XCTAssertEqual(content[range].underlineStyle, .single)
     }
 
-    func testConstrainDocumentNormalizesSupportedInlineFonts() {
+    func testConstrainDocumentNormalizesSupportedInlineFonts() throws {
         var content = AttributedString("hello")
         let range = content.startIndex..<content.endIndex
         content[range].font = .system(size: 14, weight: .bold).italic()
@@ -40,11 +40,13 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         let resolved = content[range].font?.resolve(in: EnvironmentValues().fontResolutionContext)
         XCTAssertEqual(resolved?.isBold, true)
         XCTAssertEqual(resolved?.isItalic, true)
-        let exported = NotesRichTextCodec.encodeAttributedStringToBase64RTF(
-            content,
-            baseFontSize: 24
+        let exported = try XCTUnwrap(
+            NotesRichTextCodec.encodeAttributedStringToBase64RTF(
+                content,
+                baseFontSize: 24
+            )
         )
-        XCTAssertEqual(noteFirstRunPointSize(inCanonicalRTF: exported ?? "") ?? 0, 24, accuracy: 1.0)
+        XCTAssertEqual(legacyRTFFirstRunPointSize(in: exported) ?? 0, 24, accuracy: 1.0)
     }
 
     func testConstrainDocumentDoesNotPromoteBridgedPlatformFontTraitsWithoutSwiftUIFont() {
@@ -53,7 +55,10 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
 #if os(iOS)
         content[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = UIFont.boldSystemFont(ofSize: 14)
 #elseif os(macOS)
-        content[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = NSFont.systemFont(ofSize: 14, weight: .bold)
+        content[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = NSFont.systemFont(
+            ofSize: 14,
+            weight: .bold
+        )
 #endif
         content[range].font = nil
 
@@ -61,4 +66,21 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
 
         XCTAssertFalse(noteRangeHasBoldTrait(content, range: range))
     }
+}
+
+private func legacyRTFFirstRunPointSize(in content: String) -> CGFloat? {
+    guard let data = Data(base64Encoded: content),
+          let attributed = try? NSAttributedString(
+              data: data,
+              options: [.documentType: NSAttributedString.DocumentType.rtf],
+              documentAttributes: nil
+          ),
+          attributed.length > 0 else {
+        return nil
+    }
+    #if os(iOS)
+    return (attributed.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)?.pointSize
+    #elseif os(macOS)
+    return (attributed.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize
+    #endif
 }

@@ -19,7 +19,6 @@ from api.services.notes_document_types import (
 from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
 from api.services.notes_title import derive_note_title
-from api.services.notes_write_contract import plain_text_to_rtf_base64
 from api.services.workspace_service import WorkspaceService
 from api.utils.search import build_text_search_filter
 from api.utils.validation import parse_uuid
@@ -44,6 +43,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
     def build_note_payload(note: Note, *, include_content: bool = True) -> dict:
         """Build a note payload for API responses."""
         document = note.document or note_document_from_plain_text(note.plain_text or "")
+        _ = include_content
         payload = {
             "id": str(note.id),
             "title": note.title,
@@ -60,9 +60,6 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             "archived": bool(note.is_archived),
             "is_folder_marker": bool(note.is_folder_marker),
         }
-        if include_content and note.document is None:
-            payload["content"] = note.content
-            payload["content_format"] = note.content_format or "rtf"
         return payload
 
     @classmethod
@@ -82,7 +79,6 @@ class NotesWorkspaceService(WorkspaceService[Note]):
                 Note.document,
                 Note.document_version,
                 Note.plain_text,
-                Note.content_format,
                 Note.folder_path,
                 Note.pinned,
                 Note.pinned_order,
@@ -190,11 +186,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         note = Note(
             user_id=user_id,
             title="__folder__",
-            content=plain_text_to_rtf_base64(""),
             document=note_document_from_plain_text(""),
             document_version=1,
             plain_text="",
-            content_format="rtf",
             folder_path=path,
             pinned=False,
             pinned_order=None,

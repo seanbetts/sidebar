@@ -5,17 +5,16 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeNoteEditorPersistenceTests: XCTestCase {
-    func testCurrentPersistenceSnapshotExportsPlainTextAndCanonicalRTF() async {
+    func testCurrentPersistenceSnapshotExportsPlainTextAndSemanticCanonicalDocument() async throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
 
         let snapshot = viewModel.currentPersistenceSnapshot()
         XCTAssertEqual(snapshot.plainText, "hello")
         XCTAssertFalse(snapshot.canonicalContent.isEmpty)
-        XCTAssertEqual(
-            NotesRichTextCodec.decodeBase64RTFToPlainText(snapshot.canonicalContent),
-            "hello"
-        )
+        let canonicalDocument = try XCTUnwrap(NotesSemanticDocumentCodec.decode(snapshot.canonicalContent))
+        XCTAssertEqual(canonicalDocument, snapshot.document)
+        XCTAssertEqual(NotesSemanticDocumentProjection.plainText(from: canonicalDocument), "hello")
     }
 
     func testCurrentPersistenceSnapshotPreservesProjectedPlainTextLineBreaks() async {
@@ -70,11 +69,13 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
     }
 
     func testLoadDocumentPreservesExternallyEncodedBoldFormatting() async throws {
-        let encoded = try makeEncodedRTF(
-            string: "Bold",
-            attributes: notePlatformAttributes(
-                font: noteBoldSystemFont(size: 16),
-                underline: nil
+        let encoded = try XCTUnwrap(
+            NotesSemanticDocumentCodec.encode(
+                NotesSemanticDocument(
+                    blocks: [
+                        .paragraph([.init(text: "Bold", marks: [.bold])])
+                    ]
+                )
             )
         )
 
@@ -86,11 +87,13 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
     }
 
     func testLoadDocumentPreservesExternallyEncodedItalicFormatting() async throws {
-        let encoded = try makeEncodedRTF(
-            string: "Italic",
-            attributes: notePlatformAttributes(
-                font: noteItalicSystemFont(size: 16),
-                underline: nil
+        let encoded = try XCTUnwrap(
+            NotesSemanticDocumentCodec.encode(
+                NotesSemanticDocument(
+                    blocks: [
+                        .paragraph([.init(text: "Italic", marks: [.italic])])
+                    ]
+                )
             )
         )
 
@@ -174,6 +177,27 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertFalse(noteRangeIsUnderlined(reloaded.attributedContent, range: range))
     }
 
+    func testPersistenceSnapshotRoundTripPreservesBoldFormattingAfterSameSelectionToggleOnOffOn() async {
+        let reloaded = roundTripAfterToggleOnOffOn(.bold)
+        let range = noteCharacterRange(length: 5, in: reloaded.attributedContent)
+
+        XCTAssertTrue(noteRangeHasBoldTrait(reloaded.attributedContent, range: range))
+    }
+
+    func testPersistenceSnapshotRoundTripPreservesItalicFormattingAfterSameSelectionToggleOnOffOn() async {
+        let reloaded = roundTripAfterToggleOnOffOn(.italic)
+        let range = noteCharacterRange(length: 5, in: reloaded.attributedContent)
+
+        XCTAssertTrue(noteRangeHasItalicTrait(reloaded.attributedContent, range: range))
+    }
+
+    func testPersistenceSnapshotRoundTripPreservesUnderlineFormattingAfterSameSelectionToggleOnOffOn() async {
+        let reloaded = roundTripAfterToggleOnOffOn(.underline)
+        let range = noteCharacterRange(length: 5, in: reloaded.attributedContent)
+
+        XCTAssertTrue(noteRangeIsUnderlined(reloaded.attributedContent, range: range))
+    }
+
     func testLoadTextEmptySeedsBodyTypingAttributes() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("")
@@ -190,17 +214,28 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let source = NativeNoteEditorViewModel()
         source.setBaseFontSize(14)
         source.loadText("hello")
+        let range = noteCharacterRange(length: 5, in: source.attributedContent)
+        source.selection = AttributedTextSelection(range: range)
+        source.applyFormatting(.bold)
         let snapshot = source.currentPersistenceSnapshot()
 
         let reloaded = NativeNoteEditorViewModel()
         reloaded.setBaseFontSize(22)
         reloaded.loadDocument(canonicalContent: snapshot.canonicalContent, plainText: snapshot.plainText)
 
-        let pointSize = noteFirstRunPointSize(
-            inCanonicalRTF: reloaded.currentPersistenceSnapshot().canonicalContent
+        var expectedContent = NotesAttributedDocumentCodec.attributedString(
+            from: snapshot.document,
+            baseFontSize: 22
         )
-        XCTAssertNotNil(pointSize)
-        XCTAssertEqual(pointSize ?? 0, 22, accuracy: 1.0)
+        NoteTextFormattingDefinition(baseFontSize: 22).constrainDocument(&expectedContent)
+
+        XCTAssertEqual(reloaded.attributedContent, expectedContent)
+        XCTAssertTrue(
+            noteRangeHasBoldTrait(
+                reloaded.attributedContent,
+                range: noteCharacterRange(length: 5, in: reloaded.attributedContent)
+            )
+        )
     }
 
     func testLoadTextDoesNotInferMarkdownStructureFromLiteralPrefixes() async {
@@ -225,6 +260,7 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let first = viewModel.currentPersistenceSnapshot()
         let second = viewModel.currentPersistenceSnapshot()
 
+        XCTAssertEqual(first.document, second.document)
         XCTAssertEqual(first.plainText, second.plainText)
         XCTAssertEqual(first.canonicalContent, second.canonicalContent)
     }
@@ -243,69 +279,51 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertFalse(noteRangeHasBridgedBoldPlatformFont(reloaded.attributedContent, range: reloadedRange))
     }
 #endif
-
-    private func roundTripAfterToggleOff(_ formatting: NoteFormatting) -> NativeNoteEditorViewModel {
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("hello")
-        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: range)
-        viewModel.applyFormatting(formatting)
-        viewModel.selection = AttributedTextSelection(
-            range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
-        )
-        viewModel.applyFormatting(formatting)
-        return reloadedViewModel(from: viewModel.currentPersistenceSnapshot())
-    }
-
-    private func reloadedViewModel(
-        from snapshot: NativeNoteEditorViewModel.PersistenceSnapshot
-    ) -> NativeNoteEditorViewModel {
-        let reloaded = NativeNoteEditorViewModel()
-        reloaded.loadDocument(
-            canonicalContent: snapshot.canonicalContent,
-            plainText: snapshot.plainText
-        )
-        return reloaded
-    }
 }
 
-private func makeEncodedRTF(
-    string: String,
-    attributes: [NSAttributedString.Key: Any]
-) throws -> String {
-    let attributed = NSAttributedString(string: string, attributes: attributes)
-    let data = try attributed.data(
-        from: NSRange(location: 0, length: attributed.length),
-        documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func roundTripAfterToggleOff(_ formatting: NoteFormatting) -> NativeNoteEditorViewModel {
+    let viewModel = NativeNoteEditorViewModel()
+    viewModel.loadText("hello")
+    let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+    viewModel.selection = AttributedTextSelection(range: range)
+    viewModel.applyFormatting(formatting)
+    viewModel.selection = AttributedTextSelection(
+        range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
     )
-    return data.base64EncodedString()
+    viewModel.applyFormatting(formatting)
+    return reloadedViewModel(from: viewModel.currentPersistenceSnapshot())
 }
 
-private func notePlatformAttributes(
-    font: AnyObject,
-    underline: Int?
-) -> [NSAttributedString.Key: Any] {
-    var attributes: [NSAttributedString.Key: Any] = [.font: font]
-    if let underline {
-        attributes[.underlineStyle] = underline
-    }
-    return attributes
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func roundTripAfterToggleOnOffOn(_ formatting: NoteFormatting) -> NativeNoteEditorViewModel {
+    let viewModel = NativeNoteEditorViewModel()
+    viewModel.loadText("hello")
+    let initialRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+    viewModel.selection = AttributedTextSelection(range: initialRange)
+    viewModel.applyFormatting(formatting)
+    viewModel.selection = AttributedTextSelection(
+        range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
+    )
+    viewModel.applyFormatting(formatting)
+    viewModel.selection = AttributedTextSelection(
+        range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
+    )
+    viewModel.applyFormatting(formatting)
+    return reloadedViewModel(from: viewModel.currentPersistenceSnapshot())
 }
 
-#if os(iOS)
-private func noteBoldSystemFont(size: CGFloat) -> UIFont {
-    UIFont.boldSystemFont(ofSize: size)
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func reloadedViewModel(
+    from snapshot: NativeNoteEditorViewModel.PersistenceSnapshot
+) -> NativeNoteEditorViewModel {
+    let reloaded = NativeNoteEditorViewModel()
+    reloaded.loadDocument(
+        canonicalContent: snapshot.canonicalContent,
+        plainText: snapshot.plainText
+    )
+    return reloaded
 }
-
-private func noteItalicSystemFont(size: CGFloat) -> UIFont {
-    UIFont.italicSystemFont(ofSize: size)
-}
-#elseif os(macOS)
-private func noteBoldSystemFont(size: CGFloat) -> NSFont {
-    NSFont.systemFont(ofSize: size, weight: .bold)
-}
-
-private func noteItalicSystemFont(size: CGFloat) -> NSFont {
-    NSFontManager.shared.convert(NSFont.systemFont(ofSize: size), toHaveTrait: .italicFontMask)
-}
-#endif

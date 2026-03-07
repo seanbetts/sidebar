@@ -1,4 +1,4 @@
-"""Note model for rich-text notes stored in Postgres."""
+"""Note model for semantic notes stored in Postgres."""
 
 import uuid
 from datetime import UTC, datetime
@@ -12,7 +12,7 @@ from api.db.base import Base
 
 
 class Note(Base):
-    """Note model with explicit note-state columns and optional metadata."""
+    """Note model with semantic document storage and derived projections."""
 
     __tablename__ = "notes"
     __table_args__ = (
@@ -35,11 +35,9 @@ class Note(Base):
     )
     user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    document: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     document_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     plain_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    content_format: Mapped[str] = mapped_column(Text, nullable=False, default="rtf")
     folder_path: Mapped[str] = mapped_column(Text, nullable=False, default="")
     pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     pinned_order: Mapped[int | None] = mapped_column(Integer, nullable=True)

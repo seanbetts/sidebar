@@ -1,71 +1,9 @@
 @preconcurrency import Foundation
 import SwiftUI
-#if os(iOS)
-@preconcurrency import UIKit
-#elseif os(macOS)
-@preconcurrency import AppKit
-#endif
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeNoteEditorViewModel {
-    func platformBodyFont() -> PlatformFont {
-        notePlatformBodyFont(baseFontSize: baseFontSize)
-    }
-
-    func platformSystemFont(
-        size: CGFloat,
-        weight: PlatformFontWeight,
-        monospaced: Bool = false
-    ) -> PlatformFont {
-        #if os(iOS)
-        return monospaced
-            ? UIFont.monospacedSystemFont(ofSize: size, weight: weight)
-            : UIFont.systemFont(ofSize: size, weight: weight)
-        #else
-        return monospaced
-            ? NSFont.monospacedSystemFont(ofSize: size, weight: weight)
-            : NSFont.systemFont(ofSize: size, weight: weight)
-        #endif
-    }
-
-    func platformFontApplyingTraits(
-        _ font: PlatformFont,
-        bold: Bool,
-        italic: Bool
-    ) -> PlatformFont {
-        notePlatformFont(baseFontSize: font.pointSize, bold: bold, italic: italic)
-    }
-
-    func swiftUIFontHasTrait(
-        _ font: Font?,
-        for intent: InlinePresentationIntent
-    ) -> Bool {
-        guard let font else { return false }
-        let resolved = noteSwiftUIFontTraits(from: font)
-        switch intent {
-        case .stronglyEmphasized:
-            return resolved.bold
-        case .emphasized:
-            return resolved.italic
-        default:
-            return false
-        }
-    }
-
-    func platformColor(_ color: Color) -> PlatformColor {
-#if os(iOS)
-        UIColor(color)
-#else
-        NSColor(color)
-#endif
-    }
-
-    func platformColor(_ color: Color?) -> PlatformColor? {
-        guard let color else { return nil }
-        return platformColor(color)
-    }
-
     func setFont(_ font: Font, in attrs: inout AttributeContainer) {
         attrs.font = font
     }
