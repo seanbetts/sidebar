@@ -89,6 +89,134 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.content, "")
     }
 
+    func testHandleNoteUpdateStartsInReadMode() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await Task.yield()
+
+        XCTAssertEqual(context.viewModel.presentationMode, .read)
+        XCTAssertFalse(context.viewModel.isEditingNote)
+    }
+
+    func testEnterEditModeChangesPresentationModeWithoutClearingCurrentNote() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await Task.yield()
+        context.viewModel.enterEditMode()
+
+        XCTAssertEqual(context.viewModel.presentationMode, .edit)
+        XCTAssertTrue(context.viewModel.isEditingNote)
+        XCTAssertEqual(context.viewModel.currentNoteId, "n1")
+    }
+
+    func testExitEditModeReturnsToReadMode() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await Task.yield()
+        context.viewModel.enterEditMode()
+
+        XCTAssertEqual(context.viewModel.presentationMode, .edit)
+
+        context.viewModel.exitEditModeToRead()
+
+        XCTAssertEqual(context.viewModel.presentationMode, .read)
+        XCTAssertFalse(context.viewModel.isEditingNote)
+        XCTAssertEqual(context.viewModel.currentNoteId, "n1")
+    }
+
+    func testHandleNoteUpdateResetsPresentationModeWhenSwitchingToDifferentNote() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let firstNote = NotePayload(
+            id: "n1",
+            name: "First",
+            content: "Hello",
+            path: "/first.md",
+            modified: nil,
+            created: nil
+        )
+        let secondNote = NotePayload(
+            id: "n2",
+            name: "Second",
+            content: "World",
+            path: "/second.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(firstNote)
+        await Task.yield()
+        context.viewModel.enterEditMode()
+        XCTAssertEqual(context.viewModel.presentationMode, .edit)
+
+        context.store.applyEditorUpdate(secondNote)
+        await Task.yield()
+
+        XCTAssertEqual(context.viewModel.currentNoteId, "n2")
+        XCTAssertEqual(context.viewModel.presentationMode, .read)
+        XCTAssertFalse(context.viewModel.isEditingNote)
+    }
+
+    func testHandleNoteUpdateClearsPresentationModeWhenNoteNil() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await Task.yield()
+        context.viewModel.enterEditMode()
+        XCTAssertEqual(context.viewModel.presentationMode, .edit)
+
+        context.store.clearActiveNote()
+        await Task.yield()
+
+        XCTAssertNil(context.viewModel.currentNoteId)
+        XCTAssertEqual(context.viewModel.presentationMode, .read)
+        XCTAssertFalse(context.viewModel.isEditingNote)
+    }
+
     func testSyncFromNativeEditorUpdatesContent() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")

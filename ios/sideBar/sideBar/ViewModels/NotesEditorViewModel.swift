@@ -7,9 +7,16 @@ import OSLog
 @MainActor
 /// Manages note display state.
 public final class NotesEditorViewModel: ObservableObject {
+    /// Presentation mode for an open note.
+    public enum PresentationMode: Equatable {
+        case read
+        case edit
+    }
+
     @Published public private(set) var content: String = ""
     @Published public private(set) var canonicalContent: String = ""
     @Published public private(set) var currentNoteId: String?
+    @Published public private(set) var presentationMode: PresentationMode = .read
     @Published public private(set) var isDirty: Bool = false
     @Published public private(set) var isSaving: Bool = false
     @Published public private(set) var lastSavedAt: Date?
@@ -49,6 +56,7 @@ public final class NotesEditorViewModel: ObservableObject {
         let previousNoteId = currentNoteId
         guard let note else {
             currentNoteId = nil
+            presentationMode = .read
             content = ""
             canonicalContent = ""
             isDirty = false
@@ -90,6 +98,9 @@ public final class NotesEditorViewModel: ObservableObject {
         saveErrorMessage = nil
         isReadOnly = false
         isQueuedForSync = false
+        if !isSameNote {
+            presentationMode = .read
+        }
         if !isSameNote {
             syncRequestedWhileSaving = false
         }
@@ -291,6 +302,19 @@ public final class NotesEditorViewModel: ObservableObject {
             return content.isEmpty ? fallback : content
         }
         return content.isEmpty ? fallback : content
+    }
+
+    public var isEditingNote: Bool {
+        presentationMode == .edit
+    }
+
+    public func enterEditMode() {
+        guard currentNoteId != nil else { return }
+        presentationMode = .edit
+    }
+
+    public func exitEditModeToRead() {
+        presentationMode = .read
     }
 
     public func setDirty(_ dirty: Bool) {
