@@ -27,8 +27,15 @@ from api.metrics import (
     chat_streaming_duration_seconds,
 )
 from api.schemas.tool_context import ToolExecutionContext
+from api.services.agent.conversation_compaction_service import (
+    ConversationCompactionService,
+)
 from api.services.agent.prompt.composer import PromptContextService
-from api.services.agent.request_assembly_service import RequestAssemblyService
+from api.services.agent.request_assembly_service import (
+    AssembledChatInputs,
+    RequestAssemblyService,
+)
+from api.services.agent.request_budget_service import PreparedChatRequest
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
 from api.services.conversation_service import ConversationService
@@ -108,6 +115,63 @@ def _new_user_scoped_session(user_id: str) -> Session:
         session.info["force_public_search_path"] = True
     set_session_user_id(session, user_id)
     return session
+
+
+def _assemble_prepared_request(
+    *,
+    db: Session,
+    user_id: str,
+    message: str,
+    conversation_id: str | None,
+    conversation_messages: list[dict[str, object]] | None,
+    history: list[dict[str, object]] | None,
+    user_message_id: str | None,
+    open_context: dict[str, object],
+    attachments: list[dict[str, object]],
+    user_agent: str | None,
+    current_location: str | None,
+    current_location_levels: dict[str, object] | str | None,
+    current_weather: dict[str, object] | str | None,
+    current_timezone: str | None,
+    now: datetime,
+    provider: AIProvider,
+    model: str,
+    enabled_skills: list[str] | None,
+    ai_gateway: AIProviderGateway,
+    compaction_applied: bool = False,
+) -> tuple[AssembledChatInputs, PreparedChatRequest]:
+    """Assemble inputs and attach the prepared-request budget contract."""
+    assembled_inputs = RequestAssemblyService.build_assembled_inputs(
+        db=db,
+        user_id=user_id,
+        message=message,
+        conversation_id=conversation_id,
+        conversation_messages=conversation_messages,
+        request_history=history,
+        user_message_id=user_message_id,
+        open_context=open_context,
+        attachments=attachments,
+        user_agent=user_agent,
+        current_location=current_location,
+        current_location_levels=current_location_levels,
+        current_weather=current_weather,
+        current_timezone=current_timezone,
+        now=now,
+        prompt_context_service=PromptContextService,
+    )
+    prepared_request = RequestAssemblyService.build_prepared_request(
+        provider=provider,
+        model=model,
+        assembled_inputs=assembled_inputs,
+        allowed_skills=enabled_skills,
+        tool_definition_resolver=getattr(
+            ai_gateway,
+            "get_chat_tool_definitions",
+            None,
+        ),
+        compaction_applied=compaction_applied,
+    )
+    return assembled_inputs, prepared_request
 
 
 @router.post("/stream")
@@ -249,6 +313,42 @@ async def stream_chat(
             None,
         ),
     )
+    trimmed_history_count = max(
+        len(assembled_inputs.conversation_history)
+        - len(prepared_request.conversation_history),
+        0,
+    )
+    if conversation_uuid is not None and trimmed_history_count > 0:
+        compacted_conversation = (
+            ConversationCompactionService.compact_conversation_history(
+                db=db,
+                user_id=user_id,
+                conversation_id=conversation_uuid,
+                replay_messages_to_compact=trimmed_history_count,
+            )
+        )
+        assembled_inputs, prepared_request = _assemble_prepared_request(
+            db=db,
+            user_id=user_id,
+            message=message,
+            conversation_id=conversation_id,
+            conversation_messages=compacted_conversation.messages,
+            history=history,
+            user_message_id=user_message_id,
+            open_context=open_context,
+            attachments=attachments,
+            user_agent=user_agent,
+            current_location=current_location,
+            current_location_levels=current_location_levels,
+            current_weather=current_weather,
+            current_timezone=current_timezone,
+            now=now,
+            provider=chat_resolution.provider,
+            model=chat_resolution.model,
+            enabled_skills=enabled_skills,
+            ai_gateway=ai_gateway,
+            compaction_applied=True,
+        )
     if not prepared_request.budget_report.within_budget:
         logger.warning(
             (

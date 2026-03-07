@@ -43,6 +43,36 @@ def test_normalize_conversation_history_filters_and_excludes_current_message():
     ]
 
 
+def test_normalize_conversation_history_excludes_compacted_source_messages():
+    history = RequestAssemblyService.normalize_conversation_history(
+        [
+            {"id": "bootstrap-1", "role": "user", "content": "I am Sam."},
+            {
+                "id": "msg-1",
+                "role": "user",
+                "content": "Old user message",
+                "visibility": "hidden",
+                "compaction": {"status": "compacted"},
+            },
+            {
+                "id": "summary-1",
+                "role": "assistant",
+                "content": "Earlier conversation summary",
+                "visibility": "hidden",
+                "kind": "conversation_compaction_summary",
+            },
+            {"id": "msg-2", "role": "assistant", "content": "Recent reply"},
+        ],
+        user_message_id=None,
+    )
+
+    assert history == [
+        {"role": "user", "content": "I am Sam."},
+        {"role": "assistant", "content": "Earlier conversation summary"},
+        {"role": "assistant", "content": "Recent reply"},
+    ]
+
+
 def test_build_assembled_inputs_uses_conversation_messages_over_request_history():
     class FakePromptContextService:
         @staticmethod
@@ -79,6 +109,62 @@ def test_build_assembled_inputs_uses_conversation_messages_over_request_history(
         {"role": "assistant", "content": "Reply"},
     ]
     assert assembled.current_user_message == "Current"
+
+
+def test_build_assembled_inputs_replays_persisted_bootstrap_separately():
+    class FakePromptContextService:
+        @staticmethod
+        def build_prompts(**_kwargs):
+            return _prompt_bundle(system_prompt="assembled-system")
+
+    assembled = RequestAssemblyService.build_assembled_inputs(
+        db=object(),
+        user_id="user-1",
+        message="Current",
+        conversation_id="conversation-1",
+        conversation_messages=[
+            {
+                "id": "bootstrap-1",
+                "role": "user",
+                "content": "I am Sam.",
+                "visibility": "hidden",
+                "kind": "conversation_bootstrap",
+            },
+            {
+                "id": "summary-1",
+                "role": "assistant",
+                "content": "Earlier conversation summary",
+                "visibility": "hidden",
+                "kind": "conversation_compaction_summary",
+            },
+            {
+                "id": "user-1",
+                "role": "user",
+                "content": "Earlier",
+                "visibility": "hidden",
+                "compaction": {"status": "compacted"},
+            },
+            {"id": "assistant-1", "role": "assistant", "content": "Reply"},
+            {"id": "user-2", "role": "user", "content": "Current"},
+        ],
+        request_history=[{"role": "assistant", "content": "stale"}],
+        user_message_id="user-2",
+        open_context={},
+        attachments=[],
+        user_agent=None,
+        current_location=None,
+        current_location_levels=None,
+        current_weather=None,
+        current_timezone=None,
+        now=datetime.now(UTC),
+        prompt_context_service=FakePromptContextService,
+    )
+
+    assert assembled.bootstrap_history == [{"role": "user", "content": "I am Sam."}]
+    assert assembled.conversation_history == [
+        {"role": "assistant", "content": "Earlier conversation summary"},
+        {"role": "assistant", "content": "Reply"},
+    ]
 
 
 def test_build_assembled_inputs_retries_without_attachment_content():

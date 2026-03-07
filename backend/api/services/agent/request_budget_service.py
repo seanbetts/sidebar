@@ -90,6 +90,7 @@ class RequestBudgetService:
         current_user_message: str,
         tool_definitions: list[dict[str, Any]] | None,
         metadata: ProviderBudgetMetadata | None = None,
+        compaction_applied: bool = False,
     ) -> PreparedChatRequest:
         """Build a prepared request payload and attach a request budget report."""
         normalized_bootstrap = list(bootstrap_history or [])
@@ -104,6 +105,7 @@ class RequestBudgetService:
             current_user_message=current_user_message,
             tool_definitions=normalized_tools,
             metadata=metadata,
+            compaction_applied=compaction_applied,
         )
         if not report.within_budget and normalized_history:
             normalized_history, report = cls._trim_history_to_fit(
@@ -115,6 +117,7 @@ class RequestBudgetService:
                 current_user_message=current_user_message,
                 tool_definitions=normalized_tools,
                 metadata=metadata,
+                compaction_applied=compaction_applied,
             )
         return PreparedChatRequest(
             provider=provider,
@@ -276,6 +279,7 @@ class RequestBudgetService:
         current_user_message: str,
         tool_definitions: list[dict[str, Any]],
         metadata: ProviderBudgetMetadata | None,
+        compaction_applied: bool,
     ) -> tuple[list[dict[str, Any]], RequestBudgetReport]:
         """Drop oldest history until the request fits or history is empty."""
         trimmed_history = list(conversation_history)
@@ -289,6 +293,7 @@ class RequestBudgetService:
             tool_definitions=tool_definitions,
             metadata=metadata,
             trimming_applied=True,
+            compaction_applied=compaction_applied,
         )
         while trimmed_history and not report.within_budget:
             trimmed_history.pop(0)
@@ -302,5 +307,6 @@ class RequestBudgetService:
                 tool_definitions=tool_definitions,
                 metadata=metadata,
                 trimming_applied=True,
+                compaction_applied=compaction_applied,
             )
         return trimmed_history, report

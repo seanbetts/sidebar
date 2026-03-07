@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from api.config import settings
@@ -7,6 +8,7 @@ from api.db.dependencies import get_current_user_id
 from api.main import app
 from api.routers import chat as chat_router
 from api.services.ai.gateway import ChatResolution
+from api.services.agent.request_assembly_service import AssembledChatInputs
 from api.services.agent.request_budget_service import (
     PreparedChatRequest,
     RequestBudgetReport,
@@ -648,6 +650,185 @@ def test_stream_chat_rejects_request_that_exceeds_budget_after_trimming(
     assert response.json()["error"]["message"] == (
         "Chat request is too large. Start a new conversation or reduce context and try again."
     )
+
+
+def test_stream_chat_compacts_trimmed_history_and_retries_prepared_request(
+    test_client, test_db, monkeypatch
+):
+    user_id = "user-1"
+    conversation = ConversationService.create_conversation(
+        test_db,
+        user_id,
+        "Compaction Test",
+    )
+    ConversationService.add_message(
+        test_db,
+        user_id,
+        conversation.id,
+        {
+            "id": "msg-existing-1",
+            "role": "user",
+            "content": "Earlier question",
+            "status": "complete",
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+    )
+
+    assembled_inputs = [
+        AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[
+                {"role": "user", "content": "Earlier question"},
+                {"role": "assistant", "content": "Earlier answer"},
+                {"role": "assistant", "content": "Recent answer"},
+            ],
+            current_user_message="Current question",
+            prompt_bundle={},
+        ),
+        AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[
+                {"role": "assistant", "content": "Earlier conversation summary"},
+                {"role": "assistant", "content": "Recent answer"},
+            ],
+            current_user_message="Current question",
+            prompt_bundle={},
+        ),
+    ]
+    prepared_requests = [
+        PreparedChatRequest(
+            provider="anthropic",
+            model="claude-sonnet-4-6",
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[
+                {"role": "assistant", "content": "Recent answer"},
+            ],
+            current_user_message="Current question",
+            tool_definitions=[],
+            budget_report=RequestBudgetReport(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                context_window_chars=1000,
+                reserved_output_chars=100,
+                available_input_chars=850,
+                provider_framing_chars=50,
+                system_prompt_chars=6,
+                bootstrap_history_chars=0,
+                conversation_history_chars=30,
+                current_message_chars=16,
+                tool_schema_chars=0,
+                total_input_chars=102,
+                overflow_chars=0,
+                within_budget=True,
+                failure_reason=None,
+                trimming_applied=True,
+                compaction_applied=False,
+            ),
+        ),
+        PreparedChatRequest(
+            provider="anthropic",
+            model="claude-sonnet-4-6",
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[
+                {"role": "assistant", "content": "Earlier conversation summary"},
+                {"role": "assistant", "content": "Recent answer"},
+            ],
+            current_user_message="Current question",
+            tool_definitions=[],
+            budget_report=RequestBudgetReport(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                context_window_chars=1000,
+                reserved_output_chars=100,
+                available_input_chars=850,
+                provider_framing_chars=50,
+                system_prompt_chars=6,
+                bootstrap_history_chars=0,
+                conversation_history_chars=70,
+                current_message_chars=16,
+                tool_schema_chars=0,
+                total_input_chars=142,
+                overflow_chars=0,
+                within_budget=True,
+                failure_reason=None,
+                trimming_applied=False,
+                compaction_applied=True,
+            ),
+        ),
+    ]
+    captured: dict[str, object] = {}
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **kwargs):
+            captured["conversation_history"] = kwargs.get("conversation_history")
+            yield {"type": "token", "content": "Hello"}
+
+    def _build_assembled_inputs(**_kwargs):
+        return assembled_inputs.pop(0)
+
+    def _build_prepared_request(**_kwargs):
+        return prepared_requests.pop(0)
+
+    def _compact_conversation_history(**kwargs):
+        captured["replay_messages_to_compact"] = kwargs["replay_messages_to_compact"]
+        return ConversationService.get_conversation(
+            test_db,
+            user_id,
+            conversation.id,
+        )
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_assembled_inputs",
+        staticmethod(_build_assembled_inputs),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_prepared_request",
+        staticmethod(_build_prepared_request),
+    )
+    monkeypatch.setattr(
+        chat_router.ConversationCompactionService,
+        "compact_conversation_history",
+        staticmethod(_compact_conversation_history),
+    )
+
+    app.dependency_overrides[get_current_user_id] = lambda: user_id
+    try:
+        response = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={"message": "Current question", "conversation_id": str(conversation.id)},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    assert response.status_code == 200
+    assert captured["replay_messages_to_compact"] == 2
+    assert captured["conversation_history"] == [
+        {"role": "assistant", "content": "Earlier conversation summary"},
+        {"role": "assistant", "content": "Recent answer"},
+    ]
 
 
 def test_stream_chat_allows_section_capped_prompt_report(test_client, monkeypatch):

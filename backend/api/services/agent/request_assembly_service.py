@@ -41,6 +41,34 @@ class RequestAssemblyService:
     """Assemble chat inputs behind a service-layer boundary."""
 
     @staticmethod
+    def is_bootstrap_message(message: dict[str, Any]) -> bool:
+        """Return whether a stored transcript entry is persisted bootstrap."""
+        return message.get("kind") == "conversation_bootstrap"
+
+    @staticmethod
+    def is_compacted_source_message(message: dict[str, Any]) -> bool:
+        """Return whether a stored transcript entry was compacted out of replay."""
+        compaction = message.get("compaction")
+        return isinstance(compaction, dict) and compaction.get("status") == "compacted"
+
+    @classmethod
+    def extract_persisted_bootstrap_history(
+        cls,
+        messages: list[dict[str, Any]] | None,
+    ) -> list[dict[str, Any]]:
+        """Extract persisted bootstrap messages into replay history shape."""
+        bootstrap_history: list[dict[str, Any]] = []
+        for message in messages or []:
+            if not cls.is_bootstrap_message(message):
+                continue
+            role = message.get("role")
+            content = message.get("content")
+            if role not in {"user", "assistant"} or content is None:
+                continue
+            bootstrap_history.append({"role": role, "content": content})
+        return bootstrap_history
+
+    @staticmethod
     def build_bootstrap_history(
         *,
         history: list[dict[str, Any]],
@@ -89,6 +117,11 @@ class RequestAssemblyService:
             return history
 
         for message in messages:
+            if RequestAssemblyService.is_bootstrap_message(message):
+                continue
+            if RequestAssemblyService.is_compacted_source_message(message):
+                continue
+
             role = message.get("role")
             if role not in {"user", "assistant"}:
                 continue
@@ -127,7 +160,11 @@ class RequestAssemblyService:
     ) -> AssembledChatInputs:
         """Assemble normalized history plus the current prompt bundle."""
         history = list(request_history or [])
+        persisted_bootstrap_history: list[dict[str, Any]] = []
         if conversation_messages is not None:
+            persisted_bootstrap_history = cls.extract_persisted_bootstrap_history(
+                conversation_messages
+            )
             history = cls.normalize_conversation_history(
                 conversation_messages,
                 user_message_id,
@@ -205,10 +242,12 @@ class RequestAssemblyService:
             )
             raise BadRequestError(_OVERSIZE_CONTEXT_MESSAGE)
 
-        bootstrap_history = cls.build_bootstrap_history(
-            history=history,
-            prompt_bundle=prompt_bundle,
-        )
+        bootstrap_history = list(persisted_bootstrap_history)
+        if not bootstrap_history:
+            bootstrap_history = cls.build_bootstrap_history(
+                history=history,
+                prompt_bundle=prompt_bundle,
+            )
         return AssembledChatInputs(
             system_prompt=prompt_bundle["system_prompt"]["text"],
             bootstrap_history=bootstrap_history,
@@ -228,6 +267,7 @@ class RequestAssemblyService:
             Callable[[list[str] | None], list[dict[str, Any]]] | None
         ) = None,
         tool_definitions: list[dict[str, Any]] | None = None,
+        compaction_applied: bool = False,
     ) -> PreparedChatRequest:
         """Wrap assembled chat inputs in the prepared-request budget contract."""
         resolved_tool_definitions = list(tool_definitions or [])
@@ -242,4 +282,5 @@ class RequestAssemblyService:
             conversation_history=assembled_inputs.conversation_history,
             current_user_message=assembled_inputs.current_user_message,
             tool_definitions=resolved_tool_definitions,
+            compaction_applied=compaction_applied,
         )
