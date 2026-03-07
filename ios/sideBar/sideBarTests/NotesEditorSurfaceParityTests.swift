@@ -93,6 +93,40 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         assertMatchingFontTraits(readAttributed, editorAttributed, at: 5)
         assertMatchingUnderline(readAttributed, editorAttributed, at: 12)
     }
+
+    func testReadSurfaceBoldFontMatchesMountedEditorSurfaceExactlyOnIOS() async throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([
+                    .init(text: "Bold", marks: [.bold])
+                ])
+            ]
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Bold Parity",
+            document: document,
+            plainText: "Bold",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+
+        let readController = mount(context.makeView(), environment: environment)
+        let readTextView = try XCTUnwrap(findDescendantTextView(in: readController.view))
+        let readFont = try XCTUnwrap(readTextView.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
+
+        context.editorViewModel.enterEditMode()
+        let editController = mount(context.makeView(), environment: environment)
+        let editTextView = try XCTUnwrap(findDescendantTextView(in: editController.view))
+        let editFont = try XCTUnwrap(editTextView.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
+
+        XCTAssertEqual(readFont.fontName, editFont.fontName)
+        XCTAssertEqual(readFont.pointSize, editFont.pointSize, accuracy: 0.001)
+    }
 }
 
 private func assertMatchingFontTraits(

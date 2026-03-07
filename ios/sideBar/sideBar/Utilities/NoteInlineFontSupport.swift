@@ -31,8 +31,12 @@ func noteInlineFont(baseFontSize: CGFloat, bold: Bool, italic: Bool) -> Font {
 
 @available(iOS 26.0, macOS 26.0, *)
 func notePlatformFont(baseFontSize: CGFloat, bold: Bool, italic: Bool) -> NotePlatformFont {
-    notePlatformFontApplyingTraits(
-        notePlatformBodyFont(baseFontSize: baseFontSize),
+    if bold, !italic {
+        return notePlatformBoldBodyFont(baseFontSize: baseFontSize)
+    }
+    return notePlatformFontApplyingTraits(
+        bold ? notePlatformBoldBodyFont(baseFontSize: baseFontSize)
+            : notePlatformBodyFont(baseFontSize: baseFontSize),
         bold: bold,
         italic: italic
     )
@@ -41,6 +45,15 @@ func notePlatformFont(baseFontSize: CGFloat, bold: Bool, italic: Bool) -> NotePl
 @available(iOS 26.0, macOS 26.0, *)
 func notePlatformBodyFont(baseFontSize: CGFloat) -> NotePlatformFont {
     notePlatformSystemFont(size: baseFontSize, weight: .regular)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func notePlatformBoldBodyFont(baseFontSize: CGFloat) -> NotePlatformFont {
+#if os(iOS)
+    return UIFont.systemFont(ofSize: baseFontSize, weight: .bold)
+#else
+    NSFont.boldSystemFont(ofSize: baseFontSize)
+#endif
 }
 
 @available(iOS 26.0, macOS 26.0, *)
