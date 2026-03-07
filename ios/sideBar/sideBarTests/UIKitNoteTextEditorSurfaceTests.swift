@@ -1,0 +1,204 @@
+import SwiftUI
+import UIKit
+import XCTest
+@testable import sideBar
+
+#if os(iOS)
+@MainActor
+@available(iOS 26.0, *)
+final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
+    func testAttributedNoteEditorContainerPrefersUIKitSurfaceOnIOS() {
+        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .uiKit)
+    }
+
+    func testCanonicalSelectionUpdatesMoveTextViewCaretUsingUTF16Offsets() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("A👍🏽B"),
+            plainText: "A👍🏽B"
+        )
+        viewModel.selection = viewModel.insertionPointSelection(
+            forUTF16Offset: 5,
+            in: viewModel.attributedContent
+        )
+
+        let textView = try mountTextView(viewModel: viewModel)
+
+        XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
+    }
+
+    func testUIKitSelectionChangesFlowBackIntoCanonicalSelectionUsingUTF16Offsets() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("A👍🏽B"),
+            plainText: "A👍🏽B"
+        )
+
+        let textView = try mountTextView(viewModel: viewModel)
+        textView.selectedRange = NSRange(location: 5, length: 0)
+        textView.delegate?.textViewDidChangeSelection?(textView)
+
+        assertInsertionPointUTF16Offset(
+            viewModel.selection,
+            in: viewModel.attributedContent,
+            equals: 5
+        )
+    }
+
+    func testUIKitTextChangesFlowBackIntoCanonicalContent() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+
+        let textView = try mountTextView(viewModel: viewModel)
+        let previous = viewModel.attributedContent
+
+        textView.text = "Hello updated"
+        textView.delegate?.textViewDidChange?(textView)
+
+        XCTAssertEqual(String(viewModel.attributedContent.characters), "Hello updated")
+        XCTAssertTrue(viewModel.hasUnsavedChanges)
+        XCTAssertNotEqual(viewModel.attributedContent, previous)
+    }
+
+    func testCanonicalBoldFormattingRendersIntoUIKitAttributedText() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Bold"),
+            plainText: "Bold"
+        )
+        let range = noteCharacterRange(length: 4, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+        viewModel.applyFormatting(.bold)
+
+        let textView = try mountTextView(viewModel: viewModel)
+        let font = try XCTUnwrap(textView.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
+
+        XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.traitBold))
+    }
+
+    func testUIKitFormattedEditsDoNotStripExistingBoldFormatting() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Bold"),
+            plainText: "Bold"
+        )
+        let range = noteCharacterRange(length: 4, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+        viewModel.applyFormatting(.bold)
+
+        let textView = try mountTextView(viewModel: viewModel)
+        let updated = NSMutableAttributedString(attributedString: textView.attributedText)
+        updated.append(NSAttributedString(string: "!"))
+        textView.attributedText = updated
+        textView.selectedRange = NSRange(location: updated.length, length: 0)
+        textView.delegate?.textViewDidChange?(textView)
+
+        let updatedRange = noteCharacterRange(length: 4, in: viewModel.attributedContent)
+        XCTAssertEqual(String(viewModel.attributedContent.characters), "Bold!")
+        XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: updatedRange))
+    }
+
+    func testPendingCaretTargetsStillLandAtCorrectInsertionPointWhenUIKitSurfaceMounts() async throws {
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "A👍🏽B"))
+        let nativeViewModel = NativeNoteEditorViewModel()
+        context.editorViewModel.enterEditMode(at: .characterOffset(5))
+
+        _ = AttributedNoteEditorContainer.loadNoteIfNeeded(
+            editorViewModel: context.editorViewModel,
+            nativeViewModel: nativeViewModel,
+            loadedNoteId: nil
+        )
+
+        let textView = try mountTextView(viewModel: nativeViewModel)
+
+        XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+private func mountTextView(
+    viewModel: NativeNoteEditorViewModel,
+    width: CGFloat = 360,
+    height: CGFloat = 320
+) throws -> UITextView {
+    let controller = UIHostingController<AnyView>(
+        rootView: AnyView(
+            UIKitNoteTextEditorSurface(
+                viewModel: viewModel,
+                maxContentWidth: width,
+                isEditable: true
+            )
+        )
+    )
+    let frame = CGRect(x: 0, y: 0, width: width, height: height)
+    let window = makeHostingWindow(frame: frame)
+    window.rootViewController = controller
+    window.makeKeyAndVisible()
+    controller.view.frame = frame
+    controller.view.setNeedsLayout()
+    controller.view.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    NotesDetailViewTestRetainer.hostingControllers.append(controller)
+    NotesDetailViewTestRetainer.hostingWindows.append(window)
+
+    return try XCTUnwrap(findTextView(in: controller.view))
+}
+
+@MainActor
+private func findTextView(in view: UIView) -> UITextView? {
+    if let textView = view as? UITextView {
+        return textView
+    }
+
+    for subview in view.subviews {
+        if let match = findTextView(in: subview) {
+            return match
+        }
+    }
+
+    return nil
+}
+
+@MainActor
+private func makeHostingWindow(frame: CGRect) -> UIWindow {
+    if let windowScene = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first {
+        let window = UIWindow(windowScene: windowScene)
+        window.frame = frame
+        return window
+    }
+
+    return UIWindow(frame: frame)
+}
+
+@available(iOS 26.0, *)
+private func assertInsertionPointUTF16Offset(
+    _ selection: AttributedTextSelection,
+    in text: AttributedString,
+    equals expectedOffset: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    let string = String(text.characters)
+
+    switch selection.indices(in: text) {
+    case .insertionPoint(let index):
+        let characterOffset = text.characters.distance(from: text.startIndex, to: index)
+        let stringIndex = string.index(string.startIndex, offsetBy: characterOffset)
+        XCTAssertEqual(stringIndex.utf16Offset(in: string), expectedOffset, file: file, line: line)
+    case .ranges:
+        XCTFail("Expected insertion point selection", file: file, line: line)
+    }
+}
+
+private func canonicalPlainTextPass(_ plainText: String) -> String {
+    NotesSemanticDocumentCodec.encode(
+        NotesSemanticDocumentProjection.document(fromPlainText: plainText)
+    ) ?? plainText
+}
+#endif
