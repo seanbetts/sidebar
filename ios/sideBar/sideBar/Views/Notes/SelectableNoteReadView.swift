@@ -114,8 +114,19 @@ struct SelectableNoteReadView: View {
             .paragraphStyle,
             range: NSRange(location: 0, length: mutable.length)
         )
+        mutable.addAttribute(
+            .foregroundColor,
+            value: defaultPlatformTextColor,
+            range: NSRange(location: 0, length: mutable.length)
+        )
         return mutable
     }
+
+    #if os(iOS)
+    private static var defaultPlatformTextColor: UIColor { .label }
+    #elseif os(macOS)
+    private static var defaultPlatformTextColor: NSColor { .labelColor }
+    #endif
 
     private static func nsRange(
         for range: Range<AttributedString.Index>,
@@ -141,7 +152,7 @@ struct SelectableNoteReadView: View {
     private static func noteInlineTraits(
         for run: AttributedString.Runs.Run
     ) -> NoteInlineFormattingTraits {
-        noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
+        noteInlineFormattingTraits(from: run.attributes)
     }
 
     private static func applyingDetectedLinks(to attributed: AttributedString) -> AttributedString {
@@ -414,6 +425,9 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         textView.isScrollEnabled = true
         textView.alwaysBounceVertical = true
         textView.adjustsFontForContentSizeCategory = false
+        textView.textColor = .label
+        textView.textContainer.lineFragmentPadding = 0
+        textView.textContainerInset = .zero
         textView.linkTextAttributes = [
             .foregroundColor: UIColor.link,
             .underlineStyle: NSUnderlineStyle.single.rawValue
@@ -440,22 +454,19 @@ private final class SelectableNoteReadTextView: UITextView {
 
     private func linkAttribute(at point: CGPoint) -> Any? {
         guard attributedText.length > 0 else { return nil }
-        var containerPoint = point
-        containerPoint.x -= textContainerInset.left
-        containerPoint.y -= textContainerInset.top
-
-        let characterIndex = layoutManager.characterIndex(
-            for: containerPoint,
-            in: textContainer,
-            fractionOfDistanceBetweenInsertionPoints: nil
+        guard let closestPosition = closestPosition(to: point) else { return nil }
+        let characterIndex = min(
+            max(offset(from: beginningOfDocument, to: closestPosition), 0),
+            attributedText.length
         )
-        guard characterIndex < attributedText.length else { return nil }
-        let glyphRange = layoutManager.glyphRange(
-            forCharacterRange: NSRange(location: characterIndex, length: 1),
-            actualCharacterRange: nil
-        )
-        let glyphBounds = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-        guard glyphBounds.insetBy(dx: -1, dy: -1).contains(containerPoint) else {
+        guard characterIndex < attributedText.length,
+              let start = position(from: beginningOfDocument, offset: characterIndex),
+              let end = position(from: start, offset: 1),
+              let range = textRange(from: start, to: end) else {
+            return nil
+        }
+        let characterRect = firstRect(for: range)
+        guard characterRect.insetBy(dx: -1, dy: -1).contains(point) else {
             return nil
         }
         return attributedText.attribute(.link, at: characterIndex, effectiveRange: nil)
@@ -522,44 +533,67 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private extension SelectableNoteReadView {
+extension SelectableNoteReadView {
     static func characterOffsetForEditingActivation(
         in textView: UITextView,
         at point: CGPoint
     ) -> Int? {
-        let layoutManager = textView.layoutManager
-        let textContainer = textView.textContainer
-        textContainer.size = CGSize(
-            width: max(
-                textView.bounds.width - textView.textContainerInset.left - textView.textContainerInset.right,
-                0
-            ),
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        layoutManager.ensureLayout(for: textContainer)
         let plainTextLength = textView.attributedText.length
         guard plainTextLength > 0 else { return 0 }
-        let containerPoint = CGPoint(
-            x: point.x - textView.textContainerInset.left,
-            y: point.y - textView.textContainerInset.top
-        )
-        if containerPoint.y > layoutManager.usedRect(for: textContainer).maxY { return plainTextLength }
-        let plainText = (textView.text as NSString?) ?? NSString(string: "")
-        if let line = lineMetrics(
-            in: layoutManager,
-            textContainer: textContainer,
-            plainText: plainText,
-            lineY: containerPoint.y
-        ),
-           containerPoint.x > line.usedRect.maxX {
-            return line.endCharacterOffset
-        }
+        let endRect = textView.caretRect(for: textView.endOfDocument)
+        if point.y > endRect.maxY { return plainTextLength }
 
         guard let position = textView.closestPosition(to: point) else { return plainTextLength }
-        return min(
+
+        let offset = min(
             max(textView.offset(from: textView.beginningOfDocument, to: position), 0),
             plainTextLength
         )
+        let visualLineEndOffset = visualLineEndOffset(
+            from: position,
+            in: textView,
+            plainTextLength: plainTextLength
+        )
+
+        if let visualLineEndPosition = textView.position(
+            from: textView.beginningOfDocument,
+            offset: visualLineEndOffset
+        ) {
+            let lineEndRect = textView.caretRect(for: visualLineEndPosition)
+            if point.x > lineEndRect.maxX {
+                return visualLineEndOffset
+            }
+        }
+
+        return offset
+    }
+
+    static func visualLineEndOffset(
+        from position: UITextPosition,
+        in textView: UITextView,
+        plainTextLength: Int
+    ) -> Int {
+        var currentPosition = position
+        var currentRect = textView.caretRect(for: position)
+        var currentOffset = min(
+            max(textView.offset(from: textView.beginningOfDocument, to: position), 0),
+            plainTextLength
+        )
+
+        while currentOffset < plainTextLength,
+              let nextPosition = textView.position(from: currentPosition, offset: 1) {
+            let nextOffset = min(
+                max(textView.offset(from: textView.beginningOfDocument, to: nextPosition), 0),
+                plainTextLength
+            )
+            let nextRect = textView.caretRect(for: nextPosition)
+            guard abs(nextRect.midY - currentRect.midY) <= 0.5 else { break }
+            currentPosition = nextPosition
+            currentRect = nextRect
+            currentOffset = nextOffset
+        }
+
+        return currentOffset
     }
 }
 #endif

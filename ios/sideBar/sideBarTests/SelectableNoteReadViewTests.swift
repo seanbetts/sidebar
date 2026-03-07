@@ -57,6 +57,69 @@ final class SelectableNoteReadViewTests: XCTestCase {
         )
     }
 
+    #if os(iOS)
+    func testCharacterOffsetForEditingActivationKeepsReadTextViewOnTextKit2() throws {
+        let textView = try makeReadTextView(
+            plainText: "One\nTwo",
+            frame: CGRect(x: 0, y: 0, width: 320, height: 120)
+        )
+        let tapPoint = try lineEndOverflowClickPoint(in: textView, characterIndex: 2)
+
+        XCTAssertNotNil(textView.textLayoutManager)
+
+        let offset = SelectableNoteReadView.characterOffsetForEditingActivation(
+            in: textView,
+            at: tapPoint
+        )
+
+        XCTAssertEqual(offset, 3)
+        XCTAssertNotNil(textView.textLayoutManager)
+    }
+
+    func testCharacterOffsetForEditingActivationClampsTapBelowContentToEndOfNoteOnIOS() throws {
+        let textView = try makeReadTextView(
+            plainText: "One\nTwo",
+            frame: CGRect(x: 0, y: 0, width: 320, height: 120)
+        )
+        let tapPoint = try belowContentClickPoint(in: textView, characterIndex: 6)
+
+        let offset = SelectableNoteReadView.characterOffsetForEditingActivation(
+            in: textView,
+            at: tapPoint
+        )
+
+        XCTAssertEqual(offset, textView.text.utf16.count)
+        XCTAssertNotNil(textView.textLayoutManager)
+    }
+
+    func testReadSurfaceUsesZeroInternalTextViewPaddingOnIOS() throws {
+        let textView = try makeReadTextView(
+            plainText: "One\nTwo",
+            frame: CGRect(x: 0, y: 0, width: 320, height: 120)
+        )
+
+        XCTAssertEqual(textView.textContainer.lineFragmentPadding, 0)
+        XCTAssertEqual(textView.textContainerInset, .zero)
+    }
+
+    func testMakePlatformAttributedContentUsesDynamicLabelColorOnIOS() throws {
+        let document = NotesSemanticDocumentProjection.document(fromPlainText: "Hello")
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let color = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor
+        )
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        XCTAssertEqual(
+            color.resolvedColor(with: darkTraits),
+            UIColor.label.resolvedColor(with: darkTraits)
+        )
+    }
+    #endif
+
     #if os(macOS)
     func testMakePlatformTextViewIsSelectableAndNonEditable() throws {
         let document = NotesSemanticDocument(
@@ -282,19 +345,12 @@ final class SelectableNoteReadViewTests: XCTestCase {
         var attributed = AttributedString("Italic")
         let range = attributed.startIndex..<attributed.endIndex
         attributed[range].font = noteInlineFont(baseFontSize: 16, bold: false, italic: true)
-#if os(iOS)
-        attributed[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = makePlatformFont(
-            baseFontSize: 16,
-            bold: true,
-            italic: false
+        applyBridgedPlatformFont(
+            makePlatformFont(baseFontSize: 16, bold: true, italic: false),
+            to: &attributed,
+            range: range,
+            clearSwiftUIFont: false
         )
-#elseif os(macOS)
-        attributed[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = makePlatformFont(
-            baseFontSize: 16,
-            bold: true,
-            italic: false
-        )
-#endif
 
         let rendered = SelectableNoteReadView.bridgedPlatformAttributedString(
             from: attributed,
@@ -393,12 +449,26 @@ private func makePlatformFont(
 private func applyBridgedPlatformFont(
     _ font: NotePlatformFont,
     to attributed: inout AttributedString,
-    range: Range<AttributedString.Index>
+    range: Range<AttributedString.Index>,
+    clearSwiftUIFont: Bool = true
 ) {
-#if os(iOS)
-    attributed[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = font
-#elseif os(macOS)
-    attributed[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = font
-#endif
-    attributed[range].font = nil
+    let plainText = String(attributed.characters)
+    let lowerCharacterOffset = attributed.characters.distance(from: attributed.startIndex, to: range.lowerBound)
+    let upperCharacterOffset = attributed.characters.distance(from: attributed.startIndex, to: range.upperBound)
+    let lower = plainText.index(plainText.startIndex, offsetBy: lowerCharacterOffset)
+    let upper = plainText.index(plainText.startIndex, offsetBy: upperCharacterOffset)
+    let nsRange = NSRange(
+        location: lower.utf16Offset(in: plainText),
+        length: upper.utf16Offset(in: plainText) - lower.utf16Offset(in: plainText)
+    )
+    let bridged = NSMutableAttributedString(attributedString: NSAttributedString(attributed))
+    bridged.addAttribute(.font, value: font, range: nsRange)
+    guard let bridgedAttributed = try? AttributedString(bridged, including: \.noteTextEditor) else {
+        XCTFail("Expected bridged attributed string to remain convertible")
+        return
+    }
+    attributed = bridgedAttributed
+    if clearSwiftUIFont {
+        attributed[range].font = nil
+    }
 }
