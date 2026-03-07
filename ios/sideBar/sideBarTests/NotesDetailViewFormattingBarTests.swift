@@ -12,16 +12,25 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         XCTAssertFalse(context.makeView().isCustomFormattingBarVisible)
     }
 
-    func testCustomFormattingBarIsVisibleInEditModeOnIOS() async throws {
-        guard #available(iOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26")
-        }
+    func testMobileFormattingBarPlacementUsesKeyboardAccessoryOnPhoneInEditMode() {
+        XCTAssertEqual(
+            NotesDetailView.mobileFormattingBarPlacement(isEditing: true, isPhone: true),
+            .keyboardAccessory
+        )
+    }
 
-        let context = await makeNotesDetailViewTestContext()
-        context.makeView().activateReadSurfaceEditing(at: .start)
+    func testMobileFormattingBarPlacementUsesTopAttachedBarOnIPadInEditMode() {
+        XCTAssertEqual(
+            NotesDetailView.mobileFormattingBarPlacement(isEditing: true, isPhone: false),
+            .topAttached
+        )
+    }
 
-        let view = context.makeView()
-        XCTAssertTrue(view.isCustomFormattingBarVisible)
+    func testMobileFormattingBarPlacementHidesBarInReadMode() {
+        XCTAssertEqual(
+            NotesDetailView.mobileFormattingBarPlacement(isEditing: false, isPhone: true),
+            .hidden
+        )
     }
 
     func testFormattingBarConfigurationTapUpdatesCanonicalSnapshotAndSelectedState() async throws {

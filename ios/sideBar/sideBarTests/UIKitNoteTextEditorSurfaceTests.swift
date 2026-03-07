@@ -27,6 +27,21 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }
 
+    func testPhoneSurfaceExposesUIKitFormattingBarAsKeyboardAccessory() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarConfiguration: .disabled
+        )
+
+        XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
+    }
+
     func testUIKitSelectionChangesFlowBackIntoCanonicalSelectionUsingUTF16Offsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -79,6 +94,31 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.traitBold))
     }
 
+    func testInsertionPointFormattingToggleUpdatesUIKitTypingAttributes() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        let textView = try mountTextView(viewModel: viewModel)
+        XCTAssertFalse(
+            try XCTUnwrap(textView.typingAttributes[.font] as? UIFont)
+                .fontDescriptor
+                .symbolicTraits
+                .contains(.traitBold)
+        )
+
+        viewModel.applyFormatting(.bold)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        let font = try XCTUnwrap(textView.typingAttributes[.font] as? UIFont)
+
+        XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.traitBold))
+    }
+
     func testUIKitFormattedEditsDoNotStripExistingBoldFormatting() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -122,6 +162,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
 @available(iOS 26.0, *)
 private func mountTextView(
     viewModel: NativeNoteEditorViewModel,
+    formattingBarConfiguration: UIKitNoteFormattingBar.Configuration? = nil,
     width: CGFloat = 360,
     height: CGFloat = 320
 ) throws -> UITextView {
@@ -130,7 +171,8 @@ private func mountTextView(
             UIKitNoteTextEditorSurface(
                 viewModel: viewModel,
                 maxContentWidth: width,
-                isEditable: true
+                isEditable: true,
+                formattingBarConfiguration: formattingBarConfiguration
             )
         )
     )

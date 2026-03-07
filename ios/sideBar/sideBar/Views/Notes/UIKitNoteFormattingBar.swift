@@ -1,3 +1,4 @@
+import SwiftUI
 import UIKit
 
 #if os(iOS)
@@ -93,6 +94,20 @@ final class UIKitNoteFormattingBar: UIView {
         case .underline:
             return underlineButton
         }
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
+    let configuration: UIKitNoteFormattingBar.Configuration
+
+    func makeUIView(context: Context) -> UIKitNoteFormattingBar {
+        UIKitNoteFormattingBar(configuration: configuration)
+    }
+
+    func updateUIView(_ uiView: UIKitNoteFormattingBar, context: Context) {
+        uiView.apply(configuration: configuration)
     }
 }
 
