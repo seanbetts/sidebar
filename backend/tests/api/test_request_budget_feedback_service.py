@@ -66,3 +66,29 @@ def test_build_overflow_message_uses_context_guidance_for_non_history_overflow()
         "Message context is too large for this chat request. Remove some "
         "attachments or close open items and try again."
     )
+
+
+def test_build_overflow_message_uses_bootstrap_guidance_for_bootstrap_overflow():
+    report = _budget_report(
+        bootstrap_history_chars=120,
+        system_prompt_chars=10,
+        conversation_history_chars=0,
+    )
+
+    assert RequestBudgetFeedbackService.build_overflow_message(report) == (
+        "This conversation's startup context is too large for this chat. "
+        "Start a new conversation and try again."
+    )
+
+
+def test_build_overflow_message_uses_tool_guidance_for_tool_schema_overflow():
+    report = _budget_report(
+        tool_schema_chars=120,
+        system_prompt_chars=10,
+        conversation_history_chars=0,
+    )
+
+    assert RequestBudgetFeedbackService.build_overflow_message(report) == (
+        "This chat configuration is too large for the current enabled tools. "
+        "Reduce enabled skills or start a new conversation and try again."
+    )

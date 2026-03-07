@@ -230,6 +230,33 @@ class RequestAssemblyService:
                 )
                 raise BadRequestError(str(error)) from error
 
+        if (
+            attachments
+            and prompt_bundle["report"]["system_prompt"]["truncated_by_budget"]
+        ):
+            logger.warning(
+                (
+                    "Prompt bundle exceeded prompt-only size budget with attachment "
+                    "content; retrying metadata-only attachments "
+                    "(attachments=%s conversation_id=%s)"
+                ),
+                len(attachments),
+                conversation_id or "none",
+            )
+            try:
+                prompt_bundle = _build_prompt_bundle(include_attachment_content=False)
+            except ValueError as retry_error:
+                logger.warning(
+                    (
+                        "Prompt build rejected during attachment metadata-only retry: "
+                        "%s (attachments=%s conversation_id=%s)"
+                    ),
+                    str(retry_error),
+                    len(attachments),
+                    conversation_id or "none",
+                )
+                raise BadRequestError(_OVERSIZE_CONTEXT_MESSAGE) from retry_error
+
         if prompt_bundle["report"]["system_prompt"]["truncated_by_budget"]:
             logger.warning(
                 (

@@ -57,7 +57,6 @@ def test_build_report_measures_request_components_separately():
         + report.conversation_history_chars
         + report.current_message_chars
         + report.tool_schema_chars
-        + report.provider_framing_chars
     )
     assert report.within_budget is True
     assert report.overflow_chars == 0
@@ -87,6 +86,29 @@ def test_build_report_flags_overflow_with_reason():
     assert report.within_budget is False
     assert report.overflow_chars == report.total_input_chars - report.available_input_chars
     assert report.failure_reason == "request_too_large"
+
+
+def test_build_report_counts_provider_framing_once():
+    metadata = ProviderBudgetMetadata(
+        context_window_chars=100,
+        reserved_output_chars=20,
+        provider_framing_chars=10,
+    )
+
+    report = RequestBudgetService.build_report(
+        provider="anthropic",
+        model="claude-sonnet-4-6",
+        system_prompt="x" * 70,
+        bootstrap_history=[],
+        conversation_history=[],
+        current_user_message="",
+        tool_definitions=[],
+        metadata=metadata,
+    )
+
+    assert report.available_input_chars == 70
+    assert report.total_input_chars == 76
+    assert report.overflow_chars == 6
 
 
 def test_build_prepared_request_attaches_budget_report():

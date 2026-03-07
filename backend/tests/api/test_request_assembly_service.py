@@ -238,6 +238,45 @@ def test_build_assembled_inputs_allows_budget_truncated_system_prompt():
     assert captured_strict_flags == [False]
 
 
+def test_build_assembled_inputs_retries_metadata_only_attachments_after_budget_truncation():
+    captured_flags: list[bool] = []
+
+    class FakePromptContextService:
+        @staticmethod
+        def build_prompts(**kwargs):
+            include_attachment_content = kwargs["include_attachment_content"]
+            captured_flags.append(include_attachment_content)
+            if include_attachment_content:
+                return _prompt_bundle(
+                    system_prompt="oversized-with-content",
+                    truncated_by_budget=True,
+                )
+            return _prompt_bundle(system_prompt="metadata-only", truncated_by_budget=False)
+
+    assembled = RequestAssemblyService.build_assembled_inputs(
+        db=object(),
+        user_id="user-1",
+        message="Current",
+        conversation_id="conversation-1",
+        conversation_messages=None,
+        request_history=[],
+        user_message_id=None,
+        open_context={},
+        attachments=[{"file_id": "1", "filename": "doc.md"}],
+        user_agent=None,
+        current_location=None,
+        current_location_levels=None,
+        current_weather=None,
+        current_timezone=None,
+        now=datetime.now(UTC),
+        prompt_context_service=FakePromptContextService,
+    )
+
+    assert assembled.system_prompt == "metadata-only"
+    assert assembled.prompt_bundle["report"]["system_prompt"]["truncated_by_budget"] is False
+    assert captured_flags == [True, False]
+
+
 def test_build_assembled_inputs_injects_bootstrap_history_on_first_turn():
     class FakePromptContextService:
         @staticmethod

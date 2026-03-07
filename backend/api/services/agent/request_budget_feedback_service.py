@@ -17,6 +17,14 @@ _HISTORY_TOO_LARGE_MESSAGE = (
     "Chat request is too large even after trimming conversation history. Start a "
     "new conversation or reduce context and try again."
 )
+_BOOTSTRAP_TOO_LARGE_MESSAGE = (
+    "This conversation's startup context is too large for this chat. Start a new "
+    "conversation and try again."
+)
+_TOOL_SCHEMA_TOO_LARGE_MESSAGE = (
+    "This chat configuration is too large for the current enabled tools. Reduce "
+    "enabled skills or start a new conversation and try again."
+)
 
 
 class RequestBudgetFeedbackService:
@@ -37,8 +45,13 @@ class RequestBudgetFeedbackService:
     @classmethod
     def build_overflow_message(cls, report: RequestBudgetReport) -> str:
         """Return the user-facing overflow message for the dominant cause."""
-        if cls.dominant_component(report) == "conversation_history":
+        dominant_component = cls.dominant_component(report)
+        if dominant_component == "conversation_history":
             return _HISTORY_TOO_LARGE_MESSAGE
+        if dominant_component == "bootstrap_history":
+            return _BOOTSTRAP_TOO_LARGE_MESSAGE
+        if dominant_component == "tool_schema":
+            return _TOOL_SCHEMA_TOO_LARGE_MESSAGE
         return _CONTEXT_TOO_LARGE_MESSAGE
 
     @classmethod

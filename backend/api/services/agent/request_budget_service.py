@@ -169,7 +169,6 @@ class RequestBudgetService:
             + conversation_history_chars
             + current_message_chars
             + tool_schema_chars
-            + resolved_metadata.provider_framing_chars
         )
         overflow_chars = max(total_input_chars - available_input_chars, 0)
         within_budget = overflow_chars == 0
