@@ -154,3 +154,71 @@ def test_get_conversation_hides_hidden_bootstrap_messages(test_client, test_db):
             "error": None,
         }
     ]
+
+
+def test_search_conversations_ignores_hidden_bootstrap_messages(test_client, test_db):
+    hidden_conversation_id = uuid.uuid4()
+    visible_conversation_id = uuid.uuid4()
+    hidden_conversation = Conversation(
+        id=hidden_conversation_id,
+        user_id=TEST_USER_ID,
+        title="Hidden Chat",
+        messages=[
+            {
+                "id": "bootstrap-1",
+                "role": "user",
+                "content": "Secret bootstrap phrase",
+                "status": "complete",
+                "timestamp": datetime.now(UTC).isoformat(),
+                "visibility": "hidden",
+                "kind": "conversation_bootstrap",
+            }
+        ],
+        message_count=0,
+        first_message=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    visible_conversation = Conversation(
+        id=visible_conversation_id,
+        user_id=TEST_USER_ID,
+        title="Visible Chat",
+        messages=[
+            {
+                "id": "msg-1",
+                "role": "assistant",
+                "content": "Visible search phrase",
+                "status": "complete",
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        ],
+        message_count=1,
+        first_message="Visible search phrase",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(hidden_conversation)
+    test_db.add(visible_conversation)
+    test_db.commit()
+
+    hidden_response = test_client.post(
+        "/api/conversations/search",
+        params={"query": "Secret bootstrap phrase"},
+        headers=_auth_headers(),
+    )
+    visible_response = test_client.post(
+        "/api/conversations/search",
+        params={"query": "Visible search phrase"},
+        headers=_auth_headers(),
+    )
+
+    assert hidden_response.status_code == 200
+    assert visible_response.status_code == 200
+    assert all(
+        item["id"] != str(hidden_conversation_id)
+        for item in hidden_response.json()
+    )
+    assert any(
+        item["id"] == str(visible_conversation_id)
+        for item in visible_response.json()
+    )

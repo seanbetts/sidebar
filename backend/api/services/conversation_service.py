@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import String, cast
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -281,8 +280,9 @@ class ConversationService:
         db.refresh(conversation)
         return conversation
 
-    @staticmethod
+    @classmethod
     def search_conversations(
+        cls,
         db: Session,
         user_id: str,
         query: str,
@@ -314,20 +314,44 @@ class ConversationService:
             .all()
         )
 
-        message_matches = (
+        message_candidates = (
             db.query(Conversation)
+            .options(
+                load_only(
+                    Conversation.id,
+                    Conversation.title,
+                    Conversation.title_generated,
+                    Conversation.created_at,
+                    Conversation.updated_at,
+                    Conversation.message_count,
+                    Conversation.first_message,
+                    Conversation.messages,
+                )
+            )
             .filter(
                 Conversation.user_id == user_id,
                 Conversation.is_archived.is_(False),
-                build_text_search_filter(
-                    [cast(Conversation.messages, String)],
-                    query,
-                ),
             )
             .order_by(Conversation.updated_at.desc())
-            .limit(limit)
             .all()
         )
 
+        normalized_query = query.casefold()
+        message_matches: list[Conversation] = []
+        seen_ids = {str(item.id) for item in conversations}
+        for conversation in message_candidates:
+            if str(conversation.id) in seen_ids:
+                continue
+
+            if any(
+                normalized_query in str(message.get("content", "")).casefold()
+                for message in cls.visible_messages(conversation.messages)
+            ):
+                message_matches.append(conversation)
+
         all_matches = {str(item.id): item for item in conversations + message_matches}
-        return list(all_matches.values())[:limit]
+        return sorted(
+            all_matches.values(),
+            key=lambda item: item.updated_at,
+            reverse=True,
+        )[:limit]

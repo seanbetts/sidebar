@@ -145,6 +145,65 @@ def test_search_conversations(db_session):
     assert any(item.id == message_match.id for item in message_results)
 
 
+def test_search_conversations_ignores_hidden_messages(db_session):
+    hidden_only = ConversationService.create_conversation(
+        db_session,
+        "user-1",
+        "Hidden Chat",
+    )
+    visible_match = ConversationService.create_conversation(
+        db_session,
+        "user-1",
+        "Visible Chat",
+    )
+
+    ConversationService.add_messages(
+        db_session,
+        "user-1",
+        hidden_only.id,
+        [
+            {
+                "id": "bootstrap-1",
+                "role": "user",
+                "content": "Secret bootstrap phrase",
+                "status": "complete",
+                "timestamp": datetime.now(UTC).isoformat(),
+                "visibility": "hidden",
+                "kind": "conversation_bootstrap",
+            }
+        ],
+    )
+    ConversationService.add_message(
+        db_session,
+        "user-1",
+        visible_match.id,
+        {
+            "id": "msg-visible-1",
+            "role": "assistant",
+            "content": "Visible search phrase",
+            "status": "complete",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "toolCalls": [],
+        },
+    )
+
+    hidden_results = ConversationService.search_conversations(
+        db_session,
+        "user-1",
+        "Secret bootstrap phrase",
+        limit=10,
+    )
+    visible_results = ConversationService.search_conversations(
+        db_session,
+        "user-1",
+        "Visible search phrase",
+        limit=10,
+    )
+
+    assert all(item.id != hidden_only.id for item in hidden_results)
+    assert any(item.id == visible_match.id for item in visible_results)
+
+
 def test_archive_conversation_excluded_from_list(db_session):
     conversation = ConversationService.create_conversation(
         db_session, "user-1", "Archive Me"
