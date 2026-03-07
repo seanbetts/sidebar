@@ -59,13 +59,31 @@ struct AttributedNoteEditorContainer: View {
         return NoteTextTypography.defaultBodyFontSize(for: option)
     }
 
-    private func loadIfNeeded() {
-        guard let noteId = editorViewModel.currentNoteId else { return }
-        guard noteId != loadedNoteId else { return }
-        loadedNoteId = noteId
+    static func loadNoteIfNeeded(
+        editorViewModel: NotesEditorViewModel,
+        nativeViewModel: NativeNoteEditorViewModel,
+        loadedNoteId: String?
+    ) -> String? {
+        guard let noteId = editorViewModel.currentNoteId else { return loadedNoteId }
+        guard noteId != loadedNoteId else { return loadedNoteId }
+
         nativeViewModel.loadDocument(
             canonicalContent: editorViewModel.canonicalContent,
             plainText: editorViewModel.content
+        )
+
+        if let target = editorViewModel.consumePendingEditSelectionTarget() {
+            nativeViewModel.applySelectionTarget(target)
+        }
+
+        return noteId
+    }
+
+    private func loadIfNeeded() {
+        loadedNoteId = Self.loadNoteIfNeeded(
+            editorViewModel: editorViewModel,
+            nativeViewModel: nativeViewModel,
+            loadedNoteId: loadedNoteId
         )
     }
 

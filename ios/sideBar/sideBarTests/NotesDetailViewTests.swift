@@ -28,13 +28,25 @@ final class NotesDetailViewTests: XCTestCase {
     func testActivateReadSurfaceEditingSwitchesToEditorSurface() async {
         let context = await makeNotesDetailViewTestContext()
 
-        context.makeView().activateReadSurfaceEditing()
+        context.makeView().activateReadSurfaceEditing(at: .start)
 
         let view = context.makeView()
         XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
         XCTAssertFalse(view.isShowingReadSurface)
         XCTAssertTrue(view.isShowingEditorSurface)
         XCTAssertTrue(view.isFormattingToolbarVisible)
+    }
+
+    func testActivateReadSurfaceEditingPassesTargetIntoEnterEditMode() async {
+        let context = await makeNotesDetailViewTestContext()
+
+        context.makeView().activateReadSurfaceEditing(at: .characterOffset(7))
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
+        XCTAssertEqual(
+            context.editorViewModel.consumePendingEditSelectionTarget(),
+            .characterOffset(7)
+        )
     }
 
     func testHandleCloseShortcutReturnsEditModeToReadWithoutClosingNote() async {
@@ -246,4 +258,54 @@ final class NotesDetailViewTests: XCTestCase {
         XCTAssertEqual(result, .handled)
         XCTAssertTrue(didInvokeEscape)
     }
+
+    func testAttributedNoteEditorContainerConsumesPendingTargetOnceAfterEditorLoad() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello world"))
+        let nativeViewModel = NativeNoteEditorViewModel()
+        context.editorViewModel.enterEditMode(at: .characterOffset(5))
+        var loadedNoteId: String?
+
+        loadedNoteId = AttributedNoteEditorContainer.loadNoteIfNeeded(
+            editorViewModel: context.editorViewModel,
+            nativeViewModel: nativeViewModel,
+            loadedNoteId: loadedNoteId
+        )
+
+        XCTAssertEqual(loadedNoteId, "n1")
+        assertInsertionPoint(
+            nativeViewModel.selectionSnapshot(in: nativeViewModel.attributedContent),
+            equals: 5
+        )
+        XCTAssertNil(context.editorViewModel.consumePendingEditSelectionTarget())
+
+        nativeViewModel.setInsertionPoint(characterOffset: 1)
+        loadedNoteId = AttributedNoteEditorContainer.loadNoteIfNeeded(
+            editorViewModel: context.editorViewModel,
+            nativeViewModel: nativeViewModel,
+            loadedNoteId: loadedNoteId
+        )
+
+        XCTAssertEqual(loadedNoteId, "n1")
+        assertInsertionPoint(
+            nativeViewModel.selectionSnapshot(in: nativeViewModel.attributedContent),
+            equals: 1
+        )
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func assertInsertionPoint(
+    _ snapshot: NativeNoteEditorViewModel.SelectionSnapshot,
+    equals expectedOffset: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    guard case .insertionPoint(let offset) = snapshot else {
+        return XCTFail("Expected insertion point selection", file: file, line: line)
+    }
+    XCTAssertEqual(offset, expectedOffset, file: file, line: line)
 }

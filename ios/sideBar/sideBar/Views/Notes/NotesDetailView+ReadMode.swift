@@ -24,8 +24,8 @@ extension NotesDetailView {
         return activeNote.document
     }
 
-    func activateReadSurfaceEditing() {
-        editorViewModel.enterEditMode()
+    func activateReadSurfaceEditing(at target: NotesEditorViewModel.PendingEditSelectionTarget) {
+        editorViewModel.enterEditMode(at: target)
     }
 
     func handleCloseShortcut(editedDocument: NotesSemanticDocument? = nil) {

@@ -107,4 +107,13 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
     }
 
+    func applySelectionTarget(_ target: NotesEditorViewModel.PendingEditSelectionTarget) {
+        switch target {
+        case .start:
+            setInsertionPoint(characterOffset: 0)
+        case .characterOffset(let offset):
+            setInsertionPoint(characterOffset: offset)
+        }
+    }
+
 }

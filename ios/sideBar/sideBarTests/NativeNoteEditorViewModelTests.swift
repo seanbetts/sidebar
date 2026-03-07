@@ -148,6 +148,29 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.lastSelectionLineSpan, 1...1)
     }
 
+    func testSetInsertionPointPlacesSelectionFromCharacterOffsetAndClampsBounds() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("Hello world")
+
+        viewModel.setInsertionPoint(characterOffset: 5)
+        assertInsertionPoint(
+            viewModel.selectionSnapshot(in: viewModel.attributedContent),
+            equals: 5
+        )
+
+        viewModel.setInsertionPoint(characterOffset: -3)
+        assertInsertionPoint(
+            viewModel.selectionSnapshot(in: viewModel.attributedContent),
+            equals: 0
+        )
+
+        viewModel.setInsertionPoint(characterOffset: 999)
+        assertInsertionPoint(
+            viewModel.selectionSnapshot(in: viewModel.attributedContent),
+            equals: 11
+        )
+    }
+
     func testHandleContentChangeMarksUnsavedImmediately() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.autosaveDelay = 2.0
@@ -190,4 +213,17 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.autosaveToken, 1)
         XCTAssertTrue(viewModel.hasUnsavedChanges)
     }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func assertInsertionPoint(
+    _ snapshot: NativeNoteEditorViewModel.SelectionSnapshot,
+    equals expectedOffset: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    guard case .insertionPoint(let offset) = snapshot else {
+        return XCTFail("Expected insertion point selection", file: file, line: line)
+    }
+    XCTAssertEqual(offset, expectedOffset, file: file, line: line)
 }

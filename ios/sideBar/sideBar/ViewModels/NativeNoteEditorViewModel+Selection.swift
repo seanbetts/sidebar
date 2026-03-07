@@ -23,6 +23,27 @@ extension NativeNoteEditorViewModel {
         let text: String
     }
 
+    func setInsertionPoint(characterOffset: Int) {
+        selection = insertionPointSelection(forCharacterOffset: characterOffset, in: attributedContent)
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
+    }
+
+    func insertionPointSelection(
+        forCharacterOffset characterOffset: Int,
+        in text: AttributedString
+    ) -> AttributedTextSelection {
+        let index = index(forCharacterOffset: characterOffset, in: text)
+        return AttributedTextSelection(range: index..<index)
+    }
+
+    func index(
+        forCharacterOffset characterOffset: Int,
+        in text: AttributedString
+    ) -> AttributedString.Index {
+        let clampedOffset = max(0, min(characterOffset, text.characters.count))
+        return text.index(text.startIndex, offsetByCharacters: clampedOffset)
+    }
+
     func selectionSnapshot(in text: AttributedString) -> SelectionSnapshot {
         switch selection.indices(in: text) {
         case .insertionPoint(let index):
@@ -39,20 +60,13 @@ extension NativeNoteEditorViewModel {
     }
 
     func selection(from snapshot: SelectionSnapshot, in text: AttributedString) -> AttributedTextSelection {
-        let maxOffset = text.characters.count
-        func index(for offset: Int) -> AttributedString.Index {
-            let clamped = min(max(offset, 0), maxOffset)
-            return text.index(text.startIndex, offsetByCharacters: clamped)
-        }
-
         switch snapshot {
         case .insertionPoint(let offset):
-            let index = index(for: offset)
-            return AttributedTextSelection(range: index..<index)
+            return insertionPointSelection(forCharacterOffset: offset, in: text)
         case .ranges(let offsets):
             let ranges = offsets.map { range -> Range<AttributedString.Index> in
-                let lower = index(for: range.lowerBound)
-                let upper = index(for: range.upperBound)
+                let lower = index(forCharacterOffset: range.lowerBound, in: text)
+                let upper = index(forCharacterOffset: range.upperBound, in: text)
                 return lower..<upper
             }
             return AttributedTextSelection(ranges: RangeSet(ranges))
