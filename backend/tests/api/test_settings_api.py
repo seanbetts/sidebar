@@ -1,4 +1,8 @@
+import os
+
 from api.config import settings
+from api.services.capabilities.skill_state_service import SkillStateService
+from api.services.user_settings_service import UserSettingsService
 from api.services import settings_service
 
 from tests.helpers import error_message
@@ -194,3 +198,56 @@ def test_provider_key_disconnect_flow_skill_then_ai_provider(test_client):
     )
     assert final_status.status_code == 200
     assert final_status.json()["has_key"] is False
+
+
+def test_get_settings_reads_normalized_skill_state_over_legacy_arrays(
+    test_client,
+    test_db,
+):
+    user_id = os.environ["TEST_USER_ID"]
+    UserSettingsService.upsert_settings(
+        test_db,
+        user_id,
+        enabled_skills=["files", "assistant-identity", "assistant-soul"],
+        installed_store_skills=[],
+    )
+    SkillStateService.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="files",
+        enabled=False,
+        installed=False,
+        commit=False,
+    )
+    SkillStateService.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="assistant-identity",
+        enabled=True,
+        installed=False,
+        commit=False,
+    )
+    SkillStateService.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="assistant-soul",
+        enabled=True,
+        installed=False,
+        commit=False,
+    )
+    SkillStateService.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="audio-transcribe",
+        enabled=True,
+        installed=True,
+        commit=True,
+    )
+
+    response = test_client.get("/api/settings", headers=_auth_headers())
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "files" not in body["enabled_skills"]
+    assert "audio-transcribe" in body["enabled_skills"]
+    assert body["installed_store_skills"] == ["audio-transcribe"]

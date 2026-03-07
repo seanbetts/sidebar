@@ -10,6 +10,7 @@ __all__ = [
     "CapabilityRegistry",
     "CapabilityRegistryRecord",
     "CapabilityResolverResult",
+    "RuntimeCapabilityService",
     "RuntimeCapabilityState",
     "SkillStateService",
 ]
@@ -19,6 +20,7 @@ def __getattr__(name: str) -> Any:
     """Resolve capability exports lazily to avoid package import cycles."""
     module_map = {
         "CapabilityRegistry": "api.services.capabilities.registry",
+        "RuntimeCapabilityService": "api.services.capabilities.runtime_state",
         "SkillStateService": "api.services.capabilities.skill_state_service",
         "CapabilityRegistryRecord": "api.services.capabilities.types",
         "RuntimeCapabilityState": "api.services.capabilities.types",

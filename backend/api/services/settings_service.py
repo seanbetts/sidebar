@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from api.config import settings
 from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.ai.registry import VALID_AI_PROVIDERS
+from api.services.capabilities.runtime_state import RuntimeCapabilityService
 from api.services.storage.service import get_storage_backend
 from api.services.tools.skill_metadata import canonicalize_skill_id
 from api.services.user_settings_service import UserSettingsService
@@ -504,7 +505,7 @@ class SettingsService:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "assistant_soul has invalid fields: " f"{', '.join(unknown_fields)}"
+                    f"assistant_soul has invalid fields: {', '.join(unknown_fields)}"
                 ),
             )
 
@@ -572,16 +573,29 @@ class SettingsService:
             )
 
     @staticmethod
-    def build_response(settings_record, user_id: str) -> dict:
+    def build_response(settings_record, user_id: str, *, db=None) -> dict:
         """Build a settings response payload.
 
         Args:
             settings_record: User settings record or None.
             user_id: Current user ID.
-
-        Returns:
-            Settings response payload.
+            db: Optional database session for normalized runtime state reads.
         """
+        enabled_skills, installed_store_skills = (
+            SettingsService._resolve_enabled_skills(settings_record),
+            SettingsService._resolve_installed_store_skills(settings_record),
+        )
+        if db is not None:
+            enabled_skills = RuntimeCapabilityService.enabled_skill_ids(
+                db,
+                user_id=user_id,
+                settings_record=settings_record,
+            )
+            installed_store_skills = RuntimeCapabilityService.installed_store_skill_ids(
+                db,
+                user_id=user_id,
+                settings_record=settings_record,
+            )
         return {
             "user_id": user_id,
             "communication_style": SettingsService._resolve_default(
@@ -600,10 +614,8 @@ class SettingsService:
             "pronouns": settings_record.pronouns if settings_record else None,
             "location": settings_record.location if settings_record else None,
             "profile_image_url": SettingsService._profile_image_url(settings_record),
-            "enabled_skills": SettingsService._resolve_enabled_skills(settings_record),
-            "installed_store_skills": SettingsService._resolve_installed_store_skills(
-                settings_record
-            ),
+            "enabled_skills": enabled_skills,
+            "installed_store_skills": installed_store_skills,
             "assistant_identity": SettingsService._resolve_assistant_identity(
                 settings_record
             ),
@@ -752,7 +764,7 @@ class SettingsService:
             Settings response payload.
         """
         settings_record = UserSettingsService.get_settings(db, user_id)
-        return SettingsService.build_response(settings_record, user_id)
+        return SettingsService.build_response(settings_record, user_id, db=db)
 
     @staticmethod
     def update_settings(db, user_id: str, updates: dict) -> dict:
@@ -768,7 +780,7 @@ class SettingsService:
         """
         cleaned = SettingsService.clean_updates(updates)
         user_settings = UserSettingsService.upsert_settings(db, user_id, **cleaned)
-        return SettingsService.build_response(user_settings, user_id)
+        return SettingsService.build_response(user_settings, user_id, db=db)
 
     @staticmethod
     def update_agent_settings(
@@ -798,7 +810,7 @@ class SettingsService:
                 reason=reason,
             )
         user_settings = UserSettingsService.upsert_settings(db, user_id, **cleaned)
-        return SettingsService.build_response(user_settings, user_id)
+        return SettingsService.build_response(user_settings, user_id, db=db)
 
     @staticmethod
     def upload_profile_image(

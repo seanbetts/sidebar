@@ -10,6 +10,7 @@ from api.config import settings
 from api.exceptions import BadRequestError
 from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
+from api.services.capabilities.runtime_state import RuntimeCapabilityService
 from api.services.settings_service import SettingsService
 from api.services.tools.skill_metadata import canonicalize_skill_id
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
@@ -208,9 +209,15 @@ class StoreSkillsService:
         )
 
         current_settings = UserSettingsService.get_settings(db, user_id)
-        enabled_skills = SettingsService.resolve_enabled_skills(current_settings)
-        installed_store_skills = SettingsService._resolve_installed_store_skills(
-            current_settings
+        enabled_skills = RuntimeCapabilityService.enabled_skill_ids(
+            db,
+            user_id=user_id,
+            settings_record=current_settings,
+        )
+        installed_store_skills = RuntimeCapabilityService.installed_store_skill_ids(
+            db,
+            user_id=user_id,
+            settings_record=current_settings,
         )
 
         if canonical_id not in installed_store_skills:
@@ -235,7 +242,7 @@ class StoreSkillsService:
             enabled_skills=normalized_enabled_skills,
             installed_store_skills=normalized_installed_store_skills,
         )
-        payload = SettingsService.build_response(updated_settings, user_id)
+        payload = SettingsService.build_response(updated_settings, user_id, db=db)
 
         return {
             "skill_id": canonical_id,
@@ -267,9 +274,15 @@ class StoreSkillsService:
             raise BadRequestError("Skill is not installable from Store skills")
 
         current_settings = UserSettingsService.get_settings(db, user_id)
-        enabled_skills = SettingsService.resolve_enabled_skills(current_settings)
-        installed_store_skills = SettingsService._resolve_installed_store_skills(
-            current_settings
+        enabled_skills = RuntimeCapabilityService.enabled_skill_ids(
+            db,
+            user_id=user_id,
+            settings_record=current_settings,
+        )
+        installed_store_skills = RuntimeCapabilityService.installed_store_skill_ids(
+            db,
+            user_id=user_id,
+            settings_record=current_settings,
         )
 
         filtered_enabled_skills = [
@@ -296,7 +309,7 @@ class StoreSkillsService:
             enabled_skills=normalized_enabled_skills,
             installed_store_skills=normalized_installed_store_skills,
         )
-        payload = SettingsService.build_response(updated_settings, user_id)
+        payload = SettingsService.build_response(updated_settings, user_id, db=db)
 
         return {
             "skill_id": canonical_id,

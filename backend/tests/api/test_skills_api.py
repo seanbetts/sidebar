@@ -8,7 +8,9 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
 
 
-def _seed_openai_provider_key(test_client, api_key: str = "sk-test-openai-1234") -> None:
+def _seed_openai_provider_key(
+    test_client, api_key: str = "sk-test-openai-1234"
+) -> None:
     response = test_client.put(
         "/api/settings/ai/provider-key",
         headers=_auth_headers(),
@@ -83,6 +85,33 @@ def test_list_skills_exposes_capability_availability_contract(test_client) -> No
         audio_transcribe["availability_remediation"],
         dict,
     )
+
+
+def test_list_skills_derives_runtime_availability_from_provider_state(
+    test_client,
+) -> None:
+    without_key = test_client.get("/api/skills", headers=_auth_headers())
+    assert without_key.status_code == 200
+    blocked_skill = {item["id"]: item for item in without_key.json()["skills"]}[
+        "audio-transcribe"
+    ]
+    assert blocked_skill["availability_status"] == "needs_connection"
+    assert blocked_skill["availability_reason"] == "Missing required OpenAI connection."
+    assert blocked_skill["availability_remediation"] == {
+        "action": "add_provider_key",
+        "provider": "openai",
+    }
+
+    _seed_openai_provider_key(test_client, api_key="sk-test-openai-runtime-5555")
+
+    with_key = test_client.get("/api/skills", headers=_auth_headers())
+    assert with_key.status_code == 200
+    ready_skill = {item["id"]: item for item in with_key.json()["skills"]}[
+        "audio-transcribe"
+    ]
+    assert ready_skill["availability_status"] == "ready"
+    assert ready_skill["availability_reason"] is None
+    assert ready_skill["availability_remediation"] is None
 
 
 def test_install_store_skill_auto_enables_and_persists(test_client) -> None:

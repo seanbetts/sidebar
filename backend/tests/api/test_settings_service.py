@@ -15,6 +15,7 @@ from api.services.settings_service import (
 from api.services.user_ai_provider_settings_service import (
     UserAIProviderSettingsService,
 )
+from api.services.user_settings_service import UserSettingsService
 
 
 def test_clean_updates_rejects_agent_owned_fields() -> None:
@@ -91,7 +92,9 @@ def test_clean_agent_updates_trims_assistant_soul_fields() -> None:
 
     cleaned = SettingsService.clean_agent_updates(updates)
     assert cleaned["assistant_soul"]["purpose"] == "Help with durable progress."
-    assert cleaned["assistant_soul"]["success_signals"] == "Fewer clarifications needed."
+    assert (
+        cleaned["assistant_soul"]["success_signals"] == "Fewer clarifications needed."
+    )
 
 
 def test_clean_agent_updates_rejects_unknown_assistant_soul_fields() -> None:
@@ -188,7 +191,9 @@ def test_build_response_includes_agent_field_metadata() -> None:
             },
         },
     )
-    payload = SettingsService.build_response(settings_record=settings_record, user_id="user-1")
+    payload = SettingsService.build_response(
+        settings_record=settings_record, user_id="user-1"
+    )
     assert payload["assistant_identity_meta"]["version"] == 2
     assert payload["assistant_soul_meta"]["version"] == 1
 
@@ -422,6 +427,192 @@ def test_resolve_installed_store_skills_filters_non_store_entries(monkeypatch) -
     assert resolved == ["audio-transcribe", "youtube-transcribe"]
 
 
+def test_get_settings_prefers_normalized_skill_states_over_legacy_arrays(
+    test_db,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {
+                    "id": "files",
+                    "tier": "standard",
+                    "default_enabled": True,
+                    "user_toggleable": True,
+                },
+                {
+                    "id": "assistant-identity",
+                    "tier": "required",
+                    "default_enabled": True,
+                    "user_toggleable": False,
+                },
+                {
+                    "id": "assistant-soul",
+                    "tier": "required",
+                    "default_enabled": True,
+                    "user_toggleable": False,
+                },
+                {
+                    "id": "audio-transcribe",
+                    "tier": "store",
+                    "default_enabled": False,
+                    "user_toggleable": True,
+                    "credential_requirements": [
+                        {
+                            "provider": "openai",
+                            "key_kind": "api_key",
+                            "required": True,
+                        }
+                    ],
+                },
+            ]
+        ),
+    )
+    user_id = "runtime-state-precedence-user"
+    UserSettingsService.upsert_settings(
+        test_db,
+        user_id,
+        enabled_skills=["files", "assistant-identity", "assistant-soul"],
+        installed_store_skills=[],
+    )
+    skill_state_service = _skill_state_service()
+    skill_state_service.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="files",
+        enabled=False,
+        installed=False,
+        commit=False,
+    )
+    skill_state_service.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="assistant-identity",
+        enabled=True,
+        installed=False,
+        commit=False,
+    )
+    skill_state_service.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="assistant-soul",
+        enabled=True,
+        installed=False,
+        commit=False,
+    )
+    skill_state_service.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="audio-transcribe",
+        enabled=True,
+        installed=True,
+        commit=True,
+    )
+
+    payload = SettingsService.get_settings(test_db, user_id)
+
+    assert "files" not in payload["enabled_skills"]
+    assert "audio-transcribe" in payload["enabled_skills"]
+    assert payload["installed_store_skills"] == ["audio-transcribe"]
+
+
+def test_get_settings_filters_uninstalled_store_skills_from_normalized_state(
+    test_db,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {
+                    "id": "files",
+                    "tier": "standard",
+                    "default_enabled": True,
+                    "user_toggleable": True,
+                },
+                {
+                    "id": "assistant-identity",
+                    "tier": "required",
+                    "default_enabled": True,
+                    "user_toggleable": False,
+                },
+                {
+                    "id": "assistant-soul",
+                    "tier": "required",
+                    "default_enabled": True,
+                    "user_toggleable": False,
+                },
+                {
+                    "id": "audio-transcribe",
+                    "tier": "store",
+                    "default_enabled": False,
+                    "user_toggleable": True,
+                    "credential_requirements": [
+                        {
+                            "provider": "openai",
+                            "key_kind": "api_key",
+                            "required": True,
+                        }
+                    ],
+                },
+            ]
+        ),
+    )
+    user_id = "runtime-state-uninstalled-store-user"
+    UserSettingsService.upsert_settings(
+        test_db,
+        user_id,
+        enabled_skills=[
+            "files",
+            "assistant-identity",
+            "assistant-soul",
+            "audio-transcribe",
+        ],
+        installed_store_skills=["audio-transcribe"],
+    )
+    skill_state_service = _skill_state_service()
+    skill_state_service.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="files",
+        enabled=True,
+        installed=False,
+        commit=False,
+    )
+    skill_state_service.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="assistant-identity",
+        enabled=True,
+        installed=False,
+        commit=False,
+    )
+    skill_state_service.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="assistant-soul",
+        enabled=True,
+        installed=False,
+        commit=False,
+    )
+    skill_state_service.upsert_skill_state(
+        test_db,
+        user_id=user_id,
+        skill_id="audio-transcribe",
+        enabled=True,
+        installed=False,
+        commit=True,
+    )
+
+    payload = SettingsService.get_settings(test_db, user_id)
+
+    assert "audio-transcribe" not in payload["enabled_skills"]
+    assert payload["installed_store_skills"] == []
+
+
 def _skill_state_service():
     try:
         module = import_module("api.services.capabilities.skill_state_service")
@@ -484,9 +675,7 @@ def test_update_settings_mirrors_legacy_skill_selection_into_skill_states(
 
 
 def test_clean_updates_accepts_ai_provider_fields() -> None:
-    cleaned = SettingsService.clean_updates(
-        {"ai_primary_provider": "  OPENAI  "}
-    )
+    cleaned = SettingsService.clean_updates({"ai_primary_provider": "  OPENAI  "})
     assert cleaned["ai_primary_provider"] == "openai"
 
 

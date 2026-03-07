@@ -10,6 +10,7 @@ from api.config import settings
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.services.agent.skills.catalog import SkillCatalogService
+from api.services.capabilities.runtime_state import RuntimeCapabilityService
 from api.services.store_skills_service import StoreSkillsService
 
 router = APIRouter(prefix="/skills", tags=["skills"])
@@ -27,10 +28,14 @@ class SkillItem(BaseModel):
     tier: str
     provider_dependency: str
     credential_requirements: list[dict[str, str | bool | None]] = []
+    required_toolsets: list[str] = []
     user_toggleable: bool = True
     default_enabled: bool = False
     installable: bool = False
     status: str = "active"
+    availability_status: str = "ready"
+    availability_reason: str | None = None
+    availability_remediation: dict[str, str] | None = None
     long_description: str | None = None
     how_it_works: str | None = None
     requirements: list[str] = []
@@ -83,83 +88,113 @@ class StoreSkillUninstallRequest(BaseModel):
 
 
 @router.get("", response_model=SkillsResponse)
-async def list_skills(_: str = Depends(verify_bearer_token)):
+async def list_skills(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
     """List available skills from the skills directory.
 
     Args:
+        db: Database session.
+        user_id: Current authenticated user ID.
         _: Authorization token (validated).
 
     Returns:
         Skills list payload.
     """
     skills = SkillCatalogService.list_skills(settings.skills_dir)
-    skill_items = [
-        SkillItem(
-            id=str(skill["id"]),
-            legacy_ids=[str(item) for item in skill.get("legacy_ids", [])],
-            name=str(skill["name"]),
-            description=str(skill["description"]),
-            category=str(skill["category"]),
-            icon_key=str(skill.get("icon_key", skill["id"])),
-            tier=str(skill.get("tier", "standard")),
-            provider_dependency=str(skill.get("provider_dependency", "none")),
-            credential_requirements=[
-                {
-                    str(key): value
-                    for key, value in requirement.items()
-                    if isinstance(key, str)
-                }
-                for requirement in skill.get("credential_requirements", [])
-                if isinstance(requirement, dict)
-            ],
-            user_toggleable=bool(skill.get("user_toggleable", True)),
-            default_enabled=bool(skill.get("default_enabled", False)),
-            installable=bool(skill.get("installable", False)),
-            status=str(skill.get("status", "active")),
-            long_description=(
-                str(skill["long_description"])
-                if isinstance(skill.get("long_description"), str)
-                else None
-            ),
-            how_it_works=(
-                str(skill["how_it_works"])
-                if isinstance(skill.get("how_it_works"), str)
-                else None
-            ),
-            requirements=[
-                str(item)
-                for item in skill.get("requirements", [])
-                if isinstance(item, str)
-            ],
-            version=(
-                str(skill["version"]) if isinstance(skill.get("version"), str) else None
-            ),
-            updated_at=(
-                str(skill["updated_at"])
-                if isinstance(skill.get("updated_at"), str)
-                else None
-            ),
-            install_count=(
-                int(skill["install_count"])
-                if isinstance(skill.get("install_count"), int)
-                else None
-            ),
-            upvotes=(
-                int(skill["upvotes"]) if isinstance(skill.get("upvotes"), int) else None
-            ),
-            downvotes=(
-                int(skill["downvotes"])
-                if isinstance(skill.get("downvotes"), int)
-                else None
-            ),
-            current_user_vote=(
-                str(skill["current_user_vote"])
-                if isinstance(skill.get("current_user_vote"), str)
-                else None
-            ),
+    runtime_states = RuntimeCapabilityService.runtime_state_map(
+        db,
+        user_id=user_id,
+    )
+    skill_items: list[SkillItem] = []
+    for skill in skills:
+        runtime_state = runtime_states.get(str(skill["id"]))
+        skill_items.append(
+            SkillItem(
+                id=str(skill["id"]),
+                legacy_ids=[str(item) for item in skill.get("legacy_ids", [])],
+                name=str(skill["name"]),
+                description=str(skill["description"]),
+                category=str(skill["category"]),
+                icon_key=str(skill.get("icon_key", skill["id"])),
+                tier=str(skill.get("tier", "standard")),
+                provider_dependency=str(skill.get("provider_dependency", "none")),
+                credential_requirements=[
+                    {
+                        str(key): value
+                        for key, value in requirement.items()
+                        if isinstance(key, str)
+                    }
+                    for requirement in skill.get("credential_requirements", [])
+                    if isinstance(requirement, dict)
+                ],
+                required_toolsets=[
+                    str(item)
+                    for item in skill.get("required_toolsets", [])
+                    if isinstance(item, str)
+                ],
+                user_toggleable=bool(skill.get("user_toggleable", True)),
+                default_enabled=bool(skill.get("default_enabled", False)),
+                installable=bool(skill.get("installable", False)),
+                status=str(skill.get("status", "active")),
+                availability_status=(
+                    runtime_state.availability_status if runtime_state else "ready"
+                ),
+                availability_reason=(
+                    runtime_state.availability_reason if runtime_state else None
+                ),
+                availability_remediation=(
+                    runtime_state.availability_remediation if runtime_state else None
+                ),
+                long_description=(
+                    str(skill["long_description"])
+                    if isinstance(skill.get("long_description"), str)
+                    else None
+                ),
+                how_it_works=(
+                    str(skill["how_it_works"])
+                    if isinstance(skill.get("how_it_works"), str)
+                    else None
+                ),
+                requirements=[
+                    str(item)
+                    for item in skill.get("requirements", [])
+                    if isinstance(item, str)
+                ],
+                version=(
+                    str(skill["version"])
+                    if isinstance(skill.get("version"), str)
+                    else None
+                ),
+                updated_at=(
+                    str(skill["updated_at"])
+                    if isinstance(skill.get("updated_at"), str)
+                    else None
+                ),
+                install_count=(
+                    int(skill["install_count"])
+                    if isinstance(skill.get("install_count"), int)
+                    else None
+                ),
+                upvotes=(
+                    int(skill["upvotes"])
+                    if isinstance(skill.get("upvotes"), int)
+                    else None
+                ),
+                downvotes=(
+                    int(skill["downvotes"])
+                    if isinstance(skill.get("downvotes"), int)
+                    else None
+                ),
+                current_user_vote=(
+                    str(skill["current_user_vote"])
+                    if isinstance(skill.get("current_user_vote"), str)
+                    else None
+                ),
+            )
         )
-        for skill in skills
-    ]
     return SkillsResponse(
         catalog_version=SkillCatalogService.catalog_version(),
         skills=skill_items,

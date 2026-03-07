@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from api.config import settings
 from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
+from api.services.capabilities.runtime_state import RuntimeCapabilityService
 from api.services.settings_service import SettingsService
 from api.services.tools.skill_metadata import canonicalize_skill_id
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
@@ -187,12 +188,15 @@ class UserAIProviderSettingsService:
         }
 
         settings_record = UserSettingsService.get_settings(db, user_id)
-        enabled_skills = SettingsService._resolve_enabled_skills(settings_record)
-        installed_store_skills = (
-            SettingsService._resolve_installed_store_skills_from_catalog(
-                settings_record,
-                catalog=catalog,
-            )
+        enabled_skills = RuntimeCapabilityService.enabled_skill_ids(
+            db,
+            user_id=user_id,
+            settings_record=settings_record,
+        )
+        installed_store_skills = RuntimeCapabilityService.installed_store_skill_ids(
+            db,
+            user_id=user_id,
+            settings_record=settings_record,
         )
         ai_primary_provider = UserAIProviderSettingsService._normalize_provider(
             getattr(settings_record, "ai_primary_provider", None)
@@ -289,7 +293,11 @@ class UserAIProviderSettingsService:
             db.commit()
 
         current_settings = UserSettingsService.get_settings(db, user_id)
-        response_settings = SettingsService.build_response(current_settings, user_id)
+        response_settings = SettingsService.build_response(
+            current_settings,
+            user_id,
+            db=db,
+        )
 
         return {
             "provider": selected_provider,
