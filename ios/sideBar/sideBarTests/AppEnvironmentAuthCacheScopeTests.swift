@@ -4,19 +4,21 @@ import sideBarShared
 
 @MainActor
 final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
-    private static var retainedEnvironments: [AppEnvironment] = []
+    private var retainedEnvironments: [AppEnvironment] = []
     private let cacheScopeKey = AppStorageKeys.cacheScopeUserId
     private let lastSignInEmailKey = AppStorageKeys.lastSignInEmail
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
 
     override func setUp() {
         super.setUp()
+        retainedEnvironments.removeAll()
         UserDefaults.standard.removeObject(forKey: cacheScopeKey)
         UserDefaults.standard.removeObject(forKey: lastSignInEmailKey)
         UserDefaults.standard.removeObject(forKey: lastAuthTimestampKey)
     }
 
     override func tearDown() {
+        retainedEnvironments.removeAll()
         UserDefaults.standard.removeObject(forKey: cacheScopeKey)
         UserDefaults.standard.removeObject(forKey: lastSignInEmailKey)
         UserDefaults.standard.removeObject(forKey: lastAuthTimestampKey)
@@ -105,7 +107,7 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
             cacheClient: InMemoryCacheClient()
         )
         let environment = AppEnvironment(container: container)
-        Self.retainedEnvironments.append(environment)
+        retainedEnvironments.append(environment)
         return environment
     }
 
