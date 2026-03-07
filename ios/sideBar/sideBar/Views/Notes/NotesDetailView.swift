@@ -65,7 +65,7 @@ struct NotesDetailView: View {
                   ) else { return }
             switch event.action {
             case .closeItem:
-                requestCloseNote()
+                handleCloseShortcut()
             case .deleteItem:
                 guard viewModel.activeNote != nil else { return }
                 isDeleteAlertPresented = true
@@ -135,10 +135,19 @@ extension NotesDetailView {
     @ViewBuilder
     private var content: some View {
         if viewModel.activeNote != nil {
-            AttributedNoteEditorContainer(
-                editorViewModel: editorViewModel,
-                maxContentWidth: contentMaxWidth
-            )
+            if isShowingEditorSurface {
+                AttributedNoteEditorContainer(
+                    editorViewModel: editorViewModel,
+                    maxContentWidth: contentMaxWidth,
+                    onEscape: handleEscapeKey
+                )
+            } else {
+                SelectableNoteReadView(
+                    document: currentReadDocument,
+                    maxContentWidth: contentMaxWidth,
+                    onActivateEditing: activateReadSurfaceEditing
+                )
+            }
         } else if viewModel.selectedNoteId != nil {
             if let error = viewModel.errorMessage {
                 PlaceholderView(
@@ -302,12 +311,7 @@ extension NotesDetailView {
         lastSavedTimestamp = 0
     }
 
-    var displayTitle: String {
-        guard let name = viewModel.activeNote?.name else {
-            return "Notes"
-        }
-        return name
-    }
+    var displayTitle: String { viewModel.activeNote?.name ?? "Notes" }
 
     var isCompact: Bool {
         #if os(macOS)
@@ -324,9 +328,7 @@ extension NotesDetailView {
     }
 
     #if os(iOS)
-    var isPhone: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone
-    }
+    var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
     private var shouldShowExpandButton: Bool {
         WorkspaceBehaviorPolicy.shouldShowExpandButton(
@@ -356,10 +358,7 @@ extension NotesDetailView {
     private var expandButtonIconName: String {
         isWorkspaceExpanded ? "arrow.up.right.and.arrow.down.left" : "arrow.down.left.and.arrow.up.right"
     }
-
-    private var expandButtonLabel: String {
-        isWorkspaceExpanded ? "Exit expanded mode" : "Expand note"
-    }
+    private var expandButtonLabel: String { isWorkspaceExpanded ? "Exit expanded mode" : "Expand note" }
 
     private func expandNoteView() {
         #if os(iOS)

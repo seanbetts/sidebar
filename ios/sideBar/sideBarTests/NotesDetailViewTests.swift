@@ -9,128 +9,235 @@ final class NotesDetailViewTests: XCTestCase {
     }
 
     func testDisplayTitleUsesActiveNoteName() async {
-        let api = NotesDetailViewMockNotesAPI()
-        let store = NotesStore(api: api, cache: InMemoryCacheClient())
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: ToastCenter(),
-            networkStatus: NotesDetailViewTestNetworkStatus(isNetworkAvailable: true)
+        let context = await makeNotesDetailViewTestContext(
+            note: makeTestNote(name: "Semantic title", plainText: "Semantic title")
         )
-        let persistence = PersistenceController(inMemory: true)
-        let editorViewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: DraftStorage(container: persistence.container),
-            writeQueue: WriteQueue(
-                container: persistence.container,
-                connectivityMonitor: ConnectivityMonitor(
-                    baseUrl: URL(string: "http://localhost")!,
-                    startMonitoring: false
-                ),
-                autoProcessEnabled: false
-            ),
-            networkStatus: NotesDetailViewTestNetworkStatus(isNetworkAvailable: true)
-        )
-        store.applyEditorUpdate(
-            NotePayload(
-                id: "n1",
-                name: "Semantic title",
-                document: NotesSemanticDocumentProjection.document(fromPlainText: "Semantic title"),
-                plainText: "Semantic title",
-                path: "/note.md",
-                modified: nil,
-                created: nil
-            )
-        )
+
+        XCTAssertEqual(context.makeView().displayTitle, "Semantic title")
+    }
+
+    func testOpenNoteShowsReadSurfaceFirst() async {
+        let context = await makeNotesDetailViewTestContext()
+        let view = context.makeView()
+
+        XCTAssertTrue(view.isShowingReadSurface)
+        XCTAssertFalse(view.isShowingEditorSurface)
+        XCTAssertFalse(view.isFormattingToolbarVisible)
+    }
+
+    func testActivateReadSurfaceEditingSwitchesToEditorSurface() async {
+        let context = await makeNotesDetailViewTestContext()
+
+        context.makeView().activateReadSurfaceEditing()
+
+        let view = context.makeView()
+        XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
+        XCTAssertFalse(view.isShowingReadSurface)
+        XCTAssertTrue(view.isShowingEditorSurface)
+        XCTAssertTrue(view.isFormattingToolbarVisible)
+    }
+
+    func testHandleCloseShortcutReturnsEditModeToReadWithoutClosingNote() async {
+        let context = await makeNotesDetailViewTestContext()
+        context.editorViewModel.enterEditMode()
+
+        context.makeView().handleCloseShortcut()
         await Task.yield()
-        let view = NotesDetailView(
-            viewModel: notesViewModel,
-            editorViewModel: editorViewModel,
-            isMoveSheetPresented: .constant(false),
-            moveSelection: .constant(""),
-            isDeleteAlertPresented: .constant(false),
-            isExporting: .constant(false),
-            exportDocument: .constant(nil),
-            exportFilename: .constant("")
+        await Task.yield()
+
+        let view = context.makeView()
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertEqual(context.editorViewModel.currentNoteId, "n1")
+        XCTAssertNotNil(context.notesViewModel.activeNote)
+        XCTAssertTrue(view.isShowingReadSurface)
+    }
+
+    func testHandleCloseShortcutClosesNoteWhenAlreadyInReadMode() async {
+        let context = await makeNotesDetailViewTestContext()
+
+        context.makeView().handleCloseShortcut()
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertNil(context.editorViewModel.currentNoteId)
+        XCTAssertNil(context.notesViewModel.activeNote)
+    }
+
+    func testRequestCloseNoteClosesNoteFromEditMode() async {
+        let context = await makeNotesDetailViewTestContext()
+        context.editorViewModel.enterEditMode()
+
+        context.makeView().requestCloseNote()
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertNil(context.editorViewModel.currentNoteId)
+        XCTAssertNil(context.notesViewModel.activeNote)
+    }
+
+    func testRequestCloseNoteClosesNoteFromReadMode() async {
+        let context = await makeNotesDetailViewTestContext()
+
+        context.makeView().requestCloseNote()
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertNil(context.editorViewModel.currentNoteId)
+        XCTAssertNil(context.notesViewModel.activeNote)
+    }
+
+    func testHandleCloseShortcutSyncsUnsavedEditorContentBeforeReturningToReadMode() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let api = NotesDetailViewRecordingNotesAPI()
+        let context = await makeNotesDetailViewTestContext(api: api)
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+
+        let previous = nativeViewModel.attributedContent
+        nativeViewModel.attributedContent = AttributedString("Updated from edit mode")
+        nativeViewModel.handleContentChange(previous: previous)
+
+        context.makeView().handleCloseShortcut()
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertEqual(api.updateCallCount, 1)
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertEqual(context.editorViewModel.content, "Updated from edit mode")
+        XCTAssertEqual(context.notesViewModel.activeNote?.plainText, "Updated from edit mode")
+    }
+
+    func testEscapeFromEditorPreservesUnsavedContentWhenSaveFails() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = await makeNotesDetailViewTestContext(api: NotesDetailViewFailingNotesAPI())
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+        let view = context.makeView()
+        let container = AttributedNoteEditorContainer(
+            editorViewModel: context.editorViewModel,
+            maxContentWidth: 640,
+            onEscape: view.handleEscapeKey
         )
 
-        XCTAssertEqual(view.displayTitle, "Semantic title")
-    }
-}
+        let previous = nativeViewModel.attributedContent
+        nativeViewModel.attributedContent = AttributedString("Unsaved latest text")
+        nativeViewModel.handleContentChange(previous: previous)
 
-@MainActor
-private struct NotesDetailViewTestNetworkStatus: NetworkStatusProviding {
-    let isNetworkAvailable: Bool
-    let isOffline: Bool = false
-}
-
-@MainActor
-private struct NotesDetailViewMockNotesAPI: NotesProviding {
-    func listTree() async throws -> FileTree { FileTree(children: []) }
-    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
-        _ = limit
-        _ = offset
-        return FileTree(children: [])
-    }
-    func getNote(id: String) async throws -> NotePayload {
-        _ = id
-        throw NotesDetailViewTestError.forced
-    }
-    func search(query: String, limit: Int) async throws -> [FileNode] {
-        _ = query
-        _ = limit
-        return []
-    }
-    func updateNote(id: String, content: String) async throws -> NotePayload {
-        _ = id
-        _ = content
-        throw NotesDetailViewTestError.forced
-    }
-
-    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
-        try await updateNote(
-            id: id,
-            content: NotesSemanticDocumentProjection.plainText(from: document)
+        XCTAssertEqual(
+            container.handleEscapeKey(
+                document: nativeViewModel.currentPersistenceSnapshot().document
+            ),
+            .handled
         )
-    }
-    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
-        _ = request
-        throw NotesDetailViewTestError.forced
-    }
-    func moveNote(id: String, folder: String) async throws -> NotePayload {
-        _ = id
-        _ = folder
-        throw NotesDetailViewTestError.forced
-    }
-    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
-        _ = id
-        _ = archived
-        throw NotesDetailViewTestError.forced
-    }
-    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
-        _ = id
-        _ = pinned
-        throw NotesDetailViewTestError.forced
-    }
-    func updatePinnedOrder(ids: [String]) async throws {
-        _ = ids
-    }
-    func deleteNote(id: String) async throws -> NotePayload {
-        _ = id
-        throw NotesDetailViewTestError.forced
-    }
-    func createFolder(path: String) async throws { _ = path }
-    func renameFolder(oldPath: String, newName: String) async throws {
-        _ = oldPath
-        _ = newName
-    }
-    func moveFolder(oldPath: String, newParent: String) async throws {
-        _ = oldPath
-        _ = newParent
-    }
-    func deleteFolder(path: String) async throws { _ = path }
-}
+        await waitUntil {
+            context.editorViewModel.presentationMode == .read
+        }
 
-private enum NotesDetailViewTestError: Error {
-    case forced
+        let cachedDocument = try XCTUnwrap(
+            NotesSemanticDocumentCodec.decode(context.editorViewModel.canonicalContent)
+        )
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertEqual(context.editorViewModel.content, "Unsaved latest text")
+        XCTAssertEqual(
+            NotesSemanticDocumentProjection.plainText(from: cachedDocument),
+            "Unsaved latest text"
+        )
+        XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
+    }
+
+    func testMountedViewCloseShortcutEventReturnsEditModeToRead() async throws {
+        let context = await makeNotesDetailViewTestContext()
+        context.editorViewModel.enterEditMode()
+        let environment = makeNotesDetailTestEnvironment()
+        _ = mount(context.makeView(), environment: environment)
+        await Task.yield()
+        environment.activeSection = .notes
+        environment.focusedSection = .notes
+        environment.focusedWorkspacePane = .primary
+
+        environment.emitShortcutAction(.closeItem)
+        await waitUntil {
+            context.editorViewModel.presentationMode == .read
+        }
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertNotNil(context.notesViewModel.activeNote)
+    }
+
+    func testHandleCloseShortcutPreservesUnsavedContentWithoutExplicitDocumentWhenSaveFails() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = await makeNotesDetailViewTestContext(api: NotesDetailViewFailingNotesAPI())
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+
+        let previous = nativeViewModel.attributedContent
+        nativeViewModel.attributedContent = AttributedString("Shortcut unsaved text")
+        nativeViewModel.handleContentChange(previous: previous)
+
+        context.makeView().handleCloseShortcut()
+        await waitUntil {
+            context.editorViewModel.presentationMode == .read
+        }
+
+        let cachedDocument = try XCTUnwrap(
+            NotesSemanticDocumentCodec.decode(context.editorViewModel.canonicalContent)
+        )
+        XCTAssertEqual(context.editorViewModel.content, "Shortcut unsaved text")
+        XCTAssertEqual(
+            NotesSemanticDocumentProjection.plainText(from: cachedDocument),
+            "Shortcut unsaved text"
+        )
+        XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
+    }
+
+    func testMountedViewCloseShortcutEventClosesReadModeNote() async throws {
+        let context = await makeNotesDetailViewTestContext()
+        let environment = makeNotesDetailTestEnvironment()
+        _ = mount(context.makeView(), environment: environment)
+        await Task.yield()
+        environment.activeSection = .notes
+        environment.focusedSection = .notes
+        environment.focusedWorkspacePane = .primary
+
+        environment.emitShortcutAction(.closeItem)
+        await waitUntil {
+            context.editorViewModel.currentNoteId == nil
+        }
+
+        XCTAssertNil(context.editorViewModel.currentNoteId)
+        XCTAssertNil(context.notesViewModel.activeNote)
+    }
+
+    func testAttributedNoteEditorContainerHandleEscapeInvokesCallbackWhenNoteOpen() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = await makeNotesDetailViewTestContext()
+        var didInvokeEscape = false
+        let container = AttributedNoteEditorContainer(
+            editorViewModel: context.editorViewModel,
+            maxContentWidth: 640,
+            onEscape: { _ in didInvokeEscape = true }
+        )
+
+        let result = container.handleEscapeKey(
+            document: NotesSemanticDocumentProjection.document(fromPlainText: "Hello world")
+        )
+
+        XCTAssertEqual(result, .handled)
+        XCTAssertTrue(didInvokeEscape)
+    }
 }

@@ -4,6 +4,7 @@ import SwiftUI
 struct AttributedNoteEditorContainer: View {
     @ObservedObject var editorViewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
+    let onEscape: ((NotesSemanticDocument) -> Void)?
     @EnvironmentObject var environment: AppEnvironment
 
     @StateObject private var nativeViewModel = NativeNoteEditorViewModel()
@@ -49,9 +50,7 @@ struct AttributedNoteEditorContainer: View {
             nativeViewModel.setBaseFontSize(NoteTextTypography.defaultBodyFontSize(for: option))
         }
         .onKeyPress(.escape) {
-            guard editorViewModel.currentNoteId != nil else { return .ignored }
-            environment.emitShortcutAction(.closeItem)
-            return .handled
+            handleEscapeKey(document: nativeViewModel.currentPersistenceSnapshot().document)
         }
     }
 
@@ -73,5 +72,11 @@ struct AttributedNoteEditorContainer: View {
     private func applyAutosaveDelay(isOffline: Bool) {
         _ = isOffline
         nativeViewModel.autosaveDelay = 1.5
+    }
+
+    func handleEscapeKey(document: NotesSemanticDocument? = nil) -> KeyPress.Result {
+        guard editorViewModel.currentNoteId != nil else { return .ignored }
+        onEscape?(document ?? nativeViewModel.currentPersistenceSnapshot().document)
+        return .handled
     }
 }

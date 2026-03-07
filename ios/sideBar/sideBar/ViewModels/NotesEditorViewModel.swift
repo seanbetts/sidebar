@@ -304,6 +304,18 @@ public final class NotesEditorViewModel: ObservableObject {
         return content.isEmpty ? fallback : content
     }
 
+    public func currentSemanticDocumentSnapshot() -> NotesSemanticDocument {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            if let nativeEditorViewModel {
+                return nativeEditorViewModel.currentPersistenceSnapshot().document
+            }
+        }
+        if let document = NotesSemanticDocumentCodec.decode(canonicalContent) {
+            return document
+        }
+        return NotesSemanticDocumentProjection.document(fromPlainText: content)
+    }
+
     public var isEditingNote: Bool {
         presentationMode == .edit
     }
