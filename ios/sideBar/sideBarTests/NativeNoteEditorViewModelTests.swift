@@ -171,6 +171,24 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         )
     }
 
+    func testSetInsertionPointUsesUTF16OffsetsForComposedEmoji() async {
+        let viewModel = NativeNoteEditorViewModel()
+        let text = "A👍🏽B"
+        viewModel.loadText(text)
+
+        viewModel.setInsertionPoint(characterOffset: 5)
+
+        assertInsertionPoint(
+            viewModel.selectionSnapshot(in: viewModel.attributedContent),
+            equals: 2
+        )
+        assertInsertionPointUTF16Offset(
+            viewModel.selection,
+            in: viewModel.attributedContent,
+            equals: 5
+        )
+    }
+
     func testHandleContentChangeMarksUnsavedImmediately() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.autosaveDelay = 2.0
@@ -226,4 +244,23 @@ private func assertInsertionPoint(
         return XCTFail("Expected insertion point selection", file: file, line: line)
     }
     XCTAssertEqual(offset, expectedOffset, file: file, line: line)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func assertInsertionPointUTF16Offset(
+    _ selection: AttributedTextSelection,
+    in text: AttributedString,
+    equals expectedOffset: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    let string = String(text.characters)
+    switch selection.indices(in: text) {
+    case .insertionPoint(let index):
+        let characterOffset = text.characters.distance(from: text.startIndex, to: index)
+        let stringIndex = string.index(string.startIndex, offsetBy: characterOffset)
+        XCTAssertEqual(stringIndex.utf16Offset(in: string), expectedOffset, file: file, line: line)
+    case .ranges:
+        XCTFail("Expected insertion point selection", file: file, line: line)
+    }
 }

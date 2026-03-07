@@ -16,6 +16,7 @@ public final class NotesEditorViewModel: ObservableObject {
     /// One-shot selection target consumed when the native editor enters edit mode.
     public enum PendingEditSelectionTarget: Equatable {
         case start
+        /// UTF-16 text-system offset produced by the read surface hit-testing APIs.
         case characterOffset(Int)
     }
 
@@ -368,9 +369,18 @@ public final class NotesEditorViewModel: ObservableObject {
 
     private func syncNativeEditorContent(canonicalContent: String, plainText: String) {
         if #available(iOS 26.0, macOS 26.0, *) {
-            guard let nativeEditorViewModel else { return }
-            guard nativeEditorViewModel.currentCanonicalContent() != canonicalContent else { return }
+            guard let nativeEditorViewModel,
+                  nativeEditorViewModel.currentCanonicalContent() != canonicalContent else { return }
+            let selectionSnapshot = presentationMode == .edit && pendingEditSelectionTarget == nil ?
+                nativeEditorViewModel.selectionSnapshot(in: nativeEditorViewModel.attributedContent) : nil
             nativeEditorViewModel.loadDocument(canonicalContent: canonicalContent, plainText: plainText)
+            if let target = consumePendingEditSelectionTarget() {
+                nativeEditorViewModel.applySelectionTarget(target)
+            } else if let selectionSnapshot {
+                let content = nativeEditorViewModel.attributedContent
+                nativeEditorViewModel.selection = nativeEditorViewModel.selection(from: selectionSnapshot, in: content)
+                nativeEditorViewModel.lastSelectionLineSpan = nativeEditorViewModel.selectionLineSpan(in: content)
+            }
             alignPersistenceBaseline(with: nativeEditorViewModel)
         }
     }

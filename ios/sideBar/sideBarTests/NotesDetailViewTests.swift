@@ -295,6 +295,43 @@ final class NotesDetailViewTests: XCTestCase {
             equals: 1
         )
     }
+
+    func testSameNoteReloadPreservesUnicodeCaretAfterPendingTargetIsConsumed() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let initialText = "A👍🏽B"
+        let refreshedText = "A👍🏽BC"
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: initialText))
+        let nativeViewModel = NativeNoteEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode(at: .characterOffset(5))
+        var loadedNoteId: String?
+
+        loadedNoteId = AttributedNoteEditorContainer.loadNoteIfNeeded(
+            editorViewModel: context.editorViewModel,
+            nativeViewModel: nativeViewModel,
+            loadedNoteId: loadedNoteId
+        )
+
+        assertInsertionPointUTF16Offset(
+            nativeViewModel.selection,
+            in: nativeViewModel.attributedContent,
+            equals: 5
+        )
+        XCTAssertNil(context.editorViewModel.consumePendingEditSelectionTarget())
+
+        context.store.applyEditorUpdate(makeTestNote(id: "n1", plainText: refreshedText))
+        await Task.yield()
+        await Task.yield()
+
+        assertInsertionPointUTF16Offset(
+            nativeViewModel.selection,
+            in: nativeViewModel.attributedContent,
+            equals: 5
+        )
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -308,4 +345,23 @@ private func assertInsertionPoint(
         return XCTFail("Expected insertion point selection", file: file, line: line)
     }
     XCTAssertEqual(offset, expectedOffset, file: file, line: line)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func assertInsertionPointUTF16Offset(
+    _ selection: AttributedTextSelection,
+    in text: AttributedString,
+    equals expectedOffset: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    let string = String(text.characters)
+    switch selection.indices(in: text) {
+    case .insertionPoint(let index):
+        let characterOffset = text.characters.distance(from: text.startIndex, to: index)
+        let stringIndex = string.index(string.startIndex, offsetBy: characterOffset)
+        XCTAssertEqual(stringIndex.utf16Offset(in: string), expectedOffset, file: file, line: line)
+    case .ranges:
+        XCTFail("Expected insertion point selection", file: file, line: line)
+    }
 }
