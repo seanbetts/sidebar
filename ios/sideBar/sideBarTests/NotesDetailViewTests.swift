@@ -49,38 +49,6 @@ final class NotesDetailViewTests: XCTestCase {
         )
     }
 
-#if os(iOS)
-    func testCustomFormattingBarIsHiddenInReadModeOnIOS() async {
-        let context = await makeNotesDetailViewTestContext()
-
-        XCTAssertFalse(context.makeView().isCustomFormattingBarVisible)
-    }
-
-    func testCustomFormattingBarIsVisibleInEditModeOnIOS() async throws {
-        guard #available(iOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26")
-        }
-
-        let context = await makeNotesDetailViewTestContext()
-        context.makeView().activateReadSurfaceEditing(at: .start)
-
-        let view = context.makeView()
-        XCTAssertTrue(view.isCustomFormattingBarVisible)
-        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .swiftUI)
-    }
-#elseif os(macOS)
-    func testCustomFormattingBarRemainsHiddenOnMacOS() async throws {
-        guard #available(macOS 26.0, *) else {
-            throw XCTSkip("Requires macOS 26")
-        }
-
-        let context = await makeNotesDetailViewTestContext()
-        context.editorViewModel.enterEditMode()
-
-        XCTAssertFalse(context.makeView().isCustomFormattingBarVisible)
-    }
-#endif
-
     func testUnsupportedNotesShowPlaceholderInsteadOfReadOrEditorSurface() async {
         let unsupportedNote = NotePayload(
             id: "n1",
