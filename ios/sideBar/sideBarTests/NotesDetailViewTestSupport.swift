@@ -38,6 +38,12 @@ enum NotesDetailViewTestRetainer {
     static var hostingControllers: [UIHostingController<AnyView>] = []
     static var hostingWindows: [UIWindow] = []
     #endif
+
+    static func reset() {
+        environments.removeAll()
+        hostingControllers.removeAll()
+        hostingWindows.removeAll()
+    }
 }
 
 @MainActor
@@ -139,16 +145,39 @@ func mount(
 }
 
 @MainActor
+@discardableResult
+func mount(
+    _ container: AttributedNoteEditorContainer,
+    environment: AppEnvironment,
+    frame: CGRect = CGRect(x: 0, y: 0, width: 390, height: 844)
+) -> UIHostingController<AnyView> {
+    let controller = UIHostingController(
+        rootView: AnyView(container.environmentObject(environment))
+    )
+    let window = makeHostingWindow(frame: frame)
+    window.rootViewController = controller
+    window.makeKeyAndVisible()
+    let rootView = controller.view!
+    rootView.frame = frame
+    rootView.setNeedsLayout()
+    rootView.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    NotesDetailViewTestRetainer.hostingControllers.append(controller)
+    NotesDetailViewTestRetainer.hostingWindows.append(window)
+    return controller
+}
+
+@MainActor
 private func makeHostingWindow(frame: CGRect) -> UIWindow {
-    if let windowScene = UIApplication.shared.connectedScenes
+    guard let windowScene = UIApplication.shared.connectedScenes
         .compactMap({ $0 as? UIWindowScene })
-        .first {
-        let window = UIWindow(windowScene: windowScene)
-        window.frame = frame
-        return window
+        .first else {
+        fatalError("Expected UIWindowScene for mounted notes detail tests")
     }
 
-    return UIWindow(frame: frame)
+    let window = UIWindow(windowScene: windowScene)
+    window.frame = frame
+    return window
 }
 #endif
 

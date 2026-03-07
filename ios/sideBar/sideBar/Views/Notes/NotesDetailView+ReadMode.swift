@@ -30,6 +30,22 @@ extension NotesDetailView {
         isShowingEditorSurface
     }
 
+    var isCustomFormattingBarVisible: Bool {
+        #if os(iOS)
+        isFloatingFormattingBarVisible
+        #else
+        false
+        #endif
+    }
+
+    var isFloatingFormattingBarVisible: Bool {
+        #if os(iOS)
+        formattingBarPresentation == .floatingTopTrailing
+        #else
+        false
+        #endif
+    }
+
     var unsupportedContentPlaceholderTitle: String {
         NotesUnsupportedContent.placeholderTitle
     }
