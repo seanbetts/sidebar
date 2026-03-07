@@ -346,6 +346,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     public func exitEditModeToRead() {
+        pendingEditSelectionTarget = nil
         presentationMode = .read
     }
 
