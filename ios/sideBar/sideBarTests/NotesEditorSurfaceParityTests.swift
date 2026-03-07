@@ -57,7 +57,7 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         )
     }
 
-    func testReadSurfaceFormattingMatchesEditorSurfaceForSameSemanticNoteOnIOS() throws {
+    func testReadSurfaceFormattingMatchesEditorSurfaceForSameSemanticNoteOnIOS() async throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -70,28 +70,39 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
                 ])
             ]
         )
-        let baseFontSize: CGFloat = 18
+        let note = NotePayload(
+            id: "n1",
+            name: "Formatting Parity",
+            document: document,
+            plainText: "Bold Italic Underline",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
 
-        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
-            from: document,
-            baseFontSize: baseFontSize
-        )
-        let editorViewModel = NativeNoteEditorViewModel()
-        editorViewModel.setBaseFontSize(baseFontSize)
-        editorViewModel.loadDocument(
-            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
-            plainText: NotesSemanticDocumentProjection.plainText(from: document)
-        )
-        let editorAttributed = try XCTUnwrap(
-            try? NSAttributedString(editorViewModel.attributedContent, including: \.noteTextEditor)
+        let readController = mount(context.makeView(), environment: environment)
+        let readTextView = try XCTUnwrap(findDescendantTextView(in: readController.view))
+        let readAttributed = try attributedText(
+            in: readTextView,
+            expectedString: "Bold Italic Underline"
         )
 
-        XCTAssertEqual(readAttributed.string, editorAttributed.string)
+        context.editorViewModel.enterEditMode()
+        let editController = mount(context.makeView(), environment: environment)
+        let editTextView = try XCTUnwrap(findDescendantTextView(in: editController.view))
+        let editAttributed = try attributedText(
+            in: editTextView,
+            expectedString: "Bold Italic Underline"
+        )
+
+        XCTAssertEqual(readAttributed.string, editAttributed.string)
         XCTAssertEqual(readAttributed.string, "Bold Italic Underline")
 
-        assertMatchingFontTraits(readAttributed, editorAttributed, at: 0)
-        assertMatchingFontTraits(readAttributed, editorAttributed, at: 5)
-        assertMatchingUnderline(readAttributed, editorAttributed, at: 12)
+        assertMatchingFontTraits(readTextView, editTextView, at: 0)
+        assertMatchingFontTraits(readTextView, editTextView, at: 5)
+        assertMatchingUnderline(readTextView, editTextView, at: 12)
     }
 
     func testReadSurfaceBoldFontMatchesMountedEditorSurfaceExactlyOnIOS() async throws {
@@ -117,12 +128,14 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
 
         let readController = mount(context.makeView(), environment: environment)
         let readTextView = try XCTUnwrap(findDescendantTextView(in: readController.view))
-        let readFont = try XCTUnwrap(readTextView.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
+        _ = try attributedText(in: readTextView, expectedString: "Bold")
+        let readFont = try fontAttribute(in: readTextView, at: 0)
 
         context.editorViewModel.enterEditMode()
         let editController = mount(context.makeView(), environment: environment)
         let editTextView = try XCTUnwrap(findDescendantTextView(in: editController.view))
-        let editFont = try XCTUnwrap(editTextView.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
+        _ = try attributedText(in: editTextView, expectedString: "Bold")
+        let editFont = try fontAttribute(in: editTextView, at: 0)
 
         XCTAssertEqual(readFont.fontName, editFont.fontName)
         XCTAssertEqual(readFont.pointSize, editFont.pointSize, accuracy: 0.001)
@@ -130,36 +143,114 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
 }
 
 private func assertMatchingFontTraits(
-    _ lhs: NSAttributedString,
-    _ rhs: NSAttributedString,
+    _ lhs: UITextView,
+    _ rhs: UITextView,
     at location: Int,
     file: StaticString = #filePath,
     line: UInt = #line
 ) {
-    let lhsFont = lhs.attribute(.font, at: location, effectiveRange: nil) as? UIFont
-    let rhsFont = rhs.attribute(.font, at: location, effectiveRange: nil) as? UIFont
+    do {
+        let lhsFont = try fontAttribute(in: lhs, at: location, file: file, line: line)
+        let rhsFont = try fontAttribute(in: rhs, at: location, file: file, line: line)
+        XCTAssertEqual(
+            notePlatformFontTraits(from: lhsFont),
+            notePlatformFontTraits(from: rhsFont),
+            file: file,
+            line: line
+        )
+    } catch {
+        return
+    }
+}
 
-    XCTAssertEqual(
-        lhsFont.map(notePlatformFontTraits(from:)),
-        rhsFont.map(notePlatformFontTraits(from:)),
+private func assertMatchingUnderline(
+    _ lhs: UITextView,
+    _ rhs: UITextView,
+    at location: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    do {
+        XCTAssertEqual(
+            try underlineAttribute(in: lhs, at: location, file: file, line: line),
+            try underlineAttribute(in: rhs, at: location, file: file, line: line),
+            file: file,
+            line: line
+        )
+    } catch {
+        return
+    }
+}
+
+private func attributedText(
+    in textView: UITextView,
+    expectedString: String,
+    timeout: TimeInterval = 0.5,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> NSAttributedString {
+    let deadline = Date().addingTimeInterval(timeout)
+
+    while Date() <= deadline {
+        let attributedText = textView.attributedText ?? NSAttributedString()
+        if attributedText.string == expectedString {
+            return attributedText
+        }
+        RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+    }
+
+    XCTFail(
+        "Expected mounted text view content '\(expectedString)', got '\(textView.attributedText.string)'",
+        file: file,
+        line: line
+    )
+    throw NotesEditorSurfaceParityTestError.missingAttribute
+}
+
+private func fontAttribute(
+    in textView: UITextView,
+    at location: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> UIFont {
+    let attributedText = textView.attributedText ?? NSAttributedString()
+    guard attributedText.length > location else {
+        XCTFail(
+            "Expected attributed text length > \(location), got \(attributedText.length)",
+            file: file,
+            line: line
+        )
+        throw NotesEditorSurfaceParityTestError.missingAttribute
+    }
+
+    return try XCTUnwrap(
+        attributedText.attribute(.font, at: location, effectiveRange: nil) as? UIFont,
         file: file,
         line: line
     )
 }
 
-private func assertMatchingUnderline(
-    _ lhs: NSAttributedString,
-    _ rhs: NSAttributedString,
+private func underlineAttribute(
+    in textView: UITextView,
     at location: Int,
     file: StaticString = #filePath,
     line: UInt = #line
-) {
-    XCTAssertEqual(
-        lhs.attribute(.underlineStyle, at: location, effectiveRange: nil) as? Int,
-        rhs.attribute(.underlineStyle, at: location, effectiveRange: nil) as? Int,
-        file: file,
-        line: line
-    )
+) throws -> Int? {
+    let attributedText = textView.attributedText ?? NSAttributedString()
+    guard attributedText.length > location else {
+        XCTFail(
+            "Expected attributed text length > \(location), got \(attributedText.length)",
+            file: file,
+            line: line
+        )
+        throw NotesEditorSurfaceParityTestError.missingAttribute
+    }
+
+    return attributedText.attribute(.underlineStyle, at: location, effectiveRange: nil) as? Int
+}
+
+private enum NotesEditorSurfaceParityTestError: Error {
+    case missingAttribute
 }
 
 @MainActor
