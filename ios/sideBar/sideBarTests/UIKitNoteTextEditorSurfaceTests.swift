@@ -80,6 +80,34 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertTrue(context.editorViewModel.isFormattingActive(.bold))
     }
 
+    func testEditableSurfaceBecomesFirstResponderOnMount() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+
+        let textView = try mountTextView(viewModel: viewModel)
+
+        XCTAssertTrue(textView.isFirstResponder)
+    }
+
+    func testUIKitSurfaceUsesReadModeTextPaddingInsets() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+
+        let textView = try mountTextView(viewModel: viewModel)
+
+        XCTAssertEqual(textView.textContainer.lineFragmentPadding, 0)
+        XCTAssertEqual(textView.textContainerInset.left, NoteTextLayout.horizontalPadding)
+        XCTAssertEqual(textView.textContainerInset.right, NoteTextLayout.horizontalPadding)
+        XCTAssertEqual(textView.textContainerInset.top, NoteTextLayout.verticalPadding)
+        XCTAssertEqual(textView.textContainerInset.bottom, NoteTextLayout.verticalPadding)
+    }
+
     func testUIKitSelectionChangesFlowBackIntoCanonicalSelectionUsingUTF16Offsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -245,15 +273,15 @@ private func findTextView(in view: UIView) -> UITextView? {
 
 @MainActor
 private func makeHostingWindow(frame: CGRect) -> UIWindow {
-    if let windowScene = UIApplication.shared.connectedScenes
+    guard let windowScene = UIApplication.shared.connectedScenes
         .compactMap({ $0 as? UIWindowScene })
-        .first {
-        let window = UIWindow(windowScene: windowScene)
-        window.frame = frame
-        return window
+        .first else {
+        fatalError("Expected UIWindowScene for UIKit notes editor surface tests")
     }
 
-    return UIWindow(frame: frame)
+    let window = UIWindow(windowScene: windowScene)
+    window.frame = frame
+    return window
 }
 
 @available(iOS 26.0, *)

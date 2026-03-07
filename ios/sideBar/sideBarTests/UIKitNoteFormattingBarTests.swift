@@ -114,6 +114,18 @@ final class UIKitNoteFormattingBarTests: XCTestCase {
         XCTAssertFalse(bar.button(for: .italic).isSelected)
         XCTAssertFalse(bar.button(for: .underline).isSelected)
     }
+
+    func testBarReportsCompactIntrinsicHeightForTopAttachedLayout() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(configuration: .disabled)
+        let height = bar.intrinsicContentSize.height
+
+        XCTAssertGreaterThan(height, 0)
+        XCTAssertLessThan(height, 80)
+    }
 }
 
 @available(iOS 26.0, *)

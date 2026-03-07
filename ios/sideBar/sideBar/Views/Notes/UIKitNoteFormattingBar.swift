@@ -43,6 +43,10 @@ final class UIKitNoteFormattingBar: UIView {
         }
     }
 
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: UIView.noIntrinsicMetric, height: 52)
+    }
+
     func button(for formatting: NoteFormatting) -> UIButton {
         switch formatting {
         case .bold:
@@ -66,6 +70,14 @@ struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIKitNoteFormattingBar, context: Context) {
         uiView.apply(configuration: configuration)
+    }
+
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        uiView: UIKitNoteFormattingBar,
+        context: Context
+    ) -> CGSize? {
+        CGSize(width: proposal.width ?? UIView.noIntrinsicMetric, height: uiView.intrinsicContentSize.height)
     }
 }
 

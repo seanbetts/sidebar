@@ -65,6 +65,13 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.allowsEditingTextAttributes = true
         textView.backgroundColor = .clear
         textView.accessibilityIdentifier = "notes-editor-text-view"
+        textView.textContainer.lineFragmentPadding = 0
+        textView.textContainerInset = UIEdgeInsets(
+            top: NoteTextLayout.verticalPadding,
+            left: NoteTextLayout.horizontalPadding,
+            bottom: NoteTextLayout.verticalPadding,
+            right: NoteTextLayout.horizontalPadding
+        )
         textView.delegate = context.coordinator
         textView.textFormattingConfiguration = nil
         if let formattingBarConfiguration {
@@ -75,6 +82,15 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
     func updateUIView(_ textView: UITextView, context: Context) {
         textView.isEditable = isEditable
+        if isEditable,
+           textView.window != nil,
+           textView.isFirstResponder == false,
+           context.coordinator.didRequestFirstResponder == false {
+            context.coordinator.didRequestFirstResponder = true
+            DispatchQueue.main.async {
+                textView.becomeFirstResponder()
+            }
+        }
         if let accessoryTextView = textView as? AccessoryTextView {
             let needsAccessoryReload = configureAccessoryView(
                 for: accessoryTextView,
@@ -175,6 +191,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         let viewModel: NativeNoteEditorViewModel
         var isApplyingProgrammaticText = false
         var isApplyingProgrammaticSelection = false
+        var didRequestFirstResponder = false
 
         init(viewModel: NativeNoteEditorViewModel) {
             self.viewModel = viewModel
