@@ -137,6 +137,25 @@ final class NotesAPITests: XCTestCase {
         XCTAssertEqual(rawPayload["document_version"] as? Int, 1)
     }
 
+    func testNotePayloadRejectsLegacyOnlyResponsePayload() {
+        let json = """
+        {
+          "id": "n1",
+          "name": "Title.md",
+          "content": "legacy transport",
+          "plain_text": "Decoded body",
+          "content_format": "rtf",
+          "path": "n1",
+          "modified": 1,
+          "created": 1
+        }
+        """
+
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(NotePayload.self, from: Data(json.utf8))
+        )
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

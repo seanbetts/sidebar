@@ -51,9 +51,7 @@ public final class NotesRuntime: ObservableObject {
             "id": activeNote.id,
             "title": activeNote.name,
             "path": activeNote.path,
-            "content": noteText,
-            "plain_text": noteText,
-            "content_format": "plain_text"
+            "plain_text": noteText
         ]
     }
 }

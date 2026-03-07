@@ -884,9 +884,9 @@ extension NotesEditorViewModelTests {
         let runtime = NotesRuntime(viewModel: context.notesViewModel, editorViewModel: context.viewModel)
         let contextPayload = runtime.openNoteContext()
 
-        XCTAssertEqual(contextPayload?["content"] as? String, "Local unsaved body")
         XCTAssertEqual(contextPayload?["plain_text"] as? String, "Local unsaved body")
-        XCTAssertEqual(contextPayload?["content_format"] as? String, "plain_text")
+        XCTAssertNil(contextPayload?["content"])
+        XCTAssertNil(contextPayload?["content_format"])
     }
 
     func testAppliesUnsyncedDraftWithoutConflictResolution() async throws {
