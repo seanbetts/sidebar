@@ -372,7 +372,7 @@ final class NotesDetailViewTests: XCTestCase {
         )
     }
 
-    func testEditModeFormattingToolbarKeepsSwiftUIEditorSurfaceForPhaseOne() async throws {
+    func testEditModeFormattingToolbarDoesNotTreatSwiftUISurfaceAsPermanentArchitecture() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -383,7 +383,7 @@ final class NotesDetailViewTests: XCTestCase {
         let view = context.makeView()
 
         XCTAssertTrue(view.isFormattingToolbarVisible)
-        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .swiftUI)
+        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .uiKit)
     }
 
     func testFormattingCommandsUpdateCanonicalSemanticSnapshotWithoutWrapperOnlyState() async throws {
