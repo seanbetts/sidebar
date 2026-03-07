@@ -10,16 +10,20 @@ import UIKit
 @available(iOS 26.0, macOS 26.0, *)
 final class NotesEditorSurfaceParityTests: XCTestCase {
     func testMakePlatformTextViewDoesNotAutoAdjustForContentSizeCategory() throws {
-        let textView = try mountReadTextView(
-            plainText: "One\n\nTwo",
-            baseFontSize: 16,
+        let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\n\nTwo")
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let textView = makeReadTextView(
+            attributedContent: readAttributed,
             frame: CGRect(x: 0, y: 0, width: 420, height: 240)
         )
 
         XCTAssertEqual(textView.adjustsFontForContentSizeCategory, false)
     }
 
-    func testNotesDetailViewReadAndEditBlankLineGapMatchForFormattedParagraphsOnIOS() async throws {
+    func testConstrainedEditorDocumentAppliesBodyParagraphStyleAcrossBlankFormattedParagraphsOnIOS() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -37,24 +41,19 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
             modified: nil,
             created: nil
         )
-        let context = await makeNotesDetailViewTestContext(note: note)
-        let environment = makeNotesDetailTestEnvironment()
-
-        let readController = mount(context.makeView(), environment: environment)
-        let readTextView = try XCTUnwrap(findDescendantTextView(in: readController.view))
-        let readGap = try lineGap(in: readTextView, fromCharacterAt: 0, toCharacterAt: 6)
-
-        context.editorViewModel.enterEditMode()
-        let editController = mount(context.makeView(), environment: environment)
-        let editTextView = try XCTUnwrap(findDescendantTextView(in: editController.view))
-        let editGap = try lineGap(in: editTextView, fromCharacterAt: 0, toCharacterAt: 6)
-
-        XCTAssertEqual(
-            readGap,
-            editGap,
-            accuracy: 1.0,
-            "formatted detail readGap=\(readGap) editGap=\(editGap)"
+        let editorDocument = try constrainedEditorDocument(
+            document: note.document,
+            baseFontSize: NoteTextTypography.defaultBodyFontSize
         )
+        let attributedEditorDocument = NSAttributedString(editorDocument)
+        let expectedStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
+            baseFontSize: NoteTextTypography.defaultBodyFontSize
+        )
+
+        XCTAssertEqual(attributedEditorDocument.string, "Bold\n\nItalic")
+        try assertParagraphStyle(attributedEditorDocument, matches: expectedStyle, at: 0)
+        try assertParagraphStyle(attributedEditorDocument, matches: expectedStyle, at: 4)
+        try assertParagraphStyle(attributedEditorDocument, matches: expectedStyle, at: 6)
     }
 
     func testReadSurfaceFormattingMatchesEditorSurfaceForSameSemanticNoteOnIOS() throws {
@@ -112,6 +111,34 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         XCTAssertEqual(readFont.pointSize, expectedFont.pointSize, accuracy: 0.001)
         XCTAssertEqual(readTraits.bold, true)
         XCTAssertEqual(readTraits.italic, false)
+    }
+
+    func testIOSCanMoveToUIKitEditorSurfaceWithoutChangingCanonicalParityContracts() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([
+                    .init(text: "Bold", marks: [.bold]),
+                    .init(text: " ", marks: []),
+                    .init(text: "Italic", marks: [.italic])
+                ])
+            ]
+        )
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        let editDocument = try constrainedEditorDocument(
+            document: document,
+            baseFontSize: baseFontSize
+        )
+
+        XCTAssertEqual(readAttributed.string, String(editDocument.characters))
+        try assertMatchingFontTraits(readAttributed, editDocument, at: 0)
+        try assertMatchingFontTraits(readAttributed, editDocument, at: 5)
+        XCTAssertFalse(try attributedNoteEditorContainerMountsSwiftUISurfaceDirectly())
     }
 }
 
@@ -211,6 +238,47 @@ private func underlineAttribute(
     return attributedText.attribute(.underlineStyle, at: location, effectiveRange: nil) as? Int
 }
 
+private func assertParagraphStyle(
+    _ attributedText: NSAttributedString,
+    matches expected: NSParagraphStyle,
+    at location: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws {
+    guard attributedText.length > location else {
+        XCTFail(
+            "Expected attributed text length > \(location), got \(attributedText.length)",
+            file: file,
+            line: line
+        )
+        throw NotesEditorSurfaceParityTestError.missingAttribute
+    }
+
+    let actual = try XCTUnwrap(
+        attributedText.attribute(.paragraphStyle, at: location, effectiveRange: nil) as? NSParagraphStyle,
+        file: file,
+        line: line
+    )
+    XCTAssertEqual(actual.lineSpacing, expected.lineSpacing, accuracy: 0.001, file: file, line: line)
+    XCTAssertEqual(
+        actual.paragraphSpacingBefore,
+        expected.paragraphSpacingBefore,
+        accuracy: 0.001,
+        file: file,
+        line: line
+    )
+    XCTAssertEqual(actual.paragraphSpacing, expected.paragraphSpacing, accuracy: 0.001, file: file, line: line)
+    XCTAssertEqual(actual.headIndent, expected.headIndent, accuracy: 0.001, file: file, line: line)
+    XCTAssertEqual(
+        actual.firstLineHeadIndent,
+        expected.firstLineHeadIndent,
+        accuracy: 0.001,
+        file: file,
+        line: line
+    )
+    XCTAssertEqual(actual.tailIndent, expected.tailIndent, accuracy: 0.001, file: file, line: line)
+}
+
 private enum NotesEditorSurfaceParityTestError: Error {
     case missingAttribute
 }
@@ -266,68 +334,43 @@ private func glyphRect(
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-private func mountReadTextView(
-    plainText: String,
+private func makeReadTextView(
+    attributedContent: NSAttributedString,
+    frame: CGRect
+) -> UITextView {
+    let textView = UITextView(frame: frame)
+    textView.backgroundColor = .clear
+    textView.isEditable = false
+    textView.isSelectable = true
+    textView.isScrollEnabled = true
+    textView.alwaysBounceVertical = true
+    textView.adjustsFontForContentSizeCategory = false
+    textView.attributedText = attributedContent
+    textView.setNeedsLayout()
+    textView.layoutIfNeeded()
+    return textView
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func makeEditorTextView(
+    document: NotesSemanticDocument,
     baseFontSize: CGFloat,
     frame: CGRect
 ) throws -> UITextView {
-    let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
-    let controller = UIHostingController(
-        rootView: AnyView(
-            SelectableNoteReadView(
-                document: document,
-                maxContentWidth: frame.width,
-                onActivateEditing: {}
-            )
+    let textView = UITextView(frame: frame)
+    textView.adjustsFontForContentSizeCategory = false
+    textView.isEditable = true
+    textView.isScrollEnabled = true
+    textView.backgroundColor = .clear
+    textView.attributedText = NSAttributedString(
+        try constrainedEditorDocument(
+            document: document,
+            baseFontSize: baseFontSize
         )
     )
-    _ = baseFontSize
-    return try mountHostedTextView(controller: controller, frame: frame)
-}
-
-@MainActor
-private func mountHostedTextView(
-    controller: UIHostingController<AnyView>,
-    frame: CGRect
-) throws -> UITextView {
-    let window = makeHostingWindow(frame: frame)
-    window.rootViewController = controller
-    window.makeKeyAndVisible()
-    controller.view.frame = frame
-    controller.view.setNeedsLayout()
-    controller.view.layoutIfNeeded()
-    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-    NotesDetailViewTestRetainer.hostingControllers.append(controller)
-    NotesDetailViewTestRetainer.hostingWindows.append(window)
-
-    return try XCTUnwrap(findDescendantTextView(in: controller.view))
-}
-
-@MainActor
-private func findDescendantTextView(in view: UIView) -> UITextView? {
-    if let textView = view as? UITextView {
-        return textView
-    }
-
-    for subview in view.subviews {
-        if let match = findDescendantTextView(in: subview) {
-            return match
-        }
-    }
-
-    return nil
-}
-
-@MainActor
-private func makeHostingWindow(frame: CGRect) -> UIWindow {
-    if let windowScene = UIApplication.shared.connectedScenes
-        .compactMap({ $0 as? UIWindowScene })
-        .first {
-        let window = UIWindow(windowScene: windowScene)
-        window.frame = frame
-        return window
-    }
-
-    return UIWindow(frame: frame)
+    textView.setNeedsLayout()
+    textView.layoutIfNeeded()
+    return textView
 }
 #endif
