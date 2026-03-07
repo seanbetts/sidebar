@@ -20,6 +20,11 @@ class ConversationCompactionService:
     _MAX_LINE_CHARS = 280
 
     @classmethod
+    def count_replayable_messages(cls, messages: list[dict] | None) -> int:
+        """Return how many stored messages still participate in replay."""
+        return len(cls._replayable_message_indices(list(messages or [])))
+
+    @classmethod
     def compact_conversation_history(
         cls,
         *,

@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
+from api.services.agent.conversation_compaction_service import (
+    ConversationCompactionService,
+)
 from api.services.conversation_service import ConversationService
 
 
@@ -58,6 +61,7 @@ class ConversationWithMessages(ConversationResponse):
 
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
+_MANUAL_COMPACTION_RECENT_REPLAY_MESSAGES = 2
 
 
 def _conversation_response(conversation) -> ConversationResponse:
@@ -131,6 +135,32 @@ def add_message(
         conversation_id,
         message.model_dump(),
     )
+
+    return _conversation_response(conversation)
+
+
+@router.post("/{conversation_id}/compact", response_model=ConversationResponse)
+def compact_conversation(
+    conversation_id: UUID,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    """Compact older replay history while preserving the most recent turns."""
+    conversation = ConversationService.get_conversation(db, user_id, conversation_id)
+    replayable_messages = ConversationCompactionService.count_replayable_messages(
+        conversation.messages
+    )
+    replay_messages_to_compact = max(
+        replayable_messages - _MANUAL_COMPACTION_RECENT_REPLAY_MESSAGES,
+        0,
+    )
+    if replay_messages_to_compact > 0:
+        conversation = ConversationCompactionService.compact_conversation_history(
+            db=db,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            replay_messages_to_compact=replay_messages_to_compact,
+        )
 
     return _conversation_response(conversation)
 

@@ -222,3 +222,82 @@ def test_search_conversations_ignores_hidden_bootstrap_messages(test_client, tes
         item["id"] == str(visible_conversation_id)
         for item in visible_response.json()
     )
+
+
+def test_compact_conversation_persists_hidden_summary(test_client, test_db):
+    conversation_id = uuid.uuid4()
+    timestamp = datetime.now(UTC).isoformat()
+    conversation = Conversation(
+        id=conversation_id,
+        user_id=TEST_USER_ID,
+        title="Compaction Chat",
+        messages=[
+            {
+                "id": "bootstrap-1",
+                "role": "user",
+                "content": "I am Sam.",
+                "status": "complete",
+                "timestamp": timestamp,
+                "visibility": "hidden",
+                "kind": "conversation_bootstrap",
+            },
+            {
+                "id": "msg-user-1",
+                "role": "user",
+                "content": "Old question",
+                "status": "complete",
+                "timestamp": timestamp,
+            },
+            {
+                "id": "msg-assistant-1",
+                "role": "assistant",
+                "content": "Old answer",
+                "status": "complete",
+                "timestamp": timestamp,
+            },
+            {
+                "id": "msg-user-2",
+                "role": "user",
+                "content": "Recent question",
+                "status": "complete",
+                "timestamp": timestamp,
+            },
+            {
+                "id": "msg-assistant-2",
+                "role": "assistant",
+                "content": "Recent answer",
+                "status": "complete",
+                "timestamp": timestamp,
+            },
+        ],
+        message_count=4,
+        first_message="Old question",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(conversation)
+    test_db.commit()
+
+    response = test_client.post(
+        f"/api/conversations/{conversation_id}/compact",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["id"] == str(conversation_id)
+    assert payload["messageCount"] == 2
+    assert payload["firstMessage"] == "Recent question"
+
+    refreshed = test_db.get(Conversation, conversation_id)
+    assert refreshed is not None
+    assert refreshed.message_count == 2
+    assert refreshed.first_message == "Recent question"
+    assert refreshed.messages[1]["visibility"] == "hidden"
+    assert refreshed.messages[1]["compaction"]["status"] == "compacted"
+    assert refreshed.messages[2]["visibility"] == "hidden"
+    assert refreshed.messages[2]["compaction"]["status"] == "compacted"
+    assert refreshed.messages[3]["kind"] == "conversation_compaction_summary"
+    assert refreshed.messages[3]["visibility"] == "hidden"
+    assert refreshed.messages[4]["content"] == "Recent question"
+    assert refreshed.messages[5]["content"] == "Recent answer"
