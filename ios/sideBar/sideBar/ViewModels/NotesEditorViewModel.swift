@@ -437,8 +437,8 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 }
 
-private extension NotesEditorViewModel {
-    func setDirty(_ dirty: Bool) {
+extension NotesEditorViewModel {
+    public func setDirty(_ dirty: Bool) {
         guard isDirty != dirty else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self, self.isDirty != dirty else { return }
@@ -446,7 +446,7 @@ private extension NotesEditorViewModel {
         }
     }
 
-    func setReadOnly(_ readOnly: Bool) {
+    public func setReadOnly(_ readOnly: Bool) {
         guard isReadOnly != readOnly else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self, self.isReadOnly != readOnly else { return }
@@ -455,13 +455,13 @@ private extension NotesEditorViewModel {
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    func alignPersistenceBaseline(with nativeViewModel: NativeNoteEditorViewModel) {
+    fileprivate func alignPersistenceBaseline(with nativeViewModel: NativeNoteEditorViewModel) {
         let snapshot = nativeViewModel.currentPersistenceSnapshot()
         content = snapshot.plainText
         canonicalContent = snapshot.canonicalContent
     }
 
-    func normalizedEditorSnapshot(for note: NotePayload) -> (content: String, plainText: String) {
+    fileprivate func normalizedEditorSnapshot(for note: NotePayload) -> (content: String, plainText: String) {
         (
             content: NotesSemanticDocumentCodec.encode(note.document) ?? "",
             plainText: note.plainText
