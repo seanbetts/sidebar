@@ -6,9 +6,9 @@ struct NoteFormattingBar: View {
     let isBoldActive: Bool
     let isItalicActive: Bool
     let isUnderlineActive: Bool
-    let onBoldTap: @MainActor () -> Void
-    let onItalicTap: @MainActor () -> Void
-    let onUnderlineTap: @MainActor () -> Void
+    let onBoldTap: @MainActor @Sendable () -> Void
+    let onItalicTap: @MainActor @Sendable () -> Void
+    let onUnderlineTap: @MainActor @Sendable () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
@@ -46,7 +46,7 @@ struct NoteFormattingBar: View {
         systemImage: String,
         label: String,
         isActive: Bool,
-        action: @escaping () -> Void
+        action: @escaping @MainActor @Sendable () -> Void
     ) -> some View {
         Button {
             action()
