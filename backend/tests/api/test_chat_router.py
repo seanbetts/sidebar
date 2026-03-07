@@ -401,14 +401,12 @@ def test_stream_chat_persists_conversation_provider_model(
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id
     try:
-        with test_client.stream(
-            "POST",
+        response = test_client.post(
             "/api/chat/stream",
             headers=_auth_headers(),
             json={"message": "Hi", "conversation_id": str(conversation.id)},
-        ) as response:
-            assert response.status_code == 200
-            list(response.iter_text())
+        )
+        assert response.status_code == 200
     finally:
         app.dependency_overrides.pop(get_current_user_id, None)
 
@@ -468,8 +466,7 @@ def test_stream_chat_persists_turn_pair_atomically(test_client, test_db, monkeyp
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id
     try:
-        with test_client.stream(
-            "POST",
+        response = test_client.post(
             "/api/chat/stream",
             headers=_auth_headers(),
             json={
@@ -478,9 +475,8 @@ def test_stream_chat_persists_turn_pair_atomically(test_client, test_db, monkeyp
                 "user_message_id": "user-msg-1",
                 "assistant_message_id": "assistant-msg-1",
             },
-        ) as response:
-            assert response.status_code == 200
-            list(response.iter_text())
+        )
+        assert response.status_code == 200
     finally:
         app.dependency_overrides.pop(get_current_user_id, None)
 

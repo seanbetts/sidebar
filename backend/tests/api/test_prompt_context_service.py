@@ -10,6 +10,7 @@ from api.models.user_settings import UserSettings
 from api.models.website import Website
 from api.services.agent.prompt import composer as prompt_composer
 from api.services.agent.prompt.composer import PromptContextService
+from api.services.notes_document_types import note_document_from_plain_text
 
 
 def _ensure_user_settings_prompt_columns(test_db):
@@ -40,9 +41,8 @@ def test_prompt_context_service_order_and_truncation(test_db):
     note = Note(
         user_id=user_id,
         title="Daily Log",
-        content="Note body",
+        document=note_document_from_plain_text("Note body"),
         plain_text="Note body",
-        content_format="rtf",
         folder_path="work",
         last_opened_at=now,
     )
@@ -254,9 +254,8 @@ def test_recent_activity_cache_hit(test_db):
     note = Note(
         user_id=user_id,
         title="Morning Notes",
-        content="Note body",
+        document=note_document_from_plain_text("Note body"),
         plain_text="Note body",
-        content_format="rtf",
         folder_path="work",
         last_opened_at=now,
     )
@@ -270,9 +269,8 @@ def test_recent_activity_cache_hit(test_db):
     new_note = Note(
         user_id=user_id,
         title="Late Add",
-        content="Extra",
+        document=note_document_from_plain_text("Extra"),
         plain_text="Extra",
-        content_format="rtf",
         folder_path="work",
         last_opened_at=now + timedelta(minutes=1),
     )
@@ -296,9 +294,8 @@ def test_recent_activity_cache_expiry(test_db):
     note = Note(
         user_id=user_id,
         title="Morning Notes",
-        content="Note body",
+        document=note_document_from_plain_text("Note body"),
         plain_text="Note body",
-        content_format="rtf",
         folder_path="work",
         last_opened_at=now,
     )
@@ -310,9 +307,8 @@ def test_recent_activity_cache_expiry(test_db):
     new_note = Note(
         user_id=user_id,
         title="Afternoon Notes",
-        content="Extra",
+        document=note_document_from_plain_text("Extra"),
         plain_text="Extra",
-        content_format="rtf",
         folder_path="work",
         last_opened_at=now + timedelta(minutes=10),
     )
@@ -342,9 +338,8 @@ def test_recent_activity_uses_user_timezone_for_day_boundary(test_db):
         Note(
             user_id=user_id,
             title="Late Night Note",
-            content="Body",
+            document=note_document_from_plain_text("Body"),
             plain_text="Body",
-            content_format="rtf",
             folder_path="work",
             last_opened_at=note_time,
         )

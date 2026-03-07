@@ -4,6 +4,7 @@
 import hashlib
 import json
 import logging
+import os
 import time
 from datetime import UTC, datetime
 from typing import TypedDict, cast
@@ -18,7 +19,7 @@ from api.auth import verify_bearer_token
 from api.config import settings
 from api.constants import ChatConstants
 from api.db.dependencies import get_current_user_id
-from api.db.session import get_db
+from api.db.session import SessionLocal, get_db, set_session_user_id
 from api.exceptions import BadRequestError
 from api.metrics import (
     chat_messages_total,
@@ -124,6 +125,15 @@ def _sanitize_title(raw_title: str) -> str:
     if len(title) > 100:
         title = title[:100].rstrip()
     return title
+
+
+def _new_user_scoped_session(user_id: str) -> Session:
+    """Create a short-lived session with request-style user/search-path scoping."""
+    session = SessionLocal()
+    if os.getenv("TESTING"):
+        session.info["force_public_search_path"] = True
+    set_session_user_id(session, user_id)
+    return session
 
 
 @router.post("/stream")
@@ -414,28 +424,29 @@ async def stream_chat(
                     for call_id in tool_call_order
                     if call_id in tool_calls_by_id
                 ]
-                ConversationService.add_messages(
-                    db,
-                    user_id,
-                    conversation_uuid,
-                    [
-                        {
-                            "id": persisted_user_message_id,
-                            "role": "user",
-                            "content": message,
-                            "status": "complete",
-                            "timestamp": timestamp,
-                        },
-                        {
-                            "id": persisted_assistant_message_id,
-                            "role": "assistant",
-                            "content": "".join(assistant_content_parts),
-                            "status": "complete",
-                            "timestamp": timestamp,
-                            "toolCalls": persisted_tool_calls,
-                        },
-                    ],
-                )
+                with _new_user_scoped_session(user_id) as persistence_db:
+                    ConversationService.add_messages(
+                        persistence_db,
+                        user_id,
+                        conversation_uuid,
+                        [
+                            {
+                                "id": persisted_user_message_id,
+                                "role": "user",
+                                "content": message,
+                                "status": "complete",
+                                "timestamp": timestamp,
+                            },
+                            {
+                                "id": persisted_assistant_message_id,
+                                "role": "assistant",
+                                "content": "".join(assistant_content_parts),
+                                "status": "complete",
+                                "timestamp": timestamp,
+                                "toolCalls": persisted_tool_calls,
+                            },
+                        ],
+                    )
 
             # Stream complete
             yield "event: complete\ndata: {}\n\n"

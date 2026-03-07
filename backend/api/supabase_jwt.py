@@ -26,6 +26,8 @@ class SupabaseJWTValidator:
     def __init__(self, supabase_url: str | None = None) -> None:
         """Initialize the JWT verifier with Supabase metadata."""
         self.supabase_url = supabase_url or settings.supabase_url
+        if os.getenv("TESTING"):
+            return
         if not self.supabase_url:
             raise JWTValidationError("Supabase URL is not configured.")
 

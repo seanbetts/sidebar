@@ -514,10 +514,13 @@ def test_db(test_db_engine):
         yield db
     finally:
         db.rollback()
-        for table in reversed(Base.metadata.sorted_tables):
-            db.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
-        db.commit()
         db.close()
+
+        with test_db_engine.connect() as cleanup_connection:
+            cleanup_connection.execute(text("SET search_path TO public"))
+            for table in reversed(Base.metadata.sorted_tables):
+                cleanup_connection.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
+            cleanup_connection.commit()
 
 
 @pytest.fixture(scope="session")
