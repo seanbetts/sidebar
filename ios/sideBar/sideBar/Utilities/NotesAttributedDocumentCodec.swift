@@ -29,6 +29,14 @@ enum NotesAttributedDocumentCodec {
         return attributed
     }
 
+    static func readAttributedString(
+        from document: NotesSemanticDocument,
+        baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
+    ) -> AttributedString {
+        let attributed = attributedString(from: document, baseFontSize: baseFontSize)
+        return applyingDetectedLinks(to: attributed)
+    }
+
     static func document(from attributed: AttributedString) -> NotesSemanticDocument {
         var blocks: [NotesSemanticDocument.Block] = []
         var currentSegments: [NotesSemanticDocument.InlineSegment] = []
@@ -113,5 +121,27 @@ enum NotesAttributedDocumentCodec {
                 return run.underlineStyle != nil ? .underline : nil
             }
         }
+    }
+
+    private static func applyingDetectedLinks(to attributed: AttributedString) -> AttributedString {
+        let plainText = String(attributed.characters)
+        guard !plainText.isEmpty,
+              let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return attributed
+        }
+
+        let bridged = NSMutableAttributedString(attributedString: NSAttributedString(attributed))
+        let fullRange = NSRange(plainText.startIndex..<plainText.endIndex, in: plainText)
+
+        detector.enumerateMatches(in: plainText, options: [], range: fullRange) { match, _, _ in
+            guard let match,
+                  let url = match.url,
+                  match.range.location != NSNotFound else {
+                return
+            }
+            bridged.addAttribute(.link, value: url, range: match.range)
+        }
+
+        return AttributedString(bridged)
     }
 }
