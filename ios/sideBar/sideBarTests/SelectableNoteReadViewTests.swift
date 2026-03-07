@@ -2,6 +2,8 @@ import XCTest
 import SwiftUI
 #if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
 #endif
 @testable import sideBar
 
@@ -42,6 +44,19 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(linkValue, expectedURL)
     }
 
+    func testReadBaseFontSizeMatchesAppBodyTextSize() {
+        XCTAssertEqual(
+            SelectableNoteReadView.readBaseFontSize(for: .large),
+            NoteTextTypography.defaultBodyFontSize(for: .large),
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            SelectableNoteReadView.readBaseFontSize(for: .small),
+            NoteTextTypography.defaultBodyFontSize(for: .small),
+            accuracy: 0.001
+        )
+    }
+
     #if os(macOS)
     func testMakePlatformTextViewIsSelectableAndNonEditable() throws {
         let document = NotesSemanticDocument(
@@ -53,7 +68,10 @@ final class SelectableNoteReadViewTests: XCTestCase {
             ]
         )
 
-        let attributed = SelectableNoteReadView.makeAttributedContent(from: document, baseFontSize: 16)
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
         let textView = SelectableNoteReadView.makePlatformTextView(
             attributedContent: attributed,
             onActivateEditing: {}
@@ -85,7 +103,10 @@ final class SelectableNoteReadViewTests: XCTestCase {
             ]
         )
 
-        let attributed = SelectableNoteReadView.makeAttributedContent(from: document, baseFontSize: 16)
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
         var activationCount = 0
         let textView = SelectableNoteReadView.makePlatformTextView(
             attributedContent: attributed,
@@ -125,7 +146,10 @@ final class SelectableNoteReadViewTests: XCTestCase {
                 ])
             ]
         )
-        let attributed = SelectableNoteReadView.makeAttributedContent(from: document, baseFontSize: 16)
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
 
         var activationCount = 0
         let textView = SelectableNoteReadView.makePlatformTextView(
@@ -154,6 +178,106 @@ final class SelectableNoteReadViewTests: XCTestCase {
         textView.mouseUp(with: mouseUp)
 
         XCTAssertEqual(activationCount, 1)
+    }
+
+    func testMakePlatformTextViewInstallsActivationClickRecognizer() {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([
+                    .init(text: "Selectable text", marks: [])
+                ])
+            ]
+        )
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let textView = SelectableNoteReadView.makePlatformTextView(
+            attributedContent: attributed,
+            onActivateEditing: {}
+        )
+
+        let clickRecognizers = textView.gestureRecognizers.compactMap { $0 as? NSClickGestureRecognizer }
+
+        XCTAssertEqual(clickRecognizers.count, 1)
+        XCTAssertEqual(clickRecognizers.first?.numberOfClicksRequired, 1)
+    }
+
+    func testMakePlatformAttributedContentPreservesBoldItalicUnderlineAndBaseSize() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([
+                    .init(text: "Bold", marks: [.bold]),
+                    .init(text: " ", marks: []),
+                    .init(text: "Italic", marks: [.italic]),
+                    .init(text: " ", marks: []),
+                    .init(text: "Underlined", marks: [.underline])
+                ])
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 17
+        )
+
+        let boldFont = try XCTUnwrap(
+            attributed.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
+        )
+        XCTAssertTrue(notePlatformFontTraits(from: boldFont).bold)
+        XCTAssertEqual(boldFont.pointSize, 17, accuracy: 0.001)
+
+        let italicFont = try XCTUnwrap(
+            attributed.attribute(.font, at: 5, effectiveRange: nil) as? NSFont
+        )
+        XCTAssertTrue(notePlatformFontTraits(from: italicFont).italic)
+        XCTAssertEqual(italicFont.pointSize, 17, accuracy: 0.001)
+
+        let underlineValue = attributed.attribute(.underlineStyle, at: 12, effectiveRange: nil) as? Int
+        XCTAssertEqual(underlineValue, NSUnderlineStyle.single.rawValue)
+    }
+
+    func testMakePlatformAttributedContentRemovesParagraphStyleOverrides() {
+        let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\n\nTwo")
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+
+        XCTAssertNil(readAttributed.attribute(.paragraphStyle, at: 0, effectiveRange: nil))
+        XCTAssertNil(readAttributed.attribute(.paragraphStyle, at: 4, effectiveRange: nil))
+        XCTAssertNil(readAttributed.attribute(.paragraphStyle, at: 5, effectiveRange: nil))
+    }
+
+    func testReadTextViewBlankLineGapMatchesMountedEditorTextView() async throws {
+        let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\n\nTwo")
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let readTextView = SelectableNoteReadView.makePlatformTextView(
+            attributedContent: readAttributed,
+            onActivateEditing: {}
+        )
+        readTextView.frame = NSRect(x: 0, y: 0, width: 420, height: 240)
+
+        let editorTextView = try mountEditorTextView(
+            plainText: "One\n\nTwo",
+            baseFontSize: 16,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 240)
+        )
+
+        let readGap = try lineGap(in: readTextView, fromCharacterAt: 0, toCharacterAt: 5)
+        let editorGap = try lineGap(in: editorTextView, fromCharacterAt: 0, toCharacterAt: 5)
+
+        XCTAssertEqual(
+            readGap,
+            editorGap,
+            accuracy: 1.0,
+            "readGap=\(readGap) editorGap=\(editorGap)"
+        )
     }
     #endif
 }
@@ -270,5 +394,87 @@ private func exportedSelection(from textView: NSTextView) throws -> AttributedSt
         )
     )
     return AttributedString(exported)
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func lineGap(
+    in textView: NSTextView,
+    fromCharacterAt firstIndex: Int,
+    toCharacterAt secondIndex: Int
+) throws -> CGFloat {
+    let firstRect = try glyphRect(in: textView, characterIndex: firstIndex)
+    let secondRect = try glyphRect(in: textView, characterIndex: secondIndex)
+    return secondRect.minY - firstRect.maxY
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func glyphRect(
+    in textView: NSTextView,
+    characterIndex: Int
+) throws -> NSRect {
+    guard let layoutManager = textView.layoutManager,
+          let textContainer = textView.textContainer else {
+        throw XCTSkip("Missing text layout infrastructure")
+    }
+
+    textContainer.containerSize = NSSize(width: textView.bounds.width, height: CGFloat.greatestFiniteMagnitude)
+    layoutManager.ensureLayout(for: textContainer)
+    let glyphRange = layoutManager.glyphRange(
+        forCharacterRange: NSRange(location: characterIndex, length: 1),
+        actualCharacterRange: nil
+    )
+    return layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func mountEditorTextView(
+    plainText: String,
+    baseFontSize: CGFloat,
+    frame: NSRect
+) throws -> NSTextView {
+    let nativeViewModel = NativeNoteEditorViewModel()
+    nativeViewModel.setBaseFontSize(baseFontSize)
+    nativeViewModel.loadText(plainText)
+
+    let controller = NSHostingController(
+        rootView: AnyView(
+            SwiftUINoteTextEditorSurface(
+                viewModel: nativeViewModel,
+                maxContentWidth: frame.width,
+                isEditable: true
+            )
+        )
+    )
+    let window = NSWindow(
+        contentRect: frame,
+        styleMask: [.titled, .closable, .resizable],
+        backing: .buffered,
+        defer: false
+    )
+    window.contentViewController = controller
+    window.orderFront(nil)
+    let rootView = controller.view
+    rootView.frame = frame
+    rootView.layoutSubtreeIfNeeded()
+
+    return try XCTUnwrap(findDescendantTextView(in: rootView))
+}
+
+@MainActor
+private func findDescendantTextView(in view: NSView) -> NSTextView? {
+    if let textView = view as? NSTextView {
+        return textView
+    }
+
+    for subview in view.subviews {
+        if let match = findDescendantTextView(in: subview) {
+            return match
+        }
+    }
+
+    return nil
 }
 #endif

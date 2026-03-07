@@ -2,6 +2,8 @@ import SwiftUI
 import XCTest
 #if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
 #endif
 import sideBarShared
 @testable import sideBar
@@ -32,6 +34,9 @@ enum NotesDetailViewTestRetainer {
     #if os(macOS)
     static var hostingControllers: [NSHostingController<AnyView>] = []
     static var hostingWindows: [NSWindow] = []
+    #elseif os(iOS)
+    static var hostingControllers: [UIHostingController<AnyView>] = []
+    static var hostingWindows: [UIWindow] = []
     #endif
 }
 
@@ -62,7 +67,11 @@ func makeNotesDetailViewTestContext(
         networkStatus: NotesDetailViewTestNetworkStatus(isNetworkAvailable: true)
     )
     store.applyEditorUpdate(note)
-    await Task.yield()
+    await withCheckedContinuation { continuation in
+        DispatchQueue.main.async {
+            continuation.resume()
+        }
+    }
 
     return NotesDetailViewTestContext(
         store: store,
@@ -105,6 +114,41 @@ func mount(
     NotesDetailViewTestRetainer.hostingControllers.append(controller)
     NotesDetailViewTestRetainer.hostingWindows.append(window)
     return controller
+}
+#elseif os(iOS)
+@MainActor
+@discardableResult
+func mount(
+    _ view: NotesDetailView,
+    environment: AppEnvironment
+) -> UIHostingController<AnyView> {
+    let controller = UIHostingController(
+        rootView: AnyView(view.environmentObject(environment))
+    )
+    let window = makeHostingWindow(frame: CGRect(x: 0, y: 0, width: 900, height: 700))
+    window.rootViewController = controller
+    window.makeKeyAndVisible()
+    let rootView = controller.view!
+    rootView.frame = window.bounds
+    rootView.setNeedsLayout()
+    rootView.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    NotesDetailViewTestRetainer.hostingControllers.append(controller)
+    NotesDetailViewTestRetainer.hostingWindows.append(window)
+    return controller
+}
+
+@MainActor
+private func makeHostingWindow(frame: CGRect) -> UIWindow {
+    if let windowScene = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first {
+        let window = UIWindow(windowScene: windowScene)
+        window.frame = frame
+        return window
+    }
+
+    return UIWindow(frame: frame)
 }
 #endif
 

@@ -65,19 +65,25 @@ public final class NotesViewModel: ObservableObject {
 
         store.$tree
             .sink { [weak self] tree in
-                self?.tree = tree
+                DispatchQueue.main.async {
+                    self?.tree = tree
+                }
             }
             .store(in: &cancellables)
 
         store.$archivedTree
             .sink { [weak self] tree in
-                self?.archivedTree = tree
+                DispatchQueue.main.async {
+                    self?.archivedTree = tree
+                }
             }
             .store(in: &cancellables)
 
         store.$activeNote
             .sink { [weak self] note in
-                self?.activeNote = note
+                DispatchQueue.main.async {
+                    self?.activeNote = note
+                }
             }
             .store(in: &cancellables)
     }

@@ -239,6 +239,40 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoadingArchived)
     }
 
+    func testActiveNoteMirroringDefersStorePublishUntilNextRunLoopTurn() async {
+        let api = NotesAPISpy()
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "note-id",
+            name: "Deferred",
+            document: NotesSemanticDocumentProjection.document(fromPlainText: "Hello"),
+            plainText: "Hello",
+            path: "note-id",
+            modified: nil,
+            created: nil
+        )
+
+        store.applyEditorUpdate(note)
+
+        XCTAssertNil(viewModel.activeNote)
+
+        let propagated = expectation(description: "active note propagated")
+        DispatchQueue.main.async {
+            propagated.fulfill()
+        }
+        await fulfillment(of: [propagated], timeout: 1.0)
+
+        XCTAssertEqual(viewModel.activeNote?.id, "note-id")
+    }
+
     func testCreateBlankNoteSendsNoExplicitTitleOrPathAndSelectsIt() async throws {
         let api = NotesAPISpy()
         api.createNoteResult = .success(

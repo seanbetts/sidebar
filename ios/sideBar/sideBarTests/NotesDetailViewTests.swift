@@ -56,8 +56,10 @@ final class NotesDetailViewTests: XCTestCase {
         let context = await makeNotesDetailViewTestContext()
 
         context.makeView().handleCloseShortcut()
-        await Task.yield()
-        await Task.yield()
+        await waitUntil {
+            context.editorViewModel.currentNoteId == nil &&
+            context.notesViewModel.activeNote == nil
+        }
 
         XCTAssertNil(context.editorViewModel.currentNoteId)
         XCTAssertNil(context.notesViewModel.activeNote)
@@ -68,8 +70,10 @@ final class NotesDetailViewTests: XCTestCase {
         context.editorViewModel.enterEditMode()
 
         context.makeView().requestCloseNote()
-        await Task.yield()
-        await Task.yield()
+        await waitUntil {
+            context.editorViewModel.currentNoteId == nil &&
+            context.notesViewModel.activeNote == nil
+        }
 
         XCTAssertNil(context.editorViewModel.currentNoteId)
         XCTAssertNil(context.notesViewModel.activeNote)
@@ -79,8 +83,10 @@ final class NotesDetailViewTests: XCTestCase {
         let context = await makeNotesDetailViewTestContext()
 
         context.makeView().requestCloseNote()
-        await Task.yield()
-        await Task.yield()
+        await waitUntil {
+            context.editorViewModel.currentNoteId == nil &&
+            context.notesViewModel.activeNote == nil
+        }
 
         XCTAssertNil(context.editorViewModel.currentNoteId)
         XCTAssertNil(context.notesViewModel.activeNote)
