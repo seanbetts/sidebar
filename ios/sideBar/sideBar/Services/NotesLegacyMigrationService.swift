@@ -25,7 +25,7 @@ final class NotesLegacyMigrationService {
 
     func semanticDocument(fromLegacyNote note: NotePayload) throws -> NotesSemanticDocument {
         semanticDocument(
-            fromLegacyContent: note.content,
+            fromLegacyContent: try note.requireLegacyMigrationContent(),
             fallbackPlainText: note.plainText
         ) ?? NotesSemanticDocumentProjection.document(fromPlainText: note.plainText)
     }
@@ -45,9 +45,20 @@ final class NotesLegacyMigrationService {
 }
 
 private extension NotePayload {
-    var hasLegacyMigrationContent: Bool {
-        contentFormat == "rtf"
+    func requireLegacyMigrationContent() throws -> String {
+        if let content = legacyMigrationTransport?.content {
+            return content
+        }
+        throw NotesLegacyMigrationError.missingLegacyTransport
     }
+
+    var hasLegacyMigrationContent: Bool {
+        legacyMigrationTransport?.contentFormat == "rtf"
+    }
+}
+
+private enum NotesLegacyMigrationError: Error {
+    case missingLegacyTransport
 }
 
 @MainActor
