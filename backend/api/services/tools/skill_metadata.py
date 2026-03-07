@@ -163,6 +163,86 @@ SKILL_CREDENTIAL_REQUIREMENTS: dict[str, list[dict[str, Any]]] = {
     ],
 }
 
+SKILL_REQUIRED_TOOLSETS: dict[str, tuple[str, ...]] = {
+    "files": ("files",),
+    "notes": ("notes",),
+    "tasks": ("tasks",),
+    "web-save": ("web",),
+    "web-search": ("web_search",),
+    "memory": ("memory",),
+    "settings-profile-user": ("settings",),
+    "ui-theme": ("ui_theme",),
+    "prompt-preview": ("prompt_preview",),
+    "settings-other-preferences": ("settings",),
+    "audio-transcribe": ("transcription",),
+    "youtube-download": ("web",),
+    "youtube-transcribe": ("transcription",),
+    "subdomain-discover": ("web",),
+    "web-crawler-policy": ("web", "llm_report"),
+    "assistant-identity": ("assistant_identity",),
+    "assistant-soul": ("assistant_soul",),
+    "product-feedback": ("product_feedback",),
+}
+
+SKILL_TAGS: dict[str, tuple[str, ...]] = {
+    "files": ("documents", "workspace"),
+    "notes": ("notes", "knowledge"),
+    "tasks": ("tasks", "planning"),
+    "web-save": ("web", "capture"),
+    "web-search": ("web", "search"),
+    "memory": ("memory", "system"),
+    "audio-transcribe": ("audio", "transcription"),
+    "youtube-download": ("youtube", "media"),
+    "youtube-transcribe": ("youtube", "transcription"),
+    "subdomain-discover": ("web", "security"),
+    "web-crawler-policy": ("web", "analysis"),
+}
+
+SKILL_TRIGGERS: dict[str, tuple[str, ...]] = {
+    "files": ("file", "folder", "workspace"),
+    "notes": ("note", "notes"),
+    "tasks": ("task", "todo", "project"),
+    "web-save": ("save page", "capture page"),
+    "web-search": ("search web", "look up"),
+    "memory": ("remember", "memory"),
+    "audio-transcribe": ("transcribe audio", "audio transcript"),
+    "youtube-download": ("download youtube", "save youtube"),
+    "youtube-transcribe": ("transcribe youtube", "youtube transcript"),
+    "subdomain-discover": ("subdomain", "dns"),
+    "web-crawler-policy": ("robots", "llms.txt"),
+}
+
+SKILL_TOKEN_ESTIMATES: dict[str, int] = {
+    "files": 450,
+    "notes": 450,
+    "tasks": 400,
+    "web-save": 350,
+    "web-search": 300,
+    "memory": 250,
+    "settings-profile-user": 300,
+    "ui-theme": 200,
+    "prompt-preview": 220,
+    "settings-other-preferences": 250,
+    "audio-transcribe": 550,
+    "youtube-download": 420,
+    "youtube-transcribe": 560,
+    "subdomain-discover": 500,
+    "web-crawler-policy": 520,
+    "assistant-identity": 250,
+    "assistant-soul": 250,
+    "product-feedback": 220,
+}
+
+SKILL_INSTRUCTION_REFS: dict[str, str] = {
+    skill_id: f"skills/{skill_id}/SKILL.md" for skill_id in EXPOSED_SKILLS
+}
+
+SKILL_EXAMPLE_REFS: dict[str, tuple[str, ...]] = {
+    "audio-transcribe": ("skills/audio-transcribe/examples/basic.md",),
+    "youtube-transcribe": ("skills/youtube-transcribe/examples/basic.md",),
+    "web-crawler-policy": ("skills/web-crawler-policy/examples/basic.md",),
+}
+
 
 def canonicalize_skill_id(skill_id: str) -> str:
     """Return canonical skill ID, resolving known legacy aliases."""
@@ -211,3 +291,39 @@ def get_credential_requirements(skill_id: str) -> list[dict[str, Any]]:
     canonical = canonicalize_skill_id(skill_id)
     requirements = SKILL_CREDENTIAL_REQUIREMENTS.get(canonical, [])
     return [dict(requirement) for requirement in requirements]
+
+
+def get_required_toolsets(skill_id: str) -> list[str]:
+    """Return internal toolset requirements for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    return list(SKILL_REQUIRED_TOOLSETS.get(canonical, ()))
+
+
+def get_skill_tags(skill_id: str) -> list[str]:
+    """Return compact discovery tags for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    return list(SKILL_TAGS.get(canonical, ()))
+
+
+def get_skill_triggers(skill_id: str) -> list[str]:
+    """Return compact discovery triggers for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    return list(SKILL_TRIGGERS.get(canonical, ()))
+
+
+def get_skill_token_estimate(skill_id: str) -> int:
+    """Return estimated prompt cost for loading a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    return int(SKILL_TOKEN_ESTIMATES.get(canonical, 200))
+
+
+def get_instruction_ref(skill_id: str) -> str:
+    """Return the stable instruction reference for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    return SKILL_INSTRUCTION_REFS.get(canonical, f"skills/{canonical}/SKILL.md")
+
+
+def get_example_refs(skill_id: str) -> list[str]:
+    """Return example reference paths for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    return list(SKILL_EXAMPLE_REFS.get(canonical, ()))

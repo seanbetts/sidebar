@@ -8,6 +8,7 @@ from typing import Any
 
 import yaml
 
+from api.services.capabilities.registry import CapabilityRegistry
 from api.services.tools.skill_metadata import (
     CATALOG_VERSION,
     EXPOSED_SKILLS,
@@ -121,6 +122,7 @@ class SkillCatalogService:
         updated_at = SkillCatalogService._coalesce_str(
             frontmatter_metadata.get("updated_at"),
         )
+        capability = CapabilityRegistry.get_capability(skill_id)
 
         return {
             "id": skill_id,
@@ -140,6 +142,14 @@ class SkillCatalogService:
             "tier": get_skill_tier(skill_id),
             "provider_dependency": get_provider_dependency(skill_id),
             "credential_requirements": credential_requirements,
+            "required_toolsets": (
+                list(capability.required_toolsets) if capability else []
+            ),
+            "tags": list(capability.tags) if capability else [],
+            "triggers": list(capability.triggers) if capability else [],
+            "token_estimate": capability.token_estimate if capability else 0,
+            "instruction_ref": capability.instruction_ref if capability else None,
+            "example_refs": list(capability.example_refs) if capability else [],
             "user_toggleable": user_toggleable,
             "default_enabled": is_skill_default_enabled(skill_id),
             "installable": is_skill_installable(skill_id),
