@@ -49,4 +49,6 @@ class CapabilityLoaderResult:
     selected_skill_ids: tuple[str, ...] = ()
     executable_skill_ids: tuple[str, ...] = ()
     loaded_instruction_refs: tuple[str, ...] = ()
+    loaded_instructions: tuple[dict[str, Any], ...] = field(default_factory=tuple)
+    loaded_examples: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     tool_definitions: tuple[dict[str, Any], ...] = field(default_factory=tuple)

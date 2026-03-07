@@ -108,6 +108,7 @@ class AIProviderGateway:
         allowed_skills: list[str] | None,
         tool_context: Any,
         settings_record: Any,
+        tool_definitions: list[dict[str, Any]] | None = None,
         provider_key_lookup: ProviderKeyLookup | None = None,
         chat_resolution: ChatResolution | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
@@ -116,6 +117,16 @@ class AIProviderGateway:
             settings_record=settings_record,
             provider_key_lookup=provider_key_lookup,
         )
+        tool_mapper = self._get_tool_mapper()
+        resolved_allowed_skills = allowed_skills
+        if (
+            tool_definitions
+            and not resolved_allowed_skills
+            and hasattr(tool_mapper, "get_skill_ids_for_tool_definitions")
+        ):
+            resolved_allowed_skills = tool_mapper.get_skill_ids_for_tool_definitions(
+                tool_definitions
+            )
         if resolution.provider == "anthropic":
             claude_client = self._claude_client
             owns_client = False
@@ -134,7 +145,7 @@ class AIProviderGateway:
                     message,
                     conversation_history,
                     system_prompt=system_prompt,
-                    allowed_skills=allowed_skills,
+                    allowed_skills=resolved_allowed_skills,
                     tool_context=tool_context,
                 ):
                     yield event
@@ -146,12 +157,12 @@ class AIProviderGateway:
             return
 
         if resolution.provider == "openai":
-            tool_mapper = self._get_tool_mapper()
             async for event in self._stream_chat_openai(
                 message=message,
                 conversation_history=conversation_history,
                 system_prompt=system_prompt,
-                allowed_skills=allowed_skills,
+                allowed_skills=resolved_allowed_skills,
+                tool_definitions=tool_definitions,
                 tool_context=tool_context,
                 tool_mapper=tool_mapper,
                 model=resolution.model,
@@ -161,12 +172,12 @@ class AIProviderGateway:
             return
 
         if resolution.provider == "google":
-            tool_mapper = self._get_tool_mapper()
             async for event in self._stream_chat_google(
                 message=message,
                 conversation_history=conversation_history,
                 system_prompt=system_prompt,
-                allowed_skills=allowed_skills,
+                allowed_skills=resolved_allowed_skills,
+                tool_definitions=tool_definitions,
                 tool_context=tool_context,
                 tool_mapper=tool_mapper,
                 model=resolution.model,
@@ -400,6 +411,7 @@ class AIProviderGateway:
         tool_mapper: Any,
         model: str,
         api_key: str,
+        tool_definitions: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream assistant tokens from OpenAI chat completions."""
         client = self._openai_client_factory(api_key=api_key)
@@ -407,6 +419,7 @@ class AIProviderGateway:
             orchestrator = ProviderToolOrchestrator(
                 tool_mapper=tool_mapper,
                 allowed_skills=allowed_skills,
+                tool_definitions=tool_definitions,
                 tool_context=self._normalize_tool_context(tool_context),
             )
             async for event in orchestrator.run_openai(
@@ -431,12 +444,14 @@ class AIProviderGateway:
         tool_mapper: Any,
         model: str,
         api_key: str,
+        tool_definitions: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Generate assistant tokens from Google chat (single-response stream shim)."""
         client = self._google_client_factory(api_key=api_key)
         orchestrator = ProviderToolOrchestrator(
             tool_mapper=tool_mapper,
             allowed_skills=allowed_skills,
+            tool_definitions=tool_definitions,
             tool_context=self._normalize_tool_context(tool_context),
         )
         async for event in orchestrator.run_google(

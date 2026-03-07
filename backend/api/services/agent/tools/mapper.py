@@ -226,6 +226,21 @@ class ToolMapper:
             if self._is_skill_enabled(config.get("skill"), allowed_skills)
         ]
 
+    def get_skill_ids_for_tool_definitions(
+        self,
+        tool_definitions: list[dict[str, Any]] | None,
+    ) -> list[str]:
+        """Resolve the executable skill subset implied by tool definitions."""
+        skill_ids: list[str] = []
+        for tool_definition in tool_definitions or []:
+            tool_name = tool_definition.get("name")
+            if not isinstance(tool_name, str) or not tool_name.strip():
+                continue
+            skill_id = self.get_tool_skill_id(tool_name)
+            if skill_id and skill_id not in skill_ids:
+                skill_ids.append(skill_id)
+        return skill_ids
+
     async def execute_tool(
         self,
         name: str,

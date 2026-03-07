@@ -119,6 +119,8 @@ class PromptContextService:
         current_timezone: str | None = None,
         now: datetime | None = None,
         blocked_skill_summaries: list[dict[str, Any]] | None = None,
+        loaded_instructions: list[dict[str, Any]] | None = None,
+        loaded_examples: list[dict[str, Any]] | None = None,
         strict_system_prompt: bool = False,
         include_attachment_content: bool = True,
     ) -> PromptBuildResult:
@@ -137,6 +139,8 @@ class PromptContextService:
             now: Optional timestamp override.
             blocked_skill_summaries: Compact blocked capability metadata for
                 reconnect or remediation guidance.
+            loaded_instructions: Full selected-skill instruction documents.
+            loaded_examples: Full selected-skill example documents.
             strict_system_prompt: When True, reject requests that still exceed
                 the overall system prompt budget after per-section caps are
                 applied.
@@ -146,7 +150,6 @@ class PromptContextService:
         Returns:
             Structured prompt bundle with flattened text and diagnostics.
         """
-        _ = blocked_skill_summaries
         timestamp = PromptContextService._resolve_timestamp(
             now=now,
             current_timezone=current_timezone,
@@ -204,6 +207,17 @@ class PromptContextService:
             conversation_items,
             file_items,
         )
+        selected_capabilities_block = (
+            PromptContextService._build_selected_capabilities_block(
+                loaded_instructions or [],
+                loaded_examples or [],
+            )
+        )
+        blocked_capabilities_block = (
+            PromptContextService._build_blocked_capabilities_block(
+                blocked_skill_summaries or []
+            )
+        )
 
         system_sections = [
             PromptContextService._build_section(
@@ -235,6 +249,18 @@ class PromptContextService:
                 title="Context Guidance",
                 source="context_guidance_template",
                 content=context_guidance,
+            ),
+            PromptContextService._build_section(
+                section_id="selected_capabilities",
+                title="Selected Capabilities",
+                source="capability_loader",
+                content=selected_capabilities_block,
+            ),
+            PromptContextService._build_section(
+                section_id="blocked_capabilities",
+                title="Blocked Capabilities",
+                source="capability_resolver",
+                content=blocked_capabilities_block,
             ),
             PromptContextService._build_section(
                 section_id="current_open",
@@ -384,6 +410,71 @@ class PromptContextService:
             "truncated_by_budget": document["truncated_by_budget"],
             "sections": section_reports,
         }
+
+    @staticmethod
+    def _build_selected_capabilities_block(
+        loaded_instructions: list[dict[str, Any]],
+        loaded_examples: list[dict[str, Any]],
+    ) -> str:
+        """Render selected capability instructions/examples into one block."""
+        if not loaded_instructions and not loaded_examples:
+            return ""
+
+        lines = ["Selected skill instructions and examples for this turn:"]
+        for document in loaded_instructions:
+            skill_id = str(document.get("skill_id", "unknown-skill"))
+            ref = str(document.get("ref", ""))
+            content = str(document.get("content", "")).strip()
+            lines.extend(
+                [
+                    "",
+                    f"Skill: {skill_id}",
+                    f"Instruction Ref: {ref}",
+                    content,
+                ]
+            )
+        for document in loaded_examples:
+            skill_id = str(document.get("skill_id", "unknown-skill"))
+            ref = str(document.get("ref", ""))
+            content = str(document.get("content", "")).strip()
+            lines.extend(
+                [
+                    "",
+                    f"Example Skill: {skill_id}",
+                    f"Example Ref: {ref}",
+                    content,
+                ]
+            )
+        body = "\n".join(lines).strip()
+        return f"<selected_capabilities>\n\n{body}\n\n</selected_capabilities>"
+
+    @staticmethod
+    def _build_blocked_capabilities_block(
+        blocked_skill_summaries: list[dict[str, Any]],
+    ) -> str:
+        """Render terse blocked-skill remediation guidance when relevant."""
+        if not blocked_skill_summaries:
+            return ""
+
+        lines = ["Blocked skills that may need user remediation:"]
+        for summary in blocked_skill_summaries:
+            skill_id = str(summary.get("skill_id", "unknown-skill"))
+            reason = str(
+                summary.get("availability_reason")
+                or summary.get("availability_status")
+                or "unavailable"
+            ).strip()
+            remediation = summary.get("availability_remediation")
+            remediation_text = ""
+            if isinstance(remediation, dict):
+                action = str(remediation.get("action", "")).strip()
+                provider = str(remediation.get("provider", "")).strip()
+                parts = [part for part in (action, provider) if part]
+                if parts:
+                    remediation_text = f"; remediation: {' '.join(parts)}"
+            lines.append(f"- {skill_id}: {reason}{remediation_text}")
+        body = "\n".join(lines)
+        return f"<blocked_capabilities>\n\n{body}\n\n</blocked_capabilities>"
 
     @staticmethod
     def _resolve_file_context(

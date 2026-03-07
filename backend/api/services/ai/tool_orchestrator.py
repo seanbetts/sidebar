@@ -38,11 +38,13 @@ class ProviderToolOrchestrator:
         *,
         tool_mapper: Any,
         allowed_skills: list[str] | None,
+        tool_definitions: list[dict[str, Any]] | None,
         tool_context: dict[str, Any] | None,
     ):
         """Store tool execution dependencies for a provider chat session."""
         self._tool_mapper = tool_mapper
         self._allowed_skills = allowed_skills
+        self._tool_definitions = list(tool_definitions or [])
         self._tool_context = tool_context
 
     async def run_openai(
@@ -55,7 +57,7 @@ class ProviderToolOrchestrator:
         system_prompt: str | None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Run OpenAI chat with multi-turn function calling."""
-        tools = self._tool_mapper.get_claude_tools(self._allowed_skills)
+        tools = self._resolved_tool_definitions()
         openai_tools = [
             {
                 "type": "function",
@@ -137,7 +139,7 @@ class ProviderToolOrchestrator:
         system_prompt: str | None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Run Google chat with multi-turn function calling."""
-        tools = self._tool_mapper.get_claude_tools(self._allowed_skills)
+        tools = self._resolved_tool_definitions()
         function_declarations = self._build_google_function_declarations(tools)
         google_tools: list[Any] = [
             types.Tool(function_declarations=function_declarations)
@@ -244,6 +246,12 @@ class ProviderToolOrchestrator:
             "type": "error",
             "error": "Maximum tool rounds reached before completion",
         }
+
+    def _resolved_tool_definitions(self) -> list[dict[str, Any]]:
+        """Return prepared tool definitions or derive them from allowed skills."""
+        if self._tool_definitions:
+            return list(self._tool_definitions)
+        return self._tool_mapper.get_claude_tools(self._allowed_skills)
 
     @staticmethod
     def _build_openai_messages(

@@ -6,6 +6,7 @@ from importlib import import_module
 from typing import Any
 
 __all__ = [
+    "CapabilityLoaderService",
     "CapabilityLoaderResult",
     "CapabilityRegistry",
     "CapabilityRegistryRecord",
@@ -21,6 +22,7 @@ __all__ = [
 def __getattr__(name: str) -> Any:
     """Resolve capability exports lazily to avoid package import cycles."""
     module_map = {
+        "CapabilityLoaderService": "api.services.capabilities.loader",
         "CapabilityRegistry": "api.services.capabilities.registry",
         "CapabilityResolverService": "api.services.capabilities.resolver",
         "CapabilitySearchService": "api.services.capabilities.search",
