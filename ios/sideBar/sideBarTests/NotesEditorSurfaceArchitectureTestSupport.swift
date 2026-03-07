@@ -21,3 +21,13 @@ func attributedNoteEditorContainerSource(
         throw error
     }
 }
+
+func attributedNoteEditorContainerMountsSwiftUISurfaceDirectly(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> Bool {
+    let normalized = try attributedNoteEditorContainerSource(file: file, line: line)
+        .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+    return normalized.contains("privatevareditorSurface:someView{SwiftUINoteTextEditorSurface(")
+}
