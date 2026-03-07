@@ -66,6 +66,8 @@ jobs:
             max_parallel_test_workers: "1"
             destination_timeout: "180"
             enable_coverage: "NO"
+            prepare_simulator_before_tests: "YES"
+            collect_simulator_diagnostics_on_failure: "YES"
           - id: iphone
             label: "iPhone 17 Pro iOS 26"
             scheme: sideBar
@@ -77,6 +79,8 @@ jobs:
             max_parallel_test_workers: "1"
             destination_timeout: "180"
             enable_coverage: "YES"
+            prepare_simulator_before_tests: "NO"
+            collect_simulator_diagnostics_on_failure: "NO"
           - id: mac
             label: "macOS 26"
             scheme: sideBarMacTests
@@ -86,6 +90,8 @@ jobs:
             skip_testing: sideBarUITests,ShareExtensionTests
             destination_timeout: "180"
             enable_coverage: "NO"
+            prepare_simulator_before_tests: "NO"
+            collect_simulator_diagnostics_on_failure: "NO"
     steps:
       - name: Checkout
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id }}
@@ -115,6 +121,9 @@ jobs:
           IOS_ENABLE_CODE_COVERAGE: ${{ matrix.enable_coverage }}
           IOS_PARALLEL_TESTING_ENABLED: ${{ matrix.parallel_testing_enabled }}
           IOS_MAXIMUM_PARALLEL_TESTING_WORKERS: ${{ matrix.max_parallel_test_workers }}
+          IOS_PREPARE_SIMULATOR_BEFORE_TESTS: ${{ matrix.prepare_simulator_before_tests }}
+          IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE: ${{ matrix.collect_simulator_diagnostics_on_failure }}
+          IOS_SIMULATOR_DIAGNOSTICS_DIR: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics
         run: scripts/test-ios.sh
       - name: Enforce hard quality gates (iPhone lane)
         if: ${{ (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) && matrix.id == 'iphone' }}
@@ -143,4 +152,12 @@ jobs:
         with:
           name: ios-xcresult-${{ matrix.id }}
           path: ios-test-results/${{ matrix.id }}.xcresult
+          if-no-files-found: ignore
+      - name: Upload simulator diagnostics (${{ matrix.id }})
+        if: ${{ failure() && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-diagnostics-${{ matrix.id }}
+          path: ios-test-results/${{ matrix.id }}-simulator-diagnostics
           if-no-files-found: ignore
