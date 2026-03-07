@@ -42,6 +42,10 @@ logger = logging.getLogger(__name__)
 
 TITLE_CACHE_TTL_SECONDS = ChatConstants.TITLE_CACHE_TTL_SECONDS
 TITLE_CACHE_MAX_ENTRIES = ChatConstants.TITLE_CACHE_MAX_ENTRIES
+_REQUEST_TOO_LARGE_MESSAGE = (
+    "Chat request is too large. Start a new conversation or reduce context "
+    "and try again."
+)
 
 
 class _TitleCacheEntry(TypedDict):
@@ -245,6 +249,17 @@ async def stream_chat(
             None,
         ),
     )
+    if not prepared_request.budget_report.within_budget:
+        logger.warning(
+            (
+                "Prepared chat request exceeded model input budget after trimming "
+                "(provider=%s model=%s overflow_chars=%s)"
+            ),
+            prepared_request.provider,
+            prepared_request.model,
+            prepared_request.budget_report.overflow_chars,
+        )
+        raise BadRequestError(_REQUEST_TOO_LARGE_MESSAGE)
 
     async def event_generator():
         """Generate SSE events."""

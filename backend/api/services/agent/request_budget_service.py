@@ -105,6 +105,17 @@ class RequestBudgetService:
             tool_definitions=normalized_tools,
             metadata=metadata,
         )
+        if not report.within_budget and normalized_history:
+            normalized_history, report = cls._trim_history_to_fit(
+                provider=provider,
+                model=model,
+                system_prompt=system_prompt,
+                bootstrap_history=normalized_bootstrap,
+                conversation_history=normalized_history,
+                current_user_message=current_user_message,
+                tool_definitions=normalized_tools,
+                metadata=metadata,
+            )
         return PreparedChatRequest(
             provider=provider,
             model=model,
@@ -252,3 +263,44 @@ class RequestBudgetService:
         if isinstance(value, list):
             return [cls._normalize_google_schema(item) for item in value]
         return value
+
+    @classmethod
+    def _trim_history_to_fit(
+        cls,
+        *,
+        provider: AIProvider,
+        model: str,
+        system_prompt: str,
+        bootstrap_history: list[dict[str, Any]],
+        conversation_history: list[dict[str, Any]],
+        current_user_message: str,
+        tool_definitions: list[dict[str, Any]],
+        metadata: ProviderBudgetMetadata | None,
+    ) -> tuple[list[dict[str, Any]], RequestBudgetReport]:
+        """Drop oldest history until the request fits or history is empty."""
+        trimmed_history = list(conversation_history)
+        report = cls.build_report(
+            provider=provider,
+            model=model,
+            system_prompt=system_prompt,
+            bootstrap_history=bootstrap_history,
+            conversation_history=trimmed_history,
+            current_user_message=current_user_message,
+            tool_definitions=tool_definitions,
+            metadata=metadata,
+            trimming_applied=True,
+        )
+        while trimmed_history and not report.within_budget:
+            trimmed_history.pop(0)
+            report = cls.build_report(
+                provider=provider,
+                model=model,
+                system_prompt=system_prompt,
+                bootstrap_history=bootstrap_history,
+                conversation_history=trimmed_history,
+                current_user_message=current_user_message,
+                tool_definitions=tool_definitions,
+                metadata=metadata,
+                trimming_applied=True,
+            )
+        return trimmed_history, report

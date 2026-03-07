@@ -216,3 +216,52 @@ def test_build_report_measures_provider_specific_google_tool_schema():
             sort_keys=True,
         )
     )
+
+
+def test_build_prepared_request_trims_oldest_history_until_within_budget():
+    prepared = RequestBudgetService.build_prepared_request(
+        provider="anthropic",
+        model="claude-sonnet-4-6",
+        system_prompt="",
+        bootstrap_history=[],
+        conversation_history=[
+            {"role": "user", "content": "a" * 10},
+            {"role": "assistant", "content": "b" * 10},
+            {"role": "user", "content": "c" * 10},
+        ],
+        current_user_message="",
+        tool_definitions=[],
+        metadata=ProviderBudgetMetadata(
+            context_window_chars=120,
+            reserved_output_chars=20,
+            provider_framing_chars=10,
+        ),
+    )
+
+    assert prepared.conversation_history == [
+        {"role": "user", "content": "c" * 10},
+    ]
+    assert prepared.budget_report.trimming_applied is True
+    assert prepared.budget_report.within_budget is True
+
+
+def test_build_prepared_request_preserves_overflow_when_fixed_costs_exceed_budget():
+    prepared = RequestBudgetService.build_prepared_request(
+        provider="anthropic",
+        model="claude-sonnet-4-6",
+        system_prompt="x" * 200,
+        bootstrap_history=[],
+        conversation_history=[{"role": "user", "content": "a" * 10}],
+        current_user_message="",
+        tool_definitions=[],
+        metadata=ProviderBudgetMetadata(
+            context_window_chars=120,
+            reserved_output_chars=20,
+            provider_framing_chars=10,
+        ),
+    )
+
+    assert prepared.conversation_history == []
+    assert prepared.budget_report.trimming_applied is True
+    assert prepared.budget_report.within_budget is False
+    assert prepared.budget_report.failure_reason == "request_too_large"

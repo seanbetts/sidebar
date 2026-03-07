@@ -7,6 +7,10 @@ from api.db.dependencies import get_current_user_id
 from api.main import app
 from api.routers import chat as chat_router
 from api.services.ai.gateway import ChatResolution
+from api.services.agent.request_budget_service import (
+    PreparedChatRequest,
+    RequestBudgetReport,
+)
 from api.services.conversation_service import ConversationService
 
 
@@ -575,6 +579,75 @@ def test_stream_chat_rejects_oversized_system_prompt(test_client, monkeypatch):
         json={"message": "Hi"},
     )
     assert response.status_code == 400
+
+
+def test_stream_chat_rejects_request_that_exceeds_budget_after_trimming(
+    test_client, monkeypatch
+):
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+    def _build_prepared_request(**kwargs):
+        assembled_inputs = kwargs["assembled_inputs"]
+        return PreparedChatRequest(
+            provider="anthropic",
+            model="claude-sonnet-4-6",
+            system_prompt=assembled_inputs.system_prompt,
+            bootstrap_history=assembled_inputs.bootstrap_history,
+            conversation_history=[],
+            current_user_message=assembled_inputs.current_user_message,
+            tool_definitions=[],
+            budget_report=RequestBudgetReport(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                context_window_chars=100,
+                reserved_output_chars=20,
+                available_input_chars=70,
+                provider_framing_chars=10,
+                system_prompt_chars=50,
+                bootstrap_history_chars=20,
+                conversation_history_chars=0,
+                current_message_chars=20,
+                tool_schema_chars=0,
+                total_input_chars=100,
+                overflow_chars=30,
+                within_budget=False,
+                failure_reason="request_too_large",
+                trimming_applied=True,
+                compaction_applied=False,
+            ),
+        )
+
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_prepared_request",
+        staticmethod(_build_prepared_request),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["message"] == (
+        "Chat request is too large. Start a new conversation or reduce context and try again."
+    )
 
 
 def test_stream_chat_allows_section_capped_prompt_report(test_client, monkeypatch):
