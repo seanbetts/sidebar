@@ -11,6 +11,7 @@ from api.models.task_project import TaskProject
 from api.models.user_ai_provider_key import UserAIProviderKey
 from api.models.user_memory import UserMemory
 from api.models.user_settings import UserSettings
+from api.models.user_skill_state import UserSkillState
 from api.models.website import Website
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "UserSettings",
     "UserMemory",
     "UserAIProviderKey",
+    "UserSkillState",
     "IngestedFile",
     "FileDerivative",
     "FileProcessingJob",

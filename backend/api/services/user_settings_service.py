@@ -100,6 +100,10 @@ class UserSettingsService:
             Upserted UserSettings record.
         """
         now = datetime.now(UTC)
+        should_sync_skill_states = (
+            enabled_skills is not UserSettingsService.UNSET
+            or installed_store_skills is not UserSettingsService.UNSET
+        )
         settings = UserSettingsService.get_settings(db, user_id)
         if settings:
             if system_prompt is not UserSettingsService.UNSET:
@@ -199,6 +203,15 @@ class UserSettingsService:
             db.add(settings)
 
         db.flush()
+        if should_sync_skill_states:
+            from api.services.capabilities.skill_state_service import SkillStateService
+
+            SkillStateService.backfill_from_user_settings(
+                db,
+                user_id,
+                settings_record=settings,
+                commit=False,
+            )
         if commit:
             db.commit()
         return settings

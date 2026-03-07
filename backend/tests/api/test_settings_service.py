@@ -1,3 +1,4 @@
+from importlib import import_module
 from types import SimpleNamespace
 
 import pytest
@@ -419,6 +420,67 @@ def test_resolve_installed_store_skills_filters_non_store_entries(monkeypatch) -
 
     resolved = SettingsService._resolve_installed_store_skills(settings_record)
     assert resolved == ["audio-transcribe", "youtube-transcribe"]
+
+
+def _skill_state_service():
+    try:
+        module = import_module("api.services.capabilities.skill_state_service")
+    except ModuleNotFoundError:
+        pytest.fail(
+            "Skill state service module missing: "
+            "api.services.capabilities.skill_state_service"
+        )
+    service = getattr(module, "SkillStateService", None)
+    if service is None:
+        pytest.fail("SkillStateService class missing from capability service module")
+    return service
+
+
+def test_update_settings_mirrors_legacy_skill_selection_into_skill_states(
+    test_db,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {
+                    "id": "files",
+                    "tier": "standard",
+                    "default_enabled": True,
+                    "user_toggleable": True,
+                },
+                {
+                    "id": "assistant-identity",
+                    "tier": "required",
+                    "default_enabled": True,
+                    "user_toggleable": False,
+                },
+                {
+                    "id": "audio-transcribe",
+                    "tier": "store",
+                    "default_enabled": False,
+                    "user_toggleable": True,
+                },
+            ]
+        ),
+    )
+
+    SettingsService.update_settings(
+        test_db,
+        "settings-skill-state-user",
+        {"enabled_skills": ["files"]},
+    )
+
+    states = _skill_state_service().list_active_skill_states(
+        test_db,
+        "settings-skill-state-user",
+    )
+    by_skill = {state.skill_id: state for state in states}
+    assert by_skill["files"].enabled is True
+    assert by_skill["assistant-identity"].enabled is True
+    assert by_skill["files"].installed is False
 
 
 def test_clean_updates_accepts_ai_provider_fields() -> None:

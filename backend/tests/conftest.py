@@ -160,6 +160,7 @@ from api.models.file_ingestion import (  # noqa: F401, E402
 from api.models.note import Note  # noqa: F401, E402
 from api.models.user_memory import UserMemory  # noqa: F401, E402
 from api.models.user_ai_provider_key import UserAIProviderKey  # noqa: F401, E402
+from api.models.user_skill_state import UserSkillState  # noqa: F401, E402
 from api.models.user_settings import UserSettings  # noqa: F401, E402
 from api.models.website import Website  # noqa: F401, E402
 from api.models.website_processing_job import WebsiteProcessingJob  # noqa: F401, E402
@@ -224,6 +225,41 @@ def _ensure_user_settings_columns(connection) -> None:
             "CREATE UNIQUE INDEX IF NOT EXISTS "
             "uq_user_ai_provider_keys_active_user_provider "
             "ON user_ai_provider_keys (user_id, provider) "
+            "WHERE deleted_at IS NULL"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS user_skill_states ("
+            "id uuid PRIMARY KEY, "
+            "user_id text NOT NULL, "
+            "skill_id text NOT NULL, "
+            "enabled boolean NOT NULL DEFAULT false, "
+            "installed boolean NOT NULL DEFAULT false, "
+            "metadata jsonb NOT NULL DEFAULT '{}'::jsonb, "
+            "created_at timestamptz NOT NULL, "
+            "updated_at timestamptz NOT NULL, "
+            "deleted_at timestamptz NULL"
+            ")"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_user_skill_states_user_id "
+            "ON user_skill_states (user_id)"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_user_skill_states_skill_id "
+            "ON user_skill_states (skill_id)"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "uq_user_skill_states_active_user_skill "
+            "ON user_skill_states (user_id, skill_id) "
             "WHERE deleted_at IS NULL"
         )
     )
@@ -509,6 +545,7 @@ def test_db(test_db_engine):
     db = TestSessionLocal()
     db.info["force_public_search_path"] = True
     db.execute(text("SET search_path TO public"))
+    _ensure_user_settings_columns(db.connection())
 
     try:
         yield db
