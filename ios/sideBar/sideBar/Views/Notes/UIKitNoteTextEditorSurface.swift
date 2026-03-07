@@ -6,10 +6,35 @@ import UIKit
 struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     final class AccessoryTextView: UITextView {
         var formattingAccessoryView: UIView?
+        var formattingCommandsEnabled = false
+        var onBoldCommand: (() -> Void)?
+        var onItalicCommand: (() -> Void)?
+        var onUnderlineCommand: (() -> Void)?
 
         override var inputAccessoryView: UIView? {
             get { formattingAccessoryView }
             set { formattingAccessoryView = newValue }
+        }
+
+        override var keyCommands: [UIKeyCommand]? {
+            guard formattingCommandsEnabled else { return super.keyCommands }
+            return [
+                UIKeyCommand(input: "b", modifierFlags: [.command], action: #selector(handleBoldCommand)),
+                UIKeyCommand(input: "i", modifierFlags: [.command], action: #selector(handleItalicCommand)),
+                UIKeyCommand(input: "u", modifierFlags: [.command], action: #selector(handleUnderlineCommand))
+            ]
+        }
+
+        @objc private func handleBoldCommand() {
+            onBoldCommand?()
+        }
+
+        @objc private func handleItalicCommand() {
+            onItalicCommand?()
+        }
+
+        @objc private func handleUnderlineCommand() {
+            onUnderlineCommand?()
         }
     }
 
@@ -37,9 +62,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let textView = AccessoryTextView()
         textView.isEditable = isEditable
+        textView.allowsEditingTextAttributes = true
         textView.backgroundColor = .clear
         textView.accessibilityIdentifier = "notes-editor-text-view"
         textView.delegate = context.coordinator
+        textView.textFormattingConfiguration = nil
         if let formattingBarConfiguration {
             textView.formattingAccessoryView = makeFormattingBar(configuration: formattingBarConfiguration)
         }
@@ -108,14 +135,30 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         switch (textView.formattingAccessoryView as? UIKitNoteFormattingBar, configuration) {
         case let (bar?, configuration?):
             bar.apply(configuration: configuration)
+            textView.formattingCommandsEnabled = configuration.isEnabled
+            textView.onBoldCommand = configuration.onBoldTap
+            textView.onItalicCommand = configuration.onItalicTap
+            textView.onUnderlineCommand = configuration.onUnderlineTap
             return false
         case (nil, let configuration?):
             textView.formattingAccessoryView = makeFormattingBar(configuration: configuration)
+            textView.formattingCommandsEnabled = configuration.isEnabled
+            textView.onBoldCommand = configuration.onBoldTap
+            textView.onItalicCommand = configuration.onItalicTap
+            textView.onUnderlineCommand = configuration.onUnderlineTap
             return true
         case (_?, nil):
             textView.formattingAccessoryView = nil
+            textView.formattingCommandsEnabled = false
+            textView.onBoldCommand = nil
+            textView.onItalicCommand = nil
+            textView.onUnderlineCommand = nil
             return true
         case (nil, nil):
+            textView.formattingCommandsEnabled = false
+            textView.onBoldCommand = nil
+            textView.onItalicCommand = nil
+            textView.onUnderlineCommand = nil
             return false
         }
     }

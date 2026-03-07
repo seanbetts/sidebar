@@ -42,6 +42,44 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
     }
 
+    func testPhoneSurfaceDisablesDuplicateSystemFormattingPanel() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarConfiguration: .disabled
+        )
+
+        XCTAssertNil(textView.textFormattingConfiguration)
+    }
+
+    func testPhoneSurfaceCommandBTriggersSharedBoldFormattingCommand() async throws {
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+        let insertion = nativeViewModel.attributedContent.endIndex
+        nativeViewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        let textView = try mountTextView(
+            viewModel: nativeViewModel,
+            formattingBarConfiguration: context.editorViewModel.uikitFormattingBarConfiguration
+        )
+        let boldCommand = try XCTUnwrap(
+            textView.keyCommands?.first {
+                $0.input?.lowercased() == "b" && $0.modifierFlags == [.command]
+            }
+        )
+
+        _ = textView.perform(boldCommand.action)
+
+        XCTAssertTrue(context.editorViewModel.isFormattingActive(.bold))
+    }
+
     func testUIKitSelectionChangesFlowBackIntoCanonicalSelectionUsingUTF16Offsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
