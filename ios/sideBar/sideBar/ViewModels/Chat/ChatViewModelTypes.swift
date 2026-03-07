@@ -239,6 +239,65 @@ public struct ChatPromptReport: Equatable {
     }
 }
 
+/// Represents the assembled full-request budget report for prompt preview.
+public struct ChatRequestBudgetReport: Equatable {
+    public let provider: String
+    public let model: String
+    public let contextWindowChars: Int
+    public let reservedOutputChars: Int
+    public let availableInputChars: Int
+    public let providerFramingChars: Int
+    public let systemPromptChars: Int
+    public let bootstrapHistoryChars: Int
+    public let conversationHistoryChars: Int
+    public let currentMessageChars: Int
+    public let toolSchemaChars: Int
+    public let totalInputChars: Int
+    public let overflowChars: Int
+    public let withinBudget: Bool
+    public let failureReason: String?
+    public let trimmingApplied: Bool
+    public let compactionApplied: Bool
+
+    public init(
+        provider: String,
+        model: String,
+        contextWindowChars: Int,
+        reservedOutputChars: Int,
+        availableInputChars: Int,
+        providerFramingChars: Int,
+        systemPromptChars: Int,
+        bootstrapHistoryChars: Int,
+        conversationHistoryChars: Int,
+        currentMessageChars: Int,
+        toolSchemaChars: Int,
+        totalInputChars: Int,
+        overflowChars: Int,
+        withinBudget: Bool,
+        failureReason: String?,
+        trimmingApplied: Bool,
+        compactionApplied: Bool
+    ) {
+        self.provider = provider
+        self.model = model
+        self.contextWindowChars = contextWindowChars
+        self.reservedOutputChars = reservedOutputChars
+        self.availableInputChars = availableInputChars
+        self.providerFramingChars = providerFramingChars
+        self.systemPromptChars = systemPromptChars
+        self.bootstrapHistoryChars = bootstrapHistoryChars
+        self.conversationHistoryChars = conversationHistoryChars
+        self.currentMessageChars = currentMessageChars
+        self.toolSchemaChars = toolSchemaChars
+        self.totalInputChars = totalInputChars
+        self.overflowChars = overflowChars
+        self.withinBudget = withinBudget
+        self.failureReason = failureReason
+        self.trimmingApplied = trimmingApplied
+        self.compactionApplied = compactionApplied
+    }
+}
+
 /// Represents ChatPromptPreview.
 public struct ChatPromptPreview: Equatable {
     public let systemPrompt: String?
@@ -246,6 +305,7 @@ public struct ChatPromptPreview: Equatable {
     public let systemPromptSections: [ChatPromptSection]
     public let firstMessagePromptSections: [ChatPromptSection]
     public let promptReport: ChatPromptReport?
+    public let requestBudgetReport: ChatRequestBudgetReport?
     public let workspaceContextMenuActions: [AgentWorkspaceContextMenuAction]
 
     public init(
@@ -254,6 +314,7 @@ public struct ChatPromptPreview: Equatable {
         systemPromptSections: [ChatPromptSection] = [],
         firstMessagePromptSections: [ChatPromptSection] = [],
         promptReport: ChatPromptReport? = nil,
+        requestBudgetReport: ChatRequestBudgetReport? = nil,
         workspaceContextMenuActions: [AgentWorkspaceContextMenuAction] = []
     ) {
         self.systemPrompt = systemPrompt
@@ -261,6 +322,7 @@ public struct ChatPromptPreview: Equatable {
         self.systemPromptSections = systemPromptSections
         self.firstMessagePromptSections = firstMessagePromptSections
         self.promptReport = promptReport
+        self.requestBudgetReport = requestBudgetReport
         self.workspaceContextMenuActions = workspaceContextMenuActions
     }
 }

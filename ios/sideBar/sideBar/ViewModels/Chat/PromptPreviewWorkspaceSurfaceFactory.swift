@@ -53,6 +53,10 @@ enum PromptPreviewWorkspaceSurfaceFactory {
             }
         }
 
+        if let requestBudgetReport = preview.requestBudgetReport {
+            blocks.append(requestBudgetBlock(requestBudgetReport))
+        }
+
         if !preview.systemPromptSections.isEmpty {
             blocks.append(
                 sectionSummaryBlock(
@@ -95,6 +99,29 @@ enum PromptPreviewWorkspaceSurfaceFactory {
             "- \(section.id) (\(section.chars)) · \(section.source)"
         }
         return (["## \(title)"] + lines).joined(separator: "\n")
+    }
+
+    private static func requestBudgetBlock(_ report: ChatRequestBudgetReport) -> String {
+        var lines: [String] = ["## Request Budget"]
+        lines.append("- Provider: \(report.provider) / \(report.model)")
+        lines.append(
+            "- Total input: \(report.totalInputChars)/\(report.availableInputChars) chars"
+        )
+        lines.append("- System prompt: \(report.systemPromptChars) chars")
+        lines.append("- Bootstrap history: \(report.bootstrapHistoryChars) chars")
+        lines.append("- Conversation history: \(report.conversationHistoryChars) chars")
+        lines.append("- Current message: \(report.currentMessageChars) chars")
+        lines.append("- Tool schema: \(report.toolSchemaChars) chars")
+        if report.trimmingApplied {
+            lines.append("- Trimming applied")
+        }
+        if report.compactionApplied {
+            lines.append("- Compaction applied")
+        }
+        if !report.withinBudget {
+            lines.append("- Overflow: \(report.overflowChars) chars")
+        }
+        return lines.joined(separator: "\n")
     }
 
     private static func formattedPromptDocument(_ prompt: String) -> String {

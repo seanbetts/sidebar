@@ -8,6 +8,7 @@ enum PromptPreviewPayloadParser {
         "system_prompt_sections",
         "first_message_prompt_sections",
         "prompt_report",
+        "request_budget_report",
         "workspace_context_menu_actions"
     ]
 
@@ -18,6 +19,7 @@ enum PromptPreviewPayloadParser {
             systemPromptSections: promptSections(from: payload, key: "system_prompt_sections"),
             firstMessagePromptSections: promptSections(from: payload, key: "first_message_prompt_sections"),
             promptReport: promptReport(from: payload, key: "prompt_report"),
+            requestBudgetReport: requestBudgetReport(from: payload, key: "request_budget_report"),
             workspaceContextMenuActions: contextMenuActions(
                 from: payload,
                 key: "workspace_context_menu_actions"
@@ -100,6 +102,51 @@ enum PromptPreviewPayloadParser {
             maxChars: maxChars,
             truncated: truncated,
             sections: sections
+        )
+    }
+
+    private static func requestBudgetReport(
+        from payload: [String: Any],
+        key: String
+    ) -> ChatRequestBudgetReport? {
+        guard let reportPayload = payload[key] as? [String: Any],
+              let provider = reportPayload["provider"] as? String,
+              let model = reportPayload["model"] as? String,
+              let contextWindowChars = intValue(from: reportPayload["context_window_chars"]),
+              let reservedOutputChars = intValue(from: reportPayload["reserved_output_chars"]),
+              let availableInputChars = intValue(from: reportPayload["available_input_chars"]),
+              let providerFramingChars = intValue(from: reportPayload["provider_framing_chars"]),
+              let systemPromptChars = intValue(from: reportPayload["system_prompt_chars"]),
+              let bootstrapHistoryChars = intValue(from: reportPayload["bootstrap_history_chars"]),
+              let conversationHistoryChars = intValue(from: reportPayload["conversation_history_chars"]),
+              let currentMessageChars = intValue(from: reportPayload["current_message_chars"]),
+              let toolSchemaChars = intValue(from: reportPayload["tool_schema_chars"]),
+              let totalInputChars = intValue(from: reportPayload["total_input_chars"]),
+              let overflowChars = intValue(from: reportPayload["overflow_chars"]),
+              let withinBudget = reportPayload["within_budget"] as? Bool,
+              let trimmingApplied = reportPayload["trimming_applied"] as? Bool,
+              let compactionApplied = reportPayload["compaction_applied"] as? Bool else {
+            return nil
+        }
+        let failureReason = reportPayload["failure_reason"] as? String
+        return ChatRequestBudgetReport(
+            provider: provider,
+            model: model,
+            contextWindowChars: contextWindowChars,
+            reservedOutputChars: reservedOutputChars,
+            availableInputChars: availableInputChars,
+            providerFramingChars: providerFramingChars,
+            systemPromptChars: systemPromptChars,
+            bootstrapHistoryChars: bootstrapHistoryChars,
+            conversationHistoryChars: conversationHistoryChars,
+            currentMessageChars: currentMessageChars,
+            toolSchemaChars: toolSchemaChars,
+            totalInputChars: totalInputChars,
+            overflowChars: overflowChars,
+            withinBudget: withinBudget,
+            failureReason: failureReason,
+            trimmingApplied: trimmingApplied,
+            compactionApplied: compactionApplied
         )
     }
 

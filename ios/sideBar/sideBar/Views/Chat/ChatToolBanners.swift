@@ -60,6 +60,14 @@ struct PromptPreviewView: View {
                 }
             }
 
+            if let budget = promptPreview.requestBudgetReport {
+                Text(
+                    "Budget: \(budget.totalInputChars)/\(budget.availableInputChars) chars"
+                )
+                .appFont(.caption2)
+                .foregroundStyle(.secondary)
+            }
+
             if !promptPreview.systemPromptSections.isEmpty {
                 sectionList(
                     title: "System sections",

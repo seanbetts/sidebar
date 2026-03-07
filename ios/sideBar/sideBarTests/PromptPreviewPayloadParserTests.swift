@@ -29,6 +29,25 @@ final class PromptPreviewPayloadParserTests: XCTestCase {
                         "truncated": false,
                         "sections": []
                     ]
+                ],
+                "request_budget_report": [
+                    "provider": "anthropic",
+                    "model": "claude-sonnet-4-6",
+                    "context_window_chars": 200000,
+                    "reserved_output_chars": 20000,
+                    "available_input_chars": 177000,
+                    "provider_framing_chars": 3000,
+                    "system_prompt_chars": 42,
+                    "bootstrap_history_chars": 25,
+                    "conversation_history_chars": 12,
+                    "current_message_chars": 9,
+                    "tool_schema_chars": 100,
+                    "total_input_chars": 188,
+                    "overflow_chars": 0,
+                    "within_budget": true,
+                    "failure_reason": NSNull(),
+                    "trimming_applied": false,
+                    "compaction_applied": false
                 ]
             ]
         ])
@@ -39,6 +58,8 @@ final class PromptPreviewPayloadParserTests: XCTestCase {
         XCTAssertEqual(preview?.firstMessagePrompt, "First prompt text")
         XCTAssertEqual(preview?.systemPromptSections.first?.id, "context")
         XCTAssertEqual(preview?.promptReport?.systemPrompt?.totalChars, 42)
+        XCTAssertEqual(preview?.requestBudgetReport?.provider, "anthropic")
+        XCTAssertEqual(preview?.requestBudgetReport?.toolSchemaChars, 100)
         XCTAssertEqual(
             preview?.workspaceContextMenuActions,
             [.copyMarkdown, .shareText, .download]

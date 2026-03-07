@@ -34,6 +34,25 @@ final class PromptPreviewSurfaceFactoryTests: XCTestCase {
                     sections: []
                 ),
                 firstMessagePrompt: nil
+            ),
+            requestBudgetReport: ChatRequestBudgetReport(
+                provider: "anthropic",
+                model: "claude-sonnet-4-6",
+                contextWindowChars: 200000,
+                reservedOutputChars: 20000,
+                availableInputChars: 177000,
+                providerFramingChars: 3000,
+                systemPromptChars: 123,
+                bootstrapHistoryChars: 40,
+                conversationHistoryChars: 15,
+                currentMessageChars: 5,
+                toolSchemaChars: 90,
+                totalInputChars: 273,
+                overflowChars: 0,
+                withinBudget: true,
+                failureReason: nil,
+                trimmingApplied: false,
+                compactionApplied: false
             )
         )
 
@@ -42,6 +61,9 @@ final class PromptPreviewSurfaceFactoryTests: XCTestCase {
         XCTAssertNotNil(surface)
         let markdown = surface?.payload["markdown"] ?? ""
         XCTAssertTrue(markdown.contains("## Prompt Report"))
+        XCTAssertTrue(markdown.contains("## Request Budget"))
+        XCTAssertTrue(markdown.contains("- Provider: anthropic / claude-sonnet-4-6"))
+        XCTAssertTrue(markdown.contains("- Tool schema: 90 chars"))
         XCTAssertTrue(markdown.contains("## System Prompt"))
         XCTAssertTrue(markdown.contains("## First Message Prompt"))
     }

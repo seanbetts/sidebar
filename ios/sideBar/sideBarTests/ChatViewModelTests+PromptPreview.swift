@@ -59,7 +59,8 @@ extension ChatViewModelTests {
                             ]
                         ]
                     ]
-                ]
+                ],
+                "request_budget_report": requestBudgetReportPayload()
             ])
         )
 
@@ -73,6 +74,8 @@ extension ChatViewModelTests {
         XCTAssertEqual(viewModel.promptPreview?.firstMessagePromptSections.first?.chars, 1137)
         XCTAssertEqual(viewModel.promptPreview?.promptReport?.systemPrompt?.totalChars, 3690)
         XCTAssertEqual(viewModel.promptPreview?.promptReport?.firstMessagePrompt?.maxChars, 8000)
+        XCTAssertEqual(viewModel.promptPreview?.requestBudgetReport?.provider, "anthropic")
+        XCTAssertEqual(viewModel.promptPreview?.requestBudgetReport?.toolSchemaChars, 1250)
     }
 
     func testPromptPreviewEventDispatchesAgentWorkspaceSurface() async {
@@ -114,7 +117,8 @@ extension ChatViewModelTests {
                         "truncated": false,
                         "sections": []
                     ]
-                ]
+                ],
+                "request_budget_report": requestBudgetReportPayload()
             ])
         )
 
@@ -143,6 +147,29 @@ extension ChatViewModelTests {
         XCTAssertTrue(markdown.contains("First Message Prompt"))
         XCTAssertTrue(markdown.contains("First message prompt text"))
         XCTAssertTrue(markdown.contains("Prompt Report"))
+        XCTAssertTrue(markdown.contains("Request Budget"))
+    }
+
+    private func requestBudgetReportPayload() -> [String: Any] {
+        [
+            "provider": "anthropic",
+            "model": "claude-sonnet-4-6",
+            "context_window_chars": 200000,
+            "reserved_output_chars": 20000,
+            "available_input_chars": 177000,
+            "provider_framing_chars": 3000,
+            "system_prompt_chars": 3690,
+            "bootstrap_history_chars": 1100,
+            "conversation_history_chars": 250,
+            "current_message_chars": 10,
+            "tool_schema_chars": 1250,
+            "total_input_chars": 6300,
+            "overflow_chars": 0,
+            "within_budget": true,
+            "failure_reason": NSNull(),
+            "trimming_applied": false,
+            "compaction_applied": false
+        ]
     }
 }
 
