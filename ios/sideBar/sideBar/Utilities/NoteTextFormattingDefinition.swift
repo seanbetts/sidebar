@@ -36,13 +36,12 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
 
         for snapshot in snapshots {
             let range = attributedRange(for: snapshot.range, in: text)
-            text[range].font = noteInlineFont(
-                baseFontSize: baseFontSize,
-                bold: snapshot.traits.bold,
-                italic: snapshot.traits.italic
+            let replacement = normalizedRun(
+                from: text[range],
+                traits: snapshot.traits,
+                underline: snapshot.underline
             )
-            text[range].underlineStyle = snapshot.underline ? .single : nil
-            clearUnsupportedEditorAttributes(in: &text, range: range)
+            text.replaceSubrange(range, with: replacement)
         }
         if !text.characters.isEmpty {
             text[text.startIndex..<text.endIndex].paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
@@ -51,21 +50,22 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         }
     }
 
-    private func clearUnsupportedEditorAttributes(
-        in text: inout AttributedString,
-        range: Range<AttributedString.Index>
-    ) {
-        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
-        text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
-#if os(iOS)
-        text[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = nil
-#elseif os(macOS)
-        text[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = nil
-#endif
-        text[range].strikethroughStyle = nil
-        if text[range].underlineStyle != nil {
-            text[range].underlineStyle = .single
-        }
+    private func normalizedRun(
+        from slice: AttributedSubstring,
+        traits: NoteInlineFormattingTraits,
+        underline: Bool
+    ) -> AttributedString {
+        var normalized = AttributedString(String(slice.characters))
+        guard !normalized.characters.isEmpty else { return normalized }
+
+        let range = normalized.startIndex..<normalized.endIndex
+        normalized[range].font = noteInlineFont(
+            baseFontSize: baseFontSize,
+            bold: traits.bold,
+            italic: traits.italic
+        )
+        normalized[range].underlineStyle = underline ? .single : nil
+        return normalized
     }
 }
 

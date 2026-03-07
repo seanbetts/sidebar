@@ -133,6 +133,20 @@ func noteBridgedPlatformFont(from attributes: AttributeContainer) -> NotePlatfor
 #if os(iOS)
     attributes[AttributeScopes.UIKitAttributes.FontAttribute.self]
 #elseif os(macOS)
-    attributes[AttributeScopes.AppKitAttributes.FontAttribute.self]
+    noteBridgedPlatformFontFromBridge(attributes) as? NSFont
 #endif
 }
+
+#if os(macOS)
+@available(iOS 26.0, macOS 26.0, *)
+private func noteBridgedPlatformFontFromBridge(
+    _ attributes: AttributeContainer
+) -> AnyObject? {
+    var sample = AttributedString("x")
+    let range = sample.startIndex..<sample.endIndex
+    sample[range].mergeAttributes(attributes)
+    let bridged = (try? NSAttributedString(sample, including: \.noteTextEditor))
+        ?? NSAttributedString(sample)
+    return bridged.attribute(.font, at: 0, effectiveRange: nil) as AnyObject?
+}
+#endif
