@@ -148,6 +148,8 @@ public struct NotePayload: Codable, Equatable {
     public let name: String
     /// Temporary legacy RTF boundary retained for local compatibility.
     public let content: String
+    /// Present only when the backend explicitly includes legacy transport content.
+    public let contentFormat: String?
     public let document: NotesSemanticDocument
     public let documentVersion: Int
     /// Explicit plain-text cache for list/search/prompt/export paths.
@@ -160,6 +162,7 @@ public struct NotePayload: Codable, Equatable {
         case id
         case name
         case content
+        case contentFormat = "content_format"
         case document
         case documentVersion = "document_version"
         case path
@@ -178,13 +181,15 @@ public struct NotePayload: Codable, Equatable {
         path: String,
         modified: Double?,
         created: Double?,
-        documentVersion: Int? = nil
+        documentVersion: Int? = nil,
+        contentFormat: String? = nil
     ) {
         let resolvedDocument = document
             ?? noteDocumentFromLegacyTransportContent(content, plainText: plainText)
         let resolvedPlainText = plainText ?? NotesSemanticDocumentProjection.plainText(from: resolvedDocument)
         self.id = id
         self.name = name
+        self.contentFormat = contentFormat
         self.document = resolvedDocument
         self.documentVersion = documentVersion ?? resolvedDocument.version
         self.content = content.isEmpty
@@ -204,6 +209,7 @@ public struct NotePayload: Codable, Equatable {
         modified = try container.decodeIfPresent(Double.self, forKey: .modified)
         created = try container.decodeIfPresent(Double.self, forKey: .created)
         let rawContent = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
+        contentFormat = try container.decodeIfPresent(String.self, forKey: .contentFormat)
         let decodedDocument = try container.decodeIfPresent(NotesSemanticDocument.self, forKey: .document)
         let decodedDocumentVersion = try container.decodeIfPresent(Int.self, forKey: .documentVersion)
         let decodedPlainText = try container.decodeIfPresent(String.self, forKey: .plainText)
@@ -225,6 +231,7 @@ public struct NotePayload: Codable, Equatable {
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
         try container.encode(content, forKey: .content)
+        try container.encodeIfPresent(contentFormat, forKey: .contentFormat)
         try container.encode(document, forKey: .document)
         try container.encode(documentVersion, forKey: .documentVersion)
         try container.encode(path, forKey: .path)

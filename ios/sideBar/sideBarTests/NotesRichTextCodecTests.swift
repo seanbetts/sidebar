@@ -77,10 +77,11 @@ final class NotesRichTextCodecTests: XCTestCase {
         )
 
         XCTAssertEqual(payload.content, encoded)
+        XCTAssertEqual(payload.contentFormat, "rtf")
         XCTAssertEqual(payload.plainText, "Decoded body")
     }
 
-    func testNotePayloadDropsRawFallbackWhenCanonicalDecodeFails() throws {
+    func testNotePayloadPreservesRawFallbackWhenCanonicalDecodeFails() throws {
         let json = """
         {
           "id": "n2",
@@ -98,7 +99,13 @@ final class NotesRichTextCodecTests: XCTestCase {
         )
 
         XCTAssertEqual(payload.content, "not-base64")
-        XCTAssertEqual(payload.plainText, "")
+        XCTAssertEqual(payload.plainText, "not-base64")
+        XCTAssertEqual(
+            payload.document,
+            NotesSemanticDocument(
+                blocks: [.paragraph([.init(text: "not-base64", marks: [])])]
+            )
+        )
     }
 
     func testDecodeBase64RTFToAttributedStringPreservesBoldFontTraits() throws {
