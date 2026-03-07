@@ -182,9 +182,9 @@ final class NotesViewModelTests: XCTestCase {
             oldRecord: NoteRealtimeRecord(
                 id: "note-id",
                 title: "Note",
-                content: nil,
+                document: nil,
+                documentVersion: nil,
                 plainText: nil,
-                contentFormat: nil,
                 metadata: nil,
                 updatedAt: nil,
                 deletedAt: nil
@@ -387,6 +387,13 @@ private final class NotesAPISpy: NotesProviding {
         throw MockError.forced
     }
 
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+    }
+
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {
         createRequests.append(request)
         return try createNoteResult.get()
@@ -483,6 +490,13 @@ private struct MockNotesAPI: NotesProviding {
         return try getNoteResult.get()
     }
 
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+    }
+
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {
         _ = request
         return try getNoteResult.get()
@@ -577,6 +591,13 @@ private final class SearchQueueNotesAPI: NotesProviding {
         throw MockError.forced
     }
 
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+    }
+
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {
         _ = request
         throw MockError.forced
@@ -665,6 +686,13 @@ private final class ControlledArchivedNotesAPI: NotesProviding {
         _ = id
         _ = content
         throw MockError.forced
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
     }
 
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {

@@ -86,6 +86,13 @@ private struct NotesDetailViewMockNotesAPI: NotesProviding {
         _ = content
         throw NotesDetailViewTestError.forced
     }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+    }
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {
         _ = request
         throw NotesDetailViewTestError.forced

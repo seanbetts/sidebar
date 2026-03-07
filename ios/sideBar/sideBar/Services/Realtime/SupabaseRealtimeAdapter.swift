@@ -309,12 +309,23 @@ actor AccessTokenStore {
 public struct NoteRealtimeRecord: Codable {
     public let id: String
     public let title: String?
-    public let content: String?
+    public let document: NotesSemanticDocument?
+    public let documentVersion: Int?
     public let plainText: String?
-    public let contentFormat: String?
     public let metadata: [String: AnyCodable]?
     public let updatedAt: String?
     public let deletedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case document
+        case documentVersion = "document_version"
+        case plainText = "plain_text"
+        case metadata
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
+    }
 }
 
 /// Represents WebsiteRealtimeRecord.

@@ -13,9 +13,9 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         let record = NoteRealtimeRecord(
             id: "n1",
             title: "Title",
-            content: "Body",
-            plainText: nil,
-            contentFormat: nil,
+            document: nil,
+            documentVersion: nil,
+            plainText: "Body",
             metadata: nil,
             updatedAt: nil,
             deletedAt: nil

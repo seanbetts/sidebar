@@ -44,8 +44,7 @@ final class NotesRichTextCodecTests: XCTestCase {
             from: Data(json.utf8)
         )
 
-        XCTAssertEqual(payload.content, encoded)
-        XCTAssertEqual(payload.contentFormat, "rtf")
+        XCTAssertEqual(payload.content, "Decoded body")
         XCTAssertEqual(payload.plainText, "Decoded body")
     }
 

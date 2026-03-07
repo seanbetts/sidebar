@@ -242,7 +242,6 @@ extension NotesStore {
             return true
         }
         return current.modified != incoming.modified ||
-            current.content != incoming.content ||
             current.document != incoming.document ||
             current.documentVersion != incoming.documentVersion ||
             current.plainText != incoming.plainText ||

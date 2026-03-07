@@ -314,11 +314,11 @@ public final class NotesViewModel: ObservableObject {
             id: note.id,
             name: NotesSemanticDocumentProjection.title(from: document),
             document: document,
+            documentVersion: document.version,
             plainText: plainText,
             path: note.path,
             modified: note.modified,
-            created: note.created,
-            documentVersion: document.version
+            created: note.created
         )
         store.applyEditorUpdate(updated)
     }

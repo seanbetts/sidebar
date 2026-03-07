@@ -106,6 +106,37 @@ final class NotesAPITests: XCTestCase {
         XCTAssertEqual(note.plainText, "Hello world")
     }
 
+    func testNotePayloadEncodesOnlySemanticFields() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([
+                    .init(text: "Hello", marks: [.bold]),
+                    .init(text: " world", marks: [])
+                ])
+            ]
+        )
+        let payload = NotePayload(
+            id: "note-1",
+            name: "Hello world",
+            document: document,
+            plainText: "Hello world",
+            path: "note-1",
+            modified: 1,
+            created: 1
+        )
+
+        let data = try JSONEncoder().encode(payload)
+        let rawPayload = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+
+        XCTAssertNil(rawPayload["content"])
+        XCTAssertNil(rawPayload["content_format"])
+        XCTAssertEqual(rawPayload["plain_text"] as? String, "Hello world")
+        XCTAssertNotNil(rawPayload["document"])
+        XCTAssertEqual(rawPayload["document_version"] as? Int, 1)
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

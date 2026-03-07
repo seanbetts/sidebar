@@ -72,9 +72,9 @@ final class NotesStoreTests: XCTestCase {
             oldRecord: NoteRealtimeRecord(
                 id: "n1",
                 title: nil,
-                content: nil,
+                document: nil,
+                documentVersion: nil,
                 plainText: nil,
-                contentFormat: nil,
                 metadata: nil,
                 updatedAt: nil,
                 deletedAt: nil
@@ -426,6 +426,13 @@ private final class MockNotesAPI: NotesProviding {
         _ = id
         _ = content
         return try noteResult.get()
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
     }
 
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {

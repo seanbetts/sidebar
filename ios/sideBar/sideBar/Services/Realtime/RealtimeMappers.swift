@@ -5,13 +5,16 @@ import sideBarShared
 public struct RealtimeMappers {
     public static func mapNote(_ record: NoteRealtimeRecord) -> NotePayload? {
         let id = record.id
-        let canonicalContent = record.content ?? ""
-        let plainText = record.plainText ?? ""
+        let resolvedDocument = record.document
+            ?? NotesSemanticDocumentProjection.document(fromPlainText: record.plainText ?? "")
+        let plainText = record.plainText
+            ?? NotesSemanticDocumentProjection.plainText(from: resolvedDocument)
         // NOTE: Align note mapping with native models and folder/archive semantics.
         return NotePayload(
             id: id,
             name: record.title ?? "New Note",
-            content: canonicalContent,
+            document: resolvedDocument,
+            documentVersion: record.documentVersion ?? resolvedDocument.version,
             plainText: plainText,
             path: id,
             modified: DateParsing.parseISO8601(record.updatedAt)?.timeIntervalSince1970,

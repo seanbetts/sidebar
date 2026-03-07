@@ -70,12 +70,6 @@ extension NotesStore {
         }
     }
 
-    /// Enqueues an offline note-content update operation.
-    public func enqueueUpdate(noteId: String, content: String) async throws {
-        let request = NoteUpdateRequest(content: content)
-        try await enqueueUpdate(noteId: noteId, document: request.document)
-    }
-
     /// Enqueues an offline semantic note update operation.
     public func enqueueUpdate(noteId: String, document: NotesSemanticDocument) async throws {
         let snapshot = makeServerSnapshot(noteId: noteId, notePath: nil)
@@ -214,7 +208,8 @@ extension NotesStore {
         let updated = NotePayload(
             id: note.id,
             name: newName ?? note.name,
-            content: note.content,
+            document: note.document,
+            documentVersion: note.documentVersion,
             plainText: note.plainText,
             path: newPath,
             modified: note.modified,
