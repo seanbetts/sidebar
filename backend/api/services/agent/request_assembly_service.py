@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -222,9 +223,17 @@ class RequestAssemblyService:
         provider: AIProvider,
         model: str,
         assembled_inputs: AssembledChatInputs,
+        allowed_skills: list[str] | None = None,
+        tool_definition_resolver: (
+            Callable[[list[str] | None], list[dict[str, Any]]] | None
+        ) = None,
         tool_definitions: list[dict[str, Any]] | None = None,
     ) -> PreparedChatRequest:
         """Wrap assembled chat inputs in the prepared-request budget contract."""
+        resolved_tool_definitions = list(tool_definitions or [])
+        if not resolved_tool_definitions and tool_definition_resolver is not None:
+            resolved_tool_definitions = tool_definition_resolver(allowed_skills)
+
         return RequestBudgetService.build_prepared_request(
             provider=provider,
             model=model,
@@ -232,5 +241,5 @@ class RequestAssemblyService:
             bootstrap_history=assembled_inputs.bootstrap_history,
             conversation_history=assembled_inputs.conversation_history,
             current_user_message=assembled_inputs.current_user_message,
-            tool_definitions=tool_definitions or [],
+            tool_definitions=resolved_tool_definitions,
         )

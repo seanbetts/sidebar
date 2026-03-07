@@ -137,7 +137,12 @@ class RequestBudgetService:
         bootstrap_history_chars = cls._measure_json_chars(bootstrap_history or [])
         conversation_history_chars = cls._measure_json_chars(conversation_history or [])
         current_message_chars = len(current_user_message or "")
-        tool_schema_chars = cls._measure_json_chars(tool_definitions or [])
+        tool_schema_chars = cls._measure_json_chars(
+            cls._build_provider_tool_schema_payload(
+                provider=provider,
+                tool_definitions=tool_definitions or [],
+            )
+        )
         available_input_chars = max(
             resolved_metadata.context_window_chars
             - resolved_metadata.reserved_output_chars
@@ -177,6 +182,73 @@ class RequestBudgetService:
         )
 
     @staticmethod
-    def _measure_json_chars(payload: list[dict[str, Any]]) -> int:
+    def _measure_json_chars(payload: Any) -> int:
         """Measure serialized chars for structured request payload components."""
         return len(json.dumps(payload, sort_keys=True))
+
+    @classmethod
+    def _build_provider_tool_schema_payload(
+        cls,
+        *,
+        provider: AIProvider,
+        tool_definitions: list[dict[str, Any]],
+    ) -> Any:
+        """Build the provider-shaped tool schema payload used for budgeting."""
+        if provider == "openai":
+            return [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool["name"],
+                        "description": tool["description"],
+                        "parameters": tool["input_schema"],
+                    },
+                }
+                for tool in tool_definitions
+            ]
+        if provider == "google":
+            return [
+                {
+                    "function_declarations": [
+                        {
+                            "name": tool["name"],
+                            "description": tool["description"],
+                            "parameters": cls._normalize_google_schema(
+                                tool.get("input_schema", {})
+                            ),
+                        }
+                        for tool in tool_definitions
+                    ]
+                }
+            ]
+        return tool_definitions
+
+    @classmethod
+    def _normalize_google_schema(cls, value: Any) -> Any:
+        """Normalize JSON schema to the Google tool declaration shape."""
+        if isinstance(value, dict):
+            normalized: dict[str, Any] = {}
+            nullable = False
+            schema_type = value.get("type")
+            if isinstance(schema_type, list):
+                type_options = [
+                    option.lower() for option in schema_type if isinstance(option, str)
+                ]
+                non_null_options = [
+                    option for option in type_options if option != "null"
+                ]
+                nullable = "null" in type_options
+                if non_null_options:
+                    normalized["type"] = non_null_options[0]
+            for key, entry in value.items():
+                if key == "type":
+                    if "type" not in normalized and isinstance(entry, str):
+                        normalized["type"] = entry.lower()
+                    continue
+                normalized[key] = cls._normalize_google_schema(entry)
+            if nullable:
+                normalized["nullable"] = True
+            return normalized
+        if isinstance(value, list):
+            return [cls._normalize_google_schema(item) for item in value]
+        return value

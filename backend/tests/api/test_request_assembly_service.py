@@ -198,3 +198,51 @@ def test_build_prepared_request_wraps_assembled_inputs():
         {"role": "assistant", "content": "Earlier"}
     ]
     assert prepared.current_user_message == "Current"
+
+
+def test_build_prepared_request_resolves_tool_definitions_from_resolver():
+    captured: dict[str, object] = {}
+
+    def fake_tool_definition_resolver(
+        allowed_skills: list[str] | None,
+    ) -> list[dict[str, object]]:
+        captured["allowed_skills"] = allowed_skills
+        return [
+            {
+                "name": "lookup_note",
+                "description": "Open a note by ID.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"note_id": {"type": "string"}},
+                    "required": ["note_id"],
+                },
+            }
+        ]
+
+    prepared = RequestAssemblyService.build_prepared_request(
+        provider="anthropic",
+        model="claude-sonnet-4-6",
+        assembled_inputs=AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[{"role": "user", "content": "first"}],
+            conversation_history=[{"role": "assistant", "content": "Earlier"}],
+            current_user_message="Current",
+            prompt_bundle=_prompt_bundle(system_prompt="system"),
+        ),
+        allowed_skills=["notes"],
+        tool_definition_resolver=fake_tool_definition_resolver,
+    )
+
+    assert captured["allowed_skills"] == ["notes"]
+    assert prepared.tool_definitions == [
+        {
+            "name": "lookup_note",
+            "description": "Open a note by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"note_id": {"type": "string"}},
+                "required": ["note_id"],
+            },
+        }
+    ]
+    assert prepared.budget_report.tool_schema_chars > 0

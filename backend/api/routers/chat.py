@@ -238,6 +238,12 @@ async def stream_chat(
         provider=chat_resolution.provider,
         model=chat_resolution.model,
         assembled_inputs=assembled_inputs,
+        allowed_skills=enabled_skills,
+        tool_definition_resolver=getattr(
+            ai_gateway,
+            "get_chat_tool_definitions",
+            None,
+        ),
     )
 
     async def event_generator():

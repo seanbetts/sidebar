@@ -114,3 +114,105 @@ def test_build_prepared_request_attaches_budget_report():
     assert prepared.current_user_message == "Hello"
     assert prepared.tool_definitions == []
     assert prepared.budget_report.provider == "google"
+
+
+def test_build_report_measures_provider_specific_openai_tool_schema():
+    tool_definitions = [
+        {
+            "name": "lookup_note",
+            "description": "Open a note by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"note_id": {"type": "string"}},
+                "required": ["note_id"],
+            },
+        }
+    ]
+
+    report = RequestBudgetService.build_report(
+        provider="openai",
+        model="gpt-5.2",
+        system_prompt="System rules",
+        bootstrap_history=[],
+        conversation_history=[],
+        current_user_message="Hello",
+        tool_definitions=tool_definitions,
+        metadata=ProviderBudgetMetadata(
+            context_window_chars=1000,
+            reserved_output_chars=120,
+            provider_framing_chars=30,
+        ),
+    )
+
+    assert report.tool_schema_chars == len(
+        json.dumps(
+            [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "lookup_note",
+                        "description": "Open a note by ID.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"note_id": {"type": "string"}},
+                            "required": ["note_id"],
+                        },
+                    },
+                }
+            ],
+            sort_keys=True,
+        )
+    )
+
+
+def test_build_report_measures_provider_specific_google_tool_schema():
+    tool_definitions = [
+        {
+            "name": "lookup_note",
+            "description": "Open a note by ID.",
+            "input_schema": {
+                "type": ["OBJECT", "null"],
+                "properties": {"note_id": {"type": "STRING"}},
+                "required": ["note_id"],
+            },
+        }
+    ]
+
+    report = RequestBudgetService.build_report(
+        provider="google",
+        model="gemini-3.1-pro-preview",
+        system_prompt="System rules",
+        bootstrap_history=[],
+        conversation_history=[],
+        current_user_message="Hello",
+        tool_definitions=tool_definitions,
+        metadata=ProviderBudgetMetadata(
+            context_window_chars=1000,
+            reserved_output_chars=120,
+            provider_framing_chars=30,
+        ),
+    )
+
+    assert report.tool_schema_chars == len(
+        json.dumps(
+            [
+                {
+                    "function_declarations": [
+                        {
+                            "name": "lookup_note",
+                            "description": "Open a note by ID.",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "note_id": {"type": "string"},
+                                },
+                                "required": ["note_id"],
+                                "nullable": True,
+                            },
+                        }
+                    ]
+                }
+            ],
+            sort_keys=True,
+        )
+    )

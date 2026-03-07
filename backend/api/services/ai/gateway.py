@@ -92,6 +92,13 @@ class AIProviderGateway:
             api_key=api_key,
         )
 
+    def get_chat_tool_definitions(
+        self,
+        allowed_skills: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return canonical chat tool definitions for the allowed skills."""
+        return self._get_tool_mapper().get_claude_tools(allowed_skills)
+
     async def stream_chat_with_tools(
         self,
         *,
