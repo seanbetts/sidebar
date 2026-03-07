@@ -74,13 +74,13 @@ jobs:
             destination: "platform=iOS Simulator,name=iPhone 17 Pro"
             runner_label: ios
             skip_testing: sideBarUITests
-            retry_tests_on_failure: "YES"
+            retry_tests_on_failure: "NO"
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
             enable_coverage: "YES"
-            prepare_simulator_before_tests: "NO"
-            collect_simulator_diagnostics_on_failure: "NO"
+            prepare_simulator_before_tests: "YES"
+            collect_simulator_diagnostics_on_failure: "YES"
           - id: mac
             label: "macOS 26"
             scheme: sideBarMacTests

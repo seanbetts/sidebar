@@ -267,8 +267,18 @@ collect_simulator_diagnostics() {
   log show \
     --style compact \
     --last 20m \
-    --predicate 'process == "Simulator" || process == "CoreSimulatorService" || process == "testmanagerd" || eventMessage CONTAINS[c] "sideBarUITests"' \
+    --predicate 'process == "Simulator" || process == "CoreSimulatorService" || process == "testmanagerd" || process == "xctest" || process == "sideBar" || eventMessage CONTAINS[c] "sideBar" || eventMessage CONTAINS[c] "xctest"' \
     > "${diagnostics_dir}/host-log-show.txt" 2>&1 || true
+
+  while IFS= read -r -d '' crash_report; do
+    cp "${crash_report}" "${diagnostics_dir}/" >/dev/null 2>&1 || true
+  done < <(
+    find "${HOME}/Library/Logs/DiagnosticReports" \
+      -maxdepth 1 \
+      \( -name 'sideBar-*.ips' -o -name 'sideBar-*.crash' -o -name 'xctest-*.ips' -o -name 'xctest-*.crash' \) \
+      -mmin -30 \
+      -print0 2>/dev/null || true
+  )
 
   if [[ -n "${IOS_TARGET_SIMULATOR_UDID}" ]]; then
     printf '%s\n' "${IOS_TARGET_SIMULATOR_UDID}" \
