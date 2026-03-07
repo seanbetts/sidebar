@@ -2,12 +2,16 @@ from datetime import UTC, datetime
 
 import pytest
 
+from api.db.base import Base
 from api.exceptions import BadRequestError
+from api.models.user_settings import UserSettings
+from api.services.agent.prompt.composer import PromptContextService
 from api.services.agent.request_assembly_service import (
     AssembledChatInputs,
     RequestAssemblyService,
 )
 from api.services.agent.request_budget_service import PreparedChatRequest
+from api.services.capabilities.types import CapabilityLoaderResult
 
 
 def _prompt_bundle(*, system_prompt: str = "system", truncated_by_budget: bool = False):
@@ -165,6 +169,52 @@ def test_build_assembled_inputs_replays_persisted_bootstrap_separately():
         {"role": "assistant", "content": "Earlier conversation summary"},
         {"role": "assistant", "content": "Reply"},
     ]
+
+
+def test_build_assembled_inputs_passes_blocked_skill_summaries_to_prompt_builder():
+    captured: dict[str, object] = {}
+
+    class FakePromptContextService:
+        @staticmethod
+        def build_prompts(**kwargs):
+            captured["blocked_skill_summaries"] = kwargs.get(
+                "blocked_skill_summaries"
+            )
+            return _prompt_bundle(system_prompt="assembled-system")
+
+    blocked_skill_summaries = [
+        {
+            "skill_id": "google-drive",
+            "availability_status": "needs_connection",
+            "availability_reason": "missing_connection",
+            "availability_remediation": {
+                "action": "connect",
+                "provider": "google-workspace",
+            },
+        }
+    ]
+
+    RequestAssemblyService.build_assembled_inputs(
+        db=object(),
+        user_id="user-1",
+        message="Connect my Google Drive",
+        conversation_id="conversation-1",
+        conversation_messages=None,
+        request_history=[],
+        user_message_id=None,
+        open_context={},
+        attachments=[],
+        user_agent=None,
+        current_location=None,
+        current_location_levels=None,
+        current_weather=None,
+        current_timezone=None,
+        now=datetime.now(UTC),
+        blocked_skill_summaries=blocked_skill_summaries,
+        prompt_context_service=FakePromptContextService,
+    )
+
+    assert captured["blocked_skill_summaries"] == blocked_skill_summaries
 
 
 def test_build_assembled_inputs_retries_without_attachment_content():
@@ -395,6 +445,202 @@ def test_build_prepared_request_resolves_tool_definitions_from_resolver():
     )
 
     assert captured["allowed_skills"] == ["notes"]
+    assert prepared.tool_definitions == [
+        {
+            "name": "lookup_note",
+            "description": "Open a note by ID.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"note_id": {"type": "string"}},
+                "required": ["note_id"],
+            },
+        }
+    ]
+    assert prepared.budget_report.tool_schema_chars > 0
+
+
+def test_build_prepared_request_uses_executable_skill_subset_for_tool_resolution():
+    captured: dict[str, object] = {}
+
+    def fake_tool_definition_resolver(
+        executable_skill_ids: list[str] | None,
+    ) -> list[dict[str, object]]:
+        captured["executable_skill_ids"] = executable_skill_ids
+        return [
+            {
+                "name": "lookup_note",
+                "description": "Open a note by ID.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"note_id": {"type": "string"}},
+                    "required": ["note_id"],
+                },
+            }
+        ]
+
+    prepared = RequestAssemblyService.build_prepared_request(
+        provider="anthropic",
+        model="claude-sonnet-4-6",
+        assembled_inputs=AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[{"role": "user", "content": "first"}],
+            conversation_history=[{"role": "assistant", "content": "Earlier"}],
+            current_user_message="Current",
+            prompt_bundle=_prompt_bundle(system_prompt="system"),
+        ),
+        executable_skill_ids=["notes"],
+        tool_definition_resolver=fake_tool_definition_resolver,
+    )
+
+    assert captured["executable_skill_ids"] == ["notes"]
+    assert prepared.tool_definitions
+
+
+def test_build_assembled_inputs_passes_loaded_capability_content_to_prompt_builder():
+    captured: dict[str, object] = {}
+
+    class FakePromptContextService:
+        @staticmethod
+        def build_prompts(**kwargs):
+            captured["loaded_instructions"] = kwargs.get("loaded_instructions")
+            captured["loaded_examples"] = kwargs.get("loaded_examples")
+            return _prompt_bundle(system_prompt="assembled-system")
+
+    capability_loader_result = CapabilityLoaderResult(
+        selected_skill_ids=("notes",),
+        executable_skill_ids=("notes",),
+        loaded_instruction_refs=("skills/notes/SKILL.md",),
+        loaded_instructions=(
+            {
+                "skill_id": "notes",
+                "ref": "skills/notes/SKILL.md",
+                "content": "Use the notes skill for note operations.",
+            },
+        ),
+        loaded_examples=(
+            {
+                "skill_id": "notes",
+                "ref": "skills/notes/examples/basic.md",
+                "content": "Example: open yesterday's notes.",
+            },
+        ),
+    )
+
+    RequestAssemblyService.build_assembled_inputs(
+        db=object(),
+        user_id="user-1",
+        message="Open my notes",
+        conversation_id="conversation-1",
+        conversation_messages=None,
+        request_history=[],
+        user_message_id=None,
+        open_context={},
+        attachments=[],
+        user_agent=None,
+        current_location=None,
+        current_location_levels=None,
+        current_weather=None,
+        current_timezone=None,
+        now=datetime.now(UTC),
+        capability_loader_result=capability_loader_result,
+        prompt_context_service=FakePromptContextService,
+    )
+
+    assert captured["loaded_instructions"] == [
+        {
+            "skill_id": "notes",
+            "ref": "skills/notes/SKILL.md",
+            "content": "Use the notes skill for note operations.",
+        }
+    ]
+    assert captured["loaded_examples"] == [
+        {
+            "skill_id": "notes",
+            "ref": "skills/notes/examples/basic.md",
+            "content": "Example: open yesterday's notes.",
+        }
+    ]
+
+
+def test_prompt_context_service_includes_compact_blocked_skill_guidance_only_when_present(
+    test_db,
+):
+    Base.metadata.create_all(bind=test_db.connection())
+    test_db.add(UserSettings(user_id="user-1", name="Sam"))
+    test_db.commit()
+
+    prompt_bundle = PromptContextService.build_prompts(
+        db=test_db,
+        user_id="user-1",
+        open_context={},
+        attachments=[],
+        user_agent=None,
+        now=datetime(2026, 3, 7, 12, 0, tzinfo=UTC),
+        blocked_skill_summaries=[
+            {
+                "skill_id": "google-drive",
+                "availability_status": "needs_connection",
+                "availability_reason": "missing_connection",
+                "availability_remediation": {
+                    "action": "connect",
+                    "provider": "google-workspace",
+                },
+            }
+        ],
+    )
+
+    system_prompt = prompt_bundle["system_prompt"]["text"]
+    assert "<blocked_capabilities>" in system_prompt
+    assert "google-drive" in system_prompt
+    assert "connect google-workspace" in system_prompt
+
+    without_blocked = PromptContextService.build_prompts(
+        db=test_db,
+        user_id="user-1",
+        open_context={},
+        attachments=[],
+        user_agent=None,
+        now=datetime(2026, 3, 7, 12, 0, tzinfo=UTC),
+        blocked_skill_summaries=[],
+    )
+    assert "<blocked_capabilities>" not in without_blocked["system_prompt"]["text"]
+
+
+def test_build_prepared_request_uses_loader_tool_definitions_without_resolver():
+    capability_loader_result = CapabilityLoaderResult(
+        selected_skill_ids=("notes", "google-drive"),
+        executable_skill_ids=("notes",),
+        loaded_instruction_refs=("skills/notes/SKILL.md",),
+        tool_definitions=(
+            {
+                "name": "lookup_note",
+                "description": "Open a note by ID.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"note_id": {"type": "string"}},
+                    "required": ["note_id"],
+                },
+            },
+        ),
+    )
+
+    def fail_resolver(_allowed_skills):
+        raise AssertionError("tool_definition_resolver should not be called")
+
+    prepared = RequestAssemblyService.build_prepared_request(
+        provider="anthropic",
+        model="claude-sonnet-4-6",
+        assembled_inputs=AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[{"role": "user", "content": "first"}],
+            conversation_history=[{"role": "assistant", "content": "Earlier"}],
+            current_user_message="Current",
+            prompt_bundle=_prompt_bundle(system_prompt="system"),
+        ),
+        capability_loader_result=capability_loader_result,
+        tool_definition_resolver=fail_resolver,
+    )
+
     assert prepared.tool_definitions == [
         {
             "name": "lookup_note",

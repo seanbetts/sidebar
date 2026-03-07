@@ -17,6 +17,7 @@ from api.services.agent.request_budget_service import (
     RequestBudgetService,
 )
 from api.services.ai.registry import AIProvider
+from api.services.capabilities.types import CapabilityLoaderResult
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,8 @@ class RequestAssemblyService:
         current_weather: dict[str, Any] | str | None,
         current_timezone: str | None,
         now: datetime,
+        blocked_skill_summaries: list[dict[str, Any]] | None = None,
+        capability_loader_result: CapabilityLoaderResult | None = None,
         prompt_context_service: type[PromptContextService] = PromptContextService,
     ) -> AssembledChatInputs:
         """Assemble normalized history plus the current prompt bundle."""
@@ -185,6 +188,17 @@ class RequestAssemblyService:
                 current_weather=current_weather,
                 current_timezone=current_timezone,
                 now=now,
+                blocked_skill_summaries=blocked_skill_summaries,
+                loaded_instructions=list(
+                    (
+                        capability_loader_result or CapabilityLoaderResult()
+                    ).loaded_instructions
+                ),
+                loaded_examples=list(
+                    (
+                        capability_loader_result or CapabilityLoaderResult()
+                    ).loaded_examples
+                ),
                 strict_system_prompt=False,
                 include_attachment_content=include_attachment_content,
             )
@@ -289,6 +303,8 @@ class RequestAssemblyService:
         model: str,
         assembled_inputs: AssembledChatInputs,
         allowed_skills: list[str] | None = None,
+        executable_skill_ids: list[str] | None = None,
+        capability_loader_result: CapabilityLoaderResult | None = None,
         tool_definition_resolver: (
             Callable[[list[str] | None], list[dict[str, Any]]] | None
         ) = None,
@@ -297,8 +313,14 @@ class RequestAssemblyService:
     ) -> PreparedChatRequest:
         """Wrap assembled chat inputs in the prepared-request budget contract."""
         resolved_tool_definitions = list(tool_definitions or [])
+        if not resolved_tool_definitions and capability_loader_result is not None:
+            resolved_tool_definitions = list(capability_loader_result.tool_definitions)
         if not resolved_tool_definitions and tool_definition_resolver is not None:
-            resolved_tool_definitions = tool_definition_resolver(allowed_skills)
+            resolved_tool_definitions = tool_definition_resolver(
+                executable_skill_ids
+                if executable_skill_ids is not None
+                else allowed_skills
+            )
 
         return RequestBudgetService.build_prepared_request(
             provider=provider,
