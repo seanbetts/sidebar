@@ -13,6 +13,12 @@ public final class NotesEditorViewModel: ObservableObject {
         case edit
     }
 
+    /// One-shot selection target consumed when the native editor enters edit mode.
+    public enum PendingEditSelectionTarget: Equatable {
+        case start
+        case characterOffset(Int)
+    }
+
     @Published public private(set) var content: String = ""
     @Published public private(set) var canonicalContent: String = ""
     @Published public private(set) var currentNoteId: String?
@@ -31,6 +37,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private let logger = Logger(subsystem: "sideBar", category: "AttributedEditorMigration")
     @available(iOS 26.0, macOS 26.0, *)
     private weak var nativeEditorViewModel: NativeNoteEditorViewModel?
+    private var pendingEditSelectionTarget: PendingEditSelectionTarget?
     private var syncRequestedWhileSaving = false
     private var cancellables = Set<AnyCancellable>()
 
@@ -57,6 +64,7 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let note else {
             currentNoteId = nil
             presentationMode = .read
+            pendingEditSelectionTarget = nil
             content = ""
             canonicalContent = ""
             isDirty = false
@@ -100,6 +108,7 @@ public final class NotesEditorViewModel: ObservableObject {
         isQueuedForSync = false
         if !isSameNote {
             presentationMode = .read
+            pendingEditSelectionTarget = nil
         }
         if !isSameNote {
             syncRequestedWhileSaving = false
@@ -321,8 +330,19 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     public func enterEditMode() {
+        enterEditMode(at: .start)
+    }
+
+    public func enterEditMode(at target: PendingEditSelectionTarget) {
         guard currentNoteId != nil else { return }
+        pendingEditSelectionTarget = target
         presentationMode = .edit
+    }
+
+    public func consumePendingEditSelectionTarget() -> PendingEditSelectionTarget? {
+        let target = pendingEditSelectionTarget
+        pendingEditSelectionTarget = nil
+        return target
     }
 
     public func exitEditModeToRead() {

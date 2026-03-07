@@ -131,6 +131,55 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(context.viewModel.currentNoteId, "n1")
     }
 
+    func testEnterEditModeStoresPendingSelectionTarget() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await Task.yield()
+
+        context.viewModel.enterEditMode(at: .characterOffset(7))
+
+        XCTAssertEqual(
+            context.viewModel.consumePendingEditSelectionTarget(),
+            .characterOffset(7)
+        )
+    }
+
+    func testConsumePendingEditSelectionTargetReturnsItOnceAndClearsIt() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await Task.yield()
+
+        context.viewModel.enterEditMode(at: .characterOffset(7))
+
+        XCTAssertEqual(
+            context.viewModel.consumePendingEditSelectionTarget(),
+            .characterOffset(7)
+        )
+        XCTAssertNil(context.viewModel.consumePendingEditSelectionTarget())
+    }
+
     func testExitEditModeReturnsToReadMode() async {
         let context = makeNotesEditorViewModelTestContext(
             api: MockNotesAPI(updateResult: .failure(MockError.forced))
@@ -215,6 +264,37 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertNil(context.viewModel.currentNoteId)
         XCTAssertEqual(context.viewModel.presentationMode, .read)
         XCTAssertFalse(context.viewModel.isEditingNote)
+    }
+
+    func testHandleNoteUpdateClearsPendingSelectionTargetWhenSwitchingToDifferentNote() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let firstNote = NotePayload(
+            id: "n1",
+            name: "First",
+            content: "Hello",
+            path: "/first.md",
+            modified: nil,
+            created: nil
+        )
+        let secondNote = NotePayload(
+            id: "n2",
+            name: "Second",
+            content: "World",
+            path: "/second.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(firstNote)
+        await Task.yield()
+        context.viewModel.enterEditMode(at: .characterOffset(7))
+
+        context.store.applyEditorUpdate(secondNote)
+        await Task.yield()
+
+        XCTAssertNil(context.viewModel.consumePendingEditSelectionTarget())
     }
 
     func testSyncFromNativeEditorUpdatesContent() async throws {
