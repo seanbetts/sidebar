@@ -35,6 +35,9 @@ from api.services.agent.request_assembly_service import (
     AssembledChatInputs,
     RequestAssemblyService,
 )
+from api.services.agent.request_budget_feedback_service import (
+    RequestBudgetFeedbackService,
+)
 from api.services.agent.request_budget_service import PreparedChatRequest
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
@@ -49,10 +52,6 @@ logger = logging.getLogger(__name__)
 
 TITLE_CACHE_TTL_SECONDS = ChatConstants.TITLE_CACHE_TTL_SECONDS
 TITLE_CACHE_MAX_ENTRIES = ChatConstants.TITLE_CACHE_MAX_ENTRIES
-_REQUEST_TOO_LARGE_MESSAGE = (
-    "Chat request is too large. Start a new conversation or reduce context "
-    "and try again."
-)
 
 
 class _TitleCacheEntry(TypedDict):
@@ -318,6 +317,12 @@ async def stream_chat(
         - len(prepared_request.conversation_history),
         0,
     )
+    RequestBudgetFeedbackService.log_budget_decision(
+        stage="prepared",
+        report=prepared_request.budget_report,
+        conversation_id=conversation_id,
+        trimmed_history_count=trimmed_history_count,
+    )
     if conversation_uuid is not None and trimmed_history_count > 0:
         compacted_conversation = (
             ConversationCompactionService.compact_conversation_history(
@@ -349,17 +354,29 @@ async def stream_chat(
             ai_gateway=ai_gateway,
             compaction_applied=True,
         )
-    if not prepared_request.budget_report.within_budget:
-        logger.warning(
-            (
-                "Prepared chat request exceeded model input budget after trimming "
-                "(provider=%s model=%s overflow_chars=%s)"
-            ),
-            prepared_request.provider,
-            prepared_request.model,
-            prepared_request.budget_report.overflow_chars,
+        trimmed_history_count = max(
+            len(assembled_inputs.conversation_history)
+            - len(prepared_request.conversation_history),
+            0,
         )
-        raise BadRequestError(_REQUEST_TOO_LARGE_MESSAGE)
+        RequestBudgetFeedbackService.log_budget_decision(
+            stage="compaction_retry",
+            report=prepared_request.budget_report,
+            conversation_id=conversation_id,
+            trimmed_history_count=trimmed_history_count,
+        )
+    if not prepared_request.budget_report.within_budget:
+        RequestBudgetFeedbackService.log_budget_decision(
+            stage="overflow",
+            report=prepared_request.budget_report,
+            conversation_id=conversation_id,
+            trimmed_history_count=trimmed_history_count,
+        )
+        raise BadRequestError(
+            RequestBudgetFeedbackService.build_overflow_message(
+                prepared_request.budget_report
+            )
+        )
 
     async def event_generator():
         """Generate SSE events."""

@@ -44,6 +44,12 @@ chat_stream_errors_total = Counter(
     ["type"],
 )
 
+chat_request_budget_events_total = Counter(
+    "chat_request_budget_events_total",
+    "Notable chat request budget decisions",
+    ["stage", "outcome", "dominant_component"],
+)
+
 chat_tool_duration_seconds = Histogram(
     "chat_tool_duration_seconds",
     "Client tool execution duration",

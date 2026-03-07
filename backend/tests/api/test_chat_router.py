@@ -648,7 +648,7 @@ def test_stream_chat_rejects_request_that_exceeds_budget_after_trimming(
 
     assert response.status_code == 400
     assert response.json()["error"]["message"] == (
-        "Chat request is too large. Start a new conversation or reduce context and try again."
+        "Message context is too large for this chat request. Remove some attachments or close open items and try again."
     )
 
 
