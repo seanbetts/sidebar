@@ -22,7 +22,6 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
 
         let view = context.makeView()
         XCTAssertTrue(view.isCustomFormattingBarVisible)
-        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .swiftUI)
     }
 
     func testFormattingBarConfigurationTapUpdatesCanonicalSnapshotAndSelectedState() async throws {

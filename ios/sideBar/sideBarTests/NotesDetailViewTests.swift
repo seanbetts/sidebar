@@ -383,7 +383,9 @@ final class NotesDetailViewTests: XCTestCase {
         let view = context.makeView()
 
         XCTAssertTrue(view.isFormattingToolbarVisible)
-        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .uiKit)
+        XCTAssertFalse(
+            try attributedNoteEditorContainerSource().contains("SwiftUINoteTextEditorSurface(")
+        )
     }
 
     func testFormattingCommandsUpdateCanonicalSemanticSnapshotWithoutWrapperOnlyState() async throws {
