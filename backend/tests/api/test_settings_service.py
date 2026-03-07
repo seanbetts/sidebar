@@ -257,6 +257,7 @@ def test_clean_updates_forces_required_skills(monkeypatch) -> None:
                     "description": "File access",
                     "category": "Documents",
                     "tier": "standard",
+                    "default_enabled": True,
                     "user_toggleable": True,
                 },
                 {
@@ -306,6 +307,7 @@ def test_resolve_enabled_skills_forces_required_skills(monkeypatch) -> None:
                     "description": "File access",
                     "category": "Documents",
                     "tier": "standard",
+                    "default_enabled": True,
                     "user_toggleable": True,
                 },
                 {
@@ -357,6 +359,38 @@ def test_resolve_enabled_skills_defaults_to_required_and_standard_only(
     settings_record = SimpleNamespace(enabled_skills=None, installed_store_skills=None)
 
     resolved = SettingsService._resolve_enabled_skills(settings_record)
+    assert resolved == ["files", "assistant-identity"]
+
+
+def test_resolve_enabled_skills_ignores_missing_legacy_columns(monkeypatch) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {
+                    "id": "files",
+                    "tier": "standard",
+                    "default_enabled": True,
+                    "user_toggleable": True,
+                },
+                {
+                    "id": "assistant-identity",
+                    "tier": "required",
+                    "default_enabled": True,
+                    "user_toggleable": False,
+                },
+                {
+                    "id": "audio-transcribe",
+                    "tier": "store",
+                    "default_enabled": False,
+                    "user_toggleable": True,
+                },
+            ]
+        ),
+    )
+
+    resolved = SettingsService._resolve_enabled_skills(SimpleNamespace())
     assert resolved == ["files", "assistant-identity"]
 
 
@@ -689,6 +723,49 @@ def test_clean_updates_rejects_invalid_ai_provider() -> None:
 def test_build_response_defaults_ai_provider_policy() -> None:
     payload = SettingsService.build_response(settings_record=None, user_id="user-1")
     assert payload["ai_primary_provider"] is None
+
+
+def test_build_response_without_db_does_not_require_legacy_skill_columns(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        SkillCatalogService,
+        "list_skills",
+        staticmethod(
+            lambda _skills_dir: [
+                {
+                    "id": "files",
+                    "tier": "standard",
+                    "default_enabled": True,
+                    "user_toggleable": True,
+                },
+                {
+                    "id": "assistant-identity",
+                    "tier": "required",
+                    "default_enabled": True,
+                    "user_toggleable": False,
+                },
+            ]
+        ),
+    )
+    settings_record = SimpleNamespace(
+        communication_style=None,
+        working_relationship=None,
+        name="Sam",
+        job_title=None,
+        employer=None,
+        date_of_birth=None,
+        gender=None,
+        pronouns=None,
+        location=None,
+        profile_image_path=None,
+        ai_primary_provider=None,
+    )
+
+    payload = SettingsService.build_response(settings_record, "user-1")
+
+    assert payload["enabled_skills"] == ["files", "assistant-identity"]
+    assert payload["installed_store_skills"] == []
 
 
 def test_get_settings_includes_primary_provider_key_status(test_db) -> None:

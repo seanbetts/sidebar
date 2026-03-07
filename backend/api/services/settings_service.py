@@ -203,7 +203,7 @@ class SettingsService:
 
     @staticmethod
     def _resolve_enabled_skills(settings_record) -> list[str]:
-        """Resolve enabled skills against the skill catalog.
+        """Resolve the default enabled skill selection from the catalog.
 
         Args:
             settings_record: User settings record or None.
@@ -212,38 +212,10 @@ class SettingsService:
             List of enabled skill IDs.
         """
         catalog = SkillCatalogService.list_skills(settings.skills_dir)
-        installed_store_skills = (
-            SettingsService._resolve_installed_store_skills_from_catalog(
-                settings_record,
-                catalog=catalog,
-            )
+        return SettingsService._normalize_enabled_skills(
+            SettingsService._default_enabled_skill_ids(catalog),
+            catalog=catalog,
         )
-        if not settings_record or settings_record.enabled_skills is None:
-            requested = SettingsService._default_enabled_skill_ids(catalog)
-            for skill_id in installed_store_skills:
-                if skill_id not in requested:
-                    requested.append(skill_id)
-        else:
-            requested = [
-                skill_id
-                for skill_id in settings_record.enabled_skills
-                if isinstance(skill_id, str)
-            ]
-            requested = SettingsService._normalize_enabled_skills(
-                requested, catalog=catalog
-            )
-
-        store_ids = SettingsService._store_skill_ids(catalog)
-        resolved: list[str] = []
-        seen: set[str] = set()
-        installed_store_set = set(installed_store_skills)
-        for skill_id in requested:
-            if skill_id in store_ids and skill_id not in installed_store_set:
-                continue
-            if skill_id not in seen:
-                resolved.append(skill_id)
-                seen.add(skill_id)
-        return resolved
 
     @staticmethod
     def _resolve_installed_store_skills_from_catalog(
@@ -282,15 +254,28 @@ class SettingsService:
         )
 
     @staticmethod
-    def resolve_enabled_skills(settings_record) -> list[str]:
+    def resolve_enabled_skills(
+        settings_record,
+        *,
+        db=None,
+        user_id: str | None = None,
+    ) -> list[str]:
         """Return enabled skills for runtime consumers.
 
         Args:
             settings_record: User settings record or None.
+            db: Optional database session for normalized runtime-state reads.
+            user_id: Current user ID when using normalized runtime-state reads.
 
         Returns:
             List of enabled skill IDs.
         """
+        if db is not None and user_id:
+            return RuntimeCapabilityService.enabled_skill_ids(
+                db,
+                user_id=user_id,
+                settings_record=settings_record,
+            )
         return SettingsService._resolve_enabled_skills(settings_record)
 
     @staticmethod
@@ -581,10 +566,8 @@ class SettingsService:
             user_id: Current user ID.
             db: Optional database session for normalized runtime state reads.
         """
-        enabled_skills, installed_store_skills = (
-            SettingsService._resolve_enabled_skills(settings_record),
-            SettingsService._resolve_installed_store_skills(settings_record),
-        )
+        enabled_skills = SettingsService._resolve_enabled_skills(settings_record)
+        installed_store_skills: list[str] = []
         if db is not None:
             enabled_skills = RuntimeCapabilityService.enabled_skill_ids(
                 db,

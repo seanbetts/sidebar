@@ -45,6 +45,45 @@ class UserSettingsService:
         return None
 
     @staticmethod
+    def _sync_installed_store_skills(
+        db: Session,
+        *,
+        user_id: str,
+        installed_store_skills: list[str],
+    ) -> None:
+        """Mirror installed Store skills into normalized skill-state rows."""
+        from api.services.capabilities.skill_state_service import SkillStateService
+
+        catalog = SkillStateService._catalog()
+        store_skill_ids = SkillStateService._store_skill_ids(catalog)
+        requested_skill_ids = SkillStateService._normalize_requested_skill_ids(
+            installed_store_skills,
+            allowed_skill_ids=store_skill_ids,
+        )
+        active_states = {
+            state.skill_id: state
+            for state in SkillStateService.list_active_skill_states(db, user_id)
+        }
+        target_skill_ids = set(requested_skill_ids) | {
+            skill_id for skill_id in active_states if skill_id in store_skill_ids
+        }
+        for skill_id in target_skill_ids:
+            existing_state = active_states.get(skill_id)
+            next_installed = skill_id in requested_skill_ids
+            next_enabled = existing_state.enabled if existing_state else False
+            if not next_installed:
+                next_enabled = False
+            SkillStateService.upsert_skill_state(
+                db,
+                user_id=user_id,
+                skill_id=skill_id,
+                enabled=next_enabled,
+                installed=next_installed,
+                metadata_=(dict(existing_state.metadata_) if existing_state else {}),
+                commit=False,
+            )
+
+    @staticmethod
     def upsert_settings(
         db: Session,
         user_id: str,
@@ -130,12 +169,6 @@ class UserSettingsService:
                 settings.location = location
             if profile_image_path is not UserSettingsService.UNSET:
                 settings.profile_image_path = profile_image_path
-            if enabled_skills is not UserSettingsService.UNSET:
-                settings.enabled_skills = enabled_skills
-                flag_modified(settings, "enabled_skills")
-            if installed_store_skills is not UserSettingsService.UNSET:
-                settings.installed_store_skills = installed_store_skills
-                flag_modified(settings, "installed_store_skills")
             if assistant_identity is not UserSettingsService.UNSET:
                 settings.assistant_identity = assistant_identity
                 flag_modified(settings, "assistant_identity")
@@ -176,12 +209,6 @@ class UserSettingsService:
                 profile_image_path=None
                 if profile_image_path is UserSettingsService.UNSET
                 else profile_image_path,
-                enabled_skills=None
-                if enabled_skills is UserSettingsService.UNSET
-                else enabled_skills,
-                installed_store_skills=None
-                if installed_store_skills is UserSettingsService.UNSET
-                else installed_store_skills,
                 assistant_identity=None
                 if assistant_identity is UserSettingsService.UNSET
                 else assistant_identity,
@@ -206,12 +233,19 @@ class UserSettingsService:
         if should_sync_skill_states:
             from api.services.capabilities.skill_state_service import SkillStateService
 
-            SkillStateService.backfill_from_user_settings(
-                db,
-                user_id,
-                settings_record=settings,
-                commit=False,
-            )
+            if installed_store_skills is not UserSettingsService.UNSET:
+                UserSettingsService._sync_installed_store_skills(
+                    db,
+                    user_id=user_id,
+                    installed_store_skills=list(installed_store_skills or []),
+                )
+            if enabled_skills is not UserSettingsService.UNSET:
+                SkillStateService.replace_enabled_skill_selection(
+                    db,
+                    user_id,
+                    list(enabled_skills or []),
+                    commit=False,
+                )
         if commit:
             db.commit()
         return settings

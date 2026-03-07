@@ -67,9 +67,9 @@ execution detail and are never exposed as a user-facing toggle surface.
 
 - `user_skill_states` becomes the normalized source of truth for per-user skill
   enablement and install state.
-- `user_settings.enabled_skills` and `user_settings.installed_store_skills`
-  remain compatibility payloads during migration, but they are not the long-term
-  primary read path.
+- settings responses still expose `enabled_skills` and
+  `installed_store_skills`, but those payloads are now derived from normalized
+  runtime state rather than stored as legacy arrays on `user_settings`.
 - Static capability metadata remains code-backed in the backend registry rather
   than being user-editable database content.
 

@@ -11,6 +11,7 @@ from api.exceptions import BadRequestError
 from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
 from api.services.capabilities.runtime_state import RuntimeCapabilityService
+from api.services.capabilities.skill_state_service import SkillStateService
 from api.services.settings_service import SettingsService
 from api.services.tools.skill_metadata import canonicalize_skill_id
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
@@ -229,19 +230,21 @@ class StoreSkillsService:
             enabled_skills,
             catalog=catalog,
         )
-        normalized_installed_store_skills = (
-            StoreSkillsService._normalize_installed_store_skills(
-                installed_store_skills,
-                catalog=catalog,
-            )
+        SkillStateService.set_skill_installed(
+            db,
+            user_id=user_id,
+            skill_id=canonical_id,
+            installed=True,
+            commit=False,
         )
-
-        updated_settings = UserSettingsService.upsert_settings(
+        SkillStateService.replace_enabled_skill_selection(
             db,
             user_id,
-            enabled_skills=normalized_enabled_skills,
-            installed_store_skills=normalized_installed_store_skills,
+            normalized_enabled_skills,
+            commit=False,
         )
+        db.commit()
+        updated_settings = UserSettingsService.get_settings(db, user_id)
         payload = SettingsService.build_response(updated_settings, user_id, db=db)
 
         return {
@@ -279,36 +282,29 @@ class StoreSkillsService:
             user_id=user_id,
             settings_record=current_settings,
         )
-        installed_store_skills = RuntimeCapabilityService.installed_store_skill_ids(
-            db,
-            user_id=user_id,
-            settings_record=current_settings,
-        )
-
         filtered_enabled_skills = [
             skill for skill in enabled_skills if skill != canonical_id
-        ]
-        filtered_installed_store_skills = [
-            skill for skill in installed_store_skills if skill != canonical_id
         ]
 
         normalized_enabled_skills = SettingsService._normalize_enabled_skills(
             filtered_enabled_skills,
             catalog=catalog,
         )
-        normalized_installed_store_skills = (
-            StoreSkillsService._normalize_installed_store_skills(
-                filtered_installed_store_skills,
-                catalog=catalog,
-            )
-        )
-
-        updated_settings = UserSettingsService.upsert_settings(
+        SkillStateService.replace_enabled_skill_selection(
             db,
             user_id,
-            enabled_skills=normalized_enabled_skills,
-            installed_store_skills=normalized_installed_store_skills,
+            normalized_enabled_skills,
+            commit=False,
         )
+        SkillStateService.set_skill_installed(
+            db,
+            user_id=user_id,
+            skill_id=canonical_id,
+            installed=False,
+            commit=False,
+        )
+        db.commit()
+        updated_settings = UserSettingsService.get_settings(db, user_id)
         payload = SettingsService.build_response(updated_settings, user_id, db=db)
 
         return {

@@ -172,6 +172,11 @@ class SkillStateService:
             from api.services.user_settings_service import UserSettingsService
 
             settings_record = UserSettingsService.get_settings(db, user_id)
+        if settings_record is not None and not (
+            hasattr(settings_record, "enabled_skills")
+            or hasattr(settings_record, "installed_store_skills")
+        ):
+            return cls.list_active_skill_states(db, user_id)
         catalog = cls._catalog()
         state_map = cls._backfill_state_map(
             settings_record=settings_record, catalog=catalog

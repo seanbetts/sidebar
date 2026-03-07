@@ -251,3 +251,56 @@ def test_get_settings_reads_normalized_skill_state_over_legacy_arrays(
     assert "files" not in body["enabled_skills"]
     assert "audio-transcribe" in body["enabled_skills"]
     assert body["installed_store_skills"] == ["audio-transcribe"]
+
+
+def test_update_settings_preserves_skill_toggle_ux_without_legacy_columns(
+    test_client,
+    test_db,
+):
+    response = test_client.patch(
+        "/api/settings",
+        headers=_auth_headers(),
+        json={"enabled_skills": ["files"]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "files" in body["enabled_skills"]
+    assert "assistant-identity" in body["enabled_skills"]
+    assert "assistant-soul" in body["enabled_skills"]
+
+    user_id = os.environ["TEST_USER_ID"]
+    settings_record = UserSettingsService.get_settings(test_db, user_id)
+    assert settings_record is not None
+    assert not hasattr(settings_record, "enabled_skills")
+
+
+def test_store_install_preserves_installed_skill_payload_without_legacy_columns(
+    test_client,
+    test_db,
+):
+    save_key = test_client.put(
+        "/api/settings/ai/provider-key",
+        headers=_auth_headers(),
+        json={"provider": "openai", "api_key": "sk-openai-provider-2222"},
+    )
+    assert save_key.status_code == 200
+
+    response = test_client.post(
+        "/api/skills/store/install",
+        headers=_auth_headers(),
+        json={"skill_id": "audio-transcribe"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["installed"] is True
+    assert body["enabled"] is True
+    assert "audio-transcribe" in body["enabled_skills"]
+    assert body["installed_store_skills"] == ["audio-transcribe"]
+
+    user_id = os.environ["TEST_USER_ID"]
+    settings_record = UserSettingsService.get_settings(test_db, user_id)
+    assert settings_record is None or not hasattr(
+        settings_record, "installed_store_skills"
+    )

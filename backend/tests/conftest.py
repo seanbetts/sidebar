@@ -178,12 +178,6 @@ def _ensure_user_settings_columns(connection) -> None:
     )
     connection.execute(
         text(
-            "ALTER TABLE user_settings "
-            "ADD COLUMN IF NOT EXISTS installed_store_skills jsonb"
-        )
-    )
-    connection.execute(
-        text(
             "ALTER TABLE conversations "
             "ADD COLUMN IF NOT EXISTS ai_provider text"
         )
@@ -517,6 +511,10 @@ def test_db(test_db_engine):
     from sqlalchemy import text
     from sqlalchemy.orm import sessionmaker
 
+    with test_db_engine.begin() as setup_connection:
+        setup_connection.execute(text("SET search_path TO public"))
+        _ensure_user_settings_columns(setup_connection)
+
     if use_supabase_db:
         connection = test_db_engine.connect()
         transaction = connection.begin()
@@ -529,7 +527,6 @@ def test_db(test_db_engine):
         db = TestSessionLocal()
         db.info["force_public_search_path"] = True
         db.execute(text("SET search_path TO public"))
-        _ensure_user_settings_columns(db.connection())
 
         try:
             yield db
@@ -545,7 +542,6 @@ def test_db(test_db_engine):
     db = TestSessionLocal()
     db.info["force_public_search_path"] = True
     db.execute(text("SET search_path TO public"))
-    _ensure_user_settings_columns(db.connection())
 
     try:
         yield db

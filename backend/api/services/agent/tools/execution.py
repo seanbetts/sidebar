@@ -49,7 +49,11 @@ def handle_prompt_preview(context: dict[str, Any] | None) -> dict[str, Any]:
     from api.services.user_settings_service import UserSettingsService
 
     settings_record = UserSettingsService.get_settings(db, user_id)
-    allowed_skills = SettingsService.resolve_enabled_skills(settings_record)
+    allowed_skills = SettingsService.resolve_enabled_skills(
+        settings_record,
+        db=db,
+        user_id=user_id,
+    )
     policy = AIPolicyService.resolve_from_settings(settings_record)
     selection = AIPolicyService.select_provider("chat", policy)
     provider = selection.provider
