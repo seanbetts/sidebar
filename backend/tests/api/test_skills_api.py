@@ -56,6 +56,35 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["product-feedback"]["installable"] is False
 
 
+def test_list_skills_exposes_capability_availability_contract(test_client) -> None:
+    response = test_client.get("/api/skills", headers=_auth_headers())
+    assert response.status_code == 200
+
+    payload = response.json()
+    by_id = {item["id"]: item for item in payload["skills"]}
+
+    audio_transcribe = by_id["audio-transcribe"]
+    assert "required_toolsets" in audio_transcribe
+    assert isinstance(audio_transcribe["required_toolsets"], list)
+    assert "availability_status" in audio_transcribe
+    assert audio_transcribe["availability_status"] in {
+        "ready",
+        "needs_connection",
+        "scope_upgrade_required",
+        "error",
+    }
+    assert "availability_reason" in audio_transcribe
+    assert audio_transcribe["availability_reason"] is None or isinstance(
+        audio_transcribe["availability_reason"],
+        str,
+    )
+    assert "availability_remediation" in audio_transcribe
+    assert audio_transcribe["availability_remediation"] is None or isinstance(
+        audio_transcribe["availability_remediation"],
+        dict,
+    )
+
+
 def test_install_store_skill_auto_enables_and_persists(test_client) -> None:
     _seed_openai_provider_key(test_client)
 

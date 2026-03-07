@@ -57,6 +57,74 @@ These are the standardized error codes returned by the backend:
 | `EXTERNAL_SERVICE_ERROR` | 502 | Upstream service failed. |
 | `HTTP_ERROR` | varies | Legacy FastAPI HTTPException normalization. |
 
+## Capability Platform Vocabulary
+
+The capability-platform migration keeps **skills** as the user-facing unit for
+catalog display, install state, and toggles. Internal **toolsets** remain an
+execution detail and are never exposed as a user-facing toggle surface.
+
+### Source Of Truth
+
+- `user_skill_states` becomes the normalized source of truth for per-user skill
+  enablement and install state.
+- `user_settings.enabled_skills` and `user_settings.installed_store_skills`
+  remain compatibility payloads during migration, but they are not the long-term
+  primary read path.
+- Static capability metadata remains code-backed in the backend registry rather
+  than being user-editable database content.
+
+### Capability Registry Metadata
+
+Each registry-backed skill record may expose compact discovery and execution
+metadata without loading the full skill instructions:
+
+- `required_toolsets`: internal executable tool groups required by the skill
+- `instruction_ref`: stable reference to the full workflow instructions
+- `token_estimate`: compact estimate for resolver/loader budgeting
+- compact discovery metadata such as `tags`, `triggers`, and examples
+
+### Runtime Availability Semantics
+
+Availability is derived at runtime from registry metadata, normalized
+`user_skill_states`, and any required external connections. Skills remain
+visible in the catalog even when they are not executable.
+
+Current capability availability vocabulary:
+
+- `ready`: skill is enabled and executable
+- `needs_connection`: skill is installed or enabled but blocked on a required
+  external connection
+- `scope_upgrade_required`: connection exists but required scopes/capabilities
+  are insufficient
+- `error`: skill is blocked by a recoverable runtime or dependency error
+
+Runtime-facing metadata for blocked or degraded skills:
+
+- `availability_status`
+- `availability_reason`
+- `availability_remediation`
+
+### Resolver And Loader Boundary
+
+- The resolver operates on the enabled skill catalog and may still select
+  blocked skills when they are relevant for remediation.
+- The loader only loads full instructions, examples, and runnable tool schemas
+  for the selected executable subset.
+- `executable_skill_ids` must therefore be a strict subset of
+  `selected_skill_ids` whenever blocked skills are selected for explanation or
+  reconnect guidance.
+
+### Prompt Assembly Contract
+
+- Blocked-skill metadata stays primarily in resolver/runtime state, not in the
+  full prompt by default.
+- Prompt assembly may include only compact, turn-relevant blocked-skill
+  summaries when the current turn benefits from reconnect or remediation
+  guidance.
+- Runnable tool schemas must be assembled from the executable subset only, even
+  when blocked skills remain visible to the assistant as part of capability
+  reasoning.
+
 ## Chat Streaming API
 
 Base path: `/api/v1/chat/stream` (legacy `/api/chat/stream` supported with deprecation headers).

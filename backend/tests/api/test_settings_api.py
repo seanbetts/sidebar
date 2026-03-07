@@ -51,6 +51,7 @@ def test_update_settings_forces_required_skills(test_client):
     assert "fs" not in response.json()["enabled_skills"]
     assert "assistant-identity" in response.json()["enabled_skills"]
     assert "assistant-soul" in response.json()["enabled_skills"]
+    assert "enabled_toolsets" not in response.json()
 
 
 def test_update_settings_rejects_agent_owned_fields(test_client):

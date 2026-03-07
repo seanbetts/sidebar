@@ -64,6 +64,9 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert by_id["files"]["default_enabled"] is True
     assert by_id["audio-transcribe"]["tier"] == "store"
     assert by_id["audio-transcribe"]["installable"] is True
+    assert "required_toolsets" in by_id["audio-transcribe"]
+    assert isinstance(by_id["audio-transcribe"]["required_toolsets"], list)
+    assert by_id["audio-transcribe"]["required_toolsets"]
     assert by_id["audio-transcribe"]["long_description"] == "Long detail"
     assert by_id["audio-transcribe"]["how_it_works"] == "Friendly explanation"
     assert by_id["audio-transcribe"]["requirements"] == ["Internet connection"]
