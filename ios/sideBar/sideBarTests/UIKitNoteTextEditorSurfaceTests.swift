@@ -67,7 +67,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
 
         let textView = try mountTextView(
             viewModel: nativeViewModel,
-            formattingBarConfiguration: context.editorViewModel.uikitFormattingBarConfiguration
+            formattingBarConfiguration: context.editorViewModel.noteFormattingBarConfiguration
         )
         let boldCommand = try XCTUnwrap(
             textView.keyCommands?.first {
@@ -200,7 +200,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
 @available(iOS 26.0, *)
 private func mountTextView(
     viewModel: NativeNoteEditorViewModel,
-    formattingBarConfiguration: UIKitNoteFormattingBar.Configuration? = nil,
+    formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
     width: CGFloat = 360,
     height: CGFloat = 320
 ) throws -> UITextView {

@@ -5,53 +5,11 @@ import UIKit
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitNoteFormattingBar: UIView {
-    struct Configuration {
-        let isBoldActive: Bool
-        let isItalicActive: Bool
-        let isUnderlineActive: Bool
-        let isEnabled: Bool
-        let onBoldTap: @MainActor () -> Void
-        let onItalicTap: @MainActor () -> Void
-        let onUnderlineTap: @MainActor () -> Void
-
-        static let disabled = Configuration(
-            isBoldActive: false,
-            isItalicActive: false,
-            isUnderlineActive: false,
-            isEnabled: false,
-            onBoldTap: {},
-            onItalicTap: {},
-            onUnderlineTap: {}
-        )
-
-        func isActive(_ formatting: NoteFormatting) -> Bool {
-            switch formatting {
-            case .bold:
-                return isBoldActive
-            case .italic:
-                return isItalicActive
-            case .underline:
-                return isUnderlineActive
-            }
-        }
-
-        func tapHandler(for formatting: NoteFormatting) -> @MainActor () -> Void {
-            switch formatting {
-            case .bold:
-                return onBoldTap
-            case .italic:
-                return onItalicTap
-            case .underline:
-                return onUnderlineTap
-            }
-        }
-    }
-
     private let stackView = UIStackView()
     private let boldButton: UIButton
     private let italicButton: UIButton
     private let underlineButton: UIButton
-    private var currentConfiguration: Configuration
+    private var currentConfiguration: NoteFormattingBarConfiguration
 
     override init(frame: CGRect) {
         self.boldButton = Self.makeButton(for: .bold)
@@ -63,7 +21,7 @@ final class UIKitNoteFormattingBar: UIView {
         apply(configuration: .disabled)
     }
 
-    convenience init(configuration: Configuration) {
+    convenience init(configuration: NoteFormattingBarConfiguration) {
         self.init(frame: .zero)
         apply(configuration: configuration)
     }
@@ -73,7 +31,7 @@ final class UIKitNoteFormattingBar: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func apply(configuration: Configuration) {
+    func apply(configuration: NoteFormattingBarConfiguration) {
         currentConfiguration = configuration
         for formatting in Self.buttonOrder {
             let button = button(for: formatting)
@@ -100,7 +58,7 @@ final class UIKitNoteFormattingBar: UIView {
 @MainActor
 @available(iOS 26.0, *)
 struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
-    let configuration: UIKitNoteFormattingBar.Configuration
+    let configuration: NoteFormattingBarConfiguration
 
     func makeUIView(context: Context) -> UIKitNoteFormattingBar {
         UIKitNoteFormattingBar(configuration: configuration)

@@ -41,13 +41,13 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     @ObservedObject var viewModel: NativeNoteEditorViewModel
     let maxContentWidth: CGFloat
     let isEditable: Bool
-    let formattingBarConfiguration: UIKitNoteFormattingBar.Configuration?
+    let formattingBarConfiguration: NoteFormattingBarConfiguration?
 
     init(
         viewModel: NativeNoteEditorViewModel,
         maxContentWidth: CGFloat,
         isEditable: Bool,
-        formattingBarConfiguration: UIKitNoteFormattingBar.Configuration? = nil
+        formattingBarConfiguration: NoteFormattingBarConfiguration? = nil
     ) {
         self.viewModel = viewModel
         self.maxContentWidth = maxContentWidth
@@ -130,7 +130,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
     private func configureAccessoryView(
         for textView: AccessoryTextView,
-        configuration: UIKitNoteFormattingBar.Configuration?
+        configuration: NoteFormattingBarConfiguration?
     ) -> Bool {
         switch (textView.formattingAccessoryView as? UIKitNoteFormattingBar, configuration) {
         case let (bar?, configuration?):
@@ -164,7 +164,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     }
 
     private func makeFormattingBar(
-        configuration: UIKitNoteFormattingBar.Configuration
+        configuration: NoteFormattingBarConfiguration
     ) -> UIKitNoteFormattingBar {
         let bar = UIKitNoteFormattingBar(configuration: configuration)
         bar.autoresizingMask = [.flexibleWidth, .flexibleHeight]

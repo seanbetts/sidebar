@@ -33,7 +33,7 @@ final class UIKitNoteFormattingBarTests: XCTestCase {
         context.nativeViewModel.selection = AttributedTextSelection(range: styledRange)
         context.nativeViewModel.handleSelectionChange()
 
-        let configuration = context.editorViewModel.uikitFormattingBarConfiguration
+        let configuration = context.editorViewModel.noteFormattingBarConfiguration
 
         XCTAssertTrue(configuration.isEnabled)
         XCTAssertTrue(configuration.isBoldActive)
@@ -49,7 +49,7 @@ final class UIKitNoteFormattingBarTests: XCTestCase {
         let context = await makeAttachedEditingContext(note: makeTestNote(plainText: "Hello"))
         let range = noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
         context.nativeViewModel.selection = AttributedTextSelection(range: range)
-        let bar = UIKitNoteFormattingBar(configuration: context.editorViewModel.uikitFormattingBarConfiguration)
+        let bar = UIKitNoteFormattingBar(configuration: context.editorViewModel.noteFormattingBarConfiguration)
 
         bar.button(for: .bold).sendActions(for: .touchUpInside)
 
@@ -66,7 +66,7 @@ final class UIKitNoteFormattingBarTests: XCTestCase {
                 range: noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
             )
         )
-        XCTAssertTrue(context.editorViewModel.uikitFormattingBarConfiguration.isBoldActive)
+        XCTAssertTrue(context.editorViewModel.noteFormattingBarConfiguration.isBoldActive)
     }
 
     func testBarRendersDisabledStateWhenEditorIsUnavailable() async throws {
@@ -76,7 +76,7 @@ final class UIKitNoteFormattingBarTests: XCTestCase {
 
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
-        let configuration = context.editorViewModel.uikitFormattingBarConfiguration
+        let configuration = context.editorViewModel.noteFormattingBarConfiguration
         let bar = UIKitNoteFormattingBar(configuration: configuration)
 
         XCTAssertFalse(configuration.isEnabled)
@@ -108,7 +108,7 @@ final class UIKitNoteFormattingBarTests: XCTestCase {
 
         XCTAssertTrue(bar.button(for: .bold).isSelected)
 
-        bar.apply(configuration: context.editorViewModel.uikitFormattingBarConfiguration)
+        bar.apply(configuration: context.editorViewModel.noteFormattingBarConfiguration)
 
         XCTAssertFalse(bar.button(for: .bold).isSelected)
         XCTAssertFalse(bar.button(for: .italic).isSelected)
