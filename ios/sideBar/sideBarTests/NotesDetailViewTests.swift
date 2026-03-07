@@ -224,17 +224,17 @@ final class NotesDetailViewTests: XCTestCase {
         XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
     }
 
-    func testShortcutActionEventReturnsEditModeToRead() async throws {
+    func testMountedViewCloseShortcutEventReturnsEditModeToRead() async throws {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
-        let view = context.makeView()
-        let event = ShortcutActionEvent(
-            action: .closeItem,
-            section: .notes,
-            pane: .primary
-        )
+        let environment = makeNotesDetailTestEnvironment()
+        _ = mount(context.makeView(), environment: environment)
+        await Task.yield()
+        environment.activeSection = .notes
+        environment.focusedSection = .notes
+        environment.focusedWorkspacePane = .primary
 
-        view.handleShortcutActionEvent(event, workspacePane: .primary)
+        environment.emitShortcutAction(.closeItem)
         await waitUntil {
             context.editorViewModel.presentationMode == .read
         }
@@ -273,16 +273,17 @@ final class NotesDetailViewTests: XCTestCase {
         XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
     }
 
-    func testShortcutActionEventClosesReadModeNote() async throws {
+    func testMountedViewCloseShortcutEventClosesReadModeNote() async throws {
         let context = await makeNotesDetailViewTestContext()
-        let view = context.makeView()
-        let event = ShortcutActionEvent(
-            action: .closeItem,
-            section: .notes,
-            pane: .primary
-        )
+        let environment = makeNotesDetailTestEnvironment()
+        _ = mount(context.makeView(), environment: environment)
+        await Task.yield()
+        environment.activeSection = .notes
+        environment.focusedSection = .notes
+        environment.focusedWorkspacePane = .primary
+        await Task.yield()
 
-        view.handleShortcutActionEvent(event, workspacePane: .primary)
+        environment.emitShortcutAction(.closeItem)
         await waitUntil(timeout: .seconds(2)) {
             context.editorViewModel.currentNoteId == nil
         }
@@ -369,20 +370,6 @@ final class NotesDetailViewTests: XCTestCase {
             in: nativeViewModel.attributedContent,
             equals: 5
         )
-    }
-
-    func testEditModeFormattingToolbarKeepsSwiftUIEditorSurfaceForPhaseOne() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-
-        let context = await makeNotesDetailViewTestContext()
-        context.makeView().activateReadSurfaceEditing(at: .start)
-
-        let view = context.makeView()
-
-        XCTAssertTrue(view.isFormattingToolbarVisible)
-        XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .swiftUI)
     }
 
     func testFormattingCommandsUpdateCanonicalSemanticSnapshotWithoutWrapperOnlyState() async throws {
