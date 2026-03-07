@@ -224,17 +224,17 @@ final class NotesDetailViewTests: XCTestCase {
         XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
     }
 
-    func testMountedViewCloseShortcutEventReturnsEditModeToRead() async throws {
+    func testShortcutActionEventReturnsEditModeToRead() async throws {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
-        let environment = makeNotesDetailTestEnvironment()
-        _ = mount(context.makeView(), environment: environment)
-        await Task.yield()
-        environment.activeSection = .notes
-        environment.focusedSection = .notes
-        environment.focusedWorkspacePane = .primary
+        let view = context.makeView()
+        let event = ShortcutActionEvent(
+            action: .closeItem,
+            section: .notes,
+            pane: .primary
+        )
 
-        environment.emitShortcutAction(.closeItem)
+        view.handleShortcutActionEvent(event, workspacePane: .primary)
         await waitUntil {
             context.editorViewModel.presentationMode == .read
         }
@@ -273,17 +273,16 @@ final class NotesDetailViewTests: XCTestCase {
         XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
     }
 
-    func testMountedViewCloseShortcutEventClosesReadModeNote() async throws {
+    func testShortcutActionEventClosesReadModeNote() async throws {
         let context = await makeNotesDetailViewTestContext()
-        let environment = makeNotesDetailTestEnvironment()
-        _ = mount(context.makeView(), environment: environment)
-        await Task.yield()
-        environment.activeSection = .notes
-        environment.focusedSection = .notes
-        environment.focusedWorkspacePane = .primary
-        await Task.yield()
+        let view = context.makeView()
+        let event = ShortcutActionEvent(
+            action: .closeItem,
+            section: .notes,
+            pane: .primary
+        )
 
-        environment.emitShortcutAction(.closeItem)
+        view.handleShortcutActionEvent(event, workspacePane: .primary)
         await waitUntil(timeout: .seconds(2)) {
             context.editorViewModel.currentNoteId == nil
         }
