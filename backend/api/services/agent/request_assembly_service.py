@@ -185,7 +185,7 @@ class RequestAssemblyService:
                 current_weather=current_weather,
                 current_timezone=current_timezone,
                 now=now,
-                strict_system_prompt=True,
+                strict_system_prompt=False,
                 include_attachment_content=include_attachment_content,
             )
 
@@ -230,17 +230,16 @@ class RequestAssemblyService:
                 )
                 raise BadRequestError(str(error)) from error
 
-        prompt_report = prompt_bundle["report"]
-        if prompt_report["system_prompt"]["truncated_by_budget"]:
+        if prompt_bundle["report"]["system_prompt"]["truncated_by_budget"]:
             logger.warning(
                 (
-                    "System prompt exceeded configured maximum size "
+                    "System prompt exceeded configured prompt-only size budget; "
+                    "continuing with full-request budgeting "
                     "(attachments=%s conversation_id=%s)"
                 ),
                 len(attachments),
                 conversation_id or "none",
             )
-            raise BadRequestError(_OVERSIZE_CONTEXT_MESSAGE)
 
         bootstrap_history = list(persisted_bootstrap_history)
         if not bootstrap_history:

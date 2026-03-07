@@ -202,6 +202,42 @@ def test_build_assembled_inputs_retries_without_attachment_content():
     assert captured_flags == [True, False]
 
 
+def test_build_assembled_inputs_allows_budget_truncated_system_prompt():
+    captured_strict_flags: list[bool] = []
+
+    class FakePromptContextService:
+        @staticmethod
+        def build_prompts(**kwargs):
+            captured_strict_flags.append(kwargs["strict_system_prompt"])
+            return _prompt_bundle(
+                system_prompt="assembled-system",
+                truncated_by_budget=True,
+            )
+
+    assembled = RequestAssemblyService.build_assembled_inputs(
+        db=object(),
+        user_id="user-1",
+        message="Current",
+        conversation_id="conversation-1",
+        conversation_messages=None,
+        request_history=[],
+        user_message_id=None,
+        open_context={},
+        attachments=[],
+        user_agent=None,
+        current_location=None,
+        current_location_levels=None,
+        current_weather=None,
+        current_timezone=None,
+        now=datetime.now(UTC),
+        prompt_context_service=FakePromptContextService,
+    )
+
+    assert assembled.system_prompt == "assembled-system"
+    assert assembled.prompt_bundle["report"]["system_prompt"]["truncated_by_budget"] is True
+    assert captured_strict_flags == [False]
+
+
 def test_build_assembled_inputs_injects_bootstrap_history_on_first_turn():
     class FakePromptContextService:
         @staticmethod
