@@ -3,6 +3,7 @@ import SwiftUI
 @testable import sideBar
 
 @available(iOS 26.0, macOS 26.0, *)
+@MainActor
 final class NotesAttributedDocumentCodecTests: XCTestCase {
     func testSemanticParagraphDocumentProjectsToAttributedString() {
         let document = NotesSemanticDocument(

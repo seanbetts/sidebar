@@ -79,6 +79,7 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
     }
 }
 
+@MainActor
 private func queuedUpdateWrite(
     document: NotesSemanticDocument,
     noteId: String
