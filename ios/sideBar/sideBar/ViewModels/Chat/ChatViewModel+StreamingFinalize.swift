@@ -47,11 +47,10 @@ extension ChatViewModel {
             conversationId: streamingConversationId ?? selectedConversationId,
             persist: true
         )
-        if let conversationId = streamingConversationId ?? selectedConversationId,
-           let assistantMessage = messages.first(where: { $0.id == messageId }) {
+        if let conversationId = streamingConversationId ?? selectedConversationId {
             Task { [weak self] in
-                await self?.persistMessage(conversationId: conversationId, message: assistantMessage)
                 await self?.refreshConversations(silent: true)
+                await self?.refreshActiveConversation(silent: true)
                 if status == .complete {
                     await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
                 }

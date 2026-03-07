@@ -36,6 +36,9 @@ def handle_prompt_preview(context: dict[str, Any] | None) -> dict[str, Any]:
     user_id = context.get("user_id")
     if not db or not user_id:
         return {"success": False, "error": "Missing database or user context"}
+    precomputed_payload = context.get("prompt_preview_payload")
+    if isinstance(precomputed_payload, dict):
+        return {"success": True, "data": precomputed_payload}
 
     from api.config import settings
     from api.services.agent.request_assembly_service import RequestAssemblyService

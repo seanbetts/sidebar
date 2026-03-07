@@ -199,6 +199,59 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         XCTAssertEqual(cachedMessages?.first?.content, fullContent)
     }
 
+    func testSendMessageDoesNotPersistUserMessageDuringStreaming() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: SuccessfulChatStreamClient()
+        )
+
+        await viewModel.sendMessage(text: "Show me the prompt preview")
+
+        let didPersist = await waitForCondition {
+            !conversationsAPI.addMessageCalls.isEmpty
+        }
+
+        XCTAssertFalse(didPersist)
+        XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
+    }
+
+    func testFinalizeStreamingDoesNotPersistAssistantMessageDuringStreaming() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: SuccessfulChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingMessage(on: viewModel)
+        viewModel.messages = [
+            Message(
+                id: initialMessage.id,
+                role: .assistant,
+                content: "Prompt preview ready",
+                status: .streaming,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: initialMessage.timestamp,
+                error: nil
+            )
+        ]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        viewModel.finalizeStreaming(status: .complete)
+
+        let didPersist = await waitForCondition {
+            !conversationsAPI.addMessageCalls.isEmpty
+        }
+
+        XCTAssertFalse(didPersist)
+        XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
+    }
+
     func testStopStreamClearsTypingRevealState() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
@@ -350,6 +403,17 @@ private final class FailingChatStreamClient: ChatStreamClient {
     func connect(request: ChatStreamRequest) async throws {
         _ = request
         throw StreamFailureError.forced
+    }
+
+    func disconnect() {
+    }
+}
+
+private final class SuccessfulChatStreamClient: ChatStreamClient {
+    weak var handler: ChatStreamEventHandler?
+
+    func connect(request: ChatStreamRequest) async throws {
+        _ = request
     }
 
     func disconnect() {

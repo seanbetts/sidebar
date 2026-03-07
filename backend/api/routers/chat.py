@@ -173,6 +173,29 @@ def _assemble_prepared_request(
     return assembled_inputs, prepared_request
 
 
+def _build_prompt_preview_payload(
+    *,
+    assembled_inputs: AssembledChatInputs,
+    prepared_request: PreparedChatRequest,
+) -> dict[str, object]:
+    prompt_bundle = assembled_inputs.prompt_bundle
+    system_prompt = prompt_bundle.get("system_prompt", {})
+    first_message_prompt = prompt_bundle.get("first_message_prompt", {})
+    return {
+        "system_prompt": system_prompt.get("text", assembled_inputs.system_prompt),
+        "first_message_prompt": first_message_prompt.get("text", ""),
+        "system_prompt_sections": system_prompt.get("sections", []),
+        "first_message_prompt_sections": first_message_prompt.get("sections", []),
+        "prompt_report": prompt_bundle.get("report", {}),
+        "request_budget_report": prepared_request.budget_report.__dict__,
+        "workspace_context_menu_actions": [
+            "copy_markdown",
+            "share_text",
+            "download",
+        ],
+    }
+
+
 @router.post("/stream")
 async def stream_chat(
     request: Request,
@@ -377,6 +400,10 @@ async def stream_chat(
                 prepared_request.budget_report
             )
         )
+    tool_context.prompt_preview_payload = _build_prompt_preview_payload(
+        assembled_inputs=assembled_inputs,
+        prepared_request=prepared_request,
+    )
 
     async def event_generator():
         """Generate SSE events."""

@@ -24,6 +24,40 @@ def test_handle_prompt_preview_requires_db_and_user():
     assert result["error"] == "Missing database or user context"
 
 
+def test_handle_prompt_preview_uses_precomputed_payload_from_context(monkeypatch):
+    from api.services.user_settings_service import UserSettingsService
+
+    monkeypatch.setattr(
+        UserSettingsService,
+        "get_settings",
+        staticmethod(
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("should not rebuild prompt preview")
+            )
+        ),
+    )
+
+    payload = {
+        "system_prompt": "system prompt",
+        "first_message_prompt": "first message",
+        "system_prompt_sections": [],
+        "first_message_prompt_sections": [],
+        "prompt_report": {"system_prompt": {"total_chars": 13}},
+        "request_budget_report": {"current_message_chars": 22},
+        "workspace_context_menu_actions": ["copy_markdown"],
+    }
+
+    result = execution_handlers.handle_prompt_preview(
+        {
+            "db": object(),
+            "user_id": "user-123",
+            "prompt_preview_payload": payload,
+        }
+    )
+
+    assert result == {"success": True, "data": payload}
+
+
 def test_handle_prompt_preview_uses_prompt_context_service(monkeypatch):
     from api.services.agent.prompt import composer as prompt_context_service
     from api.services.agent import request_assembly_service

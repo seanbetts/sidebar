@@ -133,13 +133,6 @@ extension ChatViewModel {
         beginStreamingMessage(assistantMessageId: assistantMessageId)
         syncMessagesToStore(conversationId: conversationId, persist: true)
 
-        Task { [weak self] in
-            await self?.persistMessage(
-                conversationId: conversationId,
-                message: userMessage
-            )
-        }
-
         let requestContext = requestContextProvider?()
         await startStream(
             request: ChatStreamRequest(

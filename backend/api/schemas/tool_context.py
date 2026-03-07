@@ -27,6 +27,7 @@ class ToolExecutionContext:
     current_location_levels: dict[str, Any] | str | None = None
     current_weather: dict[str, Any] | str | None = None
     current_timezone: str | None = None
+    prompt_preview_payload: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the context to a legacy dict payload."""
@@ -51,4 +52,5 @@ class ToolExecutionContext:
             "current_location_levels": self.current_location_levels,
             "current_weather": self.current_weather,
             "current_timezone": self.current_timezone,
+            "prompt_preview_payload": self.prompt_preview_payload,
         }
