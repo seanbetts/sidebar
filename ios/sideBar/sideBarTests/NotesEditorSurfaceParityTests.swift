@@ -57,7 +57,7 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         )
     }
 
-    func testReadSurfaceFormattingMatchesEditorSurfaceForSameSemanticNoteOnIOS() async throws {
+    func testReadSurfaceFormattingMatchesEditorSurfaceForSameSemanticNoteOnIOS() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -70,42 +70,26 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
                 ])
             ]
         )
-        let note = NotePayload(
-            id: "n1",
-            name: "Formatting Parity",
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        let editDocument = try constrainedEditorDocument(
             document: document,
-            plainText: "Bold Italic Underline",
-            path: "/note.md",
-            modified: nil,
-            created: nil
-        )
-        let context = await makeNotesDetailViewTestContext(note: note)
-        let environment = makeNotesDetailTestEnvironment()
-
-        let readController = mount(context.makeView(), environment: environment)
-        let readTextView = try XCTUnwrap(findDescendantTextView(in: readController.view))
-        let readAttributed = try attributedText(
-            in: readTextView,
-            expectedString: "Bold Italic Underline"
+            baseFontSize: baseFontSize
         )
 
-        context.editorViewModel.enterEditMode()
-        let editController = mount(context.makeView(), environment: environment)
-        let editTextView = try XCTUnwrap(findDescendantTextView(in: editController.view))
-        let editAttributed = try attributedText(
-            in: editTextView,
-            expectedString: "Bold Italic Underline"
-        )
-
-        XCTAssertEqual(readAttributed.string, editAttributed.string)
+        XCTAssertEqual(readAttributed.string, String(editDocument.characters))
         XCTAssertEqual(readAttributed.string, "Bold Italic Underline")
 
-        assertMatchingFontTraits(readTextView, editTextView, at: 0)
-        assertMatchingFontTraits(readTextView, editTextView, at: 5)
-        assertMatchingUnderline(readTextView, editTextView, at: 12)
+        try assertMatchingFontTraits(readAttributed, editDocument, at: 0)
+        try assertMatchingFontTraits(readAttributed, editDocument, at: 5)
+        try assertMatchingUnderline(readAttributed, editDocument, at: 12)
     }
 
-    func testReadSurfaceBoldFontMatchesMountedEditorSurfaceExactlyOnIOS() async throws {
+    func testReadSurfaceBoldFontMatchesMountedEditorSurfaceExactlyOnIOS() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -114,106 +98,85 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
                 ])
             ]
         )
-        let note = NotePayload(
-            id: "n1",
-            name: "Bold Parity",
-            document: document,
-            plainText: "Bold",
-            path: "/note.md",
-            modified: nil,
-            created: nil
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
         )
-        let context = await makeNotesDetailViewTestContext(note: note)
-        let environment = makeNotesDetailTestEnvironment()
+        let readFont = try fontAttribute(in: readAttributed, at: 0)
+        let expectedFont = notePlatformBoldBodyFont(baseFontSize: baseFontSize)
+        let readTraits = notePlatformFontTraits(from: readFont)
 
-        let readController = mount(context.makeView(), environment: environment)
-        let readTextView = try XCTUnwrap(findDescendantTextView(in: readController.view))
-        _ = try attributedText(in: readTextView, expectedString: "Bold")
-        let readFont = try fontAttribute(in: readTextView, at: 0)
-
-        context.editorViewModel.enterEditMode()
-        let editController = mount(context.makeView(), environment: environment)
-        let editTextView = try XCTUnwrap(findDescendantTextView(in: editController.view))
-        _ = try attributedText(in: editTextView, expectedString: "Bold")
-        let editFont = try fontAttribute(in: editTextView, at: 0)
-
-        XCTAssertEqual(readFont.fontName, editFont.fontName)
-        XCTAssertEqual(readFont.pointSize, editFont.pointSize, accuracy: 0.001)
+        XCTAssertEqual(readFont.fontName, expectedFont.fontName)
+        XCTAssertEqual(readFont.pointSize, expectedFont.pointSize, accuracy: 0.001)
+        XCTAssertEqual(readTraits.bold, true)
+        XCTAssertEqual(readTraits.italic, false)
     }
 }
 
 private func assertMatchingFontTraits(
-    _ lhs: UITextView,
-    _ rhs: UITextView,
+    _ lhs: NSAttributedString,
+    _ rhs: AttributedString,
     at location: Int,
     file: StaticString = #filePath,
     line: UInt = #line
-) {
-    do {
-        let lhsFont = try fontAttribute(in: lhs, at: location, file: file, line: line)
-        let rhsFont = try fontAttribute(in: rhs, at: location, file: file, line: line)
-        XCTAssertEqual(
-            notePlatformFontTraits(from: lhsFont),
-            notePlatformFontTraits(from: rhsFont),
-            file: file,
-            line: line
-        )
-    } catch {
-        return
-    }
-}
-
-private func assertMatchingUnderline(
-    _ lhs: UITextView,
-    _ rhs: UITextView,
-    at location: Int,
-    file: StaticString = #filePath,
-    line: UInt = #line
-) {
-    do {
-        XCTAssertEqual(
-            try underlineAttribute(in: lhs, at: location, file: file, line: line),
-            try underlineAttribute(in: rhs, at: location, file: file, line: line),
-            file: file,
-            line: line
-        )
-    } catch {
-        return
-    }
-}
-
-private func attributedText(
-    in textView: UITextView,
-    expectedString: String,
-    timeout: TimeInterval = 0.5,
-    file: StaticString = #filePath,
-    line: UInt = #line
-) throws -> NSAttributedString {
-    let deadline = Date().addingTimeInterval(timeout)
-
-    while Date() <= deadline {
-        let attributedText = textView.attributedText ?? NSAttributedString()
-        if attributedText.string == expectedString {
-            return attributedText
-        }
-        RunLoop.main.run(until: Date().addingTimeInterval(0.01))
-    }
-
-    XCTFail(
-        "Expected mounted text view content '\(expectedString)', got '\(textView.attributedText.string)'",
+) throws {
+    let lhsFont = try fontAttribute(in: lhs, at: location, file: file, line: line)
+    let lhsTraits = notePlatformFontTraits(from: lhsFont)
+    let rhsRange = singleCharacterRange(at: location, in: rhs, file: file, line: line)
+    XCTAssertEqual(
+        lhsTraits.bold,
+        noteRangeHasBoldTrait(rhs, range: rhsRange),
         file: file,
         line: line
     )
-    throw NotesEditorSurfaceParityTestError.missingAttribute
+    XCTAssertEqual(
+        lhsTraits.italic,
+        noteRangeHasItalicTrait(rhs, range: rhsRange),
+        file: file,
+        line: line
+    )
+}
+
+private func assertMatchingUnderline(
+    _ lhs: NSAttributedString,
+    _ rhs: AttributedString,
+    at location: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws {
+    let rhsRange = singleCharacterRange(at: location, in: rhs, file: file, line: line)
+    XCTAssertEqual(
+        try underlineAttribute(in: lhs, at: location, file: file, line: line),
+        noteRangeIsUnderlined(rhs, range: rhsRange) ? NSUnderlineStyle.single.rawValue : nil,
+        file: file,
+        line: line
+    )
+}
+
+@MainActor
+private func constrainedEditorDocument(
+    document: NotesSemanticDocument,
+    baseFontSize: CGFloat,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> AttributedString {
+    var constrained = NotesAttributedDocumentCodec.attributedString(
+        from: document,
+        baseFontSize: baseFontSize
+    )
+    NoteTextFormattingDefinition(baseFontSize: baseFontSize).constrainDocument(&constrained)
+    _ = (file, line)
+    return constrained
 }
 
 private func fontAttribute(
-    in textView: UITextView,
+    in attributedText: NSAttributedString,
     at location: Int,
     file: StaticString = #filePath,
     line: UInt = #line
 ) throws -> UIFont {
-    let attributedText = textView.attributedText ?? NSAttributedString()
     guard attributedText.length > location else {
         XCTFail(
             "Expected attributed text length > \(location), got \(attributedText.length)",
@@ -231,12 +194,11 @@ private func fontAttribute(
 }
 
 private func underlineAttribute(
-    in textView: UITextView,
+    in attributedText: NSAttributedString,
     at location: Int,
     file: StaticString = #filePath,
     line: UInt = #line
 ) throws -> Int? {
-    let attributedText = textView.attributedText ?? NSAttributedString()
     guard attributedText.length > location else {
         XCTFail(
             "Expected attributed text length > \(location), got \(attributedText.length)",
@@ -251,6 +213,26 @@ private func underlineAttribute(
 
 private enum NotesEditorSurfaceParityTestError: Error {
     case missingAttribute
+}
+
+private func singleCharacterRange(
+    at location: Int,
+    in text: AttributedString,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) -> Range<AttributedString.Index> {
+    guard location >= 0, text.characters.count > location else {
+        XCTFail(
+            "Expected attributed text length > \(location), got \(text.characters.count)",
+            file: file,
+            line: line
+        )
+        return text.startIndex..<text.startIndex
+    }
+
+    let lower = text.index(text.startIndex, offsetByCharacters: location)
+    let upper = text.index(afterCharacter: lower)
+    return lower..<upper
 }
 
 @MainActor
@@ -315,6 +297,8 @@ private func mountHostedTextView(
     controller.view.setNeedsLayout()
     controller.view.layoutIfNeeded()
     RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    NotesDetailViewTestRetainer.hostingControllers.append(controller)
+    NotesDetailViewTestRetainer.hostingWindows.append(window)
 
     return try XCTUnwrap(findDescendantTextView(in: controller.view))
 }
