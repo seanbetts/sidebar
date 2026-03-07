@@ -141,14 +141,7 @@ struct SelectableNoteReadView: View {
     private static func noteInlineTraits(
         for run: AttributedString.Runs.Run
     ) -> NoteInlineFormattingTraits {
-        let swiftUIFontTraits = noteSwiftUIFontTraits(from: run.font)
-        let platformTraits = noteBridgedPlatformFont(from: run.attributes)
-            .map(notePlatformFontTraits(from:))
-            ?? .plain
-        return NoteInlineFormattingTraits(
-            bold: swiftUIFontTraits.bold || platformTraits.bold,
-            italic: swiftUIFontTraits.italic || platformTraits.italic
-        )
+        noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
     }
 
     private static func applyingDetectedLinks(to attributed: AttributedString) -> AttributedString {

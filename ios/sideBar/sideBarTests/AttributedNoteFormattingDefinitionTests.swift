@@ -40,13 +40,14 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         let resolved = content[range].font?.resolve(in: EnvironmentValues().fontResolutionContext)
         XCTAssertEqual(resolved?.isBold, true)
         XCTAssertEqual(resolved?.isItalic, true)
-        let exported = try XCTUnwrap(
-            NotesRichTextCodec.encodeAttributedStringToBase64RTF(
-                content,
-                baseFontSize: 24
+        XCTAssertEqual(
+            NotesAttributedDocumentCodec.document(from: content),
+            NotesSemanticDocument(
+                blocks: [
+                    .paragraph([.init(text: "hello", marks: [.bold, .italic])])
+                ]
             )
         )
-        XCTAssertEqual(legacyRTFFirstRunPointSize(in: exported) ?? 0, 24, accuracy: 1.0)
     }
 
     func testConstrainDocumentDoesNotPromoteBridgedPlatformFontTraitsWithoutSwiftUIFont() {
@@ -66,21 +67,4 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
 
         XCTAssertFalse(noteRangeHasBoldTrait(content, range: range))
     }
-}
-
-private func legacyRTFFirstRunPointSize(in content: String) -> CGFloat? {
-    guard let data = Data(base64Encoded: content),
-          let attributed = try? NSAttributedString(
-              data: data,
-              options: [.documentType: NSAttributedString.DocumentType.rtf],
-              documentAttributes: nil
-          ),
-          attributed.length > 0 else {
-        return nil
-    }
-    #if os(iOS)
-    return (attributed.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)?.pointSize
-    #elseif os(macOS)
-    return (attributed.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize
-    #endif
 }

@@ -88,17 +88,19 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
 
         let nativeViewModel = harness.viewModel.makeNativeEditorViewModel()
         harness.viewModel.attachNativeEditor(nativeViewModel)
+        harness.viewModel.enterEditMode()
         let range = semanticCharacterRange(length: 5, in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(range: range)
         harness.viewModel.setFormatting(.bold, enabled: true)
 
         await harness.viewModel.syncFromNativeEditor(nativeViewModel)
 
-        let savedCanonical = try XCTUnwrap(harness.api.updatedContents.last)
+        let savedDocument = try XCTUnwrap(harness.api.updatedDocuments.last)
         let savedNote = NotePayload(
             id: "n1",
             name: "Note",
-            content: savedCanonical,
+            document: savedDocument,
+            plainText: NotesSemanticDocumentProjection.plainText(from: savedDocument),
             path: "/note.md",
             modified: 101,
             created: nil
@@ -302,7 +304,6 @@ private struct SemanticSyncTestNetworkStatus: NetworkStatusProviding {
 
 @MainActor
 private final class SemanticSyncNotesAPISpy: NotesProviding {
-    private(set) var updatedContents: [String] = []
     private(set) var updatedDocuments: [NotesSemanticDocument] = []
     let updateResult: Result<NotePayload, Error>
 
@@ -327,18 +328,11 @@ private final class SemanticSyncNotesAPISpy: NotesProviding {
     }
     func updateNote(id: String, content: String) async throws -> NotePayload {
         _ = id
-        updatedContents.append(content)
         return try updateResult.get()
     }
     func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
         _ = id
         updatedDocuments.append(document)
-        let attributed = NotesAttributedDocumentCodec.attributedString(from: document)
-        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
-        let canonicalContent =
-            NotesRichTextCodec.encodeAttributedStringToBase64RTF(attributed)
-            ?? NotesRichTextCodec.encodePlainTextToBase64RTF(plainText)
-        updatedContents.append(canonicalContent)
         return try updateResult.get()
     }
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {

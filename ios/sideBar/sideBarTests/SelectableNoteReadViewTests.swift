@@ -239,6 +239,74 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(underlineValue, NSUnderlineStyle.single.rawValue)
     }
 
+    func testBridgedPlatformFontTraitsDoNotAddFormattingWithoutSwiftUIFont() throws {
+        var attributed = AttributedString("Bold Italic Underline")
+
+        let boldEnd = attributed.index(attributed.startIndex, offsetByCharacters: 4)
+        let italicStart = attributed.index(boldEnd, offsetByCharacters: 1)
+        let italicEnd = attributed.index(italicStart, offsetByCharacters: 6)
+        let underlineStart = attributed.index(italicEnd, offsetByCharacters: 1)
+
+        applyBridgedPlatformFont(
+            makePlatformFont(baseFontSize: 16, bold: true, italic: false),
+            to: &attributed,
+            range: attributed.startIndex..<boldEnd
+        )
+        applyBridgedPlatformFont(
+            makePlatformFont(baseFontSize: 16, bold: false, italic: true),
+            to: &attributed,
+            range: italicStart..<italicEnd
+        )
+        attributed[underlineStart..<attributed.endIndex].underlineStyle = .single
+
+        let rendered = SelectableNoteReadView.bridgedPlatformAttributedString(
+            from: attributed,
+            baseFontSize: 16
+        )
+
+        let boldFont = try XCTUnwrap(rendered.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+        XCTAssertFalse(notePlatformFontTraits(from: boldFont).bold)
+        XCTAssertFalse(notePlatformFontTraits(from: boldFont).italic)
+
+        let italicFont = try XCTUnwrap(
+            rendered.attribute(.font, at: 5, effectiveRange: nil) as? NSFont
+        )
+        XCTAssertFalse(notePlatformFontTraits(from: italicFont).bold)
+        XCTAssertFalse(notePlatformFontTraits(from: italicFont).italic)
+
+        let underlineValue = rendered.attribute(.underlineStyle, at: 12, effectiveRange: nil) as? Int
+        XCTAssertEqual(underlineValue, NSUnderlineStyle.single.rawValue)
+    }
+
+    func testSwiftUIFontTraitsOverrideConflictingBridgedPlatformFontTraits() throws {
+        var attributed = AttributedString("Italic")
+        let range = attributed.startIndex..<attributed.endIndex
+        attributed[range].font = noteInlineFont(baseFontSize: 16, bold: false, italic: true)
+#if os(iOS)
+        attributed[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = makePlatformFont(
+            baseFontSize: 16,
+            bold: true,
+            italic: false
+        )
+#elseif os(macOS)
+        attributed[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = makePlatformFont(
+            baseFontSize: 16,
+            bold: true,
+            italic: false
+        )
+#endif
+
+        let rendered = SelectableNoteReadView.bridgedPlatformAttributedString(
+            from: attributed,
+            baseFontSize: 16
+        )
+
+        let font = try XCTUnwrap(rendered.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+        let traits = notePlatformFontTraits(from: font)
+        XCTAssertFalse(traits.bold)
+        XCTAssertTrue(traits.italic)
+    }
+
     func testMakePlatformAttributedContentRemovesParagraphStyleOverrides() {
         let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\n\nTwo")
         let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
@@ -310,4 +378,27 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(offset, textView.string.utf16.count)
     }
     #endif
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func makePlatformFont(
+    baseFontSize: CGFloat,
+    bold: Bool,
+    italic: Bool
+) -> NotePlatformFont {
+    notePlatformFont(baseFontSize: baseFontSize, bold: bold, italic: italic)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func applyBridgedPlatformFont(
+    _ font: NotePlatformFont,
+    to attributed: inout AttributedString,
+    range: Range<AttributedString.Index>
+) {
+#if os(iOS)
+    attributed[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = font
+#elseif os(macOS)
+    attributed[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = font
+#endif
+    attributed[range].font = nil
 }

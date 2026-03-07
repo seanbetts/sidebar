@@ -56,6 +56,76 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
             "formatted detail readGap=\(readGap) editGap=\(editGap)"
         )
     }
+
+    func testReadSurfaceFormattingMatchesEditorSurfaceForSameSemanticNoteOnIOS() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([
+                    .init(text: "Bold", marks: [.bold]),
+                    .init(text: " ", marks: []),
+                    .init(text: "Italic", marks: [.italic]),
+                    .init(text: " ", marks: []),
+                    .init(text: "Underline", marks: [.underline])
+                ])
+            ]
+        )
+        let baseFontSize: CGFloat = 18
+
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        let editorViewModel = NativeNoteEditorViewModel()
+        editorViewModel.setBaseFontSize(baseFontSize)
+        editorViewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let editorAttributed = try XCTUnwrap(
+            try? NSAttributedString(editorViewModel.attributedContent, including: \.noteTextEditor)
+        )
+
+        XCTAssertEqual(readAttributed.string, editorAttributed.string)
+        XCTAssertEqual(readAttributed.string, "Bold Italic Underline")
+
+        assertMatchingFontTraits(readAttributed, editorAttributed, at: 0)
+        assertMatchingFontTraits(readAttributed, editorAttributed, at: 5)
+        assertMatchingUnderline(readAttributed, editorAttributed, at: 12)
+    }
+}
+
+private func assertMatchingFontTraits(
+    _ lhs: NSAttributedString,
+    _ rhs: NSAttributedString,
+    at location: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    let lhsFont = lhs.attribute(.font, at: location, effectiveRange: nil) as? UIFont
+    let rhsFont = rhs.attribute(.font, at: location, effectiveRange: nil) as? UIFont
+
+    XCTAssertEqual(
+        lhsFont.map(notePlatformFontTraits(from:)),
+        rhsFont.map(notePlatformFontTraits(from:)),
+        file: file,
+        line: line
+    )
+}
+
+private func assertMatchingUnderline(
+    _ lhs: NSAttributedString,
+    _ rhs: NSAttributedString,
+    at location: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    XCTAssertEqual(
+        lhs.attribute(.underlineStyle, at: location, effectiveRange: nil) as? Int,
+        rhs.attribute(.underlineStyle, at: location, effectiveRange: nil) as? Int,
+        file: file,
+        line: line
+    )
 }
 
 @MainActor
