@@ -4,13 +4,34 @@ import UIKit
 #elseif os(macOS)
 import AppKit
 #endif
+// swiftlint:disable file_length
 
 @available(iOS 26.0, macOS 26.0, *)
 struct SelectableNoteReadView: View {
+    typealias ReadActivationTarget = NotesEditorViewModel.PendingEditSelectionTarget
+
     let document: NotesSemanticDocument
     let maxContentWidth: CGFloat
-    var onActivateEditing: (() -> Void)?
+    var onActivateEditing: ((ReadActivationTarget) -> Void)?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
+
+    init(
+        document: NotesSemanticDocument,
+        maxContentWidth: CGFloat,
+        onActivateEditing: ((ReadActivationTarget) -> Void)? = nil
+    ) {
+        self.document = document
+        self.maxContentWidth = maxContentWidth
+        self.onActivateEditing = onActivateEditing
+    }
+
+    init(
+        document: NotesSemanticDocument,
+        maxContentWidth: CGFloat,
+        onActivateEditing: (() -> Void)?
+    ) {
+        self.init(document: document, maxContentWidth: maxContentWidth) { _ in onActivateEditing?() }
+    }
 
     var body: some View {
         let baseFontSize = Self.readBaseFontSize(for: resolvedTextSizeOption)
@@ -28,9 +49,7 @@ struct SelectableNoteReadView: View {
         .background(DesignTokens.Colors.background)
     }
 
-    private var resolvedTextSizeOption: AppTextSizeOption {
-        AppTextSizeOption.resolved(from: appTextSizeRaw)
-    }
+    private var resolvedTextSizeOption: AppTextSizeOption { AppTextSizeOption.resolved(from: appTextSizeRaw) }
 
     static func makeAttributedContent(
         from document: NotesSemanticDocument,
@@ -43,9 +62,7 @@ struct SelectableNoteReadView: View {
         return applyingDetectedLinks(to: rawContent)
     }
 
-    static func readBaseFontSize(for option: AppTextSizeOption) -> CGFloat {
-        NoteTextTypography.defaultBodyFontSize(for: option)
-    }
+    static func readBaseFontSize(for option: AppTextSizeOption) -> CGFloat { NoteTextTypography.defaultBodyFontSize(for: option) }
 
     static func makePlatformAttributedContent(
         from document: NotesSemanticDocument,
@@ -161,10 +178,63 @@ struct SelectableNoteReadView: View {
         return AttributedString(bridged)
     }
 
+    private struct ReadActivationLineMetrics {
+        let fragmentRect: CGRect
+        let usedRect: CGRect
+        let endCharacterOffset: Int
+    }
+
+    private static func visualLineEndOffset(
+        in layoutManager: NSLayoutManager,
+        glyphRange: NSRange,
+        plainText: NSString
+    ) -> Int {
+        let characterRange = layoutManager.characterRange(
+            forGlyphRange: glyphRange,
+            actualGlyphRange: nil
+        )
+        var endOffset = min(characterRange.location + characterRange.length, plainText.length)
+
+        while endOffset > characterRange.location,
+              let scalar = UnicodeScalar(plainText.character(at: endOffset - 1)),
+              CharacterSet.newlines.contains(scalar) {
+            endOffset -= 1
+        }
+
+        return endOffset
+    }
+
+    private static func lineMetrics(
+        in layoutManager: NSLayoutManager,
+        textContainer: NSTextContainer,
+        plainText: NSString,
+        lineY: CGFloat
+    ) -> ReadActivationLineMetrics? {
+        let fullGlyphRange = layoutManager.glyphRange(for: textContainer)
+        var result: ReadActivationLineMetrics?
+        layoutManager.enumerateLineFragments(forGlyphRange: fullGlyphRange) { lineFragmentRect, usedRect, _, glyphRange, stop in
+            let normalizedFragmentRect = lineFragmentRect.standardized.insetBy(dx: 0, dy: -0.5)
+            guard normalizedFragmentRect.minY <= lineY, lineY <= normalizedFragmentRect.maxY else {
+                return
+            }
+            result = ReadActivationLineMetrics(
+                fragmentRect: lineFragmentRect,
+                usedRect: usedRect,
+                endCharacterOffset: visualLineEndOffset(
+                    in: layoutManager,
+                    glyphRange: glyphRange,
+                    plainText: plainText
+                )
+            )
+            stop.pointee = ObjCBool(true)
+        }
+        return result
+    }
+
     #if os(macOS)
     static func makePlatformTextView(
         attributedContent: NSAttributedString,
-        onActivateEditing: (() -> Void)? = nil
+        onActivateEditing: ((ReadActivationTarget) -> Void)? = nil
     ) -> NSTextView {
         let textView = SelectableNoteReadTextView()
         textView.drawsBackground = false
@@ -179,10 +249,7 @@ struct SelectableNoteReadView: View {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.minSize = .zero
-        textView.maxSize = NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude
-        )
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.autoresizingMask = [.width]
         textView.linkTextAttributes = [
             .foregroundColor: NSColor.linkColor,
@@ -193,6 +260,34 @@ struct SelectableNoteReadView: View {
         textView.textStorage?.setAttributedString(attributedContent)
         return textView
     }
+
+    static func characterOffsetForEditingActivation(
+        in textView: NSTextView,
+        at point: NSPoint
+    ) -> Int? {
+        guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer else { return nil }
+        textContainer.containerSize = NSSize(width: max(textView.bounds.width, 0), height: CGFloat.greatestFiniteMagnitude)
+        layoutManager.ensureLayout(for: textContainer)
+        let plainText = textView.string as NSString
+        guard plainText.length > 0 else { return 0 }
+        let containerPoint = NSPoint(
+            x: point.x - textView.textContainerInset.width,
+            y: point.y - textView.textContainerInset.height
+        )
+        if containerPoint.y > layoutManager.usedRect(for: textContainer).maxY { return plainText.length }
+        if let line = lineMetrics(
+            in: layoutManager,
+            textContainer: textContainer,
+            plainText: plainText,
+            lineY: containerPoint.y
+        ),
+           containerPoint.x > line.usedRect.maxX {
+            return line.endCharacterOffset
+        }
+
+        let insertionIndex = textView.characterIndexForInsertion(at: point)
+        return min(max(insertionIndex, 0), plainText.length)
+    }
     #endif
 }
 
@@ -200,7 +295,7 @@ struct SelectableNoteReadView: View {
 @available(iOS 26.0, macOS 26.0, *)
 private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     let attributedContent: NSAttributedString
-    let onActivateEditing: (() -> Void)?
+    let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = SelectableNoteReadView.makePlatformTextView(
@@ -230,7 +325,7 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
 
 @available(iOS 26.0, macOS 26.0, *)
 private final class SelectableNoteReadTextView: NSTextView {
-    var onActivateEditing: (() -> Void)?
+    var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     private var didDragSelectionGesture = false
     private var lastActivationTimestamp: TimeInterval = 0
 
@@ -247,7 +342,7 @@ private final class SelectableNoteReadTextView: NSTextView {
     override func mouseUp(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         super.mouseUp(with: event)
-        guard shouldActivateEditing(clickCount: event.clickCount, point: point) else { return }
+        guard event.clickCount == 1, didDragSelectionGesture == false else { return }
         activateEditingIfNeeded(at: point)
     }
 
@@ -274,26 +369,10 @@ private final class SelectableNoteReadTextView: NSTextView {
         activateEditingIfNeeded(at: recognizer.location(in: self))
     }
 
-    private func shouldActivateEditing(
-        clickCount: Int,
-        point: NSPoint
-    ) -> Bool {
-        guard clickCount == 1,
-              didDragSelectionGesture == false,
-              linkAttribute(at: point) == nil else {
-            return false
-        }
-        return onActivateEditing != nil
-    }
-
     private func activateEditingIfNeeded(at point: NSPoint) {
-        guard onActivateEditing != nil,
-              linkAttribute(at: point) == nil,
-              canTriggerActivationNow else {
-            return
-        }
+        guard let onActivateEditing, let target = activationTarget(at: point), canTriggerActivationNow else { return }
         lastActivationTimestamp = ProcessInfo.processInfo.systemUptime
-        onActivateEditing?()
+        onActivateEditing(target)
     }
 
     private var canTriggerActivationNow: Bool {
@@ -302,13 +381,7 @@ private final class SelectableNoteReadTextView: NSTextView {
     }
 
     private func linkAttribute(at point: NSPoint) -> Any? {
-        guard let layoutManager,
-              let textContainer,
-              let textStorage,
-              textStorage.length > 0 else {
-            return nil
-        }
-
+        guard let layoutManager, let textContainer, let textStorage, textStorage.length > 0 else { return nil }
         let containerPoint = NSPoint(
             x: point.x - textContainerInset.width,
             y: point.y - textContainerInset.height
@@ -318,24 +391,26 @@ private final class SelectableNoteReadTextView: NSTextView {
             in: textContainer,
             fractionOfDistanceThroughGlyph: nil
         )
-        guard glyphIndex < layoutManager.numberOfGlyphs else {
-            return nil
-        }
+        guard glyphIndex < layoutManager.numberOfGlyphs else { return nil }
         let glyphRange = NSRange(location: glyphIndex, length: 1)
         let glyphBounds = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-        guard glyphBounds.insetBy(dx: -1, dy: -1).contains(containerPoint) else {
-            return nil
-        }
+        guard glyphBounds.insetBy(dx: -1, dy: -1).contains(containerPoint) else { return nil }
         let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
         guard characterIndex < textStorage.length else { return nil }
         return textStorage.attribute(.link, at: characterIndex, effectiveRange: nil)
+    }
+
+    private func activationTarget(at point: NSPoint) -> SelectableNoteReadView.ReadActivationTarget? {
+        guard linkAttribute(at: point) == nil,
+              let characterOffset = SelectableNoteReadView.characterOffsetForEditingActivation(in: self, at: point) else { return nil }
+        return .characterOffset(characterOffset)
     }
 }
 #elseif os(iOS)
 @available(iOS 26.0, macOS 26.0, *)
 private struct PlatformSelectableNoteReadView: UIViewRepresentable {
     let attributedContent: NSAttributedString
-    let onActivateEditing: (() -> Void)?
+    let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
 
     func makeUIView(context: Context) -> SelectableNoteReadContainerView {
         let containerView = SelectableNoteReadContainerView()
@@ -368,11 +443,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
 
 @available(iOS 26.0, macOS 26.0, *)
 private final class SelectableNoteReadTextView: UITextView {
-    var onActivateEditing: (() -> Void)?
-
-    func shouldActivateEditing(at point: CGPoint) -> Bool {
-        onActivateEditing != nil && linkAttribute(at: point) == nil
-    }
+    var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
 
     private func linkAttribute(at point: CGPoint) -> Any? {
         guard attributedText.length > 0 else { return nil }
@@ -396,12 +467,18 @@ private final class SelectableNoteReadTextView: UITextView {
         }
         return attributedText.attribute(.link, at: characterIndex, effectiveRange: nil)
     }
+
+    func activationTarget(at point: CGPoint) -> SelectableNoteReadView.ReadActivationTarget? {
+        guard linkAttribute(at: point) == nil,
+              let characterOffset = SelectableNoteReadView.characterOffsetForEditingActivation(in: self, at: point) else { return nil }
+        return .characterOffset(characterOffset)
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizerDelegate {
     let textView = SelectableNoteReadTextView()
-    var onActivateEditing: (() -> Void)?
+    var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
 
     private lazy var activationTapRecognizer: UITapGestureRecognizer = {
         let recognizer = UITapGestureRecognizer(
@@ -437,8 +514,8 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
     private func handleActivationTapGesture(_ recognizer: UITapGestureRecognizer) {
         guard recognizer.state == .ended else { return }
         let point = recognizer.location(in: textView)
-        guard textView.shouldActivateEditing(at: point) else { return }
-        onActivateEditing?()
+        guard let target = textView.activationTarget(at: point) else { return }
+        onActivateEditing?(target)
     }
 
     func gestureRecognizer(
@@ -448,6 +525,48 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
         _ = gestureRecognizer
         _ = otherGestureRecognizer
         return true
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private extension SelectableNoteReadView {
+    static func characterOffsetForEditingActivation(
+        in textView: UITextView,
+        at point: CGPoint
+    ) -> Int? {
+        let layoutManager = textView.layoutManager
+        let textContainer = textView.textContainer
+        textContainer.size = CGSize(
+            width: max(
+                textView.bounds.width - textView.textContainerInset.left - textView.textContainerInset.right,
+                0
+            ),
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        layoutManager.ensureLayout(for: textContainer)
+        let plainTextLength = textView.attributedText.length
+        guard plainTextLength > 0 else { return 0 }
+        let containerPoint = CGPoint(
+            x: point.x - textView.textContainerInset.left,
+            y: point.y - textView.textContainerInset.top
+        )
+        if containerPoint.y > layoutManager.usedRect(for: textContainer).maxY { return plainTextLength }
+        let plainText = (textView.text as NSString?) ?? NSString(string: "")
+        if let line = lineMetrics(
+            in: layoutManager,
+            textContainer: textContainer,
+            plainText: plainText,
+            lineY: containerPoint.y
+        ),
+           containerPoint.x > line.usedRect.maxX {
+            return line.endCharacterOffset
+        }
+
+        guard let position = textView.closestPosition(to: point) else { return plainTextLength }
+        return min(
+            max(textView.offset(from: textView.beginningOfDocument, to: position), 0),
+            plainTextLength
+        )
     }
 }
 #endif

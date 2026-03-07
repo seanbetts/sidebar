@@ -74,7 +74,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
         )
         let textView = SelectableNoteReadView.makePlatformTextView(
             attributedContent: attributed,
-            onActivateEditing: {}
+            onActivateEditing: { _ in }
         )
 
         XCTAssertFalse(textView.isEditable)
@@ -110,7 +110,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
         var activationCount = 0
         let textView = SelectableNoteReadView.makePlatformTextView(
             attributedContent: attributed,
-            onActivateEditing: { activationCount += 1 }
+            onActivateEditing: { _ in activationCount += 1 }
         )
         textView.frame = NSRect(x: 0, y: 0, width: 320, height: 120)
 
@@ -154,7 +154,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
         var activationCount = 0
         let textView = SelectableNoteReadView.makePlatformTextView(
             attributedContent: attributed,
-            onActivateEditing: { activationCount += 1 }
+            onActivateEditing: { _ in activationCount += 1 }
         )
         textView.frame = NSRect(x: 0, y: 0, width: 320, height: 120)
 
@@ -195,7 +195,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
         )
         let textView = SelectableNoteReadView.makePlatformTextView(
             attributedContent: attributed,
-            onActivateEditing: {}
+            onActivateEditing: { _ in }
         )
 
         let clickRecognizers = textView.gestureRecognizers.compactMap { $0 as? NSClickGestureRecognizer }
@@ -259,7 +259,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
         )
         let readTextView = SelectableNoteReadView.makePlatformTextView(
             attributedContent: readAttributed,
-            onActivateEditing: {}
+            onActivateEditing: { _ in }
         )
         readTextView.frame = NSRect(x: 0, y: 0, width: 420, height: 240)
 
@@ -278,6 +278,36 @@ final class SelectableNoteReadViewTests: XCTestCase {
             accuracy: 1.0,
             "readGap=\(readGap) editorGap=\(editorGap)"
         )
+    }
+
+    func testCharacterOffsetForEditingActivationClampsTapToRightOfLineToVisualLineEnd() throws {
+        let textView = try makeReadTextView(
+            plainText: "One\nTwo",
+            frame: NSRect(x: 0, y: 0, width: 320, height: 120)
+        )
+        let tapPoint = try lineEndOverflowClickPoint(in: textView, characterIndex: 2)
+
+        let offset = SelectableNoteReadView.characterOffsetForEditingActivation(
+            in: textView,
+            at: tapPoint
+        )
+
+        XCTAssertEqual(offset, 3)
+    }
+
+    func testCharacterOffsetForEditingActivationClampsTapBelowContentToEndOfNote() throws {
+        let textView = try makeReadTextView(
+            plainText: "One\nTwo",
+            frame: NSRect(x: 0, y: 0, width: 320, height: 120)
+        )
+        let tapPoint = try belowContentClickPoint(in: textView, characterIndex: 6)
+
+        let offset = SelectableNoteReadView.characterOffsetForEditingActivation(
+            in: textView,
+            at: tapPoint
+        )
+
+        XCTAssertEqual(offset, textView.string.utf16.count)
     }
     #endif
 }
@@ -461,6 +491,50 @@ private func mountEditorTextView(
     rootView.layoutSubtreeIfNeeded()
 
     return try XCTUnwrap(findDescendantTextView(in: rootView))
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func makeReadTextView(
+    plainText: String,
+    frame: NSRect,
+    baseFontSize: CGFloat = 16
+) throws -> NSTextView {
+    let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
+    let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+        from: document,
+        baseFontSize: baseFontSize
+    )
+    let textView = SelectableNoteReadView.makePlatformTextView(attributedContent: attributed)
+    textView.frame = frame
+    textView.layoutSubtreeIfNeeded()
+    return textView
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func lineEndOverflowClickPoint(
+    in textView: NSTextView,
+    characterIndex: Int
+) throws -> NSPoint {
+    let rect = try glyphRect(in: textView, characterIndex: characterIndex)
+    return NSPoint(
+        x: textView.textContainerInset.width + rect.maxX + 40,
+        y: textView.textContainerInset.height + rect.midY
+    )
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func belowContentClickPoint(
+    in textView: NSTextView,
+    characterIndex: Int
+) throws -> NSPoint {
+    let rect = try glyphRect(in: textView, characterIndex: characterIndex)
+    return NSPoint(
+        x: textView.textContainerInset.width + rect.midX,
+        y: textView.textContainerInset.height + rect.maxY + rect.height + 20
+    )
 }
 
 @MainActor
