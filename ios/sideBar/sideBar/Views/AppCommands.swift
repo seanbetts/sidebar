@@ -108,7 +108,8 @@ struct SidebarCommands: Commands {
 
     @available(macOS 26.0, *)
     private var canFormatNotes: Bool {
-        environment.notesRuntime.editorViewModel.canApplyFormattingCommands()
+        let editorViewModel = environment.notesRuntime.editorViewModel
+        return editorViewModel.isEditingNote && editorViewModel.canApplyFormattingCommands()
     }
 
     @available(macOS 26.0, *)

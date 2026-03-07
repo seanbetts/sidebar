@@ -308,6 +308,10 @@ final class NotesEditorViewModelTests: XCTestCase {
         let range = characterRange(length: 5, in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(range: range)
 
+        XCTAssertFalse(viewModel.canApplyFormattingCommands())
+
+        viewModel.enterEditMode()
+
         XCTAssertTrue(viewModel.canApplyFormattingCommands())
 
         viewModel.toggleFormatting(.bold)
@@ -357,6 +361,10 @@ final class NotesEditorViewModelTests: XCTestCase {
         viewModel.attachNativeEditor(nativeViewModel)
         let initialRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(range: initialRange)
+
+        XCTAssertFalse(viewModel.canApplyFormattingCommands())
+
+        viewModel.enterEditMode()
 
         viewModel.setFormatting(.underline, enabled: true)
         let enabledRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
@@ -427,6 +435,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         viewModel.attachNativeEditor(nativeViewModel)
         let range = characterRange(length: 5, in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(range: range)
+        viewModel.enterEditMode()
 
         let previous = nativeViewModel.attributedContent
         nativeViewModel.applyFormatting(.bold)
@@ -803,6 +812,7 @@ extension NotesEditorViewModelTests {
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
+        viewModel.enterEditMode()
         nativeViewModel.attributedContent = AttributedString("Updated")
         nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
         viewModel.setDirty(true)
@@ -860,6 +870,7 @@ extension NotesEditorViewModelTests {
 
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         viewModel.attachNativeEditor(nativeViewModel)
+        viewModel.enterEditMode()
         await viewModel.saveIfNeeded()
 
         XCTAssertEqual(api.updateCallCount, 0)
@@ -922,6 +933,7 @@ extension NotesEditorViewModelTests {
         viewModel.attachNativeEditor(nativeViewModel)
         let fullRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(range: fullRange)
+        viewModel.enterEditMode()
         nativeViewModel.applyFormatting(.bold)
 
         // Simulate quick close/switch before async dirty propagation reaches NotesEditorViewModel.
@@ -1268,6 +1280,7 @@ private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> 
     XCTFail("Timed out waiting for condition")
 }
 
+@MainActor
 private func decodedCanonicalPlainText(_ content: String) -> String? {
     NotesSemanticDocumentCodec.decode(content).map(NotesSemanticDocumentProjection.plainText(from:))
 }
@@ -1319,6 +1332,7 @@ extension NotesEditorViewModelTests {
         let context = await makeSelectionSaveReloadContext(savedNote: savedNote)
         let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
         context.viewModel.attachNativeEditor(nativeViewModel)
+        context.viewModel.enterEditMode()
 
         let selectionRange = selectionRangeForWorld(in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(range: selectionRange)

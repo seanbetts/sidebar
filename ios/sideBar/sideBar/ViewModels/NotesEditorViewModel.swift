@@ -239,7 +239,7 @@ public final class NotesEditorViewModel: ObservableObject {
 
     @available(iOS 26.0, macOS 26.0, *)
     public func canApplyFormattingCommands() -> Bool {
-        currentNoteId != nil && nativeEditorViewModel != nil && !isReadOnly
+        currentNoteId != nil && nativeEditorViewModel != nil && !isReadOnly && isEditingNote
     }
 
     @available(iOS 26.0, macOS 26.0, *)
