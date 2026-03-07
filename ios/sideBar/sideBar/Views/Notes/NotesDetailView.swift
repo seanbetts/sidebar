@@ -135,7 +135,13 @@ extension NotesDetailView {
     @ViewBuilder
     private var content: some View {
         if viewModel.activeNote != nil {
-            if isShowingEditorSurface {
+            if isShowingUnsupportedContentPlaceholder {
+                PlaceholderView(
+                    title: unsupportedContentPlaceholderTitle,
+                    subtitle: unsupportedContentPlaceholderMessage,
+                    iconName: "exclamationmark.triangle"
+                )
+            } else if isShowingEditorSurface {
                 AttributedNoteEditorContainer(
                     editorViewModel: editorViewModel,
                     maxContentWidth: contentMaxWidth,

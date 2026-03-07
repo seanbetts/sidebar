@@ -30,6 +30,7 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var isReadOnly: Bool = true
     @Published public private(set) var isQueuedForSync: Bool = false
+    @Published private(set) var unsupportedContent: NotesUnsupportedContent?
 
     private let notesViewModel: NotesViewModel
     private let draftStorage: DraftStorage
@@ -74,6 +75,7 @@ public final class NotesEditorViewModel: ObservableObject {
             saveErrorMessage = nil
             isReadOnly = true
             isQueuedForSync = false
+            unsupportedContent = nil
             syncRequestedWhileSaving = false
             return
         }
@@ -84,11 +86,23 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
         let normalized = normalizedEditorSnapshot(for: note)
+        let detectedUnsupportedContent = NotesUnsupportedContent.detect(in: note.document)
+        if let detectedUnsupportedContent {
+            detectedUnsupportedContent.reportDetected(
+                context: "NotesEditorViewModel.handleNoteUpdate",
+                logger: logger
+            )
+        }
         currentNoteId = note.id
+        unsupportedContent = detectedUnsupportedContent
         if isSameNote,
            normalized.plainText == content,
            normalized.content == canonicalContent {
-            isReadOnly = false
+            isReadOnly = detectedUnsupportedContent != nil
+            if detectedUnsupportedContent != nil {
+                presentationMode = .read
+                pendingEditSelectionTarget = nil
+            }
             if !isSaving {
                 saveErrorMessage = nil
                 isQueuedForSync = false
@@ -97,23 +111,26 @@ public final class NotesEditorViewModel: ObservableObject {
         }
         content = normalized.plainText
         canonicalContent = normalized.content
-        syncNativeEditorContent(
-            canonicalContent: normalized.content,
-            plainText: normalized.plainText
-        )
+        if detectedUnsupportedContent == nil {
+            syncNativeEditorContent(
+                canonicalContent: normalized.content,
+                plainText: normalized.plainText
+            )
+        }
         isDirty = false
         isSaving = false
         lastSavedAt = nil
         saveErrorMessage = nil
-        isReadOnly = false
+        isReadOnly = detectedUnsupportedContent != nil
         isQueuedForSync = false
-        if !isSameNote {
+        if !isSameNote || detectedUnsupportedContent != nil {
             presentationMode = .read
             pendingEditSelectionTarget = nil
         }
         if !isSameNote {
             syncRequestedWhileSaving = false
         }
+        guard detectedUnsupportedContent == nil else { return }
         Task { [weak self] in
             await self?.applyDraftIfAvailable(for: note)
         }
@@ -335,7 +352,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     public func enterEditMode(at target: PendingEditSelectionTarget) {
-        guard currentNoteId != nil else { return }
+        guard currentNoteId != nil, unsupportedContent == nil else { return }
         pendingEditSelectionTarget = target
         presentationMode = .edit
     }
@@ -349,22 +366,6 @@ public final class NotesEditorViewModel: ObservableObject {
     public func exitEditModeToRead() {
         pendingEditSelectionTarget = nil
         presentationMode = .read
-    }
-
-    public func setDirty(_ dirty: Bool) {
-        guard isDirty != dirty else { return }
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.isDirty != dirty else { return }
-            self.isDirty = dirty
-        }
-    }
-
-    public func setReadOnly(_ readOnly: Bool) {
-        guard isReadOnly != readOnly else { return }
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.isReadOnly != readOnly else { return }
-            self.isReadOnly = readOnly
-        }
     }
 
     private func syncNativeEditorContent(canonicalContent: String, plainText: String) {
@@ -383,20 +384,6 @@ public final class NotesEditorViewModel: ObservableObject {
             }
             alignPersistenceBaseline(with: nativeEditorViewModel)
         }
-    }
-
-    @available(iOS 26.0, macOS 26.0, *)
-    private func alignPersistenceBaseline(with nativeViewModel: NativeNoteEditorViewModel) {
-        let snapshot = nativeViewModel.currentPersistenceSnapshot()
-        content = snapshot.plainText
-        canonicalContent = snapshot.canonicalContent
-    }
-
-    private func normalizedEditorSnapshot(for note: NotePayload) -> (content: String, plainText: String) {
-        (
-            content: NotesSemanticDocumentCodec.encode(note.document) ?? "",
-            plainText: note.plainText
-        )
     }
 
     private func enqueueNoteUpdate(
@@ -446,6 +433,38 @@ public final class NotesEditorViewModel: ObservableObject {
             entityId: noteId,
             capturedAt: Date(),
             payload: .note(snapshot)
+        )
+    }
+}
+
+private extension NotesEditorViewModel {
+    func setDirty(_ dirty: Bool) {
+        guard isDirty != dirty else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.isDirty != dirty else { return }
+            self.isDirty = dirty
+        }
+    }
+
+    func setReadOnly(_ readOnly: Bool) {
+        guard isReadOnly != readOnly else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.isReadOnly != readOnly else { return }
+            self.isReadOnly = readOnly
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    func alignPersistenceBaseline(with nativeViewModel: NativeNoteEditorViewModel) {
+        let snapshot = nativeViewModel.currentPersistenceSnapshot()
+        content = snapshot.plainText
+        canonicalContent = snapshot.canonicalContent
+    }
+
+    func normalizedEditorSnapshot(for note: NotePayload) -> (content: String, plainText: String) {
+        (
+            content: NotesSemanticDocumentCodec.encode(note.document) ?? "",
+            plainText: note.plainText
         )
     }
 }

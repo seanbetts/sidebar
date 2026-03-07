@@ -9,6 +9,60 @@ import XCTest
 // swiftlint:disable type_body_length
 @MainActor
 final class NotesEditorViewModelTests: XCTestCase {
+    func testUnsupportedContentDetectionIdentifiesNonParagraphBlocks() {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([.init(text: "Intro", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .init(type: .table, content: [.init(text: "Cell", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Repeated", marks: [])])
+            ]
+        )
+
+        XCTAssertEqual(
+            NotesUnsupportedContent.detect(in: document)?.blockTypes,
+            [.heading, .table]
+        )
+    }
+
+    func testHandleNoteUpdateMarksUnsupportedNotesReadOnly() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = makeUnsupportedTestNote()
+
+        context.store.applyEditorUpdate(note)
+        await Task.yield()
+
+        XCTAssertEqual(context.viewModel.currentNoteId, "n1")
+        XCTAssertEqual(context.viewModel.presentationMode, .read)
+        XCTAssertTrue(context.viewModel.isReadOnly)
+        XCTAssertFalse(context.viewModel.isEditingNote)
+        XCTAssertEqual(
+            context.viewModel.unsupportedContent?.blockTypes,
+            [.heading]
+        )
+        XCTAssertEqual(
+            NotesSemanticDocumentCodec.decode(context.viewModel.canonicalContent),
+            note.document
+        )
+    }
+
+    func testEnterEditModeDoesNothingForUnsupportedNotes() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = makeUnsupportedTestNote()
+
+        context.store.applyEditorUpdate(note)
+        await Task.yield()
+        context.viewModel.enterEditMode(at: .characterOffset(4))
+
+        XCTAssertEqual(context.viewModel.presentationMode, .read)
+        XCTAssertFalse(context.viewModel.isEditingNote)
+        XCTAssertNil(context.viewModel.consumePendingEditSelectionTarget())
+    }
+
     func testHandleNoteUpdateSetsContentAndBaseline() async {
         let api = MockNotesAPI(updateResult: .failure(MockError.forced))
         let cache = TestCacheClient()
@@ -1385,6 +1439,28 @@ private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> 
 @MainActor
 private func decodedCanonicalPlainText(_ content: String) -> String? {
     NotesSemanticDocumentCodec.decode(content).map(NotesSemanticDocumentProjection.plainText(from:))
+}
+
+private func makeUnsupportedTestNote(
+    id: String = "n1",
+    name: String = "Unsupported",
+    path: String = "/unsupported.md"
+) -> NotePayload {
+    let document = NotesSemanticDocument(
+        blocks: [
+            .paragraph([.init(text: "Intro", marks: [])]),
+            .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+        ]
+    )
+    return NotePayload(
+        id: id,
+        name: name,
+        document: document,
+        plainText: "Intro",
+        path: path,
+        modified: nil,
+        created: nil
+    )
 }
 
 @available(iOS 26.0, macOS 26.0, *)

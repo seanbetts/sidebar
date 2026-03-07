@@ -7,6 +7,11 @@ enum NotesAttributedDocumentCodec {
         from document: NotesSemanticDocument,
         baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
     ) -> AttributedString {
+        if let unsupportedContent = NotesUnsupportedContent.detect(in: document) {
+            unsupportedContent.reportDetected(context: "NotesAttributedDocumentCodec.attributedString")
+            return AttributedString("")
+        }
+
         var attributed = AttributedString()
 
         for (index, block) in document.blocks.enumerated() {
@@ -18,7 +23,7 @@ enum NotesAttributedDocumentCodec {
             case .paragraph:
                 attributed.append(attributedParagraph(from: block.content, baseFontSize: baseFontSize))
             default:
-                continue
+                assertionFailure("Unsupported block type should have been handled before rendering: \(block.type.rawValue)")
             }
         }
 

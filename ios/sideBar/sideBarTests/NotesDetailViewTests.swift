@@ -49,6 +49,59 @@ final class NotesDetailViewTests: XCTestCase {
         )
     }
 
+    func testUnsupportedNotesShowPlaceholderInsteadOfReadOrEditorSurface() async {
+        let unsupportedNote = NotePayload(
+            id: "n1",
+            name: "Unsupported",
+            document: NotesSemanticDocument(
+                blocks: [
+                    .paragraph([.init(text: "Intro", marks: [])]),
+                    .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+                ]
+            ),
+            plainText: "Intro",
+            path: "/unsupported.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeNotesDetailViewTestContext(note: unsupportedNote)
+        let view = context.makeView()
+
+        XCTAssertTrue(view.isShowingUnsupportedContentPlaceholder)
+        XCTAssertFalse(view.isShowingReadSurface)
+        XCTAssertFalse(view.isShowingEditorSurface)
+        XCTAssertFalse(view.isFormattingToolbarVisible)
+        XCTAssertEqual(view.unsupportedContentPlaceholderTitle, "Unsupported note content")
+        XCTAssertEqual(
+            view.unsupportedContentPlaceholderMessage,
+            "This note contains unsupported content blocks: heading."
+        )
+    }
+
+    func testUnsupportedNotesCannotEnterEditModeFromReadSurfaceActivation() async {
+        let unsupportedNote = NotePayload(
+            id: "n1",
+            name: "Unsupported",
+            document: NotesSemanticDocument(
+                blocks: [
+                    .paragraph([.init(text: "Intro", marks: [])]),
+                    .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+                ]
+            ),
+            plainText: "Intro",
+            path: "/unsupported.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeNotesDetailViewTestContext(note: unsupportedNote)
+
+        context.makeView().activateReadSurfaceEditing(at: .start)
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertFalse(context.editorViewModel.isEditingNote)
+        XCTAssertTrue(context.makeView().isShowingUnsupportedContentPlaceholder)
+    }
+
     func testHandleCloseShortcutReturnsEditModeToReadWithoutClosingNote() async {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
