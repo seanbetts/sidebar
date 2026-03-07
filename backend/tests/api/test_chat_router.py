@@ -269,8 +269,58 @@ def test_stream_chat_passes_app_version_to_tool_context(test_client, monkeypatch
     assert getattr(context, "app_version", None) == "1.4.2"
 
 
-def test_stream_chat_does_not_inject_synthetic_first_user_turn(test_client, monkeypatch):
+def test_stream_chat_injects_bootstrap_history_on_first_turn(
+    test_client, monkeypatch
+):
     captured: dict[str, object] = {}
+
+    def _build_prompts(**_kwargs):
+        return {
+            "system_prompt": {
+                "text": "system",
+                "max_chars": 40000,
+                "total_chars": 6,
+                "raw_total_chars": 6,
+                "constrained_total_chars": 6,
+                "truncated": False,
+                "truncated_by_section_limits": False,
+                "truncated_by_budget": False,
+                "sections": [],
+            },
+            "first_message_prompt": {
+                "text": "I am Sam.",
+                "max_chars": 8000,
+                "total_chars": 9,
+                "raw_total_chars": 9,
+                "constrained_total_chars": 9,
+                "truncated": False,
+                "truncated_by_section_limits": False,
+                "truncated_by_budget": False,
+                "sections": [],
+            },
+            "report": {
+                "system_prompt": {
+                    "total_chars": 6,
+                    "max_chars": 40000,
+                    "raw_total_chars": 6,
+                    "constrained_total_chars": 6,
+                    "truncated": False,
+                    "truncated_by_section_limits": False,
+                    "truncated_by_budget": False,
+                    "sections": [],
+                },
+                "first_message_prompt": {
+                    "total_chars": 9,
+                    "max_chars": 8000,
+                    "raw_total_chars": 9,
+                    "constrained_total_chars": 9,
+                    "truncated": False,
+                    "truncated_by_section_limits": False,
+                    "truncated_by_budget": False,
+                    "sections": [],
+                },
+            },
+        }
 
     class FakeGateway:
         def __init__(self, *_args, **_kwargs):
@@ -293,6 +343,11 @@ def test_stream_chat_does_not_inject_synthetic_first_user_turn(test_client, monk
         "get_settings",
         staticmethod(lambda *_args, **_kwargs: _provider_settings()),
     )
+    monkeypatch.setattr(
+        chat_router.PromptContextService,
+        "build_prompts",
+        staticmethod(_build_prompts),
+    )
 
     response = test_client.post(
         "/api/chat/stream",
@@ -300,7 +355,9 @@ def test_stream_chat_does_not_inject_synthetic_first_user_turn(test_client, monk
         json={"message": "Hi"},
     )
     assert response.status_code == 200
-    assert captured["conversation_history"] == []
+    assert captured["conversation_history"] == [
+        {"role": "user", "content": "I am Sam."}
+    ]
 
 
 def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
@@ -483,15 +540,18 @@ def test_stream_chat_persists_turn_pair_atomically(test_client, test_db, monkeyp
     test_db.expire_all()
     updated = ConversationService.get_conversation(test_db, user_id, conversation.id)
     assert updated.message_count == 2
-    assert len(updated.messages) == 2
-    assert updated.messages[0]["id"] == "user-msg-1"
+    assert len(updated.messages) == 3
     assert updated.messages[0]["role"] == "user"
-    assert updated.messages[0]["content"] == "Hi"
-    assert updated.messages[1]["id"] == "assistant-msg-1"
-    assert updated.messages[1]["role"] == "assistant"
-    assert updated.messages[1]["content"] == "Hello"
-    assert updated.messages[1]["toolCalls"][0]["id"] == "tool-1"
-    assert updated.messages[1]["toolCalls"][0]["status"] == "success"
+    assert updated.messages[0]["visibility"] == "hidden"
+    assert updated.messages[0]["kind"] == "conversation_bootstrap"
+    assert updated.messages[1]["id"] == "user-msg-1"
+    assert updated.messages[1]["role"] == "user"
+    assert updated.messages[1]["content"] == "Hi"
+    assert updated.messages[2]["id"] == "assistant-msg-1"
+    assert updated.messages[2]["role"] == "assistant"
+    assert updated.messages[2]["content"] == "Hello"
+    assert updated.messages[2]["toolCalls"][0]["id"] == "tool-1"
+    assert updated.messages[2]["toolCalls"][0]["status"] == "success"
 
 
 def test_stream_chat_rejects_oversized_system_prompt(test_client, monkeypatch):

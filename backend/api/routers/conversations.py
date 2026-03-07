@@ -113,7 +113,7 @@ def get_conversation(
         updatedAt=conversation.updated_at.isoformat(),
         messageCount=conversation.message_count,
         firstMessage=conversation.first_message,
-        messages=conversation.messages or [],
+        messages=ConversationService.visible_messages(conversation.messages),
     )
 
 

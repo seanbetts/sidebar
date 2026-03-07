@@ -99,3 +99,58 @@ def test_conversation_messages_and_delete(test_client, test_db):
     list_response = test_client.get("/api/conversations/", headers=_auth_headers())
     assert list_response.status_code == 200
     assert all(item["id"] != str(conversation_id) for item in list_response.json())
+
+
+def test_get_conversation_hides_hidden_bootstrap_messages(test_client, test_db):
+    conversation_id = uuid.uuid4()
+    conversation = Conversation(
+        id=conversation_id,
+        user_id=TEST_USER_ID,
+        title="Chat",
+        messages=[
+            {
+                "id": "bootstrap-1",
+                "role": "user",
+                "content": "I am Sam.",
+                "status": "complete",
+                "timestamp": datetime.now(UTC).isoformat(),
+                "visibility": "hidden",
+                "kind": "conversation_bootstrap",
+            },
+            {
+                "id": "msg-1",
+                "role": "user",
+                "content": "Hello",
+                "status": None,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "toolCalls": None,
+                "error": None,
+            },
+        ],
+        message_count=1,
+        first_message="Hello",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(conversation)
+    test_db.commit()
+
+    response = test_client.get(
+        f"/api/conversations/{conversation_id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["messageCount"] == 1
+    assert payload["messages"] == [
+        {
+            "id": "msg-1",
+            "role": "user",
+            "content": "Hello",
+            "status": None,
+            "timestamp": conversation.messages[1]["timestamp"],
+            "toolCalls": None,
+            "error": None,
+        }
+    ]

@@ -18,6 +18,34 @@ class ConversationService:
     """Service layer for conversation operations."""
 
     @staticmethod
+    def is_hidden_message(message: dict) -> bool:
+        """Return whether a stored transcript message is hidden from the UI."""
+        return message.get("visibility") == "hidden"
+
+    @classmethod
+    def visible_messages(cls, messages: list[dict] | None) -> list[dict]:
+        """Return transcript messages that should be visible in the UI."""
+        return [
+            message
+            for message in (messages or [])
+            if not cls.is_hidden_message(message)
+        ]
+
+    @classmethod
+    def _apply_visible_message_metadata(cls, conversation: Conversation) -> None:
+        """Keep derived conversation metadata aligned with visible transcript state."""
+        visible_messages = cls.visible_messages(conversation.messages)
+        conversation.message_count = len(visible_messages)
+
+        first_message = None
+        for message in visible_messages:
+            first_content = message.get("content")
+            if first_content:
+                first_message = str(first_content)[:100]
+                break
+        conversation.first_message = first_message
+
+    @staticmethod
     def create_conversation(db: Session, user_id: str, title: str) -> Conversation:
         """Create a new conversation.
 
@@ -124,13 +152,8 @@ class ConversationService:
         conversation.messages = messages
         flag_modified(conversation, "messages")
 
-        conversation.message_count = len(messages)
+        ConversationService._apply_visible_message_metadata(conversation)
         conversation.updated_at = datetime.now(UTC)
-
-        if conversation.message_count == 1:
-            first_content = message.get("content")
-            if first_content:
-                conversation.first_message = str(first_content)[:100]
 
         db.commit()
         db.refresh(conversation)
@@ -162,13 +185,8 @@ class ConversationService:
         conversation.messages = existing_messages
         flag_modified(conversation, "messages")
 
-        conversation.message_count = len(existing_messages)
+        ConversationService._apply_visible_message_metadata(conversation)
         conversation.updated_at = datetime.now(UTC)
-
-        if conversation.message_count > 0 and conversation.first_message is None:
-            first_content = existing_messages[0].get("content")
-            if first_content:
-                conversation.first_message = str(first_content)[:100]
 
         db.commit()
         db.refresh(conversation)

@@ -70,6 +70,47 @@ def test_add_messages_appends_batch_in_order(db_session):
     assert updated.first_message == "Hello there"
 
 
+def test_add_messages_excludes_hidden_bootstrap_from_visible_metadata(db_session):
+    conversation = ConversationService.create_conversation(db_session, "user-1", "Chat")
+    timestamp = datetime.now(UTC).isoformat()
+
+    updated = ConversationService.add_messages(
+        db_session,
+        "user-1",
+        conversation.id,
+        [
+            {
+                "id": "bootstrap-1",
+                "role": "user",
+                "content": "I am Sam.",
+                "status": "complete",
+                "timestamp": timestamp,
+                "visibility": "hidden",
+                "kind": "conversation_bootstrap",
+            },
+            {
+                "id": "msg-user-1",
+                "role": "user",
+                "content": "Hello there",
+                "status": "complete",
+                "timestamp": timestamp,
+            },
+            {
+                "id": "msg-assistant-1",
+                "role": "assistant",
+                "content": "Hi back",
+                "status": "complete",
+                "timestamp": timestamp,
+                "toolCalls": [],
+            },
+        ],
+    )
+
+    assert len(updated.messages) == 3
+    assert updated.message_count == 2
+    assert updated.first_message == "Hello there"
+
+
 def test_search_conversations(db_session):
     title_match = ConversationService.create_conversation(
         db_session, "user-1", "Alpha Chat"

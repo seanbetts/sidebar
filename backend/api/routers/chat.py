@@ -27,7 +27,8 @@ from api.metrics import (
     chat_streaming_duration_seconds,
 )
 from api.schemas.tool_context import ToolExecutionContext
-from api.services.agent.prompt.composer import PromptBuildResult, PromptContextService
+from api.services.agent.prompt.composer import PromptContextService
+from api.services.agent.request_assembly_service import RequestAssemblyService
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
 from api.services.conversation_service import ConversationService
@@ -49,37 +50,6 @@ class _TitleCacheEntry(TypedDict):
 
 
 TITLE_CACHE: dict[str, _TitleCacheEntry] = {}
-
-
-def _build_history(messages, user_message_id):
-    """Build sanitized chat history from stored messages.
-
-    Args:
-        messages: Conversation message list from the database.
-        user_message_id: Optional message ID to exclude from history.
-
-    Returns:
-        List of history messages suitable for model input.
-    """
-    history = []
-    if not messages:
-        return history
-
-    for message in messages:
-        role = message.get("role")
-        if role not in {"user", "assistant"}:
-            continue
-
-        content = message.get("content")
-        if content is None:
-            continue
-
-        if user_message_id and message.get("id") == user_message_id:
-            continue
-
-        history.append({"role": role, "content": content})
-
-    return history
 
 
 def _build_title_cache_key(user_msg: str, assistant_msg: str) -> str:
@@ -182,85 +152,34 @@ async def stream_chat(
         conversation = ConversationService.get_conversation(
             db, user_id, conversation_uuid
         )
-        history = _build_history(conversation.messages, user_message_id)
 
     settings_record = UserSettingsService.get_settings(db, user_id)
     user_agent = request.headers.get("user-agent")
     app_version = request.headers.get("x-app-version")
     now = datetime.now(UTC)
 
-    oversize_context_message = (
-        "Message context is too large. Remove some attachments or close open items "
-        "and try again."
+    conversation_messages = None
+    if conversation_id:
+        conversation_messages = conversation.messages
+
+    assembled_inputs = RequestAssemblyService.build_assembled_inputs(
+        db=db,
+        user_id=user_id,
+        message=message,
+        conversation_id=conversation_id,
+        conversation_messages=conversation_messages,
+        request_history=history,
+        user_message_id=user_message_id,
+        open_context=open_context,
+        attachments=attachments,
+        user_agent=user_agent,
+        current_location=current_location,
+        current_location_levels=current_location_levels,
+        current_weather=current_weather,
+        current_timezone=current_timezone,
+        now=now,
+        prompt_context_service=PromptContextService,
     )
-
-    def _build_prompt_bundle(*, include_attachment_content: bool) -> PromptBuildResult:
-        return PromptContextService.build_prompts(
-            db=db,
-            user_id=user_id,
-            open_context=open_context,
-            attachments=attachments,
-            user_agent=user_agent,
-            current_location=current_location,
-            current_location_levels=current_location_levels,
-            current_weather=current_weather,
-            current_timezone=current_timezone,
-            now=now,
-            strict_system_prompt=True,
-            include_attachment_content=include_attachment_content,
-        )
-
-    try:
-        prompt_bundle = _build_prompt_bundle(include_attachment_content=True)
-    except ValueError as error:
-        if attachments:
-            logger.warning(
-                (
-                    "Prompt build rejected with attachment content; "
-                    "retrying metadata-only attachments: %s "
-                    "(attachments=%s conversation_id=%s)"
-                ),
-                str(error),
-                len(attachments),
-                conversation_id or "none",
-            )
-            try:
-                prompt_bundle = _build_prompt_bundle(include_attachment_content=False)
-            except ValueError as retry_error:
-                logger.warning(
-                    (
-                        "Prompt build still rejected after attachment-content "
-                        "fallback: %s (attachments=%s conversation_id=%s)"
-                    ),
-                    str(retry_error),
-                    len(attachments),
-                    conversation_id or "none",
-                )
-                raise BadRequestError(oversize_context_message) from retry_error
-        else:
-            logger.warning(
-                (
-                    "Prompt build rejected chat request: %s "
-                    "(attachments=%s conversation_id=%s)"
-                ),
-                str(error),
-                len(attachments),
-                conversation_id or "none",
-            )
-            raise BadRequestError(str(error)) from error
-
-    prompt_report = prompt_bundle["report"]
-    if prompt_report["system_prompt"]["truncated_by_budget"]:
-        logger.warning(
-            (
-                "System prompt exceeded configured maximum size "
-                "(attachments=%s conversation_id=%s)"
-            ),
-            len(attachments),
-            conversation_id or "none",
-        )
-        raise BadRequestError(oversize_context_message)
-    system_prompt = prompt_bundle["system_prompt"]["text"]
     enabled_skills = SettingsService.resolve_enabled_skills(settings_record)
 
     ai_gateway = AIProviderGateway(settings)
@@ -315,6 +234,12 @@ async def stream_chat(
             },
         )
 
+    prepared_request = RequestAssemblyService.build_prepared_request(
+        provider=chat_resolution.provider,
+        model=chat_resolution.model,
+        assembled_inputs=assembled_inputs,
+    )
+
     async def event_generator():
         """Generate SSE events."""
         assistant_content_parts: list[str] = []
@@ -323,9 +248,12 @@ async def stream_chat(
 
         try:
             async for event in ai_gateway.stream_chat_with_tools(
-                message=message,
-                conversation_history=history,
-                system_prompt=system_prompt,
+                message=prepared_request.current_user_message,
+                conversation_history=(
+                    prepared_request.bootstrap_history
+                    + prepared_request.conversation_history
+                ),
+                system_prompt=prepared_request.system_prompt,
                 allowed_skills=enabled_skills,
                 tool_context=tool_context,
                 settings_record=settings_record,
@@ -419,33 +347,46 @@ async def stream_chat(
                     and assistant_message_id.strip()
                     else str(uuid4())
                 )
+                persisted_bootstrap_message = (
+                    RequestAssemblyService.build_persisted_bootstrap_message(
+                        bootstrap_history=prepared_request.bootstrap_history,
+                        timestamp=timestamp,
+                        message_id=str(uuid4()),
+                    )
+                )
                 persisted_tool_calls = [
                     tool_calls_by_id[call_id]
                     for call_id in tool_call_order
                     if call_id in tool_calls_by_id
                 ]
+                persisted_messages = []
+                if persisted_bootstrap_message is not None:
+                    persisted_messages.append(persisted_bootstrap_message)
+                persisted_messages.extend(
+                    [
+                        {
+                            "id": persisted_user_message_id,
+                            "role": "user",
+                            "content": message,
+                            "status": "complete",
+                            "timestamp": timestamp,
+                        },
+                        {
+                            "id": persisted_assistant_message_id,
+                            "role": "assistant",
+                            "content": "".join(assistant_content_parts),
+                            "status": "complete",
+                            "timestamp": timestamp,
+                            "toolCalls": persisted_tool_calls,
+                        },
+                    ]
+                )
                 with _new_user_scoped_session(user_id) as persistence_db:
                     ConversationService.add_messages(
                         persistence_db,
                         user_id,
                         conversation_uuid,
-                        [
-                            {
-                                "id": persisted_user_message_id,
-                                "role": "user",
-                                "content": message,
-                                "status": "complete",
-                                "timestamp": timestamp,
-                            },
-                            {
-                                "id": persisted_assistant_message_id,
-                                "role": "assistant",
-                                "content": "".join(assistant_content_parts),
-                                "status": "complete",
-                                "timestamp": timestamp,
-                                "toolCalls": persisted_tool_calls,
-                            },
-                        ],
+                        persisted_messages,
                     )
 
             # Stream complete
@@ -505,7 +446,7 @@ async def generate_title(
         return {"title": conversation.title, "fallback": False}
 
     # Get first user and assistant messages from JSONB array
-    messages = conversation.messages
+    messages = ConversationService.visible_messages(conversation.messages)
 
     if not messages or len(messages) < 2:
         raise BadRequestError("Need at least 2 messages to generate title")
