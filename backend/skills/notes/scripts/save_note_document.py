@@ -20,6 +20,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
+    from api.services.notes_document_types import validate_note_document
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -66,17 +67,36 @@ def save_note_document_database(
                 "folder": note.folder_path or "",
             }
 
-        if mode != "update":
-            raise ValueError("Database mode supports create or update only")
-
+        if mode not in {"update", "append"}:
+            raise ValueError("Database mode supports create, update, or append only")
         if not note_id:
-            raise ValueError("note_id is required for update mode")
+            raise ValueError("note_id is required for update and append modes")
+
+        resolved_document = document
+        if mode == "append":
+            existing_note = NotesService.get_note(
+                db,
+                user_id,
+                uuid.UUID(note_id),
+                mark_opened=False,
+            )
+            if existing_note is None:
+                raise ValueError("Note not found")
+            existing_document = validate_note_document(existing_note.document)
+            appended_document = validate_note_document(document)
+            resolved_document = {
+                "version": existing_document["version"],
+                "blocks": [
+                    *existing_document["blocks"],
+                    *appended_document["blocks"],
+                ],
+            }
 
         note = NotesService.update_note(
             db,
             user_id,
             uuid.UUID(note_id),
-            document=document,
+            document=resolved_document,
         )
         return {
             "id": str(note.id),
@@ -100,6 +120,10 @@ Examples:
   # Update an existing note
   %(prog)s --document '{"version":1,"blocks":[{"type":"paragraph","content":[{"text":"Updated","marks":["bold"]}]}]}' \\
     --mode update --note-id <uuid> --database --user-id user-1
+
+  # Append blocks to an existing note
+  %(prog)s --document '{"version":1,"blocks":[{"type":"paragraph","content":[{"text":"Appended","marks":["italic"]}]}]}' \\
+    --mode append --note-id <uuid> --database --user-id user-1
         """,
     )
 
@@ -107,7 +131,7 @@ Examples:
     parser.add_argument(
         "--mode",
         default="create",
-        choices=["create", "update"],
+        choices=["create", "update", "append"],
         help="Operation mode (default: create)",
     )
     parser.add_argument("--folder", help="Subfolder in notes/")

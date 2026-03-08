@@ -50,3 +50,22 @@ def test_build_canonical_note_write_preserves_literal_hash_prefix_from_semantic_
 
     assert result.plain_text == "## Literal heading markers stay literal"
     assert result.title == "## Literal heading markers stay literal"
+
+
+def test_build_canonical_note_write_rejects_non_paragraph_blocks_for_current_projection():
+    document = {
+        "version": 1,
+        "blocks": [
+            {
+                "type": "heading",
+                "level": 1,
+                "content": [{"text": "Unsupported heading", "marks": []}],
+            }
+        ],
+    }
+
+    with pytest.raises(
+        BadRequestError,
+        match="plain_text projection currently supports paragraph blocks only",
+    ):
+        build_canonical_note_write(document)
