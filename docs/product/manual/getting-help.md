@@ -20,9 +20,15 @@ A lot of functionality in sideBar is powered by [Skills](/manual/skills). If a f
 
 The [FAQ](/faq/general) section of these docs covers common questions and known gotchas. If something is tricky or frequently misunderstood, it's probably in there.
 
-## Contact Support
+## Report a Bug or Request a Feature
 
-If you've checked the above and still need help, reach out via the in-app support option in Settings. Include a description of what you were trying to do and what happened instead. This makes it much faster to help you.
+You can report bugs and request new features directly from [Chat](/manual/chat).
+Just tell sideBar what's wrong or what you'd like, for example "I found a bug
+with task recurrence" or "I'd love to be able to export notes as PDF". sideBar
+will handle the rest. sideBar uses context from your conversation to fill in the
+details and submits the report automatically. You'll get a confirmation with a
+link to the issue once it's filed.
+
 
 ## Offline
 
