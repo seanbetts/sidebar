@@ -122,6 +122,24 @@ final class CompactPhoneSearchDockTests: XCTestCase {
         XCTAssertEqual(padding, DesignTokens.Spacing.sm)
     }
 
+    func testShouldHandleCompactPhoneSearchDockBackgroundTapWhenExpandedOutsideMoreRoot() {
+        let shouldHandle = ContentView.shouldHandleCompactPhoneSearchDockBackgroundTap(
+            isSearchExplicitlyExpanded: true,
+            isCompactPhoneMoreRootVisible: false
+        )
+
+        XCTAssertTrue(shouldHandle)
+    }
+
+    func testShouldHandleCompactPhoneSearchDockBackgroundTapIgnoresMoreRoot() {
+        let shouldHandle = ContentView.shouldHandleCompactPhoneSearchDockBackgroundTap(
+            isSearchExplicitlyExpanded: true,
+            isCompactPhoneMoreRootVisible: true
+        )
+
+        XCTAssertFalse(shouldHandle)
+    }
+
     func testCompactPhoneSearchDockExpandedStateTracksFocusOrQuery() {
         let collapsed = ContentView.isCompactPhoneSearchDockExpanded(
             searchText: "",

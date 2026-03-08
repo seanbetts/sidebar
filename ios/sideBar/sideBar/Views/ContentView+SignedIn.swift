@@ -128,7 +128,10 @@ extension ContentView {
                 previousSection: oldValue,
                 nextSection: newValue
             ) {
-                clearCompactPhoneSearchDockQuery(for: oldValue)
+                clearCompactPhoneSearchDockQuery(
+                    for: oldValue,
+                    deferObservableUpdates: true
+                )
                 isCompactPhoneSearchDockExplicitlyExpanded = false
             }
             syncCompactPhoneTabSelection(for: newValue)

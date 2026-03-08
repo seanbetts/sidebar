@@ -49,6 +49,13 @@ extension ContentView {
         isSoftwareKeyboardVisible ? DesignTokens.Spacing.sm : 72
     }
 
+    static func shouldHandleCompactPhoneSearchDockBackgroundTap(
+        isSearchExplicitlyExpanded: Bool,
+        isCompactPhoneMoreRootVisible: Bool
+    ) -> Bool {
+        isSearchExplicitlyExpanded && !isCompactPhoneMoreRootVisible
+    }
+
     @ViewBuilder
     var mainView: some View {
         #if os(macOS)
@@ -152,10 +159,13 @@ extension ContentView {
             }
         }
         .tint(tabBarTint)
-        .simultaneousGesture(TapGesture().onEnded {
-            guard isCompactPhoneSearchDockExplicitlyExpanded else { return }
-            dismissCompactPhoneSearchDock()
-        })
+        .modifier(CompactPhoneDockTapDismissModifier(
+            isEnabled: Self.shouldHandleCompactPhoneSearchDockBackgroundTap(
+                isSearchExplicitlyExpanded: isCompactPhoneSearchDockExplicitlyExpanded,
+                isCompactPhoneMoreRootVisible: isCompactPhoneMoreRootVisible
+            ),
+            onDismiss: dismissCompactPhoneSearchDock
+        ))
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if shouldShowCompactPhoneSearchDock {
                 HStack {
@@ -211,7 +221,10 @@ extension ContentView {
     }
 
     func dismissCompactPhoneSearchDock() {
-        clearCompactPhoneSearchDockQuery(for: compactWorkspaceSection)
+        clearCompactPhoneSearchDockQuery(
+            for: compactWorkspaceSection,
+            deferObservableUpdates: true
+        )
         isCompactPhoneSearchDockExplicitlyExpanded = false
         #if os(iOS)
         UIApplication.shared.sendAction(
@@ -223,22 +236,44 @@ extension ContentView {
         #endif
     }
 
-    func clearCompactPhoneSearchDockQuery(for section: AppSection) {
+    func clearCompactPhoneSearchDockQuery(
+        for section: AppSection,
+        deferObservableUpdates: Bool = false
+    ) {
         switch section {
         case .chat:
             compactPhoneChatSearchQuery = ""
         case .notes:
-            environment.notesRuntime.viewModel.searchQuery = ""
+            clearCompactPhoneSearchDockObservableQuery(deferObservableUpdates) {
+                environment.notesRuntime.viewModel.searchQuery = ""
+            }
         case .tasks:
-            environment.tasksViewModel.updateSearch(query: "")
+            clearCompactPhoneSearchDockObservableQuery(deferObservableUpdates) {
+                environment.tasksViewModel.updateSearch(query: "")
+            }
         case .websites:
-            environment.websitesViewModel.panelSearchQuery = ""
+            clearCompactPhoneSearchDockObservableQuery(deferObservableUpdates) {
+                environment.websitesViewModel.panelSearchQuery = ""
+            }
         case .files:
-            environment.ingestionViewModel.panelSearchQuery = ""
+            clearCompactPhoneSearchDockObservableQuery(deferObservableUpdates) {
+                environment.ingestionViewModel.panelSearchQuery = ""
+            }
         case .skillsStore:
             compactPhoneSkillsStoreSearchQuery = ""
         case .settings:
             break
+        }
+    }
+
+    private func clearCompactPhoneSearchDockObservableQuery(
+        _ deferObservableUpdates: Bool,
+        action: @escaping () -> Void
+    ) {
+        if deferObservableUpdates {
+            DispatchQueue.main.async(execute: action)
+        } else {
+            action()
         }
     }
 
