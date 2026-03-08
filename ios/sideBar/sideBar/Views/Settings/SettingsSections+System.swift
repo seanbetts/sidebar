@@ -240,7 +240,7 @@ struct AgentSettingsView: View {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.name))
             } header: {
                 sectionHeader(
-                    title: "Assistant Name",
+                    title: Self.assistantSectionTitle("Name", assistantDisplayName: assistantDisplayName),
                     subtitle: "Your assistant's name"
                 )
             }
@@ -248,7 +248,7 @@ struct AgentSettingsView: View {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.tone))
             } header: {
                 sectionHeader(
-                    title: "Assistant Tone",
+                    title: Self.assistantSectionTitle("Tone", assistantDisplayName: assistantDisplayName),
                     subtitle: "How \(assistantDisplayName) should sound and respond."
                 )
             }
@@ -256,7 +256,7 @@ struct AgentSettingsView: View {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.values))
             } header: {
                 sectionHeader(
-                    title: "Assistant Values",
+                    title: Self.assistantSectionTitle("Values", assistantDisplayName: assistantDisplayName),
                     subtitle: "Core principles \(assistantDisplayName) prioritizes."
                 )
             }
@@ -264,7 +264,7 @@ struct AgentSettingsView: View {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantIdentity?.boundaries))
             } header: {
                 sectionHeader(
-                    title: "Assistant Boundaries",
+                    title: Self.assistantSectionTitle("Boundaries", assistantDisplayName: assistantDisplayName),
                     subtitle: "Limits \(assistantDisplayName) should not cross."
                 )
             }
@@ -277,7 +277,7 @@ struct AgentSettingsView: View {
                     }
                 } header: {
                     sectionHeader(
-                        title: "Assistant Identity Meta",
+                        title: Self.assistantSectionTitle("Identity Meta", assistantDisplayName: assistantDisplayName),
                         subtitle: "History of identity updates \(assistantDisplayName) has made."
                     )
                 }
@@ -327,7 +327,7 @@ struct AgentSettingsView: View {
                     }
                 } header: {
                     sectionHeader(
-                        title: "Assistant Soul Meta",
+                        title: Self.assistantSectionTitle("Soul Meta", assistantDisplayName: assistantDisplayName),
                         subtitle: "History of soul updates \(assistantDisplayName) has made."
                     )
                 } footer: {
@@ -365,12 +365,18 @@ struct AgentSettingsView: View {
     }
 
     private var assistantDisplayName: String {
-        let trimmedName = viewModel.settings?.assistantIdentity?.name?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmedName.isEmpty ? "Your assistant" : trimmedName
+        viewModel.assistantDisplayName
     }
 
     private var assistantPossessiveDisplayName: String {
+        Self.assistantPossessiveDisplayName(assistantDisplayName: assistantDisplayName)
+    }
+
+    static func assistantSectionTitle(_ suffix: String, assistantDisplayName: String) -> String {
+        "\(assistantPossessiveDisplayName(assistantDisplayName: assistantDisplayName)) \(suffix)"
+    }
+
+    static func assistantPossessiveDisplayName(assistantDisplayName: String) -> String {
         "\(assistantDisplayName)'s"
     }
 

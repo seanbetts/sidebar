@@ -103,4 +103,10 @@ final class SettingsSectionsTests: XCTestCase {
 
         XCTAssertTrue(equivalent)
     }
+
+    func testAssistantSectionTitleUsesAssistantDisplayName() {
+        let title = AgentSettingsView.assistantSectionTitle("Tone", assistantDisplayName: "Navigator")
+
+        XCTAssertEqual(title, "Navigator's Tone")
+    }
 }
