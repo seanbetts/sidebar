@@ -19,7 +19,7 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         XCTAssertFalse(context.makeView().isFloatingFormattingBarVisible)
     }
 
-    func testMobileFormattingBarPlacementUsesFloatingTopTrailingOnIPadInEditMode() {
+    func testFormattingBarPresentationUsesFloatingTopTrailingOnIPadInEditMode() {
         XCTAssertEqual(
             NoteFormattingBarPresentation.resolve(
                 isEditing: true,
@@ -31,7 +31,7 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         )
     }
 
-    func testMobileFormattingBarPlacementUsesFloatingTopTrailingOnPhoneWhenHardwareKeyboardInputIsExpected() {
+    func testFormattingBarPresentationUsesFloatingTopTrailingWhenHardwareKeyboardInputIsExpected() {
         XCTAssertEqual(
             NoteFormattingBarPresentation.resolve(
                 isEditing: true,
@@ -43,7 +43,7 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         )
     }
 
-    func testMobileFormattingBarPlacementUsesKeyboardAccessoryOnPhoneWhenSoftwareKeyboardIsVisible() {
+    func testFormattingBarPresentationUsesKeyboardAccessoryWhenSoftwareKeyboardIsVisible() {
         XCTAssertEqual(
             NoteFormattingBarPresentation.resolve(
                 isEditing: true,
@@ -55,7 +55,19 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         )
     }
 
-    func testMobileFormattingBarPlacementHidesBarInReadMode() {
+    func testFormattingBarPresentationPrefersKeyboardAccessoryWhenSoftwareKeyboardIsVisibleAndHardwareKeyboardInputIsExpected() {
+        XCTAssertEqual(
+            NoteFormattingBarPresentation.resolve(
+                isEditing: true,
+                isPhone: true,
+                isSoftwareKeyboardVisible: true,
+                isHardwareKeyboardInputExpected: true
+            ),
+            .keyboardAccessory
+        )
+    }
+
+    func testFormattingBarPresentationIsHiddenInReadMode() {
         XCTAssertEqual(
             NoteFormattingBarPresentation.resolve(
                 isEditing: false,

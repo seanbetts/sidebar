@@ -27,7 +27,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }
 
-    func testPhoneSurfaceExposesUIKitFormattingBarAsKeyboardAccessoryWhenSoftwareKeyboardPresentationIsActive() throws {
+    func testKeyboardAccessoryPresentationExposesUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
@@ -43,7 +43,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
     }
 
-    func testFloatingPhoneSurfaceOmitsUIKitFormattingBarAccessoryWhenPresentationIsFloatingTopTrailing() throws {
+    func testFloatingTopTrailingPresentationOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
@@ -59,7 +59,23 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertNil(textView.inputAccessoryView)
     }
 
-    func testReadOnlySurfaceDoesNotExposeUIKitFormattingBarAccessoryWhenPresentationIsHidden() throws {
+    func testHiddenPresentationOmitsUIKitFormattingBarAccessory() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: .hidden
+        )
+
+        XCTAssertNil(textView.inputAccessoryView)
+    }
+
+    func testReadOnlySurfaceOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
@@ -70,7 +86,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
             viewModel: viewModel,
             isEditable: false,
             formattingBarConfiguration: .disabled,
-            formattingBarPresentation: .hidden
+            formattingBarPresentation: .keyboardAccessory
         )
 
         XCTAssertNil(textView.inputAccessoryView)
