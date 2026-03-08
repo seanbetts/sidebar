@@ -12,7 +12,7 @@ browse websites, and work with files — all with an AI assistant that can help
 you get things done.
 
 The core idea is that your content and sideBar live together. When you
-ask the sideBar a question, it can pull from your notes, check your tasks, or
+ask sideBar a question, it can pull from your notes, check your tasks, or
 browse the web on your behalf, without you having to switch between apps or copy
 things around.
 
@@ -21,9 +21,10 @@ things around.
 - **Chat** — your main interface with sideBar. Ask questions, give
   instructions, or just think out loud.
 - **Notes** — a full-featured editor for capturing and organizing your writing.
-- **Tasks** — a lightweight to-do system sideBar can read and update.
-- **Websites** — saved pages and browsing context sideBar can reference.
-- **Files** — documents and attachments you want sideBar to work with.
+- **Tasks** — a lightweight to-do system both you and sideBar can use with
+  project-based organisaion.
+- **Websites** — saved webpages sideBar can read and reference.
+- **Files** — documents and files you want sideBar to work with.
 
 ## Skills
 
