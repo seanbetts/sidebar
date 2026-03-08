@@ -290,6 +290,30 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.traitBold))
     }
 
+    func testUIKitSurfaceUsesDynamicLabelColorForExistingAndNewText() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+
+        let textView = try mountTextView(viewModel: viewModel)
+        let renderedColor = try XCTUnwrap(
+            textView.attributedText.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor
+        )
+        let typingColor = try XCTUnwrap(textView.typingAttributes[.foregroundColor] as? UIColor)
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        XCTAssertEqual(
+            renderedColor.resolvedColor(with: darkTraits),
+            UIColor.label.resolvedColor(with: darkTraits)
+        )
+        XCTAssertEqual(
+            typingColor.resolvedColor(with: darkTraits),
+            UIColor.label.resolvedColor(with: darkTraits)
+        )
+    }
+
     func testUIKitFormattedEditsDoNotStripExistingBoldFormatting() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
