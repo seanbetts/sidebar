@@ -69,6 +69,7 @@ final class ChatStreamParserTests: XCTestCase {
         event: workspace_patch
         data: {"version":1,"operations":[{"op":"swap_panes"}],"future_field":{"trace_id":"abc"}}
 
+
         """
 
         let events = parser.ingest(Data(chunk.utf8))

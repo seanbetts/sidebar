@@ -1,9 +1,9 @@
+#if os(iOS)
 import SwiftUI
 import UIKit
 import XCTest
 @testable import sideBar
 
-#if os(iOS)
 @MainActor
 final class UIKitNoteFormattingBarTests: XCTestCase {
     func testActiveStatesReflectCanonicalEditorModel() async throws {

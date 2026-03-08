@@ -1,10 +1,10 @@
+#if os(iOS)
 import Combine
 import SwiftUI
 import UIKit
 import XCTest
 @testable import sideBar
 
-#if os(iOS)
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitNoteTextEditorSurfaceTests: XCTestCase {

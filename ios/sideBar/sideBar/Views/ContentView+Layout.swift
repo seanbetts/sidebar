@@ -192,6 +192,7 @@ extension ContentView {
                 }
             }
         }
+        #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             isCompactPhoneSoftwareKeyboardVisible = true
         }
@@ -201,6 +202,7 @@ extension ContentView {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
             isCompactPhoneSoftwareKeyboardVisible = false
         }
+        #endif
         .onKeyPress(.escape) {
             guard isCompactPhoneSearchDockExplicitlyExpanded else { return .ignored }
             dismissCompactPhoneSearchDock()
