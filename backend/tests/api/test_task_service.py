@@ -242,11 +242,11 @@ def test_list_tasks_by_scope_and_counts(db_session):
     )
 
     assert any(task.title == "Today task" for task in today_tasks)
-    assert any(task.title == "Undated task" for task in today_tasks)
+    assert all(task.title != "Undated task" for task in today_tasks)
     assert any(task.title == "Upcoming task" for task in upcoming_tasks)
 
     counts = TaskService.get_counts(db_session, "user")
-    assert counts.today == 2
+    assert counts.today == 1
     assert counts.upcoming == 1
     assert counts.completed == 0
 

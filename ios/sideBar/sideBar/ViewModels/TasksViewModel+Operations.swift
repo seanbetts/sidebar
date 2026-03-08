@@ -212,15 +212,11 @@ extension TasksViewModel {
             // Decrement today count for completed/deleted tasks
             store.decrementTodayCount()
         case "add":
-            // Increment today count for new tasks (if due today)
             if let dueDate = operation.dueDate {
                 let today = TasksUtils.formatDateKey(Date())
                 if dueDate == today {
                     store.incrementTodayCount()
                 }
-            } else {
-                // No due date defaults to today
-                store.incrementTodayCount()
             }
         default:
             break

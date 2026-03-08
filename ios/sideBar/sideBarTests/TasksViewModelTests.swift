@@ -300,7 +300,7 @@ final class TasksViewModelTests: XCTestCase {
 
     // MARK: - New task creation
 
-    func testStartNewTaskSetsDefaultDueDateForTodaySelection() async {
+    func testStartNewTaskLeavesDueDateUnsetForTodaySelection() async {
         let api = TasksViewModelAPIStub()
         api.enqueueListResponse(scope: "today", tasks: [])
 
@@ -310,9 +310,7 @@ final class TasksViewModelTests: XCTestCase {
 
         let draft = sut.viewModel.newTaskDraft
         XCTAssertNotNil(draft)
-        let today = Calendar.current.startOfDay(for: Date())
-        let draftDay = Calendar.current.startOfDay(for: draft!.dueDate!)
-        XCTAssertEqual(draftDay, today)
+        XCTAssertNil(draft?.dueDate)
     }
 
     func testCreateTaskOnlineCallsApplyAndRefreshes() async {

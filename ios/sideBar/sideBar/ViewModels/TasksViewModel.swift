@@ -317,11 +317,11 @@ extension TasksViewModel {
 
     public func startNewTask() {
         let baseSelection = selection.isSearch ? lastNonSearchSelection : selection
-        let dueDate: Date
+        let dueDate: Date?
         if case .upcoming = baseSelection {
             dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
         } else {
-            dueDate = Date()
+            dueDate = nil
         }
         var listId: String?
         var listName: String?

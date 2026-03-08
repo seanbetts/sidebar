@@ -51,7 +51,8 @@ def get_tasks_definitions() -> dict:
         "Create Task": {
             "description": (
                 "Create a new task. Optionally set a due date, add to a project, "
-                "or include notes. Tasks without a due date appear in Today."
+                "or include notes. Tasks without a due date remain available in "
+                "their group or project views."
             ),
             "input_schema": {
                 "type": "object",

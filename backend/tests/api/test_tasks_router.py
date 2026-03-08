@@ -58,7 +58,7 @@ def test_tasks_list_today(test_client, test_db):
     payload = response.json()
     titles = {task["title"] for task in payload.get("tasks", [])}
     assert "Today task" in titles
-    assert "Undated task" in titles
+    assert "Undated task" not in titles
     assert payload.get("groups")
     assert payload.get("projects")
 
@@ -126,7 +126,7 @@ def test_tasks_counts(test_client, test_db):
     assert response.status_code == 200
     payload = response.json()
     assert "inbox" not in payload["counts"]
-    assert payload["counts"]["today"] == 2
+    assert payload["counts"]["today"] == 1
     assert payload["counts"]["upcoming"] == 1
     assert payload["counts"]["completed"] == 1
 

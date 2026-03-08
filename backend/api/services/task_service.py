@@ -360,10 +360,7 @@ class TaskService:
         if scope == "today":
             query = base_query.filter(
                 Task.status != "someday",
-                or_(
-                    Task.deadline <= today,
-                    Task.deadline.is_(None),
-                ),
+                Task.deadline <= today,
             )
         elif scope == "upcoming":
             query = base_query.filter(
@@ -451,10 +448,7 @@ class TaskService:
             .select_from(base)
             .filter(
                 base.c.status != "someday",
-                or_(
-                    base.c.deadline <= today,
-                    base.c.deadline.is_(None),
-                ),
+                base.c.deadline <= today,
             )
             .scalar()
             or 0
