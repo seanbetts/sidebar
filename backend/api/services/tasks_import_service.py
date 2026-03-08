@@ -118,12 +118,12 @@ class TasksImportService:
             project_map[source_id] = project_record
 
         for task_data in tasks_data:
-            status = str(task_data.get("status") or "inbox")
+            status = str(task_data.get("status") or "active")
             if status in {"completed", "trashed", "canceled"}:
                 stats.tasks_skipped += 1
                 continue
             if status in {"today", "upcoming"}:
-                status = "inbox"
+                status = "active"
             source_id = str(task_data.get("id") or "").strip()
             if not source_id:
                 continue

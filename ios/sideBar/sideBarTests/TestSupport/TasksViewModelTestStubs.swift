@@ -91,7 +91,7 @@ final class TasksViewModelAPIStub: TasksProviding {
         countsCallCount += 1
         return TaskCountsResponse(
             generatedAt: nil,
-            counts: TaskCounts(inbox: 1, today: 1, upcoming: 1, completed: 1),
+            counts: TaskCounts(today: 1, upcoming: 1, completed: 1),
             projects: [],
             groups: []
         )

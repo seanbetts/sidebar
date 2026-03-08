@@ -151,8 +151,6 @@ public struct TaskCountsResponse: Codable, Equatable {
 
 /// Represents a task counts struct.
 public struct TaskCounts: Codable, Equatable {
-    /// The inbox value.
-    public let inbox: Int
     /// The today value.
     public let today: Int
     /// The upcoming value.
@@ -214,7 +212,6 @@ public struct TaskSyncConflict: Codable, Equatable {
 /// Represents a task selection enum.
 public enum TaskSelection: Equatable, Hashable {
     case none
-    case inbox
     case today
     case upcoming
     case completed
@@ -227,8 +224,6 @@ public enum TaskSelection: Equatable, Hashable {
         switch self {
         case .none:
             return nil
-        case .inbox:
-            return "inbox"
         case .today:
             return "today"
         case .upcoming:
@@ -249,8 +244,6 @@ public enum TaskSelection: Equatable, Hashable {
         switch self {
         case .none:
             return "none"
-        case .inbox:
-            return "inbox"
         case .today:
             return "today"
         case .upcoming:

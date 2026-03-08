@@ -26,7 +26,6 @@ from api.utils.validation import parse_optional_uuid, parse_uuid
 class TaskCounts:
     """Aggregated task counts for list badges."""
 
-    inbox: int
     today: int
     upcoming: int
     completed: int
@@ -273,7 +272,7 @@ class TaskService:
         user_id: str,
         title: str,
         *,
-        status: str = "inbox",
+        status: str = "active",
         project_id: str | None = None,
         group_id: str | None = None,
         notes: str | None = None,
@@ -363,18 +362,14 @@ class TaskService:
                 Task.status != "someday",
                 or_(
                     Task.deadline <= today,
+                    Task.deadline.is_(None),
                 ),
             )
         elif scope == "upcoming":
             query = base_query.filter(
                 Task.status != "someday",
-                or_(
-                    Task.deadline > today,
-                    Task.deadline.is_(None),
-                ),
+                Task.deadline > today,
             )
-        elif scope == "inbox":
-            query = base_query.filter(Task.status == "inbox")
         else:
             query = base_query
 
@@ -451,13 +446,6 @@ class TaskService:
             .subquery()
         )
 
-        inbox_count = (
-            db.query(func.count())
-            .select_from(base)
-            .filter(base.c.status == "inbox")
-            .scalar()
-            or 0
-        )
         today_count = (
             db.query(func.count())
             .select_from(base)
@@ -465,6 +453,7 @@ class TaskService:
                 base.c.status != "someday",
                 or_(
                     base.c.deadline <= today,
+                    base.c.deadline.is_(None),
                 ),
             )
             .scalar()
@@ -475,10 +464,7 @@ class TaskService:
             .select_from(base)
             .filter(
                 base.c.status != "someday",
-                or_(
-                    base.c.deadline > today,
-                    base.c.deadline.is_(None),
-                ),
+                base.c.deadline > today,
             )
             .scalar()
             or 0
@@ -520,7 +506,6 @@ class TaskService:
         )
 
         return TaskCounts(
-            inbox=inbox_count,
             today=today_count,
             upcoming=upcoming_count,
             completed=completed_count,

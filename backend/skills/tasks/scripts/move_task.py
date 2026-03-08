@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Move Task
+"""Move Task.
 
 Move a task to a different project or group.
 """
@@ -56,7 +56,7 @@ def move_task(args: argparse.Namespace) -> dict:
             result["groupId"] = args.group_id
             result["message"] = f"Task '{task.title}' moved to group"
         else:
-            result["message"] = f"Task '{task.title}' moved to inbox"
+            result["message"] = f"Task '{task.title}' moved to today"
 
         if old_project_id:
             result["previousProjectId"] = old_project_id
@@ -69,6 +69,7 @@ def move_task(args: argparse.Namespace) -> dict:
 
 
 def main() -> None:
+    """Run the CLI entrypoint."""
     parser = argparse.ArgumentParser(description="Move a task")
     parser.add_argument("task_id", help="Task ID to move")
     parser.add_argument("--user-id", required=True, help="User ID")
@@ -81,12 +82,12 @@ def main() -> None:
     try:
         result = move_task(args)
         output = {"success": True, "data": result}
-        print(json.dumps(output, indent=2))
+        sys.stdout.write(f"{json.dumps(output, indent=2)}\n")
         sys.exit(0)
 
     except Exception as e:
         error_output = {"success": False, "error": str(e)}
-        print(json.dumps(error_output, indent=2), file=sys.stderr)
+        sys.stderr.write(f"{json.dumps(error_output, indent=2)}\n")
         sys.exit(1)
 
 

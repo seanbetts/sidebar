@@ -65,7 +65,7 @@ class Task(Base):
 
     title: Mapped[str] = mapped_column(Text, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(Text, nullable=False, default="inbox")
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="active")
 
     deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
 

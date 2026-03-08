@@ -145,11 +145,6 @@ public enum TasksUtils {
             return !projectTitle.isEmpty ? projectTitle : groupTitle
         case .today, .upcoming, .search, .completed:
             return !projectTitle.isEmpty ? projectTitle : groupTitle
-        case .inbox:
-            if let deadline = task.deadline {
-                return "Due \(String(deadline.prefix(10)))"
-            }
-            return !projectTitle.isEmpty ? projectTitle : groupTitle
         }
     }
 

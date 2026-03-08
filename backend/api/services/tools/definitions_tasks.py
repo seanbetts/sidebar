@@ -10,8 +10,8 @@ def get_tasks_definitions() -> dict:
     return {
         "List Tasks": {
             "description": (
-                "Fetch tasks by scope. Use 'today' for tasks due today or overdue, "
-                "'upcoming' for future tasks, or 'inbox' for unprocessed tasks. "
+                "Fetch tasks by scope. Use 'today' for tasks due today, overdue, "
+                "or unscheduled, and 'upcoming' for future tasks. "
                 "Returns tasks along with available projects and groups."
             ),
             "input_schema": {
@@ -19,7 +19,7 @@ def get_tasks_definitions() -> dict:
                 "properties": {
                     "scope": {
                         "type": "string",
-                        "enum": ["today", "upcoming", "inbox", "completed"],
+                        "enum": ["today", "upcoming", "completed"],
                         "description": "Which task list to fetch",
                     },
                 },
@@ -51,7 +51,7 @@ def get_tasks_definitions() -> dict:
         "Create Task": {
             "description": (
                 "Create a new task. Optionally set a due date, add to a project, "
-                "or include notes. Tasks without a due date go to the inbox."
+                "or include notes. Tasks without a due date appear in Today."
             ),
             "input_schema": {
                 "type": "object",

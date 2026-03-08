@@ -37,20 +37,20 @@ def test_tasks_list_today(test_client, test_db):
     task_today = Task(
         user_id=TEST_USER_ID,
         title="Today task",
-        status="inbox",
+        status="active",
         deadline=today,
         project_id=project.id,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
-    task_inbox = Task(
+    task_undated = Task(
         user_id=TEST_USER_ID,
-        title="Inbox task",
-        status="inbox",
+        title="Undated task",
+        status="active",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
-    test_db.add_all([task_today, task_inbox])
+    test_db.add_all([task_today, task_undated])
     test_db.commit()
 
     response = test_client.get("/api/v1/tasks/lists/today", headers=_auth_headers())
@@ -58,7 +58,7 @@ def test_tasks_list_today(test_client, test_db):
     payload = response.json()
     titles = {task["title"] for task in payload.get("tasks", [])}
     assert "Today task" in titles
-    assert "Inbox task" not in titles
+    assert "Undated task" in titles
     assert payload.get("groups")
     assert payload.get("projects")
 
@@ -68,7 +68,7 @@ def test_tasks_search(test_client, test_db):
         user_id=TEST_USER_ID,
         title="Find me",
         notes="Searchable",
-        status="inbox",
+        status="active",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
@@ -89,15 +89,15 @@ def test_tasks_counts(test_client, test_db):
         [
             Task(
                 user_id=TEST_USER_ID,
-                title="Inbox",
-                status="inbox",
+                title="Undated",
+                status="active",
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
             ),
             Task(
                 user_id=TEST_USER_ID,
                 title="Today",
-                status="inbox",
+                status="active",
                 deadline=today,
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
@@ -105,7 +105,7 @@ def test_tasks_counts(test_client, test_db):
             Task(
                 user_id=TEST_USER_ID,
                 title="Upcoming",
-                status="inbox",
+                status="active",
                 deadline=today + timedelta(days=2),
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
@@ -125,9 +125,9 @@ def test_tasks_counts(test_client, test_db):
     response = test_client.get("/api/v1/tasks/counts", headers=_auth_headers())
     assert response.status_code == 200
     payload = response.json()
-    assert payload["counts"]["inbox"] == 3
-    assert payload["counts"]["today"] == 1
-    assert payload["counts"]["upcoming"] == 2
+    assert "inbox" not in payload["counts"]
+    assert payload["counts"]["today"] == 2
+    assert payload["counts"]["upcoming"] == 1
     assert payload["counts"]["completed"] == 1
 
 
@@ -153,7 +153,7 @@ def test_tasks_group_and_project_payloads(test_client, test_db):
     task = Task(
         user_id=TEST_USER_ID,
         title="Vacuum",
-        status="inbox",
+        status="active",
         project_id=project.id,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
@@ -205,7 +205,7 @@ def test_tasks_sync_returns_updates(test_client, test_db):
     task = Task(
         user_id=TEST_USER_ID,
         title="Sync me",
-        status="inbox",
+        status="active",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )

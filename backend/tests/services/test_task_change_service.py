@@ -4,7 +4,6 @@ from api.services.task_service import TaskCounts
 
 def _counts(today: int) -> TaskCounts:
     return TaskCounts(
-        inbox=0,
         today=today,
         upcoming=0,
         completed=0,

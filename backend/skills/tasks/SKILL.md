@@ -16,7 +16,7 @@ Manage user tasks including creating, completing, deferring, and organizing task
 ## Tools
 
 ### List Tasks
-Fetch tasks by scope (`today`, `upcoming`, `inbox`, `completed`) with associated projects and groups.
+Fetch tasks by scope (`today`, `upcoming`, `completed`) with associated projects and groups.
 
 ### Search Tasks
 Search tasks by title or notes content.
@@ -77,7 +77,6 @@ Tasks are organized in a hierarchy:
 - **Tasks** can have due dates and recurrence rules
 
 Scopes for listing:
-- `today` - Tasks due today or overdue
+- `today` - Tasks due today, overdue, or without a due date
 - `upcoming` - Tasks due in the future
-- `inbox` - Unprocessed tasks
 - `completed` - Completed tasks

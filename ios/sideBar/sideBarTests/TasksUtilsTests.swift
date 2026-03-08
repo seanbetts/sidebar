@@ -308,16 +308,16 @@ final class TasksUtilsTests: XCTestCase {
         XCTAssertEqual(subtitle, "My Project")
     }
 
-    func testSubtitleShowsDueDateForInbox() async {
+    func testSubtitleFallsBackToEmptyForTodaySelectionWithoutProjectOrGroup() async {
         let task = TaskItem(id: "t1", title: "T", status: "open", deadline: "2025-06-15")
         let subtitle = TasksUtils.taskSubtitle(
             task: task,
-            selection: .inbox,
-            selectionLabel: "Inbox",
+            selection: .today,
+            selectionLabel: "Today",
             projectTitleById: [:],
             groupTitleById: [:]
         )
-        XCTAssertEqual(subtitle, "Due 2025-06-15")
+        XCTAssertEqual(subtitle, "")
     }
 
     // MARK: - List options

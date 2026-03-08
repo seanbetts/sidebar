@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""List Tasks
+"""List Tasks.
 
-Fetch tasks by scope (today, upcoming, inbox, completed) from the database.
+Fetch tasks by scope (today, upcoming, completed) from the database.
 """
 
 import argparse
@@ -25,7 +25,6 @@ except Exception:
 def task_payload(task) -> dict:
     """Convert task model to JSON-serializable dict."""
     deadline = task.deadline
-    next_instance = RecurrenceService.next_instance_date(task)
     return {
         "id": str(task.id),
         "title": task.title,
@@ -80,10 +79,11 @@ def list_tasks(args: argparse.Namespace) -> dict:
 
 
 def main() -> None:
+    """Run the CLI entrypoint."""
     parser = argparse.ArgumentParser(description="List tasks by scope")
     parser.add_argument(
         "scope",
-        choices=["today", "upcoming", "inbox", "completed"],
+        choices=["today", "upcoming", "completed"],
         help="Task scope to fetch",
     )
     parser.add_argument("--user-id", required=True, help="User ID")
@@ -94,12 +94,12 @@ def main() -> None:
     try:
         result = list_tasks(args)
         output = {"success": True, "data": result}
-        print(json.dumps(output, indent=2))
+        sys.stdout.write(f"{json.dumps(output, indent=2)}\n")
         sys.exit(0)
 
     except Exception as e:
         error_output = {"success": False, "error": str(e)}
-        print(json.dumps(error_output, indent=2), file=sys.stderr)
+        sys.stderr.write(f"{json.dumps(error_output, indent=2)}\n")
         sys.exit(1)
 
 

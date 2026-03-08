@@ -280,10 +280,6 @@ extension TasksViewModel {
             selectionLabel = "Completed"
             titleIcon = "calendar.badge.checkmark"
             sections = TasksUtils.buildCompletedSections(tasks: sortedTasks)
-        case .inbox:
-            selectionLabel = "Inbox"
-            titleIcon = "tray"
-            sections = sortedTasks.isEmpty ? [] : [TaskSection(id: "all", title: "", tasks: sortedTasks)]
         case .group(let id):
             let title = groups.first(where: { $0.id == id })?.title ?? "Group"
             selectionLabel = title
@@ -339,7 +335,7 @@ extension TasksViewModel {
         case .project(let id):
             listId = id
             listName = projects.first(where: { $0.id == id })?.title
-        case .today, .upcoming, .inbox, .search, .completed:
+        case .today, .upcoming, .search, .completed:
             if let home = groups.first(where: { $0.title.lowercased() == "home" }) {
                 listId = home.id
                 listName = home.title

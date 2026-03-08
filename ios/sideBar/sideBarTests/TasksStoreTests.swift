@@ -79,7 +79,7 @@ final class TasksStoreTests: XCTestCase {
 
         let cachedCounts = TaskCountsResponse(
             generatedAt: nil,
-            counts: TaskCounts(inbox: 1, today: 7, upcoming: 2, completed: 3),
+            counts: TaskCounts(today: 7, upcoming: 2, completed: 3),
             projects: [],
             groups: []
         )
@@ -87,7 +87,7 @@ final class TasksStoreTests: XCTestCase {
 
         let refreshedCounts = TaskCountsResponse(
             generatedAt: nil,
-            counts: TaskCounts(inbox: 1, today: 5, upcoming: 2, completed: 3),
+            counts: TaskCounts(today: 5, upcoming: 2, completed: 3),
             projects: [],
             groups: []
         )
@@ -112,7 +112,7 @@ final class TasksStoreTests: XCTestCase {
 
         let cachedCounts = TaskCountsResponse(
             generatedAt: nil,
-            counts: TaskCounts(inbox: 1, today: 7, upcoming: 2, completed: 3),
+            counts: TaskCounts(today: 7, upcoming: 2, completed: 3),
             projects: [],
             groups: []
         )
@@ -120,7 +120,7 @@ final class TasksStoreTests: XCTestCase {
 
         let refreshedCounts = TaskCountsResponse(
             generatedAt: nil,
-            counts: TaskCounts(inbox: 1, today: 4, upcoming: 2, completed: 3),
+            counts: TaskCounts(today: 4, upcoming: 2, completed: 3),
             projects: [],
             groups: []
         )
@@ -295,7 +295,7 @@ final class TasksStoreTests: XCTestCase {
 
         let cachedCounts = TaskCountsResponse(
             generatedAt: nil,
-            counts: TaskCounts(inbox: 1, today: 7, upcoming: 2, completed: 3),
+            counts: TaskCounts(today: 7, upcoming: 2, completed: 3),
             projects: [],
             groups: []
         )
@@ -332,7 +332,7 @@ private final class StubTasksAPI: TasksProviding {
     var countsResponseDelayNanoseconds: UInt64 = 0
     var countsResponse = TaskCountsResponse(
         generatedAt: nil,
-        counts: TaskCounts(inbox: 0, today: 0, upcoming: 0, completed: 0),
+        counts: TaskCounts(today: 0, upcoming: 0, completed: 0),
         projects: [],
         groups: []
     )

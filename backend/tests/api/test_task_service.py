@@ -22,7 +22,7 @@ def test_create_task_group_project_task(db_session):
         "user",
         "First task",
         project_id=str(project.id),
-        status="inbox",
+        status="active",
     )
 
     db_session.commit()
@@ -219,19 +219,19 @@ def test_trash_task_series_removes_instances(db_session):
 
 def test_list_tasks_by_scope_and_counts(db_session):
     today = date.today()
-    TaskService.create_task(db_session, "user", "Inbox task", status="inbox")
+    TaskService.create_task(db_session, "user", "Undated task", status="active")
     TaskService.create_task(
         db_session,
         "user",
         "Today task",
-        status="inbox",
+        status="active",
         deadline=today,
     )
     TaskService.create_task(
         db_session,
         "user",
         "Upcoming task",
-        status="inbox",
+        status="active",
         deadline=today + timedelta(days=1),
     )
     db_session.commit()
@@ -240,14 +240,15 @@ def test_list_tasks_by_scope_and_counts(db_session):
     upcoming_tasks, _, _ = TaskService.list_tasks_by_scope(
         db_session, "user", "upcoming"
     )
-    inbox_tasks, _, _ = TaskService.list_tasks_by_scope(db_session, "user", "inbox")
 
     assert any(task.title == "Today task" for task in today_tasks)
+    assert any(task.title == "Undated task" for task in today_tasks)
     assert any(task.title == "Upcoming task" for task in upcoming_tasks)
-    assert any(task.title == "Inbox task" for task in inbox_tasks)
 
     counts = TaskService.get_counts(db_session, "user")
-    assert counts.inbox == 3
+    assert counts.today == 2
+    assert counts.upcoming == 1
+    assert counts.completed == 0
 
 
 def test_apply_operations_idempotent(db_session):

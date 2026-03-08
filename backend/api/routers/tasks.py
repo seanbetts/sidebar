@@ -394,7 +394,6 @@ def get_counts(
     return {
         "generatedAt": datetime.now(UTC).isoformat(),
         "counts": {
-            "inbox": counts.inbox,
             "today": counts.today,
             "upcoming": counts.upcoming,
             "completed": counts.completed,

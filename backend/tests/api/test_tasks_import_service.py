@@ -45,7 +45,7 @@ def test_import_from_payload_filters_and_maps(test_db):
     assert stats.tasks_skipped == 1
 
     task = test_db.query(Task).one()
-    assert task.status == "inbox"
+    assert task.status == "active"
     assert task.deadline == date(2026, 1, 2)
     assert task.repeating is True
     assert task.recurrence_rule == {"type": "daily", "interval": 1}

@@ -113,7 +113,7 @@ final class TasksAPITests: XCTestCase {
             let payload = """
             {
               "generated_at": null,
-              "counts": {"inbox":3,"today":5,"upcoming":10,"completed":20},
+              "counts": {"today":5,"upcoming":10,"completed":20},
               "projects": [{"id":"p1","count":2}],
               "groups": [{"id":"g1","count":4}]
             }
@@ -123,7 +123,6 @@ final class TasksAPITests: XCTestCase {
 
         let result = try await api.counts()
 
-        XCTAssertEqual(result.counts.inbox, 3)
         XCTAssertEqual(result.counts.today, 5)
         XCTAssertEqual(result.counts.upcoming, 10)
         XCTAssertEqual(result.counts.completed, 20)

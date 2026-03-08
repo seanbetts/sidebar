@@ -110,7 +110,7 @@ class RecurrenceService:
             group_id=task.group_id,
             title=task.title,
             notes=task.notes,
-            status="inbox",
+            status="active",
             deadline=next_date,
             repeating=True,
             repeat_template=False,

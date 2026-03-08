@@ -113,7 +113,6 @@ import Combine
         counts = TaskCountsResponse(
             generatedAt: currentCounts.generatedAt,
             counts: TaskCounts(
-                inbox: currentCounts.counts.inbox,
                 today: newToday,
                 upcoming: currentCounts.counts.upcoming,
                 completed: currentCounts.counts.completed
@@ -129,7 +128,6 @@ import Combine
         counts = TaskCountsResponse(
             generatedAt: currentCounts.generatedAt,
             counts: TaskCounts(
-                inbox: currentCounts.counts.inbox,
                 today: currentCounts.counts.today + 1,
                 upcoming: currentCounts.counts.upcoming,
                 completed: currentCounts.counts.completed
@@ -200,7 +198,7 @@ import Combine
             return try await api.groupTasks(groupId: id)
         case .project(let id):
             return try await api.projectTasks(projectId: id)
-        case .inbox, .today, .upcoming, .completed:
+        case .today, .upcoming, .completed:
             guard let scope = selection.scope else {
                 throw APIClientError.invalidUrl
             }

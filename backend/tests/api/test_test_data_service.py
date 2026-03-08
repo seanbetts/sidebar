@@ -80,7 +80,7 @@ def test_seed_and_delete_round_trip(db_session):
     assert any(task.status == "completed" and task.completed_at is not None for task in tasks)
     assert any(task.status == "someday" for task in tasks)
     assert any(
-        task.status == "inbox" and task.deadline and task.deadline < date.today()
+        task.status == "active" and task.deadline and task.deadline < date.today()
         for task in tasks
     )
     task_groups = (

@@ -80,7 +80,7 @@ class SeedTask:
     """Seed task payload."""
 
     title: str
-    status: str = "inbox"
+    status: str = "active"
     project_key: str | None = None
     group_key: str | None = None
     notes: str | None = None
@@ -418,14 +418,14 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
     tasks = [
         SeedTask(
             title="Review onboarding checklist",
-            status="inbox",
+            status="active",
             project_key="launch",
             group_key="work",
             notes="Confirm beta testers list.",
         ),
         SeedTask(
             title="Close regression bug triage",
-            status="inbox",
+            status="active",
             project_key="sidebar_ios",
             group_key="work",
             deadline=yesterday,
@@ -433,7 +433,7 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
         ),
         SeedTask(
             title="Draft beta release notes",
-            status="inbox",
+            status="active",
             project_key="launch",
             group_key="work",
             deadline=tomorrow,
@@ -441,15 +441,15 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
         ),
         SeedTask(
             title="Refine chat input layout",
-            status="inbox",
+            status="active",
             project_key="sidebar_ios",
             group_key="work",
             deadline=today,
             notes="Check keyboard behavior on iPhone.",
         ),
         SeedTask(
-            title="Daily inbox review",
-            status="inbox",
+            title="Daily review",
+            status="active",
             group_key="personal",
             deadline=today,
             recurrence_rule=daily_rule,
@@ -458,7 +458,7 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
         ),
         SeedTask(
             title="Weekly planning session",
-            status="inbox",
+            status="active",
             group_key="personal",
             deadline=next_week,
             recurrence_rule=weekly_rule,
@@ -474,15 +474,15 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
         ),
         SeedTask(
             title="Completed: review release checklist",
-            status="inbox",
+            status="active",
             project_key="launch",
             group_key="work",
-            notes="Seeded as inbox, then completed via service.",
+            notes="Seeded as active, then completed via service.",
             complete_on_seed=True,
         ),
         SeedTask(
             title="Quick capture without project",
-            status="inbox",
+            status="active",
             notes="Verifies no-project/no-group rendering paths.",
         ),
     ]
