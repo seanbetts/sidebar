@@ -2,6 +2,8 @@ import ast
 import re
 from pathlib import Path
 
+from api.services.tools.definitions_notes import get_notes_definitions
+
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 API_ROOT = BACKEND_ROOT / "api"
@@ -77,3 +79,48 @@ def test_note_content_assignment_only_happens_in_notes_service() -> None:
         "Direct .content assignment is restricted to notes_service.py:\n"
         + "\n".join(violations)
     )
+
+
+def test_notes_tool_definitions_use_document_payloads_and_semantic_writer() -> None:
+    definitions = get_notes_definitions()
+
+    create = definitions["Create Note"]
+    update = definitions["Update Note"]
+    scratchpad_update = definitions["Update Scratchpad"]
+
+    assert create["script"] == "save_note_document.py"
+    assert update["script"] == "save_note_document.py"
+    assert "document" in create["input_schema"]["properties"]
+    assert "content" not in create["input_schema"]["properties"]
+    assert create["input_schema"]["required"] == ["document"]
+    assert "document" in update["input_schema"]["properties"]
+    assert "content" not in update["input_schema"]["properties"]
+    assert update["input_schema"]["required"] == ["note_id", "document"]
+    assert "document" in scratchpad_update["input_schema"]["properties"]
+    assert "content" not in scratchpad_update["input_schema"]["properties"]
+    assert scratchpad_update["input_schema"]["required"] == ["document"]
+
+
+def test_notes_writer_surface_no_longer_references_save_markdown_or_content_flags() -> None:
+    contract_files = (
+        API_ROOT / "mcp" / "notes_tools.py",
+        API_ROOT / "services" / "tools" / "definitions_notes.py",
+        API_ROOT / "services" / "tools" / "parameter_builders" / "notes_builder.py",
+        API_ROOT / "services" / "tools" / "parameter_mapper.py",
+        API_ROOT
+        / "services"
+        / "agent"
+        / "tools"
+        / "parameter_builders"
+        / "notes_builder.py",
+    )
+
+    offenders: list[str] = []
+    for path in contract_files:
+        source = path.read_text(encoding="utf-8")
+        if "save_markdown.py" in source:
+            offenders.append(f"{path.relative_to(BACKEND_ROOT)}:save_markdown.py")
+        if "--content" in source:
+            offenders.append(f"{path.relative_to(BACKEND_ROOT)}:--content")
+
+    assert offenders == []

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from api.services.notes_title import derive_note_title
 from api.services.tools.parameter_builders.base import BaseParameterBuilder
 
@@ -17,13 +19,9 @@ class NotesParameterBuilder(BaseParameterBuilder):
     @staticmethod
     def build_create_args(params: dict) -> list:
         """Build CLI arguments for notes create."""
-        title = NotesParameterBuilder.derive_title_from_content(
-            params.get("content", "")
-        )
         args = [
-            title,
-            "--content",
-            params["content"],
+            "--document",
+            json.dumps(params["document"]),
             "--mode",
             "create",
             "--database",
@@ -38,13 +36,9 @@ class NotesParameterBuilder(BaseParameterBuilder):
     @staticmethod
     def build_update_args(params: dict) -> list:
         """Build CLI arguments for notes update."""
-        title = NotesParameterBuilder.derive_title_from_content(
-            params.get("content", "")
-        )
         args = [
-            title,
-            "--content",
-            params["content"],
+            "--document",
+            json.dumps(params["document"]),
             "--mode",
             "update",
             "--note-id",
@@ -166,8 +160,8 @@ class NotesParameterBuilder(BaseParameterBuilder):
     def build_scratchpad_update_args(params: dict) -> list:
         """Build CLI arguments for scratchpad update."""
         return [
-            "--content",
-            params["content"],
+            "--document",
+            json.dumps(params["document"]),
             "--database",
             "--user-id",
             params["user_id"],

@@ -10,35 +10,44 @@ def get_notes_definitions() -> dict:
     return {
         "Create Note": {
             "description": (
-                "Create a searchable, persistent note in the database. "
+                "Create a searchable, persistent semantic note document "
+                "in the database. "
                 "Notes are visible in the UI and fully searchable. "
                 "Preferred for remembering information across sessions."
             ),
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "content": {"type": "string", "description": "Note content text"},
+                    "document": {
+                        "type": "object",
+                        "description": "Semantic note document with version and blocks",
+                    },
                     "folder": {"type": "string", "description": "Optional folder path"},
                     "tags": {"type": "array", "items": {"type": "string"}},
                 },
-                "required": ["content"],
+                "required": ["document"],
             },
             "skill": "notes",
-            "script": "save_markdown.py",
+            "script": "save_note_document.py",
             "build_args": pm.build_notes_create_args,
         },
         "Update Note": {
-            "description": "Update an existing note in the database by ID.",
+            "description": (
+                "Update an existing semantic note document in the database by ID."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {
                     "note_id": {"type": "string", "description": "Note UUID"},
-                    "content": {"type": "string", "description": "Note content text"},
+                    "document": {
+                        "type": "object",
+                        "description": "Semantic note document with version and blocks",
+                    },
                 },
-                "required": ["note_id", "content"],
+                "required": ["note_id", "document"],
             },
             "skill": "notes",
-            "script": "save_markdown.py",
+            "script": "save_note_document.py",
             "build_args": pm.build_notes_update_args,
         },
         "Delete Note": {
@@ -231,13 +240,19 @@ def get_notes_definitions() -> dict:
             "build_args": pm.build_scratchpad_get_args,
         },
         "Update Scratchpad": {
-            "description": "Update the scratchpad content.",
+            "description": "Update the scratchpad semantic document.",
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "content": {"type": "string"},
+                    "document": {
+                        "type": "object",
+                        "description": (
+                            "Semantic scratchpad document body with "
+                            "version and blocks"
+                        ),
+                    },
                 },
-                "required": ["content"],
+                "required": ["document"],
             },
             "skill": "notes",
             "script": "scratchpad_update.py",

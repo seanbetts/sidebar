@@ -1,3 +1,6 @@
+import json
+
+from api.services.notes_document_types import note_document_from_plain_text
 from api.services.tools import parameter_mapper
 
 
@@ -8,7 +11,7 @@ def test_derive_title_from_content_prefers_first_non_empty_line():
 
 def test_derive_title_from_content_strips_markdown_heading_prefix():
     content = "\n# Heading Title\nBody"
-    assert parameter_mapper.derive_title_from_content(content) == "Heading Title"
+    assert parameter_mapper.derive_title_from_content(content) == "# Heading Title"
 
 
 def test_derive_title_from_content_truncates_long_line():
@@ -76,19 +79,19 @@ def test_build_fs_pin_args_false():
     assert args == ["/docs/file.txt", "--pinned", "false", "--user-id", "user-1"]
 
 
-def test_build_notes_create_args_derives_title_and_tags():
+def test_build_notes_create_args_use_document_and_tags():
+    document = note_document_from_plain_text("My title\nBody")
     args = parameter_mapper.build_notes_create_args(
         {
-            "content": "My title\nBody",
+            "document": document,
             "user_id": "user-1",
             "folder": "Inbox",
             "tags": ["a", "b"],
         }
     )
     assert args == [
-        "My title",
-        "--content",
-        "My title\nBody",
+        "--document",
+        json.dumps(document),
         "--mode",
         "create",
         "--database",
@@ -101,18 +104,17 @@ def test_build_notes_create_args_derives_title_and_tags():
     ]
 
 
-def test_build_notes_update_args_derives_title_from_content():
+def test_build_notes_update_args_use_document():
+    document = note_document_from_plain_text("Body")
     args = parameter_mapper.build_notes_update_args(
         {
-            "title": "Ignored",
-            "content": "Body",
+            "document": document,
             "note_id": "note-1",
         }
     )
     assert args == [
-        "Body",
-        "--content",
-        "Body",
+        "--document",
+        json.dumps(document),
         "--mode",
         "update",
         "--note-id",

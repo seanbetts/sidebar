@@ -10,6 +10,7 @@ import os
 import pytest
 from api.config import settings
 from api.mcp.tools import register_mcp_tools
+from api.services.notes_document_types import note_document_from_plain_text
 from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -373,7 +374,9 @@ class TestNotesOperations:
         result = mcp_client.call_tool(
             "notes_create",
             {
-                "content": "Integration Test Note\n\nThis is a test note created during integration testing.",
+                "document": note_document_from_plain_text(
+                    "Integration Test Note\n\nThis is a test note created during integration testing."
+                ),
                 "tags": ["test", "integration"],
             },
         )
@@ -389,7 +392,8 @@ class TestNotesOperations:
         """Test updating an existing note."""
         # Create a note first
         create_result = mcp_client.call_tool(
-            "notes_create", {"content": "Update Test Note\n\nOriginal content"}
+            "notes_create",
+            {"document": note_document_from_plain_text("Update Test Note\n\nOriginal content")},
         )
         create_content = create_result["result"]["content"][0]["text"]
         create_data = json.loads(create_content)
@@ -398,7 +402,11 @@ class TestNotesOperations:
 
         # Update it
         result = mcp_client.call_tool(
-            "notes_update", {"content": "Updated content", "note_id": note_id}
+            "notes_update",
+            {
+                "document": note_document_from_plain_text("Updated content"),
+                "note_id": note_id,
+            },
         )
 
         content = result["result"]["content"][0]["text"]
@@ -409,7 +417,8 @@ class TestNotesOperations:
         """Test appending to an existing note."""
         # Create a note
         create_result = mcp_client.call_tool(
-            "notes_create", {"content": "Append Test Note\n\nInitial content"}
+            "notes_create",
+            {"document": note_document_from_plain_text("Append Test Note\n\nInitial content")},
         )
         create_content = create_result["result"]["content"][0]["text"]
         create_data = json.loads(create_content)
@@ -420,8 +429,7 @@ class TestNotesOperations:
         result = mcp_client.call_tool(
             "notes_append",
             {
-                "title": "Append Test Note",
-                "content": "\n\nAppended content",
+                "document": note_document_from_plain_text("Appended content"),
                 "note_id": note_id,
             },
         )
