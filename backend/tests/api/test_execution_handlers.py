@@ -160,7 +160,7 @@ def test_handle_prompt_preview_uses_prompt_context_service(monkeypatch):
     monkeypatch.setattr(
         SettingsService,
         "resolve_enabled_skills",
-        staticmethod(lambda _settings_record: ["notes"]),
+        staticmethod(lambda _settings_record, *args, **kwargs: ["notes"]),
     )
     monkeypatch.setattr(
         ai_policy.AIPolicyService,

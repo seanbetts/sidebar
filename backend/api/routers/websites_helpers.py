@@ -6,10 +6,36 @@ from sqlalchemy import inspect
 from sqlalchemy.orm.attributes import NO_VALUE
 
 from api.models.website import Website
+from api.services.url_normalization_service import extract_youtube_video_id
+from api.services.web_save_parser_youtube import fetch_youtube_duration_seconds
 from api.services.website_reading_time import (
     extract_reading_time_from_frontmatter,
     normalize_reading_time,
+    reading_time_from_duration_seconds,
 )
+
+
+def _resolve_jina_reading_time(
+    *,
+    metadata: dict[str, str | None],
+    source: str,
+    fallback_url: str,
+) -> str | None:
+    """Resolve Jina reading time from metadata or YouTube duration."""
+    metadata_reading_time = metadata.get("reading_time")
+    if isinstance(metadata_reading_time, str) and metadata_reading_time.strip():
+        normalized = normalize_reading_time(metadata_reading_time)
+        if normalized:
+            return normalized
+
+    for candidate in (source, fallback_url):
+        if not candidate or extract_youtube_video_id(candidate) is None:
+            continue
+        duration_seconds = fetch_youtube_duration_seconds(candidate)
+        from_duration = reading_time_from_duration_seconds(duration_seconds)
+        if from_duration:
+            return from_duration
+    return None
 
 
 def website_summary(website: Website) -> dict:

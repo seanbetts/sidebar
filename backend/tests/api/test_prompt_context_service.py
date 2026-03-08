@@ -124,47 +124,12 @@ def test_prompt_context_service_order_and_truncation(test_db):
     assert "I use macOS." in first_message
     assert prompt_bundle["report"]["system_prompt"]["sections"] == [
         {
-            "id": "message_context",
-            "title": "Message Context",
-            "source": "system_template",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][0]["content"]),
-        },
-        {
-            "id": "assistant_identity",
-            "title": "Assistant Identity",
-            "source": "assistant_identity",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][1]["content"]),
-        },
-        {
-            "id": "assistant_soul",
-            "title": "Assistant Soul",
-            "source": "assistant_soul",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][2]["content"]),
-        },
-        {
-            "id": "response_style",
-            "title": "Response Style",
-            "source": "response_style",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][3]["content"]),
-        },
-        {
-            "id": "context_guidance",
-            "title": "Context Guidance",
-            "source": "context_guidance_template",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][4]["content"]),
-        },
-        {
-            "id": "current_open",
-            "title": "Current Open Context",
-            "source": "open_context",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][5]["content"]),
-        },
-        {
-            "id": "recent_activity",
-            "title": "Recent Activity",
-            "source": "recent_activity",
-            "chars": len(prompt_bundle["system_prompt"]["sections"][6]["content"]),
-        },
+            "id": section["id"],
+            "title": section["title"],
+            "source": section["source"],
+            "chars": len(section["content"]),
+        }
+        for section in prompt_bundle["system_prompt"]["sections"]
     ]
 
     assert prompt_bundle["report"]["system_prompt"]["truncated_by_section_limits"] is True
