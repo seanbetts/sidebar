@@ -66,7 +66,7 @@ web browser. It has six sections:
   reference.
 - **[Files](/manual/files)** — upload documents you want sideBar to read,
   summarize, or work with.
-- **[Skills Store](/manual/skills)** — browse and install additional
+- **[Skills Store](/manual/skills-store)** — browse and install additional
   capabilities.
 
 ## Starting a Conversation
@@ -82,7 +82,8 @@ need to tell it where you are or what time it is if you don't want to.
 
 ## Extending sideBar with Skills
 
-sideBar ships with a solid set of built-in capabilities, but [Skills](/manual/skills)
-let you go further. Head to **Settings → Skills** to see what's available and
-turn on the ones that fit how you work. Once a skill is enabled, sideBar can
-use it automatically — you don't need to invoke it by name.
+sideBar ships with a solid set of built-in capabilities, but the
+[Skills Store](/manual/skills-store) lets you go further. Browse and install
+additional skills, then manage them from **Settings → Skills**. Once a skill
+is enabled, sideBar uses it automatically — you don't need to invoke it by
+name.
