@@ -35,7 +35,8 @@ requirements, and version details.
 1. Tap a skill to open its detail view.
 2. Review the description and requirements.
 3. If the skill needs an API key from an external service, enter it when
-   prompted.
+   prompted. Your key is encrypted before being stored — only the last four
+   characters are shown after saving and the full key is never displayed again.
 4. Tap **Install**. The skill is available to sideBar immediately.
 
 Once installed, sideBar will use the skill automatically when it's relevant,
