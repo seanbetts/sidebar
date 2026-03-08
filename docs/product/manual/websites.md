@@ -1,6 +1,6 @@
 ---
 title: Websites
-summary: How to save, browse, and manage web pages in sideBar, including YouTube transcript support and export options.
+summary: Save web pages to read later, browse them offline, and give sideBar access to work with the content alongside you.
 tags: [manual, websites, reading]
 audience: user
 surfaces: [app, website, internal-knowledge]
@@ -11,20 +11,28 @@ surfaces: [app, website, internal-knowledge]
   <img src="/assets/screenshots/websites.png" alt="sideBar saved websites list" />
 </Frame>
 
+Websites is a read-it-later service built into sideBar. Save pages you want to
+read, and they're stored in full, ready to read offline and available to
+sideBar so you can work with the content together: summarise it, ask questions
+about it, take notes, or dig deeper with further research.
+
 ## Saving a Page
 
-There are two ways to save a web page:
+There are three ways to save a web page:
 
-- **Safari extension** — while viewing a page in Safari, tap the sideBar
-  button in the toolbar to save it instantly. See
-  [Widgets & Extensions](/manual/extensions) to set it up.
+- **Share sheet** — tap the share button in any app and choose sideBar to save
+  the current page instantly. See [Widgets & Extensions](/manual/extensions)
+  to enable it.
+- **Safari extension** — tap the sideBar button in your browser toolbar to
+  save the page without leaving it. See [Widgets & Extensions](/manual/extensions)
+  to set it up.
 - **Manual URL entry** — tap **+** in the Websites tab and paste or type the
   URL directly.
 
-Either way, sideBar fetches the page and automatically extracts the title,
+Once saved, sideBar fetches the page and automatically extracts the title,
 domain, favicon, full page content, and estimated reading time. If a
-publication date is detectable, that's saved too. You can rename the title any
-time after saving.
+publication date is detectable, that's saved and displayed too. You can rename
+the title any time after saving.
 
 ## YouTube Support
 
@@ -34,14 +42,14 @@ Once ready, the transcript is stored alongside the video's title and metadata
 and is available to sideBar for summarising, quoting, or answering
 questions about the video.
 
-If extraction fails, the page is still saved and you'll see an error status on
+If extraction fails, the page is still saved and you'll see an error status in
 the transcript field.
 
-## Managing Your Pages
+## Managing Your Web Pages
 
 - **Pin** important pages to keep them at the top of your list.
-- **Archive** pages you're finished with — archived pages aren't deleted, and
-  the archived count is shown so you can find them again.
+- **Archive** pages you're finished with — archived pages aren't deleted, you
+  can always find them again.
 - **Rename** any page by tapping its title.
 - **Delete** a page to remove it permanently.
 - **Search** across your saved pages by title, domain, or page content — a
@@ -49,9 +57,16 @@ the transcript field.
 
 ## Reading a Saved Page
 
-Open any saved page to see its full content rendered as markdown. Links in the
-content are tappable, and text is selectable if you want to copy a passage.
-You can tap **Open in Safari** at any time to go back to the original URL.
+Open any saved page to see its full content. Tap the page title to open the
+original URL in your default browser. Text is selectable if you want to copy
+a passage.
+
+## Working with sideBar on a Page
+
+With a page open, sideBar can see the full content and work with you on it.
+Ask it to summarise the article, explain a concept, pull out key points, draft
+notes, or find related information. See [Chat](/manual/chat) for more on how
+sideBar uses what you have open.
 
 ## Export and Sharing
 
