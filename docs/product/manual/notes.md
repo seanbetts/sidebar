@@ -6,7 +6,7 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
-Notes gives you a full writing environment inside sideBar, organized in folders
+Notes gives you a full writing environment inside sideBar, organised in folders
 and always accessible to sideBar when you need it.
 
 ## Organisation
@@ -15,54 +15,41 @@ Notes live in a hierarchical folder structure. You can create folders inside
 folders to whatever depth makes sense for how you work. Individual notes sit
 inside those folders.
 
-**Pinning** keeps a note at the top of its folder — useful for anything you
+**Pinning** keeps a note at the top of the notes view — useful for anything you
 reach for constantly. Notes you don't need day-to-day can be **archived**
 instead of deleted; the folder view shows an archived count so nothing is
 hidden from you.
 
 ## Creating and Editing
 
-Create a new note from the menu. The title is generated automatically so you
-can start writing immediately without stopping to name it first — rename it any
-time.
-
-Each note has two modes:
-
-- **Read mode** — renders the markdown so you see formatted output
-- **Edit mode** — plain text editor where you write and apply formatting
-
-Toggle between them with a single tap. Changes save automatically as you write;
-a **Saved** indicator appears briefly to confirm each save. The editor also
-remembers your cursor position, so when you come back to a note it's exactly
-where you left off.
+Create a new note from the menu. A note's title comes from its first line, so
+whatever you write first becomes the title — no separate naming step required.
+Changes save automatically as you write; a **Saved** indicator appears briefly
+to confirm each save. The editor remembers your cursor position, so when you
+come back to a note it's exactly where you left off.
 
 ## Formatting
 
-Formatting is applied to whatever text you have selected.
+<!-- WORK IN PROGRESS: formatting bar is still in development — revisit once shipped -->
 
-**Inline styles**
-- Bold
-- Italic
-- Strikethrough
-
-**Block styles**
-- Headings: H1, H2, H3
-- Bullet lists
-- Numbered lists
-- Code blocks
-- Quotes
-
-On iPad, a formatting toolbar sits above the keyboard so you can apply any
-style with a tap rather than typing markdown syntax by hand.
+Notes use rich text. Formatting is applied to whatever text you have selected.
 
 ## Note Actions
 
-From any note you can:
+From the context menu (long-press a note in the list) or the toolbar menu when
+viewing a note, you can:
 
-- **Export as .txt** — sends a plain text version you can share or save
-  elsewhere
+- **Pin / Unpin** — keeps the note at the top of the notes view
 - **Move** — reassign the note to a different folder
-- **Delete** — removes the note after a confirmation prompt
+- **Copy Text** — copies the note content to your clipboard
+- **Share Text** — opens the system share sheet with the note content
+- **Download** — exports the note as a plain text file
+- **Archive / Unarchive** — moves the note out of your main view without
+  deleting it
+- **Delete** — permanently removes the note after a confirmation prompt
+
+Swipe left on any note to delete it directly. Folders support **Rename** (swipe
+right or context menu) and **Delete** (swipe left or context menu).
 
 **Search** is available across all your notes at once. Results update as you
 type, so you don't need to submit a query to start seeing matches.
@@ -73,9 +60,3 @@ The Scratchpad is a special note that's always one tap away, from any view in
 the app. It's designed for quick captures — the kind of thing you want to get
 down before you lose it. It auto-saves with a short delay so you can type and
 move on without thinking about it.
-
-## iPad
-
-On iPad, the workspace expands to show your note and the note list side by
-side. A floating dock gives you quick access to common actions without covering
-your content.
