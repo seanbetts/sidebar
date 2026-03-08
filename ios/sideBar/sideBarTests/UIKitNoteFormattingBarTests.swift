@@ -129,6 +129,19 @@ final class UIKitNoteFormattingBarTests: XCTestCase {
         XCTAssertEqual(size.height, 44)
     }
 
+    func testBarIntrinsicWidthMatchesCompressedLayoutWidth() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(configuration: .disabled)
+        let intrinsicSize = bar.intrinsicContentSize
+        let fittedSize = bar.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+
+        XCTAssertEqual(fittedSize.width, intrinsicSize.width, accuracy: 0.5)
+        XCTAssertEqual(fittedSize.height, intrinsicSize.height, accuracy: 0.5)
+    }
+
     func testBarPreservesAccessibilityIdentifiersForSharedButtons() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")

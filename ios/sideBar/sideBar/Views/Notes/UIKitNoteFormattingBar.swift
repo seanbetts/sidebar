@@ -172,8 +172,8 @@ private extension UIKitNoteFormattingBar {
             backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor),
             backgroundEffectView.topAnchor.constraint(equalTo: topAnchor),
             backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontalPadding),
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontalPadding),
             stackView.topAnchor.constraint(equalTo: topAnchor, constant: Self.verticalPadding),
             stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.verticalPadding),
             heightAnchor.constraint(equalToConstant: Self.barHeight)
