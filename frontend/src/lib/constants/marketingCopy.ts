@@ -1,4 +1,4 @@
 export const MARKETING_COPY = {
-	contextualAssistance:
-		'AI assistance with context from your notes, tasks, files, and saved websites'
+	tagline: 'The AI assistant that actually knows you.',
+	subtitle: 'Everything you need in one place, endlessly extensible with skills.'
 } as const;

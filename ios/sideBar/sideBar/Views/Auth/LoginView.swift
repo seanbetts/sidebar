@@ -97,11 +97,14 @@ public struct LoginView: View {
             LoadingIndicatorView(size: 64, variant: .hero)
             Text("sideBar")
                 .appFont(.title2Semibold)
-            Text("AI assistance with context from your notes, tasks, files, and saved websites.")
-                .appFont(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, DesignTokens.Spacing.sm)
+            VStack(spacing: 4) {
+                Text("The AI assistant that actually knows you.")
+                Text("Everything you need in one place, endlessly extensible with skills.")
+            }
+            .appFont(.subheadline)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, DesignTokens.Spacing.sm)
         }
     }
 

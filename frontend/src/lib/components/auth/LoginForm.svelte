@@ -76,7 +76,8 @@
 					<span>Welcome to sideBar</span>
 				</h1>
 				<p class="login-tagline">Your AI-Powered Workspace</p>
-				<p class="login-description">{MARKETING_COPY.contextualAssistance}</p>
+				<p class="login-description">{MARKETING_COPY.tagline}</p>
+				<p class="login-description">{MARKETING_COPY.subtitle}</p>
 
 				<!-- Screenshot placeholder - you can add this later -->
 				<!-- <div class="screenshot-placeholder">

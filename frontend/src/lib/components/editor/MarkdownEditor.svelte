@@ -361,7 +361,8 @@
 				/>
 			</div>
 			<h2>Welcome to sideBar</h2>
-			<p>{MARKETING_COPY.contextualAssistance}</p>
+			<p>{MARKETING_COPY.tagline}</p>
+			<p>{MARKETING_COPY.subtitle}</p>
 		</div>
 	{/if}
 </div>
