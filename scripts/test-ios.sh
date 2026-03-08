@@ -138,14 +138,18 @@ if [[ "${IOS_SCHEME}" == "sideBar" ]]; then
 fi
 
 if [[ -z "${IOS_PARALLEL_TESTING_ENABLED}" ]]; then
-  if [[ "${lane_includes_ui_tests}" == "YES" ]]; then
+  if [[ "${IOS_DESTINATION}" == *"platform=iOS Simulator"* ]]; then
+    # Default iOS simulator lanes to serial execution. Parallel clones have been
+    # the main source of xctrunner/app launch flakes in local hooks.
+    IOS_PARALLEL_TESTING_ENABLED="NO"
+  elif [[ "${lane_includes_ui_tests}" == "YES" ]]; then
     IOS_PARALLEL_TESTING_ENABLED="NO"
   else
     IOS_PARALLEL_TESTING_ENABLED="YES"
   fi
 fi
 
-if [[ "${lane_includes_ui_tests}" == "YES" && -z "${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS}" && "${ios_parallel_testing_setting_supplied}" == "NO" ]]; then
+if [[ -z "${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS}" && "${ios_parallel_testing_setting_supplied}" == "NO" && ( "${lane_includes_ui_tests}" == "YES" || "${IOS_DESTINATION}" == *"platform=iOS Simulator"* ) ]]; then
   IOS_MAXIMUM_PARALLEL_TESTING_WORKERS="1"
 fi
 
