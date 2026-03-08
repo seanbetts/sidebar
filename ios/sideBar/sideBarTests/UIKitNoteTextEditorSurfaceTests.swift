@@ -81,6 +81,32 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertTrue(context.editorViewModel.isFormattingActive(.bold))
     }
 
+    func testIPadSurfaceCommandBTriggersSharedBoldFormattingCommandWithoutAccessoryBar() async throws {
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+        let insertion = nativeViewModel.attributedContent.endIndex
+        nativeViewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        let textView = try mountTextView(
+            viewModel: nativeViewModel,
+            formattingBarConfiguration: context.editorViewModel.noteFormattingBarConfiguration,
+            showsFormattingAccessory: false
+        )
+        let boldCommand = try XCTUnwrap(
+            textView.keyCommands?.first {
+                $0.input?.lowercased() == "b" && $0.modifierFlags == [.command]
+            }
+        )
+
+        XCTAssertNil(textView.inputAccessoryView)
+
+        _ = textView.perform(boldCommand.action)
+
+        XCTAssertTrue(context.editorViewModel.isFormattingActive(.bold))
+    }
+
     func testEditableSurfaceBecomesFirstResponderOnMount() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -230,6 +256,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
 private func mountTextView(
     viewModel: NativeNoteEditorViewModel,
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
+    showsFormattingAccessory: Bool = true,
     width: CGFloat = 360,
     height: CGFloat = 320
 ) throws -> UITextView {
@@ -239,7 +266,8 @@ private func mountTextView(
                 viewModel: viewModel,
                 maxContentWidth: width,
                 isEditable: true,
-                formattingBarConfiguration: formattingBarConfiguration
+                formattingBarConfiguration: formattingBarConfiguration,
+                showsFormattingAccessory: showsFormattingAccessory
             )
         )
     )

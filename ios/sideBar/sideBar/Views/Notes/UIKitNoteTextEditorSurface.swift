@@ -52,17 +52,20 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let maxContentWidth: CGFloat
     let isEditable: Bool
     let formattingBarConfiguration: NoteFormattingBarConfiguration?
+    let showsFormattingAccessory: Bool
 
     init(
         viewModel: NativeNoteEditorViewModel,
         maxContentWidth: CGFloat,
         isEditable: Bool,
-        formattingBarConfiguration: NoteFormattingBarConfiguration? = nil
+        formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
+        showsFormattingAccessory: Bool = true
     ) {
         self.viewModel = viewModel
         self.maxContentWidth = maxContentWidth
         self.isEditable = isEditable
         self.formattingBarConfiguration = formattingBarConfiguration
+        self.showsFormattingAccessory = showsFormattingAccessory
     }
 
     func makeCoordinator() -> Coordinator {
@@ -85,7 +88,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         )
         textView.delegate = context.coordinator
         textView.textFormattingConfiguration = nil
-        if let formattingBarConfiguration {
+        if showsFormattingAccessory, let formattingBarConfiguration {
             textView.formattingAccessoryView = makeFormattingBar(configuration: formattingBarConfiguration)
         }
         return textView
@@ -100,9 +103,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                     accessoryTextView.becomeFirstResponder()
                 }
             }
-        }
-        if let accessoryTextView = textView as? AccessoryTextView {
-            let needsAccessoryReload = configureAccessoryView(
+            let needsAccessoryReload = configureFormattingUI(
                 for: accessoryTextView,
                 configuration: formattingBarConfiguration
             )
@@ -154,37 +155,34 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         return bridged.attributes(at: 0, effectiveRange: nil)
     }
 
-    private func configureAccessoryView(
+    private func configureFormattingUI(
         for textView: AccessoryTextView,
         configuration: NoteFormattingBarConfiguration?
     ) -> Bool {
+        textView.formattingCommandsEnabled = configuration?.isEnabled ?? false
+        textView.onBoldCommand = configuration?.onBoldTap
+        textView.onItalicCommand = configuration?.onItalicTap
+        textView.onUnderlineCommand = configuration?.onUnderlineTap
+
+        guard showsFormattingAccessory else {
+            if textView.formattingAccessoryView != nil {
+                textView.formattingAccessoryView = nil
+                return true
+            }
+            return false
+        }
+
         switch (textView.formattingAccessoryView as? UIKitNoteFormattingBar, configuration) {
         case let (bar?, configuration?):
             bar.apply(configuration: configuration)
-            textView.formattingCommandsEnabled = configuration.isEnabled
-            textView.onBoldCommand = configuration.onBoldTap
-            textView.onItalicCommand = configuration.onItalicTap
-            textView.onUnderlineCommand = configuration.onUnderlineTap
             return false
         case (nil, let configuration?):
             textView.formattingAccessoryView = makeFormattingBar(configuration: configuration)
-            textView.formattingCommandsEnabled = configuration.isEnabled
-            textView.onBoldCommand = configuration.onBoldTap
-            textView.onItalicCommand = configuration.onItalicTap
-            textView.onUnderlineCommand = configuration.onUnderlineTap
             return true
         case (_?, nil):
             textView.formattingAccessoryView = nil
-            textView.formattingCommandsEnabled = false
-            textView.onBoldCommand = nil
-            textView.onItalicCommand = nil
-            textView.onUnderlineCommand = nil
             return true
         case (nil, nil):
-            textView.formattingCommandsEnabled = false
-            textView.onBoldCommand = nil
-            textView.onItalicCommand = nil
-            textView.onUnderlineCommand = nil
             return false
         }
     }
