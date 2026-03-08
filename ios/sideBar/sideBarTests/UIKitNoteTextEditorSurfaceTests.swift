@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import UIKit
 import XCTest
@@ -155,6 +156,33 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         _ = textView.perform(boldCommand.action)
 
         XCTAssertTrue(context.editorViewModel.isFormattingActive(.bold))
+    }
+
+    func testFirstResponderSurfaceReloadsInputViewsWhenAccessoryPresentationChanges() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let presentationState = FormattingPresentationState(.keyboardAccessory)
+        let textView = ReloadTrackingAccessoryTextView()
+        let controller = mountSurfaceHost(
+            viewModel: viewModel,
+            presentationState: presentationState,
+            textView: textView
+        )
+
+        XCTAssertTrue(textView.isFirstResponder)
+        XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
+        XCTAssertEqual(textView.reloadInputViewsCallCount, 0)
+
+        presentationState.presentation = .floatingTopTrailing
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(textView.reloadInputViewsCallCount, 1)
+        XCTAssertNil(textView.inputAccessoryView)
     }
 
     func testEditableSurfaceBecomesFirstResponderOnMount() throws {
@@ -362,6 +390,77 @@ private func makeHostingWindow(frame: CGRect) -> UIWindow {
     let window = UIWindow(windowScene: windowScene)
     window.frame = frame
     return window
+}
+
+@MainActor
+@available(iOS 26.0, *)
+private func mountSurfaceHost(
+    viewModel: NativeNoteEditorViewModel,
+    presentationState: FormattingPresentationState,
+    textView: ReloadTrackingAccessoryTextView,
+    width: CGFloat = 360,
+    height: CGFloat = 320
+) -> UIHostingController<AnyView> {
+    let controller = UIHostingController<AnyView>(
+        rootView: AnyView(
+            FormattingSurfaceHost(
+                presentationState: presentationState,
+                viewModel: viewModel,
+                textView: textView
+            )
+        )
+    )
+    let frame = CGRect(x: 0, y: 0, width: width, height: height)
+    let window = makeHostingWindow(frame: frame)
+    window.rootViewController = controller
+    window.makeKeyAndVisible()
+    controller.view.frame = frame
+    controller.view.setNeedsLayout()
+    controller.view.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    NotesDetailViewTestRetainer.hostingControllers.append(controller)
+    NotesDetailViewTestRetainer.hostingWindows.append(window)
+    return controller
+}
+
+@MainActor
+@available(iOS 26.0, *)
+private final class FormattingPresentationState: ObservableObject {
+    @Published var presentation: NoteFormattingBarPresentation
+
+    init(_ presentation: NoteFormattingBarPresentation) {
+        self.presentation = presentation
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+private final class ReloadTrackingAccessoryTextView: UIKitNoteTextEditorSurface.AccessoryTextView {
+    private(set) var reloadInputViewsCallCount = 0
+
+    override func reloadInputViews() {
+        reloadInputViewsCallCount += 1
+        super.reloadInputViews()
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+private struct FormattingSurfaceHost: View {
+    @ObservedObject var presentationState: FormattingPresentationState
+    let viewModel: NativeNoteEditorViewModel
+    let textView: ReloadTrackingAccessoryTextView
+
+    var body: some View {
+        UIKitNoteTextEditorSurface(
+            viewModel: viewModel,
+            maxContentWidth: 360,
+            isEditable: true,
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: presentationState.presentation,
+            makeTextView: { textView }
+        )
+    }
 }
 
 @available(iOS 26.0, *)

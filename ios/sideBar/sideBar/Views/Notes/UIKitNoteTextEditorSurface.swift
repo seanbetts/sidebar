@@ -4,7 +4,7 @@ import UIKit
 
 @available(iOS 26.0, *)
 struct UIKitNoteTextEditorSurface: UIViewRepresentable {
-    final class AccessoryTextView: UITextView {
+    class AccessoryTextView: UITextView {
         var formattingAccessoryView: UIView?
         var formattingCommandsEnabled = false
         var onBoldCommand: (() -> Void)?
@@ -53,21 +53,22 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let isEditable: Bool
     let formattingBarConfiguration: NoteFormattingBarConfiguration?
     let formattingBarPresentation: NoteFormattingBarPresentation
+    let makeTextView: (() -> AccessoryTextView)?
 
     init(
         viewModel: NativeNoteEditorViewModel,
         maxContentWidth: CGFloat,
         isEditable: Bool,
         formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
-        formattingBarPresentation: NoteFormattingBarPresentation? = nil,
-        showsFormattingAccessory: Bool = true
+        formattingBarPresentation: NoteFormattingBarPresentation,
+        makeTextView: (() -> AccessoryTextView)? = nil
     ) {
         self.viewModel = viewModel
         self.maxContentWidth = maxContentWidth
         self.isEditable = isEditable
         self.formattingBarConfiguration = formattingBarConfiguration
         self.formattingBarPresentation = formattingBarPresentation
-            ?? (showsFormattingAccessory ? .keyboardAccessory : .hidden)
+        self.makeTextView = makeTextView
     }
 
     func makeCoordinator() -> Coordinator {
@@ -75,7 +76,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> UITextView {
-        let textView = AccessoryTextView()
+        let textView = makeTextView?() ?? AccessoryTextView()
         textView.isEditable = isEditable
         textView.allowsEditingTextAttributes = false
         textView.shouldAutofocus = isEditable
