@@ -12,16 +12,16 @@ surfaces: [app, website, internal-knowledge]
 </Frame>
 
 Widgets and extensions bring sideBar outside the app itself — onto your home
-screen, lock screen, and into Safari. Each one is optional and takes less than
-a minute to set up.
+screen, lock screen, into Safari, and into the iOS share sheet. Each one is
+optional and takes less than a minute to set up.
 
 ## Home Screen Widgets
 
 sideBar offers five widget types for your iPhone, iPad, or Mac home screen,
 in small, medium, and large sizes:
 
-- **Today's Tasks** — your tasks for today, with interactive checkboxes to
-  complete them and a button to add new ones, all without opening the app.
+- **Today's Tasks** — your tasks for today with interactive checkboxes to
+  complete them. Tapping the add button opens the app to create a new task.
   See [Tasks](/manual/tasks) for more on how tasks work.
 - **Task Count** — a compact progress ring showing how many tasks you've
   completed today.
@@ -46,8 +46,8 @@ Widgets update automatically and require you to be signed in to the app.
 
 ## Lock Screen Widgets
 
-On iPhone, sideBar widgets are also available on your lock screen in three
-compact styles — circular, rectangular, and inline — for tasks, notes,
+On iPhone and iPad, sideBar widgets are also available on your lock screen in
+three compact styles — circular, rectangular, and inline — for tasks, notes,
 websites, and files.
 
 **To add a lock screen widget:**
@@ -58,11 +58,12 @@ websites, and files.
 ## Share Extension
 
 The Share extension lets you send content from any app — Safari, Mail, Photos,
-and others — directly into sideBar, without switching apps.
+Files, and others — directly into sideBar, without switching apps.
 
 You can share:
 - **URLs** — saved to your [Websites](/manual/websites) section
-- **Images and PDFs** — saved to your [Files](/manual/files) section
+- **Images, PDFs, and other files** — saved to your [Files](/manual/files)
+  section
 
 **To enable the Share extension:**
 1. Tap the share button in any app.
@@ -74,7 +75,8 @@ sideBar now appears in your share sheet whenever you want to save something.
 ## Safari Extension
 
 The Safari extension adds a sideBar button to Safari's toolbar so you can save
-the current page to sideBar with a single tap. Available on both iPhone and Mac.
+the current page to sideBar with a single tap. Available on iPhone, iPad, and
+Mac.
 
 **To enable on iPhone or iPad:**
 1. Open the **Settings** app and scroll down to **Safari**.
