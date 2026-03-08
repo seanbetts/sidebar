@@ -13,6 +13,15 @@ extension ContentView {
         .websites
     ]
 
+    static let compactPhoneBottomSearchSections: [AppSection] = [
+        .chat,
+        .notes,
+        .tasks,
+        .websites,
+        .files,
+        .skillsStore
+    ]
+
     static let compactPhoneOverflowSections: [AppSection] = [
         .files,
         .skillsStore

@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 #if os(iOS)
 import UIKit
 #endif
@@ -6,6 +7,34 @@ import UIKit
 // MARK: - ContentView+Layout
 
 extension ContentView {
+    static func shouldDisplayCompactPhoneSearchDock(
+        isCompact: Bool,
+        isPhoneIdiom: Bool,
+        isPhonePanelListVisible: Bool,
+        phoneSelection: AppSection,
+        isCompactPhoneMoreRootVisible: Bool
+    ) -> Bool {
+        guard isCompact else { return false }
+        guard isPhoneIdiom else { return false }
+        guard !isCompactPhoneMoreRootVisible else { return false }
+        guard isPhonePanelListVisible else { return false }
+        return compactPhoneBottomSearchSections.contains(phoneSelection)
+    }
+
+    static func isCompactPhoneSearchDockExpanded(
+        searchText: String,
+        isSearchFocused: Bool
+    ) -> Bool {
+        isSearchFocused || !searchText.trimmed.isEmpty
+    }
+
+    static func shouldCollapseCompactPhoneSearchDockActions(
+        actionCount: Int,
+        isSearchExpanded: Bool
+    ) -> Bool {
+        isSearchExpanded && actionCount > 1
+    }
+
     @ViewBuilder
     var mainView: some View {
         #if os(macOS)
@@ -137,6 +166,21 @@ extension ContentView {
     private var shouldShowPhoneFloatingActionDock: Bool {
         #if os(iOS)
         Self.shouldDisplayPhoneFloatingActionDock(
+            isPhoneIdiom: UIDevice.current.userInterfaceIdiom == .phone,
+            isPhonePanelListVisible: isPhonePanelListVisible,
+            phoneSelection: compactWorkspaceSection,
+            isCompactPhoneMoreRootVisible: isCompactPhoneMoreRootVisible
+        )
+        #else
+        false
+        #endif
+    }
+
+    var shouldShowCompactPhoneSearchDock: Bool {
+        #if os(iOS)
+        guard compactPhoneSearchDockSection != nil else { return false }
+        return Self.shouldDisplayCompactPhoneSearchDock(
+            isCompact: isCompact,
             isPhoneIdiom: UIDevice.current.userInterfaceIdiom == .phone,
             isPhonePanelListVisible: isPhonePanelListVisible,
             phoneSelection: compactWorkspaceSection,

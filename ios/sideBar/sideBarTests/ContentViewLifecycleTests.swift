@@ -356,6 +356,89 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(shouldShow)
     }
 
+    func testCompactPhoneBottomSearchSectionsIncludeFilesAndSkillsStore() {
+        let sections = ContentView.compactPhoneBottomSearchSections
+
+        XCTAssertEqual(
+            sections,
+            [.chat, .notes, .tasks, .websites, .files, .skillsStore]
+        )
+    }
+
+    func testShouldDisplayCompactPhoneSearchDockForSearchableMoreDestinationRoot() {
+        let shouldShow = ContentView.shouldDisplayCompactPhoneSearchDock(
+            isCompact: true,
+            isPhoneIdiom: true,
+            isPhonePanelListVisible: true,
+            phoneSelection: .files,
+            isCompactPhoneMoreRootVisible: false
+        )
+
+        XCTAssertTrue(shouldShow)
+    }
+
+    func testShouldDisplayCompactPhoneSearchDockHidesInDetailWorkspace() {
+        let shouldShow = ContentView.shouldDisplayCompactPhoneSearchDock(
+            isCompact: true,
+            isPhoneIdiom: true,
+            isPhonePanelListVisible: false,
+            phoneSelection: .tasks,
+            isCompactPhoneMoreRootVisible: false
+        )
+
+        XCTAssertFalse(shouldShow)
+    }
+
+    func testShouldDisplayCompactPhoneSearchDockHidesOnCompactPhoneMoreRoot() {
+        let shouldShow = ContentView.shouldDisplayCompactPhoneSearchDock(
+            isCompact: true,
+            isPhoneIdiom: true,
+            isPhonePanelListVisible: true,
+            phoneSelection: .chat,
+            isCompactPhoneMoreRootVisible: true
+        )
+
+        XCTAssertFalse(shouldShow)
+    }
+
+    func testCompactPhoneSearchDockExpandedStateTracksFocusOrQuery() {
+        let collapsed = ContentView.isCompactPhoneSearchDockExpanded(
+            searchText: "",
+            isSearchFocused: false
+        )
+        let expandedFromFocus = ContentView.isCompactPhoneSearchDockExpanded(
+            searchText: "",
+            isSearchFocused: true
+        )
+        let expandedFromQuery = ContentView.isCompactPhoneSearchDockExpanded(
+            searchText: "notes",
+            isSearchFocused: false
+        )
+
+        XCTAssertFalse(collapsed)
+        XCTAssertTrue(expandedFromFocus)
+        XCTAssertTrue(expandedFromQuery)
+    }
+
+    func testCompactPhoneSearchDockCollapsesMultiActionSectionsOnlyWhenExpanded() {
+        let collapsedState = ContentView.shouldCollapseCompactPhoneSearchDockActions(
+            actionCount: 2,
+            isSearchExpanded: false
+        )
+        let expandedMultiActionState = ContentView.shouldCollapseCompactPhoneSearchDockActions(
+            actionCount: 2,
+            isSearchExpanded: true
+        )
+        let expandedSingleActionState = ContentView.shouldCollapseCompactPhoneSearchDockActions(
+            actionCount: 1,
+            isSearchExpanded: true
+        )
+
+        XCTAssertFalse(collapsedState)
+        XCTAssertTrue(expandedMultiActionState)
+        XCTAssertFalse(expandedSingleActionState)
+    }
+
     func testShouldAutoExpandChatSidebarWhenDesktopLayoutAndChatSelected() {
         let shouldExpand = ContentView.shouldAutoExpandChatSidebar(
             section: .chat,

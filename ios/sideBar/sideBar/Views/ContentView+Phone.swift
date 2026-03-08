@@ -9,6 +9,12 @@ extension ContentView {
         isCompact
     }
 
+    var compactPhoneSearchDockSection: AppSection? {
+        guard isCompact else { return nil }
+        guard isPhoneIdiom else { return nil }
+        return compactWorkspaceSection
+    }
+
     func phoneTabView(for section: AppSection) -> some View {
         NavigationStack {
             phoneSectionContentView(for: section)
