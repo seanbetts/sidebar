@@ -12,6 +12,13 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         XCTAssertFalse(context.makeView().isCustomFormattingBarVisible)
     }
 
+    func testFloatingFormattingBarHostIsHiddenInReadMode() async {
+        let context = await makeNotesDetailViewTestContext()
+
+        XCTAssertEqual(context.makeView().formattingBarPresentation, .hidden)
+        XCTAssertFalse(context.makeView().isFloatingFormattingBarVisible)
+    }
+
     func testMobileFormattingBarPlacementUsesFloatingTopTrailingOnIPadInEditMode() {
         XCTAssertEqual(
             NoteFormattingBarPresentation.resolve(
