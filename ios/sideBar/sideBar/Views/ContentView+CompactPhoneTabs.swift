@@ -68,11 +68,18 @@ extension ContentView {
     }
 
     func compactPhoneTabIconName(for tab: CompactPhoneTab) -> String {
+        Self.compactPhoneTabIconName(for: tab, phoneIconName: phoneIconName(for:))
+    }
+
+    static func compactPhoneTabIconName(
+        for tab: CompactPhoneTab,
+        phoneIconName: (AppSection) -> String
+    ) -> String {
         switch tab {
         case .section(let section):
-            return phoneIconName(for: section)
+            return phoneIconName(section)
         case .more:
-            return "ellipsis.circle"
+            return "ellipsis"
         }
     }
 }

@@ -15,6 +15,15 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(sections, [.files, .skillsStore])
     }
 
+    func testCompactPhoneMoreTabUsesPlainEllipsisIcon() {
+        let iconName = ContentView.compactPhoneTabIconName(
+            for: .more,
+            phoneIconName: { _ in "unused" }
+        )
+
+        XCTAssertEqual(iconName, "ellipsis")
+    }
+
     func testCompactPhoneMoreHeaderShowsSettingsAvatarInCompactLayout() {
         let shouldShow = ContentView.shouldShowCompactPhoneMoreSettingsAvatar(
             isCompact: true

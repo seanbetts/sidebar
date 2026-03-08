@@ -1,6 +1,20 @@
 import SwiftUI
 
 struct PanelHeader<Trailing: View>: View {
+    enum BackgroundStyle: Equatable {
+        case sidebar
+        case surface
+
+        var color: Color {
+            switch self {
+            case .sidebar:
+                return DesignTokens.Colors.sidebar
+            case .surface:
+                return DesignTokens.Colors.surface
+            }
+        }
+    }
+
     let title: String
     let subtitle: String?
     let trailing: Trailing
@@ -53,13 +67,24 @@ struct PanelHeader<Trailing: View>: View {
     }
 
     private var headerBackground: Color {
-        #if os(macOS)
-        if colorScheme == .light {
-            return DesignTokens.Colors.sidebar
+        Self.backgroundStyle(
+            isMacOS: Self.runsOnMacOS,
+            colorScheme: colorScheme
+        ).color
+    }
+
+    static func backgroundStyle(isMacOS: Bool, colorScheme: ColorScheme) -> BackgroundStyle {
+        if isMacOS {
+            return colorScheme == .light ? .sidebar : .surface
         }
-        return DesignTokens.Colors.surface
+        return .sidebar
+    }
+
+    private static var runsOnMacOS: Bool {
+        #if os(macOS)
+        return true
         #else
-        return DesignTokens.Colors.surface
+        return false
         #endif
     }
 
