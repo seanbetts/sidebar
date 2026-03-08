@@ -6,25 +6,24 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
-sideBar isn't a generic AI assistant. It has an identity — a name, a tone, a
-set of values — and a soul: a sense of purpose, operating principles, and an
+sideBar isn't a generic AI assistant. It has an identity (name, tone of voice, a
+set of values) and a soul: a sense of purpose, operating principles, and an
 understanding of how it should grow with you over time.
 
-These aren't just configuration fields. They shape every response sideBar gives
-you, and they evolve as sideBar learns more about how you work.
+These shape every response sideBar gives you, and they evolve as sideBar learns
+more about how you work best together.
 
 ## Identity
 
-sideBar's identity defines its character in conversation. You can configure it
-in **Settings → Assistant Personalisation**:
+sideBar's identity defines its character in conversations with you. sideBar
+configures this itself, but you can see it in **Settings → sideBar**:
 
 - **Name** — what sideBar calls itself
-- **Tone** — its default mood and register in conversation
+- **Tone** — its default mood and tone of voice in conversations
 - **Values** — the principles it holds in how it engages with you
 - **Boundaries** — things sideBar will always or never do, regardless of what you ask
 
 These settings give sideBar a consistent character across every conversation.
-You're not just adjusting style — you're defining who sideBar is.
 
 ## Soul
 
@@ -38,23 +37,28 @@ the soul defines why it does what it does and how it grows.
   your preferences, and your working style
 - **Success signals** — the indicators sideBar uses to know it's doing its job well
 
-## How It Works
+## How sideBar's Identity & Soul Work
 
 sideBar manages its own identity and soul. Over time, as it learns more about
 you through your conversations and the content you create, it updates its soul
 to stay aligned with who you are and what you need. Each update is versioned and
 timestamped, so there's a clear record of how sideBar has evolved.
 
-You can view and edit the soul and identity at any time in **Settings →
-Assistant Personalisation**. Any changes you make are saved automatically.
+You can ask sideBar to update its identity and soul at any time, but you can't
+edit them directly. They belong to sideBar — it owns and controls them.
 
-## How You Work With It
+## What You Control
 
-The simplest starting point is **Communication style** and **Working
-relationship** — two settings that don't require you to think in terms of
-"identity" or "soul" at all. Communication style controls how sideBar speaks
-(casual, formal, technical). Working relationship sets the dynamic — whether
-sideBar acts as a collaborative partner, a coach, a teacher, or something else.
+While sideBar manages its own identity and soul, there are two settings you
+control directly in **Settings → User**:
 
-These two settings go a long way on their own. The deeper identity and soul
-configuration is there when you want it, but sideBar works well without it.
+**Communication style** — how sideBar speaks with you. You can set this
+anywhere from casual and conversational to formal and precise. This is yours to
+adjust whenever you want.
+
+**Working relationship** — the dynamic between you and sideBar. Whether it acts
+as a collaborative partner, a coach, a teacher, or something else is up to you.
+
+These two settings are the main levers you have. They work alongside sideBar's
+identity and soul rather than overriding them — sideBar stays true to who it is
+while adapting how it works with you.

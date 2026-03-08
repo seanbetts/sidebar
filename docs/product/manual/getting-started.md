@@ -8,10 +8,10 @@ surfaces: [app, website, internal-knowledge]
 
 ## Creating an Account
 
-When you open sideBar for the first time, you'll be asked to sign in or create
-an account. Tap **Create Account**, enter your email address, and follow the
-verification link that arrives in your inbox. If you already have an account,
-tap **Sign In** and enter your credentials.
+When you open sideBar for the first time, you'll be asked to create an account.
+Tap **Create Account**, enter your email address, and follow the verification
+link that arrives in your inbox. If you already have an account, tap **Sign In**
+and enter your credentials.
 
 ## Connecting a Provider
 
@@ -24,13 +24,13 @@ Choose your provider, paste your API key into the field, and confirm. Once
 connected, you're ready to start.
 
 If you don't have an API key yet, you can get one from your provider's website.
-sideBar will hold here until a provider is connected — chat isn't available
-without one.
+Chatting with sideBar isn't available without one but you can still use it to
+take notes, keep track of tasks, save websites to read later and upload files.
 
 ## The Onboarding Conversation
 
-Once your provider is connected, sideBar starts a conversation to get you set
-up. It'll ask a few questions:
+Once your chosen AI provider is connected, sideBar will start a conversation to
+get you set up. It'll ask a few questions:
 
 **What do you want to do first?** — choose from writing, research, tasks, files,
 or websites. This tells sideBar where to focus.
@@ -61,7 +61,7 @@ web browser. It has six sections:
 ## Starting a Conversation
 
 Tap the text field at the bottom of the Chat screen and type anything you want
-to ask or do. You don't need special commands — sideBar understands plain
+to ask or do. You don't need special commands, sideBar understands plain
 language. Try asking it to remind you of something, summarise a topic, or help
 you draft a note.
 
