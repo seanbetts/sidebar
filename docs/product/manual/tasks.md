@@ -8,11 +8,9 @@ surfaces: [app, website, internal-knowledge]
 
 ## Smart Lists
 
-sideBar gives you four built-in smart lists that update automatically based on
-your task data.
+sideBar gives you three built-in smart lists that update automatically based on
+your tasks.
 
-- **Inbox** — tasks with no due date and no assigned project. A good place to
-  capture things before you've decided where they belong.
 - **Today** — tasks due today.
 - **Upcoming** — tasks with a future due date, sorted chronologically.
 - **Completed** — tasks you've finished.
@@ -20,12 +18,11 @@ your task data.
 Each smart list displays a count that refreshes as you add, complete, or modify
 tasks.
 
-## Projects and Groups
+## Groups and Projects
 
-For more structure, you can create **Projects** — individual task lists you
-name and manage yourself. When you have several related projects, gather them
-inside a **Group** to keep your sidebar tidy. Groups are purely organisational;
-tasks live in projects, not groups directly.
+For more structure, you can create **Projects** which are individual task lists.
+When you have several related projects, you can gather them inside a **Group** to
+keep everything well organised.
 
 ## Creating a Task
 
@@ -56,11 +53,11 @@ Once a task is saved, you can:
 
 ## Search
 
-Tap the search field at the top of the task view and start typing. Results
-filter as you type, matching against task titles across all your lists.
+Tap the search field and start typing. Results filter as you type, matching
+against all your tasks in the app.
 
 ## Widget and Sync
 
-Your today's tasks appear in the sideBar home screen widget so you can see
-what's on your plate without opening the app. All changes sync in real time
-across your devices.
+Your today's tasks appear in sideBar's home screen widget on iPhone, iPad, and
+Mac so you can see what's on your plate without opening the app. All changes
+sync in real time across your devices.
