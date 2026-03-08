@@ -3,6 +3,42 @@ import XCTest
 
 @MainActor
 final class ContentViewLifecycleTests: XCTestCase {
+    func testShouldShowGlobalTopSafeAreaOverlayDisablesForCompactIPhone() {
+        let shouldShow = ContentView.shouldShowGlobalTopSafeAreaOverlay(
+            isCompact: true,
+            isPhoneIdiom: true
+        )
+
+        XCTAssertFalse(shouldShow)
+    }
+
+    func testShouldShowGlobalTopSafeAreaOverlayKeepsOverlayForRegularIPadLayout() {
+        let shouldShow = ContentView.shouldShowGlobalTopSafeAreaOverlay(
+            isCompact: false,
+            isPhoneIdiom: false
+        )
+
+        XCTAssertTrue(shouldShow)
+    }
+
+    func testCompactPhoneRootTopSafeAreaStyleUsesPanelChromeForChat() {
+        let style = ContentView.compactPhoneRootTopSafeAreaStyle(for: .chat)
+
+        XCTAssertEqual(style, .panelChrome)
+    }
+
+    func testCompactPhoneRootTopSafeAreaStyleUsesSettingsChromeForSettings() {
+        let style = ContentView.compactPhoneRootTopSafeAreaStyle(for: .settings)
+
+        XCTAssertEqual(style, .settingsChrome)
+    }
+
+    func testCompactPhoneRootTopSafeAreaStyleUsesContentBackgroundForSkillsStore() {
+        let style = ContentView.compactPhoneRootTopSafeAreaStyle(for: .skillsStore)
+
+        XCTAssertEqual(style, .contentBackground)
+    }
+
     func testMakeMacInitialSelectionPlanDefaultsToChatWithoutPendingSelection() {
         let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: nil)
 

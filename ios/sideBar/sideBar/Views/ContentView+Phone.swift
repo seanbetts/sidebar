@@ -7,7 +7,7 @@ private enum PhoneChatDetailRouteID {
 extension ContentView {
     func phoneTabView(for section: AppSection) -> some View {
         NavigationStack {
-            phonePanelView(for: section)
+            phoneRootPanelView(for: section)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 #if !os(macOS)
                 .toolbar(.hidden, for: .navigationBar)
@@ -194,4 +194,45 @@ extension ContentView {
         )
     }
 
+    @ViewBuilder
+    private func phoneRootPanelView(for section: AppSection) -> some View {
+        let panelView = phonePanelView(for: section)
+
+        if isCompact && isPhoneIdiom {
+            CompactPhoneRootSafeAreaView(
+                backgroundColor: Self.compactPhoneRootTopSafeAreaStyle(for: section).color
+            ) {
+                panelView
+            }
+        } else {
+            panelView
+        }
+    }
+
+}
+
+private struct CompactPhoneRootSafeAreaView<Content: View>: View {
+    let backgroundColor: Color
+    let content: Content
+
+    init(
+        backgroundColor: Color,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.backgroundColor = backgroundColor
+        self.content = content()
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            content
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(backgroundColor)
+                        .frame(height: proxy.safeAreaInsets.top)
+                        .ignoresSafeArea(edges: .top)
+                        .allowsHitTesting(false)
+                }
+        }
+    }
 }

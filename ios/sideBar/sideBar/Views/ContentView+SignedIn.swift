@@ -12,6 +12,7 @@ extension ContentView {
             SignedInContentView(
                 biometricUnlockEnabled: biometricUnlockEnabled,
                 isBiometricUnlocked: $isBiometricUnlocked,
+                showsTopSafeAreaOverlay: shouldShowGlobalTopSafeAreaOverlay,
                 topSafeAreaBackground: topSafeAreaBackground,
                 onSignOut: { Task { await environment.beginSignOut() } },
                 mainView: { mainView },

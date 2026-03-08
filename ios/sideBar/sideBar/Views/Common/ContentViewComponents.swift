@@ -54,6 +54,7 @@ enum ActiveAlert: Identifiable, Equatable {
 struct SignedInContentView<Main: View>: View {
     let biometricUnlockEnabled: Bool
     @Binding var isBiometricUnlocked: Bool
+    let showsTopSafeAreaOverlay: Bool
     let topSafeAreaBackground: Color
     let onSignOut: () -> Void
     let mainView: () -> Main
@@ -75,11 +76,13 @@ struct SignedInContentView<Main: View>: View {
                         .background(DesignTokens.Colors.background)
                         .coordinateSpace(name: "appRoot")
                         .overlay(alignment: .top) {
-                            Rectangle()
-                                .fill(topSafeAreaBackground)
-                                .frame(height: proxy.safeAreaInsets.top)
-                                .ignoresSafeArea(edges: .top)
-                                .allowsHitTesting(false)
+                            if showsTopSafeAreaOverlay {
+                                Rectangle()
+                                    .fill(topSafeAreaBackground)
+                                    .frame(height: proxy.safeAreaInsets.top)
+                                    .ignoresSafeArea(edges: .top)
+                                    .allowsHitTesting(false)
+                            }
                         }
                 }
             }
