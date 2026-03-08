@@ -2,6 +2,8 @@ import SwiftUI
 import XCTest
 #if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
 #endif
 @testable import sideBar
 
@@ -243,5 +245,111 @@ func findDescendantTextView(in view: NSView) -> NSTextView? {
     }
 
     return nil
+}
+#elseif os(iOS)
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+func makeReadTextView(
+    plainText: String,
+    frame: CGRect,
+    baseFontSize: CGFloat = 16
+) throws -> UITextView {
+    let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
+    let controller = UIHostingController(
+        rootView: AnyView(
+            SelectableNoteReadView(
+                document: document,
+                maxContentWidth: frame.width,
+                onActivateEditing: { _ in }
+            )
+        )
+    )
+    let window = makeHostingWindow(frame: frame)
+    window.rootViewController = controller
+    window.makeKeyAndVisible()
+    controller.view.frame = frame
+    controller.view.setNeedsLayout()
+    controller.view.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    NotesDetailViewTestRetainer.hostingControllers.append(controller)
+    NotesDetailViewTestRetainer.hostingWindows.append(window)
+
+    let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+    if abs(baseFontSize - NoteTextTypography.defaultBodyFontSize) > 0.001 {
+        textView.attributedText = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        textView.setNeedsLayout()
+        textView.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    }
+    return textView
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+func lineEndOverflowClickPoint(
+    in textView: UITextView,
+    characterIndex: Int
+) throws -> CGPoint {
+    let rect = try characterRect(in: textView, characterIndex: characterIndex)
+    return CGPoint(x: rect.maxX + 40, y: rect.midY)
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+func belowContentClickPoint(
+    in textView: UITextView,
+    characterIndex: Int
+) throws -> CGPoint {
+    let rect = try characterRect(in: textView, characterIndex: characterIndex)
+    return CGPoint(x: rect.midX, y: rect.maxY + rect.height + 20)
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+func characterRect(
+    in textView: UITextView,
+    characterIndex: Int
+) throws -> CGRect {
+    let length = textView.attributedText.length
+    guard characterIndex >= 0, characterIndex < length else {
+        throw XCTSkip("Character index out of bounds")
+    }
+    let start = try XCTUnwrap(
+        textView.position(from: textView.beginningOfDocument, offset: characterIndex)
+    )
+    let end = try XCTUnwrap(textView.position(from: start, offset: 1))
+    let range = try XCTUnwrap(textView.textRange(from: start, to: end))
+    return textView.firstRect(for: range)
+}
+
+@MainActor
+private func findDescendantTextView(in view: UIView) -> UITextView? {
+    if let textView = view as? UITextView {
+        return textView
+    }
+
+    for subview in view.subviews {
+        if let match = findDescendantTextView(in: subview) {
+            return match
+        }
+    }
+
+    return nil
+}
+
+@MainActor
+private func makeHostingWindow(frame: CGRect) -> UIWindow {
+    guard let windowScene = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first else {
+        fatalError("Expected UIWindowScene for SelectableNoteReadViewTests")
+    }
+
+    let window = UIWindow(windowScene: windowScene)
+    window.frame = frame
+    return window
 }
 #endif
