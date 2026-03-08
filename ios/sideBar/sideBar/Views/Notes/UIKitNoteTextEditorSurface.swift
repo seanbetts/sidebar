@@ -51,6 +51,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     @ObservedObject var viewModel: NativeNoteEditorViewModel
     let maxContentWidth: CGFloat
     let isEditable: Bool
+    let shouldAutofocus: Bool
     let formattingBarConfiguration: NoteFormattingBarConfiguration?
     let formattingBarPresentation: NoteFormattingBarPresentation
     let makeTextView: (() -> AccessoryTextView)?
@@ -59,6 +60,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         viewModel: NativeNoteEditorViewModel,
         maxContentWidth: CGFloat,
         isEditable: Bool,
+        shouldAutofocus: Bool = true,
         formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
         formattingBarPresentation: NoteFormattingBarPresentation,
         makeTextView: (() -> AccessoryTextView)? = nil
@@ -66,6 +68,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         self.viewModel = viewModel
         self.maxContentWidth = maxContentWidth
         self.isEditable = isEditable
+        self.shouldAutofocus = shouldAutofocus
         self.formattingBarConfiguration = formattingBarConfiguration
         self.formattingBarPresentation = formattingBarPresentation
         self.makeTextView = makeTextView
@@ -79,7 +82,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         let textView = makeTextView?() ?? AccessoryTextView()
         textView.isEditable = isEditable
         textView.allowsEditingTextAttributes = false
-        textView.shouldAutofocus = isEditable
+        textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.backgroundColor = .clear
         textView.textColor = .label
         textView.accessibilityIdentifier = "notes-editor-text-view"
@@ -101,8 +104,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     func updateUIView(_ textView: UITextView, context: Context) {
         textView.isEditable = isEditable
         if let accessoryTextView = textView as? AccessoryTextView {
-            accessoryTextView.shouldAutofocus = isEditable
-            if isEditable, accessoryTextView.window != nil, accessoryTextView.isFirstResponder == false {
+            accessoryTextView.shouldAutofocus = isEditable && shouldAutofocus
+            if isEditable, shouldAutofocus, accessoryTextView.window != nil, accessoryTextView.isFirstResponder == false {
                 DispatchQueue.main.async {
                     accessoryTextView.becomeFirstResponder()
                 }

@@ -26,6 +26,10 @@ public final class NativeNoteEditorViewModel: ObservableObject {
 
     public init() {}
 
+    deinit {
+        autosaveTask?.cancel()
+    }
+
     public func setBaseFontSize(_ size: CGFloat) {
         let updatedSize = max(12, size)
         guard abs(baseFontSize - updatedSize) > 0.1 else { return }

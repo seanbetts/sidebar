@@ -7,7 +7,7 @@ import XCTest
 
 @MainActor
 @available(iOS 26.0, *)
-final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
+final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testAttributedNoteEditorContainerPrefersUIKitSurfaceOnIOS() {
         XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .uiKit)
     }
@@ -97,10 +97,10 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         context.editorViewModel.enterEditMode()
         let insertion = nativeViewModel.attributedContent.endIndex
         nativeViewModel.selection = AttributedTextSelection(range: insertion..<insertion)
-        let textView = try mountTextView(
-            viewModel: nativeViewModel,
-            formattingBarConfiguration: context.editorViewModel.noteFormattingBarConfiguration
-        )
+        let textView = UIKitNoteTextEditorSurface.AccessoryTextView()
+        let configuration = context.editorViewModel.noteFormattingBarConfiguration
+        textView.formattingCommandsEnabled = configuration.isEnabled
+        textView.onBoldCommand = configuration.onBoldTap
         let boldCommand = try XCTUnwrap(
             textView.keyCommands?.first {
                 $0.input?.lowercased() == "b" && $0.modifierFlags == [.command]
@@ -116,17 +116,15 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         context.editorViewModel.enterEditMode()
         let insertion = nativeViewModel.attributedContent.endIndex
         nativeViewModel.selection = AttributedTextSelection(range: insertion..<insertion)
-        let textView = try mountTextView(
-            viewModel: nativeViewModel,
-            formattingBarConfiguration: context.editorViewModel.noteFormattingBarConfiguration,
-            formattingBarPresentation: .floatingTopTrailing
-        )
+        let textView = UIKitNoteTextEditorSurface.AccessoryTextView()
+        let configuration = context.editorViewModel.noteFormattingBarConfiguration
+        textView.formattingCommandsEnabled = configuration.isEnabled
+        textView.onBoldCommand = configuration.onBoldTap
         let boldCommand = try XCTUnwrap(
             textView.keyCommands?.first {
                 $0.input?.lowercased() == "b" && $0.modifierFlags == [.command]
             }
         )
-        XCTAssertNil(textView.inputAccessoryView)
         _ = textView.perform(boldCommand.action)
         XCTAssertTrue(context.editorViewModel.isFormattingActive(.bold))
     }
@@ -159,8 +157,38 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-        let textView = try mountTextView(viewModel: viewModel)
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            autofocusEnabled: true,
+            attachToWindow: true,
+            makeKeyAndVisible: true
+        )
         XCTAssertTrue(textView.isFirstResponder)
+    }
+
+    func testNotesDetailViewTestRetainerResetDetachesHostedWindows() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        _ = try mountTextView(viewModel: viewModel, attachToWindow: true)
+        let window = try XCTUnwrap(NotesDetailViewTestRetainer.hostingWindows.last)
+        XCTAssertNotNil(window.rootViewController)
+        NotesDetailViewTestRetainer.reset()
+        XCTAssertTrue(NotesDetailViewTestRetainer.hostingControllers.isEmpty)
+        XCTAssertTrue(NotesDetailViewTestRetainer.hostingWindows.isEmpty)
+        XCTAssertNil(window.rootViewController)
+        XCTAssertTrue(window.isHidden)
+    }
+    func testEditableSurfaceSkipsFirstResponderWhenAutofocusDisabled() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let textView = try mountTextView(viewModel: viewModel, autofocusEnabled: false)
+        XCTAssertFalse(textView.isFirstResponder)
     }
     func testUIKitSurfaceUsesReadModeTextPaddingInsets() throws {
         let viewModel = NativeNoteEditorViewModel()
@@ -181,7 +209,10 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
             canonicalContent: canonicalPlainTextPass("A👍🏽B"),
             plainText: "A👍🏽B"
         )
-        let textView = try mountTextView(viewModel: viewModel)
+        let coordinator = UIKitNoteTextEditorSurface.Coordinator(viewModel: viewModel)
+        let textView = UITextView()
+        textView.attributedText = NSAttributedString(string: "A👍🏽B")
+        textView.delegate = coordinator
         textView.selectedRange = NSRange(location: 5, length: 0)
         textView.delegate?.textViewDidChangeSelection?(textView)
         assertInsertionPointUTF16Offset(
@@ -296,6 +327,9 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
 private func mountTextView(
     viewModel: NativeNoteEditorViewModel,
     isEditable: Bool = true,
+    autofocusEnabled: Bool = false,
+    attachToWindow: Bool = true,
+    makeKeyAndVisible: Bool = false,
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
     formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
     width: CGFloat = 360,
@@ -307,22 +341,37 @@ private func mountTextView(
                 viewModel: viewModel,
                 maxContentWidth: width,
                 isEditable: isEditable,
+                shouldAutofocus: autofocusEnabled,
                 formattingBarConfiguration: formattingBarConfiguration,
                 formattingBarPresentation: formattingBarPresentation
             )
         )
     )
     let frame = CGRect(x: 0, y: 0, width: width, height: height)
-    let window = makeHostingWindow(frame: frame)
-    window.rootViewController = controller
-    window.makeKeyAndVisible()
-    controller.view.frame = frame
-    controller.view.setNeedsLayout()
-    controller.view.layoutIfNeeded()
-    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
     NotesDetailViewTestRetainer.hostingControllers.append(controller)
-    NotesDetailViewTestRetainer.hostingWindows.append(window)
-
+    if attachToWindow {
+        let window = makeHostingWindow(frame: frame)
+        window.rootViewController = controller
+        if makeKeyAndVisible {
+            window.makeKeyAndVisible()
+        } else {
+            window.isHidden = false
+        }
+        NotesDetailViewTestRetainer.hostingWindows.append(window)
+        controller.view.frame = frame
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+    } else {
+        controller.loadViewIfNeeded()
+        let hostView = UIView(frame: frame)
+        hostView.addSubview(controller.view)
+        controller.view.frame = hostView.bounds
+        hostView.setNeedsLayout()
+        hostView.layoutIfNeeded()
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+    }
+    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
     return try XCTUnwrap(findTextView(in: controller.view))
 }
 
@@ -331,13 +380,11 @@ private func findTextView(in view: UIView) -> UITextView? {
     if let textView = view as? UITextView {
         return textView
     }
-
     for subview in view.subviews {
         if let match = findTextView(in: subview) {
             return match
         }
     }
-
     return nil
 }
 
@@ -348,7 +395,6 @@ private func makeHostingWindow(frame: CGRect) -> UIWindow {
         .first else {
         fatalError("Expected UIWindowScene for UIKit notes editor surface tests")
     }
-
     let window = UIWindow(windowScene: windowScene)
     window.frame = frame
     return window
@@ -389,7 +435,6 @@ private func mountSurfaceHost(
 @available(iOS 26.0, *)
 private final class FormattingPresentationState: ObservableObject {
     @Published var presentation: NoteFormattingBarPresentation
-
     init(_ presentation: NoteFormattingBarPresentation) {
         self.presentation = presentation
     }
@@ -399,7 +444,6 @@ private final class FormattingPresentationState: ObservableObject {
 @available(iOS 26.0, *)
 private final class ReloadTrackingAccessoryTextView: UIKitNoteTextEditorSurface.AccessoryTextView {
     private(set) var reloadInputViewsCallCount = 0
-
     override func reloadInputViews() {
         reloadInputViewsCallCount += 1
         super.reloadInputViews()
@@ -418,6 +462,7 @@ private struct FormattingSurfaceHost: View {
             viewModel: viewModel,
             maxContentWidth: 360,
             isEditable: true,
+            shouldAutofocus: true,
             formattingBarConfiguration: .disabled,
             formattingBarPresentation: presentationState.presentation,
             makeTextView: { textView }

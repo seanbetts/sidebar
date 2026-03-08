@@ -5,7 +5,7 @@ import XCTest
 @testable import sideBar
 
 @MainActor
-final class UIKitNoteFormattingBarTests: XCTestCase {
+final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
     func testActiveStatesReflectCanonicalEditorModel() async throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")

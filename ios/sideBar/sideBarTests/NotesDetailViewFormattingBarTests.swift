@@ -4,7 +4,7 @@ import XCTest
 @testable import sideBar
 
 @MainActor
-final class NotesDetailViewFormattingBarTests: XCTestCase {
+final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
 #if os(iOS)
     func testCustomFormattingBarIsHiddenInReadModeOnIOS() async {
         let context = await makeNotesDetailViewTestContext()
@@ -83,7 +83,10 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
 
-        XCTAssertEqual(context.makeView().formattingBarPresentation, .keyboardAccessory)
+        XCTAssertEqual(
+            context.makeView().formattingBarPresentation,
+            UIDevice.current.userInterfaceIdiom == .phone ? .keyboardAccessory : .floatingTopTrailing
+        )
         XCTAssertTrue(context.makeView().isFormattingToolbarVisible)
     }
 
@@ -121,31 +124,23 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
     }
 
     @available(iOS 26.0, *)
-    func testFloatingFormattingBarStaysHiddenInReadModeEvenWhenFloatingPresentationIsOverridden() async throws {
+    func testFloatingFormattingBarStaysHiddenInReadModeEvenWhenFloatingPresentationIsOverridden() async {
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
-        let environment = makeNotesDetailTestEnvironment()
-        let controller = mount(
-            NotesDetailView(
-                viewModel: context.notesViewModel,
-                editorViewModel: context.editorViewModel,
-                isMoveSheetPresented: .constant(false),
-                moveSelection: .constant(""),
-                isDeleteAlertPresented: .constant(false),
-                isExporting: .constant(false),
-                exportDocument: .constant(nil),
-                exportFilename: .constant(""),
-                formattingBarPresentationOverride: .floatingTopTrailing
-            ),
-            environment: environment
+        let view = NotesDetailView(
+            viewModel: context.notesViewModel,
+            editorViewModel: context.editorViewModel,
+            isMoveSheetPresented: .constant(false),
+            moveSelection: .constant(""),
+            isDeleteAlertPresented: .constant(false),
+            isExporting: .constant(false),
+            exportDocument: .constant(nil),
+            exportFilename: .constant(""),
+            formattingBarPresentationOverride: .floatingTopTrailing
         )
 
         XCTAssertEqual(context.makeView().formattingBarPresentation, .hidden)
-        XCTAssertNil(
-            findDescendantView(
-                in: controller.view,
-                accessibilityIdentifier: "note-formatting-bar"
-            )
-        )
+        XCTAssertFalse(view.isFloatingFormattingBarVisible)
+        XCTAssertFalse(view.isFormattingToolbarVisible)
     }
 
     @available(iOS 26.0, *)
@@ -158,13 +153,17 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         let container = AttributedNoteEditorContainer(
             editorViewModel: context.editorViewModel,
             maxContentWidth: 390,
+            autofocusEnabled: false,
             hardwareKeyboardInputExpectedProvider: { hardwareKeyboardExpectation.value },
             onFormattingBarPresentationChange: { presentations.append($0) },
             onEscape: nil
         )
 
         _ = mount(container, environment: environment)
-        XCTAssertEqual(presentations.last, .hidden)
+        XCTAssertEqual(
+            presentations.last,
+            UIDevice.current.userInterfaceIdiom == .phone ? .hidden : .floatingTopTrailing
+        )
 
         hardwareKeyboardExpectation.value = true
         NotificationCenter.default.post(name: UITextInputMode.currentInputModeDidChangeNotification, object: nil)

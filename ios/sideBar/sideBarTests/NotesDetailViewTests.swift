@@ -3,7 +3,7 @@ import XCTest
 @testable import sideBar
 
 @MainActor
-final class NotesDetailViewTests: XCTestCase {
+final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
     func testNotesDetailViewTypeLoads() {
         XCTAssertNotNil(NotesDetailView.self)
     }

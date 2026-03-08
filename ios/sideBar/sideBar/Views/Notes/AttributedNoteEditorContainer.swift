@@ -12,6 +12,7 @@ struct AttributedNoteEditorContainer: View {
 
     @ObservedObject var editorViewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
+    let autofocusEnabled: Bool
     let hardwareKeyboardInputExpectedProvider: (() -> Bool)?
     let onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)?
     let onEscape: ((NotesSemanticDocument) -> Void)?
@@ -28,12 +29,14 @@ struct AttributedNoteEditorContainer: View {
     init(
         editorViewModel: NotesEditorViewModel,
         maxContentWidth: CGFloat,
+        autofocusEnabled: Bool = true,
         hardwareKeyboardInputExpectedProvider: (() -> Bool)? = nil,
         onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)? = nil,
         onEscape: ((NotesSemanticDocument) -> Void)?
     ) {
         self.editorViewModel = editorViewModel
         self.maxContentWidth = maxContentWidth
+        self.autofocusEnabled = autofocusEnabled
         self.hardwareKeyboardInputExpectedProvider = hardwareKeyboardInputExpectedProvider
         self.onFormattingBarPresentationChange = onFormattingBarPresentationChange
         self.onEscape = onEscape
@@ -160,6 +163,7 @@ struct AttributedNoteEditorContainer: View {
             viewModel: nativeViewModel,
             maxContentWidth: maxContentWidth,
             isEditable: true,
+            shouldAutofocus: autofocusEnabled,
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
             formattingBarPresentation: resolvedFormattingBarPresentation
         )

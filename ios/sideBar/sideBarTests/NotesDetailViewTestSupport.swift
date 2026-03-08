@@ -40,9 +40,39 @@ enum NotesDetailViewTestRetainer {
     #endif
 
     static func reset() {
+        #if os(iOS)
+        hostingWindows.forEach { window in
+            if let rootViewController = window.rootViewController,
+               rootViewController.isViewLoaded,
+               rootViewController.view.window != nil {
+                rootViewController.beginAppearanceTransition(false, animated: false)
+                rootViewController.endAppearanceTransition()
+                rootViewController.view.removeFromSuperview()
+            }
+            window.endEditing(true)
+            window.resignKey()
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        #elseif os(macOS)
+        hostingWindows.forEach { window in
+            window.orderOut(nil)
+            window.contentViewController = nil
+        }
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        #endif
         environments.removeAll()
         hostingControllers.removeAll()
         hostingWindows.removeAll()
+    }
+}
+
+@MainActor
+class NotesDetailViewHostingTestCase: XCTestCase {
+    override func tearDown() {
+        NotesDetailViewTestRetainer.reset()
+        super.tearDown()
     }
 }
 
@@ -133,7 +163,7 @@ func mount(
     )
     let window = makeHostingWindow(frame: CGRect(x: 0, y: 0, width: 900, height: 700))
     window.rootViewController = controller
-    window.makeKeyAndVisible()
+    window.isHidden = false
     let rootView = controller.view!
     rootView.frame = window.bounds
     rootView.setNeedsLayout()
@@ -156,7 +186,7 @@ func mount(
     )
     let window = makeHostingWindow(frame: frame)
     window.rootViewController = controller
-    window.makeKeyAndVisible()
+    window.isHidden = false
     let rootView = controller.view!
     rootView.frame = frame
     rootView.setNeedsLayout()
