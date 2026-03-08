@@ -76,6 +76,7 @@
 		"@sentry/sveltekit": "^10.32.1",
 		"@supabase/ssr": "^0.1.0",
 		"@supabase/supabase-js": "^2.39.0",
+		"@sveltejs/adapter-cloudflare": "^7.2.8",
 		"@sveltejs/adapter-vercel": "^6.2.0",
 		"@tiptap/core": "^3.14.0",
 		"@tiptap/extension-image": "^3.14.0",

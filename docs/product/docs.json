@@ -34,7 +34,8 @@
       {
         "group": "FAQ",
         "pages": [
-          "faq/general"
+          "faq/general",
+          "faq/chat"
         ]
       },
       {
