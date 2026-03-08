@@ -42,7 +42,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
     }
 
-    func testPhoneSurfaceDisablesDuplicateSystemFormattingPanel() throws {
+    func testPhoneSurfaceDisablesDuplicateSystemFormattingUI() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
@@ -54,6 +54,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
             formattingBarConfiguration: .disabled
         )
 
+        XCTAssertFalse(textView.allowsEditingTextAttributes)
         XCTAssertNil(textView.textFormattingConfiguration)
     }
 

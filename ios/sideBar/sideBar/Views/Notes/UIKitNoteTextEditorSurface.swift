@@ -10,6 +10,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var onBoldCommand: (() -> Void)?
         var onItalicCommand: (() -> Void)?
         var onUnderlineCommand: (() -> Void)?
+        var shouldAutofocus = false
 
         override var inputAccessoryView: UIView? {
             get { formattingAccessoryView }
@@ -35,6 +36,15 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         @objc private func handleUnderlineCommand() {
             onUnderlineCommand?()
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard shouldAutofocus, window != nil, isFirstResponder == false else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.window != nil, self.isFirstResponder == false else { return }
+                self.becomeFirstResponder()
+            }
         }
     }
 
@@ -62,7 +72,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let textView = AccessoryTextView()
         textView.isEditable = isEditable
-        textView.allowsEditingTextAttributes = true
+        textView.allowsEditingTextAttributes = false
+        textView.shouldAutofocus = isEditable
         textView.backgroundColor = .clear
         textView.accessibilityIdentifier = "notes-editor-text-view"
         textView.textContainer.lineFragmentPadding = 0
@@ -82,13 +93,12 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
     func updateUIView(_ textView: UITextView, context: Context) {
         textView.isEditable = isEditable
-        if isEditable,
-           textView.window != nil,
-           textView.isFirstResponder == false,
-           context.coordinator.didRequestFirstResponder == false {
-            context.coordinator.didRequestFirstResponder = true
-            DispatchQueue.main.async {
-                textView.becomeFirstResponder()
+        if let accessoryTextView = textView as? AccessoryTextView {
+            accessoryTextView.shouldAutofocus = isEditable
+            if isEditable, accessoryTextView.window != nil, accessoryTextView.isFirstResponder == false {
+                DispatchQueue.main.async {
+                    accessoryTextView.becomeFirstResponder()
+                }
             }
         }
         if let accessoryTextView = textView as? AccessoryTextView {
@@ -191,7 +201,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         let viewModel: NativeNoteEditorViewModel
         var isApplyingProgrammaticText = false
         var isApplyingProgrammaticSelection = false
-        var didRequestFirstResponder = false
 
         init(viewModel: NativeNoteEditorViewModel) {
             self.viewModel = viewModel
