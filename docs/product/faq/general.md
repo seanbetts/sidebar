@@ -62,6 +62,31 @@ are stored in sideBar, not with your AI provider. Switching from one provider
 to another has no effect on any of that. You can swap freely at any time from
 Settings and everything carries over.
 
+## Does sideBar have its own personality?
+
+Yes. sideBar has an identity (a name, a tone of voice, a set of values, and
+boundaries it holds) and a soul (a sense of purpose, operating principles, and
+an understanding of how it should grow with you over time). These shape every
+response and make sideBar feel consistent rather than generic. You can view them
+in Settings under the sideBar tab. See [Personality](/manual/personality) for
+the full explanation.
+
+## Can I control how sideBar communicates with me?
+
+Partly. sideBar manages its own identity and soul, but there are two settings
+you control directly in Settings under the User tab: communication style (how
+formal or casual sideBar is with you) and working relationship (whether sideBar
+acts as a partner, a coach, a teacher, or something else). These work alongside
+sideBar's personality rather than overriding it.
+
+## Does sideBar change over time?
+
+Yes. As sideBar learns more about you through conversations and the content you
+create, it updates its soul to stay aligned with who you are and what you need.
+Each update is versioned and timestamped. You can ask sideBar to update its
+identity and soul at any time, but cannot edit them directly; they belong to
+sideBar.
+
 ## Does sideBar work offline?
 
 Reading your existing notes, tasks, websites, and files works offline. Sending
