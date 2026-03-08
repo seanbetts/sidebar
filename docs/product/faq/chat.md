@@ -12,8 +12,7 @@ Quite a lot, automatically. Every conversation includes the current date, time,
 and your timezone, your location and weather (if you've granted permission),
 your device, and your profile details. It also includes a snapshot of your
 tasks, any content you have open (a note, website, or file), and recent
-activity across the app. You don't need to explain any of this — it's already
-there.
+activity across the app.
 
 See [Chat](/manual/chat) for the full breakdown of what's included.
 

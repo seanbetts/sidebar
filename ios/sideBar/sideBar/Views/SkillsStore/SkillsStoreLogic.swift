@@ -29,6 +29,19 @@ enum SkillsStoreLogic {
         }
     }
 
+    static func showsInitialLoadingState(isLoadingSkills: Bool, storeSkills: [SkillItem]) -> Bool {
+        isLoadingSkills && storeSkills.isEmpty
+    }
+
+    static func initialLoadError(storeSkills: [SkillItem], skillsError: String?) -> String? {
+        guard storeSkills.isEmpty else { return nil }
+        guard let error = skillsError?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !error.isEmpty else {
+            return nil
+        }
+        return error
+    }
+
     static func resolvedSelection(currentSelection: String?, filteredSkills: [SkillItem]) -> String? {
         guard !filteredSkills.isEmpty else { return nil }
         if let currentSelection,
