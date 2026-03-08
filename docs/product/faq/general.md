@@ -1,29 +1,49 @@
 ---
-title: General FAQ
-summary: Common questions about sideBar.
+title: General
+summary: Common questions about sideBar, what it is, how it works, and getting started.
 tags: [faq, general]
 audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
-# General FAQ
-
 ## What is sideBar?
 
-sideBar is an AI-powered productivity app for iOS. It combines a conversational
-assistant with tools for notes, web search, and more.
+sideBar is an AI assistant for iPhone, iPad, Mac, and web. It gives you a
+single place to take notes, manage tasks, save websites, and work with files,
+all alongside an AI that can read your content, help you think, and get things
+done.
 
-## Is sideBar free?
+## What platforms does sideBar run on?
 
-sideBar offers a free tier with core features. Additional skills and capabilities
-are available on paid plans.
+iPhone, iPad, Mac, and in your browser. Your content syncs across all of them
+in real time.
 
-## How do I enable a skill?
+## Do I need to bring my own API key?
 
-Open the Skills section in settings, browse available skills, and tap to enable.
-Some skills require a paid plan.
+Yes. sideBar works with Anthropic, OpenAI, and Google. You choose the provider
+and add your own API key in Settings. Your key is encrypted before being stored
+and only the last four characters are ever shown back to you.
 
-## What data does sideBar store?
+## Which AI provider should I use?
 
-sideBar stores your conversations, notes, and preferences. See our Privacy Policy
-for full details.
+All three supported providers (Anthropic, OpenAI, Google) work with sideBar's
+core features. The best choice depends on your existing accounts and
+preferences.
+
+## Does sideBar work offline?
+
+Reading your existing notes, tasks, websites, and files works offline. Sending
+chat messages, saving new content, or syncing changes requires a connection.
+If something isn't saving, check your connectivity first.
+
+## What does sideBar store?
+
+sideBar stores your notes, tasks, saved websites, files, chat conversations,
+memories, and settings. Everything syncs across your devices via your account.
+See our [Privacy Policy](https://trysidebar.ai/privacy) for full details.
+
+## How do I report a bug or request a feature?
+
+Just tell sideBar in Chat, for example "I found a bug with X" or "I'd love a
+feature that does Y". sideBar will file a report automatically and send you a
+link to the issue. See [Getting Help](/manual/getting-help) for more.

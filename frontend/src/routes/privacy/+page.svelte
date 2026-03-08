@@ -10,7 +10,7 @@
 	<main class="privacy-content">
 		<header>
 			<h1>Privacy Policy</h1>
-			<p class="meta">Last updated: February 28, 2026</p>
+			<p class="meta">Last updated: March 8, 2026</p>
 		</header>
 
 		<section>
@@ -34,13 +34,22 @@
 			<h3>Content You Provide</h3>
 			<ul>
 				<li>Prompts, chat history, tasks, notes, files, and saved website content</li>
-				<li>Workspace metadata (such as titles, tags, and organization choices)</li>
+				<li>Workspace metadata (such as titles, tags, and organisation choices)</li>
+				<li>
+					Memories: persistent reference documents created automatically by sideBar during
+					conversations to improve future responses, as well as any memories you add or edit
+					manually
+				</li>
 			</ul>
 			<h3>Technical and Usage Data</h3>
 			<ul>
 				<li>Device, browser, and app version details</li>
 				<li>Operational logs, error diagnostics, and performance telemetry</li>
 				<li>IP address and approximate location derived from network requests</li>
+				<li>
+					Precise device location, if you grant location permission, used to provide local weather
+					and location context to the assistant
+				</li>
 			</ul>
 		</section>
 
@@ -59,13 +68,29 @@
 		<section>
 			<h2>3. AI Processing and Third-Party Services</h2>
 			<p>
-				To provide sideBar, we use infrastructure and service providers that may process data on our
-				behalf, including hosting, authentication, storage, analytics, and AI model providers.
+				sideBar uses a bring-your-own-key (BYOK) model for AI. You choose an AI provider (Anthropic,
+				OpenAI, or Google) and supply your own API key in Settings. Your key is encrypted before
+				being stored. When you use sideBar, your content is sent to the provider you have configured
+				— not to all providers.
 			</p>
 			<p>
-				Depending on your configuration, this can include providers such as Supabase, Cloudflare R2,
-				Vercel, Sentry, Anthropic, OpenAI, and Google. We require vendors to handle data under
-				contractual and security controls appropriate for their role.
+				To provide sideBar, we also use infrastructure and service providers that may process data
+				on our behalf, including hosting, authentication, storage, and analytics. This can include
+				providers such as Supabase, Cloudflare R2, Vercel, and Sentry. We require vendors to handle
+				data under contractual and security controls appropriate for their role.
+			</p>
+			<h3>Store Skills and Third-Party Integrations</h3>
+			<p>
+				Some Store skills connect to external services (such as Gmail or Spotify). When you install
+				and use such a skill, relevant data may be sent to that third-party service to fulfil your
+				request. Each skill's requirements are shown before installation.
+			</p>
+			<h3>Bug Reports and Feedback</h3>
+			<p>
+				When you report a bug or request a feature via sideBar's built-in feedback tool, we collect
+				a summary of your report along with technical metadata (such as your conversation ID and
+				device information) and file it as an issue in our development tracker. No full conversation
+				content is included.
 			</p>
 		</section>
 
