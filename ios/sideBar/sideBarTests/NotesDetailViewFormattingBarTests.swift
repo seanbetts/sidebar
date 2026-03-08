@@ -79,27 +79,12 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         )
     }
 
-    func testNotesDetailViewHardwareKeyboardSignalIsIgnoredOutsideEditMode() {
-        XCTAssertFalse(
-            NotesDetailView.hardwareKeyboardInputExpected(
-                isEditing: false,
-                hardwareKeyboardInputExpected: true
-            )
-        )
-    }
-
-    @available(iOS 26.0, *)
-    func testAttributedNoteEditorContainerUsesResolvedFormattingBarPresentation() async {
+    func testFormattingBarPresentationDefaultsToVisibleEditingPresentationBeforeBoundarySignalArrives() async {
         let context = await makeNotesDetailViewTestContext()
+        context.editorViewModel.enterEditMode()
 
-        let container = AttributedNoteEditorContainer(
-            editorViewModel: context.editorViewModel,
-            maxContentWidth: 320,
-            formattingBarPresentation: .floatingTopTrailing,
-            onEscape: nil
-        )
-
-        XCTAssertEqual(container.formattingBarPresentation, .floatingTopTrailing)
+        XCTAssertEqual(context.makeView().formattingBarPresentation, .keyboardAccessory)
+        XCTAssertTrue(context.makeView().isFormattingToolbarVisible)
     }
 
     func testFormattingBarConfigurationTapUpdatesCanonicalSnapshotAndSelectedState() async throws {
