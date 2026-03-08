@@ -16,7 +16,7 @@ surfaces: [app, website, internal-knowledge]
 Skills are modular capabilities that extend what sideBar can do. Think of
 them as plug-ins: each skill gives sideBar access to a specific ability or
 external service, and sideBar selects and uses relevant skills
-automatically as you chat — you don't need to invoke them by name or switch
+automatically as you need it. You don't need to invoke them by name or switch
 modes. When a skill is running, you'll see the tool activity appear inline in
 the [conversation](/manual/chat#skills-in-action) so you can follow along in
 real time.
@@ -35,15 +35,15 @@ Skills fall into three tiers:
 
 ## Skill States
 
-A skill can be in one of four states:
+Standard skills have a toggle: **enabled** means sideBar can use the skill,
+**disabled** means it's installed but inactive until you turn it back on.
 
-- **Enabled** — active and available. sideBar can use it.
-- **Disabled** — installed but turned off by you. sideBar won't use it
-  until you re-enable it.
-- **Unavailable** — cannot be used right now, either because required
-  credentials are missing or because the skill requires a plan upgrade.
-- **Beta** — early access. The skill works, but its behavior may change in a
-  future update.
+Store skills can also show as **unavailable** — this means the skill is
+installed but can't run right now, either because a required API key is missing
+or the skill requires a plan upgrade. sideBar will tell you what's needed.
+
+Skills marked **Beta** are early access. They work, but their behaviour may
+change in a future update.
 
 ## Finding and Managing Skills
 
