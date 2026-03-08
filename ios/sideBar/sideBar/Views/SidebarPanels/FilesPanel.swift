@@ -56,6 +56,8 @@ struct FilesPanelView: View {
 extension FilesPanelView {
     var content: some View {
         let base = mainContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(panelBackground)
             .frame(maxHeight: .infinity)
             .deleteConfirmationAlert(
                 title: deleteDialogTitle,

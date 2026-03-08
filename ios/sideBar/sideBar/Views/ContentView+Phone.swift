@@ -22,7 +22,7 @@ extension ContentView {
     var compactPhoneMoreView: some View {
         NavigationStack(path: $compactPhoneMoreNavigationPath) {
             CompactPhoneRootSafeAreaView(
-                backgroundColor: DesignTokens.Colors.settingsBackground
+                backgroundColor: Self.compactPhoneMoreRootTopSafeAreaStyle().color
             ) {
                 CompactPhoneMoreRootView(
                     sections: Self.compactPhoneOverflowSections,
@@ -34,7 +34,7 @@ extension ContentView {
             }
             #if !os(macOS)
             .toolbar(.hidden, for: .navigationBar)
-            .toolbarBackground(DesignTokens.Colors.settingsBackground, for: .navigationBar)
+            .toolbarBackground(Self.compactPhoneMoreRootTopSafeAreaStyle().color, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             #endif
         }
@@ -328,14 +328,14 @@ private struct CompactPhoneMoreRootView: View {
                             .appFont(.body)
                             .foregroundStyle(DesignTokens.Colors.textPrimary)
                     }
-                    .listRowBackground(DesignTokens.Colors.settingsFormBackground)
+                    .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                 }
             }
+            .sidebarPanelListStyle()
             .scrollContentBackground(.hidden)
-            .background(DesignTokens.Colors.settingsBackground)
-            .listStyle(.insetGrouped)
+            .background(ContentView.compactPhoneMoreRootBackgroundStyle().color)
         }
-        .background(DesignTokens.Colors.settingsBackground)
+        .background(ContentView.compactPhoneMoreRootBackgroundStyle().color)
     }
 
     private var shouldShowSettingsAvatar: Bool {

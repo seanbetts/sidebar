@@ -14,17 +14,19 @@ When you're ready to sign out, you'll find that option at the bottom of the Acco
 
 ## Assistant Personalisation
 
-This is where you shape how sideBar works with you.
+This is where you shape how sideBar works with you. All fields save
+automatically a moment after you stop typing — there's no save button to tap.
 
-**Communication style** controls how it speaks — you can dial it from casual and conversational to formal and precise, or anywhere in between.
+**Communication style** controls how sideBar speaks — from casual and
+conversational to formal and precise.
 
-**Working relationship** sets the dynamic — whether sideBar acts as a collaborative partner, an active coach, a patient teacher, or something else.
+**Working relationship** sets the dynamic — whether sideBar acts as a
+collaborative partner, an active coach, a patient teacher, or something else.
 
-Under the **Advanced** settings you can go deeper: give sideBar a name, define its tone, set values it should uphold, and mark things that are out of bounds.
-
-The **Assistant Soul** section (also advanced) is for defining purpose, operating principles, and how sideBar should adapt over time as it learns more about you.
-
-All personalisation fields save automatically a moment after you stop typing — there's no save button to tap.
+The **Advanced** section exposes the full identity and soul configuration,
+including sideBar's name, tone, values, purpose, and operating principles. See
+the [Personality](/manual/personality) page for a full explanation of how these
+work.
 
 ## Memories
 

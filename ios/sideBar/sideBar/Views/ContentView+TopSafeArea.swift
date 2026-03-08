@@ -21,6 +21,23 @@ extension ContentView {
         }
     }
 
+    enum CompactPhonePanelBackgroundStyle: Equatable {
+        case sidebar
+        case settings
+        case contentBackground
+
+        var color: Color {
+            switch self {
+            case .sidebar:
+                return DesignTokens.Colors.sidebar
+            case .settings:
+                return DesignTokens.Colors.settingsBackground
+            case .contentBackground:
+                return DesignTokens.Colors.background
+            }
+        }
+    }
+
     static func shouldShowGlobalTopSafeAreaOverlay(
         isCompact: Bool,
         isPhoneIdiom: Bool
@@ -32,11 +49,26 @@ extension ContentView {
         switch section {
         case .settings:
             return .settingsChrome
-        case .skillsStore:
-            return .contentBackground
-        case .chat, .notes, .files, .websites, .tasks:
+        case .chat, .notes, .files, .websites, .tasks, .skillsStore:
             return .panelChrome
         }
+    }
+
+    static func compactPhonePanelBackgroundStyle(for section: AppSection) -> CompactPhonePanelBackgroundStyle {
+        switch section {
+        case .settings:
+            return .settings
+        case .chat, .notes, .files, .websites, .tasks, .skillsStore:
+            return .sidebar
+        }
+    }
+
+    static func compactPhoneMoreRootTopSafeAreaStyle() -> CompactPhoneTopSafeAreaStyle {
+        .panelChrome
+    }
+
+    static func compactPhoneMoreRootBackgroundStyle() -> CompactPhonePanelBackgroundStyle {
+        .sidebar
     }
 
     var shouldShowGlobalTopSafeAreaOverlay: Bool {

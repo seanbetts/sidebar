@@ -42,6 +42,8 @@ public struct SkillsStoreView: View {
                 skillsStoreContent
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(compactPanelBackground)
         .navigationTitle("Skills Store")
         .onAppear {
             if !hasLoaded {
@@ -127,6 +129,8 @@ public struct SkillsStoreView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(compactPanelBackground)
     }
 
     private var headerBar: some View {
@@ -222,6 +226,10 @@ public struct SkillsStoreView: View {
                 storeUninstallPrompt = StoreUninstallPrompt(skill: skill)
             }
         )
+    }
+
+    private var compactPanelBackground: Color {
+        isCompact ? DesignTokens.Colors.sidebar : DesignTokens.Colors.background
     }
 
     private var storeSkills: [SkillItem] {
