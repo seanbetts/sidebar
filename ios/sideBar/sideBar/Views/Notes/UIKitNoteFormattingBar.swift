@@ -5,11 +5,16 @@ import UIKit
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitNoteFormattingBar: UIView {
+    private let backgroundEffectView = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let stackView = UIStackView()
     private let boldButton: UIButton
     private let italicButton: UIButton
     private let underlineButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
+    private static let barHeight: CGFloat = 44
+    private static let horizontalPadding: CGFloat = 8
+    private static let verticalPadding: CGFloat = 6
+    private static let buttonSpacing: CGFloat = 6
 
     override init(frame: CGRect) {
         self.boldButton = Self.makeButton(for: .bold)
@@ -38,13 +43,18 @@ final class UIKitNoteFormattingBar: UIView {
             let isActive = configuration.isActive(formatting)
             button.isEnabled = configuration.isEnabled
             button.isSelected = isActive
-            button.tintColor = isActive ? .tintColor : .label
-            button.backgroundColor = isActive ? UIColor.tintColor.withAlphaComponent(0.14) : .clear
+            button.configuration = Self.buttonConfiguration(for: formatting, isActive: isActive)
         }
     }
 
     override var intrinsicContentSize: CGSize {
-        CGSize(width: UIView.noIntrinsicMetric, height: 52)
+        let buttonSizes = Self.buttonOrder.map {
+            button(for: $0).systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+        }
+        let contentWidth = buttonSizes.reduce(0) { $0 + $1.width }
+        let spacingWidth = CGFloat(max(Self.buttonOrder.count - 1, 0)) * Self.buttonSpacing
+        let totalWidth = contentWidth + spacingWidth + (Self.horizontalPadding * 2)
+        return CGSize(width: ceil(totalWidth), height: Self.barHeight)
     }
 
     func button(for formatting: NoteFormatting) -> UIButton {
@@ -77,7 +87,7 @@ struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
         uiView: UIKitNoteFormattingBar,
         context: Context
     ) -> CGSize? {
-        CGSize(width: proposal.width ?? UIView.noIntrinsicMetric, height: uiView.intrinsicContentSize.height)
+        uiView.intrinsicContentSize
     }
 }
 
@@ -87,15 +97,23 @@ private extension UIKitNoteFormattingBar {
 
     static func makeButton(for formatting: NoteFormatting) -> UIButton {
         let button = UIButton(type: .system)
-        var buttonConfiguration = UIButton.Configuration.plain()
-        buttonConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
-        button.configuration = buttonConfiguration
-        button.setImage(UIImage(systemName: systemImage(for: formatting)), for: .normal)
+        button.configuration = buttonConfiguration(for: formatting, isActive: false)
         button.accessibilityLabel = accessibilityLabel(for: formatting)
         button.accessibilityIdentifier = accessibilityIdentifier(for: formatting)
-        button.layer.cornerRadius = 10
-        button.clipsToBounds = true
         return button
+    }
+
+    static func buttonConfiguration(
+        for formatting: NoteFormatting,
+        isActive: Bool
+    ) -> UIButton.Configuration {
+        var configuration: UIButton.Configuration = isActive ? .prominentGlass() : .clearGlass()
+        configuration.buttonSize = UIButton.Configuration.Size.mini
+        configuration.cornerStyle = UIButton.Configuration.CornerStyle.capsule
+        configuration.image = UIImage(systemName: systemImage(for: formatting))
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 7, bottom: 6, trailing: 7)
+        configuration.baseForegroundColor = isActive ? UIColor.white : UIColor.label
+        return configuration
     }
 
     static func systemImage(for formatting: NoteFormatting) -> String {
@@ -133,22 +151,32 @@ private extension UIKitNoteFormattingBar {
 
     func setUpViewHierarchy() {
         accessibilityIdentifier = "note-formatting-bar"
-        backgroundColor = .secondarySystemBackground
-        layer.cornerRadius = 16
-        layer.borderWidth = 1
-        layer.borderColor = UIColor.quaternaryLabel.cgColor
+        backgroundColor = .clear
+        clipsToBounds = false
+
+        backgroundEffectView.translatesAutoresizingMaskIntoConstraints = false
+        backgroundEffectView.isUserInteractionEnabled = false
+        backgroundEffectView.clipsToBounds = true
+        backgroundEffectView.layer.cornerCurve = .continuous
+        backgroundEffectView.layer.cornerRadius = Self.barHeight / 2
+        addSubview(backgroundEffectView)
 
         stackView.axis = .horizontal
         stackView.alignment = .center
-        stackView.spacing = 10
+        stackView.spacing = Self.buttonSpacing
         stackView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stackView)
 
         NSLayoutConstraint.activate([
+            backgroundEffectView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            backgroundEffectView.topAnchor.constraint(equalTo: topAnchor),
+            backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor),
             stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
             stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            stackView.topAnchor.constraint(equalTo: topAnchor, constant: 10),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10)
+            stackView.topAnchor.constraint(equalTo: topAnchor, constant: Self.verticalPadding),
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.verticalPadding),
+            heightAnchor.constraint(equalToConstant: Self.barHeight)
         ])
 
         for formatting in Self.buttonOrder {

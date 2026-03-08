@@ -115,16 +115,61 @@ final class UIKitNoteFormattingBarTests: XCTestCase {
         XCTAssertFalse(bar.button(for: .underline).isSelected)
     }
 
-    func testBarReportsCompactIntrinsicHeightForTopAttachedLayout() throws {
+    func testBarReportsCompactIntrinsicSizeForFloatingGlassLayout() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
 
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
-        let height = bar.intrinsicContentSize.height
+        let size = bar.intrinsicContentSize
 
-        XCTAssertGreaterThan(height, 0)
-        XCTAssertLessThan(height, 80)
+        XCTAssertNotEqual(size.width, UIView.noIntrinsicMetric)
+        XCTAssertGreaterThan(size.width, 0)
+        XCTAssertLessThan(size.width, 240)
+        XCTAssertEqual(size.height, 44)
+    }
+
+    func testBarPreservesAccessibilityIdentifiersForSharedButtons() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(configuration: .disabled)
+
+        XCTAssertEqual(bar.accessibilityIdentifier, "note-formatting-bar")
+        XCTAssertEqual(bar.button(for: .bold).accessibilityIdentifier, "note-formatting-bold")
+        XCTAssertEqual(bar.button(for: .italic).accessibilityIdentifier, "note-formatting-italic")
+        XCTAssertEqual(bar.button(for: .underline).accessibilityIdentifier, "note-formatting-underline")
+    }
+
+    func testBarAppliesGlassTreatmentAndSelectedButtonStyling() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(
+            configuration: .init(
+                isBoldActive: true,
+                isItalicActive: false,
+                isUnderlineActive: false,
+                isEnabled: true,
+                onBoldTap: {},
+                onItalicTap: {},
+                onUnderlineTap: {}
+            )
+        )
+        let effectView = try XCTUnwrap(findGlassEffectView(in: bar))
+        let boldButton = bar.button(for: .bold)
+        let italicButton = bar.button(for: .italic)
+
+        XCTAssertTrue(effectView.effect is UIGlassEffect)
+        XCTAssertTrue(boldButton.isSelected)
+        XCTAssertEqual(boldButton.configuration?.cornerStyle, .capsule)
+        XCTAssertEqual(italicButton.configuration?.cornerStyle, .capsule)
+        XCTAssertNotEqual(
+            boldButton.configuration?.baseForegroundColor?.resolvedColor(with: boldButton.traitCollection),
+            italicButton.configuration?.baseForegroundColor?.resolvedColor(with: italicButton.traitCollection)
+        )
     }
 }
 
@@ -138,6 +183,20 @@ private extension UIKitNoteFormattingBarTests {
         context.editorViewModel.attachNativeEditor(nativeViewModel)
         context.editorViewModel.enterEditMode()
         return (context.editorViewModel, nativeViewModel)
+    }
+
+    func findGlassEffectView(in view: UIView) -> UIVisualEffectView? {
+        if let effectView = view as? UIVisualEffectView {
+            return effectView
+        }
+
+        for subview in view.subviews {
+            if let match = findGlassEffectView(in: subview) {
+                return match
+            }
+        }
+
+        return nil
     }
 }
 #endif
