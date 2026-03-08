@@ -36,6 +36,11 @@ the title any time after saving.
 
 ## YouTube Support
 
+{/* TODO: screenshot — websites-youtube.png: A saved YouTube video showing transcript (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/websites-youtube.png" alt="sideBar YouTube transcript view" />
+</Frame>
+
 Saving a YouTube URL triggers automatic transcript extraction. The status
 progresses through three stages — **queued**, **processing**, then **ready**.
 Once ready, the transcript is stored alongside the video's title and metadata
