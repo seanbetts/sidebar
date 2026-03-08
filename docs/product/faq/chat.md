@@ -37,6 +37,13 @@ Yes. Tap the attachment button in the chat input to attach a note, file,
 website, or image. Attachments go through three stages (uploading, queued, then
 ready) before you can send.
 
+## Can sideBar take actions, not just answer questions?
+
+Yes. Through skills, sideBar can do things as well as say things: search the
+web, transcribe audio or video, send emails, create calendar events, and more.
+Skills run automatically during a conversation when they are relevant. You can
+see a full list of what is available in the [Skills Store](/manual/skills-store).
+
 ## How do skills work in chat?
 
 When sideBar uses a skill during a conversation, you'll see it displayed inline
@@ -48,6 +55,28 @@ right ones automatically based on what you're asking.
 
 Tap the compose button in the Chat view. Previous conversations are saved and
 you can swipe to delete ones you no longer need.
+
+## Which AI model does sideBar use?
+
+It depends on your chosen provider. sideBar uses a recent, capable model from
+whichever provider you have configured: a Claude model for Anthropic, a GPT
+model for OpenAI, and a Gemini model for Google. The specific version may
+update over time as newer releases become available.
+
+## Does sideBar use my conversations to train AI models?
+
+No. sideBar does not train on your conversations. When you send a message, it
+is processed by your chosen AI provider under your own API account, subject to
+that provider's terms. sideBar does not store or use your conversation content
+for model training. See our [Privacy Policy](https://trysidebar.ai/privacy) for
+full details.
+
+## Is there a message limit?
+
+sideBar does not impose its own message limits. Your usage is subject to the
+rate limits of your chosen AI provider, which vary by plan and account tier. If
+you hit a rate limit, you will see an error in the chat. Switching providers or
+upgrading your provider plan resolves this.
 
 ## Why did sideBar get something wrong?
 
