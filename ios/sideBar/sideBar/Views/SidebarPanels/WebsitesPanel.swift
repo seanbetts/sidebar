@@ -149,7 +149,12 @@ struct WebsitesPanelView: View {
 
 extension WebsitesPanelView {
     var header: some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
+        let showsInlineSearch = ContentView.shouldShowCompactPhoneInlineSearch(
+            isCompact: isCompact,
+            isPhoneIdiom: isCompactPhone
+        )
+
+        return VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Websites") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
@@ -169,10 +174,7 @@ extension WebsitesPanelView {
                     }
                 }
             }
-            if ContentView.shouldShowCompactPhoneInlineSearch(
-                isCompact: isCompact,
-                isPhoneIdiom: isCompactPhone
-            ) {
+            if showsInlineSearch {
                 SearchField(
                     text: Binding(
                         get: { viewModel.panelSearchQuery },
@@ -185,7 +187,7 @@ extension WebsitesPanelView {
                     .padding(.bottom, DesignTokens.Spacing.sm)
             }
         }
-        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
         .background(panelHeaderBackground())
     }
 

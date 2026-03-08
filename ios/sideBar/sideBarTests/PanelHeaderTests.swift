@@ -20,4 +20,20 @@ final class PanelHeaderTests: XCTestCase {
 
         XCTAssertEqual(style, .sidebar)
     }
+
+    func testSearchablePanelHeaderMinHeightKeepsSearchRowWhenInlineSearchIsVisible() {
+        let minHeight = LayoutMetrics.searchablePanelHeaderMinHeight(
+            showsInlineSearch: true
+        )
+
+        XCTAssertEqual(minHeight, LayoutMetrics.panelHeaderMinHeight)
+    }
+
+    func testSearchablePanelHeaderMinHeightCollapsesRemovedSearchRowSpace() {
+        let minHeight = LayoutMetrics.searchablePanelHeaderMinHeight(
+            showsInlineSearch: false
+        )
+
+        XCTAssertEqual(minHeight, LayoutMetrics.appHeaderMinHeight)
+    }
 }

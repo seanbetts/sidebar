@@ -68,7 +68,12 @@ extension ConversationsPanelView {
     }
 
     var header: some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
+        let showsInlineSearch = ContentView.shouldShowCompactPhoneInlineSearch(
+            isCompact: isCompact,
+            isPhoneIdiom: isPhone
+        )
+
+        return VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Chat") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if showNewChatButton && !isCompactPhone {
@@ -90,16 +95,13 @@ extension ConversationsPanelView {
                 }
                 .frame(height: 28)
             }
-            if ContentView.shouldShowCompactPhoneInlineSearch(
-                isCompact: isCompact,
-                isPhoneIdiom: isPhone
-            ) {
+            if showsInlineSearch {
                 SearchField(text: $searchQuery, placeholder: "Search chats", isFocused: $isSearchFocused)
                     .padding(.horizontal, DesignTokens.Spacing.md)
                     .padding(.bottom, DesignTokens.Spacing.sm)
             }
         }
-        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
         .background(panelHeaderBackground())
     }
 

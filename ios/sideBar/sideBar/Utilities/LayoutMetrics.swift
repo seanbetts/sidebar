@@ -20,4 +20,10 @@ public enum LayoutMetrics {
     public static var panelHeaderMinHeight: CGFloat {
         appHeaderMinHeight + contentHeaderMinHeight + 7
     }
+
+    public static func searchablePanelHeaderMinHeight(
+        showsInlineSearch: Bool
+    ) -> CGFloat {
+        showsInlineSearch ? panelHeaderMinHeight : appHeaderMinHeight
+    }
 }

@@ -107,7 +107,12 @@ struct TasksPanelView: View {
 
 extension TasksPanelView {
     private var header: some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
+        let showsInlineSearch = ContentView.shouldShowCompactPhoneInlineSearch(
+            isCompact: isCompact,
+            isPhoneIdiom: isCompactPhone
+        )
+
+        return VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Tasks") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
@@ -140,10 +145,7 @@ extension TasksPanelView {
                     }
                 }
             }
-            if ContentView.shouldShowCompactPhoneInlineSearch(
-                isCompact: isCompact,
-                isPhoneIdiom: isCompactPhone
-            ) {
+            if showsInlineSearch {
                 SearchField(
                     text: Binding(
                         get: { viewModel.searchQuery },
@@ -156,7 +158,7 @@ extension TasksPanelView {
                     .padding(.bottom, DesignTokens.Spacing.sm)
             }
         }
-        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
         .background(panelHeaderBackground())
     }
 

@@ -23,9 +23,10 @@ extension ContentView {
 
     static func isCompactPhoneSearchDockExpanded(
         searchText: String,
+        isSearchExplicitlyExpanded: Bool,
         isSearchFocused: Bool
     ) -> Bool {
-        isSearchFocused || !searchText.trimmed.isEmpty
+        isSearchExplicitlyExpanded || isSearchFocused || !searchText.trimmed.isEmpty
     }
 
     static func shouldCollapseCompactPhoneSearchDockActions(

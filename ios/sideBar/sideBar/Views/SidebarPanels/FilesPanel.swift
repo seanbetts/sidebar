@@ -181,7 +181,12 @@ extension FilesPanelView {
     }
 
     var header: some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
+        let showsInlineSearch = ContentView.shouldShowCompactPhoneInlineSearch(
+            isCompact: isCompact,
+            isPhoneIdiom: isPhone
+        )
+
+        return VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Files") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
@@ -210,10 +215,7 @@ extension FilesPanelView {
                     }
                 }
             }
-            if ContentView.shouldShowCompactPhoneInlineSearch(
-                isCompact: isCompact,
-                isPhoneIdiom: isPhone
-            ) {
+            if showsInlineSearch {
                 SearchField(
                     text: Binding(
                         get: { viewModel.panelSearchQuery },
@@ -226,7 +228,7 @@ extension FilesPanelView {
                     .padding(.bottom, DesignTokens.Spacing.sm)
             }
         }
-        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
         .background(panelHeaderBackground())
     }
 

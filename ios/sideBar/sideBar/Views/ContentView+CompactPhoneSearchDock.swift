@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 enum CompactPhoneSearchDockSearchPresentation: Equatable {
     case collapsedIcon
@@ -25,6 +26,7 @@ private struct CompactPhoneSearchDockView: View {
 
     let section: AppSection
     let searchText: Binding<String>
+    let isSearchExplicitlyExpanded: Binding<Bool>
     let placeholder: String
     let actionCount: Int
     let actionContent: (CompactPhoneSearchDockActionPresentation) -> AnyView
@@ -34,6 +36,7 @@ private struct CompactPhoneSearchDockView: View {
     private var displayModel: CompactPhoneSearchDockDisplayModel {
         ContentView.makeCompactPhoneSearchDockDisplayModel(
             searchText: searchText.wrappedValue,
+            isSearchExplicitlyExpanded: isSearchExplicitlyExpanded.wrappedValue,
             isSearchFocused: isSearchFocused,
             actionCount: actionCount
         )
@@ -59,7 +62,26 @@ private struct CompactPhoneSearchDockView: View {
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == section else { return }
             guard event.action == .focusSearch else { return }
-            isSearchFocused = true
+            isSearchExplicitlyExpanded.wrappedValue = true
+        }
+        .onChange(of: displayModel.searchPresentation) { _, newValue in
+            guard newValue == .expandedField else { return }
+            guard isSearchExplicitlyExpanded.wrappedValue else { return }
+            DispatchQueue.main.async {
+                isSearchFocused = true
+            }
+        }
+        .onChange(of: isSearchFocused) { _, isFocused in
+            if isFocused {
+                isSearchExplicitlyExpanded.wrappedValue = true
+            } else if searchText.wrappedValue.trimmed.isEmpty {
+                isSearchExplicitlyExpanded.wrappedValue = false
+            }
+        }
+        .onChange(of: searchText.wrappedValue) { _, newValue in
+            guard newValue.trimmed.isEmpty else { return }
+            guard !isSearchFocused else { return }
+            isSearchExplicitlyExpanded.wrappedValue = false
         }
         .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: displayModel)
     }
@@ -69,7 +91,7 @@ private struct CompactPhoneSearchDockView: View {
         switch displayModel.searchPresentation {
         case .collapsedIcon:
             Button {
-                isSearchFocused = true
+                isSearchExplicitlyExpanded.wrappedValue = true
             } label: {
                 Image(systemName: "magnifyingglass")
                     .appFont(.labelMd)
@@ -124,11 +146,13 @@ extension ContentView {
 
     static func makeCompactPhoneSearchDockDisplayModel(
         searchText: String,
+        isSearchExplicitlyExpanded: Bool,
         isSearchFocused: Bool,
         actionCount: Int
     ) -> CompactPhoneSearchDockDisplayModel {
         let isExpanded = isCompactPhoneSearchDockExpanded(
             searchText: searchText,
+            isSearchExplicitlyExpanded: isSearchExplicitlyExpanded,
             isSearchFocused: isSearchFocused
         )
 
@@ -202,6 +226,7 @@ extension ContentView {
         CompactPhoneSearchDockView(
             section: compactWorkspaceSection,
             searchText: compactPhoneSearchDockSearchText,
+            isSearchExplicitlyExpanded: $isCompactPhoneSearchDockExplicitlyExpanded,
             placeholder: compactPhoneSearchDockDescriptor?.placeholder ?? "Search",
             actionCount: compactPhoneSearchDockActionCount,
             actionContent: compactPhoneSearchDockActionView(for:)

@@ -91,19 +91,31 @@ final class CompactPhoneSearchDockTests: XCTestCase {
     func testCompactPhoneSearchDockExpandedStateTracksFocusOrQuery() {
         let collapsed = ContentView.isCompactPhoneSearchDockExpanded(
             searchText: "",
+            isSearchExplicitlyExpanded: false,
             isSearchFocused: false
         )
         let expandedFromFocus = ContentView.isCompactPhoneSearchDockExpanded(
             searchText: "",
+            isSearchExplicitlyExpanded: false,
             isSearchFocused: true
         )
         let expandedFromQuery = ContentView.isCompactPhoneSearchDockExpanded(
             searchText: "notes",
+            isSearchExplicitlyExpanded: false,
             isSearchFocused: false
         )
         XCTAssertFalse(collapsed)
         XCTAssertTrue(expandedFromFocus)
         XCTAssertTrue(expandedFromQuery)
+    }
+
+    func testCompactPhoneSearchDockExpandedStateTracksExplicitExpansion() {
+        let expanded = ContentView.isCompactPhoneSearchDockExpanded(
+            searchText: "",
+            isSearchExplicitlyExpanded: true,
+            isSearchFocused: false
+        )
+        XCTAssertTrue(expanded)
     }
 
     func testCompactPhoneSearchDockCollapsesMultiActionSectionsOnlyWhenExpanded() {
@@ -127,6 +139,7 @@ final class CompactPhoneSearchDockTests: XCTestCase {
     func testMakeCompactPhoneSearchDockDisplayModelShowsCollapsedMagnifyingGlassState() {
         let model = ContentView.makeCompactPhoneSearchDockDisplayModel(
             searchText: "",
+            isSearchExplicitlyExpanded: false,
             isSearchFocused: false,
             actionCount: 2
         )
@@ -137,6 +150,7 @@ final class CompactPhoneSearchDockTests: XCTestCase {
     func testMakeCompactPhoneSearchDockDisplayModelShowsExpandedSearchState() {
         let model = ContentView.makeCompactPhoneSearchDockDisplayModel(
             searchText: "",
+            isSearchExplicitlyExpanded: false,
             isSearchFocused: true,
             actionCount: 1
         )
@@ -147,6 +161,18 @@ final class CompactPhoneSearchDockTests: XCTestCase {
     func testMakeCompactPhoneSearchDockDisplayModelCollapsesMultiActionSectionsWhileExpanded() {
         let model = ContentView.makeCompactPhoneSearchDockDisplayModel(
             searchText: "note",
+            isSearchExplicitlyExpanded: false,
+            isSearchFocused: false,
+            actionCount: 2
+        )
+        XCTAssertEqual(model.searchPresentation, .expandedField)
+        XCTAssertEqual(model.actionPresentation, .collapsedMenu)
+    }
+
+    func testMakeCompactPhoneSearchDockDisplayModelExpandsFieldFromExplicitExpansion() {
+        let model = ContentView.makeCompactPhoneSearchDockDisplayModel(
+            searchText: "",
+            isSearchExplicitlyExpanded: true,
             isSearchFocused: false,
             actionCount: 2
         )

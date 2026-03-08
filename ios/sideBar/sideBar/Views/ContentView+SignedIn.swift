@@ -124,6 +124,7 @@ extension ContentView {
             }
         })
         content = AnyView(content.onChange(of: phoneSelection) { _, newValue in
+            isCompactPhoneSearchDockExplicitlyExpanded = false
             syncCompactPhoneTabSelection(for: newValue)
             environment.focusedSection = newValue
             environment.focusedWorkspacePane = .primary
