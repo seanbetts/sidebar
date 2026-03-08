@@ -1,7 +1,7 @@
 import SwiftUI
+#if os(iOS)
 import UIKit
 
-#if os(iOS)
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitNoteFormattingBar: UIView {
