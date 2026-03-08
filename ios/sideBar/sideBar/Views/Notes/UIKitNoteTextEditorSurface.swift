@@ -52,20 +52,22 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let maxContentWidth: CGFloat
     let isEditable: Bool
     let formattingBarConfiguration: NoteFormattingBarConfiguration?
-    let showsFormattingAccessory: Bool
+    let formattingBarPresentation: NoteFormattingBarPresentation
 
     init(
         viewModel: NativeNoteEditorViewModel,
         maxContentWidth: CGFloat,
         isEditable: Bool,
         formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
+        formattingBarPresentation: NoteFormattingBarPresentation? = nil,
         showsFormattingAccessory: Bool = true
     ) {
         self.viewModel = viewModel
         self.maxContentWidth = maxContentWidth
         self.isEditable = isEditable
         self.formattingBarConfiguration = formattingBarConfiguration
-        self.showsFormattingAccessory = showsFormattingAccessory
+        self.formattingBarPresentation = formattingBarPresentation
+            ?? (showsFormattingAccessory ? .keyboardAccessory : .hidden)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -88,7 +90,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         )
         textView.delegate = context.coordinator
         textView.textFormattingConfiguration = nil
-        if showsFormattingAccessory, let formattingBarConfiguration {
+        if shouldShowFormattingAccessory, let formattingBarConfiguration {
             textView.formattingAccessoryView = makeFormattingBar(configuration: formattingBarConfiguration)
         }
         return textView
@@ -164,7 +166,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.onItalicCommand = configuration?.onItalicTap
         textView.onUnderlineCommand = configuration?.onUnderlineTap
 
-        guard showsFormattingAccessory else {
+        guard shouldShowFormattingAccessory else {
             if textView.formattingAccessoryView != nil {
                 textView.formattingAccessoryView = nil
                 return true
@@ -193,6 +195,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         let bar = UIKitNoteFormattingBar(configuration: configuration)
         bar.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         return bar
+    }
+
+    private var shouldShowFormattingAccessory: Bool {
+        isEditable && formattingBarPresentation == .keyboardAccessory
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
