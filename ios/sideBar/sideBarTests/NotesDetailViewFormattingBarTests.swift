@@ -87,6 +87,31 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         XCTAssertTrue(context.makeView().isFormattingToolbarVisible)
     }
 
+    @available(iOS 26.0, *)
+    func testAttributedNoteEditorContainerReevaluatesPresentationWhenInputModeChanges() async {
+        let context = await makeNotesDetailViewTestContext()
+        context.editorViewModel.enterEditMode()
+        let environment = makeNotesDetailTestEnvironment()
+        let hardwareKeyboardExpectation = MutableHardwareKeyboardExpectation(value: false)
+        var presentations: [NoteFormattingBarPresentation] = []
+        let container = AttributedNoteEditorContainer(
+            editorViewModel: context.editorViewModel,
+            maxContentWidth: 390,
+            hardwareKeyboardInputExpectedProvider: { hardwareKeyboardExpectation.value },
+            onFormattingBarPresentationChange: { presentations.append($0) },
+            onEscape: nil
+        )
+
+        _ = mount(container, environment: environment)
+        XCTAssertEqual(presentations.last, .hidden)
+
+        hardwareKeyboardExpectation.value = true
+        NotificationCenter.default.post(name: UITextInputMode.currentInputModeDidChangeNotification, object: nil)
+        try? await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertEqual(presentations.last, .floatingTopTrailing)
+    }
+
     func testFormattingBarConfigurationTapUpdatesCanonicalSnapshotAndSelectedState() async throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
@@ -262,3 +287,14 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
     }
 #endif
 }
+
+#if os(iOS)
+@MainActor
+private final class MutableHardwareKeyboardExpectation {
+    var value: Bool
+
+    init(value: Bool) {
+        self.value = value
+    }
+}
+#endif
