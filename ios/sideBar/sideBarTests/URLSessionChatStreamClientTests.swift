@@ -147,6 +147,8 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         client.disconnect()
 
         await connectTask.value
+        session.invalidateAndCancel()
+        XCTAssertTrue(URLProtocolStreamingMock.waitForIdle(timeout: 1.0))
     }
 
     func testRapidConnectDisconnectCyclesDoNotCrash() async throws {
@@ -171,6 +173,9 @@ final class URLSessionChatStreamClientTests: XCTestCase {
             client.disconnect()
             await task.value
         }
+
+        session.invalidateAndCancel()
+        XCTAssertTrue(URLProtocolStreamingMock.waitForIdle(timeout: 1.0))
     }
 
     // MARK: - Helpers
@@ -200,6 +205,8 @@ private final class RecordingHandler: ChatStreamEventHandler {
 }
 
 private final class URLProtocolStreamingMock: URLProtocol {
+    private static let stateCondition = NSCondition()
+    private static var activeLoads = 0
     static var requestHandler: ((URLRequest) throws -> HTTPURLResponse)?
     static var dataChunks: [Data] = []
     static var statusCode: Int = 200
@@ -212,7 +219,23 @@ private final class URLProtocolStreamingMock: URLProtocol {
         request
     }
 
+    static func waitForIdle(timeout: TimeInterval) -> Bool {
+        stateCondition.lock()
+        defer { stateCondition.unlock() }
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while activeLoads > 0 {
+            if !stateCondition.wait(until: deadline) {
+                return false
+            }
+        }
+        return true
+    }
+
     override func startLoading() {
+        Self.beginLoad()
+        defer { Self.endLoad() }
+
         guard let handler = URLProtocolStreamingMock.requestHandler else {
             XCTFail("Request handler not set")
             return
@@ -230,5 +253,20 @@ private final class URLProtocolStreamingMock: URLProtocol {
     }
 
     override func stopLoading() {
+    }
+
+    private static func beginLoad() {
+        stateCondition.lock()
+        activeLoads += 1
+        stateCondition.unlock()
+    }
+
+    private static func endLoad() {
+        stateCondition.lock()
+        activeLoads = max(0, activeLoads - 1)
+        if activeLoads == 0 {
+            stateCondition.broadcast()
+        }
+        stateCondition.unlock()
     }
 }
