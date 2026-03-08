@@ -9,7 +9,8 @@ def _auth_headers() -> dict[str, str]:
 def test_scratchpad_ensure_title():
     content = "Hello"
     result = scratchpad_router.ensure_title(content)
-    assert result.startswith(f"# {scratchpad_router.SCRATCHPAD_TITLE}")
+    assert result.startswith(scratchpad_router.SCRATCHPAD_TITLE)
+    assert not result.startswith(f"# {scratchpad_router.SCRATCHPAD_TITLE}")
 
 
 def test_scratchpad_get_returns_note(test_client):
@@ -17,6 +18,9 @@ def test_scratchpad_get_returns_note(test_client):
     assert response.status_code == 200
     body = response.json()
     assert body["title"] == scratchpad_router.SCRATCHPAD_TITLE
+    assert body["plain_text"] == scratchpad_router.SCRATCHPAD_TITLE
+    assert body["content"] == scratchpad_router.SCRATCHPAD_TITLE
+    assert body["document"]["blocks"][0]["content"][0]["text"] == scratchpad_router.SCRATCHPAD_TITLE
 
 
 def test_scratchpad_update_roundtrip(test_client):
@@ -30,6 +34,9 @@ def test_scratchpad_update_roundtrip(test_client):
     updated = test_client.get("/api/scratchpad", headers=_auth_headers())
     assert updated.status_code == 200
     assert "Hello" in updated.json()["content"]
+    assert not updated.json()["content"].startswith(
+        f"# {scratchpad_router.SCRATCHPAD_TITLE}"
+    )
 
 
 def test_scratchpad_update_roundtrip_without_write_flag(test_client):
@@ -43,3 +50,6 @@ def test_scratchpad_update_roundtrip_without_write_flag(test_client):
     updated = test_client.get("/api/scratchpad", headers=_auth_headers())
     assert updated.status_code == 200
     assert "Strict Hello" in updated.json()["content"]
+    assert not updated.json()["content"].startswith(
+        f"# {scratchpad_router.SCRATCHPAD_TITLE}"
+    )

@@ -17,7 +17,32 @@ def test_build_canonical_note_write_projects_plain_text_and_title():
     assert result.document == document
     assert result.document_version == 1
     assert result.plain_text == "\n# Hello\nWorld"
-    assert result.title == "Hello"
+    assert result.title == "# Hello"
+
+
+def test_build_canonical_note_write_accepts_inline_marks_in_paragraph_documents():
+    document = {
+        "version": 1,
+        "blocks": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {"text": "Marked", "marks": ["bold"]},
+                    {"text": " title", "marks": ["italic"]},
+                ],
+            },
+            {
+                "type": "paragraph",
+                "content": [{"text": "Body", "marks": ["underline"]}],
+            },
+        ],
+    }
+
+    result = build_canonical_note_write(document)
+
+    assert result.document == document
+    assert result.plain_text == "Marked title\nBody"
+    assert result.title == "Marked title"
 
 
 def test_validate_plain_text_requires_string():

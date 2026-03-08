@@ -144,7 +144,7 @@ def test_notes_sync_rename_leaves_derived_title_unchanged(test_db):
     note = NotesService.create_note(
         test_db,
         "user-1",
-        _document("# Title\n\nBody"),
+        _document("Title\n\nBody"),
     )
 
     result = NotesSyncService.sync_operations(

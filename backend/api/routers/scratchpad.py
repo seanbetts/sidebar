@@ -19,8 +19,39 @@ SCRATCHPAD_HEADING = f"# {SCRATCHPAD_TITLE}"
 SCRATCHPAD_DIVIDER = "\n\n___\n\n"
 
 
+def _title_only_blocks() -> list[dict[str, object]]:
+    return [
+        {
+            "type": "paragraph",
+            "content": [{"text": SCRATCHPAD_TITLE, "marks": []}],
+        }
+    ]
+
+
+def _title_only_document() -> dict[str, object]:
+    return {
+        "version": 1,
+        "blocks": _title_only_blocks(),
+    }
+
+
+def _scratchpad_document(body_plain_text: str) -> dict[str, object]:
+    stripped_body = body_plain_text.strip()
+    if not stripped_body:
+        return _title_only_document()
+
+    body_document = note_document_from_plain_text(stripped_body)
+    return {
+        "version": 1,
+        "blocks": [
+            *_title_only_blocks(),
+            *body_document["blocks"],
+        ],
+    }
+
+
 def ensure_title(content: str) -> str:
-    """Ensure scratchpad content starts with the scratchpad H1 title.
+    """Ensure scratchpad content starts with the scratchpad plain-text title.
 
     Args:
         content: Scratchpad content.
@@ -29,17 +60,23 @@ def ensure_title(content: str) -> str:
         Content with the scratchpad title prepended when missing.
     """
     trimmed = (content or "").lstrip()
-    if trimmed.startswith(SCRATCHPAD_HEADING):
+    if trimmed.startswith(SCRATCHPAD_TITLE) or trimmed.startswith(SCRATCHPAD_HEADING):
         return content
-    return f"{SCRATCHPAD_HEADING}\n\n{content or ''}".strip() + "\n"
+    return f"{SCRATCHPAD_TITLE}\n\n{content or ''}".strip() + "\n"
 
 
 def strip_heading(content: str) -> str:
-    """Strip the scratchpad heading from content if present."""
+    """Strip the scratchpad title line from content if present."""
     if not content:
         return ""
     trimmed = content.lstrip()
-    if not trimmed.startswith(SCRATCHPAD_HEADING):
+    if trimmed.startswith(SCRATCHPAD_HEADING):
+        lines = trimmed.splitlines()
+        if not lines:
+            return ""
+        remaining = "\n".join(lines[1:]).lstrip("\n")
+        return remaining.strip("\n")
+    if not trimmed.startswith(SCRATCHPAD_TITLE):
         return content.strip("\n")
     lines = trimmed.splitlines()
     if not lines:
@@ -75,6 +112,16 @@ def _note_plain_text(note) -> str:
     return note.plain_text or ""
 
 
+def _migrate_legacy_scratchpad_note(db: Session, user_id: str, note):
+    body_plain_text = strip_heading(_note_plain_text(note))
+    return NotesService.update_note(
+        db,
+        user_id,
+        note.id,
+        _scratchpad_document(body_plain_text),
+    )
+
+
 @router.get("")
 def get_scratchpad(
     user_id: str = Depends(get_current_user_id),
@@ -95,17 +142,25 @@ def get_scratchpad(
         db, user_id, SCRATCHPAD_TITLE, mark_opened=True
     )
     if not note:
-        note = NotesService.create_note(
-            db,
-            user_id,
-            note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
-            folder="",
+        note = NotesService.get_note_by_title(
+            db, user_id, SCRATCHPAD_HEADING, mark_opened=True
         )
+        if note:
+            note = _migrate_legacy_scratchpad_note(db, user_id, note)
+        else:
+            note = NotesService.create_note(
+                db,
+                user_id,
+                _title_only_document(),
+                folder="",
+            )
 
     return {
         "id": str(note.id),
         "title": note.title,
         "content": _note_plain_text(note),
+        "plain_text": _note_plain_text(note),
+        "document": note.document,
         "updated_at": note.updated_at.isoformat() if note.updated_at else None,
     }
 
@@ -145,12 +200,18 @@ def update_scratchpad(
         db, user_id, SCRATCHPAD_TITLE, mark_opened=False
     )
     if not note:
-        note = NotesService.create_note(
-            db,
-            user_id,
-            note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
-            folder="",
+        note = NotesService.get_note_by_title(
+            db, user_id, SCRATCHPAD_HEADING, mark_opened=False
         )
+        if note:
+            note = _migrate_legacy_scratchpad_note(db, user_id, note)
+        else:
+            note = NotesService.create_note(
+                db,
+                user_id,
+                _title_only_document(),
+                folder="",
+            )
 
     if mode_raw is None and not strip_heading(content):
         mode = "replace"
@@ -159,7 +220,7 @@ def update_scratchpad(
         db,
         user_id,
         note.id,
-        note_document_from_plain_text(merged_content),
+        _scratchpad_document(strip_heading(merged_content)),
     )
 
     return {"success": True, "id": str(updated.id)}
@@ -185,18 +246,24 @@ def clear_scratchpad(
         db, user_id, SCRATCHPAD_TITLE, mark_opened=False
     )
     if not note:
-        note = NotesService.create_note(
-            db,
-            user_id,
-            note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
-            folder="",
+        note = NotesService.get_note_by_title(
+            db, user_id, SCRATCHPAD_HEADING, mark_opened=False
         )
+        if note:
+            note = _migrate_legacy_scratchpad_note(db, user_id, note)
+        else:
+            note = NotesService.create_note(
+                db,
+                user_id,
+                _title_only_document(),
+                folder="",
+            )
     else:
         NotesService.update_note(
             db,
             user_id,
             note.id,
-            note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
+            _title_only_document(),
         )
 
     return {"success": True, "id": str(note.id)}

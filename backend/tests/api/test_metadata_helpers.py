@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 import pytest
 from api.models.note import Note
 from api.models.website import Website
+from api.services.notes_document_types import note_document_from_plain_text
 from api.utils.metadata_helpers import get_max_pinned_order
 
 
@@ -17,10 +18,21 @@ def _create_note(db_session, user_id: str, metadata: dict) -> Note:
     note = Note(
         user_id=user_id,
         title="Note",
-        content="Body",
+        document=note_document_from_plain_text("Body"),
+        document_version=1,
+        plain_text="Body",
+        folder_path="",
+        pinned=bool(metadata.get("pinned", False)),
+        pinned_order=metadata.get("pinned_order")
+        if isinstance(metadata.get("pinned_order"), int | type(None))
+        else None,
+        is_folder_marker=False,
+        is_archived=False,
         metadata_=metadata,
         created_at=now,
         updated_at=now,
+        last_opened_at=None,
+        deleted_at=None,
     )
     db_session.add(note)
     db_session.commit()
