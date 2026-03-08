@@ -3,6 +3,18 @@ import XCTest
 
 @MainActor
 final class SettingsSectionsTests: XCTestCase {
+    func testTextSizeControlModeUsesPickerOnIOS() {
+        let mode = GeneralSettingsView.textSizeControlMode(for: .iOS)
+
+        XCTAssertEqual(mode, .picker)
+    }
+
+    func testTextSizeControlModeUsesMenuPickerOnMacOS() {
+        let mode = GeneralSettingsView.textSizeControlMode(for: .macOS)
+
+        XCTAssertEqual(mode, .menuPicker)
+    }
+
     func testShouldFlushAutosaveOnDisappearWhenDraftIsDirty() {
         let shouldFlush = ProfileSettingsView.shouldFlushAutosaveOnDisappear(
             hasLoadedDrafts: true,

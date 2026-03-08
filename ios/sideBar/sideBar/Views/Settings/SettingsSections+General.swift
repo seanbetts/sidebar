@@ -3,54 +3,35 @@ import sideBarShared
 import SwiftUI
 
 struct GeneralSettingsView: View {
+    enum TextSizeControlMode: Equatable {
+        case picker
+        case menuPicker
+    }
+
+    enum TextSizeControlPlatform {
+        case iOS
+        case macOS
+    }
+
     @AppStorage(AppStorageKeys.biometricUnlockEnabled) private var biometricUnlockEnabled = false
     @AppStorage(AppStorageKeys.weatherUsesFahrenheit) private var weatherUsesFahrenheit = false
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     @State private var canUseDeviceAuth = false
     @State private var biometryType: LABiometryType = .none
 
+    static func textSizeControlMode(for platform: TextSizeControlPlatform) -> TextSizeControlMode {
+        switch platform {
+        case .iOS:
+            return .picker
+        case .macOS:
+            return .menuPicker
+        }
+    }
+
     var body: some View {
         Form {
             Section("Text") {
-                #if os(iOS)
-                LabeledContent("Text Size") {
-                    Menu {
-                        ForEach(AppTextSizeOption.allCases) { option in
-                            Button {
-                                appTextSizeRaw = option.rawValue
-                            } label: {
-                                if option.rawValue == appTextSizeRaw {
-                                    Label(option.displayName, systemImage: "checkmark")
-                                } else {
-                                    Text(option.displayName)
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(AppTextSizeOption.resolved(from: appTextSizeRaw).displayName)
-                                .appFont(.body)
-                                .foregroundStyle(DesignTokens.Colors.textPrimary)
-                            Image(systemName: "chevron.up.chevron.down")
-                                .appFont(.caption2)
-                                .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        }
-                    }
-                }
-                .appFont(.body)
-                #else
-                Picker("Text Size", selection: $appTextSizeRaw) {
-                    ForEach(AppTextSizeOption.allCases) { option in
-                        Text(option.displayName)
-                            .appFont(.body)
-                            .tag(option.rawValue)
-                    }
-                }
-                .appFont(.body)
-                #if os(macOS)
-                .pickerStyle(.menu)
-                #endif
-                #endif
+                textSizeControl
             }
             Section("Security") {
                 Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
@@ -81,6 +62,40 @@ struct GeneralSettingsView: View {
             appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
             evaluateBiometricSupport()
         }
+    }
+
+    @ViewBuilder
+    private var textSizeControl: some View {
+        switch Self.textSizeControlMode(for: currentTextSizeControlPlatform) {
+        case .picker:
+            Picker("Text Size", selection: $appTextSizeRaw) {
+                textSizePickerOptions
+            }
+            .appFont(.body)
+        case .menuPicker:
+            Picker("Text Size", selection: $appTextSizeRaw) {
+                textSizePickerOptions
+            }
+            .appFont(.body)
+            .pickerStyle(.menu)
+        }
+    }
+
+    @ViewBuilder
+    private var textSizePickerOptions: some View {
+        ForEach(AppTextSizeOption.allCases) { option in
+            Text(option.displayName)
+                .appFont(.body)
+                .tag(option.rawValue)
+        }
+    }
+
+    private var currentTextSizeControlPlatform: TextSizeControlPlatform {
+        #if os(iOS)
+        .iOS
+        #else
+        .macOS
+        #endif
     }
 
     private var biometricLabel: String {
