@@ -88,6 +88,40 @@ final class CompactPhoneSearchDockTests: XCTestCase {
         XCTAssertFalse(shouldShow)
     }
 
+    func testShouldResetCompactPhoneSearchDockWhenSwitchingSections() {
+        let shouldReset = ContentView.shouldResetCompactPhoneSearchDock(
+            previousSection: .chat,
+            nextSection: .notes
+        )
+
+        XCTAssertTrue(shouldReset)
+    }
+
+    func testShouldResetCompactPhoneSearchDockWhenSectionIsUnchanged() {
+        let shouldReset = ContentView.shouldResetCompactPhoneSearchDock(
+            previousSection: .files,
+            nextSection: .files
+        )
+
+        XCTAssertFalse(shouldReset)
+    }
+
+    func testCompactPhoneSearchDockBottomPaddingKeepsTabBarClearanceWhenKeyboardIsHidden() {
+        let padding = ContentView.compactPhoneSearchDockBottomPadding(
+            isSoftwareKeyboardVisible: false
+        )
+
+        XCTAssertEqual(padding, 72)
+    }
+
+    func testCompactPhoneSearchDockBottomPaddingAttachesToKeyboardWhenVisible() {
+        let padding = ContentView.compactPhoneSearchDockBottomPadding(
+            isSoftwareKeyboardVisible: true
+        )
+
+        XCTAssertEqual(padding, DesignTokens.Spacing.sm)
+    }
+
     func testCompactPhoneSearchDockExpandedStateTracksFocusOrQuery() {
         let collapsed = ContentView.isCompactPhoneSearchDockExpanded(
             searchText: "",

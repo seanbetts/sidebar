@@ -3,7 +3,6 @@ import SwiftUI
 enum PhoneFloatingActionMetrics {
     static let buttonSize: CGFloat = 40
     static let contentSpacing: CGFloat = 6
-    static let expandedDockMaxWidth: CGFloat = 320
 }
 
 struct PhoneFloatingActionDock<Content: View>: View {

@@ -45,21 +45,11 @@ struct SearchField: View {
     }
 
     private var horizontalPadding: CGFloat {
-        switch chrome {
-        case .standard:
-            DesignTokens.Spacing.sm
-        case .dock:
-            DesignTokens.Spacing.xs
-        }
+        Self.horizontalPadding(for: chrome)
     }
 
     private var verticalPadding: CGFloat {
-        switch chrome {
-        case .standard:
-            DesignTokens.Spacing.xs
-        case .dock:
-            DesignTokens.Spacing.xxs
-        }
+        Self.verticalPadding(for: chrome)
     }
 
     private var backgroundColor: Color {
@@ -79,6 +69,22 @@ struct SearchField: View {
                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
         case .dock:
             EmptyView()
+        }
+    }
+
+    static func horizontalPadding(for chrome: SearchFieldChrome) -> CGFloat {
+        switch chrome {
+        case .standard:
+            DesignTokens.Spacing.sm
+        case .dock:
+            DesignTokens.Spacing.xs
+        }
+    }
+
+    static func verticalPadding(for chrome: SearchFieldChrome) -> CGFloat {
+        switch chrome {
+        case .standard, .dock:
+            DesignTokens.Spacing.xs
         }
     }
 }

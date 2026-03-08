@@ -123,8 +123,14 @@ extension ContentView {
                 presentAlert(.biometricUnavailable)
             }
         })
-        content = AnyView(content.onChange(of: phoneSelection) { _, newValue in
-            isCompactPhoneSearchDockExplicitlyExpanded = false
+        content = AnyView(content.onChange(of: phoneSelection) { oldValue, newValue in
+            if Self.shouldResetCompactPhoneSearchDock(
+                previousSection: oldValue,
+                nextSection: newValue
+            ) {
+                clearCompactPhoneSearchDockQuery(for: oldValue)
+                isCompactPhoneSearchDockExplicitlyExpanded = false
+            }
             syncCompactPhoneTabSelection(for: newValue)
             environment.focusedSection = newValue
             environment.focusedWorkspacePane = .primary

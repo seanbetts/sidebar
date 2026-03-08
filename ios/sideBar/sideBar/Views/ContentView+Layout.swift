@@ -36,6 +36,19 @@ extension ContentView {
         isSearchExpanded && actionCount > 1
     }
 
+    static func shouldResetCompactPhoneSearchDock(
+        previousSection: AppSection,
+        nextSection: AppSection
+    ) -> Bool {
+        previousSection != nextSection
+    }
+
+    static func compactPhoneSearchDockBottomPadding(
+        isSoftwareKeyboardVisible: Bool
+    ) -> CGFloat {
+        isSoftwareKeyboardVisible ? DesignTokens.Spacing.sm : 72
+    }
+
     @ViewBuilder
     var mainView: some View {
         #if os(macOS)
@@ -139,15 +152,26 @@ extension ContentView {
             }
         }
         .tint(tabBarTint)
+        .simultaneousGesture(TapGesture().onEnded {
+            guard isCompactPhoneSearchDockExplicitlyExpanded else { return }
+            dismissCompactPhoneSearchDock()
+        })
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if shouldShowCompactPhoneSearchDock {
                 HStack {
-                    Spacer(minLength: 0)
-                    compactPhoneSearchDock
-                        .padding(.trailing, DesignTokens.Spacing.lg)
-                        .padding(.bottom, 72)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    if isCompactPhoneSearchDockExplicitlyExpanded {
+                        compactPhoneSearchDock
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Spacer(minLength: 0)
+                        compactPhoneSearchDock
+                    }
                 }
+                .padding(.horizontal, DesignTokens.Spacing.sm)
+                .padding(.bottom, Self.compactPhoneSearchDockBottomPadding(
+                    isSoftwareKeyboardVisible: isCompactPhoneSoftwareKeyboardVisible
+                ))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if shouldShowPhoneFloatingActionDock {
                 HStack {
                     Spacer(minLength: 0)
@@ -157,6 +181,20 @@ extension ContentView {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isCompactPhoneSoftwareKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isCompactPhoneSoftwareKeyboardVisible = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
+            isCompactPhoneSoftwareKeyboardVisible = false
+        }
+        .onKeyPress(.escape) {
+            guard isCompactPhoneSearchDockExplicitlyExpanded else { return .ignored }
+            dismissCompactPhoneSearchDock()
+            return .handled
         }
         .animation(
             .easeInOut(duration: DesignTokens.Animation.standard),
@@ -169,6 +207,38 @@ extension ContentView {
                 scratchpadStore: environment.scratchpadStore
             )
             .phoneSheetGrabBarVisible()
+        }
+    }
+
+    func dismissCompactPhoneSearchDock() {
+        clearCompactPhoneSearchDockQuery(for: compactWorkspaceSection)
+        isCompactPhoneSearchDockExplicitlyExpanded = false
+        #if os(iOS)
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        #endif
+    }
+
+    func clearCompactPhoneSearchDockQuery(for section: AppSection) {
+        switch section {
+        case .chat:
+            compactPhoneChatSearchQuery = ""
+        case .notes:
+            environment.notesRuntime.viewModel.searchQuery = ""
+        case .tasks:
+            environment.tasksViewModel.updateSearch(query: "")
+        case .websites:
+            environment.websitesViewModel.panelSearchQuery = ""
+        case .files:
+            environment.ingestionViewModel.panelSearchQuery = ""
+        case .skillsStore:
+            compactPhoneSkillsStoreSearchQuery = ""
+        case .settings:
+            break
         }
     }
 

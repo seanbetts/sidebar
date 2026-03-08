@@ -48,6 +48,7 @@ extension ContentView {
                     compactPhoneMoreNavigationPath = []
                     phoneSelection = section
                 case .more:
+                    dismissCompactPhoneSearchDock()
                     compactPhoneMoreNavigationPath = []
                 }
             }

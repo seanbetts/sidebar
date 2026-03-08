@@ -55,9 +55,8 @@ private struct CompactPhoneSearchDockView: View {
             }
         }
         .frame(
-            maxWidth: displayModel.searchPresentation == .expandedField
-                ? PhoneFloatingActionMetrics.expandedDockMaxWidth
-                : nil
+            maxWidth: displayModel.searchPresentation == .expandedField ? .infinity : nil,
+            alignment: .trailing
         )
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event, event.section == section else { return }
