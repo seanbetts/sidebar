@@ -13,7 +13,8 @@ them as plug-ins: each skill gives sideBar access to a specific ability or
 external service, and sideBar selects and uses relevant skills
 automatically as you chat — you don't need to invoke them by name or switch
 modes. When a skill is running, you'll see the tool activity appear inline in
-the conversation so you can follow along in real time.
+the [conversation](/manual/chat#skills-in-action) so you can follow along in
+real time.
 
 ## Skill Tiers
 

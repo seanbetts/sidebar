@@ -52,8 +52,8 @@ Tap any ready file to open it in the built-in viewer:
 
 Once a file reaches the **ready** state, its content is indexed and the
 sideBar can search and reference it during any conversation. You can also
-attach a specific file directly to a chat message to give sideBar focused
-context on that file.
+attach a specific file directly to a [chat](/manual/chat) message to give
+sideBar focused context on that file.
 
 ## File Actions
 

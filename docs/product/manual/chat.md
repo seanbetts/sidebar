@@ -76,16 +76,19 @@ Beyond environment context, sideBar also draws on:
 
 - **Your profile** — name, pronouns, age, job title, employer, and home
   location from your account settings if you've shared it
-- **What you have open** — if you have a note, website, or file open in
-  the app, sideBar can see its content and use it in your conversation
+- **What you have open** — if you have a [note](/manual/notes),
+  [website](/manual/websites), or [file](/manual/files) open in the app,
+  sideBar can see its content and use it in your conversation
 - **Recent activity** — notes, websites, files, and chats you've worked
   with today
-- **Your tasks** — a snapshot of your current tasks list. What's overdue,
-  due today, and what's due tomorrow
+- **Your tasks** — a snapshot of your current [tasks](/manual/tasks) list.
+  What's overdue, due today, and what's due tomorrow
 - **Your personalisation settings** — your communication style, working
-  relationship, and sideBar's identity and soul
+  relationship, and sideBar's identity and soul. See
+  [Personality](/manual/personality) and [Settings](/manual/settings)
 - **Relevant skills** — sideBar dynamically selects which of your enabled
-  skills to include based on your message, so only what's useful is loaded
+  [skills](/manual/skills) to include based on your message, so only what's
+  useful is loaded
 
 ### Starting fresh
 

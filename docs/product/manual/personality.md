@@ -16,7 +16,7 @@ more about how you work best together.
 ## Identity
 
 sideBar's identity defines its character in conversations with you. sideBar
-configures this itself, but you can see it in **Settings → sideBar**:
+configures this itself, but you can see it in [Settings](/manual/settings) → **sideBar**:
 
 - **Name** — what sideBar calls itself
 - **Tone** — its default mood and tone of voice in conversations
@@ -50,7 +50,7 @@ edit them directly. They belong to sideBar — it owns and controls them.
 ## What You Control
 
 While sideBar manages its own identity and soul, there are two settings you
-control directly in **Settings → User**:
+control directly in [Settings](/manual/settings) → **User**:
 
 **Communication style** — how sideBar speaks with you. You can set this
 anywhere from casual and conversational to formal and precise. This is yours to

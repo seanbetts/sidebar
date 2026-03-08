@@ -40,7 +40,7 @@ Choose which AI provider powers sideBar: Anthropic, OpenAI, or Google. Once you'
 
 ## Skills
 
-Manage which Standard and Store skills are active. See the Skills page for a full explanation of what skills are and how they work.
+Manage which Standard and Store skills are active. See the [Skills](/manual/skills) page for a full explanation of what skills are and how they work.
 
 ## App Settings
 

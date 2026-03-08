@@ -18,17 +18,20 @@ things around.
 
 ## What's in the App
 
-- **Chat** — your main interface with sideBar. Ask questions, give
-  instructions, or just think out loud.
-- **Notes** — a full-featured editor for capturing and organizing your writing.
-- **Tasks** — a lightweight to-do system both you and sideBar can use with
-  project-based organisaion.
-- **Websites** — saved webpages sideBar can read and reference.
-- **Files** — documents and files you want sideBar to work with.
+- **[Chat](/manual/chat)** — your main interface with sideBar. Ask questions,
+  give instructions, or just think out loud.
+- **[Notes](/manual/notes)** — a full-featured editor for capturing and
+  organizing your writing.
+- **[Tasks](/manual/tasks)** — a lightweight to-do system both you and sideBar
+  can use with project-based organisation.
+- **[Websites](/manual/websites)** — saved webpages sideBar can read and
+  reference.
+- **[Files](/manual/files)** — documents and files you want sideBar to work
+  with.
 
 ## Skills
 
-Skills extend what sideBar can do. There are three kinds:
+[Skills](/manual/skills) extend what sideBar can do. There are three kinds:
 
 - **Required skills** are always active and power sideBar's identity, soul and
   allow users to submit product feedback and bug reports.
