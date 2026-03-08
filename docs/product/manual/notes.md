@@ -21,7 +21,7 @@ Notes live in a hierarchical folder structure. You can create folders inside
 folders to whatever depth makes sense for how you work. Individual notes sit
 inside those folders.
 
-**Pinning** keeps a note at the top of the notes view — useful for anything you
+**Pinning** keeps a note at the top of the notes view. Useful for anything you
 reach for constantly. Notes you don't need day-to-day can be **archived**
 instead of deleted; the folder view shows an archived count so nothing is
 hidden from you.
@@ -29,7 +29,7 @@ hidden from you.
 ## Creating and Editing
 
 Create a new note from the menu. A note's title comes from its first line, so
-whatever you write first becomes the title — no separate naming step required.
+whatever you write first becomes the title, no separate naming step required.
 Changes save automatically as you write; a **Saved** indicator appears briefly
 to confirm each save. The editor remembers your cursor position, so when you
 come back to a note it's exactly where you left off.
@@ -45,14 +45,14 @@ Notes use rich text. Formatting is applied to whatever text you have selected.
 From the context menu (long-press a note in the list) or the toolbar menu when
 viewing a note, you can:
 
-- **Pin / Unpin** — keeps the note at the top of the notes view
-- **Move** — reassign the note to a different folder
-- **Copy Text** — copies the note content to your clipboard
-- **Share Text** — opens the system share sheet with the note content
-- **Download** — exports the note as a plain text file
-- **Archive / Unarchive** — moves the note out of your main view without
+- **Pin / Unpin**: keeps the note at the top of the notes view
+- **Move**: reassign the note to a different folder
+- **Copy Text**: copies the note content to your clipboard
+- **Share Text**: opens the system share sheet with the note content
+- **Download**: exports the note as a plain text file
+- **Archive / Unarchive**: moves the note out of your main view without
   deleting it
-- **Delete** — permanently removes the note after a confirmation prompt
+- **Delete**: permanently removes the note after a confirmation prompt
 
 Swipe left on any note to delete it directly. Folders support **Rename** (swipe
 right or context menu) and **Delete** (swipe left or context menu).
@@ -63,7 +63,7 @@ type, so you don't need to submit a query to start seeing matches.
 ## Scratchpad
 
 The Scratchpad is a special note that's always one tap away, from any view in
-the app. It's designed for quick captures — the kind of thing you want to get
+the app. It's designed for quick captures, the kind of thing you want to get
 down before you lose it. It auto-saves with a short delay so you can type and
 move on without thinking about it.
 

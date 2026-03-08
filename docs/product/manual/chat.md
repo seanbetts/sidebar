@@ -35,9 +35,9 @@ request.
 You can attach files to any message. Attachments move through three states
 before the message is ready to send:
 
-- **Uploading** — the file is transferring; you can cancel at this stage
-- **Queued** — the upload finished and the file is being prepared
-- **Ready** — the attachment is processed and the message can be sent
+- **Uploading**: the file is transferring; you can cancel at this stage
+- **Queued**: the upload finished and the file is being prepared
+- **Ready**: the attachment is processed and the message can be sent
 
 Any attached files are then stored in the **Files** section of the app.
 If an attachment fails, you can retry it or delete it and try a different file.
@@ -67,44 +67,44 @@ several things at once to answer your question.
 ## Context sideBar Receives
 
 Every message you send includes context sideBar uses to give you more
-relevant, grounded responses. You don't need to state any of this — it's
+relevant, grounded responses. You don't need to state any of this, it's
 included automatically.
 
 ### What sideBar knows automatically
 
 Your device sends a few pieces of environment context with every message:
 
-- **Date and time** — the current date, time, and your timezone
-- **Location** — your current location (if you've granted permission),
+- **Date and time**: the current date, time, and your timezone
+- **Location**: your current location (if you've granted permission),
   from city level down to country
-- **Weather** — current conditions at your location, including
+- **Weather**: current conditions at your location, including
   temperature, wind, and precipitation
-- **Device** — your operating system (iOS, macOS, etc.)
+- **Device**: your operating system (iOS, macOS, etc.)
 
 ### What sideBar brings into every conversation
 
 Beyond environment context, sideBar also draws on:
 
-- **Your profile** — name, pronouns, age, job title, employer, and home
+- **Your profile**: name, pronouns, age, job title, employer, and home
   location from your account settings if you've shared it
-- **What you have open** — if you have a [note](/manual/notes),
+- **What you have open**: if you have a [note](/manual/notes),
   [website](/manual/websites), or [file](/manual/files) open in the app,
   sideBar can see its content and use it in your conversation
-- **Recent activity** — notes, websites, files, and chats you've worked
+- **Recent activity**: notes, websites, files, and chats you've worked
   with today
-- **Your tasks** — a snapshot of your current [tasks](/manual/tasks) list.
+- **Your tasks**: a snapshot of your current [tasks](/manual/tasks) list.
   What's overdue, due today, and what's due tomorrow
-- **Your personalisation settings** — your communication style, working
+- **Your personalisation settings**: your communication style, working
   relationship, and sideBar's identity and soul. See
   [Personality](/manual/personality) and [Settings](/manual/settings)
-- **Relevant skills** — sideBar dynamically selects which of your enabled
+- **Relevant skills**: sideBar dynamically selects which of your enabled
   [skills](/manual/skills) to include based on your message, so only what's
   useful is loaded
 
 ### Starting fresh
 
 The very first message in a new conversation includes a short
-introduction — your name, pronouns, age, OS, and job — so sideBar
+introduction: your name, pronouns, age, OS, and job, so sideBar
 already knows the basics before you've typed anything.
 
 ## Offline

@@ -12,7 +12,7 @@ surfaces: [app, website, internal-knowledge]
   <img src="/assets/screenshots/extensions.png" alt="sideBar widget on the home screen" />
 </Frame>
 
-Widgets and extensions bring sideBar outside the app itself — onto your home
+Widgets and extensions bring sideBar outside the app itself and onto your home
 screen, lock screen, into Safari, and into the iOS share sheet. Each one is
 optional and takes less than a minute to set up.
 
@@ -21,16 +21,16 @@ optional and takes less than a minute to set up.
 sideBar offers five widget types for your iPhone, iPad, or Mac home screen,
 in small, medium, and large sizes:
 
-- **Today's Tasks** — your tasks for today with interactive checkboxes to
+- **Today's Tasks**: your tasks for today with interactive checkboxes to
   complete them. Tapping the add button opens the app to create a new task.
   See [Tasks](/manual/tasks) for more on how tasks work.
-- **Task Count** — a compact progress ring showing how many tasks you've
+- **Task Count**: a compact progress ring showing how many tasks you've
   completed today.
-- **Pinned Notes** — quick links to your pinned notes. See
+- **Pinned Notes**: quick links to your pinned notes. See
   [Notes](/manual/notes) for how to pin a note.
-- **Saved Websites** — your saved websites with favicons. See
+- **Saved Websites**: your saved websites with favicons. See
   [Websites](/manual/websites) for how to save sites.
-- **Pinned Files** — your pinned files with file-type icons. See
+- **Pinned Files**: your pinned files with file-type icons. See
   [Files](/manual/files) for how to pin a file.
 
 **To add a widget on iPhone or iPad:**
@@ -62,8 +62,8 @@ The Share extension lets you send content from any app — Safari, Mail, Photos,
 Files, and others — directly into sideBar, without switching apps.
 
 You can share:
-- **URLs** — saved to your [Websites](/manual/websites) section
-- **Images, PDFs, and other files** — saved to your [Files](/manual/files)
+- **URLs**: saved to your [Websites](/manual/websites) section
+- **Images, PDFs, and other files**: saved to your [Files](/manual/files)
   section
 
 **To enable the Share extension:**

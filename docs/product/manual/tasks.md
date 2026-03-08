@@ -17,9 +17,9 @@ surfaces: [app, website, internal-knowledge]
 sideBar gives you three built-in smart lists that update automatically based on
 your tasks.
 
-- **Today** — tasks due today.
-- **Upcoming** — tasks with a future due date, sorted chronologically.
-- **Completed** — tasks you've finished.
+- **Today**: tasks due today.
+- **Upcoming**: tasks with a future due date, sorted chronologically.
+- **Completed**: tasks you've finished.
 
 Each smart list displays a count that refreshes as you add, complete, or modify
 tasks.
@@ -36,9 +36,9 @@ it, or swipe left to delete it.
 Tap the **+** button from any task view. The new task sheet includes:
 
 - **Title** (required)
-- **Notes** (optional — anything extra you want to remember)
+- **Notes** (optional: anything extra you want to remember)
 - **Due date** (optional)
-- **List** — choose which project or smart list the task belongs to; defaults
+- **List**: choose which project or smart list the task belongs to; defaults
   to Today
 
 Tap **Save** to add it.
@@ -49,14 +49,14 @@ Once a task is saved, you can:
 
 - **Complete or uncomplete** it by tapping the circle next to the title.
 - **Rename** it by tapping into the title field.
-- **Add or edit notes** — notes save automatically as you type.
+- **Add or edit notes**: notes save automatically as you type.
 - **Set or clear a due date** using the date picker.
 - **Move the task** to a different project or smart list.
-- **Set recurrence** — choose daily, weekly, or monthly, configure the
+- **Set recurrence**: choose daily, weekly, or monthly, configure the
   interval (every N days, weeks, or months), and set a start date. sideBar
   tracks when the next instance is due and surfaces it in the right smart list
   automatically.
-- **Delete** the task — you'll be asked to confirm before it's removed.
+- **Delete** the task. You'll be asked to confirm before it's removed.
 
 ## Search
 

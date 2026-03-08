@@ -35,7 +35,7 @@ requirements, and version details.
 1. Tap a skill to open its detail view.
 2. Review the description and requirements.
 3. If the skill needs an API key from an external service, enter it when
-   prompted. Your key is encrypted before being stored — only the last four
+   prompted. Your key is encrypted before being stored. Only the last four
    characters are shown after saving and the full key is never displayed again.
 4. Tap **Install**. The skill is available to sideBar immediately.
 
@@ -50,7 +50,7 @@ there you can:
 
 - **Enable or disable** the skill with a toggle
 - **Update the API key** if your credentials change
-- **Uninstall** the skill — this removes it and deletes its credentials from
+- **Uninstall** the skill. This removes it and deletes its credentials from
   your account
 
 Disabling a skill keeps it installed but stops sideBar from using it. You can

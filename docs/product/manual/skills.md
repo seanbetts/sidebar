@@ -24,11 +24,11 @@ real time.
 
 Skills fall into three tiers:
 
-- **Required** — core skills that are always active. These cannot be
+- **Required**: core skills that are always active. These cannot be
   disabled because sideBar depends on them to function.
-- **Standard** — optional skills that come installed and enabled by default.
+- **Standard**: optional skills that come installed and enabled by default.
   You can turn any of them off if you don't want sideBar using them.
-- **Store** — additional skills you choose to install from the
+- **Store**: additional skills you choose to install from the
   [Skills Store](/manual/skills-store). Some are ready to use immediately;
   others require an API key from an external service, which you provide
   during installation.
@@ -38,7 +38,7 @@ Skills fall into three tiers:
 Standard skills have a toggle: **enabled** means sideBar can use the skill,
 **disabled** means it's installed but inactive until you turn it back on.
 
-Store skills can also show as **unavailable** — this means the skill is
+Store skills can also show as **unavailable**, this means the skill is
 installed but can't run right now, either because a required API key is
 missing or the skill requires a plan upgrade. sideBar will tell you what's
 needed.
@@ -54,7 +54,7 @@ change in a future update.
 
 Go to [Settings](/manual/settings) → **Skills** to manage what's active.
 Standard and Required skills appear as a list with a toggle next to each one.
-Installed Store skills appear here too — you can enable, disable, update
+Installed Store skills appear here too. You can enable, disable, update
 their API key, or uninstall them from this view.
 
 To browse and install new Store skills, go to the

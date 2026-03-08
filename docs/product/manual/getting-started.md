@@ -38,16 +38,16 @@ take notes, keep track of tasks, save websites to read later and upload files.
 Once your chosen AI provider is connected, sideBar will start a conversation to
 get you set up. It'll ask a few questions:
 
-**What do you want to do first?** — choose from writing, research, tasks, files,
+**What do you want to do first?**: choose from writing, research, tasks, files,
 or websites. This tells sideBar where to focus.
 
-**A bit about you** — sideBar collects your name, preferred pronouns, location,
+**A bit about you**: sideBar collects your name, preferred pronouns, location,
 communication style, and how you want it to work with you. This personalises
 every conversation from the start. See [Personality](/manual/personality) for
 more on how this works.
 
-**Your first outcome** — sideBar completes a real task in the area you chose.
-Not a demo — an actual piece of work, done in the app.
+**Your first outcome**: sideBar completes a real task in the area you chose.
+This isn't a demo, it's an actual piece of work, done in the app.
 
 You can move through this conversation at your own pace. Once it's done,
 sideBar remembers everything it learned and applies it going forward.
@@ -58,16 +58,16 @@ After onboarding, you land in the main app. The navigation bar sits at the
 bottom of the screen on iPhone, or in the left rail on iPad, Mac, and in a
 web browser. It has six sections:
 
-- **[Chat](/manual/chat)** — where you talk to sideBar and get things done.
-- **[Notes](/manual/notes)** — create and organise notes sideBar can read and
+- **[Chat](/manual/chat)**: where you talk to sideBar and get things done.
+- **[Notes](/manual/notes)**L create and organise notes sideBar can read and
   reference.
-- **[Tasks](/manual/tasks)** — manage to-dos manually or ask sideBar to create
+- **[Tasks](/manual/tasks)**L manage to-dos manually or ask sideBar to create
   them for you.
-- **[Websites](/manual/websites)** — save and browse webpages sideBar can
+- **[Websites](/manual/websites)**L save and browse webpages sideBar can
   reference.
-- **[Files](/manual/files)** — upload documents you want sideBar to read,
+- **[Files](/manual/files)**L upload documents you want sideBar to read,
   summarize, or work with.
-- **[Skills Store](/manual/skills-store)** — browse and install additional
+- **[Skills Store](/manual/skills-store)**: browse and install additional
   capabilities.
 
 ## Starting a Conversation
@@ -86,5 +86,5 @@ need to tell it where you are or what time it is if you don't want to.
 sideBar ships with a solid set of built-in capabilities, but the
 [Skills Store](/manual/skills-store) lets you go further. Browse and install
 additional skills, then manage them from **Settings → Skills**. Once a skill
-is enabled, sideBar uses it automatically — you don't need to invoke it by
+is enabled, sideBar uses it automatically. You don't need to invoke it by
 name.

@@ -67,7 +67,7 @@ and soul work and how they evolve over time.
 
 ## Skills
 
-Manage which skills are active. Skills are grouped into three tiers — use the
+Manage which skills are active. Skills are grouped into three tiers. Use the
 filter at the top to switch between **Standard**, **Store**, and **Required**.
 
 The **Enable all** toggle turns every skill in the current tier on or off at

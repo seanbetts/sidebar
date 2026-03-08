@@ -14,7 +14,7 @@ surfaces: [app, website, internal-knowledge]
 
 sideBar is an AI assistant available on iPhone, iPad, Mac, and in your
 web browser. It gives you a single place to take notes, manage tasks,
-browse websites, and work with files — all with an AI assistant that can help
+browse websites, and work with files, all with an AI assistant that can help
 you get things done.
 
 The core idea is that your content and sideBar live together. When you
@@ -24,15 +24,15 @@ things around.
 
 ## What's in the App
 
-- **[Chat](/manual/chat)** — your main interface with sideBar. Ask questions,
+- **[Chat](/manual/chat)**: your main interface with sideBar. Ask questions,
   give instructions, or just think out loud.
-- **[Notes](/manual/notes)** — a full-featured editor for capturing and
+- **[Notes](/manual/notes)**: a full-featured editor for capturing and
   organizing your writing.
-- **[Tasks](/manual/tasks)** — a lightweight to-do system both you and sideBar
+- **[Tasks](/manual/tasks)**: a lightweight to-do system both you and sideBar
   can use with project-based organisation.
-- **[Websites](/manual/websites)** — saved webpages sideBar can read and
+- **[Websites](/manual/websites)**: saved webpages sideBar can read and
   reference.
-- **[Files](/manual/files)** — documents and files you want sideBar to work
+- **[Files](/manual/files)**: documents and files you want sideBar to work
   with.
 
 ## Skills
@@ -47,7 +47,7 @@ things around.
 - **Store skills** are additional capabilities you can install yourself.
   Think of it like upgrading sideBar's capabilities. Examples include
   transcribing YouTube videos and integrations with services like Gmail and
-  Spotify — some store skills require an API key from that service to set up.
+  Spotify. Some store skills require an API key from that service to set up.
 
 ## The Rest of This Manual
 
