@@ -10,8 +10,9 @@ surfaces: [app, website, internal-knowledge]
 
 There are two ways to save a web page:
 
-- **Browser extension** — while viewing a page in Safari, tap the sideBar
-  extension button to save it instantly.
+- **Safari extension** — while viewing a page in Safari, tap the sideBar
+  button in the toolbar to save it instantly. See
+  [Widgets & Extensions](/manual/extensions) to set it up.
 - **Manual URL entry** — tap **+** in the Websites tab and paste or type the
   URL directly.
 

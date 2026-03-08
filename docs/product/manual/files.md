@@ -19,8 +19,9 @@ sideBar accepts a wide range of file formats:
 ## Adding Files
 
 Tap the **+** button in the Files tab to open the file picker, then choose a
-file from your device. After you select it, sideBar begins ingesting the file
-right away.
+file from your device. You can also share files directly from other apps using
+the sideBar Share extension — see [Widgets & Extensions](/manual/extensions)
+to set it up. After you select a file, sideBar begins ingesting it right away.
 
 Ingestion moves through three stages: **uploading**, **processing**, and
 **ready**. You can watch the status update in real time on the file card. If

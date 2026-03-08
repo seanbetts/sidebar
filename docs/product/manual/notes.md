@@ -60,3 +60,9 @@ The Scratchpad is a special note that's always one tap away, from any view in
 the app. It's designed for quick captures — the kind of thing you want to get
 down before you lose it. It auto-saves with a short delay so you can type and
 move on without thinking about it.
+
+## Widgets
+
+Pinned notes appear in sideBar's Pinned Notes home screen widget, giving you
+quick access without opening the app. See [Widgets & Extensions](/manual/extensions)
+to set it up.
