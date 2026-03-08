@@ -29,19 +29,7 @@ public struct SkillsStoreView: View {
     }
 
     public var body: some View {
-        Group {
-            if viewModel.isLoadingSkills && storeSkills.isEmpty {
-                LoadingIndicatorView(size: LoadingIndicatorSize.page)
-            } else if let error = viewModel.skillsError, storeSkills.isEmpty {
-                PlaceholderView(
-                    title: "Unable to load Skills Store",
-                    subtitle: error,
-                    iconName: "exclamationmark.triangle"
-                )
-            } else {
-                skillsStoreContent
-            }
-        }
+        skillsStoreContent
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(compactPanelBackground)
         .navigationTitle("Skills Store")
@@ -117,16 +105,27 @@ public struct SkillsStoreView: View {
                 headerBar
                 Divider()
             }
-            ScrollView {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                    if isCompact {
-                        compactSearchField
+            if showsInitialLoadingState {
+                LoadingView(message: "Loading skills…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let initialLoadError {
+                PlaceholderView(
+                    title: "Unable to load Skills Store",
+                    subtitle: initialLoadError,
+                    iconName: "exclamationmark.triangle"
+                )
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                        if isCompact {
+                            compactSearchField
+                        }
+                        categoryFilter
+                        content
                     }
-                    categoryFilter
-                    content
+                    .padding(DesignTokens.Spacing.lg)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .padding(DesignTokens.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -353,6 +352,19 @@ public struct SkillsStoreView: View {
             get: { providerKeyDrafts[provider] ?? "" },
             set: { providerKeyDrafts[provider] = $0 }
         )
+    }
+
+    private var showsInitialLoadingState: Bool {
+        viewModel.isLoadingSkills && storeSkills.isEmpty
+    }
+
+    private var initialLoadError: String? {
+        guard storeSkills.isEmpty else { return nil }
+        guard let error = viewModel.skillsError?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !error.isEmpty else {
+            return nil
+        }
+        return error
     }
 
     private func clearStoreInstallPromptState() {
