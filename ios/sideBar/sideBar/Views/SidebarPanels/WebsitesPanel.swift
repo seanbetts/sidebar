@@ -169,16 +169,21 @@ extension WebsitesPanelView {
                     }
                 }
             }
-            SearchField(
-                text: Binding(
-                    get: { viewModel.panelSearchQuery },
-                    set: { viewModel.panelSearchQuery = $0 }
-                ),
-                placeholder: "Search websites",
-                isFocused: $isSearchFocused
-            )
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.bottom, DesignTokens.Spacing.sm)
+            if ContentView.shouldShowCompactPhoneInlineSearch(
+                isCompact: isCompact,
+                isPhoneIdiom: isCompactPhone
+            ) {
+                SearchField(
+                    text: Binding(
+                        get: { viewModel.panelSearchQuery },
+                        set: { viewModel.panelSearchQuery = $0 }
+                    ),
+                    placeholder: "Search websites",
+                    isFocused: $isSearchFocused
+                )
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
+            }
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
         .background(panelHeaderBackground())

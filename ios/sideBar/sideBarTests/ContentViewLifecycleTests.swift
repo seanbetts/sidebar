@@ -5,13 +5,11 @@ import XCTest
 final class ContentViewLifecycleTests: XCTestCase {
     func testCompactPhoneBottomTabSectionsUseMoreAsFinalTab() {
         let sections = ContentView.compactPhoneBottomTabSections
-
         XCTAssertEqual(sections, [.chat, .notes, .tasks, .websites])
     }
 
     func testCompactPhoneOverflowSectionsIncludeFilesAndSkillsStore() {
         let sections = ContentView.compactPhoneOverflowSections
-
         XCTAssertEqual(sections, [.files, .skillsStore])
     }
 
@@ -20,7 +18,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             for: .more,
             phoneIconName: { _ in "unused" }
         )
-
         XCTAssertEqual(iconName, "ellipsis")
     }
 
@@ -28,7 +25,6 @@ final class ContentViewLifecycleTests: XCTestCase {
         let shouldShow = ContentView.shouldShowCompactPhoneMoreSettingsAvatar(
             isCompact: true
         )
-
         XCTAssertTrue(shouldShow)
     }
 
@@ -36,7 +32,6 @@ final class ContentViewLifecycleTests: XCTestCase {
         let shouldShow = ContentView.shouldShowCompactPhoneMoreSettingsAvatar(
             isCompact: false
         )
-
         XCTAssertFalse(shouldShow)
     }
 
@@ -45,7 +40,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             isCompact: true,
             isPhoneIdiom: true
         )
-
         XCTAssertFalse(shouldShow)
     }
 
@@ -54,117 +48,98 @@ final class ContentViewLifecycleTests: XCTestCase {
             isCompact: false,
             isPhoneIdiom: false
         )
-
         XCTAssertTrue(shouldShow)
     }
 
     func testCompactPhoneRootTopSafeAreaStyleUsesPanelChromeForChat() {
         let style = ContentView.compactPhoneRootTopSafeAreaStyle(for: .chat)
-
         XCTAssertEqual(style, .panelChrome)
     }
 
     func testCompactPhoneRootTopSafeAreaStyleUsesSettingsChromeForSettings() {
         let style = ContentView.compactPhoneRootTopSafeAreaStyle(for: .settings)
-
         XCTAssertEqual(style, .settingsChrome)
     }
 
     func testCompactPhoneRootTopSafeAreaStyleUsesPanelChromeForSkillsStore() {
         let style = ContentView.compactPhoneRootTopSafeAreaStyle(for: .skillsStore)
-
         XCTAssertEqual(style, .panelChrome)
     }
 
     func testCompactPhonePanelBackgroundStyleUsesSidebarForChat() {
         let style = ContentView.compactPhonePanelBackgroundStyle(for: .chat)
-
         XCTAssertEqual(style, .sidebar)
     }
 
     func testCompactPhonePanelBackgroundStyleUsesSidebarForSkillsStore() {
         let style = ContentView.compactPhonePanelBackgroundStyle(for: .skillsStore)
-
         XCTAssertEqual(style, .sidebar)
     }
 
     func testCompactPhonePanelBackgroundStyleUsesSettingsBackgroundForSettings() {
         let style = ContentView.compactPhonePanelBackgroundStyle(for: .settings)
-
         XCTAssertEqual(style, .settings)
     }
 
     func testCompactPhoneMoreRootUsesSidebarBackgroundStyle() {
         let style = ContentView.compactPhoneMoreRootBackgroundStyle()
-
         XCTAssertEqual(style, .sidebar)
     }
 
     func testCompactPhoneMoreRootUsesPanelChromeTopSafeAreaStyle() {
         let style = ContentView.compactPhoneMoreRootTopSafeAreaStyle()
-
         XCTAssertEqual(style, .panelChrome)
     }
 
     func testCompactPhoneMoreDestinationBackgroundStyleUsesSidebarForFiles() {
         let style = ContentView.compactPhoneMoreDestinationBackgroundStyle(for: .files)
-
         XCTAssertEqual(style, .sidebar)
     }
 
     func testCompactPhoneMoreDestinationBackgroundStyleUsesSidebarForSkillsStore() {
         let style = ContentView.compactPhoneMoreDestinationBackgroundStyle(for: .skillsStore)
-
         XCTAssertEqual(style, .sidebar)
     }
 
     func testCompactPhoneMoreDestinationTopSafeAreaStyleUsesSidebarForFiles() {
         let style = ContentView.compactPhoneMoreDestinationTopSafeAreaStyle(for: .files)
-
         XCTAssertEqual(style, .sidebar)
     }
 
     func testCompactPhoneMoreDestinationTopSafeAreaStyleUsesSidebarForSkillsStore() {
         let style = ContentView.compactPhoneMoreDestinationTopSafeAreaStyle(for: .skillsStore)
-
         XCTAssertEqual(style, .sidebar)
     }
 
     func testCompactPhoneMoreDestinationNavigationBarAppearanceUsesOpaqueSidebarForFiles() {
         let style = ContentView.compactPhoneMoreDestinationNavigationBarAppearanceStyle(for: .files)
-
         XCTAssertEqual(style.backgroundStyle, .sidebar)
         XCTAssertTrue(style.isOpaque)
     }
 
     func testCompactPhoneMoreDestinationNavigationBarAppearanceUsesOpaqueSidebarForSkillsStore() {
         let style = ContentView.compactPhoneMoreDestinationNavigationBarAppearanceStyle(for: .skillsStore)
-
         XCTAssertEqual(style.backgroundStyle, .sidebar)
         XCTAssertTrue(style.isOpaque)
     }
 
     func testCompactPhoneMoreDestinationUsesDedicatedScaffoldForFiles() {
         let usesDedicatedScaffold = ContentView.compactPhoneMoreDestinationUsesDedicatedScaffold(for: .files)
-
         XCTAssertTrue(usesDedicatedScaffold)
     }
 
     func testCompactPhoneMoreDestinationUsesDedicatedScaffoldForSkillsStore() {
         let usesDedicatedScaffold = ContentView.compactPhoneMoreDestinationUsesDedicatedScaffold(for: .skillsStore)
-
         XCTAssertTrue(usesDedicatedScaffold)
     }
 
     func testCompactPhoneMoreDestinationDoesNotUseDedicatedScaffoldForWebsites() {
         let usesDedicatedScaffold = ContentView.compactPhoneMoreDestinationUsesDedicatedScaffold(for: .websites)
-
         XCTAssertFalse(usesDedicatedScaffold)
     }
 
     func testMakeMacInitialSelectionPlanDefaultsToChatWithoutPendingSelection() {
         let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: nil)
-
         XCTAssertNil(plan.primarySection)
         XCTAssertEqual(plan.secondarySection, .chat)
         XCTAssertNil(plan.lastNonChatSection)
@@ -175,7 +150,6 @@ final class ContentViewLifecycleTests: XCTestCase {
 
     func testMakeMacInitialSelectionPlanUsesPendingNonChatSelection() {
         let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: .websites)
-
         XCTAssertEqual(plan.primarySection, .websites)
         XCTAssertEqual(plan.secondarySection, .chat)
         XCTAssertEqual(plan.lastNonChatSection, .websites)
@@ -186,7 +160,6 @@ final class ContentViewLifecycleTests: XCTestCase {
 
     func testMakeMacInitialSelectionPlanHandlesPendingChatSelection() {
         let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: .chat)
-
         XCTAssertNil(plan.primarySection)
         XCTAssertEqual(plan.secondarySection, .chat)
         XCTAssertNil(plan.lastNonChatSection)
@@ -197,7 +170,6 @@ final class ContentViewLifecycleTests: XCTestCase {
 
     func testMakeMacInitialSelectionPlanIgnoresPendingSettingsSelection() {
         let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: .settings)
-
         XCTAssertNil(plan.primarySection)
         XCTAssertEqual(plan.secondarySection, .chat)
         XCTAssertNil(plan.lastNonChatSection)
@@ -210,7 +182,6 @@ final class ContentViewLifecycleTests: XCTestCase {
         let action = ContentView.makeInitialPhoneChatAction(
             selectedConversationId: nil
         )
-
         XCTAssertEqual(action, .openDraftConversation)
     }
 
@@ -218,13 +189,11 @@ final class ContentViewLifecycleTests: XCTestCase {
         let action = ContentView.makeInitialPhoneChatAction(
             selectedConversationId: "conversation-1"
         )
-
         XCTAssertEqual(action, .none)
     }
 
     func testMakeRegularLayoutPlanFromCompactSelectionForChat() {
         let plan = ContentView.makeRegularLayoutPlanFromCompactSelection(phoneSelection: .chat)
-
         XCTAssertNil(plan.primarySection)
         XCTAssertEqual(plan.secondarySection, .chat)
         XCTAssertNil(plan.lastNonChatSection)
@@ -233,7 +202,6 @@ final class ContentViewLifecycleTests: XCTestCase {
 
     func testMakeRegularLayoutPlanFromCompactSelectionForNonChatSection() {
         let plan = ContentView.makeRegularLayoutPlanFromCompactSelection(phoneSelection: .tasks)
-
         XCTAssertEqual(plan.primarySection, .tasks)
         XCTAssertEqual(plan.secondarySection, .chat)
         XCTAssertEqual(plan.lastNonChatSection, .tasks)
@@ -247,7 +215,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             currentLastNonChatSection: nil,
             selectedSection: .skillsStore
         )
-
         XCTAssertEqual(plan.primarySection, .skillsStore)
         XCTAssertEqual(plan.secondarySection, .chat)
         XCTAssertEqual(plan.lastNonChatSection, .skillsStore)
@@ -260,7 +227,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             currentLastNonChatSection: .skillsStore,
             selectedSection: .chat
         )
-
         XCTAssertNil(plan.primarySection)
         XCTAssertEqual(plan.secondarySection, .chat)
         XCTAssertEqual(plan.lastNonChatSection, .skillsStore)
@@ -273,7 +239,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             currentLastNonChatSection: .tasks,
             selectedSection: .websites
         )
-
         XCTAssertEqual(plan.primarySection, .chat)
         XCTAssertEqual(plan.secondarySection, .websites)
         XCTAssertEqual(plan.lastNonChatSection, .websites)
@@ -286,7 +251,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .chat,
             isCompactPhoneMoreRootVisible: false
         )
-
         XCTAssertTrue(shouldShow)
     }
 
@@ -297,7 +261,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .notes,
             isCompactPhoneMoreRootVisible: false
         )
-
         XCTAssertFalse(shouldShow)
     }
 
@@ -308,7 +271,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .tasks,
             isCompactPhoneMoreRootVisible: false
         )
-
         XCTAssertTrue(shouldShow)
     }
 
@@ -319,7 +281,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .tasks,
             isCompactPhoneMoreRootVisible: false
         )
-
         XCTAssertFalse(shouldShow)
     }
 
@@ -330,7 +291,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .settings,
             isCompactPhoneMoreRootVisible: false
         )
-
         XCTAssertFalse(shouldShow)
     }
 
@@ -341,7 +301,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .skillsStore,
             isCompactPhoneMoreRootVisible: false
         )
-
         XCTAssertFalse(shouldShow)
     }
 
@@ -352,17 +311,46 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .chat,
             isCompactPhoneMoreRootVisible: true
         )
-
         XCTAssertFalse(shouldShow)
     }
 
     func testCompactPhoneBottomSearchSectionsIncludeFilesAndSkillsStore() {
         let sections = ContentView.compactPhoneBottomSearchSections
-
         XCTAssertEqual(
             sections,
             [.chat, .notes, .tasks, .websites, .files, .skillsStore]
         )
+    }
+
+    func testCompactPhoneSearchDockDescriptorsExistForSearchableSections() {
+        let placeholders = ContentView.compactPhoneBottomSearchSections.compactMap {
+            ContentView.compactPhoneSearchDockDescriptor(for: $0)?.placeholder
+        }
+        XCTAssertEqual(
+            placeholders,
+            ["Search chats", "Search notes", "Search tasks", "Search websites", "Search files", "Search skills"]
+        )
+    }
+
+    func testCompactPhoneSearchDockDescriptorSupportsFilesFromMore() {
+        let descriptor = ContentView.compactPhoneSearchDockDescriptor(for: .files)
+        XCTAssertEqual(descriptor?.placeholder, "Search files")
+    }
+
+    func testShouldShowCompactPhoneInlineSearchHidesOnCompactIPhone() {
+        let shouldShow = ContentView.shouldShowCompactPhoneInlineSearch(
+            isCompact: true,
+            isPhoneIdiom: true
+        )
+        XCTAssertFalse(shouldShow)
+    }
+
+    func testShouldShowCompactPhoneInlineSearchKeepsInlineSearchOffPhone() {
+        let shouldShow = ContentView.shouldShowCompactPhoneInlineSearch(
+            isCompact: true,
+            isPhoneIdiom: false
+        )
+        XCTAssertTrue(shouldShow)
     }
 
     func testShouldDisplayCompactPhoneSearchDockForSearchableMoreDestinationRoot() {
@@ -373,7 +361,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .files,
             isCompactPhoneMoreRootVisible: false
         )
-
         XCTAssertTrue(shouldShow)
     }
 
@@ -385,7 +372,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .tasks,
             isCompactPhoneMoreRootVisible: false
         )
-
         XCTAssertFalse(shouldShow)
     }
 
@@ -397,7 +383,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             phoneSelection: .chat,
             isCompactPhoneMoreRootVisible: true
         )
-
         XCTAssertFalse(shouldShow)
     }
 
@@ -414,7 +399,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             searchText: "notes",
             isSearchFocused: false
         )
-
         XCTAssertFalse(collapsed)
         XCTAssertTrue(expandedFromFocus)
         XCTAssertTrue(expandedFromQuery)
@@ -433,7 +417,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             actionCount: 1,
             isSearchExpanded: true
         )
-
         XCTAssertFalse(collapsedState)
         XCTAssertTrue(expandedMultiActionState)
         XCTAssertFalse(expandedSingleActionState)
@@ -445,7 +428,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             isSearchFocused: false,
             actionCount: 2
         )
-
         XCTAssertEqual(model.searchPresentation, .collapsedIcon)
         XCTAssertEqual(model.actionPresentation, .buttons)
     }
@@ -475,7 +457,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             section: .chat,
             isDesktopLikeLayout: true
         )
-
         XCTAssertTrue(shouldExpand)
     }
 
@@ -484,7 +465,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             section: .tasks,
             isDesktopLikeLayout: true
         )
-
         XCTAssertFalse(shouldExpand)
     }
 
@@ -493,7 +473,6 @@ final class ContentViewLifecycleTests: XCTestCase {
             section: .chat,
             isDesktopLikeLayout: false
         )
-
         XCTAssertFalse(shouldExpand)
     }
 

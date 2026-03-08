@@ -210,16 +210,21 @@ extension FilesPanelView {
                     }
                 }
             }
-            SearchField(
-                text: Binding(
-                    get: { viewModel.panelSearchQuery },
-                    set: { viewModel.panelSearchQuery = $0 }
-                ),
-                placeholder: "Search files",
-                isFocused: $isSearchFocused
-            )
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.bottom, DesignTokens.Spacing.sm)
+            if ContentView.shouldShowCompactPhoneInlineSearch(
+                isCompact: isCompact,
+                isPhoneIdiom: isPhone
+            ) {
+                SearchField(
+                    text: Binding(
+                        get: { viewModel.panelSearchQuery },
+                        set: { viewModel.panelSearchQuery = $0 }
+                    ),
+                    placeholder: "Search files",
+                    isFocused: $isSearchFocused
+                )
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
+            }
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
         .background(panelHeaderBackground())

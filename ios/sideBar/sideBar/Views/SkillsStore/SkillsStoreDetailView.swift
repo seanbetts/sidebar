@@ -1,5 +1,8 @@
 import SwiftUI
 import sideBarShared
+#if os(iOS)
+import UIKit
+#endif
 
 public struct SkillsStoreView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -10,7 +13,7 @@ public struct SkillsStoreView: View {
 
     @State private var hasLoaded = false
     @State private var selectedCategory: String?
-    @State private var searchQuery: String = ""
+    @State private var localSearchQuery: String = ""
     @FocusState private var isSearchFocused: Bool
 
     @State private var installInFlight: Set<String> = []
@@ -24,8 +27,10 @@ public struct SkillsStoreView: View {
     @State private var providerKeyDrafts: [String: String] = [:]
     @State private var storeInstallPromptError: String?
     @State private var isSubmittingStoreInstallPrompt = false
+    private let searchQuery: Binding<String>?
 
-    public init() {
+    public init(searchQuery: Binding<String>? = nil) {
+        self.searchQuery = searchQuery
     }
 
     public var body: some View {
@@ -117,7 +122,10 @@ public struct SkillsStoreView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                        if isCompact {
+                        if isCompact && ContentView.shouldShowCompactPhoneInlineSearch(
+                            isCompact: isCompact,
+                            isPhoneIdiom: isPhone
+                        ) {
                             compactSearchField
                         }
                         categoryFilter
@@ -141,7 +149,7 @@ public struct SkillsStoreView: View {
             titleLineLimit: 1,
             trailing: {
                 SearchField(
-                    text: $searchQuery,
+                    text: searchQueryBinding,
                     placeholder: "Search store skills",
                     isFocused: $isSearchFocused
                 )
@@ -154,7 +162,7 @@ public struct SkillsStoreView: View {
 
     private var compactSearchField: some View {
         SearchField(
-            text: $searchQuery,
+            text: searchQueryBinding,
             placeholder: "Search store skills",
             isFocused: $isSearchFocused
         )
@@ -189,7 +197,7 @@ public struct SkillsStoreView: View {
         if filteredSkills.isEmpty {
             PlaceholderView(
                 title: "No store skills found",
-                subtitle: searchQuery.trimmed.isEmpty ? "Try another category." : "Try a different search.",
+                subtitle: searchQueryBinding.wrappedValue.trimmed.isEmpty ? "Try another category." : "Try a different search.",
                 iconName: "magnifyingglass"
             )
         } else {
@@ -227,23 +235,17 @@ public struct SkillsStoreView: View {
         )
     }
 
-    private var compactPanelBackground: Color {
-        isCompact ? DesignTokens.Colors.sidebar : DesignTokens.Colors.background
-    }
+    private var compactPanelBackground: Color { isCompact ? DesignTokens.Colors.sidebar : DesignTokens.Colors.background }
 
-    private var storeSkills: [SkillItem] {
-        SkillsStoreLogic.storeSkills(from: viewModel.skills)
-    }
+    private var storeSkills: [SkillItem] { SkillsStoreLogic.storeSkills(from: viewModel.skills) }
 
-    private var storeCategories: [String] {
-        SkillsStoreLogic.categories(from: storeSkills)
-    }
+    private var storeCategories: [String] { SkillsStoreLogic.categories(from: storeSkills) }
 
     private var filteredSkills: [SkillItem] {
         SkillsStoreLogic.filteredStoreSkills(
             storeSkills,
             selectedCategory: selectedCategory,
-            searchQuery: searchQuery
+            searchQuery: searchQueryBinding.wrappedValue
         ) { skill in
             [
                 viewModel.displayName(for: skill),
@@ -348,23 +350,7 @@ public struct SkillsStoreView: View {
     }
 
     private func providerKeyBinding(for provider: String) -> Binding<String> {
-        Binding(
-            get: { providerKeyDrafts[provider] ?? "" },
-            set: { providerKeyDrafts[provider] = $0 }
-        )
-    }
-
-    private var showsInitialLoadingState: Bool {
-        viewModel.isLoadingSkills && storeSkills.isEmpty
-    }
-
-    private var initialLoadError: String? {
-        guard storeSkills.isEmpty else { return nil }
-        guard let error = viewModel.skillsError?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !error.isEmpty else {
-            return nil
-        }
-        return error
+        Binding(get: { providerKeyDrafts[provider] ?? "" }, set: { providerKeyDrafts[provider] = $0 })
     }
 
     private func clearStoreInstallPromptState() {
@@ -404,10 +390,7 @@ public struct SkillsStoreView: View {
     }
 
     private func formattedSkillType(_ raw: String) -> String {
-        raw
-            .replacingOccurrences(of: "-", with: " ")
-            .replacingOccurrences(of: "_", with: " ")
-            .capitalized
+        raw.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     private var isStoreUninstallPromptPresented: Binding<Bool> {
@@ -427,6 +410,24 @@ public struct SkillsStoreView: View {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+
+    private var isPhone: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
+    }
+
+    private var searchQueryBinding: Binding<String> { searchQuery ?? $localSearchQuery }
+
+    private var showsInitialLoadingState: Bool {
+        SkillsStoreLogic.showsInitialLoadingState(isLoadingSkills: viewModel.isLoadingSkills, storeSkills: storeSkills)
+    }
+
+    private var initialLoadError: String? {
+        SkillsStoreLogic.initialLoadError(storeSkills: storeSkills, skillsError: viewModel.skillsError)
     }
 }
 

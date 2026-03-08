@@ -22,6 +22,8 @@ public struct ContentView: View {
     @State var phoneSelection: AppSection = .chat
     @State var compactPhoneTabSelection: CompactPhoneTab = .section(.chat)
     @State var compactPhoneMoreNavigationPath: [AppSection] = []
+    @State var compactPhoneChatSearchQuery: String = ""
+    @State var compactPhoneSkillsStoreSearchQuery: String = ""
     @State var isPhoneScratchpadPresented = false
     @State var isShortcutsPresented = false
     @State var didEnsureInitialPhoneChatInterface = false

@@ -67,7 +67,12 @@ extension ContentView {
 
     @ViewBuilder
     func phonePanelView(for section: AppSection) -> some View {
-        sectionDefinition(for: section).panelView()
+        switch section {
+        case .chat:
+            ConversationsPanel(searchQuery: $compactPhoneChatSearchQuery)
+        default:
+            sectionDefinition(for: section).panelView()
+        }
     }
 
     @ViewBuilder
@@ -315,7 +320,7 @@ extension ContentView {
         case .files:
             FilesPanel(showsHeader: false)
         case .skillsStore:
-            SkillsStoreView()
+            SkillsStoreView(searchQuery: $compactPhoneSkillsStoreSearchQuery)
         case .chat, .notes, .tasks, .websites, .settings:
             phoneMorePanelView(for: section)
         }

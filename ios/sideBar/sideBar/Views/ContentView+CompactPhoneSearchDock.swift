@@ -16,17 +16,24 @@ struct CompactPhoneSearchDockDisplayModel: Equatable {
     let actionPresentation: CompactPhoneSearchDockActionPresentation
 }
 
+struct CompactPhoneSearchDockDescriptor: Equatable {
+    let placeholder: String
+}
+
 private struct CompactPhoneSearchDockView: View {
+    @EnvironmentObject private var environment: AppEnvironment
+
+    let section: AppSection
+    let searchText: Binding<String>
     let placeholder: String
     let actionCount: Int
     let actionContent: (CompactPhoneSearchDockActionPresentation) -> AnyView
 
-    @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
 
     private var displayModel: CompactPhoneSearchDockDisplayModel {
         ContentView.makeCompactPhoneSearchDockDisplayModel(
-            searchText: searchText,
+            searchText: searchText.wrappedValue,
             isSearchFocused: isSearchFocused,
             actionCount: actionCount
         )
@@ -49,6 +56,11 @@ private struct CompactPhoneSearchDockView: View {
                 ? PhoneFloatingActionMetrics.expandedDockMaxWidth
                 : nil
         )
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
+            guard let event, event.section == section else { return }
+            guard event.action == .focusSearch else { return }
+            isSearchFocused = true
+        }
         .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: displayModel)
     }
 
@@ -71,7 +83,7 @@ private struct CompactPhoneSearchDockView: View {
             .accessibilityLabel("Search")
         case .expandedField:
             SearchField(
-                text: $searchText,
+                text: searchText,
                 placeholder: placeholder,
                 isFocused: $isSearchFocused,
                 chrome: .dock
@@ -82,6 +94,34 @@ private struct CompactPhoneSearchDockView: View {
 }
 
 extension ContentView {
+    static func compactPhoneSearchDockDescriptor(
+        for section: AppSection
+    ) -> CompactPhoneSearchDockDescriptor? {
+        switch section {
+        case .chat:
+            CompactPhoneSearchDockDescriptor(placeholder: "Search chats")
+        case .notes:
+            CompactPhoneSearchDockDescriptor(placeholder: "Search notes")
+        case .tasks:
+            CompactPhoneSearchDockDescriptor(placeholder: "Search tasks")
+        case .websites:
+            CompactPhoneSearchDockDescriptor(placeholder: "Search websites")
+        case .files:
+            CompactPhoneSearchDockDescriptor(placeholder: "Search files")
+        case .skillsStore:
+            CompactPhoneSearchDockDescriptor(placeholder: "Search skills")
+        case .settings:
+            nil
+        }
+    }
+
+    static func shouldShowCompactPhoneInlineSearch(
+        isCompact: Bool,
+        isPhoneIdiom: Bool
+    ) -> Bool {
+        !(isCompact && isPhoneIdiom)
+    }
+
     static func makeCompactPhoneSearchDockDisplayModel(
         searchText: String,
         isSearchFocused: Bool,
@@ -110,6 +150,10 @@ extension ContentView {
         )
     }
 
+    var compactPhoneSearchDockDescriptor: CompactPhoneSearchDockDescriptor? {
+        Self.compactPhoneSearchDockDescriptor(for: compactWorkspaceSection)
+    }
+
     var compactPhoneSearchDockActionCount: Int {
         switch compactWorkspaceSection {
         case .chat, .websites:
@@ -123,28 +167,42 @@ extension ContentView {
         }
     }
 
-    var compactPhoneSearchDockPlaceholder: String {
+    var compactPhoneSearchDockSearchText: Binding<String> {
         switch compactWorkspaceSection {
         case .chat:
-            "Search chats"
+            $compactPhoneChatSearchQuery
         case .notes:
-            "Search notes"
+            Binding(
+                get: { environment.notesRuntime.viewModel.searchQuery },
+                set: { environment.notesRuntime.viewModel.searchQuery = $0 }
+            )
         case .tasks:
-            "Search tasks"
+            Binding(
+                get: { environment.tasksViewModel.searchQuery },
+                set: { environment.tasksViewModel.updateSearch(query: $0) }
+            )
         case .websites:
-            "Search websites"
+            Binding(
+                get: { environment.websitesViewModel.panelSearchQuery },
+                set: { environment.websitesViewModel.panelSearchQuery = $0 }
+            )
         case .files:
-            "Search files"
+            Binding(
+                get: { environment.ingestionViewModel.panelSearchQuery },
+                set: { environment.ingestionViewModel.panelSearchQuery = $0 }
+            )
         case .skillsStore:
-            "Search skills"
+            $compactPhoneSkillsStoreSearchQuery
         case .settings:
-            "Search"
+            .constant("")
         }
     }
 
     var compactPhoneSearchDock: some View {
         CompactPhoneSearchDockView(
-            placeholder: compactPhoneSearchDockPlaceholder,
+            section: compactWorkspaceSection,
+            searchText: compactPhoneSearchDockSearchText,
+            placeholder: compactPhoneSearchDockDescriptor?.placeholder ?? "Search",
             actionCount: compactPhoneSearchDockActionCount,
             actionContent: compactPhoneSearchDockActionView(for:)
         )

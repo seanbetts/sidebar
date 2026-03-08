@@ -90,9 +90,14 @@ extension ConversationsPanelView {
                 }
                 .frame(height: 28)
             }
-            SearchField(text: $searchQuery, placeholder: "Search chats", isFocused: $isSearchFocused)
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.bottom, DesignTokens.Spacing.sm)
+            if ContentView.shouldShowCompactPhoneInlineSearch(
+                isCompact: isCompact,
+                isPhoneIdiom: isPhone
+            ) {
+                SearchField(text: $searchQuery, placeholder: "Search chats", isFocused: $isSearchFocused)
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
+            }
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
         .background(panelHeaderBackground())

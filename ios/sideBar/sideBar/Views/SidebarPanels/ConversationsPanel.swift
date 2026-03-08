@@ -5,12 +5,18 @@ import SwiftUI
 
 public struct ConversationsPanel: View {
     @EnvironmentObject private var environment: AppEnvironment
+    @State private var localSearchQuery: String = ""
+    private let searchQuery: Binding<String>?
 
-    public init() {
+    public init(searchQuery: Binding<String>? = nil) {
+        self.searchQuery = searchQuery
     }
 
     public var body: some View {
-        ConversationsPanelView(viewModel: environment.chatViewModel)
+        ConversationsPanelView(
+            viewModel: environment.chatViewModel,
+            searchQuery: searchQuery ?? $localSearchQuery
+        )
             .task {
                 await environment.chatViewModel.loadConversations()
             }
@@ -18,8 +24,8 @@ public struct ConversationsPanel: View {
 }
 struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
+    @Binding var searchQuery: String
     @EnvironmentObject var environment: AppEnvironment
-    @State var searchQuery: String = ""
     @State var searchResults: [Conversation]?
     @State var searchErrorMessage: String?
     @State var isSearchLoading: Bool = false
