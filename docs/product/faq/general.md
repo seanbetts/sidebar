@@ -55,6 +55,13 @@ All three supported providers (Anthropic, OpenAI, Google) work with sideBar's
 core features. The best choice depends on your existing accounts and
 preferences.
 
+## Will I lose my memories and personalisation if I switch provider?
+
+No. Your memories, notes, tasks, saved websites, files, and all other content
+are stored in sideBar, not with your AI provider. Switching from one provider
+to another has no effect on any of that. You can swap freely at any time from
+Settings and everything carries over.
+
 ## Does sideBar work offline?
 
 Reading your existing notes, tasks, websites, and files works offline. Sending
