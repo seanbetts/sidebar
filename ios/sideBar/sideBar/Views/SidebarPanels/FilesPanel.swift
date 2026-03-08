@@ -10,17 +10,23 @@ import UIKit
 
 public struct FilesPanel: View {
     @EnvironmentObject var environment: AppEnvironment
+    private let showsHeader: Bool
 
-    public init() {
+    public init(showsHeader: Bool = true) {
+        self.showsHeader = showsHeader
     }
 
     public var body: some View {
-        FilesPanelView(viewModel: environment.ingestionViewModel)
+        FilesPanelView(
+            viewModel: environment.ingestionViewModel,
+            showsHeader: showsHeader
+        )
     }
 }
 struct FilesPanelView: View {
     @EnvironmentObject var appEnvironment: AppEnvironment
     @ObservedObject var viewModel: IngestionViewModel
+    let showsHeader: Bool
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
@@ -146,7 +152,9 @@ extension FilesPanelView {
 
     var mainContent: some View {
         VStack(spacing: 0) {
-            header
+            if showsHeader {
+                header
+            }
             if viewModel.isLoading && viewModel.items.isEmpty {
                 SidebarListSkeleton(rowCount: 8, showSubtitle: false)
             } else if let message = viewModel.errorMessage {

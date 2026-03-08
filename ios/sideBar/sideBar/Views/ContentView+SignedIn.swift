@@ -124,6 +124,7 @@ extension ContentView {
             }
         })
         content = AnyView(content.onChange(of: phoneSelection) { _, newValue in
+            syncCompactPhoneTabSelection(for: newValue)
             environment.focusedSection = newValue
             environment.focusedWorkspacePane = .primary
             sidebarSelection = newValue

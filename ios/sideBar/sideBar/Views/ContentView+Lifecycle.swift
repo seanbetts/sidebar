@@ -337,9 +337,11 @@ extension ContentView {
     static func shouldDisplayPhoneFloatingActionDock(
         isPhoneIdiom: Bool,
         isPhonePanelListVisible: Bool,
-        phoneSelection: AppSection
+        phoneSelection: AppSection,
+        isCompactPhoneMoreRootVisible: Bool
     ) -> Bool {
         guard isPhoneIdiom else { return false }
+        guard !isCompactPhoneMoreRootVisible else { return false }
         if isPhonePanelListVisible {
             return AppSection.primaryNavigationSections.contains(phoneSelection)
                 && phoneSelection != .skillsStore

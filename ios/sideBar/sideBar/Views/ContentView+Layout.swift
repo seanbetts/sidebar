@@ -72,18 +72,40 @@ extension ContentView {
     }
 
     var compactView: some View {
-        TabView(selection: $phoneSelection) {
-            ForEach(phoneSections, id: \.self) { section in
-                phoneTabView(for: section)
-                    .tag(section)
+        TabView(selection: compactPhoneTabSelectionBinding()) {
+            if isPhoneIdiom {
+                ForEach(compactPhoneTabs, id: \.self) { tab in
+                    Group {
+                        switch tab {
+                        case .section(let section):
+                            phoneTabView(for: section)
+                        case .more:
+                            compactPhoneMoreView
+                        }
+                    }
+                    .tag(tab)
                     .tabItem {
                         Label {
-                            Text(section.title)
+                            Text(compactPhoneTabTitle(for: tab))
                         } icon: {
-                            Image(systemName: phoneIconName(for: section))
+                            Image(systemName: compactPhoneTabIconName(for: tab))
                                 .symbolVariant(.none)
                         }
                     }
+                }
+            } else {
+                ForEach(phoneSections, id: \.self) { section in
+                    phoneTabView(for: section)
+                        .tag(CompactPhoneTab.section(section))
+                        .tabItem {
+                            Label {
+                                Text(section.title)
+                            } icon: {
+                                Image(systemName: phoneIconName(for: section))
+                                    .symbolVariant(.none)
+                            }
+                        }
+                }
             }
         }
         .tint(tabBarTint)
@@ -117,7 +139,8 @@ extension ContentView {
         Self.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: UIDevice.current.userInterfaceIdiom == .phone,
             isPhonePanelListVisible: isPhonePanelListVisible,
-            phoneSelection: compactWorkspaceSection
+            phoneSelection: compactWorkspaceSection,
+            isCompactPhoneMoreRootVisible: isCompactPhoneMoreRootVisible
         )
         #else
         false

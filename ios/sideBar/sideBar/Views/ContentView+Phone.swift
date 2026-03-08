@@ -5,24 +5,39 @@ private enum PhoneChatDetailRouteID {
 }
 
 extension ContentView {
+    static func shouldShowCompactPhoneMoreSettingsAvatar(isCompact: Bool) -> Bool {
+        isCompact
+    }
+
     func phoneTabView(for section: AppSection) -> some View {
         NavigationStack {
-            phoneRootPanelView(for: section)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                #if !os(macOS)
-                .toolbar(.hidden, for: .navigationBar)
-                #endif
-                .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
-                    detailView(for: workspaceCompactDetailDescriptor(for: section))
-                    #if !os(macOS)
-                        .navigationBarTitleDisplayMode(.inline)
-                    #endif
-                }
+            phoneSectionContentView(for: section)
         }
     }
 
     var phoneSections: [AppSection] {
         AppSection.primaryNavigationSections
+    }
+
+    var compactPhoneMoreView: some View {
+        NavigationStack(path: $compactPhoneMoreNavigationPath) {
+            CompactPhoneRootSafeAreaView(
+                backgroundColor: DesignTokens.Colors.settingsBackground
+            ) {
+                CompactPhoneMoreRootView(
+                    sections: Self.compactPhoneOverflowSections,
+                    iconName: phoneIconName(for:)
+                )
+            }
+            .navigationDestination(for: AppSection.self) { section in
+                phoneMoreDestinationContentView(for: section)
+            }
+            #if !os(macOS)
+            .toolbar(.hidden, for: .navigationBar)
+            .toolbarBackground(DesignTokens.Colors.settingsBackground, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            #endif
+        }
     }
 
     func phoneIconName(for section: AppSection) -> String {
@@ -47,6 +62,43 @@ extension ContentView {
     @ViewBuilder
     func phonePanelView(for section: AppSection) -> some View {
         sectionDefinition(for: section).panelView()
+    }
+
+    @ViewBuilder
+    func phoneSectionContentView(for section: AppSection) -> some View {
+        phoneRootPanelView(for: section)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            #if !os(macOS)
+            .toolbar(.hidden, for: .navigationBar)
+            #endif
+            .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
+                detailView(for: workspaceCompactDetailDescriptor(for: section))
+                #if !os(macOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                #endif
+            }
+    }
+
+    @ViewBuilder
+    func phoneMoreDestinationContentView(for section: AppSection) -> some View {
+        phoneMorePanelView(for: section)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .navigationTitle(section.title)
+            .onAppear {
+                phoneSelection = section
+            }
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.visible, for: .navigationBar)
+            .toolbarBackground(Self.compactPhoneRootTopSafeAreaStyle(for: section).color, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            #endif
+            .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
+                detailView(for: workspaceCompactDetailDescriptor(for: section))
+                #if !os(macOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                #endif
+            }
     }
 
     func phoneDetailItemBinding(for section: AppSection) -> Binding<PhoneDetailRoute?> {
@@ -209,6 +261,20 @@ extension ContentView {
         }
     }
 
+    @ViewBuilder
+    private func phoneMorePanelView(for section: AppSection) -> some View {
+        switch section {
+        case .files:
+            CompactPhoneRootSafeAreaView(
+                backgroundColor: Self.compactPhoneRootTopSafeAreaStyle(for: section).color
+            ) {
+                FilesPanel(showsHeader: false)
+            }
+        default:
+            phoneRootPanelView(for: section)
+        }
+    }
+
 }
 
 private struct CompactPhoneRootSafeAreaView<Content: View>: View {
@@ -234,5 +300,51 @@ private struct CompactPhoneRootSafeAreaView<Content: View>: View {
                         .allowsHitTesting(false)
                 }
         }
+    }
+}
+
+private struct CompactPhoneMoreRootView: View {
+    let sections: [AppSection]
+    let iconName: (AppSection) -> String
+#if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PanelHeader(title: "More") {
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    if shouldShowSettingsAvatar {
+                        SettingsAvatarButton()
+                    }
+                }
+                .frame(height: 28)
+            }
+
+            List {
+                ForEach(sections, id: \.self) { section in
+                    NavigationLink(value: section) {
+                        Label(section.title, systemImage: iconName(section))
+                            .appFont(.body)
+                            .foregroundStyle(DesignTokens.Colors.textPrimary)
+                    }
+                    .listRowBackground(DesignTokens.Colors.settingsFormBackground)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(DesignTokens.Colors.settingsBackground)
+            .listStyle(.insetGrouped)
+        }
+        .background(DesignTokens.Colors.settingsBackground)
+    }
+
+    private var shouldShowSettingsAvatar: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return ContentView.shouldShowCompactPhoneMoreSettingsAvatar(
+            isCompact: horizontalSizeClass == .compact
+        )
+        #endif
     }
 }

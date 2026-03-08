@@ -3,6 +3,34 @@ import XCTest
 
 @MainActor
 final class ContentViewLifecycleTests: XCTestCase {
+    func testCompactPhoneBottomTabSectionsUseMoreAsFinalTab() {
+        let sections = ContentView.compactPhoneBottomTabSections
+
+        XCTAssertEqual(sections, [.chat, .notes, .tasks, .websites])
+    }
+
+    func testCompactPhoneOverflowSectionsIncludeFilesAndSkillsStore() {
+        let sections = ContentView.compactPhoneOverflowSections
+
+        XCTAssertEqual(sections, [.files, .skillsStore])
+    }
+
+    func testCompactPhoneMoreHeaderShowsSettingsAvatarInCompactLayout() {
+        let shouldShow = ContentView.shouldShowCompactPhoneMoreSettingsAvatar(
+            isCompact: true
+        )
+
+        XCTAssertTrue(shouldShow)
+    }
+
+    func testCompactPhoneMoreHeaderHidesSettingsAvatarOutsideCompactLayout() {
+        let shouldShow = ContentView.shouldShowCompactPhoneMoreSettingsAvatar(
+            isCompact: false
+        )
+
+        XCTAssertFalse(shouldShow)
+    }
+
     func testShouldShowGlobalTopSafeAreaOverlayDisablesForCompactIPhone() {
         let shouldShow = ContentView.shouldShowGlobalTopSafeAreaOverlay(
             isCompact: true,
@@ -160,7 +188,8 @@ final class ContentViewLifecycleTests: XCTestCase {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
             isPhonePanelListVisible: true,
-            phoneSelection: .chat
+            phoneSelection: .chat,
+            isCompactPhoneMoreRootVisible: false
         )
 
         XCTAssertTrue(shouldShow)
@@ -170,7 +199,8 @@ final class ContentViewLifecycleTests: XCTestCase {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
             isPhonePanelListVisible: false,
-            phoneSelection: .notes
+            phoneSelection: .notes,
+            isCompactPhoneMoreRootVisible: false
         )
 
         XCTAssertFalse(shouldShow)
@@ -180,7 +210,8 @@ final class ContentViewLifecycleTests: XCTestCase {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
             isPhonePanelListVisible: false,
-            phoneSelection: .tasks
+            phoneSelection: .tasks,
+            isCompactPhoneMoreRootVisible: false
         )
 
         XCTAssertTrue(shouldShow)
@@ -190,7 +221,8 @@ final class ContentViewLifecycleTests: XCTestCase {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: false,
             isPhonePanelListVisible: true,
-            phoneSelection: .tasks
+            phoneSelection: .tasks,
+            isCompactPhoneMoreRootVisible: false
         )
 
         XCTAssertFalse(shouldShow)
@@ -200,7 +232,8 @@ final class ContentViewLifecycleTests: XCTestCase {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
             isPhonePanelListVisible: true,
-            phoneSelection: .settings
+            phoneSelection: .settings,
+            isCompactPhoneMoreRootVisible: false
         )
 
         XCTAssertFalse(shouldShow)
@@ -210,7 +243,19 @@ final class ContentViewLifecycleTests: XCTestCase {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
             isPhonePanelListVisible: true,
-            phoneSelection: .skillsStore
+            phoneSelection: .skillsStore,
+            isCompactPhoneMoreRootVisible: false
+        )
+
+        XCTAssertFalse(shouldShow)
+    }
+
+    func testShouldDisplayPhoneFloatingActionDockHidesOnCompactPhoneMoreRoot() {
+        let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
+            isPhoneIdiom: true,
+            isPhonePanelListVisible: true,
+            phoneSelection: .chat,
+            isCompactPhoneMoreRootVisible: true
         )
 
         XCTAssertFalse(shouldShow)
