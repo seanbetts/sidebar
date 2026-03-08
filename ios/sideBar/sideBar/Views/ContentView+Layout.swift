@@ -139,7 +139,15 @@ extension ContentView {
         }
         .tint(tabBarTint)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if shouldShowPhoneFloatingActionDock {
+            if shouldShowCompactPhoneSearchDock {
+                HStack {
+                    Spacer(minLength: 0)
+                    compactPhoneSearchDock
+                        .padding(.trailing, DesignTokens.Spacing.lg)
+                        .padding(.bottom, 72)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            } else if shouldShowPhoneFloatingActionDock {
                 HStack {
                     Spacer(minLength: 0)
                     phoneFloatingActionDock

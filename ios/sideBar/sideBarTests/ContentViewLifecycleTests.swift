@@ -439,6 +439,37 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(expandedSingleActionState)
     }
 
+    func testMakeCompactPhoneSearchDockDisplayModelShowsCollapsedMagnifyingGlassState() {
+        let model = ContentView.makeCompactPhoneSearchDockDisplayModel(
+            searchText: "",
+            isSearchFocused: false,
+            actionCount: 2
+        )
+
+        XCTAssertEqual(model.searchPresentation, .collapsedIcon)
+        XCTAssertEqual(model.actionPresentation, .buttons)
+    }
+
+    func testMakeCompactPhoneSearchDockDisplayModelShowsExpandedSearchState() {
+        let model = ContentView.makeCompactPhoneSearchDockDisplayModel(
+            searchText: "",
+            isSearchFocused: true,
+            actionCount: 1
+        )
+        XCTAssertEqual(model.searchPresentation, .expandedField)
+        XCTAssertEqual(model.actionPresentation, .buttons)
+    }
+
+    func testMakeCompactPhoneSearchDockDisplayModelCollapsesMultiActionSectionsWhileExpanded() {
+        let model = ContentView.makeCompactPhoneSearchDockDisplayModel(
+            searchText: "note",
+            isSearchFocused: false,
+            actionCount: 2
+        )
+        XCTAssertEqual(model.searchPresentation, .expandedField)
+        XCTAssertEqual(model.actionPresentation, .collapsedMenu)
+    }
+
     func testShouldAutoExpandChatSidebarWhenDesktopLayoutAndChatSelected() {
         let shouldExpand = ContentView.shouldAutoExpandChatSidebar(
             section: .chat,
