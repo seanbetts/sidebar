@@ -19,7 +19,8 @@ act on your behalf.
 
 Your conversations are listed with auto-generated titles and a message count so
 you can tell them apart at a glance. They're organised by date and you can tap
-any conversation to open it.
+any conversation to open it. Swipe right on any conversation to rename it, or
+swipe left to delete it.
 
 To start a fresh conversation, tap **New** and you're off!
 

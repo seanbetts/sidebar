@@ -1,6 +1,6 @@
 ---
 title: Files
-summary: How to upload, manage, and use files with sideBar in sideBar.
+summary: How to upload, manage, and use files with sideBar.
 tags: [manual, files]
 audience: user
 surfaces: [app, website, internal-knowledge]
@@ -13,13 +13,15 @@ surfaces: [app, website, internal-knowledge]
 
 ## Supported File Types
 
-sideBar accepts a wide range of file formats:
+sideBar accepts a wide range of file formats, organised into folders by type:
 
-- **Documents** — PDFs, Word documents (.doc, .docx), and plain text files
-- **Spreadsheets** — Excel workbooks (.xls, .xlsx) and CSV files
+- **Documents** — PDFs, Word documents, and plain text files
 - **Images** — JPG, PNG, and other common image formats
-- **Videos** — YouTube videos, added by URL (sideBar extracts the transcript,
-  the same way the Websites feature handles web pages)
+- **Audio** — audio recordings and other common audio formats
+- **Video** — video files
+- **Spreadsheets** — Excel workbooks and CSV files
+- **Reports** — structured report formats
+- **Presentations** — PowerPoint and similar formats
 
 ## Adding Files
 
@@ -55,10 +57,10 @@ Tap any ready file to open it in the built-in viewer:
 
 ## Using Files with sideBar
 
-Once a file reaches the **ready** state, its content is indexed and the
+Once a file reaches the **ready** state, its content is indexed and
 sideBar can search and reference it during any conversation. You can also
-attach a specific file directly to a [chat](/manual/chat) message to give
-sideBar focused context on that file.
+attach a specific file directly to a [chat](/manual/chat) message to upload
+it and give sideBar focused context on that file.
 
 ## File Actions
 
@@ -67,3 +69,6 @@ Tap the menu on any file card to access these actions:
 - **Delete** — permanently removes the file and its index
 - **Archive / Restore** — moves the file out of (or back into) the active list
 - **Pin / Unpin** — controls whether the file stays at the top of your list
+
+You can also swipe right on any file to pin or unpin it, or swipe left to
+delete it.

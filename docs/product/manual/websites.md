@@ -60,6 +60,9 @@ the transcript field.
 - **Search** across your saved pages by title, domain, or page content — a
   useful way to find something when you can't remember where you saved it.
 
+You can also swipe right on any page to archive or unarchive it, or swipe left
+to delete it.
+
 ## Reading a Saved Page
 
 Open any saved page to see its full content. Tap the page title to open the

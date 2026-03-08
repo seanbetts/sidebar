@@ -27,7 +27,8 @@ tasks.
 
 For more structure, you can create **Projects** which are individual task lists.
 When you have several related projects, you can gather them inside a **Group** to
-keep everything well organised.
+keep everything well organised. Swipe right on any project or group to rename
+it, or swipe left to delete it.
 
 ## Creating a Task
 
