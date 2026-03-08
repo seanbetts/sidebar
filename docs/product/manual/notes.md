@@ -30,7 +30,7 @@ come back to a note it's exactly where you left off.
 
 ## Formatting
 
-<!-- WORK IN PROGRESS: formatting bar is still in development — revisit once shipped -->
+{/* WORK IN PROGRESS: formatting bar is still in development — revisit once shipped */}
 
 Notes use rich text. Formatting is applied to whatever text you have selected.
 
