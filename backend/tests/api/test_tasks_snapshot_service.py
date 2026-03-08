@@ -36,7 +36,7 @@ def test_build_snapshot_uses_markdown_headings_and_sections() -> None:
     completed_today = [
         {
             "id": "task-complete",
-            "title": "Clear inbox",
+            "title": "Clear admin queue",
             "deadline": "2026-03-01",
             "notes": "",
             "groupId": "group-work",
@@ -67,7 +67,7 @@ def test_build_snapshot_uses_markdown_headings_and_sections() -> None:
     assert "### Completed today" in snapshot
     assert "- [ ] Pay rent (Home, Admin, overdue 1 day)" in snapshot
     assert "- [ ] Ship iOS build (Work, App)" in snapshot
-    assert "- [x] Clear inbox (Work, Admin)" in snapshot
+    assert "- [x] Clear admin queue (Work, Admin)" in snapshot
     assert "  - Notes: Check bank transfer reference." in snapshot
 
 
