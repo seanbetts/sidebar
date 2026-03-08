@@ -14,29 +14,49 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
 
     func testMobileFormattingBarPlacementUsesFloatingTopTrailingOnIPadInEditMode() {
         XCTAssertEqual(
-            mobileFormattingBarPlacementName(isEditing: true, isPhone: false),
-            "floatingTopTrailing"
+            NoteFormattingBarPresentation.resolve(
+                isEditing: true,
+                isPhone: false,
+                isSoftwareKeyboardVisible: false,
+                isHardwareKeyboardInputExpected: false
+            ),
+            .floatingTopTrailing
         )
     }
 
     func testMobileFormattingBarPlacementUsesFloatingTopTrailingOnPhoneWhenHardwareKeyboardInputIsExpected() {
         XCTAssertEqual(
-            mobileFormattingBarPlacementName(isEditing: true, isPhone: true),
-            "floatingTopTrailing"
+            NoteFormattingBarPresentation.resolve(
+                isEditing: true,
+                isPhone: true,
+                isSoftwareKeyboardVisible: false,
+                isHardwareKeyboardInputExpected: true
+            ),
+            .floatingTopTrailing
         )
     }
 
     func testMobileFormattingBarPlacementUsesKeyboardAccessoryOnPhoneWhenSoftwareKeyboardIsVisible() {
         XCTAssertEqual(
-            mobileFormattingBarPlacementName(isEditing: true, isPhone: true),
-            "keyboardAccessory"
+            NoteFormattingBarPresentation.resolve(
+                isEditing: true,
+                isPhone: true,
+                isSoftwareKeyboardVisible: true,
+                isHardwareKeyboardInputExpected: false
+            ),
+            .keyboardAccessory
         )
     }
 
     func testMobileFormattingBarPlacementHidesBarInReadMode() {
         XCTAssertEqual(
-            mobileFormattingBarPlacementName(isEditing: false, isPhone: true),
-            "hidden"
+            NoteFormattingBarPresentation.resolve(
+                isEditing: false,
+                isPhone: true,
+                isSoftwareKeyboardVisible: false,
+                isHardwareKeyboardInputExpected: false
+            ),
+            .hidden
         )
     }
 
@@ -215,19 +235,3 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
     }
 #endif
 }
-
-#if os(iOS)
-private func mobileFormattingBarPlacementName(
-    isEditing: Bool,
-    isPhone: Bool
-) -> String {
-    switch NotesDetailView.mobileFormattingBarPlacement(isEditing: isEditing, isPhone: isPhone) {
-    case .hidden:
-        return "hidden"
-    case .keyboardAccessory:
-        return "keyboardAccessory"
-    case .topAttached:
-        return "topAttached"
-    }
-}
-#endif

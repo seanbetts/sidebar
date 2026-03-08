@@ -36,13 +36,14 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
 
         let textView = try mountTextView(
             viewModel: viewModel,
-            formattingBarConfiguration: .disabled
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: .keyboardAccessory
         )
 
         XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
     }
 
-    func testFloatingPhoneSurfaceOmitsUIKitFormattingBarAccessory() throws {
+    func testFloatingPhoneSurfaceOmitsUIKitFormattingBarAccessoryWhenPresentationIsFloatingTopTrailing() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
@@ -52,13 +53,13 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         let textView = try mountTextView(
             viewModel: viewModel,
             formattingBarConfiguration: .disabled,
-            showsFormattingAccessory: false
+            formattingBarPresentation: .floatingTopTrailing
         )
 
         XCTAssertNil(textView.inputAccessoryView)
     }
 
-    func testReadOnlySurfaceDoesNotExposeUIKitFormattingBarAccessory() throws {
+    func testReadOnlySurfaceDoesNotExposeUIKitFormattingBarAccessoryWhenPresentationIsHidden() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
@@ -68,7 +69,8 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         let textView = try mountTextView(
             viewModel: viewModel,
             isEditable: false,
-            formattingBarConfiguration: .disabled
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: .hidden
         )
 
         XCTAssertNil(textView.inputAccessoryView)
@@ -124,7 +126,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         let textView = try mountTextView(
             viewModel: nativeViewModel,
             formattingBarConfiguration: context.editorViewModel.noteFormattingBarConfiguration,
-            showsFormattingAccessory: false
+            formattingBarPresentation: .floatingTopTrailing
         )
         let boldCommand = try XCTUnwrap(
             textView.keyCommands?.first {
@@ -289,7 +291,7 @@ private func mountTextView(
     viewModel: NativeNoteEditorViewModel,
     isEditable: Bool = true,
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
-    showsFormattingAccessory: Bool = true,
+    formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
     width: CGFloat = 360,
     height: CGFloat = 320
 ) throws -> UITextView {
@@ -300,7 +302,7 @@ private func mountTextView(
                 maxContentWidth: width,
                 isEditable: isEditable,
                 formattingBarConfiguration: formattingBarConfiguration,
-                showsFormattingAccessory: showsFormattingAccessory
+                formattingBarPresentation: formattingBarPresentation
             )
         )
     )
