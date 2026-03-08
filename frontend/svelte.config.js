@@ -1,7 +1,7 @@
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
-const adapter = process.env.VERCEL
-	? (await import('@sveltejs/adapter-vercel')).default
+const adapter = process.env.CF_PAGES
+	? (await import('@sveltejs/adapter-cloudflare')).default
 	: (await import('@sveltejs/adapter-node')).default;
 
 /** @type {import('@sveltejs/kit').Config} */
