@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — notes.png: Notes list with a mix of folders and notes (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/notes.png" alt="sideBar notes list" />
+</Frame>
+
 Notes gives you a full writing environment inside sideBar, organised in folders
 and always accessible to sideBar when you need it.
 

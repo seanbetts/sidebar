@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — extensions.png: iPad home screen with a sideBar widget visible (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/extensions.png" alt="sideBar widget on the home screen" />
+</Frame>
+
 Widgets and extensions bring sideBar outside the app itself — onto your home
 screen, lock screen, and into Safari. Each one is optional and takes less than
 a minute to set up.

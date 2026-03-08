@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — websites.png: Websites list with a few saved pages (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/websites.png" alt="sideBar saved websites list" />
+</Frame>
+
 ## Saving a Page
 
 There are two ways to save a web page:

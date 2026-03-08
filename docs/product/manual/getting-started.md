@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — getting-started.png: The onboarding conversation (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/getting-started.png" alt="sideBar onboarding conversation" />
+</Frame>
+
 ## Creating an Account
 
 When you open sideBar for the first time, you'll be asked to create an account.

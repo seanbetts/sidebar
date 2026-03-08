@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — chat.png: Active conversation with a skill running (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/chat.png" alt="sideBar chat with a skill running" />
+</Frame>
+
 Chat is your main interface with sideBar. You can ask questions, work
 through problems, or give instructions, and sideBar can use Skills to
 act on your behalf.

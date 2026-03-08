@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — skills.png: Skills settings showing Standard + Store sections (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/skills.png" alt="sideBar skills settings" />
+</Frame>
+
 ## What Skills Are
 
 Skills are modular capabilities that extend what sideBar can do. Think of

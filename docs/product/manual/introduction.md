@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — overview.png: Full app with nav visible, Chat open (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/overview.png" alt="sideBar app overview" />
+</Frame>
+
 sideBar is an AI assistant available on iPhone, iPad, Mac, and in your
 web browser. It gives you a single place to take notes, manage tasks,
 browse websites, and work with files — all with an AI assistant that can help

@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — personality.png: Settings → sideBar identity/soul view (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/personality.png" alt="sideBar personality settings" />
+</Frame>
+
 sideBar isn't a generic AI assistant. It has an identity (name, tone of voice, a
 set of values) and a soul: a sense of purpose, operating principles, and an
 understanding of how it should grow with you over time.

@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — settings.png: Main Settings view (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/settings.png" alt="sideBar settings" />
+</Frame>
+
 ## Account
 
 Your profile stores the details sideBar can reference when it's useful to know who you are. You can edit your name, job title, employer, location, pronouns, and date of birth. Tap your profile photo to replace it with a new one from your camera or photo library.

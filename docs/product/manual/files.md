@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — files.png: Files list with a mix of types (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/files.png" alt="sideBar files list" />
+</Frame>
+
 ## Supported File Types
 
 sideBar accepts a wide range of file formats:

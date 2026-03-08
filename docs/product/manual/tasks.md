@@ -6,6 +6,11 @@ audience: user
 surfaces: [app, website, internal-knowledge]
 ---
 
+{/* TODO: screenshot — tasks.png: Today list with a few tasks (iPad landscape) */}
+<Frame>
+  <img src="/assets/screenshots/tasks.png" alt="sideBar tasks — Today list" />
+</Frame>
+
 ## Smart Lists
 
 sideBar gives you three built-in smart lists that update automatically based on
