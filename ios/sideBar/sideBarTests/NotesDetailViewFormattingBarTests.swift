@@ -12,24 +12,31 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
         XCTAssertFalse(context.makeView().isCustomFormattingBarVisible)
     }
 
-    func testMobileFormattingBarPlacementUsesKeyboardAccessoryOnPhoneInEditMode() {
+    func testMobileFormattingBarPlacementUsesFloatingTopTrailingOnIPadInEditMode() {
         XCTAssertEqual(
-            NotesDetailView.mobileFormattingBarPlacement(isEditing: true, isPhone: true),
-            .keyboardAccessory
+            mobileFormattingBarPlacementName(isEditing: true, isPhone: false),
+            "floatingTopTrailing"
         )
     }
 
-    func testMobileFormattingBarPlacementUsesTopAttachedBarOnIPadInEditMode() {
+    func testMobileFormattingBarPlacementUsesFloatingTopTrailingOnPhoneWhenHardwareKeyboardInputIsExpected() {
         XCTAssertEqual(
-            NotesDetailView.mobileFormattingBarPlacement(isEditing: true, isPhone: false),
-            .topAttached
+            mobileFormattingBarPlacementName(isEditing: true, isPhone: true),
+            "floatingTopTrailing"
+        )
+    }
+
+    func testMobileFormattingBarPlacementUsesKeyboardAccessoryOnPhoneWhenSoftwareKeyboardIsVisible() {
+        XCTAssertEqual(
+            mobileFormattingBarPlacementName(isEditing: true, isPhone: true),
+            "keyboardAccessory"
         )
     }
 
     func testMobileFormattingBarPlacementHidesBarInReadMode() {
         XCTAssertEqual(
-            NotesDetailView.mobileFormattingBarPlacement(isEditing: false, isPhone: true),
-            .hidden
+            mobileFormattingBarPlacementName(isEditing: false, isPhone: true),
+            "hidden"
         )
     }
 
@@ -208,3 +215,19 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
     }
 #endif
 }
+
+#if os(iOS)
+private func mobileFormattingBarPlacementName(
+    isEditing: Bool,
+    isPhone: Bool
+) -> String {
+    switch NotesDetailView.mobileFormattingBarPlacement(isEditing: isEditing, isPhone: isPhone) {
+    case .hidden:
+        return "hidden"
+    case .keyboardAccessory:
+        return "keyboardAccessory"
+    case .topAttached:
+        return "topAttached"
+    }
+}
+#endif

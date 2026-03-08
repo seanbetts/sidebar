@@ -27,7 +27,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }
 
-    func testPhoneSurfaceExposesUIKitFormattingBarAsKeyboardAccessory() throws {
+    func testPhoneSurfaceExposesUIKitFormattingBarAsKeyboardAccessoryWhenSoftwareKeyboardPresentationIsActive() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
@@ -40,6 +40,38 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         )
 
         XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
+    }
+
+    func testFloatingPhoneSurfaceOmitsUIKitFormattingBarAccessory() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarConfiguration: .disabled,
+            showsFormattingAccessory: false
+        )
+
+        XCTAssertNil(textView.inputAccessoryView)
+    }
+
+    func testReadOnlySurfaceDoesNotExposeUIKitFormattingBarAccessory() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            isEditable: false,
+            formattingBarConfiguration: .disabled
+        )
+
+        XCTAssertNil(textView.inputAccessoryView)
     }
 
     func testPhoneSurfaceDisablesDuplicateSystemFormattingUI() throws {
@@ -255,6 +287,7 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
 @available(iOS 26.0, *)
 private func mountTextView(
     viewModel: NativeNoteEditorViewModel,
+    isEditable: Bool = true,
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
     showsFormattingAccessory: Bool = true,
     width: CGFloat = 360,
@@ -265,7 +298,7 @@ private func mountTextView(
             UIKitNoteTextEditorSurface(
                 viewModel: viewModel,
                 maxContentWidth: width,
-                isEditable: true,
+                isEditable: isEditable,
                 formattingBarConfiguration: formattingBarConfiguration,
                 showsFormattingAccessory: showsFormattingAccessory
             )
