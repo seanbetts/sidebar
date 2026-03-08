@@ -88,6 +88,67 @@ final class NotesDetailViewFormattingBarTests: XCTestCase {
     }
 
     @available(iOS 26.0, *)
+    func testFloatingFormattingBarRendersTopTrailingInEditMode() async throws {
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
+        context.editorViewModel.enterEditMode()
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(
+            NotesDetailView(
+                viewModel: context.notesViewModel,
+                editorViewModel: context.editorViewModel,
+                isMoveSheetPresented: .constant(false),
+                moveSelection: .constant(""),
+                isDeleteAlertPresented: .constant(false),
+                isExporting: .constant(false),
+                exportDocument: .constant(nil),
+                exportFilename: .constant(""),
+                formattingBarPresentationOverride: .floatingTopTrailing
+            ),
+            environment: environment
+        )
+        let barView = try XCTUnwrap(
+            findDescendantView(
+                in: controller.view,
+                accessibilityIdentifier: "note-formatting-bar"
+            )
+        )
+        let barFrame = barView.convert(barView.bounds, to: controller.view)
+        let rootBounds = controller.view.bounds
+
+        XCTAssertLessThan(barFrame.width, 240)
+        XCTAssertGreaterThan(barFrame.minX, rootBounds.midX)
+        XCTAssertGreaterThan(barFrame.maxX, rootBounds.maxX - 40)
+    }
+
+    @available(iOS 26.0, *)
+    func testFloatingFormattingBarStaysHiddenInReadModeEvenWhenFloatingPresentationIsOverridden() async throws {
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(
+            NotesDetailView(
+                viewModel: context.notesViewModel,
+                editorViewModel: context.editorViewModel,
+                isMoveSheetPresented: .constant(false),
+                moveSelection: .constant(""),
+                isDeleteAlertPresented: .constant(false),
+                isExporting: .constant(false),
+                exportDocument: .constant(nil),
+                exportFilename: .constant(""),
+                formattingBarPresentationOverride: .floatingTopTrailing
+            ),
+            environment: environment
+        )
+
+        XCTAssertEqual(context.makeView().formattingBarPresentation, .hidden)
+        XCTAssertNil(
+            findDescendantView(
+                in: controller.view,
+                accessibilityIdentifier: "note-formatting-bar"
+            )
+        )
+    }
+
+    @available(iOS 26.0, *)
     func testAttributedNoteEditorContainerReevaluatesPresentationWhenInputModeChanges() async {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
@@ -296,5 +357,20 @@ private final class MutableHardwareKeyboardExpectation {
     init(value: Bool) {
         self.value = value
     }
+}
+
+@MainActor
+private func findDescendantView(in view: UIView, accessibilityIdentifier: String) -> UIView? {
+    if view.accessibilityIdentifier == accessibilityIdentifier {
+        return view
+    }
+
+    for subview in view.subviews {
+        if let match = findDescendantView(in: subview, accessibilityIdentifier: accessibilityIdentifier) {
+            return match
+        }
+    }
+
+    return nil
 }
 #endif
