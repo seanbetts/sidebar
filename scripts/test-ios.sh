@@ -96,6 +96,13 @@ if [[ -n "${IOS_SKIP_TESTING}" ]]; then
   done
 fi
 
+ui_test_backend_config_present() {
+  local api_base_url="${SIDEBAR_UI_TEST_API_BASE_URL:-${API_BASE_URL:-}}"
+  local supabase_url="${SIDEBAR_UI_TEST_SUPABASE_URL:-${SUPABASE_URL:-}}"
+  local supabase_anon_key="${SIDEBAR_UI_TEST_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY:-}}"
+  [[ -n "${api_base_url}" && -n "${supabase_url}" && -n "${supabase_anon_key}" ]]
+}
+
 lane_includes_ui_tests="NO"
 if [[ "${IOS_SCHEME}" == "sideBar" ]]; then
   if [[ -n "${IOS_ONLY_TESTING}" ]]; then
@@ -121,6 +128,12 @@ if [[ "${IOS_SCHEME}" == "sideBar" ]]; then
         break
       fi
     done
+  fi
+
+  if [[ "${lane_includes_ui_tests}" == "YES" ]] && ! ui_test_backend_config_present; then
+    echo "UI test backend configuration missing; skipping sideBarUITests."
+    XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
+    lane_includes_ui_tests="NO"
   fi
 fi
 
