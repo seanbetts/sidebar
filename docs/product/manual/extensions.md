@@ -8,6 +8,7 @@ surfaces: [app, website, internal-knowledge]
 
 {/* TODO: screenshot — extensions.png: iPad home screen with a sideBar widget visible (iPad landscape) */}
 <Frame>
+  {/* TODO: alt text — replace with a rich, specific description of what's shown (for screen readers and AI crawlers) */}
   <img src="/assets/screenshots/extensions.png" alt="sideBar widget on the home screen" />
 </Frame>
 

@@ -8,6 +8,7 @@ surfaces: [app, website, internal-knowledge]
 
 {/* TODO: screenshot — files.png: Files list with a mix of types (iPad landscape) */}
 <Frame>
+  {/* TODO: alt text — replace with a rich, specific description of what's shown (for screen readers and AI crawlers) */}
   <img src="/assets/screenshots/files.png" alt="sideBar files list" />
 </Frame>
 

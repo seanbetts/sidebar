@@ -8,6 +8,7 @@ surfaces: [app, website, internal-knowledge]
 
 {/* TODO: screenshot — skills-store.png: Skills Store browsing view with category filters visible (iPad landscape) */}
 <Frame>
+  {/* TODO: alt text — replace with a rich, specific description of what's shown (for screen readers and AI crawlers) */}
   <img src="/assets/screenshots/skills-store.png" alt="sideBar Skills Store" />
 </Frame>
 

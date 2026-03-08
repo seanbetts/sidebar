@@ -8,6 +8,7 @@ surfaces: [app, website, internal-knowledge]
 
 {/* TODO: screenshot — settings.png: Main Settings view (iPad landscape) */}
 <Frame>
+  {/* TODO: alt text — replace with a rich, specific description of what's shown (for screen readers and AI crawlers) */}
   <img src="/assets/screenshots/settings.png" alt="sideBar settings" />
 </Frame>
 

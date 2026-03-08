@@ -8,6 +8,7 @@ surfaces: [app, website, internal-knowledge]
 
 {/* TODO: screenshot — websites.png: Websites list with a few saved pages (iPad landscape) */}
 <Frame>
+  {/* TODO: alt text — replace with a rich, specific description of what's shown (for screen readers and AI crawlers) */}
   <img src="/assets/screenshots/websites.png" alt="sideBar saved websites list" />
 </Frame>
 
@@ -38,6 +39,7 @@ the title any time after saving.
 
 {/* TODO: screenshot — websites-youtube.png: A saved YouTube video showing transcript (iPad landscape) */}
 <Frame>
+  {/* TODO: alt text — replace with a rich, specific description of what's shown (for screen readers and AI crawlers) */}
   <img src="/assets/screenshots/websites-youtube.png" alt="sideBar YouTube transcript view" />
 </Frame>
 
