@@ -11,9 +11,9 @@ surfaces: [app, website, internal-knowledge]
   <img src="/assets/screenshots/skills-store.png" alt="sideBar Skills Store" />
 </Frame>
 
-The Skills Store is where you discover and install additional capabilities for
-sideBar. It's a dedicated section of the app — find it in the navigation
-alongside Chat, Notes, Tasks, Websites, and Files.
+The Skills Store is where you discover and install new skills for
+sideBar. It's a dedicated section of the app which you can find in the
+navigation alongside Chat, Notes, Tasks, Websites, and Files.
 
 See [Skills](/manual/skills) for an explanation of what skills are and how
 they work.
@@ -21,9 +21,9 @@ they work.
 ## Browsing the Store
 
 Skills are organised by category — Audio, Media, Web, Developer, and more.
-Use the category filter chips at the top to narrow the list, or search by
-name to find something specific. Tap any skill card to see its full
-description, requirements, and version details.
+Use the category filter at the top to narrow the list, or search by name
+to find something specific. Tap any skill card to see its full description,
+requirements, and version details.
 
 ## Installing a Store Skill
 
@@ -37,7 +37,7 @@ description, requirements, and version details.
    prompted.
 4. Tap **Install**. The skill is available to sideBar immediately.
 
-Once installed, sideBar will use the skill automatically when it's relevant —
+Once installed, sideBar will use the skill automatically when it's relevant,
 you don't need to invoke it by name.
 
 ## Managing Installed Skills

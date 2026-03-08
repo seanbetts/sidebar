@@ -14,7 +14,7 @@ surfaces: [app, website, internal-knowledge]
 Skills are modular capabilities that extend what sideBar can do. Think of
 them as plug-ins: each skill gives sideBar access to a specific ability or
 external service. sideBar selects and uses relevant skills automatically as
-you chat — you don't need to invoke them by name or switch modes. When a
+you chat. You don't need to invoke them by name or switch modes. When a
 skill is running, you'll see the skill pill appear inline in the
 [conversation](/manual/chat#skills-in-action) so you can follow along in
 real time.
