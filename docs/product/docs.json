@@ -13,38 +13,27 @@
   "navigation": {
     "groups": [
       {
-        "group": "Getting Started",
+        "group": "Manual",
         "pages": [
-          "LOCAL_DEVELOPMENT",
-          "ARCHITECTURE",
-          "DEPLOYMENT"
+          "manual/introduction"
         ]
       },
       {
-        "group": "Reference",
+        "group": "FAQ",
         "pages": [
-          "API"
+          "faq/general"
         ]
       },
       {
-        "group": "Guides",
+        "group": "Skills",
         "pages": [
-          "MARKDOWN_STYLES",
-          "SKILL_AUTHORING"
+          "reference/skills/web-search"
         ]
       },
       {
-        "group": "Quality",
+        "group": "Concepts",
         "pages": [
-          "QUALITY_ENFORCEMENT",
-          "TESTING"
-        ]
-      },
-      {
-        "group": "iOS",
-        "pages": [
-          "IOS_ENGINEERING_HANDBOOK",
-          "IOS_ARCHITECTURE"
+          "reference/concepts/skills"
         ]
       }
     ]
