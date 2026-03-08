@@ -63,9 +63,9 @@ against all your tasks in the app.
 
 ## Widget and Sync
 
-Your today's tasks appear in sideBar's home screen widget on iPhone, iPad, and
-Mac so you can see what's on your plate without opening the app. All changes
-sync in real time across your devices.
+Your tasks that are due today appear in sideBar's home screen widget on iPhone,
+iPad, and Mac so you can see what's on your plate without opening the app. All
+changes sync in real time across your devices.
 
 See [Widgets & Extensions](/manual/extensions) for how to add the widget to
 your home screen or lock screen.
