@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-summary: How to create an account, find your way around, and have your first conversation with sideBar.
+summary: How to create an account, connect a provider, and complete your first session with sideBar.
 tags: [manual, getting-started, onboarding]
 audience: user
 surfaces: [app, website, internal-knowledge]
@@ -13,38 +13,65 @@ an account. Tap **Create Account**, enter your email address, and follow the
 verification link that arrives in your inbox. If you already have an account,
 tap **Sign In** and enter your credentials.
 
-## Your First Look at the App
+## Connecting a Provider
 
-After signing in, you land in the Chat tab. At the bottom of the screen you'll
-see the main navigation bar with five sections: **Chat**, **Notes**, **Tasks**,
-**Websites**, and **Files**. These are the core areas of the app, and you can
-move between them at any time.
+Before you can chat with sideBar, you need to connect an AI provider. sideBar
+supports three: **Anthropic**, **OpenAI**, and **Google**. You'll need an API
+key from whichever one you choose.
+
+sideBar will walk you through this step automatically when you first sign in.
+Choose your provider, paste your API key into the field, and confirm. Once
+connected, you're ready to start.
+
+If you don't have an API key yet, you can get one from your provider's website.
+sideBar will hold here until a provider is connected — chat isn't available
+without one.
+
+## The Onboarding Conversation
+
+Once your provider is connected, sideBar starts a conversation to get you set
+up. It'll ask a few questions:
+
+**What do you want to do first?** — choose from writing, research, tasks, files,
+or websites. This tells sideBar where to focus.
+
+**A bit about you** — sideBar collects your name, preferred pronouns, location,
+communication style, and how you want it to work with you. This personalises
+every conversation from the start.
+
+**Your first outcome** — sideBar completes a real task in the area you chose.
+Not a demo — an actual piece of work, done in the app.
+
+You can move through this conversation at your own pace. Once it's done,
+sideBar remembers everything it learned and applies it going forward.
+
+## Finding Your Way Around
+
+After onboarding, you land in the main app. The navigation bar sits at the
+bottom of the screen on iPhone, or in the left rail on iPad, Mac, and in a
+web browser. It has six sections:
+
+- **Chat** — where you talk to sideBar and get things done.
+- **Notes** — create and organise notes sideBar can read and reference.
+- **Tasks** — manage to-dos manually or ask sideBar to create them for you.
+- **Websites** — save and browse webpages sideBar can reference.
+- **Files** — upload documents you want sideBar to read, summarize, or work with.
+- **Skills Store** — browse and install additional capabilities.
 
 ## Starting a Conversation
 
 Tap the text field at the bottom of the Chat screen and type anything you want
 to ask or do. You don't need special commands — sideBar understands plain
-language. Try asking it to remind you of something, summarize a topic, or help
+language. Try asking it to remind you of something, summarise a topic, or help
 you draft a note.
 
 sideBar has access to context from your device automatically: your timezone,
 current location (if you've granted permission), and local weather. You don't
-need to tell it where you are or what time it is.
-
-## Exploring the Main Sections
-
-- **Chat** — where you talk to sideBar and get things done.
-- **Notes** — tap the compose button to create your first note. Notes you write
-  here are available to sideBar during conversations.
-- **Tasks** — add to-dos manually or ask sideBar to create them for you.
-- **Websites** — save URLs or let sideBar browse and reference pages on
-  your behalf.
-- **Files** — attach documents you want sideBar to read, summarize, or
-  work with.
+need to tell it where you are or what time it is if you don't want to.
 
 ## Extending sideBar with Skills
 
 sideBar ships with a solid set of built-in capabilities, but Skills let you go
-further. Head to **Settings > Skills** to see what's available and turn
-on the ones that fit how you work. Once a skill is enabled, sideBar can
-use it automatically — you don't need to invoke it by name.
+further. Head to **Settings → Skills** to see what's available and turn on the
+ones that fit how you work. Once a skill is enabled, sideBar can use it
+automatically — you don't need to invoke it by name.
