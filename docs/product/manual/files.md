@@ -1,0 +1,63 @@
+---
+title: Files
+summary: How to upload, manage, and use files with sideBar in sideBar.
+tags: [manual, files]
+audience: user
+surfaces: [app, website, internal-knowledge]
+---
+
+## Supported File Types
+
+sideBar accepts a wide range of file formats:
+
+- **Documents** — PDFs, Word documents (.doc, .docx), and plain text files
+- **Spreadsheets** — Excel workbooks (.xls, .xlsx) and CSV files
+- **Images** — JPG, PNG, and other common image formats
+- **Videos** — YouTube videos, added by URL (sideBar extracts the transcript,
+  the same way the Websites feature handles web pages)
+
+## Adding Files
+
+Tap the **+** button in the Files tab to open the file picker, then choose a
+file from your device. After you select it, sideBar begins ingesting the file
+right away.
+
+Ingestion moves through three stages: **uploading**, **processing**, and
+**ready**. You can watch the status update in real time on the file card. If
+something goes wrong during processing, the card shows an error state with a
+**Retry** button — tap it to try again without re-uploading.
+
+## The File List
+
+Each file in your list shows its filename, size, type, and upload date at a
+glance. Two organizational tools help keep the list manageable:
+
+- **Pin** files you reach for often — they stay at the top of the list.
+- **Archive** files you no longer need active — they move out of the main view.
+  A count of archived files appears at the bottom of the list so you can
+  restore them any time.
+
+## Viewing Files
+
+Tap any ready file to open it in the built-in viewer:
+
+- **PDFs** — full-page viewer with page navigation and pinch-to-zoom
+- **Spreadsheets** — scrollable grid view with column headers
+- **YouTube videos** — in-app player alongside the extracted transcript
+- **Images** — full-screen display
+- **Text and Markdown** — rendered preview
+
+## Using Files with sideBar
+
+Once a file reaches the **ready** state, its content is indexed and the
+sideBar can search and reference it during any conversation. You can also
+attach a specific file directly to a chat message to give sideBar focused
+context on that file.
+
+## File Actions
+
+Tap the menu on any file card to access these actions:
+
+- **Delete** — permanently removes the file and its index
+- **Archive / Restore** — moves the file out of (or back into) the active list
+- **Pin / Unpin** — controls whether the file stays at the top of your list

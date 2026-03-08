@@ -15,7 +15,16 @@
       {
         "group": "Manual",
         "pages": [
-          "manual/introduction"
+          "manual/introduction",
+          "manual/getting-started",
+          "manual/chat",
+          "manual/notes",
+          "manual/tasks",
+          "manual/websites",
+          "manual/files",
+          "manual/skills",
+          "manual/settings",
+          "manual/getting-help"
         ]
       },
       {
