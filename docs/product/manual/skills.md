@@ -45,6 +45,10 @@ or the skill requires a plan upgrade. sideBar will tell you what's needed.
 Skills marked **Beta** are early access. They work, but their behaviour may
 change in a future update.
 
+{/* TODO: Update availability states when OAuth external connections ships (docs/plans/2026-03-07-external-connections-oauth2-implementation-plan.md).
+    New states to add: ready, needs_connection, scope_upgrade_required, error.
+    Some skills will show "Connect Google to install" instead of an API key field. */}
+
 ## Finding and Managing Skills
 
 Go to **Settings → Skills** to see everything in one place. Standard skills
@@ -54,6 +58,10 @@ list; tap any category to browse what's available, then tap a skill to read its
 description, see its requirements, and install it.
 
 ## Installing a Store Skill
+
+{/* TODO: Update install flow when OAuth external connections ships (docs/plans/2026-03-07-external-connections-oauth2-implementation-plan.md).
+    Some skills will require connecting a service account via OAuth instead of entering an API key.
+    Install button states will vary: "Install", "Connect Google to install", "Reconnect". */}
 
 1. Open **Settings → Skills** and scroll to the Store section.
 2. Browse by category and tap a skill to view its details and requirements.
