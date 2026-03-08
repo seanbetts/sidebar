@@ -5,8 +5,6 @@ import UniformTypeIdentifiers
 #endif
 #if os(macOS)
 import AppKit
-#else
-import UIKit
 #endif
 
 // MARK: - SettingsView
@@ -382,10 +380,6 @@ private struct SettingsTabsView: View {
         }
         .padding(DesignTokens.Spacing.md)
         .background(DesignTokens.Colors.settingsBackground)
-        .background(
-            NativeMoreTabStyleConfigurator()
-                .frame(width: 0, height: 0)
-        )
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -418,69 +412,3 @@ private struct SettingsTabsView: View {
             }
     }
 }
-
-#if os(iOS)
-private struct NativeMoreTabStyleConfigurator: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController {
-        let controller = UIViewController()
-        controller.view.isUserInteractionEnabled = false
-        controller.view.backgroundColor = .clear
-        return controller
-    }
-
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        // Deferred to the next run loop tick so the UITabBarController hierarchy
-        // is fully set up before we walk up to find it.
-        DispatchQueue.main.async {
-            guard let tabBarController = tabBarController(from: uiViewController) else {
-                return
-            }
-
-            let moreNavigationController = tabBarController.moreNavigationController
-            moreNavigationController.loadViewIfNeeded()
-            moreNavigationController.view.backgroundColor = .systemGroupedBackground
-
-            if let tableView = findTableView(in: moreNavigationController.view) {
-                tableView.backgroundColor = .systemGroupedBackground
-            }
-        }
-    }
-
-    private func tabBarController(from viewController: UIViewController) -> UITabBarController? {
-        if let tabBarController = viewController.tabBarController {
-            return tabBarController
-        }
-
-        var parent = viewController.parent
-        while let current = parent {
-            if let tabBarController = current as? UITabBarController {
-                return tabBarController
-            }
-            if let tabBarController = current.tabBarController {
-                return tabBarController
-            }
-            parent = current.parent
-        }
-
-        return nil
-    }
-
-    private func findTableView(in rootView: UIView) -> UITableView? {
-        if let tableView = rootView as? UITableView {
-            return tableView
-        }
-        for subview in rootView.subviews {
-            if let tableView = findTableView(in: subview) {
-                return tableView
-            }
-        }
-        return nil
-    }
-}
-#else
-private struct NativeMoreTabStyleConfigurator: View {
-    var body: some View {
-        EmptyView()
-    }
-}
-#endif

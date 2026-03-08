@@ -81,24 +81,61 @@ extension ContentView {
 
     @ViewBuilder
     func phoneMoreDestinationContentView(for section: AppSection) -> some View {
-        phoneMorePanelView(for: section)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .navigationTitle(section.title)
+        let backgroundStyle = Self.compactPhoneMoreDestinationBackgroundStyle(for: section)
+
+        if Self.compactPhoneMoreDestinationUsesDedicatedScaffold(for: section) {
+            CompactPhoneMoreDestinationScaffold(
+                title: section.title,
+                backgroundColor: backgroundStyle.color,
+                onBack: popCompactPhoneMoreDestination
+            ) {
+                phoneMoreDestinationBodyView(for: section)
+            }
             .onAppear {
                 phoneSelection = section
             }
             #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar(.visible, for: .navigationBar)
-            .toolbarBackground(Self.compactPhoneRootTopSafeAreaStyle(for: section).color, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
             #endif
             .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
                 detailView(for: workspaceCompactDetailDescriptor(for: section))
                 #if !os(macOS)
                     .navigationBarTitleDisplayMode(.inline)
+                    .toolbar(.visible, for: .navigationBar)
                 #endif
             }
+        } else {
+            let navigationBarAppearanceStyle = Self.compactPhoneMoreDestinationNavigationBarAppearanceStyle(for: section)
+
+            phoneMorePanelView(for: section)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background {
+                    backgroundStyle.color
+                        .ignoresSafeArea()
+                }
+                .navigationTitle(section.title)
+                .onAppear {
+                    phoneSelection = section
+                }
+                #if !os(macOS)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar(.visible, for: .navigationBar)
+                .toolbarBackground(backgroundStyle.color, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+                .background(
+                    CompactPhoneNavBarAppearanceConfigurator(
+                        backgroundColor: navigationBarAppearanceStyle.backgroundStyle.color,
+                        isOpaque: navigationBarAppearanceStyle.isOpaque
+                    )
+                )
+                #endif
+                .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
+                    detailView(for: workspaceCompactDetailDescriptor(for: section))
+                    #if !os(macOS)
+                        .navigationBarTitleDisplayMode(.inline)
+                    #endif
+                }
+        }
     }
 
     func phoneDetailItemBinding(for section: AppSection) -> Binding<PhoneDetailRoute?> {
@@ -263,21 +300,29 @@ extension ContentView {
 
     @ViewBuilder
     private func phoneMorePanelView(for section: AppSection) -> some View {
+        phoneRootPanelView(for: section)
+    }
+
+    @ViewBuilder
+    private func phoneMoreDestinationBodyView(for section: AppSection) -> some View {
         switch section {
         case .files:
-            CompactPhoneRootSafeAreaView(
-                backgroundColor: Self.compactPhoneRootTopSafeAreaStyle(for: section).color
-            ) {
-                FilesPanel(showsHeader: false)
-            }
-        default:
-            phoneRootPanelView(for: section)
+            FilesPanel(showsHeader: false)
+        case .skillsStore:
+            SkillsStoreView()
+        case .chat, .notes, .tasks, .websites, .settings:
+            phoneMorePanelView(for: section)
         }
+    }
+
+    private func popCompactPhoneMoreDestination() {
+        guard !compactPhoneMoreNavigationPath.isEmpty else { return }
+        compactPhoneMoreNavigationPath.removeLast()
     }
 
 }
 
-private struct CompactPhoneRootSafeAreaView<Content: View>: View {
+struct CompactPhoneRootSafeAreaView<Content: View>: View {
     let backgroundColor: Color
     let content: Content
 

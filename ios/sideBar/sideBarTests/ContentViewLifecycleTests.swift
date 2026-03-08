@@ -97,6 +97,62 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertEqual(style, .panelChrome)
     }
 
+    func testCompactPhoneMoreDestinationBackgroundStyleUsesSidebarForFiles() {
+        let style = ContentView.compactPhoneMoreDestinationBackgroundStyle(for: .files)
+
+        XCTAssertEqual(style, .sidebar)
+    }
+
+    func testCompactPhoneMoreDestinationBackgroundStyleUsesSidebarForSkillsStore() {
+        let style = ContentView.compactPhoneMoreDestinationBackgroundStyle(for: .skillsStore)
+
+        XCTAssertEqual(style, .sidebar)
+    }
+
+    func testCompactPhoneMoreDestinationTopSafeAreaStyleUsesSidebarForFiles() {
+        let style = ContentView.compactPhoneMoreDestinationTopSafeAreaStyle(for: .files)
+
+        XCTAssertEqual(style, .sidebar)
+    }
+
+    func testCompactPhoneMoreDestinationTopSafeAreaStyleUsesSidebarForSkillsStore() {
+        let style = ContentView.compactPhoneMoreDestinationTopSafeAreaStyle(for: .skillsStore)
+
+        XCTAssertEqual(style, .sidebar)
+    }
+
+    func testCompactPhoneMoreDestinationNavigationBarAppearanceUsesOpaqueSidebarForFiles() {
+        let style = ContentView.compactPhoneMoreDestinationNavigationBarAppearanceStyle(for: .files)
+
+        XCTAssertEqual(style.backgroundStyle, .sidebar)
+        XCTAssertTrue(style.isOpaque)
+    }
+
+    func testCompactPhoneMoreDestinationNavigationBarAppearanceUsesOpaqueSidebarForSkillsStore() {
+        let style = ContentView.compactPhoneMoreDestinationNavigationBarAppearanceStyle(for: .skillsStore)
+
+        XCTAssertEqual(style.backgroundStyle, .sidebar)
+        XCTAssertTrue(style.isOpaque)
+    }
+
+    func testCompactPhoneMoreDestinationUsesDedicatedScaffoldForFiles() {
+        let usesDedicatedScaffold = ContentView.compactPhoneMoreDestinationUsesDedicatedScaffold(for: .files)
+
+        XCTAssertTrue(usesDedicatedScaffold)
+    }
+
+    func testCompactPhoneMoreDestinationUsesDedicatedScaffoldForSkillsStore() {
+        let usesDedicatedScaffold = ContentView.compactPhoneMoreDestinationUsesDedicatedScaffold(for: .skillsStore)
+
+        XCTAssertTrue(usesDedicatedScaffold)
+    }
+
+    func testCompactPhoneMoreDestinationDoesNotUseDedicatedScaffoldForWebsites() {
+        let usesDedicatedScaffold = ContentView.compactPhoneMoreDestinationUsesDedicatedScaffold(for: .websites)
+
+        XCTAssertFalse(usesDedicatedScaffold)
+    }
+
     func testMakeMacInitialSelectionPlanDefaultsToChatWithoutPendingSelection() {
         let plan = ContentView.makeMacInitialSelectionPlan(pendingSelection: nil)
 

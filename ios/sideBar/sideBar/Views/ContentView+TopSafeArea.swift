@@ -38,6 +38,11 @@ extension ContentView {
         }
     }
 
+    struct CompactPhoneNavigationBarAppearanceStyle: Equatable {
+        let backgroundStyle: CompactPhonePanelBackgroundStyle
+        let isOpaque: Bool
+    }
+
     static func shouldShowGlobalTopSafeAreaOverlay(
         isCompact: Bool,
         isPhoneIdiom: Bool
@@ -69,6 +74,39 @@ extension ContentView {
 
     static func compactPhoneMoreRootBackgroundStyle() -> CompactPhonePanelBackgroundStyle {
         .sidebar
+    }
+
+    static func compactPhoneMoreDestinationUsesDedicatedScaffold(for section: AppSection) -> Bool {
+        switch section {
+        case .files, .skillsStore:
+            return true
+        case .chat, .notes, .tasks, .websites, .settings:
+            return false
+        }
+    }
+
+    static func compactPhoneMoreDestinationBackgroundStyle(for section: AppSection) -> CompactPhonePanelBackgroundStyle {
+        switch section {
+        case .files, .skillsStore:
+            return .sidebar
+        case .settings:
+            return .settings
+        case .chat, .notes, .tasks, .websites:
+            return compactPhonePanelBackgroundStyle(for: section)
+        }
+    }
+
+    static func compactPhoneMoreDestinationTopSafeAreaStyle(for section: AppSection) -> CompactPhonePanelBackgroundStyle {
+        compactPhoneMoreDestinationBackgroundStyle(for: section)
+    }
+
+    static func compactPhoneMoreDestinationNavigationBarAppearanceStyle(
+        for section: AppSection
+    ) -> CompactPhoneNavigationBarAppearanceStyle {
+        CompactPhoneNavigationBarAppearanceStyle(
+            backgroundStyle: compactPhoneMoreDestinationBackgroundStyle(for: section),
+            isOpaque: true
+        )
     }
 
     var shouldShowGlobalTopSafeAreaOverlay: Bool {
