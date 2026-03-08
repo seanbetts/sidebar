@@ -9,19 +9,33 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.notes_document_types import note_document_from_plain_text
+    from api.services.notes_document_types import NOTE_DOCUMENT_VERSION
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
     NotesService = None
 
 SCRATCHPAD_TITLE = "✏️ Scratchpad"
+LEGACY_SCRATCHPAD_TITLE = f"# {SCRATCHPAD_TITLE}"
+
+
+def _title_only_document() -> dict[str, Any]:
+    return {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {
+                "type": "paragraph",
+                "content": [{"text": SCRATCHPAD_TITLE, "marks": []}],
+            }
+        ],
+    }
 
 
 def clear_scratchpad(user_id: str) -> dict:
@@ -29,13 +43,20 @@ def clear_scratchpad(user_id: str) -> dict:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
-    document = note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n")
+    document = _title_only_document()
 
     set_session_user_id(db, user_id)
     try:
         note = NotesService.get_note_by_title(
             db, user_id, SCRATCHPAD_TITLE, mark_opened=False
         )
+        if not note:
+            note = NotesService.get_note_by_title(
+                db,
+                user_id,
+                LEGACY_SCRATCHPAD_TITLE,
+                mark_opened=False,
+            )
         if not note:
             note = NotesService.create_note(
                 db,

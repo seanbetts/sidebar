@@ -9,19 +9,62 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.notes_document_types import note_document_from_plain_text
+    from api.services.notes_document_types import (
+        NOTE_DOCUMENT_VERSION,
+        note_document_from_plain_text,
+    )
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
     NotesService = None
 
 SCRATCHPAD_TITLE = "✏️ Scratchpad"
+LEGACY_SCRATCHPAD_TITLE = f"# {SCRATCHPAD_TITLE}"
+
+
+def _title_only_document() -> dict[str, Any]:
+    return {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {
+                "type": "paragraph",
+                "content": [{"text": SCRATCHPAD_TITLE, "marks": []}],
+            }
+        ],
+    }
+
+
+def _legacy_body_plain_text(plain_text: str | None) -> str:
+    if not plain_text:
+        return ""
+    trimmed = plain_text.lstrip()
+    if not trimmed.startswith(LEGACY_SCRATCHPAD_TITLE):
+        return plain_text.strip()
+    lines = trimmed.splitlines()
+    if not lines:
+        return ""
+    return "\n".join(lines[1:]).lstrip("\n").strip()
+
+
+def _scratchpad_document_from_legacy_note(note) -> dict[str, Any]:
+    body_plain_text = _legacy_body_plain_text(note.plain_text)
+    if not body_plain_text:
+        return _title_only_document()
+    body_document = note_document_from_plain_text(body_plain_text)
+    return {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            *_title_only_document()["blocks"],
+            *body_document["blocks"],
+        ],
+    }
 
 
 def get_scratchpad(user_id: str) -> dict:
@@ -36,16 +79,32 @@ def get_scratchpad(user_id: str) -> dict:
             db, user_id, SCRATCHPAD_TITLE, mark_opened=True
         )
         if not note:
+            note = NotesService.get_note_by_title(
+                db,
+                user_id,
+                LEGACY_SCRATCHPAD_TITLE,
+                mark_opened=True,
+            )
+            if note:
+                note = NotesService.update_note(
+                    db,
+                    user_id,
+                    note.id,
+                    document=_scratchpad_document_from_legacy_note(note),
+                )
+        if not note:
             note = NotesService.create_note(
                 db,
                 user_id,
-                document=note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
+                document=_title_only_document(),
                 folder="",
             )
 
         return {
             "id": str(note.id),
             "title": note.title,
+            "document": note.document,
+            "plain_text": note.plain_text or "",
             "content": note.plain_text or "",
             "created_at": note.created_at.isoformat() if note.created_at else None,
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,

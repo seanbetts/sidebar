@@ -9,28 +9,90 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.notes_document_types import note_document_from_plain_text
+    from api.services.notes_document_types import (
+        NOTE_DOCUMENT_VERSION,
+        note_document_from_plain_text,
+        validate_note_document,
+    )
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
     NotesService = None
 
 SCRATCHPAD_TITLE = "✏️ Scratchpad"
+LEGACY_SCRATCHPAD_TITLE = f"# {SCRATCHPAD_TITLE}"
 
 
-def ensure_title(content: str) -> str:
-    if content.strip().startswith("#"):
-        return content
-    return f"# {SCRATCHPAD_TITLE}\n\n{content}"
+def _parse_document_argument(document_json: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(document_json)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"document must be valid JSON: {exc.msg}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("document must be a JSON object")
+    return payload
 
 
-def update_scratchpad(user_id: str, content: str) -> dict:
+def _title_only_document() -> dict[str, Any]:
+    return {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {
+                "type": "paragraph",
+                "content": [{"text": SCRATCHPAD_TITLE, "marks": []}],
+            }
+        ],
+    }
+
+
+def _scratchpad_document(document: dict[str, Any]) -> dict[str, Any]:
+    validated = validate_note_document(document)
+    return {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            *_title_only_document()["blocks"],
+            *validated["blocks"],
+        ],
+    }
+
+
+def _legacy_body_plain_text(plain_text: str | None) -> str:
+    if not plain_text:
+        return ""
+    trimmed = plain_text.lstrip()
+    if not trimmed.startswith(LEGACY_SCRATCHPAD_TITLE):
+        return plain_text.strip()
+    lines = trimmed.splitlines()
+    if not lines:
+        return ""
+    return "\n".join(lines[1:]).lstrip("\n").strip()
+
+
+def _migrate_legacy_note_if_needed(db, user_id: str, note) -> Any:
+    if not note or note.title != LEGACY_SCRATCHPAD_TITLE:
+        return note
+    body_plain_text = _legacy_body_plain_text(note.plain_text)
+    body_document = (
+        {"version": NOTE_DOCUMENT_VERSION, "blocks": []}
+        if not body_plain_text
+        else note_document_from_plain_text(body_plain_text)
+    )
+    return NotesService.update_note(
+        db,
+        user_id,
+        note.id,
+        document=_scratchpad_document(body_document),
+    )
+
+
+def update_scratchpad(user_id: str, document: dict[str, Any]) -> dict:
     if SessionLocal is None or NotesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
@@ -42,10 +104,18 @@ def update_scratchpad(user_id: str, content: str) -> dict:
             db, user_id, SCRATCHPAD_TITLE, mark_opened=False
         )
         if not note:
+            note = NotesService.get_note_by_title(
+                db,
+                user_id,
+                LEGACY_SCRATCHPAD_TITLE,
+                mark_opened=False,
+            )
+            note = _migrate_legacy_note_if_needed(db, user_id, note)
+        if not note:
             note = NotesService.create_note(
                 db,
                 user_id,
-                document=note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
+                document=_title_only_document(),
                 folder="",
             )
 
@@ -53,7 +123,7 @@ def update_scratchpad(user_id: str, content: str) -> dict:
             db,
             user_id,
             note.id,
-            document=note_document_from_plain_text(ensure_title(content)),
+            document=_scratchpad_document(document),
         )
 
         return {"id": str(updated.id), "title": updated.title}
@@ -63,7 +133,7 @@ def update_scratchpad(user_id: str, content: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Update scratchpad content")
-    parser.add_argument("--content", required=True, help="Scratchpad content text")
+    parser.add_argument("--document", required=True, help="Scratchpad document JSON")
     parser.add_argument("--database", action="store_true", help="Use database mode")
     parser.add_argument("--json", action="store_true", help="JSON output")
     parser.add_argument("--user-id", help="User id for database access")
@@ -77,7 +147,10 @@ def main() -> None:
         if not args.user_id:
             raise ValueError("user_id is required for database mode")
 
-        result = update_scratchpad(args.user_id, args.content)
+        result = update_scratchpad(
+            args.user_id,
+            _parse_document_argument(args.document),
+        )
         output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)
