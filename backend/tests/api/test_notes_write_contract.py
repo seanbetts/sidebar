@@ -22,6 +22,16 @@ def test_parse_note_write_payload_rejects_explicit_title():
         )
 
 
+def test_parse_note_write_payload_rejects_legacy_content_field():
+    with pytest.raises(BadRequestError, match="Legacy note content payloads are unsupported"):
+        parse_note_write_payload(
+            {
+                "document": note_document_from_plain_text("Semantic Title\nBody"),
+                "content": "# Legacy markdown body",
+            }
+        )
+
+
 def test_build_canonical_note_write_accepts_canonical_payload():
     document = note_document_from_plain_text("# strict body")
 
@@ -30,4 +40,13 @@ def test_build_canonical_note_write_accepts_canonical_payload():
     assert result.document == document
     assert result.document_version == 1
     assert result.plain_text == "# strict body"
-    assert result.title == "strict body"
+    assert result.title == "# strict body"
+
+
+def test_build_canonical_note_write_preserves_literal_hash_prefix_from_semantic_document():
+    document = note_document_from_plain_text("## Literal heading markers stay literal")
+
+    result = build_canonical_note_write(document)
+
+    assert result.plain_text == "## Literal heading markers stay literal"
+    assert result.title == "## Literal heading markers stay literal"

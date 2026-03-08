@@ -179,7 +179,7 @@ final class IngestionStoreTests: XCTestCase {
         let invalidItem = IngestionStoreTestsSupport.makeItem(id: "file-1", status: "processing", stage: "extracting")
         let payload: [String: LocalUploadRecord] = [
             validItem.file.id: LocalUploadRecord(item: validItem, bookmarkData: nil),
-            invalidItem.file.id: LocalUploadRecord(item: invalidItem, bookmarkData: nil),
+            invalidItem.file.id: LocalUploadRecord(item: invalidItem, bookmarkData: nil)
         ]
         defaults.set(try JSONEncoder().encode(payload), forKey: "ingestion.localUploads")
 

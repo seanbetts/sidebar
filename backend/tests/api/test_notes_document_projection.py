@@ -35,7 +35,7 @@ def test_derive_title_from_first_non_empty_plain_text_line() -> None:
         ],
     }
 
-    assert derive_note_title_from_document(document) == "Hello world"
+    assert derive_note_title_from_document(document) == "# Hello world"
 
 
 def test_derive_title_falls_back_to_new_note() -> None:

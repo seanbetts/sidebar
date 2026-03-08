@@ -65,7 +65,11 @@ final class ChatStreamParserTests: XCTestCase {
 
     func testIngestParsesWorkspacePatchEvent() {
         var parser = ChatStreamParser()
-        let chunk = "event: workspace_patch\ndata: {\"version\":1,\"operations\":[{\"op\":\"swap_panes\"}],\"future_field\":{\"trace_id\":\"abc\"}}\n\n"
+        let chunk = """
+        event: workspace_patch
+        data: {"version":1,"operations":[{"op":"swap_panes"}],"future_field":{"trace_id":"abc"}}
+
+        """
 
         let events = parser.ingest(Data(chunk.utf8))
 

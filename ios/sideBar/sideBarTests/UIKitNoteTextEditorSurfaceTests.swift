@@ -11,7 +11,6 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
     func testAttributedNoteEditorContainerPrefersUIKitSurfaceOnIOS() {
         XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .uiKit)
     }
-
     func testCanonicalSelectionUpdatesMoveTextViewCaretUsingUTF16Offsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -22,93 +21,75 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
             forUTF16Offset: 5,
             in: viewModel.attributedContent
         )
-
         let textView = try mountTextView(viewModel: viewModel)
-
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }
-
     func testKeyboardAccessoryPresentationExposesUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-
         let textView = try mountTextView(
             viewModel: viewModel,
             formattingBarConfiguration: .disabled,
             formattingBarPresentation: .keyboardAccessory
         )
-
         XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
     }
-
     func testFloatingTopTrailingPresentationOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-
         let textView = try mountTextView(
             viewModel: viewModel,
             formattingBarConfiguration: .disabled,
             formattingBarPresentation: .floatingTopTrailing
         )
-
         XCTAssertNil(textView.inputAccessoryView)
     }
-
     func testHiddenPresentationOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-
         let textView = try mountTextView(
             viewModel: viewModel,
             formattingBarConfiguration: .disabled,
             formattingBarPresentation: .hidden
         )
-
         XCTAssertNil(textView.inputAccessoryView)
     }
-
     func testReadOnlySurfaceOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-
         let textView = try mountTextView(
             viewModel: viewModel,
             isEditable: false,
             formattingBarConfiguration: .disabled,
             formattingBarPresentation: .keyboardAccessory
         )
-
         XCTAssertNil(textView.inputAccessoryView)
     }
-
     func testPhoneSurfaceDisablesDuplicateSystemFormattingUI() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-
         let textView = try mountTextView(
             viewModel: viewModel,
             formattingBarConfiguration: .disabled
         )
-
         XCTAssertFalse(textView.allowsEditingTextAttributes)
         XCTAssertNil(textView.textFormattingConfiguration)
     }
-
     func testPhoneSurfaceCommandBTriggersSharedBoldFormattingCommand() async throws {
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
         let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
@@ -116,7 +97,6 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         context.editorViewModel.enterEditMode()
         let insertion = nativeViewModel.attributedContent.endIndex
         nativeViewModel.selection = AttributedTextSelection(range: insertion..<insertion)
-
         let textView = try mountTextView(
             viewModel: nativeViewModel,
             formattingBarConfiguration: context.editorViewModel.noteFormattingBarConfiguration
@@ -126,12 +106,9 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
                 $0.input?.lowercased() == "b" && $0.modifierFlags == [.command]
             }
         )
-
         _ = textView.perform(boldCommand.action)
-
         XCTAssertTrue(context.editorViewModel.isFormattingActive(.bold))
     }
-
     func testIPadSurfaceCommandBTriggersSharedBoldFormattingCommandWithoutAccessoryBar() async throws {
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
         let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
@@ -139,7 +116,6 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         context.editorViewModel.enterEditMode()
         let insertion = nativeViewModel.attributedContent.endIndex
         nativeViewModel.selection = AttributedTextSelection(range: insertion..<insertion)
-
         let textView = try mountTextView(
             viewModel: nativeViewModel,
             formattingBarConfiguration: context.editorViewModel.noteFormattingBarConfiguration,
@@ -150,14 +126,10 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
                 $0.input?.lowercased() == "b" && $0.modifierFlags == [.command]
             }
         )
-
         XCTAssertNil(textView.inputAccessoryView)
-
         _ = textView.perform(boldCommand.action)
-
         XCTAssertTrue(context.editorViewModel.isFormattingActive(.bold))
     }
-
     func testFirstResponderSurfaceReloadsInputViewsWhenAccessoryPresentationChanges() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -171,84 +143,67 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
             presentationState: presentationState,
             textView: textView
         )
-
         XCTAssertTrue(textView.isFirstResponder)
         XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
         XCTAssertEqual(textView.reloadInputViewsCallCount, 0)
-
         presentationState.presentation = .floatingTopTrailing
         controller.view.setNeedsLayout()
         controller.view.layoutIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-
         XCTAssertEqual(textView.reloadInputViewsCallCount, 1)
         XCTAssertNil(textView.inputAccessoryView)
     }
-
     func testEditableSurfaceBecomesFirstResponderOnMount() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-
         let textView = try mountTextView(viewModel: viewModel)
-
         XCTAssertTrue(textView.isFirstResponder)
     }
-
     func testUIKitSurfaceUsesReadModeTextPaddingInsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-
         let textView = try mountTextView(viewModel: viewModel)
-
         XCTAssertEqual(textView.textContainer.lineFragmentPadding, 0)
         XCTAssertEqual(textView.textContainerInset.left, NoteTextLayout.horizontalPadding)
         XCTAssertEqual(textView.textContainerInset.right, NoteTextLayout.horizontalPadding)
         XCTAssertEqual(textView.textContainerInset.top, NoteTextLayout.verticalPadding)
         XCTAssertEqual(textView.textContainerInset.bottom, NoteTextLayout.verticalPadding)
     }
-
     func testUIKitSelectionChangesFlowBackIntoCanonicalSelectionUsingUTF16Offsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("A👍🏽B"),
             plainText: "A👍🏽B"
         )
-
         let textView = try mountTextView(viewModel: viewModel)
         textView.selectedRange = NSRange(location: 5, length: 0)
         textView.delegate?.textViewDidChangeSelection?(textView)
-
         assertInsertionPointUTF16Offset(
             viewModel.selection,
             in: viewModel.attributedContent,
             equals: 5
         )
     }
-
     func testUIKitTextChangesFlowBackIntoCanonicalContent() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-
         let textView = try mountTextView(viewModel: viewModel)
         let previous = viewModel.attributedContent
-
         textView.text = "Hello updated"
         textView.delegate?.textViewDidChange?(textView)
-
         XCTAssertEqual(String(viewModel.attributedContent.characters), "Hello updated")
         XCTAssertTrue(viewModel.hasUnsavedChanges)
         XCTAssertNotEqual(viewModel.attributedContent, previous)
     }
-
     func testCanonicalBoldFormattingRendersIntoUIKitAttributedText() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -258,13 +213,10 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         let range = noteCharacterRange(length: 4, in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(range: range)
         viewModel.applyFormatting(.bold)
-
         let textView = try mountTextView(viewModel: viewModel)
         let font = try XCTUnwrap(textView.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
-
         XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.traitBold))
     }
-
     func testInsertionPointFormattingToggleUpdatesUIKitTypingAttributes() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -273,7 +225,6 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         )
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
-
         let textView = try mountTextView(viewModel: viewModel)
         XCTAssertFalse(
             try XCTUnwrap(textView.typingAttributes[.font] as? UIFont)
@@ -281,29 +232,23 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
                 .symbolicTraits
                 .contains(.traitBold)
         )
-
         viewModel.applyFormatting(.bold)
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-
         let font = try XCTUnwrap(textView.typingAttributes[.font] as? UIFont)
-
         XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.traitBold))
     }
-
     func testUIKitSurfaceUsesDynamicLabelColorForExistingAndNewText() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
             plainText: "Hello"
         )
-
         let textView = try mountTextView(viewModel: viewModel)
         let renderedColor = try XCTUnwrap(
             textView.attributedText.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor
         )
         let typingColor = try XCTUnwrap(textView.typingAttributes[.foregroundColor] as? UIColor)
         let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
-
         XCTAssertEqual(
             renderedColor.resolvedColor(with: darkTraits),
             UIColor.label.resolvedColor(with: darkTraits)
@@ -313,7 +258,6 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
             UIColor.label.resolvedColor(with: darkTraits)
         )
     }
-
     func testUIKitFormattedEditsDoNotStripExistingBoldFormatting() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -323,32 +267,26 @@ final class UIKitNoteTextEditorSurfaceTests: XCTestCase {
         let range = noteCharacterRange(length: 4, in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(range: range)
         viewModel.applyFormatting(.bold)
-
         let textView = try mountTextView(viewModel: viewModel)
         let updated = NSMutableAttributedString(attributedString: textView.attributedText)
         updated.append(NSAttributedString(string: "!"))
         textView.attributedText = updated
         textView.selectedRange = NSRange(location: updated.length, length: 0)
         textView.delegate?.textViewDidChange?(textView)
-
         let updatedRange = noteCharacterRange(length: 4, in: viewModel.attributedContent)
         XCTAssertEqual(String(viewModel.attributedContent.characters), "Bold!")
         XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: updatedRange))
     }
-
     func testPendingCaretTargetsStillLandAtCorrectInsertionPointWhenUIKitSurfaceMounts() async throws {
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "A👍🏽B"))
         let nativeViewModel = NativeNoteEditorViewModel()
         context.editorViewModel.enterEditMode(at: .characterOffset(5))
-
         _ = AttributedNoteEditorContainer.loadNoteIfNeeded(
             editorViewModel: context.editorViewModel,
             nativeViewModel: nativeViewModel,
             loadedNoteId: nil
         )
-
         let textView = try mountTextView(viewModel: nativeViewModel)
-
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }
 }
