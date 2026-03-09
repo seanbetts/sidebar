@@ -233,13 +233,20 @@ final class APIClientTests: XCTestCase {
         let refreshCalls = SynchronizedCounter()
         let requestCount = SynchronizedCounter()
         let unauthorizedCount = SynchronizedCounter()
-        let unauthorizedBarrier = TwoRequestBarrier()
+        let firstUnauthorized = DispatchSemaphore(value: 0)
+        let releaseRefresh = DispatchSemaphore(value: 0)
 
         let config = APIClientConfig(
             baseUrl: router.baseURL,
             accessTokenProvider: { tokenBox.get() },
             refreshAuthIfNeeded: {
                 _ = refreshCalls.increment()
+                let released = releaseRefresh.wait(timeout: .now() + 0.25)
+                XCTAssertEqual(
+                    released,
+                    .success,
+                    "Expected a second unauthorized response before refresh completed"
+                )
                 tokenBox.set("token-2")
                 return true
             }
@@ -252,8 +259,12 @@ final class APIClientTests: XCTestCase {
             _ = requestCount.increment()
             let authHeader = request.value(forHTTPHeaderField: "Authorization")
             if authHeader == "Bearer token-1" {
-                _ = unauthorizedCount.increment()
-                unauthorizedBarrier.waitForPair()
+                let unauthorizedOrdinal = unauthorizedCount.increment()
+                if unauthorizedOrdinal == 1 {
+                    firstUnauthorized.signal()
+                } else if unauthorizedOrdinal == 2 {
+                    releaseRefresh.signal()
+                }
                 let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
                 return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
             }
@@ -263,6 +274,11 @@ final class APIClientTests: XCTestCase {
         }
 
         async let first: EmptyResponse = client.request("ping", method: "GET")
+        XCTAssertEqual(
+            firstUnauthorized.wait(timeout: .now() + 0.25),
+            .success,
+            "Expected the first request to reach the unauthorized response"
+        )
         async let second: EmptyResponse = client.request("pong", method: "GET")
         _ = try await (first, second)
 
@@ -286,6 +302,8 @@ final class APIClientTests: XCTestCase {
             let newToken = "wave-\(wave)-new"
             tokenBox.set(oldToken)
             nextRefreshedToken.set(newToken)
+            let waveUnauthorizedCount = SynchronizedCounter()
+            let releaseRefresh = DispatchSemaphore(value: 0)
             let router = ScopedURLProtocolRouter()
             defer { router.invalidate() }
             let config = APIClientConfig(
@@ -293,7 +311,12 @@ final class APIClientTests: XCTestCase {
                 accessTokenProvider: { tokenBox.get() },
                 refreshAuthIfNeeded: {
                     _ = refreshCalls.increment()
-                    usleep(UInt32.random(in: 1_000...6_000))
+                    let released = releaseRefresh.wait(timeout: .now() + 0.25)
+                    XCTAssertEqual(
+                        released,
+                        .success,
+                        "Expected multiple unauthorized responses to coalesce refresh"
+                    )
                     tokenBox.set(nextRefreshedToken.get())
                     return true
                 }
@@ -306,7 +329,10 @@ final class APIClientTests: XCTestCase {
                 let authHeader = request.value(forHTTPHeaderField: "Authorization")
                 if authHeader == "Bearer \(oldToken)" {
                     _ = unauthorizedCount.increment()
-                    usleep(UInt32.random(in: 1_000...4_000))
+                    let waveUnauthorizedOrdinal = waveUnauthorizedCount.increment()
+                    if waveUnauthorizedOrdinal == 2 {
+                        releaseRefresh.signal()
+                    }
                     let response = HTTPURLResponse(
                         url: request.url!,
                         statusCode: 401,
@@ -445,26 +471,5 @@ private final class SynchronizedStringBox: @unchecked Sendable {
         lock.lock()
         self.value = value
         lock.unlock()
-    }
-}
-
-private final class TwoRequestBarrier: @unchecked Sendable {
-    private let arrivalsLock = NSLock()
-    private let condition = NSCondition()
-    private var arrivals = 0
-
-    func waitForPair() {
-        arrivalsLock.lock()
-        arrivals += 1
-        let currentArrivals = arrivals
-        arrivalsLock.unlock()
-
-        condition.lock()
-        defer { condition.unlock() }
-        if currentArrivals < 2 {
-            _ = condition.wait(until: Date().addingTimeInterval(1))
-            return
-        }
-        condition.broadcast()
     }
 }

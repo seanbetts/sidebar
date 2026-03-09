@@ -700,9 +700,10 @@ final class WebsitesViewModelTests: XCTestCase {
             websiteId: "site-1",
             url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         )
-        for _ in 0..<20 where store.active?.youtubeTranscripts?["dQw4w9WgXcQ"] == nil {
-            try? await Task.sleep(nanoseconds: 10_000_000)
+        let queued = await waitForCondition {
+            store.active?.youtubeTranscripts?["dQw4w9WgXcQ"] != nil
         }
+        XCTAssertTrue(queued)
 
         XCTAssertEqual(
             store.active?.youtubeTranscripts?["dQw4w9WgXcQ"]?.status,
@@ -927,7 +928,10 @@ final class WebsitesViewModelTests: XCTestCase {
             store: store,
             toastCenter: ToastCenter(),
             networkStatus: TestNetworkStatus(isNetworkAvailable: true),
-            transcriptPollInterval: 0.05
+            transcriptPollInterval: 0,
+            transcriptPollMaxInterval: 0,
+            transcriptPollJitterWindow: 0,
+            transcriptPollMinimumInterval: 0
         )
 
         await viewModel.selectWebsite(id: "site-1")
@@ -938,20 +942,16 @@ final class WebsitesViewModelTests: XCTestCase {
             url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         )
 
-        for _ in 0..<20 {
-            if viewModel.active?.content.contains("YOUTUBE_TRANSCRIPT:dQw4w9WgXcQ") == true {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 50_000_000)
+        let loadedTranscript = await waitForCondition {
+            viewModel.active?.content.contains("YOUTUBE_TRANSCRIPT:dQw4w9WgXcQ") == true
         }
+        XCTAssertTrue(loadedTranscript)
 
         XCTAssertEqual(
             viewModel.active?.youtubeTranscripts?[videoId]?.status?.lowercased(),
             "ready"
         )
-        XCTAssertTrue(
-            viewModel.active?.content.contains("YOUTUBE_TRANSCRIPT:dQw4w9WgXcQ") == true
-        )
+        XCTAssertTrue(viewModel.active?.content.contains("YOUTUBE_TRANSCRIPT:dQw4w9WgXcQ") == true)
     }
 
     func testTranscriptPollingStopsAfterRepeatedFailuresAndMarksTranscriptFailed() async {
@@ -974,10 +974,11 @@ final class WebsitesViewModelTests: XCTestCase {
             store: store,
             toastCenter: ToastCenter(),
             networkStatus: TestNetworkStatus(isNetworkAvailable: true),
-            transcriptPollInterval: 0.01,
-            transcriptPollMaxInterval: 0.01,
+            transcriptPollInterval: 0,
+            transcriptPollMaxInterval: 0,
             transcriptPollMaxConsecutiveFailures: 2,
-            transcriptPollJitterWindow: 0
+            transcriptPollJitterWindow: 0,
+            transcriptPollMinimumInterval: 0
         )
 
         await viewModel.selectWebsite(id: "site-1")
@@ -989,9 +990,10 @@ final class WebsitesViewModelTests: XCTestCase {
             url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         )
 
-        for _ in 0..<100 where viewModel.active?.youtubeTranscripts?[videoId]?.status != "failed" {
-            try? await Task.sleep(nanoseconds: 10_000_000)
+        let failed = await waitForCondition {
+            viewModel.active?.youtubeTranscripts?[videoId]?.status == "failed"
         }
+        XCTAssertTrue(failed)
 
         XCTAssertEqual(
             viewModel.active?.youtubeTranscripts?[videoId]?.status,
@@ -1006,6 +1008,27 @@ final class WebsitesViewModelTests: XCTestCase {
             "Could not refresh transcript status. Retry transcription."
         )
         XCTAssertTrue(viewModel.transcriptPollingTasks.isEmpty)
+    }
+}
+
+extension WebsitesViewModelTests {
+    private func waitForCondition(
+        timeoutNanoseconds: UInt64 = 250_000_000,
+        pollNanoseconds: UInt64 = 1_000_000,
+        condition: @escaping () -> Bool
+    ) async -> Bool {
+        let start = DispatchTime.now().uptimeNanoseconds
+        while DispatchTime.now().uptimeNanoseconds - start < timeoutNanoseconds {
+            if condition() {
+                return true
+            }
+            if pollNanoseconds == 0 {
+                await Task.yield()
+            } else {
+                try? await Task.sleep(nanoseconds: pollNanoseconds)
+            }
+        }
+        return condition()
     }
 }
 

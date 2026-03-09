@@ -100,14 +100,16 @@ public final class WebsitesViewModel: ObservableObject {
         transcriptPollInterval: TimeInterval = 5,
         transcriptPollMaxInterval: TimeInterval = 20,
         transcriptPollMaxConsecutiveFailures: Int = 6,
-        transcriptPollJitterWindow: TimeInterval = 0.4
+        transcriptPollJitterWindow: TimeInterval = 0.4,
+        transcriptPollMinimumInterval: TimeInterval = 0.25
     ) {
         self.api = api
         self.store = store
         self.ingestionStore = ingestionStore
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
-        let clampedPollInterval = max(transcriptPollInterval, 0.25)
+        let minimumPollInterval = max(transcriptPollMinimumInterval, 0)
+        let clampedPollInterval = max(transcriptPollInterval, minimumPollInterval)
         self.transcriptPollIntervalNanoseconds = UInt64(clampedPollInterval * 1_000_000_000)
         self.transcriptPollMaxIntervalNanoseconds = UInt64(
             max(transcriptPollMaxInterval, clampedPollInterval) * 1_000_000_000
