@@ -38,12 +38,6 @@
          <TestPlanReference
             reference = "container:sideBar.xcodeproj/xcshareddata/xctestplans/AppleStateful.xctestplan">
          </TestPlanReference>
-         <TestPlanReference
-            reference = "container:sideBar.xcodeproj/xcshareddata/xctestplans/AppleExtensions.xctestplan">
-         </TestPlanReference>
-         <TestPlanReference
-            reference = "container:sideBar.xcodeproj/xcshareddata/xctestplans/AppleUI.xctestplan">
-         </TestPlanReference>
       </TestPlans>
       <Testables>
          <TestableReference
@@ -54,28 +48,6 @@
                BlueprintIdentifier = "14C84A542F10562500FE0C16"
                BuildableName = "sideBarTests.xctest"
                BlueprintName = "sideBarTests"
-               ReferencedContainer = "container:sideBar.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "14C84A5E2F10562500FE0C16"
-               BuildableName = "sideBarUITests.xctest"
-               BlueprintName = "sideBarUITests"
-               ReferencedContainer = "container:sideBar.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A1B2C3E62F40000200ABCDEF"
-               BuildableName = "ShareExtensionTests.xctest"
-               BlueprintName = "ShareExtensionTests"
                ReferencedContainer = "container:sideBar.xcodeproj">
             </BuildableReference>
          </TestableReference>

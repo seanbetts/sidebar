@@ -137,7 +137,9 @@ See [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md) for the full guide 
 Run tests from CLI:
 
 ```bash
-xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' test
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' test            # fast/default unit lane
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarUI -destination 'platform=iOS Simulator,name=iPhone 15' test          # UI lane
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarExtensions -destination 'platform=iOS Simulator,name=iPhone 15' test  # extension lane
 ```
 
 ### 3. Rebuild After Changes

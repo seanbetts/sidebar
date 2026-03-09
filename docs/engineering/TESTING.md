@@ -155,19 +155,22 @@ npm test TaskItem                         # Specific file
 npm run coverage                          # With coverage
 
 # iOS
-./scripts/test-ios.sh                     # Xcode scheme tests (unit + UI)
+./scripts/test-ios.sh                     # default fast macOS AppleFast lane
 IOS_DESTINATION='platform=iOS Simulator,name=iPhone 15 Pro' ./scripts/test-ios.sh
 
-# Deterministic CLI verification (recommended when full suite is flaky in parallel)
+# Deterministic CLI verification for the fast/default iOS lane
 xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
-  -parallel-testing-enabled NO \
-  -only-testing:sideBarTests test
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' test
+
+# Explicit UI and extension lanes
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarUI \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' test
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarExtensions \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' test
 
 # Optional local retry mode for transient simulator/runtime flake triage
 xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
-  -only-testing:sideBarTests \
   -retry-tests-on-failure -test-iterations 3 test
 ```
 
@@ -190,6 +193,9 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 
 Backend/frontend tests run automatically on push/PR via GitHub Actions. Coverage reports uploaded to Codecov.
 
-Xcode Cloud runs the `sideBar` scheme test action (unit + UI tests).
+Xcode Cloud and any broader Apple coverage jobs should run the explicit lane schemes:
+- `sideBar` for the fast/default unit lane
+- `sideBarUI` for UI coverage
+- `sideBarExtensions` for extension coverage
 
 **iOS tests run on commit when `ios/` changes** via pre-commit; other tests don't block commits, but they block merge.

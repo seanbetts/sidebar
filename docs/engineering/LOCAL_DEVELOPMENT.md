@@ -91,7 +91,9 @@ Run iOS unit tests from the CLI:
 
 ```bash
 ./scripts/test-ios.sh
-xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' test
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' test            # fast/default unit lane
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarUI -destination 'platform=iOS Simulator,name=iPhone 15' test          # UI lane
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarExtensions -destination 'platform=iOS Simulator,name=iPhone 15' test  # extension lane
 ```
 
 ## Safety Notes (Production Data)

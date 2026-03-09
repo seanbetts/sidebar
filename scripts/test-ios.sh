@@ -13,6 +13,27 @@ else
   IOS_SCHEME="sideBarMacTests"
 fi
 
+default_test_plan_for_scheme() {
+  case "${1}" in
+    sideBarMacTests|sideBar)
+      echo "AppleFast"
+      ;;
+    sideBarUI)
+      echo "AppleUI"
+      ;;
+    sideBarExtensions)
+      echo "AppleExtensions"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+scheme_includes_ui_tests() {
+  [[ "${1}" == "sideBarUI" ]]
+}
+
 if [[ -n "${IOS_DESTINATION+x}" ]]; then
   IOS_DESTINATION="${IOS_DESTINATION}"
 elif [[ "${IOS_SCHEME}" == "sideBarMacTests" ]]; then
@@ -23,17 +44,15 @@ fi
 IOS_DESTINATION_TIMEOUT="${IOS_DESTINATION_TIMEOUT:-120}"
 if [[ -n "${IOS_ENABLE_CODE_COVERAGE+x}" ]]; then
   IOS_ENABLE_CODE_COVERAGE="${IOS_ENABLE_CODE_COVERAGE}"
-elif [[ "${IOS_SCHEME}" == "sideBarMacTests" ]]; then
+elif [[ "${IOS_SCHEME}" == "sideBarMacTests" || "${IOS_SCHEME}" == "sideBar" ]]; then
   IOS_ENABLE_CODE_COVERAGE="NO"
 else
   IOS_ENABLE_CODE_COVERAGE="YES"
 fi
 if [[ -n "${IOS_TEST_PLAN+x}" ]]; then
   IOS_TEST_PLAN="${IOS_TEST_PLAN}"
-elif [[ "${IOS_SCHEME}" == "sideBarMacTests" ]]; then
-  IOS_TEST_PLAN="AppleFast"
 else
-  IOS_TEST_PLAN=""
+  IOS_TEST_PLAN="$(default_test_plan_for_scheme "${IOS_SCHEME}")"
 fi
 IOS_RESULT_BUNDLE_PATH="${IOS_RESULT_BUNDLE_PATH:-}"
 IOS_DERIVED_DATA_PATH="${IOS_DERIVED_DATA_PATH:-}"
@@ -136,9 +155,14 @@ ui_test_backend_config_present() {
 }
 
 lane_includes_ui_tests="NO"
-if [[ "${IOS_SCHEME}" == "sideBar" ]]; then
+if scheme_includes_ui_tests "${IOS_SCHEME}"; then
+  lane_includes_ui_tests="YES"
+fi
+
+if [[ "${lane_includes_ui_tests}" == "YES" ]]; then
   if [[ -n "${IOS_ONLY_TESTING}" ]]; then
     IFS=',' read -r -a only_testing_specs_for_ui <<< "${IOS_ONLY_TESTING}"
+    lane_includes_ui_tests="NO"
     for raw_spec in "${only_testing_specs_for_ui[@]}"; do
       spec="$(echo "${raw_spec}" | xargs)"
       target="${spec%%/*}"
