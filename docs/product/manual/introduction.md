@@ -14,7 +14,7 @@ surfaces: [app, website, internal-knowledge]
 
 sideBar is an AI assistant available on iPhone, iPad, Mac, and in your
 web browser. It gives you a single place to take notes, manage tasks,
-browse websites, and work with files, all with an AI assistant that can help
+save websites, and work with files, all with an AI assistant that can help
 you get things done.
 
 The core idea is that your content and sideBar live together. When you
