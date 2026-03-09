@@ -34,6 +34,10 @@ scheme_includes_ui_tests() {
   [[ "${1}" == "sideBarUI" ]]
 }
 
+scheme_has_only_ui_tests() {
+  [[ "${1}" == "sideBarUI" ]]
+}
+
 if [[ -n "${IOS_DESTINATION+x}" ]]; then
   IOS_DESTINATION="${IOS_DESTINATION}"
 elif [[ "${IOS_SCHEME}" == "sideBarMacTests" ]]; then
@@ -188,6 +192,10 @@ if [[ "${lane_includes_ui_tests}" == "YES" ]]; then
 
   if [[ "${lane_includes_ui_tests}" == "YES" ]] && ! ui_test_backend_config_present; then
     echo "UI test backend configuration missing; skipping sideBarUITests."
+    if scheme_has_only_ui_tests "${IOS_SCHEME}"; then
+      echo "No non-UI Apple tests remain in scheme ${IOS_SCHEME}; exiting without running xcodebuild."
+      exit 0
+    fi
     XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
     lane_includes_ui_tests="NO"
   fi
