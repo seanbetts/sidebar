@@ -249,7 +249,7 @@ private func waitUntilSemantic(timeoutSeconds: TimeInterval, condition: @escapin
         if condition() {
             return
         }
-        try await Task.sleep(nanoseconds: 30_000_000)
+        await Task.yield()
     }
     XCTFail("Timed out waiting for condition")
 }

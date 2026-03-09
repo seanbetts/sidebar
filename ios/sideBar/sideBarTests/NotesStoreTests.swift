@@ -41,7 +41,10 @@ final class NotesStoreTests: XCTestCase {
         ])
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.notesTree, value: cached, ttlSeconds: 60)
-        let api = MockNotesAPI(treeResult: .success(fresh), noteResult: .failure(MockError.forced))
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .success(fresh),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
         api.listDelay = 0.05
         let listExpectation = expectation(description: "tree refresh")
         api.onList = {
@@ -60,7 +63,10 @@ final class NotesStoreTests: XCTestCase {
         let note = NotePayload(id: "n1", name: "Note", content: "Body", path: "/note.md", modified: 1, created: nil)
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.note(id: "n1"), value: note, ttlSeconds: 60)
-        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
         let store = NotesStore(api: api, cache: cache)
         store.applyEditorUpdate(note)
 
@@ -108,13 +114,16 @@ final class NotesStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         offlineStore.set(key: CacheKeys.notesTree, entityType: "notesTree", value: offlineTree, lastSyncAt: nil)
-        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
         let cache = TestCacheClient()
         let store = NotesStore(
             api: api,
             cache: cache,
             offlineStore: offlineStore,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: false)
+            networkStatus: NotesStoreTestsSupport.TestNetworkStatus(isNetworkAvailable: false)
         )
 
         try? await store.loadTree()
@@ -141,7 +150,10 @@ final class NotesStoreTests: XCTestCase {
         let cache = TestCacheClient()
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
-        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
         let store = NotesStore(api: api, cache: cache, offlineStore: offlineStore)
         store.applyTreeUpdate(tree, persist: false)
 
@@ -174,7 +186,10 @@ final class NotesStoreTests: XCTestCase {
         let cache = TestCacheClient()
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
-        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
         let store = NotesStore(api: api, cache: cache, offlineStore: offlineStore)
         store.applyTreeUpdate(tree, persist: false)
 
@@ -212,7 +227,10 @@ final class NotesStoreTests: XCTestCase {
             )
         ])
         let cache = TestCacheClient()
-        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
         let store = NotesStore(api: api, cache: cache)
         store.applyTreeUpdate(tree, persist: false)
 
@@ -250,7 +268,10 @@ final class NotesStoreTests: XCTestCase {
         )
         let tree = FileTree(children: [pinnedNode])
         let cache = TestCacheClient()
-        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
         let store = NotesStore(api: api, cache: cache)
         store.applyTreeUpdate(tree, persist: false)
 
@@ -274,12 +295,15 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertNil(archivedNode.pinnedOrder)
     }
 
-    func testConcurrentArchivedTreeRefreshTimesOutInsteadOfWaitingIndefinitely() async {
+    func testConcurrentArchivedTreeRefreshTimesOutInsteadOfWaitingIndefinitely() async throws {
         let cached = FileTree(children: [])
         let fresh = FileTree(children: [])
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.notesArchivedTree, value: cached, ttlSeconds: 60)
-        let api = MockNotesAPI(treeResult: .success(fresh), noteResult: .failure(MockError.forced))
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .success(fresh),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
         api.archivedListDelay = 0.2
 
         let store = NotesStore(
@@ -292,7 +316,9 @@ final class NotesStoreTests: XCTestCase {
         let firstRefresh = Task {
             try? await store.loadArchivedTree()
         }
-        try? await Task.sleep(nanoseconds: 30_000_000)
+        try await NotesStoreTestsSupport.waitUntilCondition(timeoutSeconds: 1.0) {
+            await api.archivedListCallCount > 0
+        }
 
         let start = Date()
         try? await store.loadArchivedTree()
@@ -324,7 +350,10 @@ final class NotesStoreTests: XCTestCase {
             connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
-        let api = MockNotesAPI(treeResult: .failure(MockError.forced), noteResult: .failure(MockError.forced))
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
         let store = NotesStore(api: api, cache: TestCacheClient())
         store.attachWriteQueue(writeQueue)
 
@@ -362,132 +391,5 @@ final class NotesStoreTests: XCTestCase {
         let payload = try JSONDecoder().decode(NoteUpdateRequest.self, from: write.payload)
         XCTAssertEqual(payload.document, document)
         XCTAssertEqual(payload.plainText, plainText)
-    }
-}
-
-private enum MockError: Error {
-    case forced
-}
-
-@MainActor
-private struct TestNetworkStatus: NetworkStatusProviding {
-    let isNetworkAvailable: Bool
-    let isOffline: Bool
-
-    init(isNetworkAvailable: Bool, isOffline: Bool = false) {
-        self.isNetworkAvailable = isNetworkAvailable
-        self.isOffline = isOffline
-    }
-}
-
-private final class MockNotesAPI: NotesProviding {
-    let treeResult: Result<FileTree, Error>
-    let noteResult: Result<NotePayload, Error>
-    var onList: (() -> Void)?
-    var listDelay: TimeInterval?
-    var onArchivedList: (() -> Void)?
-    var archivedListDelay: TimeInterval?
-
-    init(treeResult: Result<FileTree, Error>, noteResult: Result<NotePayload, Error>) {
-        self.treeResult = treeResult
-        self.noteResult = noteResult
-    }
-
-    func listTree() async throws -> FileTree {
-        if let listDelay {
-            try? await Task.sleep(nanoseconds: UInt64(listDelay * 1_000_000_000))
-        }
-        onList?()
-        return try treeResult.get()
-    }
-
-    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
-        _ = limit
-        _ = offset
-        if let archivedListDelay {
-            try? await Task.sleep(nanoseconds: UInt64(archivedListDelay * 1_000_000_000))
-        }
-        onArchivedList?()
-        return try treeResult.get()
-    }
-
-    func getNote(id: String) async throws -> NotePayload {
-        _ = id
-        return try noteResult.get()
-    }
-
-    func search(query: String, limit: Int) async throws -> [FileNode] {
-        _ = query
-        _ = limit
-        return []
-    }
-
-    func updateNote(id: String, content: String) async throws -> NotePayload {
-        _ = id
-        _ = content
-        return try noteResult.get()
-    }
-
-    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
-        try await updateNote(
-            id: id,
-            content: NotesSemanticDocumentProjection.plainText(from: document)
-        )
-    }
-
-    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
-        _ = request
-        return try noteResult.get()
-    }
-
-    func renameNote(id: String, newName: String) async throws -> NotePayload {
-        _ = id
-        _ = newName
-        return try noteResult.get()
-    }
-
-    func moveNote(id: String, folder: String) async throws -> NotePayload {
-        _ = id
-        _ = folder
-        return try noteResult.get()
-    }
-
-    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
-        _ = id
-        _ = archived
-        return try noteResult.get()
-    }
-
-    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
-        _ = id
-        _ = pinned
-        return try noteResult.get()
-    }
-
-    func updatePinnedOrder(ids: [String]) async throws {
-        _ = ids
-    }
-
-    func deleteNote(id: String) async throws -> NotePayload {
-        _ = id
-        return try noteResult.get()
-    }
-
-    func createFolder(path: String) async throws {
-        _ = path
-    }
-
-    func renameFolder(oldPath: String, newName: String) async throws {
-        _ = oldPath
-        _ = newName
-    }
-
-    func moveFolder(oldPath: String, newParent: String) async throws {
-        _ = oldPath
-        _ = newParent
-    }
-
-    func deleteFolder(path: String) async throws {
-        _ = path
     }
 }

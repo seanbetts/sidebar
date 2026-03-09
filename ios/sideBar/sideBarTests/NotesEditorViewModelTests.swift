@@ -742,7 +742,11 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: "Draft")
         store.applyEditorUpdate(note)
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        try await waitUntil(timeoutSeconds: 2.0) {
+            viewModel.content == "Draft"
+                && viewModel.isDirty
+                && viewModel.isQueuedForSync
+        }
 
         XCTAssertEqual(viewModel.content, "Draft")
         XCTAssertTrue(viewModel.isDirty)
@@ -1465,7 +1469,7 @@ private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> 
         if condition() {
             return
         }
-        try await Task.sleep(nanoseconds: 30_000_000)
+        await Task.yield()
     }
     XCTFail("Timed out waiting for condition")
 }
@@ -1526,7 +1530,7 @@ private func waitUntil(
         if condition() {
             return true
         }
-        try? await Task.sleep(nanoseconds: 30_000_000)
+        await Task.yield()
     }
     if failOnTimeout {
         XCTFail("Timed out waiting for condition")

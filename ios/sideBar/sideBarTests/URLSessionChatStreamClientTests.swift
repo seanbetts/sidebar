@@ -16,6 +16,7 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         URLProtocolStreamingMock.requestHandler = nil
         URLProtocolStreamingMock.dataChunks = []
         URLProtocolStreamingMock.statusCode = 200
+        URLProtocolStreamingMock.resetLoadTracking()
         Self.protocolIsolationLock.unlock()
         super.tearDown()
     }
@@ -140,10 +141,11 @@ final class URLSessionChatStreamClientTests: XCTestCase {
             session: session
         )
 
+        let initialLoadCount = URLProtocolStreamingMock.loadStartCount
         let connectTask = Task {
             try? await client.connect(request: ChatStreamRequest(message: "Hello"))
         }
-        try await Task.sleep(nanoseconds: 10_000_000)
+        try await waitForLoadStart(after: initialLoadCount)
         client.disconnect()
 
         await connectTask.value
@@ -166,10 +168,11 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         )
 
         for _ in 0..<10 {
+            let initialLoadCount = URLProtocolStreamingMock.loadStartCount
             let task = Task {
                 try? await client.connect(request: ChatStreamRequest(message: "Hello"))
             }
-            try await Task.sleep(nanoseconds: 1_000_000)
+            try await waitForLoadStart(after: initialLoadCount)
             client.disconnect()
             await task.value
         }
@@ -184,6 +187,12 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [URLProtocolStreamingMock.self]
         return URLSession(configuration: configuration)
+    }
+
+    private func waitForLoadStart(after initialCount: Int) async throws {
+        try await waitUntil(timeoutSeconds: 1.0) {
+            URLProtocolStreamingMock.loadStartCount > initialCount
+        }
     }
 }
 
@@ -207,6 +216,7 @@ private final class RecordingHandler: ChatStreamEventHandler {
 private final class URLProtocolStreamingMock: URLProtocol {
     private static let stateCondition = NSCondition()
     private static var activeLoads = 0
+    private static var startedLoads = 0
     static var requestHandler: ((URLRequest) throws -> HTTPURLResponse)?
     static var dataChunks: [Data] = []
     static var statusCode: Int = 200
@@ -217,6 +227,12 @@ private final class URLProtocolStreamingMock: URLProtocol {
 
     override static func canonicalRequest(for request: URLRequest) -> URLRequest {
         request
+    }
+
+    static var loadStartCount: Int {
+        stateCondition.lock()
+        defer { stateCondition.unlock() }
+        return startedLoads
     }
 
     static func waitForIdle(timeout: TimeInterval) -> Bool {
@@ -230,6 +246,14 @@ private final class URLProtocolStreamingMock: URLProtocol {
             }
         }
         return true
+    }
+
+    static func resetLoadTracking() {
+        stateCondition.lock()
+        activeLoads = 0
+        startedLoads = 0
+        stateCondition.broadcast()
+        stateCondition.unlock()
     }
 
     override func startLoading() {
@@ -258,6 +282,8 @@ private final class URLProtocolStreamingMock: URLProtocol {
     private static func beginLoad() {
         stateCondition.lock()
         activeLoads += 1
+        startedLoads += 1
+        stateCondition.broadcast()
         stateCondition.unlock()
     }
 
@@ -269,4 +295,18 @@ private final class URLProtocolStreamingMock: URLProtocol {
         }
         stateCondition.unlock()
     }
+}
+
+private func waitUntil(
+    timeoutSeconds: TimeInterval,
+    condition: @escaping () -> Bool
+) async throws {
+    let timeout = Date().addingTimeInterval(timeoutSeconds)
+    while Date() < timeout {
+        if condition() {
+            return
+        }
+        await Task.yield()
+    }
+    XCTFail("Timed out waiting for condition")
 }

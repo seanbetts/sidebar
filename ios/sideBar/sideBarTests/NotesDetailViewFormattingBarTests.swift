@@ -167,9 +167,23 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
 
         hardwareKeyboardExpectation.value = true
         NotificationCenter.default.post(name: UITextInputMode.currentInputModeDidChangeNotification, object: nil)
-        try? await Task.sleep(for: .milliseconds(50))
+        try await waitForFormattingBarPresentation(.floatingTopTrailing, in: presentations)
 
         XCTAssertEqual(presentations.last, .floatingTopTrailing)
+    }
+
+    private func waitForFormattingBarPresentation(
+        _ expected: NoteFormattingBarPresentation,
+        in presentations: @autoclosure @escaping () -> [NoteFormattingBarPresentation]
+    ) async throws {
+        let timeout = Date().addingTimeInterval(1.0)
+        while Date() < timeout {
+            if presentations().last == expected {
+                return
+            }
+            await Task.yield()
+        }
+        XCTFail("Timed out waiting for formatting bar presentation \(expected)")
     }
 
     func testFormattingBarConfigurationTapUpdatesCanonicalSnapshotAndSelectedState() async throws {
