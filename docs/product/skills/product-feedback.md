@@ -15,8 +15,10 @@ No need to leave the app, find a support email, or fill out a form.
 
 ## Actions
 
-- **File a bug report** — logs the issue with the sideBar team and returns a link so you can track it
-- **Submit a feature request** — records your idea and returns a link to the issue
+| Action | Description |
+| --- | --- |
+| File a bug report | Logs the issue with the sideBar team and returns a link so you can track it |
+| Submit a feature request | Records your idea and returns a link to the issue |
 
 ## When sideBar uses it
 
