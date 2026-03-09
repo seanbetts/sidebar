@@ -4,16 +4,16 @@ import sideBarShared
 
 @MainActor
 final class TasksAPITests: XCTestCase {
-    private static let protocolIsolationLock = NSLock()
+    private var router: ScopedURLProtocolRouter!
 
     override func setUp() {
         super.setUp()
-        Self.protocolIsolationLock.lock()
+        router = ScopedURLProtocolRouter()
     }
 
     override func tearDown() {
-        TasksURLProtocolMock.requestHandler = nil
-        Self.protocolIsolationLock.unlock()
+        router.invalidate()
+        router = nil
         super.tearDown()
     }
 
@@ -21,7 +21,7 @@ final class TasksAPITests: XCTestCase {
 
     func testListDecodesResponse() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/lists/today") == true)
             let response = HTTPURLResponse(
@@ -48,7 +48,7 @@ final class TasksAPITests: XCTestCase {
 
     func testProjectTasksUsesCorrectPath() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/projects/p1/tasks") == true)
             let response = HTTPURLResponse(
@@ -66,7 +66,7 @@ final class TasksAPITests: XCTestCase {
 
     func testGroupTasksUsesCorrectPath() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/groups/g1/tasks") == true)
             let response = HTTPURLResponse(
@@ -84,7 +84,7 @@ final class TasksAPITests: XCTestCase {
 
     func testSearchEncodesQueryParameter() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             let urlString = request.url?.absoluteString ?? ""
             XCTAssertTrue(urlString.contains("tasks/search"))
@@ -104,7 +104,7 @@ final class TasksAPITests: XCTestCase {
 
     func testCountsDecodesResponse() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/counts") == true)
             let response = HTTPURLResponse(
@@ -134,7 +134,7 @@ final class TasksAPITests: XCTestCase {
 
     func testCreateGroupPostsTitle() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/groups") == true)
             let body = request.httpBodyData().flatMap {
@@ -157,7 +157,7 @@ final class TasksAPITests: XCTestCase {
 
     func testCreateProjectPostsTitleAndGroupId() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/projects") == true)
             let body = request.httpBodyData().flatMap {
@@ -181,7 +181,7 @@ final class TasksAPITests: XCTestCase {
 
     func testApplyPostsOperationBatch() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/apply") == true)
             let body = request.httpBodyData().flatMap {
@@ -189,7 +189,6 @@ final class TasksAPITests: XCTestCase {
             }
             let operations = body?["operations"] as? [[String: Any]]
             XCTAssertEqual(operations?.count, 1)
-            // Verify snake_case encoding
             XCTAssertEqual(operations?.first?["operation_id"] as? String, "op-1")
             XCTAssertEqual(operations?.first?["due_date"] as? String, "2025-03-15")
             let response = HTTPURLResponse(
@@ -213,7 +212,7 @@ final class TasksAPITests: XCTestCase {
 
     func testSyncPostsLastSyncAndOperations() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/sync") == true)
             let body = request.httpBodyData().flatMap {
@@ -244,7 +243,7 @@ final class TasksAPITests: XCTestCase {
 
     func testRenameGroupPatchesTitle() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "PATCH")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/groups/g1") == true)
             let body = request.httpBodyData().flatMap {
@@ -266,7 +265,7 @@ final class TasksAPITests: XCTestCase {
 
     func testRenameProjectPatchesTitle() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "PATCH")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/projects/p1") == true)
             let body = request.httpBodyData().flatMap {
@@ -290,7 +289,7 @@ final class TasksAPITests: XCTestCase {
 
     func testDeleteGroupUsesDelete() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "DELETE")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/groups/g1") == true)
             let response = HTTPURLResponse(
@@ -304,7 +303,7 @@ final class TasksAPITests: XCTestCase {
 
     func testDeleteProjectUsesDelete() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "DELETE")
             XCTAssertTrue(request.url?.absoluteString.contains("tasks/projects/p1") == true)
             let response = HTTPURLResponse(
@@ -320,7 +319,7 @@ final class TasksAPITests: XCTestCase {
 
     func testApplyDecodesConflictsInSyncResponse() async throws {
         let api = TasksAPI(client: makeClient())
-        TasksURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil
             )!
@@ -351,46 +350,63 @@ final class TasksAPITests: XCTestCase {
         XCTAssertEqual(result.conflicts[0].serverTask.title, "Changed")
     }
 
+    func testParallelTaskClientsRouteIndependently() async throws {
+        let leftRouter = ScopedURLProtocolRouter()
+        let rightRouter = ScopedURLProtocolRouter()
+        defer {
+            leftRouter.invalidate()
+            rightRouter.invalidate()
+        }
+
+        let leftAPI = TasksAPI(client: makeClient(router: leftRouter))
+        let rightAPI = TasksAPI(client: makeClient(router: rightRouter))
+
+        leftRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("tasks/lists/left") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {"scope":"left","generated_at":null,"tasks":[],"projects":[],"groups":[]}
+            """
+            return (response, Data(payload.utf8))
+        }
+        rightRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("tasks/lists/right") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {"scope":"right","generated_at":null,"tasks":[],"projects":[],"groups":[]}
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        async let left = leftAPI.list(scope: "left")
+        async let right = rightAPI.list(scope: "right")
+        let results = try await (left, right)
+
+        XCTAssertEqual(results.0.scope, "left")
+        XCTAssertEqual(results.1.scope, "right")
+    }
+
     // MARK: - Helpers
 
-    private func makeClient() -> APIClient {
+    private func makeClient(router: ScopedURLProtocolRouter? = nil) -> APIClient {
+        guard let resolvedRouter = router ?? self.router else {
+            fatalError("Expected scoped router to be configured before creating APIClient")
+        }
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: resolvedRouter.baseURL,
             accessTokenProvider: { nil }
         )
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [TasksURLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = resolvedRouter.makeSession()
         return APIClient(config: config, session: session)
-    }
-}
-
-final class TasksURLProtocolMock: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-    override static func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        guard let handler = TasksURLProtocolMock.requestHandler else {
-            XCTFail("Request handler not set")
-            return
-        }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {
     }
 }

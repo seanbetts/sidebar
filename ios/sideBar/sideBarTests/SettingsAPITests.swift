@@ -4,14 +4,22 @@ import sideBarShared
 
 @MainActor
 final class SettingsAPITests: XCTestCase {
+    private var router: ScopedURLProtocolRouter!
+
+    override func setUp() {
+        super.setUp()
+        router = ScopedURLProtocolRouter()
+    }
+
     override func tearDown() {
-        SettingsURLProtocolMock.requestHandler = nil
+        router.invalidate()
+        router = nil
         super.tearDown()
     }
 
     func testGetSettingsDecodesResponse() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             let response = HTTPURLResponse(
                 url: request.url!,
@@ -72,7 +80,7 @@ final class SettingsAPITests: XCTestCase {
 
     func testUpdateSettingsUsesPatchWithSnakeCaseKeys() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "PATCH")
             XCTAssertTrue(request.url?.absoluteString.contains("settings") == true)
             let bodyData = try XCTUnwrap(request.httpBodyData())
@@ -129,7 +137,7 @@ final class SettingsAPITests: XCTestCase {
 
     func testUpdateSettingsEncodesNullDateOfBirthWhenIncluded() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             let bodyData = try XCTUnwrap(request.httpBodyData())
             let body = try XCTUnwrap(
                 JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
@@ -169,7 +177,7 @@ final class SettingsAPITests: XCTestCase {
 
     func testRotateShortcutsTokenUsesPost() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("settings/shortcuts/pat/rotate") == true)
             let response = HTTPURLResponse(
@@ -188,7 +196,7 @@ final class SettingsAPITests: XCTestCase {
 
     func testGetProviderKeyStatusUsesProviderQuery() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("settings/ai/provider-key") == true)
             XCTAssertTrue(request.url?.absoluteString.contains("provider=openai") == true)
@@ -210,7 +218,7 @@ final class SettingsAPITests: XCTestCase {
 
     func testUpsertProviderKeyUsesPutAndApiKeyBody() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "PUT")
             XCTAssertTrue(request.url?.absoluteString.contains("settings/ai/provider-key") == true)
             let bodyData = try XCTUnwrap(request.httpBodyData())
@@ -237,7 +245,7 @@ final class SettingsAPITests: XCTestCase {
 
     func testDeleteProviderKeyUsesDeleteWithQuery() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "DELETE")
             XCTAssertTrue(request.url?.absoluteString.contains("settings/ai/provider-key") == true)
             XCTAssertTrue(request.url?.absoluteString.contains("provider=google") == true)
@@ -260,7 +268,7 @@ final class SettingsAPITests: XCTestCase {
     func testGetProfileImageUsesRequestData() async throws {
         let api = SettingsAPI(client: makeClient())
         let expected = Data([0x01, 0x02])
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             let response = HTTPURLResponse(
                 url: request.url!,
@@ -278,7 +286,7 @@ final class SettingsAPITests: XCTestCase {
 
     func testUploadProfileImageSetsHeaders() async throws {
         let api = SettingsAPI(client: makeClient(), session: makeSession())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "image/png")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Filename"), "avatar.png")
@@ -300,7 +308,7 @@ final class SettingsAPITests: XCTestCase {
 
     func testDeleteProfileImageUsesDelete() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "DELETE")
             XCTAssertTrue(request.url?.absoluteString.contains("settings/profile-image") == true)
             let response = HTTPURLResponse(
@@ -315,28 +323,76 @@ final class SettingsAPITests: XCTestCase {
         try await api.deleteProfileImage()
     }
 
-    private func makeClient() -> APIClient {
+    func testParallelSettingsClientsRouteIndependently() async throws {
+        let leftRouter = ScopedURLProtocolRouter()
+        let rightRouter = ScopedURLProtocolRouter()
+        defer {
+            leftRouter.invalidate()
+            rightRouter.invalidate()
+        }
+
+        let leftAPI = SettingsAPI(client: makeClient(router: leftRouter))
+        let rightAPI = SettingsAPI(client: makeClient(router: rightRouter))
+
+        leftRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("settings") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {"user_id":"left","communication_style":null,"working_relationship":null,"name":null,"job_title":null,"employer":null,"date_of_birth":null,"gender":null,"pronouns":null,"location":null,"profile_image_url":null,"assistant_identity":null,"enabled_skills":[]}
+            """
+            return (response, Data(payload.utf8))
+        }
+        rightRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("settings") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {"user_id":"right","communication_style":null,"working_relationship":null,"name":null,"job_title":null,"employer":null,"date_of_birth":null,"gender":null,"pronouns":null,"location":null,"profile_image_url":null,"assistant_identity":null,"enabled_skills":[]}
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        async let left = leftAPI.getSettings()
+        async let right = rightAPI.getSettings()
+        let results = try await (left, right)
+
+        XCTAssertEqual(results.0.userId, "left")
+        XCTAssertEqual(results.1.userId, "right")
+    }
+
+    private func makeClient(router: ScopedURLProtocolRouter? = nil) -> APIClient {
+        guard let resolvedRouter = router ?? self.router else {
+            fatalError("Expected scoped router to be configured before creating APIClient")
+        }
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: resolvedRouter.baseURL,
             accessTokenProvider: { nil }
         )
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [SettingsURLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = resolvedRouter.makeSession()
         return APIClient(config: config, session: session)
     }
 
-    private func makeSession() -> URLSession {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [SettingsURLProtocolMock.self]
-        return URLSession(configuration: configuration)
+    private func makeSession(router: ScopedURLProtocolRouter? = nil) -> URLSession {
+        guard let resolvedRouter = router ?? self.router else {
+            fatalError("Expected scoped router to be configured before creating URLSession")
+        }
+        return resolvedRouter.makeSession()
     }
 }
 
 extension SettingsAPITests {
     func testDisconnectProviderConsumerUsesPostWithSourceAndSkillID() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(
                 request.url?.absoluteString.contains("settings/ai/provider-key/disconnect") == true
@@ -392,7 +448,7 @@ extension SettingsAPITests {
 
     func testDisconnectProviderConsumerUsesAiProviderSourceWithoutSkillID() async throws {
         let api = SettingsAPI(client: makeClient())
-        SettingsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(
                 request.url?.absoluteString.contains("settings/ai/provider-key/disconnect") == true
@@ -444,35 +500,5 @@ extension SettingsAPITests {
         XCTAssertTrue(result.actions.detachedAIProvider)
         XCTAssertEqual(result.remainingConsumers.skillIds, ["audio-transcribe"])
         XCTAssertNil(result.settings.aiPrimaryProvider)
-    }
-}
-
-final class SettingsURLProtocolMock: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-    override static func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        guard let handler = SettingsURLProtocolMock.requestHandler else {
-            XCTFail("Request handler not set")
-            return
-        }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {
     }
 }

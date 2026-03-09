@@ -4,15 +4,23 @@ import sideBarShared
 
 @MainActor
 final class FilesAPITests: XCTestCase {
+    private var router: ScopedURLProtocolRouter!
+
+    override func setUp() {
+        super.setUp()
+        router = ScopedURLProtocolRouter()
+    }
+
     override func tearDown() {
-        FilesURLProtocolMock.requestHandler = nil
+        router.invalidate()
+        router = nil
         super.tearDown()
     }
 
     func testDownloadBuildsEncodedPath() async throws {
         let api = FilesAPI(client: makeClient())
         let expected = Data([0x01, 0x02])
-        FilesURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             let url = try XCTUnwrap(request.url)
             XCTAssertTrue(url.path.contains("files/download"))
             let components = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false))
@@ -35,7 +43,7 @@ final class FilesAPITests: XCTestCase {
 
     func testSearchUsesPostAndQueryParams() async throws {
         let api = FilesAPI(client: makeClient())
-        FilesURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             let urlString = request.url?.absoluteString ?? ""
             XCTAssertTrue(urlString.contains("files/search") == true)
@@ -59,7 +67,7 @@ final class FilesAPITests: XCTestCase {
 
     func testCreateFolderPostsBody() async throws {
         let api = FilesAPI(client: makeClient())
-        FilesURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/folder") == true)
             let bodyData = try XCTUnwrap(request.httpBodyData())
@@ -80,7 +88,7 @@ final class FilesAPITests: XCTestCase {
 
     func testRenamePostsBody() async throws {
         let api = FilesAPI(client: makeClient())
-        FilesURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/rename") == true)
             let bodyData = try XCTUnwrap(request.httpBodyData())
@@ -101,7 +109,7 @@ final class FilesAPITests: XCTestCase {
 
     func testMovePostsBody() async throws {
         let api = FilesAPI(client: makeClient())
-        FilesURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/move") == true)
             let bodyData = try XCTUnwrap(request.httpBodyData())
@@ -122,7 +130,7 @@ final class FilesAPITests: XCTestCase {
 
     func testDeletePostsBody() async throws {
         let api = FilesAPI(client: makeClient())
-        FilesURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/delete") == true)
             let bodyData = try XCTUnwrap(request.httpBodyData())
@@ -140,44 +148,58 @@ final class FilesAPITests: XCTestCase {
         try await api.delete(basePath: "docs", path: "/old.txt")
     }
 
-    private func makeClient() -> APIClient {
+    func testParallelFileClientsRouteIndependently() async throws {
+        let leftRouter = ScopedURLProtocolRouter()
+        let rightRouter = ScopedURLProtocolRouter()
+        defer {
+            leftRouter.invalidate()
+            rightRouter.invalidate()
+        }
+
+        let leftAPI = FilesAPI(client: makeClient(router: leftRouter))
+        let rightAPI = FilesAPI(client: makeClient(router: rightRouter))
+
+        let expectedLeft = Data([0x01])
+        let expectedRight = Data([0x02])
+
+        leftRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("basePath=left") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, expectedLeft)
+        }
+        rightRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("basePath=right") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, expectedRight)
+        }
+
+        async let left = leftAPI.download(basePath: "left", path: "file.txt")
+        async let right = rightAPI.download(basePath: "right", path: "file.txt")
+        let results = try await (left, right)
+
+        XCTAssertEqual(results.0, expectedLeft)
+        XCTAssertEqual(results.1, expectedRight)
+    }
+
+    private func makeClient(router: ScopedURLProtocolRouter? = nil) -> APIClient {
+        guard let resolvedRouter = router ?? self.router else {
+            fatalError("Expected scoped router to be configured before creating APIClient")
+        }
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: resolvedRouter.baseURL,
             accessTokenProvider: { nil }
         )
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [FilesURLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = resolvedRouter.makeSession()
         return APIClient(config: config, session: session)
-    }
-}
-
-final class FilesURLProtocolMock: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-    override static func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        guard let handler = FilesURLProtocolMock.requestHandler else {
-            XCTFail("Request handler not set")
-            return
-        }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {
     }
 }

@@ -4,14 +4,22 @@ import sideBarShared
 
 @MainActor
 final class SkillsAPITests: XCTestCase {
+    private var router: ScopedURLProtocolRouter!
+
+    override func setUp() {
+        super.setUp()
+        router = ScopedURLProtocolRouter()
+    }
+
     override func tearDown() {
-        SkillsURLProtocolMock.requestHandler = nil
+        router.invalidate()
+        router = nil
         super.tearDown()
     }
 
     func testListSkillsDecodesResponse() async throws {
         let api = SkillsAPI(client: makeClient())
-        SkillsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("skills") == true)
             let response = HTTPURLResponse(
@@ -34,7 +42,7 @@ final class SkillsAPITests: XCTestCase {
 
     func testListSkillsDecodesUserToggleablePolicy() async throws {
         let api = SkillsAPI(client: makeClient())
-        SkillsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -144,7 +152,7 @@ final class SkillsAPITests: XCTestCase {
 
     func testInstallStoreSkillPostsPayloadAndDecodesResponse() async throws {
         let api = SkillsAPI(client: makeClient())
-        SkillsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("skills/store/install") == true)
 
@@ -190,7 +198,7 @@ final class SkillsAPITests: XCTestCase {
 
     func testUninstallStoreSkillPostsPayloadAndDecodesResponse() async throws {
         let api = SkillsAPI(client: makeClient())
-        SkillsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("skills/store/uninstall") == true)
 
@@ -228,44 +236,61 @@ final class SkillsAPITests: XCTestCase {
         XCTAssertEqual(response.installedStoreSkills, [])
     }
 
-    private func makeClient() -> APIClient {
+    func testParallelSkillClientsRouteIndependently() async throws {
+        let leftRouter = ScopedURLProtocolRouter()
+        let rightRouter = ScopedURLProtocolRouter()
+        defer {
+            leftRouter.invalidate()
+            rightRouter.invalidate()
+        }
+
+        let leftAPI = SkillsAPI(client: makeClient(router: leftRouter))
+        let rightAPI = SkillsAPI(client: makeClient(router: rightRouter))
+
+        leftRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("skills") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {"skills":[{"id":"left","name":"Left","description":"Desc","category":"General"}]}
+            """
+            return (response, Data(payload.utf8))
+        }
+        rightRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("skills") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {"skills":[{"id":"right","name":"Right","description":"Desc","category":"General"}]}
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        async let left = leftAPI.list()
+        async let right = rightAPI.list()
+        let results = try await (left, right)
+
+        XCTAssertEqual(results.0.skills.first?.id, "left")
+        XCTAssertEqual(results.1.skills.first?.id, "right")
+    }
+
+    private func makeClient(router: ScopedURLProtocolRouter? = nil) -> APIClient {
+        guard let resolvedRouter = router ?? self.router else {
+            fatalError("Expected scoped router to be configured before creating APIClient")
+        }
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: resolvedRouter.baseURL,
             accessTokenProvider: { nil }
         )
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [SkillsURLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = resolvedRouter.makeSession()
         return APIClient(config: config, session: session)
-    }
-}
-
-final class SkillsURLProtocolMock: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-    override static func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        guard let handler = SkillsURLProtocolMock.requestHandler else {
-            XCTFail("Request handler not set")
-            return
-        }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {
     }
 }
