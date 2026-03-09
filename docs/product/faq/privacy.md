@@ -23,10 +23,18 @@ sideBar's API integration, your data is not used for training by any of them.
 
 ## Who can see my data?
 
-sideBar staff have access only where necessary to operate, maintain, and secure
+The sideBar development team have access only where necessary to operate, maintain, and secure
 the service. Your content is also sent to whichever AI provider you have
 configured when you use Chat. It goes only to that provider, not to all of them.
 We do not sell your data to anyone.
+
+## What data does sideBar share with third parties?
+
+sideBar shares data only where necessary to operate the service: with
+infrastructure providers (Supabase, Cloudflare, Sentry), with the AI provider
+you have configured, and with any third-party services connected via Store
+skills you have installed. We do not share data for advertising or sell it to
+data brokers.
 
 ## Where is my data stored?
 
@@ -48,14 +56,6 @@ precise device location to provide local weather and location context to your
 assistant. If you do not grant permission, sideBar uses an approximate location
 derived from your IP address for the same purpose. You can revoke location
 permission at any time in your device settings.
-
-## What data does sideBar share with third parties?
-
-sideBar shares data only where necessary to operate the service: with
-infrastructure providers (Supabase, Cloudflare, Sentry), with the AI provider
-you have configured, and with any third-party services connected via Store
-skills you have installed. We do not share data for advertising or sell it to
-data brokers.
 
 ## How are API keys stored?
 

@@ -31,29 +31,6 @@ sideBar creates them automatically as it learns more about you. You can also
 add, edit, or search them manually in Settings. You don't need to mention them;
 sideBar reads relevant ones automatically.
 
-## Can sideBar use my notes when answering questions about a file?
-
-Yes. sideBar has access to all your content at once: notes, tasks, saved
-websites, and files. It can cross-reference between them during any
-conversation. For example, you could upload a contract and ask sideBar to check
-it against notes you have already written, or ask it to create tasks based on an
-article you saved. This cross-content awareness is one of the things that makes
-sideBar different from a standalone chatbot.
-
-## What happens if a conversation gets too long?
-
-Every AI model has a context window, which is the amount of text it can consider
-at once. If a conversation grows very long, older messages may be summarised or
-trimmed to stay within that limit. If you notice responses becoming less
-accurate, start a new conversation. Your memories carry forward automatically,
-so sideBar does not lose the important things it has learned about you.
-
-## Can I attach files to a chat message?
-
-Yes. Tap the attachment button in the chat input to attach a note, file,
-website, or image. Attachments go through three stages (uploading, queued, then
-ready) before you can send.
-
 ## Can sideBar take actions, not just answer questions?
 
 Yes. Through skills, sideBar can do things as well as say things: search the
@@ -73,12 +50,35 @@ right ones automatically based on what you're asking.
 Tap the compose button in the Chat view. Previous conversations are saved and
 you can swipe to delete ones you no longer need.
 
+## Can I attach files to a chat message?
+
+Yes. Tap the attachment button in the chat input to attach a note, file,
+website, or image. Attachments go through three stages (uploading, queued, then
+ready) before you can send.
+
+## Can sideBar use my notes when answering questions about a file?
+
+Yes. sideBar has access to all your content at once: notes, tasks, saved
+websites, and files. It can cross-reference between them during any
+conversation. For example, you could upload a contract and ask sideBar to check
+it against notes you have already written, or ask it to create tasks based on an
+article you saved. This cross-content awareness is one of the things that makes
+sideBar different from a standalone chatbot.
+
 ## Which AI model does sideBar use?
 
 It depends on your chosen provider. sideBar uses a recent, capable model from
 whichever provider you have configured: a Claude model for Anthropic, a GPT
 model for OpenAI, and a Gemini model for Google. The specific version may
 update over time as newer releases become available.
+
+## What happens if a conversation gets too long?
+
+Every AI model has a context window, which is the amount of text it can consider
+at once. If a conversation grows very long, older messages may be summarised or
+trimmed to stay within that limit. If you notice responses becoming less
+accurate, start a new conversation. Your memories carry forward automatically,
+so sideBar does not lose the important things it has learned about you.
 
 ## Does sideBar use my conversations to train AI models?
 

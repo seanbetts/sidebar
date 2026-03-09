@@ -23,6 +23,13 @@ Projects are custom task lists you create for any topic or goal. Groups let you
 gather related projects together to keep your list organised. Swipe right on a
 project or group to rename it, or swipe left to delete it.
 
+## Can sideBar create and manage tasks for me?
+
+Yes. sideBar can create, update, complete, and organise tasks on your behalf
+during any conversation. Just ask in natural language: "add a task to call John
+tomorrow" or "mark my grocery run as done". sideBar uses the Tasks skill to
+carry this out and confirms what it has done inline in the conversation.
+
 ## Can I add notes to a task?
 
 Yes. Each task has an optional notes field for anything extra you want to
@@ -39,13 +46,6 @@ right smart list automatically.
 
 Completing a recurring task marks the current instance as done and schedules the
 next one automatically based on the recurrence interval you set.
-
-## Can sideBar create and manage tasks for me?
-
-Yes. sideBar can create, update, complete, and organise tasks on your behalf
-during any conversation. Just ask in natural language: "add a task to call John
-tomorrow" or "mark my grocery run as done". sideBar uses the Tasks skill to
-carry this out and confirms what it has done inline in the conversation.
 
 ## How do I search tasks?
 

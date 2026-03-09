@@ -34,6 +34,13 @@ reading time automatically. If a publication date is detectable, that is saved
 too. The whole process takes a few seconds. If something goes wrong, you will
 see an error state on the page card.
 
+## Can sideBar work with saved pages in chat?
+
+Yes. With a page open, sideBar can see its full content. Ask it to summarise the
+article, explain a concept, pull out key points, draft notes, or find related
+information. You can also reference saved pages in chat without having one open,
+and sideBar can search across your saved content when it is relevant.
+
 ## Can I read saved pages offline?
 
 Yes. Pages are stored in full so you can read them without a connection. sideBar
@@ -46,13 +53,6 @@ Yes. Saving a YouTube URL triggers automatic transcript extraction. Once ready,
 the transcript is stored alongside the video's title and metadata. You can then
 ask sideBar to summarise the video, pull out key points, or answer questions
 about it, without watching it.
-
-## Can sideBar work with saved pages in chat?
-
-Yes. With a page open, sideBar can see its full content. Ask it to summarise the
-article, explain a concept, pull out key points, draft notes, or find related
-information. You can also reference saved pages in chat without having one open,
-and sideBar can search across your saved content when it is relevant.
 
 ## How do I manage my saved pages?
 

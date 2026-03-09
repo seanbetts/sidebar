@@ -51,14 +51,6 @@ Four things will get you the most out of sideBar quickly:
 iPhone, iPad, Mac, and in your browser. Your content syncs across all of them
 in real time.
 
-## What is the Skills Store?
-
-The Skills Store is a library of optional capabilities you can add to sideBar.
-Skills can search the web, transcribe audio and video, send emails, connect to
-third-party services, and more. Once installed, sideBar uses them automatically
-during conversations when they are relevant. See
-[Skills Store](/manual/skills-store) for the full list and setup instructions.
-
 ## Do I need to bring my own API key?
 
 Yes. sideBar works with Anthropic, OpenAI, and Google. You choose the provider
@@ -85,6 +77,42 @@ are stored in sideBar, not with your AI provider. Switching from one provider
 to another has no effect on any of that. You can swap freely at any time from
 Settings and everything carries over.
 
+## What is the Skills Store?
+
+The Skills Store is a library of optional capabilities you can add to sideBar.
+Skills can search the web, transcribe audio and video, send emails, connect to
+third-party services, and more. Once installed, sideBar uses them automatically
+during conversations when they are relevant. See
+[Skills Store](/manual/skills-store) for the full list and setup instructions.
+
+## How does sync work across devices?
+
+Your content syncs in real time across every device where you are signed in.
+Create a note on your iPhone, and it appears on your iPad and Mac within
+seconds. Complete a task on the web, and it updates everywhere else immediately.
+Sync is automatic and there is nothing to configure. If you make changes while
+offline, they queue up and sync as soon as your connection returns. You can see
+pending changes in Settings under the User tab.
+
+## Does sideBar work offline?
+
+Reading your existing notes, tasks, websites, and files works offline. Sending
+chat messages, saving new content, or syncing changes requires a connection.
+If something isn't saving, check your connectivity first.
+
+## What does sideBar store?
+
+sideBar stores your notes, tasks, saved websites, files, chat conversations,
+memories, and settings. Everything syncs across your devices via your account.
+See our [Privacy Policy](https://trysidebar.ai/privacy) for full details.
+
+## What file types does sideBar support?
+
+sideBar accepts a wide range of formats: PDFs, Word documents, plain text,
+images (JPG, PNG, and others), audio files, video files, spreadsheets (Excel
+and CSV), and presentations (PowerPoint and similar). See
+[Files](/manual/files) for the full breakdown.
+
 ## Does sideBar have its own personality?
 
 Yes. sideBar has an identity (a name, a tone of voice, a set of values, and
@@ -110,40 +138,12 @@ Each update is versioned and timestamped. You can ask sideBar to update its
 identity and soul at any time, but cannot edit them directly; they belong to
 sideBar.
 
-## How does sync work across devices?
-
-Your content syncs in real time across every device where you are signed in.
-Create a note on your iPhone, and it appears on your iPad and Mac within
-seconds. Complete a task on the web, and it updates everywhere else immediately.
-Sync is automatic and there is nothing to configure. If you make changes while
-offline, they queue up and sync as soon as your connection returns. You can see
-pending changes in Settings under the User tab.
-
 ## Is sideBar accessible?
 
 sideBar follows standard iOS and macOS accessibility conventions. The app works
 with VoiceOver and Dynamic Type, and you can adjust the text size in Settings
 under the App tab (System, Small, Medium, or Large). Biometric lock (Face ID
 or Touch ID) is available if your device supports it.
-
-## Does sideBar work offline?
-
-Reading your existing notes, tasks, websites, and files works offline. Sending
-chat messages, saving new content, or syncing changes requires a connection.
-If something isn't saving, check your connectivity first.
-
-## What does sideBar store?
-
-sideBar stores your notes, tasks, saved websites, files, chat conversations,
-memories, and settings. Everything syncs across your devices via your account.
-See our [Privacy Policy](https://trysidebar.ai/privacy) for full details.
-
-## What file types does sideBar support?
-
-sideBar accepts a wide range of formats: PDFs, Word documents, plain text,
-images (JPG, PNG, and others), audio files, video files, spreadsheets (Excel
-and CSV), and presentations (PowerPoint and similar). See
-[Files](/manual/files) for the full breakdown.
 
 ## How do I report a bug or request a feature?
 
