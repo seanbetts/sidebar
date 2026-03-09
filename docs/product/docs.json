@@ -34,6 +34,12 @@
         ]
       },
       {
+        "group": "Skills",
+        "pages": [
+          "skills/web-search"
+        ]
+      },
+      {
         "group": "FAQ",
         "pages": [
           "faq/general",
