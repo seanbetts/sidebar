@@ -9,7 +9,9 @@
   },
   "favicon": "assets/favicon.ico",
   "colors": {
-    "primary": "#111111"
+    "primary": "#111111",
+    "light": "#eeeeee",
+    "dark": "#111111"
   },
   "navigation": {
     "groups": [
