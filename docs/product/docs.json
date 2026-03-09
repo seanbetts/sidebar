@@ -57,7 +57,8 @@
       {
         "group": "Store Skills",
         "pages": [
-          "skills/store/audio-transcription"
+          "skills/store/audio-transcription",
+          "skills/store/youtube"
         ]
       },
       {
