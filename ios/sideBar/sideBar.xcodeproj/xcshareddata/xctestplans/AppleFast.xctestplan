@@ -21,8 +21,7 @@
         "SafariExtensionMessageHandlerTests",
         "ShareExtensionQueueContractTests",
         "SupabaseAuthAdapterTests",
-        "TasksViewModelRealtimeTests",
-        "ThemeManagerTests"
+        "TasksViewModelRealtimeTests"
       ],
       "target" : {
         "containerPath" : "container:sideBar.xcodeproj",
