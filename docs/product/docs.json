@@ -36,7 +36,10 @@
       {
         "group": "Skills",
         "pages": [
-          "skills/web-search"
+          "skills/web-search",
+          "skills/sidebar-identity",
+          "skills/sidebar-soul",
+          "skills/product-feedback"
         ]
       },
       {
