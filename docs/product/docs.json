@@ -58,6 +58,7 @@
         "group": "Store Skills",
         "pages": [
           "skills/store/audio-transcription",
+          "skills/store/crawler-policy",
           "skills/store/youtube"
         ]
       },
