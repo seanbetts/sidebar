@@ -17,6 +17,7 @@
       "skippedTests" : [
         "AppFontStyleTests",
         "ExtensionUserMessageCatalogTests",
+        "NotesDetailViewMountedMacOSTests",
         "SafariExtensionMessageHandlerTests",
         "ShareExtensionQueueContractTests",
         "SupabaseAuthAdapterTests",

@@ -115,22 +115,7 @@ struct NotesDetailView: View {
             savedIndicatorTask?.cancel()
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
-            guard let event,
-                  event.matches(
-                    section: .notes,
-                    workspacePane: workspaceColumn.workspacePane
-                  ) else { return }
-            switch event.action {
-            case .closeItem:
-                handleCloseShortcut()
-            case .deleteItem:
-                guard viewModel.activeNote != nil else { return }
-                isDeleteAlertPresented = true
-            case .archiveItem:
-                archiveActiveNote()
-            default:
-                break
-            }
+            handleShortcutActionEvent(event, workspacePane: workspaceColumn.workspacePane)
         }
         #if os(iOS)
         .toolbar {

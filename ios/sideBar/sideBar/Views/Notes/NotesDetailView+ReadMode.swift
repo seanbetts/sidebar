@@ -89,4 +89,23 @@ extension NotesDetailView {
     func handleEscapeKey(_ document: NotesSemanticDocument) {
         handleCloseShortcut(editedDocument: document)
     }
+
+    func handleShortcutActionEvent(
+        _ event: ShortcutActionEvent?,
+        workspacePane: WorkspacePane
+    ) {
+        guard let event,
+              event.matches(section: .notes, workspacePane: workspacePane) else { return }
+        switch event.action {
+        case .closeItem:
+            handleCloseShortcut()
+        case .deleteItem:
+            guard viewModel.activeNote != nil else { return }
+            isDeleteAlertPresented = true
+        case .archiveItem:
+            archiveActiveNote()
+        default:
+            break
+        }
+    }
 }

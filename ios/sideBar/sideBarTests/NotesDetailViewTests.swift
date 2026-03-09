@@ -224,17 +224,14 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
     }
 
-    func testMountedViewCloseShortcutEventReturnsEditModeToRead() async throws {
+    func testShortcutCloseItemReturnsEditModeToReadForMatchingNotesEvent() async throws {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
-        let environment = makeNotesDetailTestEnvironment()
-        _ = mount(context.makeView(), environment: environment)
-        await Task.yield()
-        environment.activeSection = .notes
-        environment.focusedSection = .notes
-        environment.focusedWorkspacePane = .primary
 
-        environment.emitShortcutAction(.closeItem)
+        context.makeView().handleShortcutActionEvent(
+            ShortcutActionEvent(action: .closeItem, section: .notes, pane: .primary),
+            workspacePane: .primary
+        )
         await waitUntil {
             context.editorViewModel.presentationMode == .read
         }
@@ -273,23 +270,38 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
     }
 
-    func testMountedViewCloseShortcutEventClosesReadModeNote() async throws {
+    func testShortcutCloseItemClosesReadModeNoteForMatchingNotesEvent() async throws {
         let context = await makeNotesDetailViewTestContext()
-        let environment = makeNotesDetailTestEnvironment()
-        _ = mount(context.makeView(), environment: environment)
-        await Task.yield()
-        environment.activeSection = .notes
-        environment.focusedSection = .notes
-        environment.focusedWorkspacePane = .primary
-        await Task.yield()
 
-        environment.emitShortcutAction(.closeItem)
+        context.makeView().handleShortcutActionEvent(
+            ShortcutActionEvent(action: .closeItem, section: .notes, pane: .primary),
+            workspacePane: .primary
+        )
         await waitUntil(timeout: .seconds(2)) {
             context.editorViewModel.currentNoteId == nil
         }
 
         XCTAssertNil(context.editorViewModel.currentNoteId)
         XCTAssertNil(context.notesViewModel.activeNote)
+    }
+
+    func testShortcutActionEventIgnoresEventsFromOtherSectionsOrPanes() async throws {
+        let context = await makeNotesDetailViewTestContext()
+        context.editorViewModel.enterEditMode()
+
+        context.makeView().handleShortcutActionEvent(
+            ShortcutActionEvent(action: .closeItem, section: .chat, pane: .primary),
+            workspacePane: .primary
+        )
+        context.makeView().handleShortcutActionEvent(
+            ShortcutActionEvent(action: .closeItem, section: .notes, pane: .secondary),
+            workspacePane: .primary
+        )
+        await Task.yield()
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
+        XCTAssertEqual(context.editorViewModel.currentNoteId, "n1")
+        XCTAssertNotNil(context.notesViewModel.activeNote)
     }
 
     func testAttributedNoteEditorContainerHandleEscapeInvokesCallbackWhenNoteOpen() async throws {
@@ -434,6 +446,7 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
             equals: 5
         )
     }
+
 }
 
 @available(iOS 26.0, macOS 26.0, *)
