@@ -15,7 +15,6 @@
   "testTargets" : [
     {
       "skippedTests" : [
-        "AppFontStyleTests",
         "ExtensionUserMessageCatalogTests",
         "NotesDetailViewMountedMacOSTests",
         "SafariExtensionMessageHandlerTests",

@@ -44,19 +44,7 @@ final class AppFontStyleTests: XCTestCase {
         )
     }
 
-    func testPointSizeUsesPassedOptionInsteadOfStoredDefault() {
-        let key = AppStorageKeys.appTextSize
-        let defaults = UserDefaults.standard
-        let original = defaults.string(forKey: key)
-        defaults.set(AppTextSizeOption.large.rawValue, forKey: key)
-        defer {
-            if let original {
-                defaults.set(original, forKey: key)
-            } else {
-                defaults.removeObject(forKey: key)
-            }
-        }
-
+    func testPointSizeUsesPassedOptionForEachCallWithoutSharedState() {
         XCTAssertEqual(
             AppFontStyle.labelMd.pointSize(for: .small),
             11.2,
@@ -65,6 +53,11 @@ final class AppFontStyleTests: XCTestCase {
         XCTAssertEqual(
             AppFontStyle.labelMd.pointSize(for: .large),
             14.7,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            AppFontStyle.labelMd.pointSize(for: .small),
+            11.2,
             accuracy: 0.0001
         )
     }
