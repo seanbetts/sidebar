@@ -20,6 +20,7 @@
         "pages": [
           "manual/introduction",
           "manual/getting-started",
+          "manual/api-keys",
           "manual/personality",
           "manual/chat",
           "manual/notes",
@@ -30,6 +31,8 @@
           "manual/skills-store",
           "manual/extensions",
           "manual/settings",
+          "manual/account",
+          "manual/troubleshooting",
           "manual/getting-help"
         ]
       },

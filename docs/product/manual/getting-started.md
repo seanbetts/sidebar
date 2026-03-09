@@ -29,7 +29,7 @@ sideBar will walk you through this step automatically when you first sign in.
 Choose your provider, paste your API key into the field, and confirm. Once
 connected, you're ready to start.
 
-If you don't have an API key yet, you can get one from your provider's website.
+If you don't have an API key yet, see [API Keys](/manual/api-keys) for step-by-step instructions for each provider.
 Chatting with sideBar isn't available without one but you can still use it to
 take notes, keep track of tasks, save websites to read later and upload files.
 
@@ -59,13 +59,13 @@ bottom of the screen on iPhone, or in the left rail on iPad, Mac, and in a
 web browser. It has six sections:
 
 - **[Chat](/manual/chat)**: where you talk to sideBar and get things done.
-- **[Notes](/manual/notes)**L create and organise notes sideBar can read and
+- **[Notes](/manual/notes)**: create and organise notes sideBar can read and
   reference.
-- **[Tasks](/manual/tasks)**L manage to-dos manually or ask sideBar to create
+- **[Tasks](/manual/tasks)**: manage to-dos manually or ask sideBar to create
   them for you.
-- **[Websites](/manual/websites)**L save and browse webpages sideBar can
+- **[Websites](/manual/websites)**: save and browse webpages sideBar can
   reference.
-- **[Files](/manual/files)**L upload documents you want sideBar to read,
+- **[Files](/manual/files)**: upload documents you want sideBar to read,
   summarize, or work with.
 - **[Skills Store](/manual/skills-store)**: browse and install additional
   capabilities.
