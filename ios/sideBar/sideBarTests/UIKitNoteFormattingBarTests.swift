@@ -126,7 +126,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertNotEqual(size.width, UIView.noIntrinsicMetric)
         XCTAssertGreaterThan(size.width, 0)
         XCTAssertLessThan(size.width, 240)
-        XCTAssertEqual(size.height, 44)
+        XCTAssertEqual(size.height, 48)
     }
 
     func testBarIntrinsicWidthMatchesCompressedLayoutWidth() throws {
@@ -138,8 +138,8 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         let intrinsicSize = bar.intrinsicContentSize
         let fittedSize = bar.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
 
-        XCTAssertEqual(fittedSize.width, intrinsicSize.width, accuracy: 0.5)
-        XCTAssertEqual(fittedSize.height, intrinsicSize.height, accuracy: 0.5)
+        XCTAssertEqual(fittedSize.width, intrinsicSize.width, accuracy: CGFloat(0.5))
+        XCTAssertEqual(fittedSize.height, intrinsicSize.height, accuracy: CGFloat(0.5))
     }
 
     func testBarButtonsProvideMinimumFortyFourPointHitTargets() throws {
@@ -155,7 +155,9 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         for formatting in [NoteFormatting.bold, .italic, .underline] {
             let button = bar.button(for: formatting)
             XCTAssertGreaterThanOrEqual(button.frame.width, 44)
-            XCTAssertEqual(button.frame.height, 44, accuracy: 0.5)
+            XCTAssertEqual(button.frame.height, CGFloat(44), accuracy: CGFloat(0.5))
+            XCTAssertGreaterThan(bar.bounds.height, button.bounds.height)
+            XCTAssertLessThanOrEqual(button.frame.maxY, bar.bounds.maxY + CGFloat(0.5))
         }
     }
 

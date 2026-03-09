@@ -11,7 +11,7 @@ final class UIKitNoteFormattingBar: UIView {
     private let italicButton: UIButton
     private let underlineButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
-    private static let barHeight: CGFloat = 44
+    private static let barHeight: CGFloat = 48
     private static let minimumButtonTouchTarget: CGFloat = 44
     private static let horizontalPadding: CGFloat = 8
     private static let verticalPadding: CGFloat = 0

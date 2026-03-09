@@ -53,7 +53,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         )
         let accessoryView = try XCTUnwrap(textView.inputAccessoryView)
 
-        accessoryView.frame = CGRect(x: 0, y: 0, width: 390, height: 44)
+        accessoryView.frame = CGRect(x: 0, y: 0, width: 390, height: 56)
         accessoryView.setNeedsLayout()
         accessoryView.layoutIfNeeded()
 
@@ -112,7 +112,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         )
 
         XCTAssertEqual(fittedSize.width, 390, accuracy: 0.5)
-        XCTAssertEqual(fittedSize.height, 52, accuracy: 0.5)
+        XCTAssertEqual(fittedSize.height, 56, accuracy: 0.5)
     }
     func testFloatingTopTrailingPresentationOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
