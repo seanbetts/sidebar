@@ -174,6 +174,11 @@
 				</form>
 			</section>
 		</div>
+		<footer class="site-footer">
+			Made with ❤️ and <a href="https://openai.com/codex/" target="_blank" rel="noopener noreferrer"
+				>Codex</a
+			>
+		</footer>
 	</div>
 </div>
 
@@ -421,6 +426,18 @@
 
 	:global(.login-panel button.w-full) {
 		margin-top: 0.25rem;
+	}
+
+	.site-footer {
+		font-size: 0.8125rem;
+		color: var(--color-muted-foreground);
+		text-align: center;
+	}
+
+	.site-footer a {
+		color: var(--color-muted-foreground);
+		text-decoration: underline;
+		text-underline-offset: 2px;
 	}
 
 	@media (max-width: 900px) {
