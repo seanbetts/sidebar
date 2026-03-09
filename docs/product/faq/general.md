@@ -23,6 +23,29 @@ are not locked into one company or model. The Skills Store lets you extend
 sideBar with capabilities that can take actions, connect to external services,
 and go well beyond simple question and answer.
 
+## What can I use sideBar for?
+
+Practically anything you would ask a knowledgeable assistant. Common examples
+include drafting and editing writing, researching topics and summarising
+articles, planning your day and managing tasks, brainstorming ideas, organising
+notes across projects, saving web pages for later reference, getting quick
+answers from your own files and documents, and automating tasks through skills
+like web search, email, or audio transcription. Because sideBar knows your
+content, it can connect the dots across your notes, tasks, websites, and files
+in ways a generic chatbot cannot.
+
+## I just signed up. What should I do first?
+
+Four things will get you the most out of sideBar quickly:
+
+1. **Fill out your profile** in Settings. Your name, job, and location help
+   sideBar tailor its responses from the start.
+2. **Start a conversation** in Chat. Ask sideBar anything to see how it works.
+3. **Save a website or upload a file**, then ask sideBar about it. This is where
+   the context advantage becomes obvious.
+4. **Browse the Skills Store** and install anything useful to you. Skills extend
+   what sideBar can do, from web search to email to transcription.
+
 ## What platforms does sideBar run on?
 
 iPhone, iPad, Mac, and in your browser. Your content syncs across all of them
@@ -86,6 +109,22 @@ create, it updates its soul to stay aligned with who you are and what you need.
 Each update is versioned and timestamped. You can ask sideBar to update its
 identity and soul at any time, but cannot edit them directly; they belong to
 sideBar.
+
+## How does sync work across devices?
+
+Your content syncs in real time across every device where you are signed in.
+Create a note on your iPhone, and it appears on your iPad and Mac within
+seconds. Complete a task on the web, and it updates everywhere else immediately.
+Sync is automatic and there is nothing to configure. If you make changes while
+offline, they queue up and sync as soon as your connection returns. You can see
+pending changes in Settings under the User tab.
+
+## Is sideBar accessible?
+
+sideBar follows standard iOS and macOS accessibility conventions. The app works
+with VoiceOver and Dynamic Type, and you can adjust the text size in Settings
+under the App tab (System, Small, Medium, or Large). Biometric lock (Face ID
+or Touch ID) is available if your device supports it.
 
 ## Does sideBar work offline?
 
