@@ -59,6 +59,7 @@
         "pages": [
           "skills/store/audio-transcription",
           "skills/store/crawler-policy",
+          "skills/store/subdomain-discovery",
           "skills/store/youtube"
         ]
       },
