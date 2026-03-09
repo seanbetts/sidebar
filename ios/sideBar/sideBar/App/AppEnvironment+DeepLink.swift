@@ -1,5 +1,6 @@
 import Foundation
 import os
+import sideBarShared
 #if os(iOS)
 import UIKit
 #endif
@@ -10,6 +11,12 @@ extension AppEnvironment {
         guard url.scheme == "sidebar" else { return }
         let logger = Logger(subsystem: "sideBar", category: "DeepLink")
         logger.info("Handling deep link: \(url.absoluteString, privacy: .public)")
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "deep_link",
+            stage: "handle",
+            message: "Handling deep link.",
+            metadata: ["url": url.absoluteString]
+        )
         switch url.host {
         case "tasks":
             handleTasksDeepLink(url: url, logger: logger)
@@ -58,7 +65,8 @@ extension AppEnvironment {
             pendingNewNoteDeepLink = true
         } else if !path.isEmpty && path != "/" {
             // Path format: /path/to/note.md
-            let noteId = String(path.dropFirst()) // Remove leading slash
+            let rawNoteId = String(path.dropFirst())
+            let noteId = rawNoteId.removingPercentEncoding ?? rawNoteId
             logger.info("Deep link to note: \(noteId, privacy: .public)")
             Task {
                 await notesViewModel.loadNote(id: noteId)

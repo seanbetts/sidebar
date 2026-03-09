@@ -71,6 +71,20 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         )
     }
 
+    func testHandleNoteDeepLinkDecodesPercentEncodedPath() async {
+        let environment = requireEnvironment()
+
+        environment.handleDeepLink(URL(string: "sidebar://notes/Folder/My%20Note.md")!)
+
+        for _ in 0..<20 where environment.notesViewModel.selectedNoteId != "Folder/My Note.md" {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertEqual(environment.commandSelection, .notes)
+        XCTAssertEqual(environment.notesViewModel.selectedNoteId, "Folder/My Note.md")
+    }
+
     func testHandleWebsitesRootDeepLinkSelectsWebsitesSection() async {
         let environment = requireEnvironment()
 
@@ -210,6 +224,38 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             "Expected signed-in activation to surface the extension website event."
         )
         XCTAssertTrue(ExtensionEventStore.shared.consumeEvents().isEmpty)
+    }
+
+    func testHandleSignedInActivationConsumesWidgetAddTask() async {
+        let environment = requireEnvironment()
+        environment.authState = .active
+        environment.isTasksFocused = false
+
+        WidgetDataManager.shared.recordPendingOperation(
+            WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
+            for: .tasks
+        )
+
+        await environment.handleSignedInActivation()
+
+        XCTAssertEqual(environment.commandSelection, .tasks)
+        XCTAssertTrue(environment.pendingNewTaskDeepLink)
+    }
+
+    func testHandleSignedInActivationConsumesWidgetQuickSave() async {
+        let environment = requireEnvironment()
+        environment.authState = .active
+        let url = URL(string: "https://example.com/articles/\(UUID().uuidString)")!
+
+        WidgetDataManager.shared.recordPendingQuickSave(url: url)
+
+        await environment.handleSignedInActivation()
+
+        XCTAssertEqual(environment.commandSelection, .websites)
+        XCTAssertTrue(
+            websiteEventIsSurfaced(url.absoluteString, in: environment),
+            "Expected widget quick save to surface the queued website URL."
+        )
     }
 
     func testRefreshAuthStateWhenSessionBecomesActiveConsumesExtensionEvents() {
@@ -354,6 +400,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     private func clearWidgetPendingOperations() {
         _ = WidgetDataManager.shared.consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
         _ = WidgetDataManager.shared.consumePendingOperations(for: .notes, actionType: NoteWidgetAction.self)
+        _ = WidgetDataManager.shared.consumePendingQuickSave()
     }
 
     private func clearExtensionEvents() {

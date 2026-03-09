@@ -1,6 +1,11 @@
 import LocalAuthentication
 import sideBarShared
 import SwiftUI
+#if os(macOS)
+import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 
 struct GeneralSettingsView: View {
     enum TextSizeControlMode: Equatable {
@@ -18,6 +23,7 @@ struct GeneralSettingsView: View {
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     @State private var canUseDeviceAuth = false
     @State private var biometryType: LABiometryType = .none
+    @State private var diagnosticsStatusMessage: String?
 
     static func textSizeControlMode(for platform: TextSizeControlPlatform) -> TextSizeControlMode {
         switch platform {
@@ -53,6 +59,16 @@ struct GeneralSettingsView: View {
                 #else
                 .pickerStyle(.segmented)
                 #endif
+            }
+            Section("Diagnostics") {
+                Button("Copy External Surface Diagnostics") {
+                    copyExternalSurfaceDiagnostics()
+                }
+                if let diagnosticsStatusMessage {
+                    Text(diagnosticsStatusMessage)
+                        .appFont(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         #if os(macOS)
@@ -114,5 +130,23 @@ struct GeneralSettingsView: View {
         canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         biometryType = context.biometryType
+    }
+
+    private func copyExternalSurfaceDiagnostics() {
+        let payload = ExternalSurfaceDiagnosticsStore.shared.exportText()
+        guard !payload.isEmpty else {
+            diagnosticsStatusMessage = "No external surface diagnostics have been recorded yet."
+            return
+        }
+
+        #if os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(payload, forType: .string)
+        #elseif os(iOS)
+        UIPasteboard.general.string = payload
+        #endif
+
+        diagnosticsStatusMessage = "Copied recent external surface diagnostics."
     }
 }

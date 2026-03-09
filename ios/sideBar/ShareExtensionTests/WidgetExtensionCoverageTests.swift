@@ -4,6 +4,11 @@ import XCTest
 @testable import sideBarWidgetsExtension
 
 final class WidgetExtensionCoverageTests: XCTestCase {
+    func testWidgetBundleIncludesResolvedAppGroupIdentifier() {
+        let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String
+        XCTAssertEqual(configured, "group.ai.sidebar.sidebar")
+    }
+
     func testWidgetContentTypeKeysAndKindsAreStable() {
         XCTAssertEqual(WidgetContentType.tasks.dataKey, "widget_tasks_data")
         XCTAssertEqual(WidgetContentType.tasks.pendingKey, "widget_tasks_pending")

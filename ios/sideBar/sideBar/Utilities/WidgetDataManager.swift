@@ -36,10 +36,25 @@ public final class WidgetDataManager {
 
   /// Stores widget data for a content type
   public func store<T: WidgetDataContainer>(_ data: T, for contentType: WidgetContentType) {
-    guard let defaults = userDefaults else { return }
+    guard let defaults = userDefaults else {
+      recordDiagnostics(
+        stage: "store_missing_defaults",
+        message: "Could not store widget data because shared defaults were unavailable.",
+        metadata: ["content_type": contentType.rawValue]
+      )
+      return
+    }
     if let encoded = try? Self.makeEncoder().encode(data) {
       defaults.set(encoded, forKey: contentType.dataKey)
       defaults.synchronize()
+      recordDiagnostics(
+        stage: "store",
+        message: "Stored widget data snapshot.",
+        metadata: [
+          "content_type": contentType.rawValue,
+          "bytes": "\(encoded.count)"
+        ]
+      )
     }
     reloadWidgets(for: contentType)
   }
@@ -48,8 +63,21 @@ public final class WidgetDataManager {
   public func load<T: WidgetDataContainer>(for contentType: WidgetContentType) -> T {
     guard let defaults = userDefaults,
           let data = defaults.data(forKey: contentType.dataKey) else {
+      recordDiagnostics(
+        stage: "load_empty",
+        message: "No widget data snapshot was available.",
+        metadata: ["content_type": contentType.rawValue]
+      )
       return T.empty
     }
+    recordDiagnostics(
+      stage: "load",
+      message: "Loaded widget data snapshot.",
+      metadata: [
+        "content_type": contentType.rawValue,
+        "bytes": "\(data.count)"
+      ]
+    )
     return (try? Self.makeDecoder().decode(T.self, from: data)) ?? T.empty
   }
 
@@ -60,7 +88,14 @@ public final class WidgetDataManager {
     _ operation: WidgetPendingOperation<A>,
     for contentType: WidgetContentType
   ) {
-    guard let defaults = userDefaults else { return }
+    guard let defaults = userDefaults else {
+      recordDiagnostics(
+        stage: "record_pending_missing_defaults",
+        message: "Could not record widget pending operation because shared defaults were unavailable.",
+        metadata: ["content_type": contentType.rawValue]
+      )
+      return
+    }
     var pending = loadPendingOperations(for: contentType, actionType: A.self)
 
     // Deduplicate by itemId + action
@@ -69,6 +104,14 @@ public final class WidgetDataManager {
       if let encoded = try? Self.makeEncoder().encode(pending) {
         defaults.set(encoded, forKey: contentType.pendingKey)
         defaults.synchronize()
+        recordDiagnostics(
+          stage: "record_pending_operation",
+          message: "Recorded widget pending operation.",
+          metadata: [
+            "content_type": contentType.rawValue,
+            "count": "\(pending.count)"
+          ]
+        )
       }
     }
   }
@@ -82,6 +125,14 @@ public final class WidgetDataManager {
     let pending = loadPendingOperations(for: contentType, actionType: actionType)
     defaults.removeObject(forKey: contentType.pendingKey)
     defaults.synchronize()
+    recordDiagnostics(
+      stage: "consume_pending_operations",
+      message: "Consumed widget pending operations.",
+      metadata: [
+        "content_type": contentType.rawValue,
+        "count": "\(pending.count)"
+      ]
+    )
     return pending
   }
 
@@ -104,6 +155,15 @@ public final class WidgetDataManager {
       defaults.set(encoded, forKey: contentType.pendingKey)
     }
     defaults.synchronize()
+    recordDiagnostics(
+      stage: "consume_matching_pending_operations",
+      message: "Consumed matching widget pending operations.",
+      metadata: [
+        "content_type": contentType.rawValue,
+        "matched_count": "\(matchingOperations.count)",
+        "remaining_count": "\(remainingOperations.count)"
+      ]
+    )
     return matchingOperations
   }
 
@@ -125,6 +185,11 @@ public final class WidgetDataManager {
     guard let defaults = userDefaults else { return }
     defaults.set(isAuthenticated, forKey: authKey)
     defaults.synchronize()
+    recordDiagnostics(
+      stage: "update_auth_state",
+      message: "Updated widget auth state.",
+      metadata: ["is_authenticated": isAuthenticated ? "true" : "false"]
+    )
     reloadAllWidgets()
   }
 
@@ -143,6 +208,10 @@ public final class WidgetDataManager {
     defaults.removeObject(forKey: legacyPendingAddTaskKey)
     defaults.removeObject(forKey: Self.pendingQuickSaveKey)
     defaults.synchronize()
+    recordDiagnostics(
+      stage: "clear_all_for_sign_out",
+      message: "Cleared widget bridge data for sign-out."
+    )
     reloadAllWidgets()
   }
 
@@ -163,6 +232,15 @@ public final class WidgetDataManager {
     setOptionalString(r2FaviconBucket, forKey: faviconR2BucketKey, in: defaults)
     setOptionalString(r2FaviconPublicBaseUrl?.absoluteString, forKey: faviconR2PublicBaseUrlKey, in: defaults)
     defaults.synchronize()
+    recordDiagnostics(
+      stage: "update_favicon_configuration",
+      message: "Updated widget favicon configuration.",
+      metadata: [
+        "has_endpoint": r2Endpoint == nil ? "false" : "true",
+        "has_bucket": (r2FaviconBucket?.isEmpty == false) ? "true" : "false",
+        "has_public_base": r2FaviconPublicBaseUrl == nil ? "false" : "true"
+      ]
+    )
     reloadWidgets(for: .websites)
   }
 
@@ -279,6 +357,11 @@ extension WidgetDataManager {
     guard let defaults = userDefaults else { return }
     defaults.set(url.absoluteString, forKey: Self.pendingQuickSaveKey)
     defaults.synchronize()
+    recordDiagnostics(
+      stage: "record_pending_quick_save",
+      message: "Recorded widget quick save URL.",
+      metadata: ["url": url.absoluteString]
+    )
   }
 
   /// Consumes the pending quick save URL (called by main app)
@@ -290,6 +373,29 @@ extension WidgetDataManager {
     }
     defaults.removeObject(forKey: Self.pendingQuickSaveKey)
     defaults.synchronize()
+    recordDiagnostics(
+      stage: "consume_pending_quick_save",
+      message: "Consumed widget quick save URL.",
+      metadata: ["url": url.absoluteString]
+    )
     return url
+  }
+}
+
+private extension WidgetDataManager {
+  func recordDiagnostics(
+    stage: String,
+    message: String,
+    metadata: [String: String] = [:]
+  ) {
+    ExternalSurfaceDiagnosticsStore.shared.record(
+      surface: "widget_bridge_app",
+      stage: stage,
+      message: message,
+      metadata: metadata.merging(
+        ["app_group_id": appGroupId ?? "nil"],
+        uniquingKeysWith: { current, _ in current }
+      )
+    )
   }
 }

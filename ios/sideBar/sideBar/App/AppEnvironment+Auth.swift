@@ -140,6 +140,12 @@ extension AppEnvironment {
 
     /// Handles signed-in foreground activation work shared by iOS and macOS.
     public func handleSignedInActivation() async {
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "app_activation",
+            stage: "begin",
+            message: "Handling signed-in activation.",
+            metadata: ["auth_state": authState.rawValue]
+        )
         if authState != .signedOut {
             if authState == .stale {
                 await container.authSession.refreshSession()
@@ -150,15 +156,12 @@ extension AppEnvironment {
 
         if authState == .active {
             await consumeExtensionEvents()
-        }
-
-        #if os(iOS)
-        if authState == .active {
             await consumeWidgetCompletions()
             await consumeWidgetQuickSave()
         }
         consumeWidgetAddTask()
         consumeWidgetAddNote()
+        #if os(iOS)
         try? await Task.sleep(nanoseconds: 1_000_000_000)
         if authState == .active {
             await consumeExtensionEvents()
@@ -166,12 +169,24 @@ extension AppEnvironment {
         }
         runOfflineMaintenance()
         #endif
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "app_activation",
+            stage: "end",
+            message: "Finished signed-in activation.",
+            metadata: ["auth_state": authState.rawValue]
+        )
     }
 
     public func consumeExtensionEvents() async {
         guard authState == .active else { return }
         await consumePendingShares()
         let events = ExtensionEventStore.shared.consumeEvents()
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "app_extension_consumer",
+            stage: "consume_events",
+            message: "Consumed extension events during app activation.",
+            metadata: ["count": "\(events.count)"]
+        )
         guard !events.isEmpty else { return }
 
         var enqueuedWebsiteEvents = false
@@ -245,6 +260,12 @@ extension AppEnvironment {
             actionType: TaskWidgetAction.self,
             matching: { $0 == .addNew }
         )
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "widget_bridge_app",
+            stage: "consume_add_task",
+            message: "Consumed widget add-task operations.",
+            metadata: ["count": "\(operations.count)"]
+        )
         guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
 
         // Navigate to tasks section and start new task
@@ -268,6 +289,12 @@ extension AppEnvironment {
             actionType: NoteWidgetAction.self,
             matching: { $0 == .addNew }
         )
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "widget_bridge_app",
+            stage: "consume_add_note",
+            message: "Consumed widget add-note operations.",
+            metadata: ["count": "\(operations.count)"]
+        )
         guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
 
         // Navigate to notes section and trigger new note creation
@@ -280,6 +307,12 @@ extension AppEnvironment {
     public func consumeWidgetQuickSave() async {
         guard let url = WidgetDataManager.shared.consumePendingQuickSave(),
               authState == .active else { return }
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "widget_bridge_app",
+            stage: "consume_quick_save",
+            message: "Consumed widget quick-save URL.",
+            metadata: ["url": url.absoluteString]
+        )
 
         // Navigate to websites and save the URL
         routeWorkspaceSelection(to: .websites, source: "widget_quick_save")

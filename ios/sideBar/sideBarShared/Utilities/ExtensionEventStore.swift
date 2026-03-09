@@ -63,15 +63,34 @@ public final class ExtensionEventStore {
     /// Returns and clears all recorded extension events.
     public func consumeEvents() -> [ExtensionEvent] {
         guard let defaults = userDefaults else {
+            recordDiagnostics(
+                stage: "consume_events_missing_store",
+                message: "Extension events unavailable because shared defaults could not be opened."
+            )
             return []
         }
         defer {
             defaults.removeObject(forKey: eventsKey)
             defaults.synchronize()
         }
-        guard let data = defaults.data(forKey: eventsKey) else { return [] }
+        guard let data = defaults.data(forKey: eventsKey) else {
+            recordDiagnostics(
+                stage: "consume_events_empty",
+                message: "No extension events were queued."
+            )
+            return []
+        }
         let decoder = Self.makeDecoder()
-        return (try? decoder.decode([ExtensionEvent].self, from: data)) ?? []
+        let events = (try? decoder.decode([ExtensionEvent].self, from: data)) ?? []
+        recordDiagnostics(
+            stage: "consume_events",
+            message: "Consumed extension events.",
+            metadata: [
+                "count": "\(events.count)",
+                "suite": AppGroupConfiguration.appGroupId ?? "nil"
+            ]
+        )
+        return events
     }
 
     /// Clears all recorded extension events without consuming them.
@@ -79,10 +98,21 @@ public final class ExtensionEventStore {
         guard let defaults = userDefaults else { return }
         defaults.removeObject(forKey: eventsKey)
         defaults.synchronize()
+        recordDiagnostics(
+            stage: "clear_events",
+            message: "Cleared extension events."
+        )
     }
 
     private func append(event: ExtensionEvent) {
         guard let defaults = userDefaults else {
+            recordDiagnostics(
+                stage: "append_event_missing_store",
+                message: "Could not append extension event because shared defaults could not be opened.",
+                metadata: [
+                    "event_type": event.type.rawValue
+                ]
+            )
             return
         }
         var events = loadEvents(defaults: defaults)
@@ -91,6 +121,15 @@ public final class ExtensionEventStore {
         if let data = try? encoder.encode(events) {
             defaults.set(data, forKey: eventsKey)
             defaults.synchronize()
+            recordDiagnostics(
+                stage: "append_event",
+                message: "Recorded extension event.",
+                metadata: [
+                    "event_type": event.type.rawValue,
+                    "count": "\(events.count)",
+                    "suite": AppGroupConfiguration.appGroupId ?? "nil"
+                ]
+            )
         }
     }
 
@@ -105,6 +144,24 @@ public final class ExtensionEventStore {
             return nil
         }
         return UserDefaults(suiteName: suiteName)
+    }
+
+    private func recordDiagnostics(
+        stage: String,
+        message: String,
+        metadata: [String: String] = [:]
+    ) {
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "extension_events",
+            stage: stage,
+            message: message,
+            metadata: metadata.merging(
+                [
+                    "bundle_id": Bundle.main.bundleIdentifier ?? "nil"
+                ],
+                uniquingKeysWith: { current, _ in current }
+            )
+        )
     }
 
     private static func makeEncoder() -> JSONEncoder {

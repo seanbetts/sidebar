@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import sideBarShared
 @testable import sideBar
 
 final class WidgetBridgeContractTests: XCTestCase {
@@ -42,5 +43,22 @@ final class WidgetBridgeContractTests: XCTestCase {
         XCTAssertEqual(decoded.itemId, operation.itemId)
         XCTAssertEqual(decoded.action, operation.action)
         XCTAssertLessThan(abs(decoded.timestamp.timeIntervalSince(operation.timestamp)), 1.0)
+    }
+
+    func testAppGroupConfigurationNormalizesKnownExtensionBundleSuffixes() {
+        XCTAssertEqual(
+            AppGroupConfiguration.normalizedSharedBundleIdentifier("ai.sidebar.sidebar.sideBarWidgets"),
+            "ai.sidebar.sidebar"
+        )
+        XCTAssertEqual(
+            AppGroupConfiguration.normalizedSharedBundleIdentifier("ai.sidebar.sidebar.ShareExtension"),
+            "ai.sidebar.sidebar"
+        )
+        XCTAssertEqual(
+            AppGroupConfiguration.normalizedSharedBundleIdentifier(
+                "ai.sidebar.sidebar.sideBar-Safari-Extension--macOS-.Extension"
+            ),
+            "ai.sidebar.sidebar"
+        )
     }
 }

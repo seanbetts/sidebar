@@ -105,11 +105,24 @@ public final class PendingShareStore {
     public func enqueueWebsite(url: String) -> PendingShareItem? {
         withAccessLock {
             guard hasRequiredStorage(needsFileContainer: false, context: "enqueueWebsite") else {
+                recordDiagnostics(
+                    stage: "enqueue_website_missing_storage",
+                    message: "Could not queue website because shared storage was unavailable.",
+                    metadata: ["url": url]
+                )
                 return nil
             }
             let existingItems = loadAll()
             if let existing = existingItems.first(where: { $0.kind == .website && $0.url == url }) {
                 os_log(.default, log: Self.log, "Website share already queued %{public}@", url)
+                recordDiagnostics(
+                    stage: "enqueue_website_duplicate",
+                    message: "Website was already queued.",
+                    metadata: [
+                        "url": url,
+                        "queue_item_id": existing.id.uuidString
+                    ]
+                )
                 return existing
             }
             let item = PendingShareItem(
@@ -122,6 +135,15 @@ public final class PendingShareStore {
             items.append(item)
             replaceAll(items)
             os_log(.default, log: Self.log, "Queued website share %{public}@", url)
+            recordDiagnostics(
+                stage: "enqueue_website",
+                message: "Queued website share.",
+                metadata: [
+                    "url": url,
+                    "queue_item_id": item.id.uuidString,
+                    "count": "\(items.count)"
+                ]
+            )
             return item
         }
     }
@@ -236,6 +258,11 @@ public final class PendingShareStore {
             if let data = try? encoder.encode(items) {
                 defaults.set(data, forKey: itemsKey)
                 defaults.synchronize()
+                recordDiagnostics(
+                    stage: "replace_all",
+                    message: "Replaced pending share queue.",
+                    metadata: ["count": "\(items.count)"]
+                )
             }
         }
     }
@@ -416,6 +443,15 @@ public final class PendingShareStore {
             bundleId,
             groupId
         )
+        recordDiagnostics(
+            stage: "missing_app_group",
+            message: "App group storage was unavailable.",
+            metadata: [
+                "context": context,
+                "bundle_id": bundleId,
+                "app_group_id": groupId
+            ]
+        )
     }
 
     private func hasRequiredStorage(needsFileContainer: Bool, context: String) -> Bool {
@@ -428,18 +464,34 @@ public final class PendingShareStore {
         return false
     }
 
+    private func recordDiagnostics(
+        stage: String,
+        message: String,
+        metadata: [String: String] = [:]
+    ) {
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "pending_share_store",
+            stage: stage,
+            message: message,
+            metadata: metadata.merging(
+                [
+                    "bundle_id": Bundle.main.bundleIdentifier ?? "nil",
+                    "app_group_id": AppGroupConfiguration.appGroupId ?? "nil"
+                ],
+                uniquingKeysWith: { current, _ in current }
+            )
+        )
+    }
     private static func makeEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         return encoder
     }
-
     private static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }
-
     private func withAccessLock<T>(_ operation: () -> T) -> T {
         accessLock.lock()
         defer { accessLock.unlock() }
