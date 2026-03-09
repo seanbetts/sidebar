@@ -142,7 +142,9 @@ extension ChatViewModelTests {
         let viewModel = makeViewModel(
             api: conversationsAPI,
             cache: cache,
-            ingestionAPI: ingestionAPI
+            ingestionAPI: ingestionAPI,
+            attachmentPollingInitialDelayNanoseconds: 0,
+            attachmentPollingIntervalNanoseconds: 0
         )
         viewModel.attachments = [
             ChatAttachmentItem(
@@ -155,7 +157,9 @@ extension ChatViewModelTests {
         ]
 
         viewModel.startAttachmentPolling(id: "attachment-1", fileId: "file-1")
-        try? await Task.sleep(nanoseconds: 2_200_000_000)
+        await waitForAttachmentPolling {
+            viewModel.attachments.first(where: { $0.id == "attachment-1" })?.status == .failed
+        }
 
         let attachment = viewModel.attachments.first(where: { $0.id == "attachment-1" })
         XCTAssertEqual(attachment?.status, .failed)
@@ -204,7 +208,9 @@ extension ChatViewModelTests {
         let viewModel = makeViewModel(
             api: conversationsAPI,
             cache: cache,
-            ingestionAPI: ingestionAPI
+            ingestionAPI: ingestionAPI,
+            attachmentPollingInitialDelayNanoseconds: 0,
+            attachmentPollingIntervalNanoseconds: 0
         )
         viewModel.attachments = [
             ChatAttachmentItem(
@@ -217,7 +223,9 @@ extension ChatViewModelTests {
         ]
 
         viewModel.startAttachmentPolling(id: "attachment-1", fileId: "file-1")
-        try? await Task.sleep(nanoseconds: 2_200_000_000)
+        await waitForAttachmentPolling {
+            viewModel.attachments.isEmpty
+        }
 
         XCTAssertTrue(viewModel.attachments.isEmpty)
         XCTAssertFalse(viewModel.hasPendingAttachments)
@@ -260,5 +268,22 @@ extension ChatViewModelTests {
         XCTAssertTrue(viewModel.attachments.isEmpty)
         XCTAssertFalse(viewModel.hasPendingAttachments)
         await fulfillment(of: [cancelCalled], timeout: 1.0)
+    }
+}
+
+extension ChatViewModelTests {
+    func waitForAttachmentPolling(
+        timeoutNanoseconds: UInt64 = 500_000_000,
+        pollNanoseconds: UInt64 = 10_000_000,
+        condition: @escaping @MainActor () -> Bool
+    ) async {
+        let started = DispatchTime.now().uptimeNanoseconds
+        while !condition() {
+            if DispatchTime.now().uptimeNanoseconds - started > timeoutNanoseconds {
+                XCTFail("Attachment polling did not reach the expected state before timeout")
+                return
+            }
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
     }
 }

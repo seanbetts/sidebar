@@ -399,7 +399,9 @@ extension ChatViewModelTests {
         ingestionAPI: IngestionAPI? = nil,
         streamClient: ChatViewModelTestsSupport.MockChatStreamClient? = nil,
         requestContextProvider: (() -> ChatRequestContext?)? = nil,
-        workspaceActionDispatcher: ((WorkspaceAction) -> Void)? = nil
+        workspaceActionDispatcher: ((WorkspaceAction) -> Void)? = nil,
+        attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
+        attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000
     ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
         let themeManager = Self.sharedThemeManager
@@ -429,7 +431,9 @@ extension ChatViewModelTests {
                 themeManager: themeManager,
                 userDefaults: defaults,
                 clock: { Date(timeIntervalSince1970: 0) },
-                requestContextProvider: requestContextProvider
+                requestContextProvider: requestContextProvider,
+                attachmentPollingInitialDelayNanoseconds: attachmentPollingInitialDelayNanoseconds,
+                attachmentPollingIntervalNanoseconds: attachmentPollingIntervalNanoseconds
             )
         )
         viewModel.workspaceActionDispatcher = workspaceActionDispatcher

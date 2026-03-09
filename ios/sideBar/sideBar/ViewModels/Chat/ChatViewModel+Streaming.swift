@@ -283,24 +283,16 @@ extension ChatViewModel {
     func startAttachmentPolling(id: String, fileId: String) {
         attachmentPollTasks[id]?.cancel()
         let task = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard let self else { return }
+            if self.attachmentPollingInitialDelayNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: self.attachmentPollingInitialDelayNanoseconds)
+            }
             while !Task.isCancelled {
                 do {
-                    guard let self else { return }
                     let meta = try await ingestionAPI.getMeta(fileId: fileId)
                     let status = meta.job.status ?? "queued"
                     let stage = meta.job.stage
-                    let resolvedStatus: ChatAttachmentStatus
-                    switch status {
-                    case "ready":
-                        resolvedStatus = .ready
-                    case "failed":
-                        resolvedStatus = .failed
-                    case "canceled":
-                        resolvedStatus = .canceled
-                    default:
-                        resolvedStatus = .queued
-                    }
+                    let resolvedStatus = attachmentStatus(from: status)
                     if resolvedStatus == .canceled {
                         self.attachmentPollTasks[id] = nil
                         self.attachments.removeAll { $0.id == id }
@@ -312,18 +304,20 @@ extension ChatViewModel {
                         updated.stage = stage ?? status
                         return updated
                     }
-                    if resolvedStatus == .ready || resolvedStatus == .failed || resolvedStatus == .canceled {
+                    if isTerminalAttachmentStatus(resolvedStatus) {
                         return
                     }
-                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                    if self.attachmentPollingIntervalNanoseconds > 0 {
+                        try? await Task.sleep(nanoseconds: self.attachmentPollingIntervalNanoseconds)
+                    }
                 } catch {
-                    self?.updateAttachment(id: id) { item in
+                    self.updateAttachment(id: id) { item in
                         var updated = item
                         updated.status = .failed
                         updated.stage = "failed"
                         return updated
                     }
-                    self?.toastCenter?.show(message: "Attachment status failed")
+                    self.toastCenter?.show(message: "Attachment status failed")
                     return
                 }
             }
@@ -336,6 +330,23 @@ extension ChatViewModel {
             return
         }
         attachments[index] = update(attachments[index])
+    }
+
+    private func attachmentStatus(from status: String) -> ChatAttachmentStatus {
+        switch status {
+        case "ready":
+            return .ready
+        case "failed":
+            return .failed
+        case "canceled":
+            return .canceled
+        default:
+            return .queued
+        }
+    }
+
+    private func isTerminalAttachmentStatus(_ status: ChatAttachmentStatus) -> Bool {
+        status == .ready || status == .failed || status == .canceled
     }
 
     func mimeTypeFor(url: URL) -> String {

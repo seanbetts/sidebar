@@ -36,13 +36,23 @@ final class CachedStoreTests: XCTestCase {
         let cache = TestCacheClient()
         cache.set(key: "store-key", value: "cached", ttlSeconds: 60)
         let store = MockCachedStore(cache: cache, fetchResult: "fresh")
-        store.backgroundRefreshDelay = 300_000_000
+        let started = expectation(description: "background refresh started")
+        let finished = expectation(description: "background refresh finished")
+        store.onBackgroundRefreshStart = {
+            started.fulfill()
+        }
+        store.onBackgroundRefresh = {
+            finished.fulfill()
+        }
+        store.makeBackgroundRefreshWait()
 
         try await store.loadWithCache()
+        await fulfillment(of: [started], timeout: 1.0)
         try await store.loadWithCache()
-        try? await Task.sleep(nanoseconds: 450_000_000)
 
         XCTAssertEqual(store.backgroundRefreshCallCount, 1)
+        await store.releaseBackgroundRefreshWait()
+        await fulfillment(of: [finished], timeout: 1.0)
     }
 
     func testLoadWithCacheBacksOffAfterRepeatedFailures() async throws {
@@ -52,19 +62,30 @@ final class CachedStoreTests: XCTestCase {
         let store = MockCachedStore(cache: cache, fetchResult: "fresh", now: { now })
         store.backgroundRefreshOutcomes = [.failure, .failure, .success]
 
+        let firstRefresh = expectation(description: "first background refresh finished")
+        store.onBackgroundRefresh = {
+            firstRefresh.fulfill()
+        }
         try await store.loadWithCache()
-        await waitForBackgroundTask()
+        await fulfillment(of: [firstRefresh], timeout: 1.0)
+        let secondRefresh = expectation(description: "second background refresh finished")
+        store.onBackgroundRefresh = {
+            secondRefresh.fulfill()
+        }
         try await store.loadWithCache()
-        await waitForBackgroundTask()
+        await fulfillment(of: [secondRefresh], timeout: 1.0)
         XCTAssertEqual(store.backgroundRefreshCallCount, 2)
 
         try await store.loadWithCache()
-        await waitForBackgroundTask()
         XCTAssertEqual(store.backgroundRefreshCallCount, 2)
 
         now = now.addingTimeInterval(5)
+        let thirdRefresh = expectation(description: "third background refresh finished")
+        store.onBackgroundRefresh = {
+            thirdRefresh.fulfill()
+        }
         try await store.loadWithCache()
-        await waitForBackgroundTask()
+        await fulfillment(of: [thirdRefresh], timeout: 1.0)
         XCTAssertEqual(store.backgroundRefreshCallCount, 3)
     }
 
@@ -74,19 +95,30 @@ final class CachedStoreTests: XCTestCase {
         let store = MockCachedStore(cache: cache, fetchResult: "fresh")
         store.backgroundRefreshOutcomes = [.failure, .failure, .success]
 
+        let firstRefresh = expectation(description: "first background refresh finished")
+        store.onBackgroundRefresh = {
+            firstRefresh.fulfill()
+        }
         try await store.loadWithCache()
-        await waitForBackgroundTask()
+        await fulfillment(of: [firstRefresh], timeout: 1.0)
+        let secondRefresh = expectation(description: "second background refresh finished")
+        store.onBackgroundRefresh = {
+            secondRefresh.fulfill()
+        }
         try await store.loadWithCache()
-        await waitForBackgroundTask()
+        await fulfillment(of: [secondRefresh], timeout: 1.0)
         XCTAssertEqual(store.backgroundRefreshCallCount, 2)
 
         try await store.loadWithCache()
-        await waitForBackgroundTask()
         XCTAssertEqual(store.backgroundRefreshCallCount, 2)
 
         store.resetBackgroundRefreshBackoff()
+        let thirdRefresh = expectation(description: "third background refresh finished")
+        store.onBackgroundRefresh = {
+            thirdRefresh.fulfill()
+        }
         try await store.loadWithCache()
-        await waitForBackgroundTask()
+        await fulfillment(of: [thirdRefresh], timeout: 1.0)
         XCTAssertEqual(store.backgroundRefreshCallCount, 3)
     }
 
@@ -94,26 +126,33 @@ final class CachedStoreTests: XCTestCase {
         let cache = TestCacheClient()
         cache.set(key: "store-key", value: "cached", ttlSeconds: 60)
         let store = MockCachedStore(cache: cache, fetchResult: "fresh")
-        store.backgroundRefreshDelay = 200_000_000
         let iterations = 6
 
         for iteration in 0..<iterations {
+            let started = expectation(description: "background refresh started \(iteration)")
+            let finished = expectation(description: "background refresh finished \(iteration)")
+            store.onBackgroundRefreshStart = {
+                started.fulfill()
+            }
+            store.onBackgroundRefresh = {
+                finished.fulfill()
+            }
+            store.makeBackgroundRefreshWait()
             async let firstLoad: Void = store.loadWithCache()
             async let secondLoad: Void = store.loadWithCache()
             _ = try await (firstLoad, secondLoad)
 
-            try? await Task.sleep(nanoseconds: 325_000_000)
+            await fulfillment(of: [started], timeout: 1.0)
             XCTAssertEqual(
                 store.backgroundRefreshCallCount,
                 iteration + 1,
                 "Iteration \(iteration) should only schedule one background refresh"
             )
+            await store.releaseBackgroundRefreshWait()
+            await fulfillment(of: [finished], timeout: 1.0)
         }
     }
 
-    private func waitForBackgroundTask() async {
-        try? await Task.sleep(nanoseconds: 75_000_000)
-    }
 }
 
 @MainActor
@@ -133,9 +172,10 @@ private final class MockCachedStore: CachedStoreBase<String> {
     let fetchResult: String
     var appliedData: [Applied] = []
     var onBackgroundRefresh: (() -> Void)?
-    var backgroundRefreshDelay: UInt64 = 0
+    var onBackgroundRefreshStart: (() -> Void)?
     var backgroundRefreshOutcomes: [BackgroundRefreshOutcome] = [.success]
     private(set) var backgroundRefreshCallCount = 0
+    private var backgroundRefreshWait: BackgroundRefreshWait?
 
     init(
         cache: CacheClient,
@@ -156,8 +196,10 @@ private final class MockCachedStore: CachedStoreBase<String> {
 
     override func backgroundRefresh() async {
         backgroundRefreshCallCount += 1
-        if backgroundRefreshDelay > 0 {
-            try? await Task.sleep(nanoseconds: backgroundRefreshDelay)
+        onBackgroundRefreshStart?()
+        if let backgroundRefreshWait {
+            await backgroundRefreshWait.wait()
+            self.backgroundRefreshWait = nil
         }
         let outcome = backgroundRefreshOutcomes.isEmpty ? .success : backgroundRefreshOutcomes.removeFirst()
         switch outcome {
@@ -167,5 +209,33 @@ private final class MockCachedStore: CachedStoreBase<String> {
             markBackgroundRefreshFailure()
         }
         onBackgroundRefresh?()
+    }
+
+    func makeBackgroundRefreshWait() {
+        backgroundRefreshWait = BackgroundRefreshWait()
+    }
+
+    func releaseBackgroundRefreshWait() async {
+        await backgroundRefreshWait?.release()
+    }
+}
+
+private actor BackgroundRefreshWait {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var released = false
+
+    func wait() async {
+        if released {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func release() {
+        released = true
+        continuation?.resume()
+        continuation = nil
     }
 }

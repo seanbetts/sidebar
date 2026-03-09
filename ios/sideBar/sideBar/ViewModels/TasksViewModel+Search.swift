@@ -17,8 +17,11 @@ extension TasksViewModel {
 
         searchQuery = query
         searchDebounce = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 350_000_000)
-            guard !Task.isCancelled, let self else { return }
+            guard let self else { return }
+            if self.searchDebounceNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: self.searchDebounceNanoseconds)
+            }
+            guard !Task.isCancelled else { return }
             await self.load(selection: .search(query: trimmed))
         }
     }

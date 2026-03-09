@@ -132,6 +132,8 @@ private final class ChatViewModelTeardownBag {
     var toastCenter: ToastCenter? { ui.toastCenter }
     var userDefaults: UserDefaults { ui.userDefaults }
     var clock: () -> Date { ui.clock }
+    var attachmentPollingInitialDelayNanoseconds: UInt64 { ui.attachmentPollingInitialDelayNanoseconds }
+    var attachmentPollingIntervalNanoseconds: UInt64 { ui.attachmentPollingIntervalNanoseconds }
     var onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? { ui.onAssistantSettingsUpdated }
     var requestContextProvider: (() -> ChatRequestContext?)? { ui.requestContextProvider }
     var workspaceActionDispatcher: ((WorkspaceAction) -> Void)?

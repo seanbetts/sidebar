@@ -72,13 +72,18 @@ final class TasksViewModelTests: XCTestCase {
             groups: nil
         )
 
-        let sut = makeSUT(api: api, networkAvailable: true)
+        let sut = makeSUT(
+            api: api,
+            networkAvailable: true,
+            searchDebounceNanoseconds: 0
+        )
         let viewModel = sut.viewModel
         await viewModel.load(selection: .today)
 
         viewModel.updateSearch(query: "  find me  ")
-        try? await Task.sleep(nanoseconds: 450_000_000)
-        XCTAssertEqual(viewModel.selection, .search(query: "find me"))
+        await eventually {
+            viewModel.selection == .search(query: "find me")
+        }
 
         api.enqueueListResponse(scope: "today", tasks: [])
         viewModel.updateSearch(query: "   ")
@@ -92,13 +97,19 @@ final class TasksViewModelTests: XCTestCase {
         let api = TasksViewModelAPIStub()
         api.enqueueListResponse(scope: "today", tasks: [])
 
-        let sut = makeSUT(api: api, networkAvailable: true)
+        let sut = makeSUT(
+            api: api,
+            networkAvailable: true,
+            searchDebounceNanoseconds: 100_000_000
+        )
         let viewModel = sut.viewModel
         await viewModel.load(selection: .today)
 
         viewModel.updateSearch(query: "follow up")
         viewModel.clearSearchQuery()
-        try? await Task.sleep(nanoseconds: 450_000_000)
+        await eventually {
+            viewModel.searchQuery.isEmpty
+        }
 
         XCTAssertEqual(api.searchCallCount, 0)
         XCTAssertEqual(viewModel.selection, .today)
@@ -424,7 +435,9 @@ final class TasksViewModelTests: XCTestCase {
     private func makeSUT(
         api: TasksViewModelAPIStub,
         networkAvailable: Bool,
-        serverReachable: Bool = true
+        serverReachable: Bool = true,
+        searchDebounceNanoseconds: UInt64 = 350_000_000,
+        realtimeRefreshDelayNanoseconds: UInt64 = 200_000_000
     ) -> SUT {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
@@ -452,7 +465,9 @@ final class TasksViewModelTests: XCTestCase {
             api: api,
             store: store,
             toastCenter: ToastCenter(),
-            networkStatus: networkStatus
+            networkStatus: networkStatus,
+            searchDebounceNanoseconds: searchDebounceNanoseconds,
+            realtimeRefreshDelayNanoseconds: realtimeRefreshDelayNanoseconds
         )
         return SUT(viewModel: viewModel, store: store, writeQueue: writeQueue)
     }

@@ -27,7 +27,9 @@ extension TasksViewModel {
         realtimeRefreshTask?.cancel()
         realtimeRefreshTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            try? await Task.sleep(nanoseconds: 200_000_000)
+            if self.realtimeRefreshDelayNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: self.realtimeRefreshDelayNanoseconds)
+            }
             guard !Task.isCancelled else { return }
 
             let currentSelection = self.selection

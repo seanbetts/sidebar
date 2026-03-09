@@ -149,6 +149,8 @@ struct ChatUICoordinator {
     let clock: () -> Date
     let onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)?
     let requestContextProvider: (() -> ChatRequestContext?)?
+    let attachmentPollingInitialDelayNanoseconds: UInt64
+    let attachmentPollingIntervalNanoseconds: UInt64
 
     init(
         themeManager: ThemeManager,
@@ -156,7 +158,9 @@ struct ChatUICoordinator {
         userDefaults: UserDefaults = .standard,
         clock: @escaping () -> Date = Date.init,
         onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? = nil,
-        requestContextProvider: (() -> ChatRequestContext?)? = nil
+        requestContextProvider: (() -> ChatRequestContext?)? = nil,
+        attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
+        attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000
     ) {
         self.themeManager = themeManager
         self.toastCenter = toastCenter
@@ -164,6 +168,8 @@ struct ChatUICoordinator {
         self.clock = clock
         self.onAssistantSettingsUpdated = onAssistantSettingsUpdated
         self.requestContextProvider = requestContextProvider
+        self.attachmentPollingInitialDelayNanoseconds = attachmentPollingInitialDelayNanoseconds
+        self.attachmentPollingIntervalNanoseconds = attachmentPollingIntervalNanoseconds
     }
 }
 

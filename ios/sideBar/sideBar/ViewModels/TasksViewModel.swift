@@ -20,6 +20,8 @@ public final class TasksViewModel: ObservableObject {
     let store: TasksStore
     let toastCenter: ToastCenter
     let networkStatus: any NetworkStatusProviding
+    let searchDebounceNanoseconds: UInt64
+    let realtimeRefreshDelayNanoseconds: UInt64
     var cancellables = Set<AnyCancellable>()
     var searchDebounce: Task<Void, Never>?
     var realtimeRefreshTask: Task<Void, Never>?
@@ -29,12 +31,16 @@ public final class TasksViewModel: ObservableObject {
         api: any TasksProviding,
         store: TasksStore,
         toastCenter: ToastCenter,
-        networkStatus: any NetworkStatusProviding
+        networkStatus: any NetworkStatusProviding,
+        searchDebounceNanoseconds: UInt64 = 350_000_000,
+        realtimeRefreshDelayNanoseconds: UInt64 = 200_000_000
     ) {
         self.api = api
         self.store = store
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
+        self.searchDebounceNanoseconds = searchDebounceNanoseconds
+        self.realtimeRefreshDelayNanoseconds = realtimeRefreshDelayNanoseconds
 
         store.objectWillChange
             .sink { [weak self] _ in
