@@ -8,20 +8,29 @@ surfaces: [app, website, internal-knowledge]
 
 ## Chat isn't working
 
-**"Invalid API key" or similar error**
-Your API key may be incorrect, expired, or have been revoked. Go to
-**Settings → sideBar**, re-enter your key, and save. Make sure you copy the
-full key from your provider's dashboard without trailing spaces.
+**"Session expired. Please sign in again."**
+Your sideBar session has expired. Sign out from **Settings → Profile** and
+sign back in.
 
-**"Insufficient credits" or "Billing" error**
-Your provider account has run out of credits or has no payment method attached.
-Log in to your provider's dashboard and top up your balance or add a payment
-method. See [API Keys](/manual/api-keys) for links.
+**Provider API error or unexpected error**
+Your API key may be incorrect, expired, or have been revoked, or your provider
+account may have run out of credits. Check your key in **Settings → sideBar**
+and confirm your billing status in your provider's dashboard. See
+[API Keys](/manual/api-keys) for links to each provider.
 
-**"Rate limit exceeded"**
-Your provider account has hit its usage limit. This is usually temporary — wait
-a few minutes and try again. If it happens frequently, consider upgrading your
-provider plan or switching providers in **Settings → sideBar**.
+**"Network connection failed. Please check your internet."**
+sideBar cannot reach the server. Check your internet connection and try again.
+
+**"Server error. Please try again soon."**
+A temporary server error. Wait a moment and try again.
+
+**"Server took too long to respond. Please try again."**
+The request timed out. This can happen with very large attachments. Try again,
+or reduce the amount of content attached to your message.
+
+**"Attachment and context are too large for one message."**
+You have too many items open or attached. Close any open notes, websites, or
+files you are not using, or remove some attachments, and try again.
 
 **Responses feel slow or cut off**
 This can happen when your conversation is very long. Start a new conversation
@@ -36,11 +45,12 @@ processing after several minutes, tap **Retry**.
 **Shows an error**
 The file may be in an unsupported format, corrupt, or too large. Check the
 supported formats in [Files](/manual/files). If the format is supported, try
-re-exporting or re-saving the file and uploading again.
+re-exporting or re-saving the file and uploading again. Tap **Retry** to
+attempt again without re-uploading.
 
 **PDF content is missing or incomplete**
 Some PDFs are scanned images with no embedded text. sideBar can index text
-content but cannot OCR image-only PDFs.
+content but cannot read image-only PDFs.
 
 ## Sync isn't working
 
@@ -49,7 +59,7 @@ Check that both devices have an internet connection. Pull to refresh on the
 relevant section. If changes still aren't showing, go to **Settings → User**
 and check for pending writes in the Sync status panel.
 
-**"Pending changes" showing in Settings**
+**"Pending changes" in Settings**
 You made changes while offline. They will sync automatically when your
 connection returns. No action needed.
 
@@ -60,10 +70,11 @@ Check that the skill is enabled in **Settings → Skills**. If it is enabled,
 make sure the skill's requirements are met — some Store skills need an API key
 before they will work.
 
-**"Skill error" pill in chat**
-The skill ran but hit an error. Tap the pill to see the error detail. Common
-causes are a missing or invalid API key, a network failure, or an unsupported
-input. Check the skill's requirements in the [Skills](/skills/store/) docs.
+**Skill error shown in chat**
+The skill ran but hit an error. Tap the skill pill in the conversation to see
+the full error detail. Common causes are a missing or invalid API key, a
+network failure, or an unsupported input. Check the skill's requirements in
+the [Skills docs](/skills/store/).
 
 **Store skill shows as "unavailable"**
 The skill is installed but is missing a required API key or credential. Tap the

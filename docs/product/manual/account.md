@@ -16,8 +16,8 @@ for the full setup walkthrough.
 ## Signing In
 
 Tap **Sign In** on the welcome screen and enter your email and password. If
-you have biometric lock enabled on your device, you will be prompted for Face
-ID or Touch ID after signing in.
+you have biometric lock enabled, you will be prompted for Face ID or Touch ID
+the next time you open the app after it has been in the background.
 
 ## Signing Out
 

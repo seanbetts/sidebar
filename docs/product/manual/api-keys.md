@@ -19,35 +19,19 @@ you already have an account with, or which model you prefer. You can switch
 providers at any time from **Settings → sideBar** without losing any of your
 content or memories.
 
-## Getting an Anthropic API Key
+## Getting an API Key
 
-1. Go to [console.anthropic.com](https://console.anthropic.com) and sign in
-   or create an account.
-2. Open the **API Keys** section from the left sidebar.
-3. Click **Create Key**, give it a name, and click **Create Key** to confirm.
-4. Copy the key immediately — it is only shown once.
-5. Add a payment method under **Billing** if you have not already done so.
-   Anthropic requires a payment method before API keys can be used.
+Each provider has their own dashboard for creating API keys. The steps may
+vary as these dashboards change over time, but the general flow is the same:
+create an account, navigate to the API keys section, generate a new key, and
+copy it before closing the page. Keys are typically only shown once.
 
-## Getting an OpenAI API Key
+You will also need to ensure your account has a payment method or credits
+attached before the key will work.
 
-1. Go to [platform.openai.com](https://platform.openai.com) and sign in or
-   create an account.
-2. Click your profile icon in the top right and select **API keys**.
-3. Click **Create new secret key**, give it a name, and confirm.
-4. Copy the key immediately — it is only shown once.
-5. Make sure your account has credits. Go to **Settings → Billing** to add a
-   payment method or purchase a credit pack if needed.
-
-## Getting a Google API Key
-
-1. Go to [aistudio.google.com](https://aistudio.google.com) and sign in with
-   your Google account.
-2. Click **Get API key** in the left sidebar.
-3. Click **Create API key** and select or create a Google Cloud project.
-4. Copy the key.
-5. Google AI Studio provides free tier access, with pay-as-you-go available
-   once you link a Google Cloud billing account.
+- **Anthropic**: [console.anthropic.com](https://console.anthropic.com)
+- **OpenAI**: [platform.openai.com](https://platform.openai.com)
+- **Google**: [aistudio.google.com](https://aistudio.google.com)
 
 ## Adding Your Key to sideBar
 
@@ -61,13 +45,13 @@ new one.
 
 ## Troubleshooting
 
-If sideBar shows an API error after you add your key, the most common causes
-are:
+If sideBar shows an error after you add your key, the most common causes are:
 
-- **Invalid key**: make sure you copied the full key without extra spaces
+- **Key copied incorrectly**: make sure you copied the full key without extra
+  spaces or missing characters
 - **No credits or payment method**: check your billing settings with your
-  provider
-- **Rate limit**: your provider account may have usage limits. Check your
-  provider's dashboard for details
+  provider — most providers require a payment method before keys can be used
+- **Key revoked or expired**: generate a new key from your provider's dashboard
+  and update it in **Settings → sideBar**
 
 See [Troubleshooting](/manual/troubleshooting) for more.
