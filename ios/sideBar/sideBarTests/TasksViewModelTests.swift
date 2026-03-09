@@ -474,7 +474,7 @@ final class TasksViewModelTests: XCTestCase {
 
     private func eventually(
         timeoutNanoseconds: UInt64 = 2_000_000_000,
-        pollNanoseconds: UInt64 = 25_000_000,
+        pollNanoseconds: UInt64 = 0,
         condition: @escaping @MainActor () -> Bool
     ) async {
         let started = DispatchTime.now().uptimeNanoseconds
@@ -483,7 +483,11 @@ final class TasksViewModelTests: XCTestCase {
                 XCTFail("Condition was not met before timeout")
                 return
             }
-            try? await Task.sleep(nanoseconds: pollNanoseconds)
+            if pollNanoseconds == 0 {
+                await Task.yield()
+            } else {
+                try? await Task.sleep(nanoseconds: pollNanoseconds)
+            }
         }
     }
 }

@@ -126,7 +126,6 @@ final class SettingsViewModelAssistantRealtimeTests: XCTestCase {
                 break
             }
             await Task.yield()
-            try? await Task.sleep(nanoseconds: 25_000_000)
         }
 
         XCTAssertEqual(api.getSettingsCallCount, 2)

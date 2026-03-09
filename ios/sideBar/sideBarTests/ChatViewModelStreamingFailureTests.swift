@@ -332,7 +332,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
 
     private func waitForCondition(
         timeoutNanoseconds: UInt64 = 250_000_000,
-        pollNanoseconds: UInt64 = 1_000_000,
+        pollNanoseconds: UInt64 = 0,
         condition: @escaping () -> Bool
     ) async -> Bool {
         let start = DispatchTime.now().uptimeNanoseconds
@@ -340,7 +340,11 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
             if condition() {
                 return true
             }
-            try? await Task.sleep(nanoseconds: pollNanoseconds)
+            if pollNanoseconds == 0 {
+                await Task.yield()
+            } else {
+                try? await Task.sleep(nanoseconds: pollNanoseconds)
+            }
         }
         return condition()
     }

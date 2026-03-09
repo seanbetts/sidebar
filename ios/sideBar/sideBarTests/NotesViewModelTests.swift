@@ -799,10 +799,10 @@ private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> 
     let start = DispatchTime.now().uptimeNanoseconds
 
     while !condition() {
-        try await Task.sleep(nanoseconds: 10_000_000)
         if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
             XCTFail("Timed out waiting for condition")
             return
         }
+        await Task.yield()
     }
 }
