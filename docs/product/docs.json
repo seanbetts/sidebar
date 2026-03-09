@@ -11,23 +11,6 @@
   "colors": {
     "primary": "#111111"
   },
-  "footer": {
-    "links": [
-      {
-        "header": "Made with ♥ and Codex",
-        "items": [
-          {
-            "label": "openai.com/codex",
-            "href": "https://openai.com/codex/"
-          },
-          {
-            "label": "Privacy Policy",
-            "href": "https://trysidebar.ai/privacy"
-          }
-        ]
-      }
-    ]
-  },
   "navigation": {
     "groups": [
       {
