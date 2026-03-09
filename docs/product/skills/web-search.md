@@ -48,4 +48,4 @@ re-enable it, go to **Settings → Skills** and toggle Web Search on.
 
 > "What are the best-reviewed noise cancelling headphones right now?"
 
-> "Has iOS 19 been released yet?"
+> "What's the latest version of Python?"
