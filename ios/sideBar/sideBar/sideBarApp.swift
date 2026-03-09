@@ -117,13 +117,17 @@ struct AddTaskIntent: AppIntent {
     static var openAppWhenRun: Bool = true
     private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
 
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & OpensIntent {
         logger.info("AddTaskIntent recording pending add task (app process)")
         await MainActor.run {
             let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
             WidgetDataManager.shared.recordPendingOperation(operation, for: .tasks)
         }
-        return .result()
+        guard let url = URL(string: "sidebar://tasks/today") else {
+            logger.error("AddTaskIntent failed: invalid deep link URL")
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -166,11 +170,15 @@ struct CreateNoteIntent: AppIntent {
     private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        guard let url = URL(string: "sidebar://notes/new") else {
+        await MainActor.run {
+            let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)
+            WidgetDataManager.shared.recordPendingOperation(operation, for: .notes)
+        }
+        guard let url = URL(string: "sidebar://notes") else {
             logger.error("CreateNoteIntent failed: invalid deep link URL")
             return .result()
         }
-        logger.info("CreateNoteIntent opening deep link (app process)")
+        logger.info("CreateNoteIntent recording pending create note (app process)")
         return .result(opensIntent: OpenURLIntent(url))
     }
 }

@@ -88,6 +88,42 @@ final class SafariExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(payload?["error"] as? String, "This action is not supported.")
     }
 
+    func testBeginRequestRecordsSharedDiagnosticsAtEntry() {
+        ExternalSurfaceDiagnosticsStore.shared.clear()
+        defer { ExternalSurfaceDiagnosticsStore.shared.clear() }
+
+        let context = CapturingExtensionContext()
+        let request = NSExtensionItem()
+        if #available(iOS 15.0, *) {
+            request.userInfo = [
+                SFExtensionMessageKey: [
+                    "action": "save_url",
+                    "url": "https://example.com"
+                ]
+            ]
+        } else {
+            request.userInfo = [
+                "message": [
+                    "action": "save_url",
+                    "url": "https://example.com"
+                ]
+            ]
+        }
+        context.suppliedInputItems = [request]
+        let completed = expectation(description: "Safari extension diagnostics recorded")
+        context.onComplete = {
+            completed.fulfill()
+        }
+
+        SafariWebExtensionHandler().beginRequest(with: context)
+        wait(for: [completed], timeout: 2.0)
+
+        let export = ExternalSurfaceDiagnosticsStore.shared.exportText(limit: 10)
+        XCTAssertTrue(export.contains("[safari_extension] begin_request: Received Safari extension request."))
+        XCTAssertTrue(export.contains("action=save_url"))
+        XCTAssertTrue(export.contains("url=https://example.com"))
+    }
+
     func testSafariSaveResponsesMatchQueueAndErrorMapping() async {
         let url = "https://example.com/article"
         let message: [String: Any] = [

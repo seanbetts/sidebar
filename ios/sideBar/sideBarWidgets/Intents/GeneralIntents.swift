@@ -9,8 +9,11 @@ struct OpenScratchpadIntent: AppIntent {
     static var description = IntentDescription("Opens sideBar scratchpad for quick notes")
     static var openAppWhenRun: Bool = true
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://scratchpad") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -22,8 +25,11 @@ struct StartChatIntent: AppIntent {
     static var description = IntentDescription("Opens sideBar to start a new AI chat")
     static var openAppWhenRun: Bool = true
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://chat/new") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -44,7 +50,10 @@ struct OpenChatIntent: AppIntent {
         self.chatId = chatId
     }
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://chat/\(chatId)") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }

@@ -9,8 +9,11 @@ struct OpenFilesIntent: AppIntent {
     static var description = IntentDescription("Opens sideBar to your files")
     static var openAppWhenRun: Bool = true
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://files") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -31,7 +34,10 @@ struct OpenFileIntent: AppIntent {
         self.fileId = fileId
     }
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://files/\(fileId)") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }

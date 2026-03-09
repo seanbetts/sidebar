@@ -10,8 +10,11 @@ struct OpenWebsitesIntent: AppIntent {
     static var description = IntentDescription("Opens sideBar to your saved websites")
     static var openAppWhenRun: Bool = true
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://websites") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -32,8 +35,11 @@ struct OpenWebsiteIntent: AppIntent {
         self.websiteId = websiteId
     }
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://websites/\(websiteId)") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -55,13 +61,17 @@ struct QuickSaveIntent: AppIntent {
         self.url = url
     }
 
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & OpensIntent {
         guard let url else {
             logger.error("QuickSaveIntent: No URL provided")
             return .result()
         }
         logger.info("QuickSaveIntent recording pending save for URL: \(url.absoluteString)")
         WidgetDataManager.shared.recordPendingQuickSave(url: url)
-        return .result()
+        guard let deepLink = URL(string: "sidebar://websites") else {
+            logger.error("QuickSaveIntent failed: invalid deep link URL")
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(deepLink))
     }
 }

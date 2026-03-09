@@ -19,8 +19,12 @@ struct OpenNoteIntent: AppIntent {
         self.notePath = notePath
     }
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        let encodedPath = notePath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? notePath
+        guard let url = URL(string: "sidebar://notes/\(encodedPath)") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -33,13 +37,17 @@ struct CreateNoteIntent: AppIntent {
     static var openAppWhenRun: Bool = true
     private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
 
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & OpensIntent {
         logger.info("CreateNoteIntent recording pending create note")
         WidgetDataManager.shared.recordPendingOperation(
             WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew),
             for: .notes
         )
-        return .result()
+        guard let url = URL(string: "sidebar://notes") else {
+            logger.error("CreateNoteIntent failed: invalid deep link URL")
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -51,8 +59,11 @@ struct OpenNotesIntent: AppIntent {
     static var description = IntentDescription("Opens sideBar to your notes")
     static var openAppWhenRun: Bool = true
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://notes") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 

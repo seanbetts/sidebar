@@ -73,9 +73,11 @@ struct OpenTodayIntent: AppIntent {
     static var description = IntentDescription("Opens sideBar to Today's tasks")
     static var openAppWhenRun: Bool = true
 
-    func perform() async throws -> some IntentResult {
-        // The app will handle the deep link via URL scheme
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://tasks/today") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -88,10 +90,14 @@ struct AddTaskIntent: AppIntent {
     static var openAppWhenRun: Bool = true
     private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
 
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & OpensIntent {
         logger.info("AddTaskIntent recording pending add task")
         WidgetDataManager.shared.recordAddTaskIntent()
-        return .result()
+        guard let url = URL(string: "sidebar://tasks/today") else {
+            logger.error("AddTaskIntent failed: invalid deep link URL")
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 
@@ -112,8 +118,11 @@ struct OpenTaskIntent: AppIntent {
         self.taskId = taskId
     }
 
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        guard let url = URL(string: "sidebar://tasks/today") else {
+            return .result()
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }
 

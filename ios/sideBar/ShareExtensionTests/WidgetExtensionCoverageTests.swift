@@ -1,4 +1,5 @@
 import Foundation
+import AppIntents
 import WidgetKit
 import XCTest
 @testable import sideBarWidgetsExtension
@@ -273,7 +274,21 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         _ = try await OpenWebsiteIntent(websiteId: "site_1").perform()
         _ = try await QuickSaveIntent(url: URL(string: "https://example.com")!).perform()
     }
+
+    func testWidgetOpenAndMutationIntentsReturnOpenResults() async throws {
+        assertOpensIntent(try await OpenTodayIntent().perform())
+        assertOpensIntent(try await AddTaskIntent().perform())
+        assertOpensIntent(try await OpenNotesIntent().perform())
+        assertOpensIntent(try await CreateNoteIntent().perform())
+        assertOpensIntent(try await OpenWebsitesIntent().perform())
+        assertOpensIntent(try await QuickSaveIntent(url: URL(string: "https://example.com")!).perform())
+        assertOpensIntent(try await OpenFilesIntent().perform())
+        assertOpensIntent(try await OpenScratchpadIntent().perform())
+        assertOpensIntent(try await StartChatIntent().perform())
+    }
 }
+
+private func assertOpensIntent<Result: OpensIntent>(_: Result) {}
 
 private func appGroupIdForWidgetTests() -> String {
     if let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String {
