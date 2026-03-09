@@ -4,9 +4,8 @@ import XCTest
 @testable import sideBarWidgetsExtension
 
 final class WidgetExtensionCoverageTests: XCTestCase {
-    func testWidgetBundleIncludesResolvedAppGroupIdentifier() {
-        let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String
-        XCTAssertEqual(configured, "group.ai.sidebar.sidebar")
+    func testWidgetTestsResolveExpectedAppGroupIdentifier() {
+        XCTAssertEqual(appGroupIdForWidgetTests(), "group.ai.sidebar.sidebar")
     }
 
     func testWidgetContentTypeKeysAndKindsAreStable() {
