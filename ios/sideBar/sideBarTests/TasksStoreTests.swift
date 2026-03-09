@@ -98,8 +98,9 @@ final class TasksStoreTests: XCTestCase {
         XCTAssertEqual(store.counts?.counts.today, 7)
         XCTAssertEqual(api.countsCallCount, 0)
 
-        // Background refresh is asynchronous after returning cached value.
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        try? await waitUntil(timeoutSeconds: 0.1) {
+            api.countsCallCount == 1
+        }
         XCTAssertEqual(api.countsCallCount, 1)
     }
 
@@ -140,7 +141,6 @@ final class TasksStoreTests: XCTestCase {
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         await store.load(selection: .none)
-        try? await Task.sleep(nanoseconds: 50_000_000)
 
         XCTAssertEqual(store.selection, .none)
         XCTAssertEqual(store.tasks, [])
@@ -205,7 +205,6 @@ final class TasksStoreTests: XCTestCase {
         )
 
         await store.load(selection: .today)
-        try? await Task.sleep(nanoseconds: 50_000_000)
 
         XCTAssertEqual(store.tasks.map(\.id), ["cached-1"])
         XCTAssertEqual(api.listCallCount, 0)
@@ -240,7 +239,7 @@ final class TasksStoreTests: XCTestCase {
             projects: nil,
             groups: nil
         )
-        api.listResponseDelaysByScope["today"] = 200_000_000
+        api.suspendList(scope: "today")
 
         let upcomingTask = TaskItem(id: "upcoming", title: "Upcoming", status: "open")
         api.listResponsesByScope["upcoming"] = TaskListResponse(
@@ -254,12 +253,18 @@ final class TasksStoreTests: XCTestCase {
         await store.load(selection: .today)
         XCTAssertEqual(store.selection, .today)
         XCTAssertEqual(store.tasks, [cachedTodayTask])
+        try? await waitUntil(timeoutSeconds: 0.1) {
+            api.listCallCount == 1
+        }
 
         await store.load(selection: .upcoming, force: true)
         XCTAssertEqual(store.selection, .upcoming)
         XCTAssertEqual(store.tasks, [upcomingTask])
 
-        try? await Task.sleep(nanoseconds: 260_000_000)
+        api.resumeList(scope: "today")
+        try? await waitUntil(timeoutSeconds: 0.1) {
+            api.listCallCount == 2
+        }
         XCTAssertEqual(store.selection, .upcoming)
         XCTAssertEqual(store.tasks, [upcomingTask])
     }
@@ -277,11 +282,17 @@ final class TasksStoreTests: XCTestCase {
             value: cachedToday,
             ttlSeconds: 60
         )
-        api.listResponseDelaysByScope["today"] = 200_000_000
+        api.suspendList(scope: "today")
 
         await store.load(selection: .today)
+        try? await waitUntil(timeoutSeconds: 0.1) {
+            api.listCallCount == 1
+        }
         await store.load(selection: .today)
-        try? await Task.sleep(nanoseconds: 260_000_000)
+        api.resumeList(scope: "today")
+        try? await waitUntil(timeoutSeconds: 0.1) {
+            api.listCallCount == 1
+        }
 
         XCTAssertEqual(api.listCallCount, 1)
     }
@@ -300,11 +311,17 @@ final class TasksStoreTests: XCTestCase {
             groups: []
         )
         cache.set(key: CacheKeys.tasksCounts, value: cachedCounts, ttlSeconds: 60)
-        api.countsResponseDelayNanoseconds = 200_000_000
+        api.suspendCounts = true
 
         await store.loadCounts()
+        try? await waitUntil(timeoutSeconds: 0.1) {
+            api.countsCallCount == 1
+        }
         await store.loadCounts()
-        try? await Task.sleep(nanoseconds: 260_000_000)
+        api.resumeCounts()
+        try? await waitUntil(timeoutSeconds: 0.1) {
+            api.countsCallCount == 1
+        }
 
         XCTAssertEqual(api.countsCallCount, 1)
     }
@@ -323,6 +340,7 @@ private final class TestNetworkStatus: NetworkStatusProviding {
     }
 }
 
+@MainActor
 private final class StubTasksAPI: TasksProviding {
     var listCallCount: Int = 0
     var countsCallCount: Int = 0
@@ -330,6 +348,10 @@ private final class StubTasksAPI: TasksProviding {
     var listResponseDelaysByScope: [String: UInt64] = [:]
     var searchResponse = TaskListResponse(scope: "search", generatedAt: nil, tasks: [], projects: nil, groups: nil)
     var countsResponseDelayNanoseconds: UInt64 = 0
+    var suspendCounts = false
+    private var suspendedListContinuations: [String: CheckedContinuation<Void, Never>] = [:]
+    private var suspendedListScopes: Set<String> = []
+    private var suspendedCountsContinuation: CheckedContinuation<Void, Never>?
     var countsResponse = TaskCountsResponse(
         generatedAt: nil,
         counts: TaskCounts(today: 0, upcoming: 0, completed: 0),
@@ -337,10 +359,28 @@ private final class StubTasksAPI: TasksProviding {
         groups: []
     )
 
+    func suspendList(scope: String) {
+        suspendedListScopes.insert(scope)
+    }
+
+    func resumeList(scope: String) {
+        suspendedListContinuations.removeValue(forKey: scope)?.resume()
+    }
+
+    func resumeCounts() {
+        suspendedCountsContinuation?.resume()
+        suspendedCountsContinuation = nil
+    }
+
     func list(scope: String) async throws -> TaskListResponse {
         listCallCount += 1
         if let delay = listResponseDelaysByScope[scope], delay > 0 {
             try? await Task.sleep(nanoseconds: delay)
+        }
+        if suspendedListScopes.remove(scope) != nil {
+            await withCheckedContinuation { continuation in
+                suspendedListContinuations[scope] = continuation
+            }
         }
         return listResponsesByScope[scope]
             ?? TaskListResponse(scope: scope, generatedAt: nil, tasks: [], projects: nil, groups: nil)
@@ -363,6 +403,12 @@ private final class StubTasksAPI: TasksProviding {
         countsCallCount += 1
         if countsResponseDelayNanoseconds > 0 {
             try? await Task.sleep(nanoseconds: countsResponseDelayNanoseconds)
+        }
+        if suspendCounts {
+            suspendCounts = false
+            await withCheckedContinuation { continuation in
+                suspendedCountsContinuation = continuation
+            }
         }
         return countsResponse
     }
@@ -402,4 +448,18 @@ private final class StubTasksAPI: TasksProviding {
 
 private enum StubError: Error {
     case unused
+}
+
+@MainActor
+private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
+    let timeoutNanoseconds = UInt64(timeoutSeconds * 1_000_000_000)
+    let start = DispatchTime.now().uptimeNanoseconds
+
+    while !condition() {
+        try await Task.sleep(nanoseconds: 5_000_000)
+        if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
+            XCTFail("Timed out waiting for condition")
+            return
+        }
+    }
 }

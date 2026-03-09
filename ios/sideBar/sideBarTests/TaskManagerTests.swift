@@ -9,14 +9,14 @@ final class TaskManagerTests: XCTestCase {
         let expectation = expectation(description: "debounced")
         expectation.expectedFulfillmentCount = 1
 
-        manager.runDebounced(delay: 0.05) {
+        manager.runDebounced(delay: 0.01) {
             expectation.fulfill()
         }
-        manager.runDebounced(delay: 0.05) {
+        manager.runDebounced(delay: 0.01) {
             expectation.fulfill()
         }
 
-        await fulfillment(of: [expectation], timeout: 1.0)
+        await fulfillment(of: [expectation], timeout: 0.2)
     }
 
     func testManagedTaskCancelPreventsDebouncedExecution() async {
@@ -24,16 +24,16 @@ final class TaskManagerTests: XCTestCase {
         let expectation = expectation(description: "cancel")
         expectation.isInverted = true
 
-        manager.runDebounced(delay: 0.2) {
+        manager.runDebounced(delay: 0.02) {
             expectation.fulfill()
         }
         manager.cancel()
 
-        await fulfillment(of: [expectation], timeout: 0.4)
+        await fulfillment(of: [expectation], timeout: 0.08)
     }
 
     func testPollingTaskRepeatsUntilCanceled() async {
-        let polling = PollingTask(interval: 0.05)
+        let polling = PollingTask(interval: 0.01)
         let expectation = expectation(description: "poll")
         expectation.expectedFulfillmentCount = 2
         var count = 0
@@ -48,6 +48,6 @@ final class TaskManagerTests: XCTestCase {
             }
         }
 
-        await fulfillment(of: [expectation], timeout: 1.0)
+        await fulfillment(of: [expectation], timeout: 0.2)
     }
 }

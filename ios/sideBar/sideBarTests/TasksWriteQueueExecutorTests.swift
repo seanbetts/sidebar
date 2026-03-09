@@ -11,12 +11,14 @@ final class TasksWriteQueueExecutorTests: XCTestCase {
         let executor = TasksWriteQueueExecutor(
             api: api,
             store: store,
-            refreshDebounceNanoseconds: 40_000_000
+            refreshDebounceNanoseconds: 10_000_000
         )
 
         try await executor.execute(write: makeWrite(operationId: "op-1", taskId: "task-1"))
         try await executor.execute(write: makeWrite(operationId: "op-2", taskId: "task-2"))
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        try? await waitUntil(timeoutSeconds: 0.1) {
+            store.refreshAfterSyncCallCount == 1
+        }
 
         XCTAssertEqual(api.syncCallCount, 2)
         XCTAssertEqual(store.refreshAfterSyncCallCount, 1)
@@ -149,4 +151,18 @@ private final class TasksSyncAPIStub: TasksProviding {
 
 private enum TasksWriteQueueExecutorStubError: Error {
     case unused
+}
+
+@MainActor
+private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
+    let timeoutNanoseconds = UInt64(timeoutSeconds * 1_000_000_000)
+    let start = DispatchTime.now().uptimeNanoseconds
+
+    while !condition() {
+        try await Task.sleep(nanoseconds: 5_000_000)
+        if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
+            XCTFail("Timed out waiting for condition")
+            return
+        }
+    }
 }

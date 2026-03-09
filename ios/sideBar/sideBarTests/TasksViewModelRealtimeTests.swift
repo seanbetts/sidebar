@@ -12,7 +12,11 @@ final class TasksViewModelRealtimeTests: XCTestCase {
         api.enqueueListResponse(scope: "today", tasks: [refreshedTask], groups: [], projects: [])
         api.enqueueListResponse(scope: "today", tasks: [refreshedTask], groups: [], projects: [])
 
-        let sut = makeSUT(api: api, networkAvailable: true)
+        let sut = makeSUT(
+            api: api,
+            networkAvailable: true,
+            realtimeRefreshDelayNanoseconds: 0
+        )
         await sut.viewModel.load(selection: .today)
 
         let taskPayload = RealtimePayload(
@@ -84,7 +88,8 @@ final class TasksViewModelRealtimeTests: XCTestCase {
     private func makeSUT(
         api: TasksViewModelAPIStub,
         networkAvailable: Bool,
-        serverReachable: Bool = true
+        serverReachable: Bool = true,
+        realtimeRefreshDelayNanoseconds: UInt64 = 200_000_000
     ) -> SUT {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
@@ -103,7 +108,8 @@ final class TasksViewModelRealtimeTests: XCTestCase {
             api: api,
             store: store,
             toastCenter: ToastCenter(),
-            networkStatus: networkStatus
+            networkStatus: networkStatus,
+            realtimeRefreshDelayNanoseconds: realtimeRefreshDelayNanoseconds
         )
         return SUT(viewModel: viewModel, store: store)
     }
