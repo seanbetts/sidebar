@@ -30,7 +30,6 @@ improve the response.
 
 - **Tier:** Standard (included, no installation needed)
 - **API key:** None required
-- **Plan:** All plans
 
 ## How to enable
 
