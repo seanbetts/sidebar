@@ -35,7 +35,13 @@
         "group": "FAQ",
         "pages": [
           "faq/general",
-          "faq/chat"
+          "faq/chat",
+          "faq/notes",
+          "faq/tasks",
+          "faq/websites",
+          "faq/files",
+          "faq/skills",
+          "faq/privacy"
         ]
       },
       {
