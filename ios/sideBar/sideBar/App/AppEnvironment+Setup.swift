@@ -19,12 +19,12 @@ extension AppEnvironment {
         runOfflineMaintenance()
 
         // Migrate widget data to new generic keys (one-time)
-        WidgetDataManager.shared.migrateIfNeeded()
-        WidgetDataManager.shared.sanitizePendingTaskCompletions()
+        storage.widgetDataManager.migrateIfNeeded()
+        storage.widgetDataManager.sanitizePendingTaskCompletions()
 
         // Sync initial auth state to widgets
-        WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)
-        WidgetDataManager.shared.updateFaviconConfiguration(
+        storage.widgetDataManager.updateAuthState(isAuthenticated: isAuthenticated)
+        storage.widgetDataManager.updateFaviconConfiguration(
             r2Endpoint: container.config.r2Endpoint,
             r2FaviconBucket: container.config.r2FaviconBucket,
             r2FaviconPublicBaseUrl: container.config.r2FaviconPublicBaseUrl
@@ -36,7 +36,7 @@ extension AppEnvironment {
             guard let self else { return }
             try? self.draftStorage.cleanupSyncedDrafts(olderThan: 7)
             await self.offlineStore.cleanupSnapshots()
-            PendingShareStore.shared.cleanup(olderThan: 7)
+            self.storage.pendingShareStore.cleanup(olderThan: 7)
         }
     }
 
@@ -189,8 +189,8 @@ extension AppEnvironment {
 #if os(iOS)
     private func requestBadgeAuthorizationIfNeeded() {
         let key = "sideBar.didRequestBadgePermission"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
-        UserDefaults.standard.set(true, forKey: key)
+        guard !storage.userDefaults.bool(forKey: key) else { return }
+        storage.userDefaults.set(true, forKey: key)
         UNUserNotificationCenter.current().requestAuthorization(options: [.badge]) { _, _ in }
     }
 #endif

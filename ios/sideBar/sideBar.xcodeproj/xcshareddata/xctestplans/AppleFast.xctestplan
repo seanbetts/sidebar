@@ -15,11 +15,8 @@
   "testTargets" : [
     {
       "skippedTests" : [
-        "AppEnvironmentAuthCacheScopeTests",
-        "AppEnvironmentDeepLinkTests",
         "AppFontStyleTests",
         "ExtensionUserMessageCatalogTests",
-        "NavigationStateTests",
         "SafariExtensionMessageHandlerTests",
         "ShareExtensionQueueContractTests",
         "SupabaseAuthAdapterTests",

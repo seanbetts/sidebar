@@ -18,12 +18,18 @@ public final class WidgetDataManager {
   private let legacyTodayTasksKey = "widgetTodayTasks"
   private let legacyPendingCompletionsKey = "widgetPendingCompletions"
   private let legacyPendingAddTaskKey = "widgetPendingAddTask"
+  private let injectedUserDefaults: UserDefaults?
 
-  private init() {}
+  public init(userDefaults: UserDefaults? = nil) {
+    self.injectedUserDefaults = userDefaults
+  }
 
   // MARK: - App Group Access
 
   private var userDefaults: UserDefaults? {
+    if let injectedUserDefaults {
+      return injectedUserDefaults
+    }
     guard let groupId = appGroupId else { return nil }
     return UserDefaults(suiteName: groupId)
   }

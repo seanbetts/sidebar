@@ -8,6 +8,32 @@ import UIKit
 
 // MARK: - AppEnvironment
 
+public struct AppEnvironmentStorage {
+    public static let shared = AppEnvironmentStorage(
+        userDefaults: .standard,
+        widgetDataManager: .shared,
+        extensionEventStore: .shared,
+        pendingShareStore: .shared
+    )
+
+    public let userDefaults: UserDefaults
+    public let widgetDataManager: WidgetDataManager
+    public let extensionEventStore: ExtensionEventStore
+    public let pendingShareStore: PendingShareStore
+
+    public init(
+        userDefaults: UserDefaults = .standard,
+        widgetDataManager: WidgetDataManager? = nil,
+        extensionEventStore: ExtensionEventStore? = nil,
+        pendingShareStore: PendingShareStore? = nil
+    ) {
+        self.userDefaults = userDefaults
+        self.widgetDataManager = widgetDataManager ?? WidgetDataManager(userDefaults: userDefaults)
+        self.extensionEventStore = extensionEventStore ?? ExtensionEventStore(userDefaults: userDefaults)
+        self.pendingShareStore = pendingShareStore ?? PendingShareStore(userDefaults: userDefaults)
+    }
+}
+
 @MainActor
 /// Coordinates app-wide stores, view models, and lifecycle wiring for the signed-in experience.
 public final class AppEnvironment: ObservableObject {
@@ -17,6 +43,8 @@ public final class AppEnvironment: ObservableObject {
     #endif
     /// Shared service container used to construct API clients and core dependencies.
     public let container: ServiceContainer
+    /// Storage namespace used for defaults-backed app, widget, and extension state.
+    public let storage: AppEnvironmentStorage
     /// Active theme manager used by settings and rendering flows.
     public var themeManager: ThemeManager
     /// Store backing chat conversations and message state.
@@ -97,7 +125,11 @@ public final class AppEnvironment: ObservableObject {
 
     // swiftlint:disable function_body_length
     /// Creates the root app environment and wires all stores, view models, and observers.
-    public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
+    public init(
+        container: ServiceContainer,
+        storage: AppEnvironmentStorage? = nil,
+        configError: EnvironmentConfigLoadError? = nil
+    ) {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
         #if DEBUG
         let logger = Logger(subsystem: "sideBar", category: "Startup")
@@ -112,6 +144,7 @@ public final class AppEnvironment: ObservableObject {
         let storeStart = CFAbsoluteTimeGetCurrent()
         #endif
         self.container = container
+        self.storage = storage ?? .shared
         let workspaceStore = WorkspaceStore()
         let dependencies = Self.buildDependencies(
             container: container,

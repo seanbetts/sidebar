@@ -162,7 +162,7 @@ extension AppEnvironment {
             websitesViewModel.saveErrorMessage = "Enter a valid URL."
             return false
         }
-        guard let queuedItem = PendingShareStore.shared.enqueueWebsite(
+        guard let queuedItem = storage.pendingShareStore.enqueueWebsite(
             url: normalized.absoluteString
         ) else {
             websitesViewModel.saveErrorMessage = "Could not save for later."
@@ -182,13 +182,13 @@ extension AppEnvironment {
             nextRetryAt: nil,
             lastError: nil
         )
-        var items = PendingShareStore.shared.loadAll()
+        var items = storage.pendingShareStore.loadAll()
         if let index = items.firstIndex(where: { $0.id == queuedItem.id }) {
             items[index] = resetQueueItem
-            PendingShareStore.shared.replaceAll(items)
+            storage.pendingShareStore.replaceAll(items)
         }
         websitesViewModel.syncPendingWebsitesFromQueuedShares(
-            PendingShareStore.shared.loadAll(),
+            storage.pendingShareStore.loadAll(),
             readingQueueItemId: queuedItem.id
         )
 
@@ -210,18 +210,18 @@ extension AppEnvironment {
         isConsumingPendingShares = true
         defer { isConsumingPendingShares = false }
 
-        let pending = PendingShareStore.shared.loadAll()
+        let pending = storage.pendingShareStore.loadAll()
         websitesViewModel.syncPendingWebsitesFromQueuedShares(pending)
         guard !pending.isEmpty else { return }
         guard !connectivityMonitor.isOffline else { return }
 
         let retainedItems = await processPendingShares(pending)
-        PendingShareStore.shared.replaceAll(retainedItems)
+        storage.pendingShareStore.replaceAll(retainedItems)
         websitesViewModel.syncPendingWebsitesFromQueuedShares(retainedItems)
     }
 
     public func retryPendingQueuedWebsite(_ queueItemId: UUID) async {
-        let items = PendingShareStore.shared.loadAll()
+        let items = storage.pendingShareStore.loadAll()
         guard !items.isEmpty else { return }
 
         var didUpdate = false
@@ -245,14 +245,14 @@ extension AppEnvironment {
         }
         guard didUpdate else { return }
 
-        PendingShareStore.shared.replaceAll(updatedItems)
+        storage.pendingShareStore.replaceAll(updatedItems)
         websitesViewModel.syncPendingWebsitesFromQueuedShares(updatedItems)
         await consumePendingShares()
     }
 
     public func removePendingQueuedWebsite(_ queueItemId: UUID) {
-        PendingShareStore.shared.remove(ids: [queueItemId])
-        websitesViewModel.syncPendingWebsitesFromQueuedShares(PendingShareStore.shared.loadAll())
+        storage.pendingShareStore.remove(ids: [queueItemId])
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(storage.pendingShareStore.loadAll())
     }
 
     private func processPendingShares(_ pending: [PendingShareItem]) async -> [PendingShareItem] {
@@ -291,7 +291,7 @@ extension AppEnvironment {
         selectAfterSave: Bool
     ) async -> Bool {
         let now = Date()
-        let items = PendingShareStore.shared.loadAll()
+        let items = storage.pendingShareStore.loadAll()
         guard let item = items.first(where: { $0.id == queueItemId }) else {
             return true
         }
@@ -307,7 +307,7 @@ extension AppEnvironment {
             }
             return current
         }
-        PendingShareStore.shared.replaceAll(updatedItems)
+        storage.pendingShareStore.replaceAll(updatedItems)
         websitesViewModel.syncPendingWebsitesFromQueuedShares(updatedItems)
         return processed == nil
     }
@@ -365,8 +365,8 @@ extension AppEnvironment {
                     showQueuedToast: false
                 )
             },
-            resolveFileURL: { item in
-                PendingShareStore.shared.resolveFileURL(for: item)
+            resolveFileURL: { [self] item in
+                self.storage.pendingShareStore.resolveFileURL(for: item)
             },
             startUpload: { [weak self] fileURL in
                 guard let self else { return false }

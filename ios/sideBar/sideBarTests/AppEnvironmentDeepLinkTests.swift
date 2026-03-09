@@ -6,13 +6,29 @@ import sideBarShared
 final class AppEnvironmentDeepLinkTests: XCTestCase {
     private var retainedEnvironments: [AppEnvironment] = []
     private var environment: AppEnvironment!
+    private var storage: AppEnvironmentStorage!
+    private var defaults: UserDefaults!
+    private var suiteName: String!
+    private var baseDirectory: URL!
 
     override func setUp() {
         super.setUp()
+        suiteName = "AppEnvironmentDeepLinkTests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
+        baseDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(suiteName, isDirectory: true)
+        let widgetDataManager = WidgetDataManager(userDefaults: defaults)
+        let extensionEventStore = ExtensionEventStore(userDefaults: defaults)
+        let pendingShareStore = PendingShareStore(baseDirectory: baseDirectory, userDefaults: defaults)
+        storage = AppEnvironmentStorage(
+            userDefaults: defaults,
+            widgetDataManager: widgetDataManager,
+            extensionEventStore: extensionEventStore,
+            pendingShareStore: pendingShareStore
+        )
         retainedEnvironments.removeAll()
+        environment = makeEnvironment(storage: storage)
         clearWidgetPendingOperations()
         clearExtensionEvents()
-        environment = makeEnvironment()
         resetDeepLinkState(environment)
     }
 
@@ -22,6 +38,17 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         retainedEnvironments.removeAll()
         clearWidgetPendingOperations()
         clearExtensionEvents()
+        if let suiteName {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        if let baseDirectory {
+            try? FileManager.default.removeItem(at: baseDirectory)
+        }
+        storage = nil
+        environment = nil
+        defaults = nil
+        suiteName = nil
+        baseDirectory = nil
         super.tearDown()
     }
 
@@ -114,7 +141,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.isTasksFocused = true
 
         let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
-        WidgetDataManager.shared.recordPendingOperation(operation, for: .tasks)
+        storage.widgetDataManager.recordPendingOperation(operation, for: .tasks)
 
         environment.consumeWidgetAddTask()
 
@@ -130,11 +157,11 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     func testConsumeWidgetCompletionsPreservesPendingAddTaskOperation() async {
         let environment = requireEnvironment()
 
-        WidgetDataManager.shared.recordPendingOperation(
+        storage.widgetDataManager.recordPendingOperation(
             WidgetPendingOperation(itemId: "task-complete", action: TaskWidgetAction.complete),
             for: .tasks
         )
-        WidgetDataManager.shared.recordPendingOperation(
+        storage.widgetDataManager.recordPendingOperation(
             WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
             for: .tasks
         )
@@ -152,17 +179,17 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     }
 
     func testWidgetPendingTaskSanitizationRemovesInvalidCompletionID() async {
-        WidgetDataManager.shared.recordPendingOperation(
+        storage.widgetDataManager.recordPendingOperation(
             WidgetPendingOperation(itemId: "task_1", action: TaskWidgetAction.complete),
             for: .tasks
         )
-        WidgetDataManager.shared.recordPendingOperation(
+        storage.widgetDataManager.recordPendingOperation(
             WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
             for: .tasks
         )
 
-        WidgetDataManager.shared.sanitizePendingTaskCompletions()
-        let remaining = WidgetDataManager.shared.consumePendingOperations(
+        storage.widgetDataManager.sanitizePendingTaskCompletions()
+        let remaining = storage.widgetDataManager.consumePendingOperations(
             for: .tasks,
             actionType: TaskWidgetAction.self
         )
@@ -176,7 +203,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         let environment = requireEnvironment()
         environment.authState = .active
         let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)
-        WidgetDataManager.shared.recordPendingOperation(operation, for: .notes)
+        storage.widgetDataManager.recordPendingOperation(operation, for: .notes)
 
         environment.consumeWidgetAddNote()
 
@@ -193,7 +220,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.authState = .active
         let url = "https://example.com/articles/\(UUID().uuidString)"
 
-        ExtensionEventStore.shared.recordWebsiteSaved(url: url)
+        storage.extensionEventStore.recordWebsiteSaved(url: url)
         await environment.consumeExtensionEvents()
 
         XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
@@ -204,7 +231,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         let url = "https://www.youtube.com/watch?v=abc123xyzAA"
 
         environment.authState = .signedOut
-        ExtensionEventStore.shared.recordWebsiteSaved(url: url)
+        storage.extensionEventStore.recordWebsiteSaved(url: url)
         await environment.consumeExtensionEvents()
         XCTAssertNil(environment.websitesViewModel.pendingWebsite)
 
@@ -218,7 +245,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.authState = .active
         let url = "https://example.com/articles/\(UUID().uuidString)"
 
-        ExtensionEventStore.shared.recordWebsiteSaved(url: url)
+        storage.extensionEventStore.recordWebsiteSaved(url: url)
 
         await environment.handleSignedInActivation()
 
@@ -226,7 +253,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             websiteEventIsSurfaced(url, in: environment),
             "Expected signed-in activation to surface the extension website event."
         )
-        XCTAssertTrue(ExtensionEventStore.shared.consumeEvents().isEmpty)
+        XCTAssertTrue(storage.extensionEventStore.consumeEvents().isEmpty)
     }
 
     func testHandleSignedInActivationConsumesWidgetAddTask() async {
@@ -234,7 +261,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.authState = .active
         environment.isTasksFocused = false
 
-        WidgetDataManager.shared.recordPendingOperation(
+        storage.widgetDataManager.recordPendingOperation(
             WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
             for: .tasks
         )
@@ -250,7 +277,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.authState = .active
         let url = URL(string: "https://example.com/articles/\(UUID().uuidString)")!
 
-        WidgetDataManager.shared.recordPendingQuickSave(url: url)
+        storage.widgetDataManager.recordPendingQuickSave(url: url)
 
         await environment.handleSignedInActivation()
 
@@ -271,13 +298,13 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             authSession: authSession,
             cacheClient: InMemoryCacheClient()
         )
-        let environment = AppEnvironment(container: container)
+        let environment = AppEnvironment(container: container, storage: storage)
         retainedEnvironments.append(environment)
         resetDeepLinkState(environment)
         environment.authState = .stale
 
         let url = "https://example.com/articles/\(UUID().uuidString)"
-        ExtensionEventStore.shared.recordWebsiteSaved(url: url)
+        storage.extensionEventStore.recordWebsiteSaved(url: url)
 
         authSession.authState = .active
         environment.refreshAuthState()
@@ -402,14 +429,14 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     }
 
     private func clearWidgetPendingOperations() {
-        _ = WidgetDataManager.shared.consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
-        _ = WidgetDataManager.shared.consumePendingOperations(for: .notes, actionType: NoteWidgetAction.self)
-        _ = WidgetDataManager.shared.consumePendingQuickSave()
+        _ = storage.widgetDataManager.consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
+        _ = storage.widgetDataManager.consumePendingOperations(for: .notes, actionType: NoteWidgetAction.self)
+        _ = storage.widgetDataManager.consumePendingQuickSave()
     }
 
     private func clearExtensionEvents() {
-        _ = ExtensionEventStore.shared.consumeEvents()
-        PendingShareStore.shared.replaceAll([])
+        _ = storage.extensionEventStore.consumeEvents()
+        storage.pendingShareStore.replaceAll([])
     }
 
     private func websiteEventIsSurfaced(_ url: String, in environment: AppEnvironment) -> Bool {
@@ -417,27 +444,38 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             return true
         }
 
-        if PendingShareStore.shared.loadAll().contains(where: { $0.url == url }) {
+        if storage.pendingShareStore.loadAll().contains(where: { $0.url == url }) {
             return true
         }
 
         return environment.websitesViewModel.items.contains(where: { $0.url == url })
     }
 
-    private func makeEnvironment(authState: AuthState = .signedOut) -> AppEnvironment {
-        let authSession = MutableAuthSession(authState: authState)
+    private func makeEnvironment(storage: AppEnvironmentStorage) -> AppEnvironment {
+        let authSession = MutableAuthSession(authState: .signedOut)
         let container = ServiceContainer(
             config: .fallbackForTesting(),
             authSession: authSession,
             cacheClient: InMemoryCacheClient()
         )
-        let environment = AppEnvironment(container: container)
+        let environment = AppEnvironment(container: container, storage: storage)
         retainedEnvironments.append(environment)
         return environment
     }
 
-    func requireEnvironment() -> AppEnvironment {
-        environment
+    func requireEnvironment(
+        storage: AppEnvironmentStorage? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> AppEnvironment {
+        guard let environment else {
+            XCTFail("Expected test environment", file: file, line: line)
+            return AppEnvironment.shared!
+        }
+        if let storage, environment.storage.userDefaults != storage.userDefaults {
+            XCTFail("Expected environment storage to match test storage", file: file, line: line)
+        }
+        return environment
     }
 
     private func resetDeepLinkState(_ environment: AppEnvironment) {

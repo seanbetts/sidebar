@@ -4,51 +4,44 @@ import sideBarShared
 
 @MainActor
 final class NavigationStateTests: XCTestCase {
-    private var previousSection: String?
-    private var previousWidth: Double?
+    private var defaults: UserDefaults!
+    private var suiteName: String!
 
     override func setUp() {
         super.setUp()
-        let defaults = UserDefaults.standard
-        previousSection = defaults.string(forKey: AppStorageKeys.lastSelectedSection)
-        previousWidth = defaults.object(forKey: AppStorageKeys.sidebarWidth) as? Double
+        suiteName = "NavigationStateTests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
     }
 
     override func tearDown() {
-        let defaults = UserDefaults.standard
-        if let previousSection {
-            defaults.set(previousSection, forKey: AppStorageKeys.lastSelectedSection)
-        } else {
-            defaults.removeObject(forKey: AppStorageKeys.lastSelectedSection)
+        if let suiteName {
+            defaults?.removePersistentDomain(forName: suiteName)
         }
-        if let previousWidth {
-            defaults.set(previousWidth, forKey: AppStorageKeys.sidebarWidth)
-        } else {
-            defaults.removeObject(forKey: AppStorageKeys.sidebarWidth)
-        }
+        defaults = nil
+        suiteName = nil
         super.tearDown()
     }
 
     func testLastSectionReadsFromStorage() async {
-        UserDefaults.standard.set(AppSection.notes.rawValue, forKey: AppStorageKeys.lastSelectedSection)
+        defaults.set(AppSection.notes.rawValue, forKey: AppStorageKeys.lastSelectedSection)
 
-        let state = NavigationState()
+        let state = NavigationState(userDefaults: defaults)
 
         XCTAssertEqual(state.lastSection, .notes)
     }
 
     func testLastSectionFallsBackToChat() async {
-        UserDefaults.standard.set("invalid", forKey: AppStorageKeys.lastSelectedSection)
+        defaults.set("invalid", forKey: AppStorageKeys.lastSelectedSection)
 
-        let state = NavigationState()
+        let state = NavigationState(userDefaults: defaults)
 
         XCTAssertEqual(state.lastSection, .chat)
     }
 
     func testSidebarWidthPersists() async {
-        UserDefaults.standard.set(420.0, forKey: AppStorageKeys.sidebarWidth)
+        defaults.set(420.0, forKey: AppStorageKeys.sidebarWidth)
 
-        let state = NavigationState()
+        let state = NavigationState(userDefaults: defaults)
 
         XCTAssertEqual(state.sidebarWidth, 420.0)
     }

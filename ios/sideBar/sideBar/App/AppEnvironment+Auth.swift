@@ -13,7 +13,7 @@ extension AppEnvironment {
         let wasAuthenticated = previousAuthState != .signedOut
         let isAuthenticated = authState != .signedOut
 
-        let storedCacheScopeUserId = UserDefaults.standard.string(forKey: AppStorageKeys.cacheScopeUserId)
+        let storedCacheScopeUserId = storage.userDefaults.string(forKey: AppStorageKeys.cacheScopeUserId)
         let requiresSignedOutReset = authState == .signedOut
             && (previousAuthState != .signedOut || storedCacheScopeUserId != nil)
         let becameStale = previousAuthState != .stale && authState == .stale
@@ -47,12 +47,12 @@ extension AppEnvironment {
         realtimeClientStopStart()
 
         // Update widget auth state
-        WidgetDataManager.shared.updateAuthState(isAuthenticated: isAuthenticated)
+        storage.widgetDataManager.updateAuthState(isAuthenticated: isAuthenticated)
     }
 
     private func reconcileCacheScopeForAuthenticatedUser() {
         guard let currentUserId = currentAuthUserId else { return }
-        let defaults = UserDefaults.standard
+        let defaults = storage.userDefaults
         let storedUserId = defaults.string(forKey: AppStorageKeys.cacheScopeUserId)
         guard storedUserId != currentUserId else { return }
 
@@ -79,7 +79,7 @@ extension AppEnvironment {
     }
 
     private func clearStoredCacheScopeUserId() {
-        UserDefaults.standard.removeObject(forKey: AppStorageKeys.cacheScopeUserId)
+        storage.userDefaults.removeObject(forKey: AppStorageKeys.cacheScopeUserId)
     }
 
     private func resetSignedInData(clearNavigationState: Bool) {
@@ -117,12 +117,12 @@ extension AppEnvironment {
     private func flushSignedInPersistence() {
         container.cacheClient.clear()
         offlineStore.clearAllSnapshots()
-        let defaults = UserDefaults.standard
+        let defaults = storage.userDefaults
         defaults.removeObject(forKey: AppStorageKeys.lastSignInEmail)
         defaults.removeObject(forKey: AppStorageKeys.lastAuthTimestamp)
-        WidgetDataManager.shared.clearAllDataForSignOut()
-        PendingShareStore.shared.clearAll()
-        ExtensionEventStore.shared.clear()
+        storage.widgetDataManager.clearAllDataForSignOut()
+        storage.pendingShareStore.clearAll()
+        storage.extensionEventStore.clear()
         do {
             try draftStorage.clearAllDrafts()
         } catch {
@@ -181,13 +181,7 @@ extension AppEnvironment {
     public func consumeExtensionEvents() async {
         guard authState == .active else { return }
         await consumePendingShares()
-        let events = ExtensionEventStore.shared.consumeEvents()
-        ExternalSurfaceDiagnosticsStore.shared.record(
-            surface: "app_extension_consumer",
-            stage: "consume_events",
-            message: "Consumed extension events during app activation.",
-            metadata: ["count": "\(events.count)"]
-        )
+        let events = storage.extensionEventStore.consumeEvents()
         guard !events.isEmpty else { return }
 
         var enqueuedWebsiteEvents = false
@@ -196,19 +190,19 @@ extension AppEnvironment {
                   let normalized = ExtensionURLMessageHandler.normalizeQueuedURL(url) else {
                 continue
             }
-            if PendingShareStore.shared.enqueueWebsite(url: normalized) != nil {
+            if storage.pendingShareStore.enqueueWebsite(url: normalized) != nil {
                 enqueuedWebsiteEvents = true
             }
         }
 
         if enqueuedWebsiteEvents {
-            websitesViewModel.syncPendingWebsitesFromQueuedShares(PendingShareStore.shared.loadAll())
+            websitesViewModel.syncPendingWebsitesFromQueuedShares(storage.pendingShareStore.loadAll())
         }
     }
 
     /// Consumes pending task completions from widgets and syncs them with the server
     public func consumeWidgetCompletions() async {
-        let operations = WidgetDataManager.shared.consumePendingOperations(
+        let operations = storage.widgetDataManager.consumePendingOperations(
             for: .tasks,
             actionType: TaskWidgetAction.self,
             matching: { $0 == .complete }
@@ -256,7 +250,7 @@ extension AppEnvironment {
     /// Consumes pending add task intent from widget and opens the add task UI
     @MainActor
     public func consumeWidgetAddTask() {
-        let operations = WidgetDataManager.shared.consumePendingOperations(
+        let operations = storage.widgetDataManager.consumePendingOperations(
             for: .tasks,
             actionType: TaskWidgetAction.self,
             matching: { $0 == .addNew }
@@ -285,7 +279,7 @@ extension AppEnvironment {
     /// Consumes pending add note intent from widget and opens the add note UI
     @MainActor
     public func consumeWidgetAddNote() {
-        let operations = WidgetDataManager.shared.consumePendingOperations(
+        let operations = storage.widgetDataManager.consumePendingOperations(
             for: .notes,
             actionType: NoteWidgetAction.self,
             matching: { $0 == .addNew }
@@ -306,7 +300,7 @@ extension AppEnvironment {
     /// Consumes pending quick save URL from widget and saves the website
     @MainActor
     public func consumeWidgetQuickSave() async {
-        guard let url = WidgetDataManager.shared.consumePendingQuickSave(),
+        guard let url = storage.widgetDataManager.consumePendingQuickSave(),
               authState == .active else { return }
         ExternalSurfaceDiagnosticsStore.shared.record(
             surface: "widget_bridge_app",

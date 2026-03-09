@@ -41,8 +41,10 @@ public final class ExtensionEventStore {
     /// Process-wide shared extension event store instance.
     public static let shared = ExtensionEventStore()
     private let eventsKey = "extensionEvents"
+    private let injectedUserDefaults: UserDefaults?
 
-    private init() {
+    public init(userDefaults: UserDefaults? = nil) {
+        self.injectedUserDefaults = userDefaults
     }
 
     /// Records a website-saved event from the extension.
@@ -140,6 +142,9 @@ public final class ExtensionEventStore {
     }
 
     private var userDefaults: UserDefaults? {
+        if let injectedUserDefaults {
+            return injectedUserDefaults
+        }
         guard let suiteName = AppGroupConfiguration.appGroupId else {
             return nil
         }

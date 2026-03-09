@@ -5,46 +5,52 @@ import sideBarShared
 @MainActor
 final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
     private var retainedEnvironments: [AppEnvironment] = []
+    private var defaults: UserDefaults!
+    private var suiteName: String!
     private let cacheScopeKey = AppStorageKeys.cacheScopeUserId
     private let lastSignInEmailKey = AppStorageKeys.lastSignInEmail
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
 
     override func setUp() {
         super.setUp()
+        suiteName = "AppEnvironmentAuthCacheScopeTests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
         retainedEnvironments.removeAll()
-        UserDefaults.standard.removeObject(forKey: cacheScopeKey)
-        UserDefaults.standard.removeObject(forKey: lastSignInEmailKey)
-        UserDefaults.standard.removeObject(forKey: lastAuthTimestampKey)
+        defaults.removeObject(forKey: cacheScopeKey)
+        defaults.removeObject(forKey: lastSignInEmailKey)
+        defaults.removeObject(forKey: lastAuthTimestampKey)
     }
 
     override func tearDown() {
         retainedEnvironments.removeAll()
-        UserDefaults.standard.removeObject(forKey: cacheScopeKey)
-        UserDefaults.standard.removeObject(forKey: lastSignInEmailKey)
-        UserDefaults.standard.removeObject(forKey: lastAuthTimestampKey)
+        if let suiteName {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        defaults = nil
+        suiteName = nil
         super.tearDown()
     }
 
     func testRefreshAuthStateKeepsCachedDataWhenUserScopeUnchanged() {
         let userId = "user-123"
-        UserDefaults.standard.set(userId, forKey: cacheScopeKey)
+        defaults.set(userId, forKey: cacheScopeKey)
         let environment = makeEnvironment(authState: .active, userId: userId)
         primeCachedData(environment)
 
         environment.refreshAuthState()
 
-        XCTAssertEqual(UserDefaults.standard.string(forKey: cacheScopeKey), userId)
+        XCTAssertEqual(defaults.string(forKey: cacheScopeKey), userId)
         assertCachedDataPresent(environment)
     }
 
     func testRefreshAuthStateClearsCachedDataWhenUserScopeChanges() {
-        UserDefaults.standard.set("user-old", forKey: cacheScopeKey)
+        defaults.set("user-old", forKey: cacheScopeKey)
         let environment = makeEnvironment(authState: .active, userId: "user-new")
         primeCachedData(environment)
 
         environment.refreshAuthState()
 
-        XCTAssertEqual(UserDefaults.standard.string(forKey: cacheScopeKey), "user-new")
+        XCTAssertEqual(defaults.string(forKey: cacheScopeKey), "user-new")
         assertCachedDataCleared(environment)
     }
 
@@ -54,27 +60,27 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
 
         environment.refreshAuthState()
 
-        XCTAssertEqual(UserDefaults.standard.string(forKey: cacheScopeKey), "user-migrated")
+        XCTAssertEqual(defaults.string(forKey: cacheScopeKey), "user-migrated")
         assertCachedDataCleared(environment)
     }
 
     func testRefreshAuthStateClearsCachedDataWhenSignedOutWithStoredScope() {
-        UserDefaults.standard.set("user-old", forKey: cacheScopeKey)
-        UserDefaults.standard.set("person@example.com", forKey: lastSignInEmailKey)
-        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        defaults.set("user-old", forKey: cacheScopeKey)
+        defaults.set("person@example.com", forKey: lastSignInEmailKey)
+        defaults.set(Date().timeIntervalSince1970, forKey: lastAuthTimestampKey)
         let environment = makeEnvironment(authState: .signedOut, userId: nil)
         primeCachedData(environment)
 
         environment.refreshAuthState()
 
-        XCTAssertNil(UserDefaults.standard.string(forKey: cacheScopeKey))
-        XCTAssertNil(UserDefaults.standard.string(forKey: lastSignInEmailKey))
-        XCTAssertNil(UserDefaults.standard.object(forKey: lastAuthTimestampKey))
+        XCTAssertNil(defaults.string(forKey: cacheScopeKey))
+        XCTAssertNil(defaults.string(forKey: lastSignInEmailKey))
+        XCTAssertNil(defaults.object(forKey: lastAuthTimestampKey))
         assertCachedDataCleared(environment)
     }
 
     func testRefreshAuthStateClearsSettingsViewModelWhenUserScopeChanges() {
-        UserDefaults.standard.set("user-old", forKey: cacheScopeKey)
+        defaults.set("user-old", forKey: cacheScopeKey)
         let environment = makeEnvironment(authState: .active, userId: "user-new")
         let staleSettings = UserSettings(
             userId: "user-old",
@@ -106,7 +112,12 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
             authSession: authSession,
             cacheClient: InMemoryCacheClient()
         )
-        let environment = AppEnvironment(container: container)
+        let environment = AppEnvironment(
+            container: container,
+            storage: AppEnvironmentStorage(
+                userDefaults: defaults
+            )
+        )
         retainedEnvironments.append(environment)
         return environment
     }
