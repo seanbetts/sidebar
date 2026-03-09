@@ -23,7 +23,7 @@ information it cannot answer from what it already knows. Common triggers:
 - Fact-checking or verifying something time-sensitive
 - Research tasks where up-to-date sources matter
 
-You don't need to ask sideBar to search — it decides when a search would
+You don't need to ask sideBar to search, it decides when a search would
 improve the response.
 
 ## Requirements

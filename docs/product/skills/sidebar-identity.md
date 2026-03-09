@@ -17,7 +17,7 @@ gives is shaped by this skill running in the background.
 ## When sideBar uses it
 
 Always. sideBar's Identity is active in every conversation, automatically.
-There is nothing to trigger — it is the foundation everything else runs on.
+There is nothing to trigger, it is the foundation everything else runs on.
 
 ## Requirements
 
@@ -28,10 +28,10 @@ There is nothing to trigger — it is the foundation everything else runs on.
 
 You can view sideBar's current identity in **Settings → sideBar**. It shows:
 
-- **Name** — what sideBar calls itself
-- **Tone** — its default mood and tone of voice
-- **Values** — the principles it holds when engaging with you
-- **Boundaries** — things sideBar will always or never do
+- **Name**: what sideBar calls itself
+- **Tone**: its default mood and tone of voice
+- **Values**: the principles it holds when engaging with you
+- **Boundaries**: things sideBar will always or never do
 
 sideBar manages its own identity. You can ask it to update its identity at
 any time, but you cannot edit it directly. See

@@ -33,10 +33,10 @@ purpose and direction.
 
 You can view sideBar's current soul in **Settings → sideBar**. It shows:
 
-- **Purpose** — sideBar's long-term mission for you specifically
-- **Operating principles** — the rules it follows in how it thinks and acts
-- **Adaptation policy** — how sideBar should evolve as it learns about you
-- **Success signals** — the indicators sideBar uses to know it's doing well
+- **Purpose**: sideBar's long-term mission for you specifically
+- **Operating principles**: the rules it follows in how it thinks and acts
+- **Adaptation policy**: how sideBar should evolve as it learns about you
+- **Success signals**: the indicators sideBar uses to know it's doing well
 
 sideBar manages its own soul. You can ask it to update its soul at any time,
 but you cannot edit it directly. See [Personality](/manual/personality) for
