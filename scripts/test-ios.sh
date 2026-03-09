@@ -7,8 +7,14 @@ if ! command -v xcodebuild >/dev/null 2>&1; then
 fi
 
 IOS_PROJECT="${IOS_PROJECT:-ios/sideBar/sideBar.xcodeproj}"
-IOS_SCHEME="${IOS_SCHEME:-sideBar}"
-IOS_DESTINATION="${IOS_DESTINATION:-platform=iOS Simulator,name=iPad Pro 13-inch (M5)}"
+IOS_SCHEME="${IOS_SCHEME:-sideBarMacTests}"
+if [[ -n "${IOS_DESTINATION:-}" ]]; then
+  IOS_DESTINATION="${IOS_DESTINATION}"
+elif [[ "${IOS_SCHEME}" == "sideBarMacTests" ]]; then
+  IOS_DESTINATION="platform=macOS,arch=arm64"
+else
+  IOS_DESTINATION="platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
+fi
 IOS_DESTINATION_TIMEOUT="${IOS_DESTINATION_TIMEOUT:-120}"
 IOS_ENABLE_CODE_COVERAGE="${IOS_ENABLE_CODE_COVERAGE:-YES}"
 IOS_RESULT_BUNDLE_PATH="${IOS_RESULT_BUNDLE_PATH:-}"
@@ -34,7 +40,7 @@ IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE="${IOS_COLLECT_SIMULATOR_DIAGNOSTIC
 IOS_SIMULATOR_DIAGNOSTICS_DIR="${IOS_SIMULATOR_DIAGNOSTICS_DIR:-}"
 IOS_TARGET_SIMULATOR_UDID=""
 
-echo "Running iOS tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
+echo "Running Apple tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
   # CI runners occasionally inherit an http://github.com rewrite which breaks SwiftPM fetches.
@@ -142,6 +148,10 @@ if [[ -z "${IOS_PARALLEL_TESTING_ENABLED}" ]]; then
     # Default iOS simulator lanes to serial execution. Parallel clones have been
     # the main source of xctrunner/app launch flakes in local hooks.
     IOS_PARALLEL_TESTING_ENABLED="NO"
+  elif [[ "${IOS_DESTINATION}" == *"platform=macOS"* ]]; then
+    # Keep the default macOS hook lane deterministic. A few legacy UI-adjacent
+    # unit tests still share mutable process state and only flake under parallel workers.
+    IOS_PARALLEL_TESTING_ENABLED="NO"
   elif [[ "${lane_includes_ui_tests}" == "YES" ]]; then
     IOS_PARALLEL_TESTING_ENABLED="NO"
   else
@@ -149,7 +159,7 @@ if [[ -z "${IOS_PARALLEL_TESTING_ENABLED}" ]]; then
   fi
 fi
 
-if [[ -z "${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS}" && "${ios_parallel_testing_setting_supplied}" == "NO" && ( "${lane_includes_ui_tests}" == "YES" || "${IOS_DESTINATION}" == *"platform=iOS Simulator"* ) ]]; then
+if [[ -z "${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS}" && "${ios_parallel_testing_setting_supplied}" == "NO" && ( "${lane_includes_ui_tests}" == "YES" || "${IOS_DESTINATION}" == *"platform=iOS Simulator"* || "${IOS_DESTINATION}" == *"platform=macOS"* ) ]]; then
   IOS_MAXIMUM_PARALLEL_TESTING_WORKERS="1"
 fi
 

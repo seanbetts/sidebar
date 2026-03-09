@@ -4,19 +4,22 @@ import sideBarShared
 
 @MainActor
 final class AppEnvironmentDeepLinkTests: XCTestCase {
-    private static var retainedEnvironments: [AppEnvironment] = []
+    private var retainedEnvironments: [AppEnvironment] = []
+    private var environment: AppEnvironment!
 
     override func setUp() {
         super.setUp()
+        retainedEnvironments.removeAll()
         clearWidgetPendingOperations()
         clearExtensionEvents()
-        let environment = requireEnvironment()
+        environment = makeEnvironment()
         resetDeepLinkState(environment)
     }
 
     override func tearDown() {
-        let environment = requireEnvironment()
         resetDeepLinkState(environment)
+        environment = nil
+        retainedEnvironments.removeAll()
         clearWidgetPendingOperations()
         clearExtensionEvents()
         super.tearDown()
@@ -269,7 +272,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             cacheClient: InMemoryCacheClient()
         )
         let environment = AppEnvironment(container: container)
-        Self.retainedEnvironments.append(environment)
+        retainedEnvironments.append(environment)
         resetDeepLinkState(environment)
         environment.authState = .stale
 
@@ -420,18 +423,20 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         return environment.websitesViewModel.items.contains(where: { $0.url == url })
     }
 
-    func requireEnvironment(
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) -> AppEnvironment {
-        for _ in 0..<20 {
-            if let environment = AppEnvironment.shared {
-                return environment
-            }
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-        }
-        XCTFail("Expected shared app environment", file: file, line: line)
-        return AppEnvironment.shared!
+    private func makeEnvironment(authState: AuthState = .signedOut) -> AppEnvironment {
+        let authSession = MutableAuthSession(authState: authState)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(container: container)
+        retainedEnvironments.append(environment)
+        return environment
+    }
+
+    func requireEnvironment() -> AppEnvironment {
+        environment
     }
 
     private func resetDeepLinkState(_ environment: AppEnvironment) {
