@@ -11,6 +11,7 @@ import sideBarShared
 // Keep the fast lane to a few lifetime cycles; the longer mixed teardown soak
 // remains quarantined in the mounted macOS repro suite.
 let notesLifetimeSmokeIterations = 4
+private let notesHostingDrainDuration: TimeInterval = 0.01
 
 @MainActor
 struct NotesDetailViewTestContext {
@@ -58,13 +59,13 @@ enum NotesDetailViewTestRetainer {
             window.isHidden = true
             window.rootViewController = nil
         }
-        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        drainNotesHostingRunLoop()
         #elseif os(macOS)
         hostingWindows.forEach { window in
             window.orderOut(nil)
             window.contentViewController = nil
         }
-        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        drainNotesHostingRunLoop()
         #endif
         environments.removeAll()
         hostingControllers.removeAll()
@@ -172,7 +173,7 @@ func mount(
     rootView.frame = window.bounds
     rootView.setNeedsLayout()
     rootView.layoutIfNeeded()
-    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    drainNotesHostingRunLoop()
     NotesDetailViewTestRetainer.hostingControllers.append(controller)
     NotesDetailViewTestRetainer.hostingWindows.append(window)
     return controller
@@ -195,7 +196,7 @@ func mount(
     rootView.frame = frame
     rootView.setNeedsLayout()
     rootView.layoutIfNeeded()
-    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    drainNotesHostingRunLoop()
     NotesDetailViewTestRetainer.hostingControllers.append(controller)
     NotesDetailViewTestRetainer.hostingWindows.append(window)
     return controller
@@ -214,6 +215,11 @@ private func makeHostingWindow(frame: CGRect) -> UIWindow {
     return window
 }
 #endif
+
+@MainActor
+func drainNotesHostingRunLoop() {
+    RunLoop.main.run(until: Date().addingTimeInterval(notesHostingDrainDuration))
+}
 
 func makeTestNote(
     id: String = "n1",

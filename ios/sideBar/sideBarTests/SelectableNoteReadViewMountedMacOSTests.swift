@@ -32,11 +32,11 @@ final class SelectableNoteReadViewMountedMacOSTests: XCTestCase {
             _ = controller.view
 
             controller.rootView = AnyView(EmptyView())
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+            drainNotesHostingRunLoop()
 
             window.orderOut(nil)
             window.contentViewController = nil
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+            drainNotesHostingRunLoop()
         }
     }
 }

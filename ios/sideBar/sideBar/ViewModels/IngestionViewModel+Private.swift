@@ -94,8 +94,8 @@ extension IngestionViewModel {
             var consecutiveFailures = 0
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(
-                        nanoseconds: self.jobPollingDelayNanoseconds(
+                    try await self.jobPollingSleep(
+                        self.jobPollingDelayNanoseconds(
                             fileId: fileId,
                             consecutiveFailures: consecutiveFailures
                         )

@@ -44,7 +44,7 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
             XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
 
             NotesDetailViewTestRetainer.reset()
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+            drainNotesHostingRunLoop()
         }
     }
 
@@ -71,7 +71,7 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
             XCTAssertFalse(view.isShowingEditorSurface)
 
             NotesDetailViewTestRetainer.reset()
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+            drainNotesHostingRunLoop()
         }
     }
 }

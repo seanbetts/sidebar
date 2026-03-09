@@ -849,6 +849,7 @@ final class IngestionViewModelTests: XCTestCase {
             youtubeResult: .failure(MockError.forced)
         )
         let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: makeDefaults())
+        let sleepRecorder = PollingSleepRecorder()
         let vm = IngestionViewModel(
             api: api,
             store: store,
@@ -858,19 +859,24 @@ final class IngestionViewModelTests: XCTestCase {
             jobPollingBaseInterval: 0.01,
             jobPollingMaxInterval: 0.01,
             jobPollingMaxConsecutiveFailures: 2,
-            jobPollingJitterWindow: 0
+            jobPollingJitterWindow: 0,
+            jobPollingSleep: { nanoseconds in
+                await sleepRecorder.record(nanoseconds)
+            }
         )
         vm.selectedFileId = fileId
         vm.activeMeta = meta
 
         vm.startJobPollingIfNeeded(fileId: fileId)
 
-        for _ in 0..<120 where vm.errorMessage == nil || vm.jobPollingTasks[fileId] != nil {
-            try? await Task.sleep(nanoseconds: 10_000_000)
+        await waitUntilPolling {
+            vm.errorMessage != nil && vm.jobPollingTasks[fileId] == nil
         }
 
         XCTAssertEqual(vm.errorMessage, "Could not refresh file status. Re-open the file to retry.")
         XCTAssertNil(vm.jobPollingTasks[fileId])
+        let recordedIntervals = await sleepRecorder.snapshot()
+        XCTAssertEqual(recordedIntervals, [100_000_000, 100_000_000])
     }
 
     func testListPollingSkipsNonServerPlaceholderItems() async {
@@ -1102,6 +1108,18 @@ private struct TestNetworkStatus: NetworkStatusProviding {
     let isOffline: Bool
 }
 
+private actor PollingSleepRecorder {
+    private var recordedIntervals: [UInt64] = []
+
+    func record(_ nanoseconds: UInt64) {
+        recordedIntervals.append(nanoseconds)
+    }
+
+    func snapshot() -> [UInt64] {
+        recordedIntervals
+    }
+}
+
 private struct MockIngestionAPI: IngestionProviding {
     let listResult: Result<IngestionListResponse, Error>
     let metaResult: Result<IngestionMetaResponse, Error>
@@ -1202,6 +1220,24 @@ private final class MockIngestionUploadManager: IngestionUploadManaging {
 
     func cancelUpload(uploadId: String) {
         canceledUploadIds.append(uploadId)
+    }
+}
+
+private func waitUntilPolling(
+    timeoutSeconds: TimeInterval = 0.2,
+    condition: @escaping @MainActor () -> Bool
+) async {
+    let deadline = Date().addingTimeInterval(timeoutSeconds)
+    while true {
+        let isSatisfied = await condition()
+        if isSatisfied {
+            return
+        }
+        if Date() >= deadline {
+            XCTFail("Timed out waiting for ingestion polling condition")
+            return
+        }
+        await Task.yield()
     }
 }
 // swiftlint:enable file_length type_body_length

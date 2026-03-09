@@ -70,6 +70,8 @@ private final class IngestionViewModelTeardownBag {
 /// await viewModel.selectFile(id: fileId)
 /// ```
 public final class IngestionViewModel: ObservableObject {
+    public typealias JobPollingSleep = @Sendable (UInt64) async throws -> Void
+
     @Published public var items: [IngestionListItem] = []
     @Published public var panelSearchQuery: String = ""
     @Published public private(set) var itemsVersion: Int = 0
@@ -103,6 +105,7 @@ public final class IngestionViewModel: ObservableObject {
     let jobPollingMaxInterval: TimeInterval
     let jobPollingMaxConsecutiveFailures: Int
     let jobPollingJitterWindow: TimeInterval
+    let jobPollingSleep: JobPollingSleep
     var cancellables = Set<AnyCancellable>()
     var securityScopedURLs: [String: URL] = [:]
     var jobPollingTasks: [String: Task<Void, Never>] = [:] {
@@ -134,7 +137,10 @@ public final class IngestionViewModel: ObservableObject {
         jobPollingBaseInterval: TimeInterval = 2,
         jobPollingMaxInterval: TimeInterval = 20,
         jobPollingMaxConsecutiveFailures: Int = 6,
-        jobPollingJitterWindow: TimeInterval = 0.4
+        jobPollingJitterWindow: TimeInterval = 0.4,
+        jobPollingSleep: @escaping JobPollingSleep = { nanoseconds in
+            try await Task.sleep(nanoseconds: nanoseconds)
+        }
     ) {
         self.api = api
         self.temporaryStore = temporaryStore
@@ -147,6 +153,7 @@ public final class IngestionViewModel: ObservableObject {
         self.jobPollingMaxInterval = max(jobPollingMaxInterval, self.jobPollingBaseInterval)
         self.jobPollingMaxConsecutiveFailures = max(1, jobPollingMaxConsecutiveFailures)
         self.jobPollingJitterWindow = max(0, jobPollingJitterWindow)
+        self.jobPollingSleep = jobPollingSleep
 
         store.$items
             .sink { [weak self] items in
