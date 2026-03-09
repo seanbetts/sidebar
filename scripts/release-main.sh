@@ -4,29 +4,50 @@ set -euo pipefail
 remote="origin"
 dev_branch="dev"
 main_branch="main"
-push_dev="false"
-skip_ios_tests="false"
+run_ios_tests="false"
 
 usage() {
   cat <<USAGE
 Usage: scripts/release-main.sh [options]
 
-Promotes dev to main with a linear-history flow:
-1. fetch + ff pull dev/main
-2. rebase dev onto origin/main
-3. optional iOS test run
-4. ff-only merge dev -> main
-5. push main
-6. optional force-with-lease push of rebased dev
+Promotes a published dev branch tip to main with a fast-forward-only flow:
+1. fetch remote dev/main
+2. verify local dev/main match their remote refs
+3. verify remote main is an ancestor of remote dev
+4. optional iOS preflight run
+5. ff-only merge remote dev -> main
+6. push main
 
 Options:
   --remote <name>       Git remote (default: origin)
   --dev <branch>        Dev branch name (default: dev)
   --main <branch>       Main branch name (default: main)
-  --push-dev            Force-with-lease push rebased dev branch
-  --skip-ios-tests      Skip scripts/test-ios.sh
+  --run-ios-tests       Run scripts/test-ios.sh before promotion
   -h, --help            Show this help
 USAGE
+}
+
+warn_deprecated_option() {
+  local option="$1"
+  local replacement="$2"
+  echo "Warning: ${option} is deprecated. ${replacement}" >&2
+}
+
+require_branch_matches_remote() {
+  local branch="$1"
+  local remote_ref="$2"
+  local local_sha remote_sha
+
+  local_sha="$(git rev-parse "$branch")"
+  remote_sha="$(git rev-parse "$remote_ref")"
+
+  if [[ "$local_sha" != "$remote_sha" ]]; then
+    echo "Release blocked: local '$branch' does not match '$remote_ref'." >&2
+    echo "Local:  $local_sha" >&2
+    echo "Remote: $remote_sha" >&2
+    echo "Push or reconcile '$branch' before promoting to '$main_branch'." >&2
+    exit 1
+  fi
 }
 
 while [[ $# -gt 0 ]]; do
@@ -43,12 +64,20 @@ while [[ $# -gt 0 ]]; do
       main_branch="$2"
       shift 2
       ;;
+    --run-ios-tests)
+      run_ios_tests="true"
+      shift
+      ;;
     --push-dev)
-      push_dev="true"
+      warn_deprecated_option \
+        "--push-dev" \
+        "The release flow no longer rewrites '$dev_branch'; there is nothing extra to push."
       shift
       ;;
     --skip-ios-tests)
-      skip_ios_tests="true"
+      warn_deprecated_option \
+        "--skip-ios-tests" \
+        "Local iOS preflight is now opt-in. Omit this flag or use --run-ios-tests when needed."
       shift
       ;;
     -h|--help)
@@ -80,34 +109,31 @@ git fetch "$remote" "$main_branch" "$dev_branch"
 echo "Updating $dev_branch..."
 git checkout "$dev_branch"
 git pull --ff-only "$remote" "$dev_branch"
+require_branch_matches_remote "$dev_branch" "$remote/$dev_branch"
 
-echo "Rebasing $dev_branch onto $remote/$main_branch..."
-git rebase "$remote/$main_branch"
+if ! git merge-base --is-ancestor "$remote/$main_branch" "$remote/$dev_branch"; then
+  echo "Release blocked: '$remote/$main_branch' is not an ancestor of '$remote/$dev_branch'." >&2
+  echo "Update '$dev_branch' onto '$main_branch' before promoting it." >&2
+  exit 1
+fi
 
-if [[ "$skip_ios_tests" != "true" ]]; then
-  echo "Running iOS tests..."
+if [[ "$run_ios_tests" == "true" ]]; then
+  echo "Running iOS preflight..."
   scripts/test-ios.sh
+else
+  echo "Skipping local iOS preflight. Use --run-ios-tests for an explicit release preflight."
 fi
 
 echo "Updating $main_branch..."
 git checkout "$main_branch"
 git pull --ff-only "$remote" "$main_branch"
+require_branch_matches_remote "$main_branch" "$remote/$main_branch"
 
-echo "Fast-forward merging $dev_branch -> $main_branch..."
-git merge --ff-only "$dev_branch"
+echo "Fast-forward merging $remote/$dev_branch -> $main_branch..."
+git merge --ff-only "$remote/$dev_branch"
 
 echo "Pushing $main_branch to $remote..."
 git push "$remote" "$main_branch"
 
-git checkout "$dev_branch"
-if [[ "$push_dev" == "true" ]]; then
-  echo "Pushing rebased $dev_branch to $remote with --force-with-lease..."
-  git push --force-with-lease "$remote" "$dev_branch"
-else
-  echo "Release complete."
-  echo "Note: local '$dev_branch' is rebased; publish it with:"
-  echo "  git push --force-with-lease $remote $dev_branch"
-fi
-
-trap - EXIT
-git checkout "$dev_branch"
+echo "Release complete."
+echo "'$main_branch' now matches '$remote/$dev_branch' without rewriting '$dev_branch'."

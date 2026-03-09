@@ -146,15 +146,19 @@ Pre-push hook (`.git/hooks/pre-push`):
   - non-fast-forward updates to `main` are rejected
 - Pushes to `dev` and other branches are unblocked.
 - Guards against broken builds reaching Xcode Cloud.
-- `pre-commit` push-stage hook `ios-warning-gate` runs `scripts/check-ios-warning-gate.sh` for iOS/script changes and fails on scoped warnings.
+- Expensive iOS warning/cert gates are manual pre-commit hooks so normal `dev` pushes stay fast.
 
 Recommended release command:
 
 ```bash
-scripts/release-main.sh --push-dev
+scripts/release-main.sh
 ```
 
-This keeps `main` linear by rebasing `dev` on `origin/main`, fast-forwarding `main`, then publishing the rebased `dev` branch with `--force-with-lease`.
+This keeps `main` linear by promoting the published `origin/dev` tip with a fast-forward-only merge. It does not rewrite `dev` history. If you want an explicit local iOS preflight before promotion, run:
+
+```bash
+scripts/release-main.sh --run-ios-tests
+```
 
 ## Self-Hosted Runner Setup
 
