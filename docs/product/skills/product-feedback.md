@@ -13,10 +13,15 @@ app. When you report a bug or request a feature in Chat, sideBar files a
 report automatically and sends you a link to the issue so you can track it.
 No need to leave the app, find a support email, or fill out a form.
 
+## Actions
+
+- **File a bug report** — logs the issue with the sideBar team and returns a link so you can track it
+- **Submit a feature request** — records your idea and returns a link to the issue
+
 ## When sideBar uses it
 
 When you describe a bug or request a feature in conversation. You don't need
-any special phrasing — just tell sideBar naturally:
+any special phrasing, just tell sideBar naturally:
 
 - "I found a bug with X"
 - "I'd love a feature that does Y"
@@ -31,7 +36,7 @@ sideBar recognises when you're giving feedback and handles the rest.
 
 ## Examples
 
-> "I found a bug — when I archive a note it sometimes reappears in my list."
+> "I found a bug. When I archive a note it sometimes reappears in my list."
 
 > "Could you add the ability to sort tasks by priority?"
 
