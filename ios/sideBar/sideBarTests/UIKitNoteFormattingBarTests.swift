@@ -142,6 +142,23 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(fittedSize.height, intrinsicSize.height, accuracy: 0.5)
     }
 
+    func testBarButtonsProvideMinimumFortyFourPointHitTargets() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(configuration: .disabled)
+        bar.frame = CGRect(origin: .zero, size: bar.intrinsicContentSize)
+        bar.setNeedsLayout()
+        bar.layoutIfNeeded()
+
+        for formatting in [NoteFormatting.bold, .italic, .underline] {
+            let button = bar.button(for: formatting)
+            XCTAssertGreaterThanOrEqual(button.frame.width, 44)
+            XCTAssertEqual(button.frame.height, 44, accuracy: 0.5)
+        }
+    }
+
     func testBarPreservesAccessibilityIdentifiersForSharedButtons() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")

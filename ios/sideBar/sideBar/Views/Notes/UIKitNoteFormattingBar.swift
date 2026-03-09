@@ -12,8 +12,9 @@ final class UIKitNoteFormattingBar: UIView {
     private let underlineButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
     private static let barHeight: CGFloat = 44
+    private static let minimumButtonTouchTarget: CGFloat = 44
     private static let horizontalPadding: CGFloat = 8
-    private static let verticalPadding: CGFloat = 6
+    private static let verticalPadding: CGFloat = 0
     private static let buttonSpacing: CGFloat = 6
 
     override init(frame: CGRect) {
@@ -51,7 +52,9 @@ final class UIKitNoteFormattingBar: UIView {
         let buttonSizes = Self.buttonOrder.map {
             button(for: $0).systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
         }
-        let contentWidth = buttonSizes.reduce(0) { $0 + $1.width }
+        let contentWidth = buttonSizes.reduce(0) {
+            $0 + max($1.width, Self.minimumButtonTouchTarget)
+        }
         let spacingWidth = CGFloat(max(Self.buttonOrder.count - 1, 0)) * Self.buttonSpacing
         let totalWidth = contentWidth + spacingWidth + (Self.horizontalPadding * 2)
         return CGSize(width: ceil(totalWidth), height: Self.barHeight)
@@ -152,6 +155,7 @@ private extension UIKitNoteFormattingBar {
 
     static func makeButton(for formatting: NoteFormatting) -> UIButton {
         let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
         button.configuration = buttonConfiguration(for: formatting, isActive: false)
         button.accessibilityLabel = accessibilityLabel(for: formatting)
         button.accessibilityIdentifier = accessibilityIdentifier(for: formatting)
@@ -243,6 +247,10 @@ private extension UIKitNoteFormattingBar {
                 for: .touchUpInside
             )
             stackView.addArrangedSubview(button)
+            NSLayoutConstraint.activate([
+                button.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minimumButtonTouchTarget),
+                button.heightAnchor.constraint(equalToConstant: Self.minimumButtonTouchTarget)
+            ])
         }
     }
 }

@@ -3,6 +3,10 @@ import XCTest
 
 @MainActor
 final class CompactPhoneSearchDockTests: XCTestCase {
+    func testCompactPhoneDockButtonsUseFortyFourPointTapTargets() {
+        XCTAssertEqual(PhoneFloatingActionMetrics.buttonSize, 44)
+    }
+
     func testCompactPhoneBottomSearchSectionsIncludeFilesAndSkillsStore() {
         let sections = ContentView.compactPhoneBottomSearchSections
         XCTAssertEqual(
@@ -121,7 +125,7 @@ final class CompactPhoneSearchDockTests: XCTestCase {
             bottomSafeAreaInset: 34
         )
 
-        XCTAssertEqual(padding, 82)
+        XCTAssertEqual(padding, 76)
     }
 
     func testCompactPhoneSearchDockBottomPaddingAttachesToKeyboardWhenVisible() {
@@ -131,6 +135,49 @@ final class CompactPhoneSearchDockTests: XCTestCase {
         )
 
         XCTAssertEqual(padding, DesignTokens.Spacing.sm)
+    }
+
+    func testShouldAttachCompactPhoneSearchDockToKeyboardIgnoresStaleKeyboardVisibilityWhenCollapsed() {
+        let shouldAttach = ContentView.shouldAttachCompactPhoneSearchDockToKeyboard(
+            isSoftwareKeyboardVisible: true,
+            searchText: "",
+            isSearchExplicitlyExpanded: false
+        )
+
+        XCTAssertFalse(shouldAttach)
+    }
+
+    func testShouldAttachCompactPhoneSearchDockToKeyboardWhenSearchIsExpanded() {
+        let shouldAttach = ContentView.shouldAttachCompactPhoneSearchDockToKeyboard(
+            isSoftwareKeyboardVisible: true,
+            searchText: "",
+            isSearchExplicitlyExpanded: true
+        )
+
+        XCTAssertTrue(shouldAttach)
+    }
+
+    func testShouldAttachCompactPhoneSearchDockToKeyboardWhenSearchQueryRemainsActive() {
+        let shouldAttach = ContentView.shouldAttachCompactPhoneSearchDockToKeyboard(
+            isSoftwareKeyboardVisible: true,
+            searchText: "notes",
+            isSearchExplicitlyExpanded: false
+        )
+
+        XCTAssertTrue(shouldAttach)
+    }
+
+    func testCompactPhoneSearchDockBottomPaddingFallsBackToTabClearanceForStaleKeyboardVisibility() {
+        let padding = ContentView.compactPhoneSearchDockBottomPadding(
+            isSoftwareKeyboardVisible: ContentView.shouldAttachCompactPhoneSearchDockToKeyboard(
+                isSoftwareKeyboardVisible: true,
+                searchText: "",
+                isSearchExplicitlyExpanded: false
+            ),
+            bottomSafeAreaInset: 34
+        )
+
+        XCTAssertEqual(padding, 76)
     }
 
     func testShouldHandleCompactPhoneSearchDockBackgroundTapWhenExpandedOutsideMoreRoot() {
