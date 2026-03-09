@@ -37,38 +37,19 @@ the title any time after saving.
 
 ## Supported Sites
 
-sideBar has custom parsers for a range of popular sites, which means you get
-cleaner content and richer extraction than a generic web fetch provides.
-
-**Enhanced extraction** — these sites get meaningfully more than a standard
-page save:
-
-- **YouTube**: full transcript extraction alongside the video title and
-  metadata. See [YouTube Support](#youtube-support) below.
-- **Twitter / X**: tweet content saved with the author name, handle, and
-  publication date.
-- **Substack**: full article content fetched via the Substack API, not just
-  the preview shown to non-subscribers.
-- **GitHub**: clean README extraction with badges, avatars, and decorative
-  elements stripped out.
-- **Harvard Business Review**: full article body reconstructed from
-  structured data, bypassing the HTML layout.
-- **Apple News**: redirect links are automatically unwrapped to fetch the
-  original publisher content.
-
-**Optimised reading** — these sites have noise stripped out for a cleaner
-reading and chat experience:
-
-- The Verge, Wired, Gizmodo, OpenAI, blog.google, Steam Community
-
-**Paywalled sites** — sideBar can save pages from paywalled publications, but
-if you are not a subscriber the content will be truncated to whatever the site
-makes available publicly. This applies to sites including the New York Times,
-Wall Street Journal, Financial Times, The Economist, and Bloomberg. sideBar
-will flag when a saved page appears to be paywalled.
+sideBar has custom parsers for a range of popular sites, giving you cleaner
+content and richer extraction than a generic fetch. For some sites this means
+getting meaningfully more — YouTube transcripts, full Substack articles, or
+Twitter/X tweets with author and date. For others it means noise and chrome
+stripped out for a better reading experience across publications like The
+Verge, Wired, and HBR.
 
 For sites not listed here, sideBar uses a general-purpose parser that works
 well across most publications and blogs.
+
+Note that paywalled publications (such as the New York Times, Financial Times,
+and Bloomberg) will only yield as much content as the site makes available to
+non-subscribers. sideBar will flag when a saved page appears to be paywalled.
 
 ## YouTube Support
 
