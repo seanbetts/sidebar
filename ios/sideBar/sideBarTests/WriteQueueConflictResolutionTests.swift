@@ -146,7 +146,27 @@ final class WriteQueueConflictResolutionTests: XCTestCase {
             autoProcessEnabled: false
         )
 
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntilConflictState {
+            queue.isPausedForConflict
+        }
         XCTAssertTrue(queue.isPausedForConflict)
+    }
+}
+
+private func waitUntilConflictState(
+    timeoutNanoseconds: UInt64 = 200_000_000,
+    condition: @escaping @MainActor () -> Bool
+) async {
+    let start = DispatchTime.now().uptimeNanoseconds
+    while DispatchTime.now().uptimeNanoseconds - start < timeoutNanoseconds {
+        if await condition() {
+            return
+        }
+        await Task.yield()
+    }
+
+    let isSatisfied = await condition()
+    if !isSatisfied {
+        XCTFail("Condition was not met before timeout")
     }
 }
