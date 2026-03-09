@@ -50,6 +50,29 @@ change in a future update.
     New states to add: ready, needs_connection, scope_upgrade_required, error.
     Some skills will show "Connect Google to install" instead of an API key field. */}
 
+## Mixing Skills
+
+Skills are most powerful when they work together. sideBar can chain multiple
+skills in a single conversation turn without you needing to think about which
+ones are involved. A few examples of what this looks like in practice:
+
+- **Research and capture**: "Search for the latest news on X and save a
+  summary as a note" uses Web Search to find results and Notes to write
+  them up.
+- **Plan from content**: "Read the article I saved yesterday and create
+  tasks for each action item" uses Websites to pull in the page and Tasks
+  to capture the actions.
+- **Cross-reference**: "What tasks do I have this week, and have I saved
+  anything relevant to them?" uses Tasks and Websites together to give you
+  a joined-up view.
+- **Capture and follow up**: "Save this URL, give me a one-paragraph
+  summary, and add a task to read it properly tonight" uses Websites,
+  Notes, and Tasks in one go.
+
+The more skills you have enabled, the more sideBar can do in a single
+request. If a skill you expect to be used is not running, check that it is
+enabled in [Settings](/manual/settings) → **Skills**.
+
 ## Managing Skills
 
 Go to [Settings](/manual/settings) → **Skills** to manage what's active.
