@@ -19,8 +19,7 @@
         "ExtensionUserMessageCatalogTests",
         "NotesDetailViewMountedMacOSTests",
         "SafariExtensionMessageHandlerTests",
-        "ShareExtensionQueueContractTests",
-        "TasksViewModelRealtimeTests"
+        "ShareExtensionQueueContractTests"
       ],
       "target" : {
         "containerPath" : "container:sideBar.xcodeproj",
