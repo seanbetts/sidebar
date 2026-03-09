@@ -404,6 +404,38 @@ final class SelectableNoteReadViewTests: XCTestCase {
         )
     }
 
+    func testMountedReadSurfaceCanUnmountRepeatedlyWithoutCrashing() throws {
+        let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\nTwo")
+
+        for _ in 0..<10 {
+            let controller = NSHostingController(
+                rootView: AnyView(
+                    SelectableNoteReadView(
+                        document: document,
+                        maxContentWidth: 420,
+                        onActivateEditing: { _ in }
+                    )
+                )
+            )
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 420, height: 240),
+                styleMask: [.titled, .closable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.contentViewController = controller
+            window.orderFront(nil)
+            _ = controller.view
+
+            controller.rootView = AnyView(EmptyView())
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+            window.orderOut(nil)
+            window.contentViewController = nil
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+    }
+
     func testCharacterOffsetForEditingActivationClampsTapToRightOfLineToVisualLineEnd() throws {
         let textView = try makeReadTextView(
             plainText: "One\nTwo",
