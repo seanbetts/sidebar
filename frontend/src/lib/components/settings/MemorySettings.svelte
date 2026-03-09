@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
-	import { Editor } from '@tiptap/core';
-	import StarterKit from '@tiptap/starter-kit';
-	import { ImageGallery } from '$lib/components/editor/ImageGallery';
-	import { ImageWithCaption } from '$lib/components/editor/ImageWithCaption';
-	import { TaskList, TaskItem } from '@tiptap/extension-list';
-	import { TableKit } from '@tiptap/extension-table';
-	import { Markdown } from 'tiptap-markdown';
+	import type { Editor } from '@tiptap/core';
 	import { memoriesStore } from '$lib/stores/memories';
 	import type { Memory } from '$lib/types/memory';
 	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
@@ -18,10 +12,11 @@
 	import MemoryEditDialog from '$lib/components/settings/memory/MemoryEditDialog.svelte';
 	import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
 	import { logError } from '$lib/utils/errorHandling';
-
-	type MarkdownStorage = {
-		markdown: { getMarkdown: () => string };
-	};
+	import {
+		createMarkdownExtensions,
+		getEditorMarkdown,
+		loadTiptapModules
+	} from '$lib/components/editor/tiptapLoader';
 
 	let searchTerm = '';
 	let showCreateDialog = false;
@@ -118,7 +113,7 @@
 		activeMemoryId = memory.id;
 		showEditDialog = true;
 		await tick();
-		ensureEditor();
+		await ensureEditor();
 		syncEditorContent();
 	}
 
@@ -199,19 +194,13 @@
 		scheduleSave(activeMemoryId);
 	}
 
-	function ensureEditor() {
+	async function ensureEditor() {
 		if (!editorElement || editor) return;
-		editor = new Editor({
+		const modules = await loadTiptapModules();
+		if (!editorElement || editor) return;
+		editor = new modules.Editor({
 			element: editorElement,
-			extensions: [
-				StarterKit,
-				ImageGallery,
-				ImageWithCaption.configure({ inline: false, allowBase64: true }),
-				TaskList,
-				TaskItem.configure({ nested: true }),
-				TableKit,
-				Markdown
-			],
+			extensions: createMarkdownExtensions(modules, { enableHtml: false }),
 			content: '',
 			editable: true,
 			editorProps: {
@@ -221,9 +210,7 @@
 			},
 			onUpdate: ({ editor }) => {
 				if (!activeMemoryId || isSyncingEditor) return;
-				const markdown = (
-					editor as Editor & { storage: MarkdownStorage }
-				).storage.markdown.getMarkdown();
+				const markdown = getEditorMarkdown(editor);
 				const draft = draftById[activeMemoryId];
 				if (!draft || draft.content === markdown) return;
 				draftById = {
@@ -242,9 +229,7 @@
 		if (!editor || !activeMemoryId) return;
 		const draft = draftById[activeMemoryId];
 		if (!draft) return;
-		const current = (
-			editor as Editor & { storage: MarkdownStorage }
-		).storage.markdown.getMarkdown();
+		const current = getEditorMarkdown(editor);
 		if (current === draft.content) return;
 		isSyncingEditor = true;
 		editor.commands.setContent(draft.content || '');

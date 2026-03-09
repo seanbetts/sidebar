@@ -1,12 +1,7 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
-	import { Editor } from '@tiptap/core';
-	import StarterKit from '@tiptap/starter-kit';
-	import { ImageGallery } from '$lib/components/editor/ImageGallery';
-	import { ImageWithCaption } from '$lib/components/editor/ImageWithCaption';
-	import { TaskList, TaskItem } from '@tiptap/extension-list';
-	import { TableKit } from '@tiptap/extension-table';
-	import { Markdown } from 'tiptap-markdown';
+	import { onMount } from 'svelte';
+	import type { Editor } from '@tiptap/core';
+	import { createMarkdownExtensions, loadTiptapModules } from '$lib/components/editor/tiptapLoader';
 
 	export let content: string;
 
@@ -14,29 +9,32 @@
 	let editor: Editor | null = null;
 
 	onMount(() => {
-		editor = new Editor({
-			element: editorElement,
-			extensions: [
-				StarterKit,
-				ImageGallery,
-				ImageWithCaption.configure({ inline: false, allowBase64: true }),
-				TaskList,
-				TaskItem.configure({ nested: true }),
-				TableKit,
-				Markdown.configure({ html: true })
-			],
-			content: '',
-			editable: false,
-			editorProps: {
-				attributes: {
-					class: 'tiptap file-markdown prose prose-sm max-w-none'
-				}
-			}
-		});
-	});
+		let isDisposed = false;
 
-	onDestroy(() => {
-		editor?.destroy();
+		void (async () => {
+			const modules = await loadTiptapModules();
+			if (isDisposed || !editorElement) {
+				return;
+			}
+
+			editor = new modules.Editor({
+				element: editorElement,
+				extensions: createMarkdownExtensions(modules),
+				content: '',
+				editable: false,
+				editorProps: {
+					attributes: {
+						class: 'tiptap file-markdown prose prose-sm max-w-none'
+					}
+				}
+			});
+		})();
+
+		return () => {
+			isDisposed = true;
+			editor?.destroy();
+			editor = null;
+		};
 	});
 
 	$: if (editor) {

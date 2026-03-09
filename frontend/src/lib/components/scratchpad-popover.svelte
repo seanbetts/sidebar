@@ -1,14 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
-	import { Editor } from '@tiptap/core';
-	import StarterKit from '@tiptap/starter-kit';
-	import { ImageGallery } from '$lib/components/editor/ImageGallery';
-	import { ImageWithCaption } from '$lib/components/editor/ImageWithCaption';
-	import { TaskList, TaskItem } from '@tiptap/extension-list';
-	import { TableKit } from '@tiptap/extension-table';
-	import { Markdown } from 'tiptap-markdown';
-	import { TextSelection } from '@tiptap/pm/state';
+	import type { Editor } from '@tiptap/core';
 	import { SquarePen } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
@@ -18,6 +11,12 @@
 	import { isIPhoneUserAgent } from '$lib/utils/device';
 	import { logError } from '$lib/utils/errorHandling';
 	import { canShowTooltips } from '$lib/utils/tooltip';
+	import {
+		createMarkdownExtensions,
+		getEditorMarkdown,
+		loadTextSelection,
+		loadTiptapModules
+	} from '$lib/components/editor/tiptapLoader';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -36,12 +35,6 @@
 	let isClosing = false;
 	let hasUserEdits = false;
 	let isIPhone = false;
-	type MarkdownStorage = {
-		markdown: { getMarkdown: () => string };
-	};
-	const getMarkdown = (editor: Editor) =>
-		(editor as Editor & { storage: MarkdownStorage }).storage.markdown.getMarkdown();
-
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
 		isIPhone = typeof navigator !== 'undefined' && isIPhoneUserAgent(navigator.userAgent);
@@ -51,7 +44,7 @@
 		lastSavedContent = content;
 		if (!editor) return;
 		const newContent = stripHeading(content) || '';
-		const currentEditorContent = getMarkdown(editor);
+		const currentEditorContent = getEditorMarkdown(editor);
 
 		if (currentEditorContent === newContent) {
 			return;
@@ -62,16 +55,16 @@
 			hasUserEdits = false;
 			const currentPosition = editor.state.selection.anchor;
 			editor.commands.setContent(newContent);
-			tick().then(() =>
-				requestAnimationFrame(() => {
-					if (editor) {
-						const maxPosition = editor.state.doc.content.size;
-						const safePosition = Math.min(currentPosition, maxPosition);
-						const selection = TextSelection.near(editor.state.doc.resolve(safePosition));
-						editor.view.dispatch(editor.state.tr.setSelection(selection));
-					}
-				})
-			);
+			void tick().then(async () => {
+				await new Promise((resolve) => requestAnimationFrame(resolve));
+				if (editor) {
+					const TextSelection = await loadTextSelection();
+					const maxPosition = editor.state.doc.content.size;
+					const safePosition = Math.min(currentPosition, maxPosition);
+					const selection = TextSelection.near(editor.state.doc.resolve(safePosition));
+					editor.view.dispatch(editor.state.tr.setSelection(selection));
+				}
+			});
 		} catch (error) {
 			logError('Failed to update scratchpad content', error, { scope: 'ScratchpadPopover' });
 		} finally {
@@ -116,7 +109,7 @@
 
 	async function saveScratchpad() {
 		if (!editor || isUpdatingContent) return;
-		const markdown = getMarkdown(editor);
+		const markdown = getEditorMarkdown(editor);
 		await saveScratchpadContent(markdown);
 	}
 
@@ -149,19 +142,13 @@
 		}
 	}
 
-	function initEditor() {
+	async function initEditor() {
 		if (!editorElement || editor) return;
-		editor = new Editor({
+		const modules = await loadTiptapModules();
+		if (!editorElement || editor) return;
+		editor = new modules.Editor({
 			element: editorElement,
-			extensions: [
-				StarterKit,
-				ImageGallery,
-				ImageWithCaption.configure({ inline: false, allowBase64: true }),
-				TaskList,
-				TaskItem.configure({ nested: true }),
-				TableKit,
-				Markdown.configure({ html: true })
-			],
+			extensions: createMarkdownExtensions(modules),
 			content: '',
 			editable: true,
 			editorProps: {
@@ -175,6 +162,9 @@
 				scheduleSave();
 			}
 		});
+		if (lastSavedContent) {
+			applyScratchpadContent(lastSavedContent);
+		}
 	}
 
 	const unsubscribeScratchpad = scratchpadStore.subscribe(() => {
@@ -196,12 +186,12 @@
 	});
 
 	$: if (isOpen && editorElement && !editor) {
-		initEditor();
+		void initEditor();
 		loadScratchpad();
 		isClosing = false;
 	} else if (!isOpen && editor && !isClosing) {
 		const currentEditor = editor;
-		const markdown = getMarkdown(currentEditor);
+		const markdown = getEditorMarkdown(currentEditor);
 		if (saveTimeout) clearTimeout(saveTimeout);
 		isClosing = true;
 		(async () => {

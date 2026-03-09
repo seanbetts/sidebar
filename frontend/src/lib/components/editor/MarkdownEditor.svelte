@@ -88,26 +88,39 @@
 	});
 
 	onMount(() => {
-		const { editor: createdEditor, destroy } = createMarkdownEditor({
-			element: editorElement,
-			editorStore,
-			onAutosave: scheduleAutoSave,
-			onExternalUpdate: () => toast.message('Note updated')
-		});
-		editor = createdEditor;
-		destroyEditor = destroy;
+		let isDisposed = false;
 
-		// Restore scroll position after content is rendered
-		if (currentNoteId && editorScrollElement) {
-			const savedPosition = scrollPositions.get(currentNoteId) ?? 0;
-			requestAnimationFrame(() => {
-				requestAnimationFrame(() => {
-					if (editorScrollElement) {
-						editorScrollElement.scrollTop = savedPosition;
-					}
-				});
+		void (async () => {
+			const { editor: createdEditor, destroy } = await createMarkdownEditor({
+				element: editorElement,
+				editorStore,
+				onAutosave: scheduleAutoSave,
+				onExternalUpdate: () => toast.message('Note updated')
 			});
-		}
+			if (isDisposed) {
+				destroy();
+				return;
+			}
+
+			editor = createdEditor;
+			destroyEditor = destroy;
+
+			// Restore scroll position after content is rendered
+			if (currentNoteId && editorScrollElement) {
+				const savedPosition = scrollPositions.get(currentNoteId) ?? 0;
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						if (editorScrollElement) {
+							editorScrollElement.scrollTop = savedPosition;
+						}
+					});
+				});
+			}
+		})();
+
+		return () => {
+			isDisposed = true;
+		};
 	});
 
 	const { stayOnPage, confirmLeave } = useLeaveGuard({
