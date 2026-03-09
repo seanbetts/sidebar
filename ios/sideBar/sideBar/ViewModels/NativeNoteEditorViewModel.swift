@@ -12,6 +12,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     @Published public internal(set) var hasUnsavedChanges: Bool = false
     @Published public internal(set) var autosaveToken: Int = 0
     public var autosaveDelay: TimeInterval = 1.5
+    var minimumAutosaveDelay: TimeInterval = 0.3
 
     var baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
     var bodyFont: Font {

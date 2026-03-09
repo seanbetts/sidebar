@@ -8,6 +8,10 @@ import UIKit
 import sideBarShared
 @testable import sideBar
 
+// Keep the fast lane to a few lifetime cycles; the longer mixed teardown soak
+// remains quarantined in the mounted macOS repro suite.
+let notesLifetimeSmokeIterations = 4
+
 @MainActor
 struct NotesDetailViewTestContext {
     let store: NotesStore

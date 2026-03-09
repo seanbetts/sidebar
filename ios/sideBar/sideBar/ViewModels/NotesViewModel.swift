@@ -51,6 +51,7 @@ public final class NotesViewModel: ObservableObject {
     private let searchTask = ManagedTask()
     private var cancellables = Set<AnyCancellable>()
     private var pendingNoteId: String?
+    var searchDebounceDelay: TimeInterval = 0.3
 
     public init(
         api: any NotesProviding,
@@ -378,7 +379,7 @@ public final class NotesViewModel: ObservableObject {
         }
         isSearching = true
         let trimmed = query.trimmed
-        searchTask.runDebounced(delay: 0.3) { [weak self] in
+        searchTask.runDebounced(delay: searchDebounceDelay) { [weak self] in
             await self?.performSearch(query: trimmed)
         }
     }

@@ -280,12 +280,12 @@ final class NotesStoreTests: XCTestCase {
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.notesArchivedTree, value: cached, ttlSeconds: 60)
         let api = MockNotesAPI(treeResult: .success(fresh), noteResult: .failure(MockError.forced))
-        api.archivedListDelay = 0.6
+        api.archivedListDelay = 0.2
 
         let store = NotesStore(
             api: api,
             cache: cache,
-            archivedRefreshWaitTimeoutNanoseconds: 100_000_000,
+            archivedRefreshWaitTimeoutNanoseconds: 50_000_000,
             archivedRefreshPollIntervalNanoseconds: 10_000_000
         )
 
@@ -298,7 +298,7 @@ final class NotesStoreTests: XCTestCase {
         try? await store.loadArchivedTree()
         let elapsed = Date().timeIntervalSince(start)
 
-        XCTAssertLessThan(elapsed, 0.35)
+        XCTAssertLessThan(elapsed, 0.2)
         await firstRefresh.value
     }
 

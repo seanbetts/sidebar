@@ -755,7 +755,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         }
         let updated = NotePayload(id: "n1", name: "Note", content: "Updated", path: "/note.md", modified: 100, created: nil)
         let api = NotesAPISpy(updateResult: .success(updated))
-        api.updateDelayNanoseconds = 400_000_000
+        api.suspendNextUpdate = true
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
@@ -795,12 +795,19 @@ final class NotesEditorViewModelTests: XCTestCase {
             await viewModel.syncFromNativeEditor(nativeViewModel)
         }
 
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        try await waitUntil(timeoutSeconds: 0.5) {
+            api.updateCallCount == 1
+        }
 
         nativeViewModel.attributedContent = AttributedString("Second")
-        await viewModel.syncFromNativeEditor(nativeViewModel)
+        let secondSyncTask = Task {
+            await viewModel.syncFromNativeEditor(nativeViewModel)
+        }
+
+        api.resumeSuspendedUpdate()
 
         await firstSyncTask.value
+        await secondSyncTask.value
         try await waitUntil(timeoutSeconds: 2.0) {
             api.updateCallCount == 2
         }
@@ -1706,6 +1713,8 @@ private final class NotesAPISpy: NotesProviding {
     private(set) var updatedDocuments: [NotesSemanticDocument] = []
     private(set) var createdTitles: [String] = []
     var updateDelayNanoseconds: UInt64 = 0
+    var suspendNextUpdate = false
+    private var suspendedUpdateContinuation: CheckedContinuation<Void, Never>?
     let updateResult: Result<NotePayload, Error>
     let createResult: Result<NotePayload, Error>
 
@@ -1745,6 +1754,12 @@ private final class NotesAPISpy: NotesProviding {
         if updateDelayNanoseconds > 0 {
             try? await Task.sleep(nanoseconds: updateDelayNanoseconds)
         }
+        if suspendNextUpdate {
+            suspendNextUpdate = false
+            await withCheckedContinuation { continuation in
+                suspendedUpdateContinuation = continuation
+            }
+        }
         return try updateResult.get()
     }
 
@@ -1757,7 +1772,18 @@ private final class NotesAPISpy: NotesProviding {
         if updateDelayNanoseconds > 0 {
             try? await Task.sleep(nanoseconds: updateDelayNanoseconds)
         }
+        if suspendNextUpdate {
+            suspendNextUpdate = false
+            await withCheckedContinuation { continuation in
+                suspendedUpdateContinuation = continuation
+            }
+        }
         return try updateResult.get()
+    }
+
+    func resumeSuspendedUpdate() {
+        suspendedUpdateContinuation?.resume()
+        suspendedUpdateContinuation = nil
     }
 
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {

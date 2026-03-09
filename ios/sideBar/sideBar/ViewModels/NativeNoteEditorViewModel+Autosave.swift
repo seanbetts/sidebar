@@ -5,7 +5,7 @@
 extension NativeNoteEditorViewModel {
     func scheduleAutosave() {
         autosaveTask?.cancel()
-        let delay = max(0.3, autosaveDelay)
+        let delay = max(minimumAutosaveDelay, autosaveDelay)
         autosaveTask = Task { [weak self] in
             do {
                 try await Task.sleep(for: .seconds(delay))

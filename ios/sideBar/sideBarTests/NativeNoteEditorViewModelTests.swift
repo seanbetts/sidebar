@@ -230,7 +230,8 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
 
     func testHandleContentChangeSetsUnsavedStateAndMarkSavedClearsIt() async {
         let viewModel = NativeNoteEditorViewModel()
-        viewModel.autosaveDelay = 0.3
+        viewModel.minimumAutosaveDelay = 0
+        viewModel.autosaveDelay = 0.01
         viewModel.loadText("hello")
         let previous = viewModel.attributedContent
 
@@ -240,11 +241,8 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         )
         viewModel.handleContentChange(previous: previous)
 
-        for _ in 0..<20 {
-            if viewModel.hasUnsavedChanges, viewModel.autosaveToken > 0 {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 100_000_000)
+        try? await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.hasUnsavedChanges && viewModel.autosaveToken > 0
         }
         XCTAssertTrue(viewModel.hasUnsavedChanges)
         XCTAssertGreaterThan(viewModel.autosaveToken, 0)
@@ -355,7 +353,8 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
 
     func testScheduleAutosaveCancelsSupersededTask() async {
         let viewModel = NativeNoteEditorViewModel()
-        viewModel.autosaveDelay = 0.5
+        viewModel.minimumAutosaveDelay = 0
+        viewModel.autosaveDelay = 0.05
         viewModel.loadText("hello")
 
         let initial = viewModel.attributedContent
@@ -365,7 +364,7 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         )
         viewModel.handleContentChange(previous: initial)
 
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        try? await Task.sleep(nanoseconds: 10_000_000)
 
         let secondPrevious = viewModel.attributedContent
         viewModel.attributedContent = AttributedString("hello2")
@@ -374,7 +373,9 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         )
         viewModel.handleContentChange(previous: secondPrevious)
 
-        try? await Task.sleep(nanoseconds: 750_000_000)
+        try? await waitUntil(timeoutSeconds: 0.25) {
+            viewModel.autosaveToken == 1
+        }
 
         XCTAssertEqual(viewModel.autosaveToken, 1)
         XCTAssertTrue(viewModel.hasUnsavedChanges)
@@ -410,5 +411,19 @@ private func assertInsertionPointUTF16Offset(
         XCTAssertEqual(stringIndex.utf16Offset(in: string), expectedOffset, file: file, line: line)
     case .ranges:
         XCTFail("Expected insertion point selection", file: file, line: line)
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
+    let timeoutNanoseconds = UInt64(timeoutSeconds * 1_000_000_000)
+    let start = DispatchTime.now().uptimeNanoseconds
+
+    while !condition() {
+        try await Task.sleep(nanoseconds: 10_000_000)
+        if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
+            XCTFail("Timed out waiting for condition")
+            return
+        }
     }
 }

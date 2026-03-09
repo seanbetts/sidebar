@@ -123,11 +123,8 @@ final class NotesViewModelTests: XCTestCase {
 
         await viewModel.loadTree()
 
-        for _ in 0..<10 {
-            if viewModel.tree?.children.first?.name == "Fresh" {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 100_000_000)
+        try? await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.tree?.children.first?.name == "Fresh"
         }
 
         XCTAssertEqual(viewModel.tree?.children.first?.name, "Fresh")
@@ -354,14 +351,19 @@ final class NotesViewModelTests: XCTestCase {
             toastCenter: ToastCenter(),
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
+        viewModel.searchDebounceDelay = 0
 
         viewModel.updateSearch(query: "first")
-        try? await Task.sleep(nanoseconds: 450_000_000)
+        try? await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.errorMessage != nil
+        }
         XCTAssertNotNil(viewModel.errorMessage)
         XCTAssertTrue(viewModel.searchResults.isEmpty)
 
         viewModel.updateSearch(query: "second")
-        try? await Task.sleep(nanoseconds: 450_000_000)
+        try? await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.searchResults.map(\.path) == ["Cafe.md"]
+        }
         XCTAssertNil(viewModel.errorMessage)
         XCTAssertEqual(viewModel.searchResults.map(\.path), ["Cafe.md"])
     }
@@ -788,5 +790,19 @@ private final class ControlledArchivedNotesAPI: NotesProviding {
         guard let continuation = archivedContinuation else { return }
         archivedContinuation = nil
         continuation.resume(with: result)
+    }
+}
+
+@MainActor
+private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
+    let timeoutNanoseconds = UInt64(timeoutSeconds * 1_000_000_000)
+    let start = DispatchTime.now().uptimeNanoseconds
+
+    while !condition() {
+        try await Task.sleep(nanoseconds: 10_000_000)
+        if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
+            XCTFail("Timed out waiting for condition")
+            return
+        }
     }
 }
