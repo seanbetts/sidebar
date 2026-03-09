@@ -27,6 +27,13 @@ There are three ways:
 See [Widgets and Extensions](/manual/extensions) for instructions on setting up
 the share extension and Safari extension.
 
+## What happens after I save a page?
+
+sideBar fetches the page and extracts the title, domain, full content, and
+reading time automatically. If a publication date is detectable, that is saved
+too. The whole process takes a few seconds. If something goes wrong, you will
+see an error state on the page card.
+
 ## Can I read saved pages offline?
 
 Yes. Pages are stored in full so you can read them without a connection. sideBar
@@ -47,18 +54,6 @@ article, explain a concept, pull out key points, draft notes, or find related
 information. You can also reference saved pages in chat without having one open,
 and sideBar can search across your saved content when it is relevant.
 
-## What happens after I save a page?
-
-sideBar fetches the page and extracts the title, domain, full content, and
-reading time automatically. If a publication date is detectable, that is saved
-too. The whole process takes a few seconds. If something goes wrong, you will
-see an error state on the page card.
-
-## Can I export or share a saved page?
-
-Yes. From any saved page you can export it as a markdown file, or copy the
-title, URL, or full markdown content with a single tap.
-
 ## How do I manage my saved pages?
 
 - **Pin** pages you return to often; they stay at the top of the list.
@@ -75,3 +70,13 @@ to delete it.
 Yes. Search matches against page titles, domains, and full page content. It is
 a useful way to find something when you cannot remember exactly where you saved
 it.
+
+## Can I export or share a saved page?
+
+Yes. From any saved page you can export it as a markdown file, or copy the
+title, URL, or full markdown content with a single tap.
+
+## Do saved pages sync across my devices?
+
+Yes. All saved pages and their content sync in real time across every device
+where you are signed in to sideBar.

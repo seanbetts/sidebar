@@ -23,12 +23,10 @@ Projects are custom task lists you create for any topic or goal. Groups let you
 gather related projects together to keep your list organised. Swipe right on a
 project or group to rename it, or swipe left to delete it.
 
-## Can sideBar create and manage tasks for me?
+## Can I add notes to a task?
 
-Yes. sideBar can create, update, complete, and organise tasks on your behalf
-during any conversation. Just ask in natural language: "add a task to call John
-tomorrow" or "mark my grocery run as done". sideBar uses the Tasks skill to
-carry this out and confirms what it has done inline in the conversation.
+Yes. Each task has an optional notes field for anything extra you want to
+remember about it. Notes save automatically as you type.
 
 ## Can tasks recur?
 
@@ -37,10 +35,17 @@ monthly, with a configurable interval (every N days, weeks, or months) and a
 start date. sideBar tracks when the next instance is due and surfaces it in the
 right smart list automatically.
 
-## Can I add notes to a task?
+## What happens when I complete a recurring task?
 
-Yes. Each task has an optional notes field for anything extra you want to
-remember about it. Notes save automatically as you type.
+Completing a recurring task marks the current instance as done and schedules the
+next one automatically based on the recurrence interval you set.
+
+## Can sideBar create and manage tasks for me?
+
+Yes. sideBar can create, update, complete, and organise tasks on your behalf
+during any conversation. Just ask in natural language: "add a task to call John
+tomorrow" or "mark my grocery run as done". sideBar uses the Tasks skill to
+carry this out and confirms what it has done inline in the conversation.
 
 ## How do I search tasks?
 
@@ -57,8 +62,3 @@ and Mac so you can see what is on your plate without opening the app. See
 
 Yes. All changes sync in real time across every device where you are signed in
 to sideBar.
-
-## What happens when I complete a recurring task?
-
-Completing a recurring task marks the current instance as done and schedules the
-next one automatically based on the recurrence interval you set.

@@ -50,6 +50,12 @@ Yes, for many file types:
 - **Images**: full-screen display
 - **Text and Markdown**: rendered preview
 
+## Can I search my files?
+
+Yes. Tap the search field in the Files tab and start typing. Search matches
+against file names and the indexed content of ready files, so you can find
+something by what it contains, not just what it is called.
+
 ## What is the difference between pinning and archiving a file?
 
 Pinning keeps a file at the top of your list for quick access. Archiving moves
@@ -57,13 +63,13 @@ it out of the main view without deleting it; you can restore it at any time. The
 number of archived files appears at the bottom of the list. Deleting a file is
 permanent and also removes its index.
 
-## Do files sync across my devices?
-
-Yes. Files and their indexed content sync across all devices where you are signed
-in to sideBar.
-
 ## Can I delete a file?
 
 Yes. Tap the menu on any file card and choose **Delete**, or swipe left on the
 file. Deletion is permanent and removes both the file and its index. You will be
 asked to confirm before anything is removed.
+
+## Do files sync across my devices?
+
+Yes. Files and their indexed content sync across all devices where you are signed
+in to sideBar.
