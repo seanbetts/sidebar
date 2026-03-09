@@ -32,6 +32,25 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
         XCTAssertTrue(dependencies.ingestionStore.offlineStore === dependencies.offlineStore)
     }
 
+    func testBuildDependenciesCreateIsolatedOfflineStoresPerTestEnvironment() {
+        let firstDependencies = makeDependencies()
+        let secondDependencies = makeDependencies()
+
+        firstDependencies.offlineStore.set(
+            key: "isolation-check",
+            entityType: "note",
+            value: ["title": "First environment snapshot"],
+            lastSyncAt: nil
+        )
+
+        let secondSnapshot = secondDependencies.offlineStore.get(
+            key: "isolation-check",
+            as: [String: String].self
+        )
+
+        XCTAssertNil(secondSnapshot)
+    }
+
     func testOrderedWorkspaceContextSectionsPrioritizeFocusedPane() {
         let state = WorkspaceState(
             layout: .split,

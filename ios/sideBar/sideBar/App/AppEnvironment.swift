@@ -89,6 +89,7 @@ public final class AppEnvironment: ObservableObject {
     public let navigation: NavigationCoordinator
     /// Shadow workspace state store used for migration to a unified workspace engine.
     public let workspaceStore: WorkspaceStore
+    let persistenceController: PersistenceController
     let realtimeClient: RealtimeClient
     /// Environment configuration loading error captured at startup, when present.
     public let configError: EnvironmentConfigLoadError?
@@ -151,6 +152,7 @@ public final class AppEnvironment: ObservableObject {
             isTestMode: isTestMode,
             workspaceStateProvider: { workspaceStore.state }
         )
+        self.persistenceController = dependencies.persistenceController
         self.themeManager = dependencies.themeManager
         self.chatStore = dependencies.chatStore
         self.notesStore = dependencies.notesStore

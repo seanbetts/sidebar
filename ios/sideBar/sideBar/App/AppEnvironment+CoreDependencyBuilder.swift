@@ -5,9 +5,8 @@ import sideBarShared
 // swiftlint:disable nesting
 extension AppEnvironment {
     struct CoreDependencyBuilder {
-        private static let testModePersistenceController = PersistenceController(inMemory: true)
-
         struct Output {
+            let persistenceController: PersistenceController
             let themeManager: ThemeManager
             let toastCenter: ToastCenter
             let realtimeClient: RealtimeClient
@@ -36,6 +35,7 @@ extension AppEnvironment {
             let spotlightIndexer = SpotlightIndexer()
             let biometricMonitor = BiometricMonitor()
             return Output(
+                persistenceController: persistenceController,
                 themeManager: themeManager,
                 toastCenter: toastCenter,
                 realtimeClient: realtimeClient,
@@ -52,7 +52,7 @@ extension AppEnvironment {
             guard isTestMode else {
                 return .shared
             }
-            return testModePersistenceController
+            return PersistenceController(inMemory: true)
         }
     }
 }

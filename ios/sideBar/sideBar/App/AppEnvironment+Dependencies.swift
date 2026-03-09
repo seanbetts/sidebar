@@ -3,6 +3,7 @@ import sideBarShared
 
 extension AppEnvironment {
     struct EnvironmentDependencies {
+        let persistenceController: PersistenceController
         let themeManager: ThemeManager
         let chatStore: ChatStore
         let notesStore: NotesStore
@@ -46,6 +47,7 @@ extension AppEnvironment {
         )
 
         return EnvironmentDependencies(
+            persistenceController: core.persistenceController,
             themeManager: core.themeManager,
             chatStore: stores.chatStore,
             notesStore: stores.notesStore,
