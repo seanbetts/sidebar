@@ -6,6 +6,7 @@ import Supabase
 @MainActor
 final class SupabaseAuthAdapterTests: XCTestCase {
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
+    private var isolatedDefaults: [TestIsolation.IsolatedUserDefaults] = []
 
     private final class FakeSupabaseAuthClient: SupabaseAuthClientProtocol, @unchecked Sendable {
         var currentSession: SupabaseSessionInfo?
@@ -64,13 +65,9 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         }
     }
 
-    override func setUp() {
-        super.setUp()
-        UserDefaults.standard.removeObject(forKey: lastAuthTimestampKey)
-    }
-
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: lastAuthTimestampKey)
+        isolatedDefaults.forEach { $0.tearDown() }
+        isolatedDefaults.removeAll()
         super.tearDown()
     }
 
@@ -108,11 +105,13 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")
         let withinWindow = Date().addingTimeInterval(-12 * 60 * 60)
-        UserDefaults.standard.set(withinWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        let defaults = makeUserDefaults()
+        defaults.set(withinWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
 
         let adapter = SupabaseAuthAdapter(
             config: EnvironmentConfig.fallbackForTesting(),
-            stateStore: store
+            stateStore: store,
+            userDefaults: defaults
         )
 
         XCTAssertTrue(adapter.canRestoreOfflineSession)
@@ -126,11 +125,13 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")
         let outsideWindow = Date().addingTimeInterval(-48 * 60 * 60)
-        UserDefaults.standard.set(outsideWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        let defaults = makeUserDefaults()
+        defaults.set(outsideWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
 
         let adapter = SupabaseAuthAdapter(
             config: EnvironmentConfig.fallbackForTesting(),
-            stateStore: store
+            stateStore: store,
+            userDefaults: defaults
         )
 
         XCTAssertNil(adapter.accessToken)
@@ -142,11 +143,13 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")
         let withinWindow = Date().addingTimeInterval(-2 * 60 * 60)
-        UserDefaults.standard.set(withinWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        let defaults = makeUserDefaults()
+        defaults.set(withinWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
 
         let adapter = SupabaseAuthAdapter(
             config: EnvironmentConfig.fallbackForTesting(),
-            stateStore: store
+            stateStore: store,
+            userDefaults: defaults
         )
 
         XCTAssertTrue(adapter.canRestoreOfflineSession)
@@ -160,15 +163,47 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         try? store.saveAccessToken("token")
         try? store.saveUserId("user")
         let outsideWindow = Date().addingTimeInterval(-48 * 60 * 60)
-        UserDefaults.standard.set(outsideWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        let defaults = makeUserDefaults()
+        defaults.set(outsideWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
 
         let adapter = SupabaseAuthAdapter(
             config: EnvironmentConfig.fallbackForTesting(),
-            stateStore: store
+            stateStore: store,
+            userDefaults: defaults
         )
 
         XCTAssertFalse(adapter.canRestoreOfflineSession)
         XCTAssertFalse(adapter.restoreOfflineSession())
+    }
+
+    func testFreshAdapterDoesNotInheritLastAuthTimestampFromAnotherTestScope() async {
+        let firstStore = InMemoryAuthStateStore()
+        try? firstStore.saveAccessToken("token-1")
+        try? firstStore.saveUserId("user-1")
+        let withinWindow = Date().addingTimeInterval(-48 * 60 * 60)
+        let firstDefaults = makeUserDefaults()
+        firstDefaults.set(withinWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+
+        let firstAdapter = SupabaseAuthAdapter(
+            config: EnvironmentConfig.fallbackForTesting(),
+            stateStore: firstStore,
+            userDefaults: firstDefaults
+        )
+        XCTAssertFalse(firstAdapter.canRestoreOfflineSession)
+
+        let secondStore = InMemoryAuthStateStore()
+        try? secondStore.saveAccessToken("token-2")
+        try? secondStore.saveUserId("user-2")
+
+        let secondDefaults = makeUserDefaults()
+        let secondAdapter = SupabaseAuthAdapter(
+            config: EnvironmentConfig.fallbackForTesting(),
+            stateStore: secondStore,
+            userDefaults: secondDefaults
+        )
+
+        XCTAssertTrue(secondAdapter.canRestoreOfflineSession)
+        XCTAssertGreaterThan(secondDefaults.double(forKey: lastAuthTimestampKey), withinWindow.timeIntervalSince1970)
     }
 
     func testColdLaunchExpiredSessionRefreshesAndBecomesActive() async throws {
@@ -184,7 +219,12 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         )
 
         let store = InMemoryAuthStateStore()
-        let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: false)
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: store,
+            startAuthStateTask: false,
+            userDefaults: makeUserDefaults()
+        )
 
         XCTAssertEqual(adapter.authState, .stale)
         XCTAssertNil(adapter.authorizationToken)
@@ -201,7 +241,12 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         client.refreshResult = .success(client.currentSession!)
 
         let store = InMemoryAuthStateStore()
-        let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: true)
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: store,
+            startAuthStateTask: true,
+            userDefaults: makeUserDefaults()
+        )
 
         XCTAssertEqual(adapter.authState, .active)
         try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
@@ -220,7 +265,12 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         client.refreshResult = .failure(URLError(.notConnectedToInternet))
 
         let store = InMemoryAuthStateStore()
-        let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: true)
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: store,
+            startAuthStateTask: true,
+            userDefaults: makeUserDefaults()
+        )
 
         XCTAssertEqual(adapter.authState, .active)
         try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
@@ -240,7 +290,12 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         )
 
         let store = InMemoryAuthStateStore()
-        let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: true)
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: store,
+            startAuthStateTask: true,
+            userDefaults: makeUserDefaults()
+        )
 
         XCTAssertEqual(adapter.authState, .active)
         try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
@@ -270,7 +325,12 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         )
 
         let store = InMemoryAuthStateStore()
-        let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: true)
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: store,
+            startAuthStateTask: true,
+            userDefaults: makeUserDefaults()
+        )
 
         XCTAssertEqual(adapter.authState, .active)
         try await waitUntil(timeoutSeconds: 2.0) { client.hasSubscriber }
@@ -296,7 +356,12 @@ final class SupabaseAuthAdapterTests: XCTestCase {
             code: 1,
             userInfo: [NSLocalizedDescriptionKey: "Sign-out transport failure"]
         )
-        let adapter = SupabaseAuthAdapter(authClient: client, stateStore: store, startAuthStateTask: false)
+        let adapter = SupabaseAuthAdapter(
+            authClient: client,
+            stateStore: store,
+            startAuthStateTask: false,
+            userDefaults: makeUserDefaults()
+        )
         adapter.restoreSession(accessToken: "token", userId: "user")
 
         await adapter.signOut()
@@ -332,5 +397,11 @@ final class SupabaseAuthAdapterTests: XCTestCase {
             try await Task.sleep(nanoseconds: 30_000_000)
         }
         XCTFail("Timed out waiting for condition")
+    }
+
+    private func makeUserDefaults() -> UserDefaults {
+        let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthAdapterTests")
+        isolatedDefaults.append(isolated)
+        return isolated.defaults
     }
 }

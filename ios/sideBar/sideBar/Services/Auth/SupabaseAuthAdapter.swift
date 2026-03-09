@@ -59,6 +59,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private var authStateTask: Task<Void, Never>?
     private var refreshInFlightTask: Task<Void, Never>?
     private var signInTask: Task<Void, Error>?
+    private let userDefaults: UserDefaults
     private let logger = Logger(subsystem: "sideBar", category: "Auth")
     private let sessionRefreshLeadTime: TimeInterval = 600  // 10 min before expiry
     private let refreshCooldown: TimeInterval = 60
@@ -99,7 +100,8 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     public init(
         config: EnvironmentConfig,
         stateStore: AuthStateStore,
-        startAuthStateTask: Bool = true
+        startAuthStateTask: Bool = true,
+        userDefaults: UserDefaults = .standard
     ) {
         let authOptions = Self.makeAuthOptions(stateStore: stateStore)
         let supabase = SupabaseClient(
@@ -109,6 +111,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         )
         self.stateStore = stateStore
         self.authClient = SupabaseAuthClient(supabase: supabase)
+        self.userDefaults = userDefaults
         commonInit(startAuthStateTask: startAuthStateTask)
     }
 
@@ -131,10 +134,12 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     init(
         authClient: SupabaseAuthClientProtocol,
         stateStore: AuthStateStore,
-        startAuthStateTask: Bool = true
+        startAuthStateTask: Bool = true,
+        userDefaults: UserDefaults = .standard
     ) {
         self.stateStore = stateStore
         self.authClient = authClient
+        self.userDefaults = userDefaults
         commonInit(startAuthStateTask: startAuthStateTask)
     }
 
@@ -392,7 +397,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     }
 
     private func shouldAllowOfflineAccess(hasStoredToken: Bool) -> Bool {
-        let lastAuthTimestamp = UserDefaults.standard.double(forKey: lastAuthTimestampKey)
+        let lastAuthTimestamp = userDefaults.double(forKey: lastAuthTimestampKey)
         if lastAuthTimestamp == 0, hasStoredToken {
             updateLastAuthTimestamp(Date())
             return true
@@ -424,7 +429,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     }
 
     private func updateLastAuthTimestamp(_ date: Date) {
-        UserDefaults.standard.set(date.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+        userDefaults.set(date.timeIntervalSince1970, forKey: lastAuthTimestampKey)
     }
 
     private func recordError(_ message: String) {

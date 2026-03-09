@@ -20,7 +20,6 @@
         "NotesDetailViewMountedMacOSTests",
         "SafariExtensionMessageHandlerTests",
         "ShareExtensionQueueContractTests",
-        "SupabaseAuthAdapterTests",
         "TasksViewModelRealtimeTests"
       ],
       "target" : {
