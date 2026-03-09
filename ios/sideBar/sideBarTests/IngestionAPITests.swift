@@ -4,15 +4,55 @@ import sideBarShared
 
 @MainActor
 final class IngestionAPITests: XCTestCase {
+    private var router: ScopedURLProtocolRouter!
+
+    override func setUp() {
+        super.setUp()
+        router = ScopedURLProtocolRouter()
+    }
+
     override func tearDown() {
-        IngestionURLProtocolMock.requestHandler = nil
+        router.invalidate()
+        router = nil
         super.tearDown()
+    }
+
+    func testParallelUploadClientsRouteIndependently() async throws {
+        let leftRouter = ScopedURLProtocolRouter()
+        let rightRouter = ScopedURLProtocolRouter()
+        defer {
+            leftRouter.invalidate()
+            rightRouter.invalidate()
+        }
+
+        let (leftClient, leftSession) = makeClientAndSession(router: leftRouter, accessToken: "left-token")
+        let (rightClient, rightSession) = makeClientAndSession(router: rightRouter, accessToken: "right-token")
+        let leftAPI = IngestionAPI(client: leftClient, session: leftSession)
+        let rightAPI = IngestionAPI(client: rightClient, session: rightSession)
+
+        leftRouter.setHandler { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer left-token")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{\"file_id\":\"left-file\"}".utf8))
+        }
+        rightRouter.setHandler { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer right-token")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{\"file_id\":\"right-file\"}".utf8))
+        }
+
+        async let left = leftAPI.ingestYouTube(url: "https://youtu.be/left")
+        async let right = rightAPI.ingestYouTube(url: "https://youtu.be/right")
+        let results = try await (left, right)
+
+        XCTAssertEqual(results.0, "left-file")
+        XCTAssertEqual(results.1, "right-file")
     }
 
     func testGetContentSetsRangeHeader() async throws {
         let api = IngestionAPI(client: makeClient())
         let expected = Data([0x01])
-        IngestionURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.value(forHTTPHeaderField: "Range"), "bytes=0-10")
             XCTAssertTrue(request.url?.absoluteString.contains("files/file-id/content") == true)
             let response = HTTPURLResponse(
@@ -31,7 +71,7 @@ final class IngestionAPITests: XCTestCase {
 
     func testListDecodesResponse() async throws {
         let api = IngestionAPI(client: makeClient())
-        IngestionURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             let response = HTTPURLResponse(
                 url: request.url!,
@@ -82,7 +122,7 @@ final class IngestionAPITests: XCTestCase {
 
     func testIngestYouTubePostsUrl() async throws {
         let api = IngestionAPI(client: makeClient())
-        IngestionURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/youtube") == true)
             let bodyData = try XCTUnwrap(request.httpBodyData())
@@ -111,7 +151,7 @@ final class IngestionAPITests: XCTestCase {
         try Data("hello upload".utf8).write(to: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
-        IngestionURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-abc")
             XCTAssertTrue(request.value(forHTTPHeaderField: "Content-Type")?.hasPrefix("multipart/form-data; boundary=") == true)
@@ -145,7 +185,7 @@ final class IngestionAPITests: XCTestCase {
         let (client, session) = makeClientAndSession()
         let api = IngestionAPI(client: client, session: session)
 
-        IngestionURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             let bodyData = try XCTUnwrap(request.httpBodyData())
             let body = try XCTUnwrap(String(bytes: bodyData, encoding: .utf8))
             XCTAssertTrue(body.contains("name=\"file\"; filename=\"data.txt\""))
@@ -174,44 +214,18 @@ final class IngestionAPITests: XCTestCase {
         makeClientAndSession().0
     }
 
-    private func makeClientAndSession(accessToken: String? = nil) -> (APIClient, URLSession) {
+    private func makeClientAndSession(
+        router: ScopedURLProtocolRouter? = nil,
+        accessToken: String? = nil
+    ) -> (APIClient, URLSession) {
+        guard let resolvedRouter = router ?? self.router else {
+            fatalError("Expected scoped router to be configured before creating APIClient")
+        }
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: resolvedRouter.baseURL,
             accessTokenProvider: { accessToken }
         )
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [IngestionURLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = resolvedRouter.makeSession()
         return (APIClient(config: config, session: session), session)
-    }
-}
-
-final class IngestionURLProtocolMock: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-    override static func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        guard let handler = IngestionURLProtocolMock.requestHandler else {
-            XCTFail("Request handler not set")
-            return
-        }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {
     }
 }

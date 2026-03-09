@@ -4,14 +4,78 @@ import sideBarShared
 
 @MainActor
 final class ConversationsAPITests: XCTestCase {
+    private var router: ScopedURLProtocolRouter!
+
+    override func setUp() {
+        super.setUp()
+        router = ScopedURLProtocolRouter()
+    }
+
     override func tearDown() {
-        ConversationsURLProtocolMock.requestHandler = nil
+        router.invalidate()
+        router = nil
         super.tearDown()
+    }
+
+    func testParallelConversationClientsRouteIndependently() async throws {
+        let leftRouter = ScopedURLProtocolRouter()
+        let rightRouter = ScopedURLProtocolRouter()
+        defer {
+            leftRouter.invalidate()
+            rightRouter.invalidate()
+        }
+
+        let leftAPI = ConversationsAPI(client: makeClient(router: leftRouter))
+        let rightAPI = ConversationsAPI(client: makeClient(router: rightRouter))
+
+        leftRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("conversations/left") == true)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let payload = """
+            {
+              "id":"left",
+              "title":"Left",
+              "title_generated":false,
+              "created_at":"2024-01-01",
+              "updated_at":"2024-01-02",
+              "message_count":0,
+              "first_message":null,
+              "is_archived":false,
+              "messages":[]
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+        rightRouter.setHandler { request in
+            XCTAssertTrue(request.url?.absoluteString.contains("conversations/right") == true)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let payload = """
+            {
+              "id":"right",
+              "title":"Right",
+              "title_generated":false,
+              "created_at":"2024-01-01",
+              "updated_at":"2024-01-02",
+              "message_count":0,
+              "first_message":null,
+              "is_archived":false,
+              "messages":[]
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        async let left = leftAPI.get(id: "left")
+        async let right = rightAPI.get(id: "right")
+        let results = try await (left, right)
+
+        XCTAssertEqual(results.0.id, "left")
+        XCTAssertEqual(results.1.id, "right")
     }
 
     func testListDecodesResponse() async throws {
         let api = ConversationsAPI(client: makeClient())
-        ConversationsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             let response = HTTPURLResponse(
                 url: request.url!,
@@ -42,7 +106,7 @@ final class ConversationsAPITests: XCTestCase {
 
     func testGetDecodesDetail() async throws {
         let api = ConversationsAPI(client: makeClient())
-        ConversationsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("conversations/c1") == true)
             let response = HTTPURLResponse(
@@ -75,7 +139,7 @@ final class ConversationsAPITests: XCTestCase {
 
     func testSearchUsesPostAndQuery() async throws {
         let api = ConversationsAPI(client: makeClient())
-        ConversationsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             let urlString = request.url?.absoluteString ?? ""
             XCTAssertTrue(urlString.contains("conversations/search") == true)
@@ -97,7 +161,7 @@ final class ConversationsAPITests: XCTestCase {
 
     func testDeleteUsesDelete() async throws {
         let api = ConversationsAPI(client: makeClient())
-        ConversationsURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "DELETE")
             XCTAssertTrue(request.url?.absoluteString.contains("conversations/c1") == true)
             let response = HTTPURLResponse(
@@ -126,44 +190,15 @@ final class ConversationsAPITests: XCTestCase {
         XCTAssertEqual(response.id, "c1")
     }
 
-    private func makeClient() -> APIClient {
+    private func makeClient(router: ScopedURLProtocolRouter? = nil) -> APIClient {
+        guard let resolvedRouter = router ?? self.router else {
+            fatalError("Expected scoped router to be configured before creating APIClient")
+        }
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: resolvedRouter.baseURL,
             accessTokenProvider: { nil }
         )
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [ConversationsURLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = resolvedRouter.makeSession()
         return APIClient(config: config, session: session)
-    }
-}
-
-final class ConversationsURLProtocolMock: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-    override static func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        guard let handler = ConversationsURLProtocolMock.requestHandler else {
-            XCTFail("Request handler not set")
-            return
-        }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {
     }
 }
