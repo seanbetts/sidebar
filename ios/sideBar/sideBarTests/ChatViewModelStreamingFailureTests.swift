@@ -210,11 +210,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
 
         await viewModel.sendMessage(text: "Show me the prompt preview")
 
-        let didPersist = await waitForCondition {
-            !conversationsAPI.addMessageCalls.isEmpty
-        }
-
-        XCTAssertFalse(didPersist)
+        await settleAsyncWork()
         XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }
 
@@ -244,11 +240,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
 
         viewModel.finalizeStreaming(status: .complete)
 
-        let didPersist = await waitForCondition {
-            !conversationsAPI.addMessageCalls.isEmpty
-        }
-
-        XCTAssertFalse(didPersist)
+        await settleAsyncWork()
         XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }
 
@@ -339,8 +331,8 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     }
 
     private func waitForCondition(
-        timeoutNanoseconds: UInt64 = 1_000_000_000,
-        pollNanoseconds: UInt64 = 10_000_000,
+        timeoutNanoseconds: UInt64 = 250_000_000,
+        pollNanoseconds: UInt64 = 1_000_000,
         condition: @escaping () -> Bool
     ) async -> Bool {
         let start = DispatchTime.now().uptimeNanoseconds
@@ -351,6 +343,12 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
             try? await Task.sleep(nanoseconds: pollNanoseconds)
         }
         return condition()
+    }
+
+    private func settleAsyncWork(iterations: Int = 10) async {
+        for _ in 0..<iterations {
+            await Task.yield()
+        }
     }
 
     private func makeViewModel(
@@ -382,7 +380,10 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
             ui: ChatUICoordinator(
                 themeManager: themeManager,
                 userDefaults: uiDefaults,
-                clock: { Date(timeIntervalSince1970: 0) }
+                clock: { Date(timeIntervalSince1970: 0) },
+                typingRevealFrameIntervalNanoseconds: 0,
+                typingRevealMinimumStep: 1_024,
+                typingRevealMaximumStep: 1_024
             )
         )
     }

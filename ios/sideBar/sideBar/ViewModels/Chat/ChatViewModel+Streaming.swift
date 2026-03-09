@@ -32,7 +32,7 @@ extension ChatViewModel {
 
     public func beginStreamingMessage(assistantMessageId: String) {
         currentStreamMessageId = assistantMessageId
-        guard TypingRevealTuning.enabled else {
+        guard typingRevealEnabled else {
             return
         }
         let startingContent = messages.first(where: { $0.id == assistantMessageId })?.content ?? ""
@@ -403,7 +403,7 @@ extension ChatViewModel {
         let prefix = prefixForToken(message: currentMessage, token: token)
         let appendedText = prefix + token
 
-        guard TypingRevealTuning.enabled else {
+        guard typingRevealEnabled else {
             updateMessage(id: messageId, persist: false) { message in
                 let needsNewline = message.needsNewline == true ? false : message.needsNewline
                 return Message(

@@ -151,6 +151,10 @@ struct ChatUICoordinator {
     let requestContextProvider: (() -> ChatRequestContext?)?
     let attachmentPollingInitialDelayNanoseconds: UInt64
     let attachmentPollingIntervalNanoseconds: UInt64
+    let typingRevealEnabled: Bool
+    let typingRevealFrameIntervalNanoseconds: UInt64
+    let typingRevealMinimumStep: Int
+    let typingRevealMaximumStep: Int
 
     init(
         themeManager: ThemeManager,
@@ -160,7 +164,11 @@ struct ChatUICoordinator {
         onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? = nil,
         requestContextProvider: (() -> ChatRequestContext?)? = nil,
         attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
-        attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000
+        attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000,
+        typingRevealEnabled: Bool = true,
+        typingRevealFrameIntervalNanoseconds: UInt64 = 33_000_000,
+        typingRevealMinimumStep: Int = 1,
+        typingRevealMaximumStep: Int = 20
     ) {
         self.themeManager = themeManager
         self.toastCenter = toastCenter
@@ -170,6 +178,10 @@ struct ChatUICoordinator {
         self.requestContextProvider = requestContextProvider
         self.attachmentPollingInitialDelayNanoseconds = attachmentPollingInitialDelayNanoseconds
         self.attachmentPollingIntervalNanoseconds = attachmentPollingIntervalNanoseconds
+        self.typingRevealEnabled = typingRevealEnabled
+        self.typingRevealFrameIntervalNanoseconds = typingRevealFrameIntervalNanoseconds
+        self.typingRevealMinimumStep = typingRevealMinimumStep
+        self.typingRevealMaximumStep = typingRevealMaximumStep
     }
 }
 

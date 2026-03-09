@@ -1,18 +1,10 @@
 import Foundation
 
-// Internal rollout toggle for rapid fallback during QA.
-enum TypingRevealTuning {
-    static let enabled = true
-    static let frameIntervalNanoseconds: UInt64 = 33_000_000
-    static let minimumStep = 1
-    static let maximumStep = 20
-}
-
 // MARK: - ChatViewModel+TypingReveal
 
 extension ChatViewModel {
     func startTypingRevealLoopIfNeeded() {
-        guard TypingRevealTuning.enabled else {
+        guard typingRevealEnabled else {
             return
         }
         guard typingRevealTask == nil else {
@@ -27,14 +19,18 @@ extension ChatViewModel {
                 if !advanced, self.typingRevealTargetsByMessageId.isEmpty {
                     return
                 }
-                try? await Task.sleep(nanoseconds: TypingRevealTuning.frameIntervalNanoseconds)
+                if self.typingRevealFrameIntervalNanoseconds > 0 {
+                    try? await Task.sleep(nanoseconds: self.typingRevealFrameIntervalNanoseconds)
+                } else {
+                    await Task.yield()
+                }
             }
         }
     }
 
     @discardableResult
     func advanceTypingRevealFrame() -> Bool {
-        guard TypingRevealTuning.enabled else {
+        guard typingRevealEnabled else {
             return false
         }
         guard let messageId = activeStreamingMessageId ?? typingRevealTargetsByMessageId.keys.first,
@@ -78,8 +74,8 @@ extension ChatViewModel {
             return target
         }
         let adaptiveStep = max(
-            TypingRevealTuning.minimumStep,
-            min(TypingRevealTuning.maximumStep, max(remaining / 8, TypingRevealTuning.minimumStep))
+            typingRevealMinimumStep,
+            min(typingRevealMaximumStep, max(remaining / 8, typingRevealMinimumStep))
         )
         let revealCount = min(target.count, current.count + adaptiveStep)
         let endIndex = target.index(target.startIndex, offsetBy: revealCount)
@@ -87,7 +83,7 @@ extension ChatViewModel {
     }
 
     func flushTypingRevealContent(for messageId: String) {
-        guard TypingRevealTuning.enabled,
+        guard typingRevealEnabled,
               let targetContent = typingRevealTargetsByMessageId[messageId] else {
             return
         }

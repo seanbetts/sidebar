@@ -134,6 +134,10 @@ private final class ChatViewModelTeardownBag {
     var clock: () -> Date { ui.clock }
     var attachmentPollingInitialDelayNanoseconds: UInt64 { ui.attachmentPollingInitialDelayNanoseconds }
     var attachmentPollingIntervalNanoseconds: UInt64 { ui.attachmentPollingIntervalNanoseconds }
+    var typingRevealEnabled: Bool { ui.typingRevealEnabled }
+    var typingRevealFrameIntervalNanoseconds: UInt64 { ui.typingRevealFrameIntervalNanoseconds }
+    var typingRevealMinimumStep: Int { ui.typingRevealMinimumStep }
+    var typingRevealMaximumStep: Int { ui.typingRevealMaximumStep }
     var onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? { ui.onAssistantSettingsUpdated }
     var requestContextProvider: (() -> ChatRequestContext?)? { ui.requestContextProvider }
     var workspaceActionDispatcher: ((WorkspaceAction) -> Void)?
