@@ -45,18 +45,6 @@
           "faq/skills",
           "faq/privacy"
         ]
-      },
-      {
-        "group": "Skills",
-        "pages": [
-          "reference/skills/web-search"
-        ]
-      },
-      {
-        "group": "Concepts",
-        "pages": [
-          "reference/concepts/skills"
-        ]
       }
     ]
   }
