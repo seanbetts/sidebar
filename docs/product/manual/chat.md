@@ -112,3 +112,14 @@ already knows the basics before you've typed anything.
 Your existing conversations are cached and fully readable without a connection.
 You can't send new messages until you're back online, but nothing is lost while
 you're offline.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Cmd+Return | Send message |
+| Shift+Return | New line in message |
+| Cmd+Shift+F | Attach file |
+| Cmd+Shift+R | Rename conversation |
+| Cmd+Delete | Delete conversation |
+| Esc | Close workspace |

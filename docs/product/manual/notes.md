@@ -72,3 +72,16 @@ move on without thinking about it.
 Pinned notes appear in sideBar's Pinned Notes home screen widget, giving you
 quick access without opening the app. See [Widgets & Extensions](/manual/extensions)
 to set it up.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Cmd+Shift+N | New folder |
+| Cmd+Shift+P | Pin or unpin |
+| Cmd+Shift+A | Archive or unarchive |
+| Cmd+Shift+Delete | Delete |
+| Esc | Close note |
+| Cmd+B | Bold (macOS) |
+| Cmd+I | Italic (macOS) |
+| Cmd+U | Underline (macOS) |

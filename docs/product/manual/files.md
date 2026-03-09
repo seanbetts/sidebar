@@ -82,3 +82,10 @@ Tap the menu on any file card to access these actions:
 
 You can also swipe right on any file to pin or unpin it, or swipe left to
 delete it.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Space | Quick Look preview |
+| Cmd+Option+Shift+Delete | Delete |

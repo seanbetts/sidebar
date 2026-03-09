@@ -53,6 +53,29 @@ AI chat interface — it's an assistant that adapts to you over time.
   [Skills Store](/manual/skills-store). Examples include transcribing YouTube
   videos and integrations with services like Gmail and Spotify.
 
+## Keyboard Shortcuts
+
+sideBar supports keyboard shortcuts throughout the app on iPad and Mac.
+Press **Cmd+Shift+/** at any time to see all available shortcuts for the
+current view.
+
+Universal shortcuts available everywhere:
+
+| Shortcut | Action |
+|---|---|
+| Cmd+1 through Cmd+6 | Navigate to each section |
+| Cmd+N | New item |
+| Cmd+F | Search |
+| Cmd+, | Open Settings |
+| Cmd+W | Close |
+| Cmd+R | Refresh |
+| Cmd+Shift+O | Open Scratchpad |
+| Cmd+Shift+S | Toggle sidebar |
+| Cmd+Shift+/ | Show all shortcuts |
+
+Each section has additional shortcuts listed at the bottom of its page in
+this manual.
+
 ## Where to Start
 
 Head to [Getting Started](/manual/getting-started) for a walkthrough of setup

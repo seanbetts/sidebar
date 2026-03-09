@@ -71,3 +71,14 @@ changes sync in real time across your devices.
 
 See [Widgets & Extensions](/manual/extensions) for how to add the widget to
 your home screen or lock screen.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Return | Complete or uncomplete selected task |
+| Cmd+Shift+N | Edit task notes |
+| Cmd+Shift+M | Move task |
+| Cmd+D | Set due date |
+| Cmd+Shift+R | Edit repeat |
+| Cmd+Shift+Delete | Delete task |

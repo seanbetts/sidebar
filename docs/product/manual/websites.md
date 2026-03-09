@@ -101,3 +101,13 @@ From any saved page you can:
 - **Export as markdown**: saves a `.md` file you can open in any text editor.
 - **Copy the title**, **URL**, or **full markdown content** with a single tap,
   handy for pasting into a note, message, or document.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Cmd+Option+P | Pin or unpin |
+| Cmd+Option+A | Archive or unarchive |
+| Cmd+Option+Delete | Delete |
+| Cmd+Shift+Return | Open in browser |
+| Esc | Close page |
